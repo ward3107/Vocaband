@@ -37,7 +37,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped } from "./firebase";
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
 
@@ -95,43 +95,6 @@ interface ProgressData {
   avatar?: string;
 }
 
-// --- FIREBASE ERROR HANDLING ---
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
@@ -478,8 +441,6 @@ export default function App() {
       const classData = { id: classSnap.docs[0].id, ...classSnap.docs[0].data() } as ClassData;
       const aq = query(collection(db, "assignments"), where("classId", "==", classData.id));
       const assignSnap = await getDocs(aq);
-      console.log("Class ID:", classData.id);
-      console.log("Assignments found:", assignSnap.size);
 
       if (assignSnap.empty) {
         setError("No assignments found for this class yet!");
@@ -494,7 +455,6 @@ export default function App() {
       try {
         const authResult = await signInAnonymously(auth);
         studentUid = authResult.user.uid;
-        console.log("Authenticated as:", studentUid);
       } catch (e) {
         console.error("Anonymous auth failed:", e);
         let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
@@ -518,6 +478,7 @@ export default function App() {
         return;
       }
 
+      let userDoc;
       try {
         userDoc = await getDocWrapped(doc(db, "users", studentUid), "users/" + studentUid);
       } catch (e) {
@@ -715,7 +676,6 @@ export default function App() {
     setIsFinished(false);
     setCurrentIndex(0);
     setScore(0);
-    setBadges([]);
     setMistakes([]);
     setFeedback(null);
     setSpellingInput("");

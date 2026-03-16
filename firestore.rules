@@ -87,15 +87,17 @@ service cloud.firestore {
 
     match /assignments/{assignmentId} {
       allow read: if isAuthenticated();
-      allow create: if (isTeacher() || isAdmin());
-      allow update: if (isTeacher() || isAdmin());
+      allow create: if (isTeacher() || isAdmin()) && isValidAssignment(request.resource.data);
+      allow update: if (isTeacher() || isAdmin()) && isValidAssignment(request.resource.data);
       allow delete: if isTeacher() || isAdmin();
     }
 
     match /progress/{progressId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidProgress(request.resource.data);
+      allow update: if isAuthenticated() && isValidProgress(request.resource.data) &&
+                       resource.data.assignmentId == request.resource.data.assignmentId &&
+                       resource.data.classCode == request.resource.data.classCode;
     }
   }
 }
