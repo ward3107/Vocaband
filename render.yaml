@@ -1,0 +1,13 @@
+ services:
+    - type: web
+      name: vocaband
+      runtime: node
+      buildCommand: npm install && npm run build && cp firebase-applet-config.json dist/firebase-applet-config.json && cp .env dist/.env  
+      startCommand: npm run start
+      envVars:
+        - key: ALLOWED_ORIGIN
+          value: https://vocaband.onrender.com
+        - key: PORT
+          value: 3000
+        - key: NODE_ENV
+          value: production
