@@ -51,12 +51,33 @@ Students join classes with a 6-digit code and practice vocabulary through 8 inte
    ```
    Fill in your Firebase project credentials.
 
-3. Deploy Firestore security rules to your Firebase project.
+3. Deploy Firestore security rules and indexes to your Firebase project:
+   ```
+   firebase deploy --only firestore
+   ```
 
 4. Run the dev server:
    ```
    npm run dev
    ```
+
+## Required Firestore Indexes
+
+This app requires composite indexes on the `progress` collection. Deploy them with:
+
+```
+firebase deploy --only firestore:indexes
+```
+
+Required indexes (defined in `firestore.indexes.json`):
+
+| Collection | Fields | Purpose |
+|---|---|---|
+| `progress` | `classCode` ASC + `studentName` ASC | Student login progress lookup |
+| `progress` | `assignmentId` ASC + `mode` ASC + `studentName` ASC + `classCode` ASC | Score deduplication |
+| `progress` | `classCode` ASC + `completedAt` DESC | Gradebook (sorted, paginated) |
+
+Without these indexes, student login and gradebook queries will fail with a Firestore index error.
 
 ## Environment Variables
 
