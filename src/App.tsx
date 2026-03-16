@@ -207,16 +207,22 @@ export default function App() {
             fetchTeacherData(firebaseUser.uid);
             setView("teacher-dashboard");
           }
+          // For students, don't change view - handleStudentLogin will do that
         } else {
-          const newUser: AppUser = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || "",
-            role: "teacher",
-            displayName: firebaseUser.displayName || "Teacher",
-          };
-          await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-          setUser(newUser);
-          setView("teacher-dashboard");
+          // Only auto-create teacher account for Google sign-ins (not anonymous)
+          const isGoogleSignIn = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+          if (isGoogleSignIn) {
+            const newUser: AppUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || "",
+              role: "teacher",
+              displayName: firebaseUser.displayName || "Teacher",
+            };
+            await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+            setUser(newUser);
+            setView("teacher-dashboard");
+          }
+          // For anonymous users (students), don't create doc here - handleStudentLogin will do it
         }
       } else {
         setUser(null);
@@ -404,6 +410,37 @@ export default function App() {
     }
   };
 
+  // Preview the assignment with selected words and modes (for teachers)
+  const handlePreviewAssignment = () => {
+    if (selectedWords.length === 0) {
+      alert("Please select at least one word to preview.");
+      return;
+    }
+
+    // Get the selected words
+    const allPossibleWords = [...ALL_WORDS, ...customWords];
+    const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
+    const wordsToPreview = uniqueWords.filter(w => selectedWords.includes(w.id));
+
+    // Create a temporary assignment object with selected modes
+    const previewAssignment: AssignmentData = {
+      id: "preview",
+      classId: selectedClass?.id || "",
+      wordIds: selectedWords,
+      words: wordsToPreview,
+      title: assignmentTitle || "Preview Assignment",
+      deadline: null,
+      createdAt: new Date().toISOString(),
+      allowedModes: assignmentModes
+    };
+
+    // Set up the game with the preview assignment
+    setAssignmentWords(wordsToPreview);
+    setActiveAssignment(previewAssignment);
+    setView("game");
+    setShowModeSelection(true);
+  };
+
   const handleDeleteClass = async (classId: string) => {
     if (!window.confirm("Are you sure you want to delete this class? This will also remove access for all students in this class.")) {
       return;
@@ -422,10 +459,40 @@ export default function App() {
     if (loading) return;
     setLoading(true);
     setError(null);
+
+    // FIRST: Sign in anonymously to get auth permissions for Firestore queries
+    let studentUid = "anonymous-student-" + Date.now();
+    try {
+      const authResult = await signInAnonymously(auth);
+      studentUid = authResult.user.uid;
+    } catch (e) {
+      console.error("Anonymous auth failed:", e);
+      let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
+      try {
+        const parsed = JSON.parse(e instanceof Error ? e.message : String(e));
+        if (parsed.error) {
+          errorMsg = `Login failed: ${parsed.error} (Path: ${parsed.path}, Operation: ${parsed.operationType})`;
+        }
+      } catch (jsonErr) {
+        // Not a JSON error, keep original message
+      }
+      setError(errorMsg);
+      setLoading(false);
+      return;
+    }
+
+    if (!auth.currentUser) {
+      console.error("User not authenticated after signInAnonymously");
+      setError("Login failed: User not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    // NOW we can query Firestore with auth
     try {
       const q = query(collection(db, "classes"), where("code", "==", code));
       const classSnap = await getDocs(q);
-      
+
       if (classSnap.empty) {
         setError("Invalid Class Code!");
         setLoading(false);
@@ -443,7 +510,7 @@ export default function App() {
       }
 
       const assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() } as AssignmentData));
-      
+
       // Use Anonymous Auth for students to allow secure writes.
       // Reuse an existing anonymous session to avoid the 300 accounts/hour rate limit.
       let studentUid: string;
@@ -1330,13 +1397,6 @@ export default function App() {
               <p className="text-stone-500 mb-6">Track your students' progress and scores.</p>
               <button onClick={fetchScores} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors">View Scores</button>
             </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center md:col-span-2">
-              <BookOpen className="text-stone-300 mb-4" size={48} />
-              <h2 className="text-xl font-bold mb-2">Student View</h2>
-              <p className="text-stone-500 mb-6">Want to see what the students see?</p>
-              <button onClick={() => { setAssignmentWords(BAND_2_WORDS); setView("game"); setShowModeSelection(true); }} className="w-full py-3 bg-stone-900 text-white rounded-xl font-bold">Preview Full Game</button>
-            </div>
           </div>
         </div>
 
@@ -1572,13 +1632,22 @@ export default function App() {
               {currentLevelWords.length === 0 && <p className="col-span-full text-center py-12 text-stone-400 italic">No words found in this level.</p>}
             </div>
 
-            <button 
-              disabled={selectedWords.length === 0} 
-              onClick={handleSaveAssignment}
-              className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 transition-all active:scale-95"
-            >
-              Create Assignment ({selectedWords.length} Words)
-            </button>
+            <div className="flex gap-4">
+              <button
+                disabled={selectedWords.length === 0}
+                onClick={handlePreviewAssignment}
+                className="flex-1 py-5 bg-stone-200 text-stone-700 rounded-2xl font-black text-xl hover:bg-stone-300 transition-all active:scale-95 disabled:opacity-50"
+              >
+                👁️ Preview
+              </button>
+              <button
+                disabled={selectedWords.length === 0 || !assignmentTitle}
+                onClick={handleSaveAssignment}
+                className="flex-1 py-5 bg-emerald-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 transition-all active:scale-95"
+              >
+                Create Assignment ({selectedWords.length} Words)
+              </button>
+            </div>
           </div>
         </div>
       </div>
