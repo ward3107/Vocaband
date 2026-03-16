@@ -1183,13 +1183,13 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
                 {user.avatar}
               </div>
               <div>
-                <h1 className="text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
+                <h1 className="text-2xl sm:text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
                 <p className="text-stone-500 font-bold">Class Code: <span className="text-emerald-600">{user.classCode}</span></p>
                 {badges.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -1703,19 +1703,19 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-4xl bg-white rounded-[48px] shadow-2xl p-12 text-center relative overflow-hidden">
+        <div className="w-full max-w-4xl bg-white rounded-[48px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-3 bg-emerald-500" />
-          <button onClick={handleExitGame} className="absolute top-10 right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300">
+          <button onClick={handleExitGame} className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300">
             <X size={28} />
           </button>
-          
+
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
+            className="mb-6 sm:mb-12 mt-4 sm:mt-0"
           >
-            <h2 className="text-5xl font-black mb-3 text-stone-900 tracking-tight">Choose Your Mode</h2>
-            <p className="text-stone-500 text-xl font-medium">How do you want to learn today?</p>
+            <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">Choose Your Mode</h2>
+            <p className="text-stone-500 text-base sm:text-xl font-medium">How do you want to learn today?</p>
           </motion.div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1762,17 +1762,17 @@ export default function App() {
     return (
       <div className="min-h-screen bg-blue-600 p-6 text-white">
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-12">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12">
             <div>
-              <h1 className="text-4xl font-black">Live Challenge: {selectedClass.name}</h1>
-              <p className="text-blue-100 font-bold mt-2">Students join with code: <span className="bg-white text-blue-600 px-3 py-1 rounded-lg font-mono ml-2">{selectedClass.code}</span></p>
+              <h1 className="text-2xl sm:text-4xl font-black">Live Challenge: {selectedClass.name}</h1>
+              <p className="text-blue-100 font-bold mt-2 text-sm sm:text-base">Students join with code: <span className="bg-white text-blue-600 px-3 py-1 rounded-lg font-mono ml-2">{selectedClass.code}</span></p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm">
                 <span className={`w-2 h-2 rounded-full ${socketConnected ? "bg-green-400" : "bg-red-400 animate-pulse"}`} />
                 <span className="text-blue-100">{socketConnected ? "Live" : "Reconnecting..."}</span>
               </div>
-              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-white/20 hover:bg-white/30 px-6 py-2 rounded-full font-bold transition-colors">End Challenge</button>
+              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-white/20 hover:bg-white/30 px-4 sm:px-6 py-2 rounded-full font-bold transition-colors text-sm sm:text-base">End Challenge</button>
             </div>
           </div>
 
@@ -1817,7 +1817,7 @@ export default function App() {
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-2xl mx-auto">
           <button onClick={() => setView("landing")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back</button>
-          <div className="bg-white rounded-[40px] shadow-xl p-10">
+          <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-4 bg-yellow-100 rounded-3xl">
                 <Trophy size={40} className="text-yellow-600" />
@@ -1862,7 +1862,7 @@ export default function App() {
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-4xl mx-auto">
           <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
-          <div className="bg-white rounded-[40px] shadow-xl p-10">
+          <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
             <h2 className="text-3xl font-black mb-6 text-stone-900">Class Students</h2>
             <div className="overflow-hidden rounded-3xl border border-stone-100">
               <table className="w-full text-left">
@@ -1901,13 +1901,13 @@ export default function App() {
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back</button>
-            <h1 className="text-3xl font-black text-stone-900">Class Insights</h1>
-            <div className="w-24"></div>
+            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Class Insights</h1>
+            <div className="w-12 sm:w-24"></div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Progress Chart */}
-            <div className="bg-white p-8 rounded-[40px] shadow-xl">
+            <div className="bg-white p-4 sm:p-8 rounded-[40px] shadow-xl">
               <h3 className="text-xl font-black mb-6 flex items-center gap-2"><TrendingUp className="text-blue-600" /> Average Score Trend</h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1925,7 +1925,7 @@ export default function App() {
             </div>
 
             {/* Mode Performance */}
-            <div className="bg-white p-8 rounded-[40px] shadow-xl">
+            <div className="bg-white p-4 sm:p-8 rounded-[40px] shadow-xl">
               <h3 className="text-xl font-black mb-6 flex items-center gap-2"><LayoutGrid className="text-emerald-600" /> Performance by Mode</h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1948,7 +1948,7 @@ export default function App() {
           </div>
 
           {/* Difficulty Heatmap */}
-          <div className="bg-white p-8 rounded-[40px] shadow-xl">
+          <div className="bg-white p-4 sm:p-8 rounded-[40px] shadow-xl">
             <h3 className="text-xl font-black mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-600" /> Difficulty Heatmap (Most Missed Words)</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {analyticsData.heatmap.map((item, idx) => (
@@ -2018,19 +2018,19 @@ export default function App() {
         </motion.div>
         <h1 className="text-4xl font-bold mb-2">Kol Hakavod, {user?.displayName}!</h1>
         <p className="text-xl mb-6">You finished the assignment.</p>
-        <div className="flex gap-4 mb-8">
-          <div className="bg-white p-8 rounded-3xl shadow-md">
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
             <p className="text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
-            <p className="text-6xl font-black text-emerald-600">{score}</p>
+            <p className="text-5xl sm:text-6xl font-black text-emerald-600">{score}</p>
           </div>
-          <div className="bg-white p-8 rounded-3xl shadow-md">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
             <p className="text-sm uppercase tracking-widest text-stone-500 mb-1">Total XP</p>
-            <p className="text-6xl font-black text-blue-600">{xp}</p>
+            <p className="text-5xl sm:text-6xl font-black text-blue-600">{xp}</p>
           </div>
           {streak > 0 && (
-            <div className="bg-white p-8 rounded-3xl shadow-md border-2 border-orange-100">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
               <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">Streak</p>
-              <p className="text-6xl font-black text-orange-600">{streak} 🔥</p>
+              <p className="text-5xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
             </div>
           )}
         </div>
@@ -2081,30 +2081,30 @@ export default function App() {
           <button onClick={() => setSaveError(null)} className="ml-1 hover:opacity-75"><X size={16} /></button>
         </div>
       )}
-      <div className="w-full max-w-5xl flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <div className="bg-white px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
-            <Trophy className="text-amber-500" size={20} />
+      <div className="w-full max-w-5xl flex flex-wrap justify-between items-center gap-2 mb-6 sm:mb-8">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <div className="bg-white px-3 sm:px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
+            <Trophy className="text-amber-500" size={18} />
             <span className="font-black text-stone-800">{score}</span>
           </div>
-          <div className="bg-emerald-100 px-4 py-2 rounded-2xl flex items-center gap-2">
+          <div className="bg-emerald-100 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2">
             <span className="text-emerald-700 font-bold text-xs uppercase tracking-widest">XP: {xp}</span>
           </div>
           {streak > 0 && (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="bg-orange-100 px-4 py-2 rounded-2xl flex items-center gap-2"
+              className="bg-orange-100 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2"
             >
-              <span className="text-orange-600 font-bold text-xs uppercase tracking-widest">🔥 {streak} Streak</span>
+              <span className="text-orange-600 font-bold text-xs uppercase tracking-widest">🔥 {streak}</span>
             </motion.div>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")} className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors">
-            <Languages size={18} /><span className="text-sm font-bold uppercase">{targetLanguage}</span>
+          <button onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")} className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors">
+            <Languages size={18} /><span className="text-sm font-bold uppercase hidden sm:inline">{targetLanguage}</span>
           </button>
-          <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold ml-4">Exit</button>
+          <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold text-sm">Exit</button>
         </div>
       </div>
 
@@ -2148,25 +2148,25 @@ export default function App() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[40px] shadow-2xl p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-4 border-emerald-500" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-4 border-emerald-500" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
             >
               {/* Progress Bar */}
               <div className="absolute top-0 left-0 h-2 bg-emerald-500 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
-              
-              <div className="mb-12">
-                <span className="text-stone-300 font-black text-8xl opacity-20 absolute top-8 left-1/2 -translate-x-1/2">{currentIndex + 1}</span>
-                <div className="flex flex-col items-center justify-center gap-6 mb-12">
+
+              <div className="mb-6 sm:mb-12">
+                <span className="text-stone-300 font-black text-6xl sm:text-8xl opacity-20 absolute top-8 left-1/2 -translate-x-1/2">{currentIndex + 1}</span>
+                <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 mb-6 sm:mb-12">
                   {currentWord?.imageUrl && (
-                    <motion.img 
+                    <motion.img
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      src={currentWord.imageUrl} 
+                      src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-48 h-48 object-cover rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-32 h-32 sm:w-48 sm:h-48 object-cover rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-6xl font-black text-stone-900 relative z-10 ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
+                  <h2 className={`text-4xl sm:text-6xl font-black text-stone-900 relative z-10 ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
                     {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] : 
                      gameMode === "scramble" ? scrambledWord :
                      gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
