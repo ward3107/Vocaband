@@ -96,6 +96,15 @@ interface ProgressData {
 }
 
 
+function shuffle<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
@@ -220,7 +229,9 @@ export default function App() {
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = Array.from(crypto.getRandomValues(new Uint32Array(6)))
+      .map(x => x % 10)
+      .join("");
     const newClass = {
       name: newClassName,
       teacherUid: user.uid,
@@ -615,8 +626,8 @@ export default function App() {
       possibleDistractors = uniqueOthers;
     }
     
-    const shuffledOthers = [...possibleDistractors].sort(() => 0.5 - Math.random()).slice(0, 3);
-    return [...shuffledOthers, correct].sort(() => 0.5 - Math.random());
+    const shuffledOthers = shuffle(possibleDistractors).slice(0, 3);
+    return shuffle([...shuffledOthers, correct]);
   }, [currentIndex, currentWord, gameWords]);
 
   useEffect(() => {
@@ -638,15 +649,16 @@ export default function App() {
 
   const scrambledWord = useMemo(() => {
     if (!currentWord) return "";
-    let scrambled = currentWord.english.split('').sort(() => 0.5 - Math.random()).join('');
+    let scrambled = shuffle(currentWord.english.split('')).join('');
     // Ensure it's actually scrambled if length > 1
     while (scrambled === currentWord.english && currentWord.english.length > 1) {
-      scrambled = currentWord.english.split('').sort(() => 0.5 - Math.random()).join('');
+      scrambled = shuffle(currentWord.english.split('')).join('');
     }
     return scrambled;
   }, [currentWord]);
 
   const speak = (text: string) => {
+    if (!("speechSynthesis" in window)) return;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     utterance.rate = 0.9;
@@ -661,11 +673,11 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !showModeSelection && gameMode === "matching") {
-      const shuffled = [...gameWords].sort(() => 0.5 - Math.random()).slice(0, 6);
-      const pairs = [
+      const shuffled = shuffle(gameWords).slice(0, 6);
+      const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
         ...shuffled.map(w => ({ id: w.id, text: w.hebrew, type: 'hebrew' as const }))
-      ].sort(() => 0.5 - Math.random());
+      ]);
       setMatchingPairs(pairs);
       setMatchedIds([]);
       setSelectedMatch(null);
@@ -909,7 +921,7 @@ export default function App() {
     }
   };
 
-  const handleSpellingSubmit = (e: any) => {
+  const handleSpellingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (feedback) return;
 
