@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -name \"*.rules\" -o -name \"firestore.*\" 2>/dev/null | head -20)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
