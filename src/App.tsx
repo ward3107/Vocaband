@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, BAND_3_WORDS, Word } from "./vocabulary";
+import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
+import { generateReadingExercise } from "./services/geminiService";
 import { 
   Volume2, 
   Languages, 
@@ -36,7 +37,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc } from "./firebase";
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped } from "./firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
 
@@ -58,6 +59,18 @@ interface ClassData {
   teacherUid: string;
 }
 
+interface ReadingQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+interface ReadingData {
+  title: string;
+  text: string;
+  questions: ReadingQuestion[];
+}
+
 interface AssignmentData {
   id: string;
   classId: string;
@@ -66,6 +79,8 @@ interface AssignmentData {
   title: string;
   deadline?: string;
   allowedModes?: string[];
+  type?: 'vocabulary' | 'reading';
+  readingData?: ReadingData;
 }
 
 interface ProgressData {
@@ -122,7 +137,7 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "analytics" | "global-leaderboard" | "students">("landing");
+  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "create-reading-assignment" | "reading-activity" | "gradebook" | "live-challenge" | "analytics" | "global-leaderboard" | "students">("landing");
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
@@ -143,7 +158,7 @@ export default function App() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<"Band 1" | "Band 2" | "Band 3" | "Custom">("Band 2");
+  const [selectedLevel, setSelectedLevel] = useState<"Band 2" | "Custom">("Band 2");
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -154,13 +169,21 @@ export default function App() {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
   const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]);
+  const [readingLevel, setReadingLevel] = useState<string>("Beginner");
+  const [readingWords, setReadingWords] = useState<number[]>([]);
+  const [generatedReading, setGeneratedReading] = useState<ReadingData | null>(null);
+  const [isGeneratingReading, setIsGeneratingReading] = useState(false);
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
+  const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
+  const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<"classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse">("classic");
+  const [readingAnswers, setReadingAnswers] = useState<Record<number, string>>({});
+  const [readingScore, setReadingScore] = useState<number | null>(null);
   const [showModeSelection, setShowModeSelection] = useState(true);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -333,12 +356,64 @@ export default function App() {
   };
 
   const currentLevelWords = useMemo(() => {
-    if (selectedLevel === "Band 1") return BAND_1_WORDS;
     if (selectedLevel === "Band 2") return BAND_2_WORDS;
-    if (selectedLevel === "Band 3") return BAND_3_WORDS;
   
     return customWords;
   }, [selectedLevel, customWords]);
+  const handleSaveReadingAssignment = async () => {
+    if (!selectedClass || !generatedReading || !assignmentTitle) {
+      alert("Please enter a title and generate a reading exercise.");
+      return;
+    }
+
+    const newAssignment = {
+      classId: selectedClass.id,
+      wordIds: selectedWords,
+      title: assignmentTitle,
+      deadline: assignmentDeadline || null,
+      createdAt: new Date().toISOString(),
+      type: 'reading',
+      readingData: generatedReading
+    };
+
+    try {
+      await addDoc(collection(db, "assignments"), newAssignment);
+      alert("Reading Assignment created successfully!");
+      setView("teacher-dashboard");
+      setSelectedWords([]);
+      setAssignmentTitle("");
+      setAssignmentDeadline("");
+      setGeneratedReading(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "assignments");
+    }
+  };
+
+  const handleGenerateReading = async () => {
+    if (selectedWords.length === 0) {
+      alert("Please select at least one word.");
+      return;
+    }
+    
+    setIsGeneratingReading(true);
+    try {
+      const allPossibleWords = [...ALL_WORDS, ...customWords];
+      const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
+      const wordsToUse = uniqueWords.filter(w => selectedWords.includes(w.id));
+      
+      const data = await generateReadingExercise(wordsToUse, readingLevel);
+      setGeneratedReading(data);
+      if (!assignmentTitle) {
+        setAssignmentTitle(data.title);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Failed to generate reading exercise. Please try again.");
+    } finally {
+      setIsGeneratingReading(false);
+    }
+  };
+
   const handleSaveAssignment = async () => {
     if (!selectedClass || selectedWords.length === 0 || !assignmentTitle) {
       alert("Please enter a title and select words.");
@@ -412,29 +487,82 @@ export default function App() {
         return;
       }
 
+      const assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() } as AssignmentData));
+      
       // Use Anonymous Auth for students to allow secure writes
       let studentUid = "anonymous-student-" + Date.now();
       try {
         const authResult = await signInAnonymously(auth);
         studentUid = authResult.user.uid;
+        console.log("Authenticated as:", studentUid);
       } catch (e) {
-        console.warn("Anonymous auth not enabled, using local ID.");
+        console.error("Anonymous auth failed:", e);
+        let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
+        try {
+          const parsed = JSON.parse(e instanceof Error ? e.message : String(e));
+          if (parsed.error) {
+            errorMsg = `Login failed: ${parsed.error} (Path: ${parsed.path}, Operation: ${parsed.operationType})`;
+          }
+        } catch (jsonErr) {
+          // Not a JSON error, keep original message
+        }
+        setError(errorMsg);
+        setLoading(false);
+        return;
       }
 
-      const assignment = { id: assignSnap.docs[0].id, ...assignSnap.docs[0].data() } as AssignmentData;
-      const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
+      if (!auth.currentUser) {
+        console.error("User not authenticated after signInAnonymously");
+        setError("Login failed: User not authenticated");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        userDoc = await getDocWrapped(doc(db, "users", studentUid), "users/" + studentUid);
+      } catch (e) {
+        throw new Error("Login failed: " + (e instanceof Error ? e.message : String(e)));
+      }
       
-      setAssignmentWords(filteredWords);
-      setActiveAssignment(assignment);
-      setUser({ uid: studentUid, role: "student", displayName: name, classCode: code, avatar: studentAvatar });
+      let userData: AppUser;
+      if (userDoc && userDoc.exists()) {
+        userData = userDoc.data() as AppUser;
+      } else {
+        userData = {
+          uid: studentUid,
+          role: "student",
+          displayName: name,
+          classCode: code,
+          avatar: studentAvatar,
+          badges: []
+        };
+        try {
+          await setDocWrapped(doc(db, "users", studentUid), userData, "users/" + studentUid);
+        } catch (e) {
+          throw new Error("Login failed: " + (e instanceof Error ? e.message : String(e)));
+        }
+      }
+
+      const pq = query(collection(db, "progress"), where("classCode", "==", code), where("studentName", "==", name));
+      let progSnap;
+      try {
+        progSnap = await getDocsWrapped(pq, "progress");
+      } catch (e) {
+        throw new Error("Login failed: " + (e instanceof Error ? e.message : String(e)));
+      }
+      const progress = progSnap ? progSnap.docs.map(d => ({ id: d.id, ...d.data() } as ProgressData)) : [];
+      
+      setStudentAssignments(assignments);
+      setStudentProgress(progress);
+      setUser(userData);
+      setBadges(userData.badges || []);
       
       // Join Live Challenge
       if (socket) {
         socket.emit("join-challenge", { classCode: code, name, uid: studentUid });
       }
 
-      setView("game");
-      setShowModeSelection(true);
+      setView("student-dashboard");
     } catch (error) {
       console.error("Login error:", error);
       setError("Something went wrong during login.");
@@ -442,14 +570,21 @@ export default function App() {
     setLoading(false);
   };
 
-  const awardBadge = (badge: string) => {
-    if (!badges.includes(badge)) {
-      setBadges(prev => [...prev, badge]);
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.3 }
-      });
+  const awardBadge = async (badge: string) => {
+    if (!user || badges.includes(badge)) return;
+    
+    const newBadges = [...badges, badge];
+    setBadges(newBadges);
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.3 }
+    });
+
+    try {
+      await setDoc(doc(db, "users", user.uid), { ...user, badges: newBadges }, { merge: true });
+    } catch (error) {
+      console.error("Error saving badge:", error);
     }
   };
   const fetchStudents = async () => {
@@ -588,19 +723,76 @@ export default function App() {
     setSelectedMatch(null);
     setIsFlipped(false);
     setTfOption(null);
+    setReadingAnswers({});
+    setReadingScore(null);
     
     if (user?.role === "teacher") {
       setView("teacher-dashboard");
     } else if (user?.role === "student") {
-      if (showModeSelection) {
-        setUser(null);
-        setView("landing");
+      if (activeAssignment?.type === 'reading') {
+        setView("student-dashboard");
+      } else if (showModeSelection) {
+        setView("student-dashboard");
       } else {
         setShowModeSelection(true);
       }
     } else {
       setUser(null);
       setView("landing");
+    }
+  };
+
+  const handleReadingSubmit = async () => {
+    if (!user || !activeAssignment || !activeAssignment.readingData) return;
+    
+    const questions = activeAssignment.readingData.questions;
+    let correctCount = 0;
+    
+    questions.forEach((q, i) => {
+      if (readingAnswers[i] === q.correctAnswer) {
+        correctCount++;
+      }
+    });
+    
+    const finalScore = Math.round((correctCount / questions.length) * 100);
+    setReadingScore(finalScore);
+    setScore(finalScore); // Re-use score state for XP
+    
+    const xpEarned = finalScore;
+    setXp(prev => prev + xpEarned);
+    
+    if (finalScore >= 80) {
+      setStreak(prev => prev + 1);
+    } else {
+      setStreak(0);
+    }
+
+    if (finalScore === 100) await awardBadge("🎯 Perfect Score");
+    if (streak >= 5) await awardBadge("🔥 Streak Master");
+    if (xp >= 500) await awardBadge("💎 XP Hunter");
+
+    const progress: Omit<ProgressData, "id"> = {
+      studentName: user.displayName,
+      assignmentId: activeAssignment.id,
+      classCode: user.classCode || "",
+      score: finalScore,
+      mode: "reading",
+      completedAt: new Date().toISOString(),
+      avatar: user.avatar || "🦊"
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, "progress"), progress);
+      setStudentProgress(prev => [...prev, { id: docRef.id, ...progress }]);
+      if (finalScore >= 80) {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    } catch (error) {
+      console.error("Error saving reading score:", error);
     }
   };
 
@@ -617,9 +809,9 @@ export default function App() {
       setStreak(0);
     }
 
-    if (score === 100) awardBadge("🎯 Perfect Score");
-    if (streak >= 5) awardBadge("🔥 Streak Master");
-    if (xp >= 500) awardBadge("💎 XP Hunter");
+    if (score === 100) await awardBadge("🎯 Perfect Score");
+    if (streak >= 5) await awardBadge("🔥 Streak Master");
+    if (xp >= 500) await awardBadge("💎 XP Hunter");
 
     const progress: Omit<ProgressData, "id"> = {
       studentName: user.displayName,
@@ -633,7 +825,8 @@ export default function App() {
     };
 
     try {
-      await addDoc(collection(db, "progress"), progress);
+      const docRef = await addDoc(collection(db, "progress"), progress);
+      setStudentProgress(prev => [...prev, { id: docRef.id, ...progress }]);
       confetti({
         particleCount: 150,
         spread: 70,
@@ -852,8 +1045,8 @@ export default function App() {
             <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
               <GraduationCap size={48} />
             </div>
-            <h1 className="text-3xl font-black mb-1">VocabMaster IL</h1>
-            <p className="text-emerald-100 font-bold">English Learning Platform</p>
+            <h1 className="text-3xl font-black mb-1">Vocaband</h1>
+            <p className="text-emerald-100 font-bold">based on the Israeli English curriculum - band 2 vocabulary</p>
           </div>
 
           <div className="p-8">
@@ -961,6 +1154,145 @@ export default function App() {
     );
   }
 
+  if (user?.role === "student" && view === "student-dashboard") {
+    return (
+      <div className="min-h-screen bg-stone-100 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
+                {user.avatar}
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
+                <p className="text-stone-500 font-bold">Class Code: <span className="text-emerald-600">{user.classCode}</span></p>
+                {badges.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {badges.map(badge => (
+                      <div key={badge} className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1">
+                        <Trophy size={14} />
+                        {badge}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button onClick={() => { setUser(null); setView("landing"); }} className="text-stone-500 font-bold hover:text-red-500">Logout</button>
+          </div>
+
+          {studentAssignments.length > 0 && (
+            <div className="bg-white p-6 rounded-[32px] shadow-sm mb-8">
+              <h3 className="text-lg font-bold text-stone-800 mb-2">Overall Progress</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-4 bg-stone-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-emerald-500 transition-all duration-1000"
+                    style={{ 
+                      width: `${Math.round((studentAssignments.filter(a => {
+                        const isReading = a.type === 'reading';
+                        const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                        const totalModes = isReading ? 1 : allowedModes.length;
+                        const completedModes = new Set(
+                          studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
+                        ).size;
+                        return completedModes >= totalModes;
+                      }).length / studentAssignments.length) * 100)}%` 
+                    }}
+                  />
+                </div>
+                <span className="font-bold text-stone-500">
+                  {studentAssignments.filter(a => {
+                    const isReading = a.type === 'reading';
+                    const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                    const totalModes = isReading ? 1 : allowedModes.length;
+                    const completedModes = new Set(
+                      studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
+                    ).size;
+                    return completedModes >= totalModes;
+                  }).length} / {studentAssignments.length} Assignments
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white p-8 rounded-[40px] shadow-xl">
+            <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><BookOpen className="text-emerald-600" /> Your Assignments</h2>
+            
+            {studentAssignments.length === 0 ? (
+              <p className="text-stone-400 italic text-center py-8">No assignments yet. Check back later!</p>
+            ) : (
+              <div className="space-y-4">
+                {studentAssignments.map(assignment => {
+                  const isReading = assignment.type === 'reading';
+                  const allowedModes = assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                  const totalModes = isReading ? 1 : allowedModes.length;
+                  
+                  // Find unique modes completed for this assignment
+                  const completedModes = new Set(
+                    studentProgress
+                      .filter(p => p.assignmentId === assignment.id)
+                      .map(p => p.mode)
+                  ).size;
+                  
+                  const progressPercentage = Math.min(100, Math.round((completedModes / totalModes) * 100));
+                  const isComplete = completedModes >= totalModes;
+
+                  return (
+                    <div key={assignment.id} className="bg-stone-50 p-6 rounded-3xl border-2 border-stone-100 hover:border-emerald-200 transition-colors">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-stone-800">{assignment.title}</h3>
+                          <p className="text-stone-500 text-sm font-medium mt-1">
+                            {isReading ? "Reading Comprehension" : `${assignment.wordIds.length} Vocabulary Words`}
+                            {assignment.deadline && ` • Due: ${new Date(assignment.deadline).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
+                            setAssignmentWords(filteredWords);
+                            setActiveAssignment(assignment);
+                            if (isReading) {
+                              setView("reading-activity");
+                              setShowModeSelection(false);
+                            } else {
+                              setView("game");
+                              setShowModeSelection(true);
+                            }
+                          }}
+                          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors whitespace-nowrap"
+                        >
+                          {isComplete ? "Play Again" : "Start Learning"}
+                        </button>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div>
+                        <div className="flex justify-between text-xs font-bold mb-2">
+                          <span className="text-stone-500 uppercase tracking-widest">Progress</span>
+                          <span className={isComplete ? "text-emerald-600" : "text-stone-500"}>
+                            {completedModes} / {totalModes} Modes ({progressPercentage}%)
+                          </span>
+                        </div>
+                        <div className="h-3 w-full bg-stone-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-1000 ${isComplete ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                            style={{ width: `${progressPercentage}%` }} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
       <div className="min-h-screen bg-stone-100 p-6">
@@ -995,7 +1327,7 @@ export default function App() {
                             Copy
                           </button>
                           <a 
-                            href={`https://wa.me/?text=Join%20my%20class%20on%20Vocaband%20IL!%20The%20class%20code%20is:%20${c.code}`}
+                            href={`https://wa.me/?text=Join%20my%20class%20on%20Vocaband!%20The%20class%20code%20is:%20${c.code}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-stone-500 hover:text-green-500 transition-colors"
@@ -1007,6 +1339,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-4">
                         <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="text-emerald-600 font-bold text-sm hover:underline">Assign Words</button>
+                        <button onClick={() => { setSelectedClass(c); setView("create-reading-assignment"); }} className="text-blue-600 font-bold text-sm hover:underline">Generate Reading</button>
                         <button 
                           onClick={() => handleDeleteClass(c.id)} 
                           className="p-2 text-stone-400 hover:text-red-500 transition-colors"
@@ -1136,7 +1469,7 @@ export default function App() {
                     Copy Code
                   </button>
                   <a 
-                    href={`https://wa.me/?text=Join%20my%20class%20on%20Vocaband%20IL!%20The%20class%20code%20is:%20${createdClassCode}`}
+                    href={`https://wa.me/?text=Join%20my%20class%20on%20Vocaband!%20The%20class%20code%20is:%20${createdClassCode}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2"
@@ -1168,19 +1501,26 @@ export default function App() {
             <p className="text-stone-500 mb-8">Select a level or upload your own list.</p>
 
             <div className="space-y-4 mb-8">
-              <input 
-                type="text" 
-                placeholder="Assignment Title" 
-                value={assignmentTitle} 
-                onChange={(e) => setAssignmentTitle(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-stone-200"
-              />
-              <input 
-                type="date" 
-                value={assignmentDeadline} 
-                onChange={(e) => setAssignmentDeadline(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-stone-200"
-              />
+              <div className="space-y-4">
+                <input 
+                  type="text" 
+                  placeholder="Assignment Title" 
+                  value={assignmentTitle} 
+                  onChange={(e) => setAssignmentTitle(e.target.value)}
+                  className="w-full p-4 rounded-2xl border border-stone-200"
+                />
+                <div className="space-y-1">
+                  <input 
+                    type="date" 
+                    value={assignmentDeadline} 
+                    onChange={(e) => setAssignmentDeadline(e.target.value)}
+                    className={`w-full p-4 rounded-2xl border ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-stone-200'}`}
+                  />
+                  {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
+                    <p className="text-red-500 text-sm font-bold ml-2">Warning: Deadline is in the past!</p>
+                  )}
+                </div>
+              </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <p className="font-bold text-stone-700">Allowed Game Modes:</p>
@@ -1213,7 +1553,7 @@ export default function App() {
             </div>
 
             <div className="flex flex-wrap gap-3 mb-8">
-              {(["Band 1", "Band 2", "Band 3", "Custom"] as const).map(level => (
+              {(["Band 2", "Custom"] as const).map(level => (
                 <button 
                   key={level}
                   onClick={() => setSelectedLevel(level)}
@@ -1304,6 +1644,235 @@ export default function App() {
     );
   }
 
+  if (view === "create-reading-assignment" && selectedClass) {
+    return (
+      <div className="min-h-screen bg-stone-100 p-6">
+        <div className="max-w-3xl mx-auto">
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
+          <div className="bg-white rounded-[40px] shadow-xl p-10">
+            <h2 className="text-3xl font-black mb-2 text-stone-900">Generate Reading for {selectedClass.name}</h2>
+            <p className="text-stone-500 mb-8">Select vocabulary words and generate a reading comprehension text using AI.</p>
+
+            <div className="space-y-4 mb-8">
+              <input 
+                type="text" 
+                placeholder="Assignment Title (Auto-filled if empty)" 
+                value={assignmentTitle} 
+                onChange={(e) => setAssignmentTitle(e.target.value)}
+                className="w-full p-4 rounded-2xl border border-stone-200"
+              />
+              <input 
+                type="date" 
+                value={assignmentDeadline} 
+                onChange={(e) => setAssignmentDeadline(e.target.value)}
+                className="w-full p-4 rounded-2xl border border-stone-200"
+              />
+              <div className="flex flex-col gap-2">
+                <label className="font-bold text-stone-700">Reading Level:</label>
+                <select 
+                  value={readingLevel} 
+                  onChange={(e) => setReadingLevel(e.target.value)}
+                  className="w-full p-4 rounded-2xl border border-stone-200 bg-white"
+                >
+                  <option value="Beginner (A1)">Beginner (A1)</option>
+                  <option value="Elementary (A2)">Elementary (A2)</option>
+                  <option value="Intermediate (B1)">Intermediate (B1)</option>
+                  <option value="Upper Intermediate (B2)">Upper Intermediate (B2)</option>
+                  <option value="Advanced (C1)">Advanced (C1)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3 mb-8">
+              {(["Band 2", "Custom"] as const).map(level => (
+                <button 
+                  key={level}
+                  onClick={() => setSelectedLevel(level)}
+                  className={`px-6 py-3 rounded-2xl font-bold transition-all ${selectedLevel === level ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-stone-700">Select Words to Include ({selectedWords.length} selected)</h3>
+              <button 
+                onClick={() => {
+                  if (selectedWords.length === currentLevelWords.length) {
+                    setSelectedWords([]);
+                  } else {
+                    setSelectedWords(currentLevelWords.map(w => w.id));
+                  }
+                }}
+                className="text-sm font-bold text-blue-600 hover:text-blue-700"
+              >
+                {selectedWords.length === currentLevelWords.length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8 max-h-64 overflow-y-auto p-2 bg-stone-50 rounded-2xl border border-stone-100">
+              {currentLevelWords.map(word => (
+                <motion.button 
+                  key={word.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    if (selectedWords.includes(word.id)) {
+                      setSelectedWords(prev => prev.filter(id => id !== word.id));
+                    } else {
+                      setSelectedWords(prev => [...prev, word.id]);
+                    }
+                  }} 
+                  className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-white border-2 border-blue-500 shadow-md" : "bg-white border-2 border-transparent hover:border-stone-200"}`}
+                >
+                  <div>
+                    <p className="font-bold text-stone-900 text-sm">{word.english}</p>
+                    <p className="text-[10px] text-stone-400 font-bold uppercase">{word.hebrew}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${selectedWords.includes(word.id) ? "bg-blue-500" : "bg-stone-100"}`}>
+                    {selectedWords.includes(word.id) ? <CheckCircle2 size={12} className="text-white" /> : <div className="w-1.5 h-1.5 bg-stone-300 rounded-full" />}
+                  </div>
+                </motion.button>
+              ))}
+              {currentLevelWords.length === 0 && <p className="col-span-full text-center py-8 text-stone-400 italic">No words found.</p>}
+            </div>
+
+            <button 
+              disabled={selectedWords.length === 0 || isGeneratingReading} 
+              onClick={handleGenerateReading}
+              className="w-full py-4 mb-8 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Zap size={20} />
+              {isGeneratingReading ? "Generating with AI..." : `Generate Reading (${selectedWords.length} Words)`}
+            </button>
+
+            {generatedReading && (
+              <div className="bg-stone-50 p-6 rounded-3xl border border-stone-200 mb-8">
+                <h3 className="text-2xl font-black text-stone-900 mb-4">{generatedReading.title}</h3>
+                <p className="text-stone-700 mb-8 whitespace-pre-wrap leading-relaxed">{generatedReading.text}</p>
+                
+                <h4 className="font-bold text-stone-900 mb-4">Comprehension Questions:</h4>
+                <div className="space-y-6">
+                  {generatedReading.questions.map((q, i) => (
+                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100">
+                      <p className="font-bold text-stone-800 mb-3">{i + 1}. {q.question}</p>
+                      <div className="space-y-2">
+                        {q.options.map((opt, j) => (
+                          <div key={j} className={`p-3 rounded-xl text-sm ${opt === q.correctAnswer ? "bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold" : "bg-stone-50 text-stone-600"}`}>
+                            {opt} {opt === q.correctAnswer && "✓"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button 
+              disabled={!generatedReading || !assignmentTitle} 
+              onClick={handleSaveReadingAssignment}
+              className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 transition-all active:scale-95"
+            >
+              Save & Assign to Class
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "reading-activity" && activeAssignment?.readingData) {
+    const { readingData } = activeAssignment;
+    const isSubmitted = readingScore !== null;
+
+    return (
+      <div className="min-h-screen bg-stone-100 flex flex-col items-center p-6">
+        <div className="w-full max-w-4xl bg-white rounded-[40px] shadow-2xl overflow-hidden">
+          <div className="bg-emerald-600 p-8 text-white relative">
+            <button onClick={handleExitGame} className="absolute top-8 right-8 text-emerald-200 hover:text-white transition-colors bg-black/10 p-2 rounded-full hover:rotate-90 transition-all duration-300">
+              <X size={24} />
+            </button>
+            <h1 className="text-3xl font-black mb-2">{readingData.title}</h1>
+            <p className="text-emerald-100 font-bold">Read the text and answer the questions below.</p>
+          </div>
+
+          <div className="p-8 space-y-8">
+            <div className="bg-stone-50 p-6 rounded-3xl border-2 border-stone-100">
+              <p className="text-lg text-stone-800 leading-relaxed whitespace-pre-wrap">
+                {readingData.text}
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              <h2 className="text-2xl font-black text-stone-800">Questions</h2>
+              {readingData.questions.map((q, i) => (
+                <div key={i} className="bg-white border-2 border-stone-100 rounded-3xl p-6 shadow-sm">
+                  <p className="font-bold text-lg text-stone-800 mb-4">{i + 1}. {q.question}</p>
+                  <div className="space-y-3">
+                    {q.options.map((opt, j) => {
+                      const isSelected = readingAnswers[i] === opt;
+                      let optionClass = "border-stone-200 hover:border-emerald-500 hover:bg-emerald-50 text-stone-700";
+                      
+                      if (isSubmitted) {
+                        if (opt === q.correctAnswer) {
+                          optionClass = "border-emerald-500 bg-emerald-100 text-emerald-800 font-bold";
+                        } else if (isSelected && opt !== q.correctAnswer) {
+                          optionClass = "border-rose-500 bg-rose-100 text-rose-800";
+                        } else {
+                          optionClass = "border-stone-200 text-stone-400 opacity-50";
+                        }
+                      } else if (isSelected) {
+                        optionClass = "border-emerald-500 bg-emerald-50 text-emerald-700 font-bold";
+                      }
+
+                      return (
+                        <button
+                          key={j}
+                          disabled={isSubmitted}
+                          onClick={() => setReadingAnswers(prev => ({ ...prev, [i]: opt }))}
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${optionClass}`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {!isSubmitted ? (
+              <button
+                onClick={handleReadingSubmit}
+                disabled={Object.keys(readingAnswers).length < readingData.questions.length}
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/20"
+              >
+                Submit Answers
+              </button>
+            ) : (
+              <div className="bg-stone-50 p-8 rounded-3xl border-2 border-stone-100 text-center">
+                <h3 className="text-3xl font-black text-stone-800 mb-2">
+                  Score: <span className={readingScore >= 80 ? "text-emerald-600" : "text-rose-600"}>{readingScore}%</span>
+                </h3>
+                <p className="text-stone-500 font-medium mb-6">
+                  {readingScore >= 80 ? "Great job!" : "Keep practicing!"}
+                </p>
+                <button
+                  onClick={handleExitGame}
+                  className="px-8 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-colors"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (view === "game" && showModeSelection) {
     const modes = [
       { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} /> },
@@ -1359,28 +1928,37 @@ export default function App() {
           </motion.div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredModes.map((mode, idx) => (
-              <motion.button 
-                key={mode.id}
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                whileHover={{ scale: 1.05, translateY: -8 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => { setGameMode(mode.id as any); setShowModeSelection(false); }}
-                className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl`}
-              >
-                <div className={`w-16 h-16 rounded-[24px] bg-white flex items-center justify-center mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]}`}>
-                  {mode.icon}
-                </div>
-                <p className="font-black text-xl mb-2 leading-tight">{mode.name}</p>
-                <p className="opacity-70 text-sm font-bold leading-snug">{mode.desc}</p>
-                
-                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Zap size={20} className="animate-pulse" />
-                </div>
-              </motion.button>
-            ))}
+            {filteredModes.map((mode, idx) => {
+              const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
+              
+              return (
+                <motion.button 
+                  key={mode.id}
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  whileHover={{ scale: 1.05, translateY: -8 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setGameMode(mode.id as any); setShowModeSelection(false); }}
+                  className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl`}
+                >
+                  <div className={`w-16 h-16 rounded-[24px] bg-white flex items-center justify-center mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
+                    {mode.icon}
+                    {isCompleted && (
+                      <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-1 shadow-md">
+                        <CheckCircle2 size={16} />
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-black text-xl mb-2 leading-tight">{mode.name}</p>
+                  <p className="opacity-70 text-sm font-bold leading-snug">{mode.desc}</p>
+                  
+                  <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Zap size={20} className="animate-pulse" />
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1407,7 +1985,7 @@ export default function App() {
               <div className="space-y-4">
                 {sortedLeaderboard.map((entry, idx) => (
                   <motion.div 
-                    key={entry.name}
+                    key={`${entry.name}-${idx}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.1 }}
@@ -1577,7 +2155,7 @@ export default function App() {
             <h3 className="text-xl font-black mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-600" /> Difficulty Heatmap (Most Missed Words)</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {analyticsData.heatmap.map((item, idx) => (
-                <div key={item.word} className="bg-stone-50 p-6 rounded-3xl border border-stone-100 text-center relative overflow-hidden">
+                <div key={`${item.word}-${idx}`} className="bg-stone-50 p-6 rounded-3xl border border-stone-100 text-center relative overflow-hidden">
                   <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-bl-xl">
                     {item.count} MISSES
                   </div>
@@ -1722,9 +2300,12 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               className="grid grid-cols-2 md:grid-cols-4 gap-4"
             >
-              {matchingPairs.map((item, idx) => (
+              {matchingPairs.map((item, idx) => {
+                const key = `${item.id}-${item.type}-${idx}`;
+                console.log(`Rendering item: ${item.text}, key: ${key}`);
+                return (
                 <motion.button
-                  key={`${item.id}-${item.type}-${idx}`}
+                  key={key}
                   whileHover={{ scale: matchedIds.includes(item.id) ? 1 : 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
@@ -1739,7 +2320,8 @@ export default function App() {
                 >
                   {item.text}
                 </motion.button>
-              ))}
+                );
+              })}
             </motion.div>
           ) : (
             <motion.div
@@ -1851,7 +2433,7 @@ export default function App() {
               .sort((a, b) => b.score - a.score)
               .slice(0, 5)
               .map((entry, idx) => (
-                <div key={entry.name} className={`flex justify-between items-center p-2 rounded-xl ${entry.name === user?.displayName ? "bg-emerald-50 border border-emerald-100" : ""}`}>
+                <div key={`${entry.name}-${idx}`} className={`flex justify-between items-center p-2 rounded-xl ${entry.name === user?.displayName ? "bg-emerald-50 border border-emerald-100" : ""}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-stone-400 w-4">{idx + 1}</span>
                     <span className={`text-sm font-bold ${entry.name === user?.displayName ? "text-emerald-700" : "text-stone-600"}`}>{entry.name}</span>

@@ -10,8 +10,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "1002221592@edu-haifa.org.il" && request.auth.token.email_verified == true));
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == "1002221592@edu-haifa.org.il" && request.auth.token.email_verified == true));
     }
 
     function isTeacher() {
@@ -73,27 +74,28 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isAuthenticated() && (isOwner(uid) || isAdmin());
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) || isAdmin());
-      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) || isAdmin());
+      allow create: if isAuthenticated() && (isOwner(uid) || isAdmin());
+      allow update: if isAuthenticated() && (isOwner(uid) || isAdmin());
     }
 
     match /classes/{classId} {
-      allow read: if true; // Anyone can find a class by code to login
-      allow create: if isTeacher() && isValidClass(request.resource.data) && request.resource.data.teacherUid == request.auth.uid;
-      allow update: if isTeacher() && isValidClass(request.resource.data) && resource.data.teacherUid == request.auth.uid;
+      allow read: if isAuthenticated();
+      allow create: if isTeacher() && request.resource.data.teacherUid == request.auth.uid;
+      allow update: if isTeacher() && resource.data.teacherUid == request.auth.uid;
       allow delete: if isTeacher() && resource.data.teacherUid == request.auth.uid;
     }
 
     match /assignments/{assignmentId} {
-      allow read: if true;
-      allow create: if (isTeacher() || isAdmin()) && isValidAssignment(request.resource.data);
-      allow update: if (isTeacher() || isAdmin()) && isValidAssignment(request.resource.data);
+      allow read: if isAuthenticated();
+      allow create: if (isTeacher() || isAdmin());
+      allow update: if (isTeacher() || isAdmin());
       allow delete: if isTeacher() || isAdmin();
     }
 
     match /progress/{progressId} {
-      allow read: if true; // Anyone can read scores for the global leaderboard
-      allow create: if isValidProgress(request.resource.data);
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
     }
   }
 }

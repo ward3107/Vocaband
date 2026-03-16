@@ -1,13 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, getDocFromServer, addDoc, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, getDocFromServer, addDoc, orderBy, limit, deleteDoc } from 'firebase/firestore';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -60,5 +62,45 @@ async function testConnection() {
   }
 }
 testConnection();
+
+export const getDocWrapped = async (docRef: any, path: string) => {
+  try {
+    return await getDoc(docRef);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.GET, path);
+  }
+};
+
+export const setDocWrapped = async (docRef: any, data: any, path: string) => {
+  try {
+    return await setDoc(docRef, data);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.WRITE, path);
+  }
+};
+
+export const getDocsWrapped = async (queryRef: any, path: string) => {
+  try {
+    return await getDocs(queryRef);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.LIST, path);
+  }
+};
+
+export const addDocWrapped = async (collectionRef: any, data: any, path: string) => {
+  try {
+    return await addDoc(collectionRef, data);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, path);
+  }
+};
+
+export const deleteDocWrapped = async (docRef: any, path: string) => {
+  try {
+    return await deleteDoc(docRef);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, path);
+  }
+};
 
 export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, addDoc, signInAnonymously, orderBy, limit, deleteDoc };
