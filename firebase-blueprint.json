@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores profile information for teachers and students.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "Teacher's email" },
+        "role": { "type": "string", "enum": ["teacher", "student"], "description": "User role" },
+        "displayName": { "type": "string", "description": "Display name" },
+        "classCode": { "type": "string", "description": "For students, the code of the class they belong to" }
+      },
+      "required": ["uid", "role"]
+    },
+    "Class": {
+      "title": "Class",
+      "description": "A class created by a teacher.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the class" },
+        "teacherUid": { "type": "string", "description": "UID of the teacher who owns this class" },
+        "code": { "type": "string", "description": "Unique 6-digit code for student login" }
+      },
+      "required": ["name", "teacherUid", "code"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "description": "A vocabulary list assigned to a class.",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string", "description": "ID of the class" },
+        "wordIds": { "type": "array", "items": { "type": "number" }, "description": "List of word IDs from the vocabulary set" },
+        "words": { "type": "array", "description": "Full word objects for offline/static access" },
+        "title": { "type": "string", "description": "Title of the assignment" },
+        "deadline": { "type": "string", "description": "Optional deadline" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "allowedModes": { "type": "array", "items": { "type": "string" }, "description": "Game modes enabled for this assignment" }
+      },
+      "required": ["classId", "wordIds", "title"]
+    },
+    "Progress": {
+      "title": "Student Progress",
+      "description": "Tracks scores for students on assignments.",
+      "type": "object",
+      "properties": {
+        "studentUid": { "type": "string", "description": "UID of the student" },
+        "assignmentId": { "type": "string", "description": "ID of the assignment" },
+        "score": { "type": "number" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentUid", "assignmentId", "score"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/classes/{classId}": { "schema": "Class", "description": "Class documents" },
+    "/assignments/{assignmentId}": { "schema": "Assignment", "description": "Assignments" },
+    "/progress/{progressId}": { "schema": "Progress", "description": "Student progress tracking" }
+  }
+}

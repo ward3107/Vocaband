@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "1002221592@edu-haifa.org.il" && request.auth.token.email_verified == true));
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'classCode']) &&
+             data.uid is string && data.role in ['teacher', 'student', 'admin'];
+    }
+
+    function isValidClass(data) {
+      return hasOnlyAllowedFields(['name', 'teacherUid', 'code']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.teacherUid is string &&
+             data.code is string && data.code.size() == 6;
+    }
+
+    function isValidAssignment(data) {
+      return hasOnlyAllowedFields(['classId', 'wordIds', 'title', 'createdAt', 'deadline', 'words', 'allowedModes']) &&
+             data.classId is string &&
+             data.wordIds is list &&
+             data.title is string && data.title.size() > 0 &&
+             data.createdAt is string &&
+             (!('deadline' in data) || data.deadline == null || data.deadline is string) &&
+             (!('words' in data) || data.words is list) &&
+             (!('allowedModes' in data) || data.allowedModes is list);
+    }
+
+    function isValidProgress(data) {
+      return hasOnlyAllowedFields(['studentName', 'assignmentId', 'classCode', 'score', 'mode', 'completedAt', 'mistakes', 'avatar']) &&
+             data.studentName is string && data.studentName.size() > 0 &&
+             data.assignmentId is string &&
+             data.classCode is string &&
+             data.score is number &&
+             data.mode is string &&
+             data.completedAt is string &&
+             (!('mistakes' in data) || data.mistakes is list) &&
+             (!('avatar' in data) || data.avatar is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (isOwner(uid) || isAdmin());
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) || isAdmin());
+    }
+
+    match /classes/{classId} {
+      allow read: if true; // Anyone can find a class by code to login
+      allow create: if isTeacher() && isValidClass(request.resource.data) && request.resource.data.teacherUid == request.auth.uid;
+      allow update: if isTeacher() && isValidClass(request.resource.data) && resource.data.teacherUid == request.auth.uid;
+      allow delete: if isTeacher() && resource.data.teacherUid == request.auth.uid;
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if true;
+      allow create: if (isTeacher() || isAdmin()) && isValidAssignment(request.resource.data);
+      allow update: if (isTeacher() || isAdmin()) && isValidAssignment(request.resource.data);
+      allow delete: if isTeacher() || isAdmin();
+    }
+
+    match /progress/{progressId} {
+      allow read: if true; // Anyone can read scores for the global leaderboard
+      allow create: if isValidProgress(request.resource.data);
+    }
+  }
+}
