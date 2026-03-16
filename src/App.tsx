@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
-import { generateReadingExercise } from "./services/geminiService";
-import { 
+import {
   Volume2, 
   Languages, 
   Trophy, 
@@ -59,18 +58,6 @@ interface ClassData {
   teacherUid: string;
 }
 
-interface ReadingQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: string;
-}
-
-interface ReadingData {
-  title: string;
-  text: string;
-  questions: ReadingQuestion[];
-}
-
 interface AssignmentData {
   id: string;
   classId: string;
@@ -79,8 +66,6 @@ interface AssignmentData {
   title: string;
   deadline?: string;
   allowedModes?: string[];
-  type?: 'vocabulary' | 'reading';
-  readingData?: ReadingData;
 }
 
 interface ProgressData {
@@ -109,7 +94,7 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "create-reading-assignment" | "reading-activity" | "gradebook" | "live-challenge" | "analytics" | "global-leaderboard" | "students">("landing");
+  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "analytics" | "global-leaderboard" | "students">("landing");
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
@@ -141,10 +126,6 @@ export default function App() {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
   const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]);
-  const [readingLevel, setReadingLevel] = useState<string>("Beginner");
-  const [readingWords, setReadingWords] = useState<number[]>([]);
-  const [generatedReading, setGeneratedReading] = useState<ReadingData | null>(null);
-  const [isGeneratingReading, setIsGeneratingReading] = useState(false);
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -154,8 +135,6 @@ export default function App() {
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<"classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse">("classic");
-  const [readingAnswers, setReadingAnswers] = useState<Record<number, string>>({});
-  const [readingScore, setReadingScore] = useState<number | null>(null);
   const [showModeSelection, setShowModeSelection] = useState(true);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -334,60 +313,6 @@ export default function App() {
   
     return customWords;
   }, [selectedLevel, customWords]);
-  const handleSaveReadingAssignment = async () => {
-    if (!selectedClass || !generatedReading || !assignmentTitle) {
-      alert("Please enter a title and generate a reading exercise.");
-      return;
-    }
-
-    const newAssignment = {
-      classId: selectedClass.id,
-      wordIds: selectedWords,
-      title: assignmentTitle,
-      deadline: assignmentDeadline || null,
-      createdAt: new Date().toISOString(),
-      type: 'reading',
-      readingData: generatedReading
-    };
-
-    try {
-      await addDoc(collection(db, "assignments"), newAssignment);
-      alert("Reading Assignment created successfully!");
-      setView("teacher-dashboard");
-      setSelectedWords([]);
-      setAssignmentTitle("");
-      setAssignmentDeadline("");
-      setGeneratedReading(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, "assignments");
-    }
-  };
-
-  const handleGenerateReading = async () => {
-    if (selectedWords.length === 0) {
-      alert("Please select at least one word.");
-      return;
-    }
-    
-    setIsGeneratingReading(true);
-    try {
-      const allPossibleWords = [...ALL_WORDS, ...customWords];
-      const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-      const wordsToUse = uniqueWords.filter(w => selectedWords.includes(w.id));
-      
-      const data = await generateReadingExercise(wordsToUse, readingLevel);
-      setGeneratedReading(data);
-      if (!assignmentTitle) {
-        setAssignmentTitle(data.title);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Failed to generate reading exercise. Please try again.");
-    } finally {
-      setIsGeneratingReading(false);
-    }
-  };
-
   const handleSaveAssignment = async () => {
     if (!selectedClass || selectedWords.length === 0 || !assignmentTitle) {
       alert("Please enter a title and select words.");
@@ -695,15 +620,11 @@ export default function App() {
     setSelectedMatch(null);
     setIsFlipped(false);
     setTfOption(null);
-    setReadingAnswers({});
-    setReadingScore(null);
-    
+
     if (user?.role === "teacher") {
       setView("teacher-dashboard");
     } else if (user?.role === "student") {
-      if (activeAssignment?.type === 'reading') {
-        setView("student-dashboard");
-      } else if (showModeSelection) {
+      if (showModeSelection) {
         setView("student-dashboard");
       } else {
         setShowModeSelection(true);
@@ -711,60 +632,6 @@ export default function App() {
     } else {
       setUser(null);
       setView("landing");
-    }
-  };
-
-  const handleReadingSubmit = async () => {
-    if (!user || !activeAssignment || !activeAssignment.readingData) return;
-    
-    const questions = activeAssignment.readingData.questions;
-    let correctCount = 0;
-    
-    questions.forEach((q, i) => {
-      if (readingAnswers[i] === q.correctAnswer) {
-        correctCount++;
-      }
-    });
-    
-    const finalScore = Math.round((correctCount / questions.length) * 100);
-    setReadingScore(finalScore);
-    setScore(finalScore); // Re-use score state for XP
-    
-    const xpEarned = finalScore;
-    setXp(prev => prev + xpEarned);
-    
-    if (finalScore >= 80) {
-      setStreak(prev => prev + 1);
-    } else {
-      setStreak(0);
-    }
-
-    if (finalScore === 100) await awardBadge("🎯 Perfect Score");
-    if (streak >= 5) await awardBadge("🔥 Streak Master");
-    if (xp >= 500) await awardBadge("💎 XP Hunter");
-
-    const progress: Omit<ProgressData, "id"> = {
-      studentName: user.displayName,
-      assignmentId: activeAssignment.id,
-      classCode: user.classCode || "",
-      score: finalScore,
-      mode: "reading",
-      completedAt: new Date().toISOString(),
-      avatar: user.avatar || "🦊"
-    };
-
-    try {
-      const docRef = await addDoc(collection(db, "progress"), progress);
-      setStudentProgress(prev => [...prev, { id: docRef.id, ...progress }]);
-      if (finalScore >= 80) {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
-    } catch (error) {
-      console.error("Error saving reading score:", error);
     }
   };
 
@@ -1162,26 +1029,22 @@ export default function App() {
                     className="h-full bg-emerald-500 transition-all duration-1000"
                     style={{ 
                       width: `${Math.round((studentAssignments.filter(a => {
-                        const isReading = a.type === 'reading';
                         const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
-                        const totalModes = isReading ? 1 : allowedModes.length;
                         const completedModes = new Set(
                           studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
                         ).size;
-                        return completedModes >= totalModes;
+                        return completedModes >= allowedModes.length;
                       }).length / studentAssignments.length) * 100)}%` 
                     }}
                   />
                 </div>
                 <span className="font-bold text-stone-500">
                   {studentAssignments.filter(a => {
-                    const isReading = a.type === 'reading';
                     const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
-                    const totalModes = isReading ? 1 : allowedModes.length;
                     const completedModes = new Set(
                       studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
                     ).size;
-                    return completedModes >= totalModes;
+                    return completedModes >= allowedModes.length;
                   }).length} / {studentAssignments.length} Assignments
                 </span>
               </div>
@@ -1196,9 +1059,8 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 {studentAssignments.map(assignment => {
-                  const isReading = assignment.type === 'reading';
                   const allowedModes = assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
-                  const totalModes = isReading ? 1 : allowedModes.length;
+                  const totalModes = allowedModes.length;
                   
                   // Find unique modes completed for this assignment
                   const completedModes = new Set(
@@ -1216,22 +1078,17 @@ export default function App() {
                         <div>
                           <h3 className="text-xl font-bold text-stone-800">{assignment.title}</h3>
                           <p className="text-stone-500 text-sm font-medium mt-1">
-                            {isReading ? "Reading Comprehension" : `${assignment.wordIds.length} Vocabulary Words`}
+                            {assignment.wordIds.length} Vocabulary Words
                             {assignment.deadline && ` • Due: ${new Date(assignment.deadline).toLocaleDateString()}`}
                           </p>
                         </div>
-                        <button 
+                        <button
                           onClick={() => {
                             const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
                             setAssignmentWords(filteredWords);
                             setActiveAssignment(assignment);
-                            if (isReading) {
-                              setView("reading-activity");
-                              setShowModeSelection(false);
-                            } else {
-                              setView("game");
-                              setShowModeSelection(true);
-                            }
+                            setView("game");
+                            setShowModeSelection(true);
                           }}
                           className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors whitespace-nowrap"
                         >
@@ -1311,7 +1168,6 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-4">
                         <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="text-emerald-600 font-bold text-sm hover:underline">Assign Words</button>
-                        <button onClick={() => { setSelectedClass(c); setView("create-reading-assignment"); }} className="text-blue-600 font-bold text-sm hover:underline">Generate Reading</button>
                         <button 
                           onClick={() => handleDeleteClass(c.id)} 
                           className="p-2 text-stone-400 hover:text-red-500 transition-colors"
@@ -1610,235 +1466,6 @@ export default function App() {
             >
               Create Assignment ({selectedWords.length} Words)
             </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === "create-reading-assignment" && selectedClass) {
-    return (
-      <div className="min-h-screen bg-stone-100 p-6">
-        <div className="max-w-3xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
-          <div className="bg-white rounded-[40px] shadow-xl p-10">
-            <h2 className="text-3xl font-black mb-2 text-stone-900">Generate Reading for {selectedClass.name}</h2>
-            <p className="text-stone-500 mb-8">Select vocabulary words and generate a reading comprehension text using AI.</p>
-
-            <div className="space-y-4 mb-8">
-              <input 
-                type="text" 
-                placeholder="Assignment Title (Auto-filled if empty)" 
-                value={assignmentTitle} 
-                onChange={(e) => setAssignmentTitle(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-stone-200"
-              />
-              <input 
-                type="date" 
-                value={assignmentDeadline} 
-                onChange={(e) => setAssignmentDeadline(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-stone-200"
-              />
-              <div className="flex flex-col gap-2">
-                <label className="font-bold text-stone-700">Reading Level:</label>
-                <select 
-                  value={readingLevel} 
-                  onChange={(e) => setReadingLevel(e.target.value)}
-                  className="w-full p-4 rounded-2xl border border-stone-200 bg-white"
-                >
-                  <option value="Beginner (A1)">Beginner (A1)</option>
-                  <option value="Elementary (A2)">Elementary (A2)</option>
-                  <option value="Intermediate (B1)">Intermediate (B1)</option>
-                  <option value="Upper Intermediate (B2)">Upper Intermediate (B2)</option>
-                  <option value="Advanced (C1)">Advanced (C1)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 mb-8">
-              {(["Band 2", "Custom"] as const).map(level => (
-                <button 
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={`px-6 py-3 rounded-2xl font-bold transition-all ${selectedLevel === level ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-stone-700">Select Words to Include ({selectedWords.length} selected)</h3>
-              <button 
-                onClick={() => {
-                  if (selectedWords.length === currentLevelWords.length) {
-                    setSelectedWords([]);
-                  } else {
-                    setSelectedWords(currentLevelWords.map(w => w.id));
-                  }
-                }}
-                className="text-sm font-bold text-blue-600 hover:text-blue-700"
-              >
-                {selectedWords.length === currentLevelWords.length ? "Deselect All" : "Select All"}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8 max-h-64 overflow-y-auto p-2 bg-stone-50 rounded-2xl border border-stone-100">
-              {currentLevelWords.map(word => (
-                <motion.button 
-                  key={word.id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    if (selectedWords.includes(word.id)) {
-                      setSelectedWords(prev => prev.filter(id => id !== word.id));
-                    } else {
-                      setSelectedWords(prev => [...prev, word.id]);
-                    }
-                  }} 
-                  className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-white border-2 border-blue-500 shadow-md" : "bg-white border-2 border-transparent hover:border-stone-200"}`}
-                >
-                  <div>
-                    <p className="font-bold text-stone-900 text-sm">{word.english}</p>
-                    <p className="text-[10px] text-stone-400 font-bold uppercase">{word.hebrew}</p>
-                  </div>
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${selectedWords.includes(word.id) ? "bg-blue-500" : "bg-stone-100"}`}>
-                    {selectedWords.includes(word.id) ? <CheckCircle2 size={12} className="text-white" /> : <div className="w-1.5 h-1.5 bg-stone-300 rounded-full" />}
-                  </div>
-                </motion.button>
-              ))}
-              {currentLevelWords.length === 0 && <p className="col-span-full text-center py-8 text-stone-400 italic">No words found.</p>}
-            </div>
-
-            <button 
-              disabled={selectedWords.length === 0 || isGeneratingReading} 
-              onClick={handleGenerateReading}
-              className="w-full py-4 mb-8 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-              <Zap size={20} />
-              {isGeneratingReading ? "Generating with AI..." : `Generate Reading (${selectedWords.length} Words)`}
-            </button>
-
-            {generatedReading && (
-              <div className="bg-stone-50 p-6 rounded-3xl border border-stone-200 mb-8">
-                <h3 className="text-2xl font-black text-stone-900 mb-4">{generatedReading.title}</h3>
-                <p className="text-stone-700 mb-8 whitespace-pre-wrap leading-relaxed">{generatedReading.text}</p>
-                
-                <h4 className="font-bold text-stone-900 mb-4">Comprehension Questions:</h4>
-                <div className="space-y-6">
-                  {generatedReading.questions.map((q, i) => (
-                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100">
-                      <p className="font-bold text-stone-800 mb-3">{i + 1}. {q.question}</p>
-                      <div className="space-y-2">
-                        {q.options.map((opt, j) => (
-                          <div key={j} className={`p-3 rounded-xl text-sm ${opt === q.correctAnswer ? "bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold" : "bg-stone-50 text-stone-600"}`}>
-                            {opt} {opt === q.correctAnswer && "✓"}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button 
-              disabled={!generatedReading || !assignmentTitle} 
-              onClick={handleSaveReadingAssignment}
-              className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 transition-all active:scale-95"
-            >
-              Save & Assign to Class
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === "reading-activity" && activeAssignment?.readingData) {
-    const { readingData } = activeAssignment;
-    const isSubmitted = readingScore !== null;
-
-    return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center p-6">
-        <div className="w-full max-w-4xl bg-white rounded-[40px] shadow-2xl overflow-hidden">
-          <div className="bg-emerald-600 p-8 text-white relative">
-            <button onClick={handleExitGame} className="absolute top-8 right-8 text-emerald-200 hover:text-white transition-colors bg-black/10 p-2 rounded-full hover:rotate-90 transition-all duration-300">
-              <X size={24} />
-            </button>
-            <h1 className="text-3xl font-black mb-2">{readingData.title}</h1>
-            <p className="text-emerald-100 font-bold">Read the text and answer the questions below.</p>
-          </div>
-
-          <div className="p-8 space-y-8">
-            <div className="bg-stone-50 p-6 rounded-3xl border-2 border-stone-100">
-              <p className="text-lg text-stone-800 leading-relaxed whitespace-pre-wrap">
-                {readingData.text}
-              </p>
-            </div>
-
-            <div className="space-y-8">
-              <h2 className="text-2xl font-black text-stone-800">Questions</h2>
-              {readingData.questions.map((q, i) => (
-                <div key={i} className="bg-white border-2 border-stone-100 rounded-3xl p-6 shadow-sm">
-                  <p className="font-bold text-lg text-stone-800 mb-4">{i + 1}. {q.question}</p>
-                  <div className="space-y-3">
-                    {q.options.map((opt, j) => {
-                      const isSelected = readingAnswers[i] === opt;
-                      let optionClass = "border-stone-200 hover:border-emerald-500 hover:bg-emerald-50 text-stone-700";
-                      
-                      if (isSubmitted) {
-                        if (opt === q.correctAnswer) {
-                          optionClass = "border-emerald-500 bg-emerald-100 text-emerald-800 font-bold";
-                        } else if (isSelected && opt !== q.correctAnswer) {
-                          optionClass = "border-rose-500 bg-rose-100 text-rose-800";
-                        } else {
-                          optionClass = "border-stone-200 text-stone-400 opacity-50";
-                        }
-                      } else if (isSelected) {
-                        optionClass = "border-emerald-500 bg-emerald-50 text-emerald-700 font-bold";
-                      }
-
-                      return (
-                        <button
-                          key={j}
-                          disabled={isSubmitted}
-                          onClick={() => setReadingAnswers(prev => ({ ...prev, [i]: opt }))}
-                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${optionClass}`}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {!isSubmitted ? (
-              <button
-                onClick={handleReadingSubmit}
-                disabled={Object.keys(readingAnswers).length < readingData.questions.length}
-                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/20"
-              >
-                Submit Answers
-              </button>
-            ) : (
-              <div className="bg-stone-50 p-8 rounded-3xl border-2 border-stone-100 text-center">
-                <h3 className="text-3xl font-black text-stone-800 mb-2">
-                  Score: <span className={readingScore >= 80 ? "text-emerald-600" : "text-rose-600"}>{readingScore}%</span>
-                </h3>
-                <p className="text-stone-500 font-medium mb-6">
-                  {readingScore >= 80 ? "Great job!" : "Keep practicing!"}
-                </p>
-                <button
-                  onClick={handleExitGame}
-                  className="px-8 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-colors"
-                >
-                  Return to Dashboard
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
