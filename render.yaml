@@ -6,7 +6,7 @@
     startCommand: npm run start
     envVars:
       - key: ALLOWED_ORIGIN
-        value: https://vocaband.onrender.com
+        value: https://vocaband.com
       - key: PORT
         value: 3000
       - key: NODE_ENV

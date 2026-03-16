@@ -3,6 +3,8 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
@@ -32,6 +34,47 @@ async function startServer() {
 
   const PORT = process.env.PORT || 3000;
 
+  // Security headers — applied in production only (Vite dev server handles its own headers)
+  if (process.env.NODE_ENV === "production") {
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "https://apis.google.com", "https://www.google.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com", "wss://*.firebaseio.com", allowedOrigin],
+          frameSrc: ["https://vocaband-93fcf.firebaseapp.com", "https://accounts.google.com"],
+        },
+      },
+      // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    }));
+
+    // Trust Cloudflare/Render proxy so req.ip reflects the real client IP for rate limiting
+    app.set("trust proxy", 1);
+  }
+
+  // Rate limit: max 60 requests per minute per IP for general HTTP traffic
+  const httpLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+  });
+  app.use(httpLimiter);
+
+  // Rate limit socket connections: track join-challenge attempts per IP
+  const socketJoinAttempts: Record<string, { count: number; resetAt: number }> = {};
+  const SOCKET_RATE_WINDOW = 60 * 1000; // 1 minute
+  const SOCKET_RATE_MAX = 10; // max 10 join attempts per minute per IP
+
   // Live Challenge State
   // { classCode: { studentUid: { name, score } } }
   const liveSessions: Record<string, Record<string, { name: string, score: number }>> = {};
@@ -48,6 +91,17 @@ async function startServer() {
         typeof uid !== "string" || uid.length === 0 || uid.length > 128 ||
         typeof token !== "string" || token.length === 0
       ) return;
+
+      // Rate limit join-challenge by client IP
+      const clientIp = socket.handshake.headers["x-forwarded-for"] as string || socket.handshake.address;
+      const now = Date.now();
+      const ipRecord = socketJoinAttempts[clientIp];
+      if (ipRecord && now < ipRecord.resetAt) {
+        if (ipRecord.count >= SOCKET_RATE_MAX) return;
+        ipRecord.count++;
+      } else {
+        socketJoinAttempts[clientIp] = { count: 1, resetAt: now + SOCKET_RATE_WINDOW };
+      }
 
       // Verify Firebase ID token and confirm uid matches
       const verifiedUid = await verifyToken(token);
