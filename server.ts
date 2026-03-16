@@ -3,6 +3,22 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+
+// Initialize Firebase Admin (projectId only — uses Google public keys for token verification)
+if (getApps().length === 0) {
+  initializeApp({ projectId: "vocaband-93fcf" });
+}
+
+async function verifyToken(token: string): Promise<string | null> {
+  try {
+    const decoded = await getAuth().verifyIdToken(token);
+    return decoded.uid;
+  } catch {
+    return null;
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -25,12 +41,17 @@ async function startServer() {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("join-challenge", ({ classCode, name, uid }) => {
+    socket.on("join-challenge", async ({ classCode, name, uid, token }) => {
       if (
         typeof classCode !== "string" || classCode.length === 0 || classCode.length > 64 ||
         typeof name !== "string" || name.length === 0 || name.length > 100 ||
-        typeof uid !== "string" || uid.length === 0 || uid.length > 128
+        typeof uid !== "string" || uid.length === 0 || uid.length > 128 ||
+        typeof token !== "string" || token.length === 0
       ) return;
+
+      // Verify Firebase ID token and confirm uid matches
+      const verifiedUid = await verifyToken(token);
+      if (!verifiedUid || verifiedUid !== uid) return;
 
       socket.join(classCode);
       socketSessions[socket.id] = { classCode, uid };
