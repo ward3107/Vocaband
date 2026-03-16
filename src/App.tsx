@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
 import {
   Volume2, 
@@ -90,6 +90,14 @@ function shuffle<T>(array: T[]): T[] {
   return result;
 }
 
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
@@ -153,10 +161,31 @@ export default function App() {
   const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'hebrew'} | null>(null);
   const [matchedIds, setMatchedIds] = useState<number[]>([]);
 
+  // --- RELIABILITY STATE ---
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
+  const userRef = useRef(user);
+  const isLiveChallengeRef = useRef(isLiveChallenge);
+  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
+
   useEffect(() => {
-    const s = io();
+    const s = io({ reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 1000 });
     setSocket(s);
-    
+
+    s.on("connect", () => setSocketConnected(true));
+    s.on("disconnect", () => setSocketConnected(false));
+    s.on("reconnect", () => {
+      setSocketConnected(true);
+      const currentUser = userRef.current;
+      if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
+        s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
+      }
+    });
+    s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
     s.on("leaderboard-update", (data) => {
       setLeaderboard(data);
     });
@@ -196,6 +225,35 @@ export default function App() {
       setLoading(false);
     });
     return unsubscribe;
+  }, []);
+
+  // Warn before leaving while a score save is in flight
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSaving) {
+        e.preventDefault();
+        e.returnValue = "Your score is still saving. Are you sure you want to leave?";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isSaving]);
+
+  // Retry any progress writes that failed during a previous session
+  useEffect(() => {
+    const retryPending = async () => {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith("vocaband_retry_"));
+      for (const key of keys) {
+        try {
+          const progress = JSON.parse(localStorage.getItem(key)!);
+          await addDoc(collection(db, "progress"), progress);
+          localStorage.removeItem(key);
+        } catch {
+          // Still offline — will retry on next load
+        }
+      }
+    };
+    retryPending();
   }, []);
 
   const fetchTeacherData = async (uid: string) => {
@@ -386,25 +444,31 @@ export default function App() {
 
       const assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() } as AssignmentData));
       
-      // Use Anonymous Auth for students to allow secure writes
-      let studentUid = "anonymous-student-" + Date.now();
-      try {
-        const authResult = await signInAnonymously(auth);
-        studentUid = authResult.user.uid;
-      } catch (e) {
-        console.error("Anonymous auth failed:", e);
-        let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
+      // Use Anonymous Auth for students to allow secure writes.
+      // Reuse an existing anonymous session to avoid the 300 accounts/hour rate limit.
+      let studentUid: string;
+      if (auth.currentUser && auth.currentUser.isAnonymous) {
+        studentUid = auth.currentUser.uid;
+      } else {
         try {
-          const parsed = JSON.parse(e instanceof Error ? e.message : String(e));
-          if (parsed.error) {
-            errorMsg = `Login failed: ${parsed.error} (Path: ${parsed.path}, Operation: ${parsed.operationType})`;
+          const authResult = await signInAnonymously(auth);
+          studentUid = authResult.user.uid;
+          localStorage.setItem("vocaband_anon_uid", studentUid);
+        } catch (e) {
+          console.error("Anonymous auth failed:", e);
+          let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
+          try {
+            const parsed = JSON.parse(e instanceof Error ? e.message : String(e));
+            if (parsed.error) {
+              errorMsg = `Login failed: ${parsed.error} (Path: ${parsed.path}, Operation: ${parsed.operationType})`;
+            }
+          } catch (jsonErr) {
+            // Not a JSON error, keep original message
           }
-        } catch (jsonErr) {
-          // Not a JSON error, keep original message
+          setError(errorMsg);
+          setLoading(false);
+          return;
         }
-        setError(errorMsg);
-        setLoading(false);
-        return;
       }
 
       if (!auth.currentUser) {
@@ -482,16 +546,23 @@ export default function App() {
       await setDoc(doc(db, "users", user.uid), { ...user, badges: newBadges }, { merge: true });
     } catch (error) {
       console.error("Error saving badge:", error);
+      setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
     }
   };
   const fetchStudents = async () => {
-    if (!user || user.role !== "teacher") return;
-    const q = query(collection(db, "progress"), where("classCode", "in", classes.map(c => c.code)));
-    const snap = await getDocs(q);
+    if (!user || user.role !== "teacher" || classes.length === 0) return;
+    const codes = classes.map(c => c.code);
+    const chunks = chunkArray(codes, 30);
+    const allDocs: ReturnType<typeof snap.docs[0]["data"]>[] = [];
+
+    for (const chunk of chunks) {
+      const q = query(collection(db, "progress"), where("classCode", "in", chunk), limit(5000));
+      const snap = await getDocs(q);
+      allDocs.push(...snap.docs.map(d => d.data()));
+    }
+
     const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    
-    snap.docs.forEach(doc => {
-      const data = doc.data();
+    allDocs.forEach(data => {
       const key = `${data.studentName}-${data.classCode}`;
       if (!studentMap[key] || new Date(data.completedAt) > new Date(studentMap[key].lastActive)) {
         studentMap[key] = {
@@ -501,7 +572,7 @@ export default function App() {
         };
       }
     });
-    
+
     setClassStudents(Object.values(studentMap));
   };
   const fetchGlobalLeaderboard = async () => {
@@ -519,17 +590,29 @@ export default function App() {
   };
   const fetchScores = async () => {
     if (!user || user.role !== "teacher") return;
-    
+
     if (classes.length === 0) {
       setAllScores([]);
       setView("gradebook");
       return;
     }
 
-    const q = query(collection(db, "progress"), where("classCode", "in", classes.map(c => c.code)));
-    const querySnapshot = await getDocs(q);
-    const scoresList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProgressData));
-    setAllScores(scoresList);
+    const codes = classes.map(c => c.code);
+    const chunks = chunkArray(codes, 30);
+    const allDocs: { id: string; [key: string]: unknown }[] = [];
+
+    for (const chunk of chunks) {
+      const q = query(
+        collection(db, "progress"),
+        where("classCode", "in", chunk),
+        orderBy("completedAt", "desc"),
+        limit(200)
+      );
+      const snap = await getDocs(q);
+      allDocs.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }
+
+    setAllScores(allDocs as ProgressData[]);
     setView("gradebook");
   };
 
@@ -637,11 +720,13 @@ export default function App() {
 
   const saveScore = async () => {
     if (!user || !activeAssignment) return;
-    
+    setIsSaving(true);
+    setSaveError(null);
+
     const xpEarned = score;
     setXp(prev => prev + xpEarned);
-    
-    // Streak logic: if score > 80, increment streak
+
+    // Streak logic: if score >= 80, increment streak
     if (score >= 80) {
       setStreak(prev => prev + 1);
     } else {
@@ -664,15 +749,43 @@ export default function App() {
     };
 
     try {
-      const docRef = await addDoc(collection(db, "progress"), progress);
-      setStudentProgress(prev => [...prev, { id: docRef.id, ...progress }]);
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+      // Dedup: check for existing progress for this assignment+mode
+      const existingQ = query(
+        collection(db, "progress"),
+        where("assignmentId", "==", activeAssignment.id),
+        where("mode", "==", gameMode),
+        where("studentName", "==", user.displayName),
+        where("classCode", "==", user.classCode || "")
+      );
+      const existingSnap = await getDocs(existingQ);
+
+      if (!existingSnap.empty) {
+        const existingDoc = existingSnap.docs[0];
+        const existingData = existingDoc.data();
+        if (score > existingData.score) {
+          await setDoc(existingDoc.ref, progress);
+          setStudentProgress(prev =>
+            prev.map(p => p.id === existingDoc.id ? { id: existingDoc.id, ...progress } : p)
+          );
+        }
+      } else {
+        const docRef = await addDoc(collection(db, "progress"), progress);
+        setStudentProgress(prev => [...prev, { id: docRef.id, ...progress }]);
+      }
+
+      // Clear any queued retry for this assignment+mode
+      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
+      localStorage.removeItem(retryKey);
+
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     } catch (error) {
       console.error("Error saving score:", error);
+      // Queue for retry on next load
+      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
+      localStorage.setItem(retryKey, JSON.stringify(progress));
+      setSaveError("Your score couldn't be saved. Check your connection — it will retry automatically.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1575,7 +1688,13 @@ export default function App() {
               <h1 className="text-4xl font-black">Live Challenge: {selectedClass.name}</h1>
               <p className="text-blue-100 font-bold mt-2">Students join with code: <span className="bg-white text-blue-600 px-3 py-1 rounded-lg font-mono ml-2">{selectedClass.code}</span></p>
             </div>
-            <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-white/20 hover:bg-white/30 px-6 py-2 rounded-full font-bold transition-colors">End Challenge</button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <span className={`w-2 h-2 rounded-full ${socketConnected ? "bg-green-400" : "bg-red-400 animate-pulse"}`} />
+                <span className="text-blue-100">{socketConnected ? "Live" : "Reconnecting..."}</span>
+              </div>
+              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-white/20 hover:bg-white/30 px-6 py-2 rounded-full font-bold transition-colors">End Challenge</button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1854,13 +1973,35 @@ export default function App() {
             </div>
           </div>
         )}
-        <button onClick={handleExitGame} className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform">Done</button>
+        {isSaving ? (
+          <div className="flex items-center gap-2 text-yellow-600 mb-4">
+            <RefreshCw className="animate-spin" size={18} />
+            <span className="font-semibold">Saving your score...</span>
+          </div>
+        ) : saveError ? (
+          <div className="flex items-center gap-2 text-red-500 mb-4">
+            <AlertTriangle size={18} />
+            <span className="text-sm">{saveError}</span>
+          </div>
+        ) : null}
+        <button
+          onClick={handleExitGame}
+          disabled={isSaving}
+          className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        >Done</button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center p-4 sm:p-8 font-sans">
+      {saveError && (
+        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
+          <AlertTriangle size={18} />
+          <span className="text-sm">{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-1 hover:opacity-75"><X size={16} /></button>
+        </div>
+      )}
       <div className="w-full max-w-5xl flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <div className="bg-white px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
