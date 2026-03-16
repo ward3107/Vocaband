@@ -7,6 +7,6 @@ coverage/
 .env*
 !.env.example
 
-# Firebase sensitive files
+# Firebase rules (deploy via firebase CLI, not git)
 firestore.rules
-firebase-applet-config.json
+# firebase-applet-config.json is tracked — client config is not a secret
