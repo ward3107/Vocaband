@@ -5,8 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "tsx server.ts",
-        "start": "node server.js",
-        "build": "vite build && tsc server.ts --outDir dist",
+        "start": "node dist/server.js",
+        "build": "vite build && tsc server.ts --outDir dist --module commonjs --esModuleInterop --target es5",
         "preview": "vite preview",
         "clean": "rm -rf dist",
         "lint": "tsc --noEmit"

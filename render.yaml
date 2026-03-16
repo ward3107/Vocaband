@@ -1,13 +1,27 @@
  services:
-    - type: web
-      name: vocaband
-      runtime: node
-      buildCommand: npm install && npm run build && cp firebase-applet-config.json dist/firebase-applet-config.json && cp .env dist/.env  
-      startCommand: npm run start
-      envVars:
-        - key: ALLOWED_ORIGIN
-          value: https://vocaband.onrender.com
-        - key: PORT
-          value: 3000
-        - key: NODE_ENV
-          value: production
+  - type: web
+    name: vocaband
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: ALLOWED_ORIGIN
+        value: https://vocaband.onrender.com
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: VITE_FIREBASE_API_KEY
+        value: AIzaSyCLa_B65Nu_vFPS2vYcSaVDXohJ22VYawM
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        value: vocaband-93fcf.firebaseapp.com
+      - key: VITE_FIREBASE_PROJECT_ID
+        value: vocaband-93fcf
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        value: vocaband-93fcf.firebasestorage.app
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        value: "960719088479"
+      - key: VITE_FIREBASE_APP_ID
+        value: 1:960719088479:web:08dfded1e6aaac1df624ea
+      - key: VITE_FIREBASE_MEASUREMENT_ID
+        value: G-E30CFH4SSZ
