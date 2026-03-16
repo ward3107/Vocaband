@@ -71,6 +71,7 @@ interface AssignmentData {
 interface ProgressData {
   id: string;
   studentName: string;
+  studentUid?: string;
   assignmentId: string;
   classCode: string;
   score: number;
@@ -182,7 +183,9 @@ export default function App() {
       setSocketConnected(true);
       const currentUser = userRef.current;
       if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
-        s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
+        auth.currentUser?.getIdToken().then(token => {
+          s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token });
+        });
       }
     });
     s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
@@ -587,7 +590,8 @@ export default function App() {
       
       // Join Live Challenge
       if (socket) {
-        socket.emit("join-challenge", { classCode: code, name, uid: studentUid });
+        const token = await auth.currentUser?.getIdToken() ?? "";
+        socket.emit("join-challenge", { classCode: code, name, uid: studentUid, token });
       }
 
       setView("student-dashboard");
@@ -620,7 +624,8 @@ export default function App() {
     if (!user || user.role !== "teacher" || classes.length === 0) return;
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
-    const allDocs: ReturnType<typeof snap.docs[0]["data"]>[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allDocs: any[] = [];
 
     for (const chunk of chunks) {
       const q = query(collection(db, "progress"), where("classCode", "in", chunk), limit(5000));
@@ -679,7 +684,7 @@ export default function App() {
       allDocs.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }
 
-    setAllScores(allDocs as ProgressData[]);
+    setAllScores(allDocs as unknown as ProgressData[]);
     setView("gradebook");
   };
 
@@ -806,6 +811,7 @@ export default function App() {
 
     const progress: Omit<ProgressData, "id"> = {
       studentName: user.displayName,
+      studentUid: user.uid,
       assignmentId: activeAssignment.id,
       classCode: user.classCode || "",
       score: score,
@@ -1372,7 +1378,11 @@ export default function App() {
                   setSelectedClass(classes[0]);
                   setView("live-challenge");
                   setIsLiveChallenge(true);
-                  if (socket) socket.emit("join-challenge", { classCode: classes[0].code, name: "Teacher", uid: "teacher" });
+                  if (socket) {
+                    auth.currentUser?.getIdToken().then(token => {
+                      socket.emit("join-challenge", { classCode: classes[0].code, name: user?.displayName || "Teacher", uid: user?.uid || "", token });
+                    });
+                  }
                 }
               }} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors">Start Challenge</button>
             </div>
