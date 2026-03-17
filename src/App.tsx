@@ -36,7 +36,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
-import { auth, db, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
 
@@ -105,11 +105,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "analytics" | "global-leaderboard" | "students">("landing");
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
-  const [teacherEmail, setTeacherEmail] = useState("");
-  const [teacherPassword, setTeacherPassword] = useState("");
-  const [teacherName, setTeacherName] = useState("");
-  const [teacherAuthMode, setTeacherAuthMode] = useState<"login" | "register">("login");
-  const [teacherAuthLoading, setTeacherAuthLoading] = useState(false);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
@@ -269,46 +264,6 @@ export default function App() {
     };
     retryPending();
   }, []);
-
-  const handleTeacherEmailAuth = async () => {
-    if (!teacherEmail || !teacherPassword) { setError("Please enter email and password."); return; }
-    if (teacherAuthMode === "register" && !teacherName) { setError("Please enter your name."); return; }
-    setTeacherAuthLoading(true);
-    setError(null);
-    try {
-      if (teacherAuthMode === "login") {
-        await signInWithEmailAndPassword(auth, teacherEmail, teacherPassword);
-        // onAuthStateChanged will handle navigation
-      } else {
-        const credential = await createUserWithEmailAndPassword(auth, teacherEmail, teacherPassword);
-        const newUser: AppUser = {
-          uid: credential.user.uid,
-          email: teacherEmail,
-          role: "teacher",
-          displayName: teacherName,
-        };
-        await setDoc(doc(db, "users", credential.user.uid), newUser);
-        setUser(newUser);
-        setView("teacher-dashboard");
-      }
-    } catch (err: any) {
-      console.error("Teacher auth error:", err.code, err.message);
-      const msg: Record<string, string> = {
-        "auth/user-not-found": "No account found with this email.",
-        "auth/wrong-password": "Incorrect password.",
-        "auth/invalid-credential": "Incorrect email or password.",
-        "auth/email-already-in-use": "An account with this email already exists. Try logging in instead.",
-        "auth/weak-password": "Password must be at least 6 characters.",
-        "auth/invalid-email": "Please enter a valid email address.",
-        "auth/operation-not-allowed": "Email sign-in is not enabled. Please contact the administrator.",
-        "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
-        "auth/network-request-failed": "Network error. Check your connection and try again.",
-      };
-      setError(msg[err.code] || `Sign-in failed (${err.code || "unknown error"}). Please try again.`);
-    } finally {
-      setTeacherAuthLoading(false);
-    }
-  };
 
   const fetchTeacherData = async (uid: string) => {
     const q = query(collection(db, "classes"), where("teacherUid", "==", uid));
@@ -1207,58 +1162,11 @@ export default function App() {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-4"
                 >
-                  {/* Login / Register toggle */}
-                  <div className="flex bg-stone-100 p-1 rounded-2xl">
-                    <button
-                      onClick={() => { setTeacherAuthMode("login"); setError(null); }}
-                      className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all ${teacherAuthMode === "login" ? "bg-white text-emerald-600 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
-                    >Log In</button>
-                    <button
-                      onClick={() => { setTeacherAuthMode("register"); setError(null); }}
-                      className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all ${teacherAuthMode === "register" ? "bg-white text-emerald-600 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
-                    >Create Account</button>
-                  </div>
+                  <p className="text-center text-stone-500 text-sm font-medium">
+                    Sign in with your school Google account
+                  </p>
 
-                  {teacherAuthMode === "register" && (
-                    <input
-                      type="text"
-                      placeholder="Your Name"
-                      value={teacherName}
-                      onChange={e => setTeacherName(e.target.value)}
-                      className="w-full px-4 py-4 rounded-2xl border-2 border-stone-100 focus:border-emerald-500 outline-none transition-colors font-bold"
-                    />
-                  )}
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={teacherEmail}
-                    onChange={e => setTeacherEmail(e.target.value)}
-                    className="w-full px-4 py-4 rounded-2xl border-2 border-stone-100 focus:border-emerald-500 outline-none transition-colors font-bold"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={teacherPassword}
-                    onChange={e => setTeacherPassword(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleTeacherEmailAuth()}
-                    className="w-full px-4 py-4 rounded-2xl border-2 border-stone-100 focus:border-emerald-500 outline-none transition-colors font-bold"
-                  />
-
-                  {error && <p className="text-red-500 text-sm font-bold">{error}</p>}
-
-                  <button
-                    onClick={handleTeacherEmailAuth}
-                    disabled={teacherAuthLoading}
-                    className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {teacherAuthLoading ? "Please wait…" : teacherAuthMode === "login" ? "Log In" : "Create Account"}
-                  </button>
-
-                  <div className="flex items-center gap-3 my-2">
-                    <div className="flex-1 h-px bg-stone-100" />
-                    <span className="text-xs font-bold text-stone-400 uppercase">or</span>
-                    <div className="flex-1 h-px bg-stone-100" />
-                  </div>
+                  {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
 
                   <button
                     onClick={() => signInWithPopup(auth, googleProvider).catch((err) => {
@@ -1267,7 +1175,7 @@ export default function App() {
                         setError(`Google sign-in failed (${err.code || "unknown"}). Allow popups and try again.`);
                       }
                     })}
-                    className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-100 py-4 rounded-2xl font-bold text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
+                    className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-200 py-5 rounded-2xl font-black text-lg text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
                   >
                     <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
                     Sign in with Google
