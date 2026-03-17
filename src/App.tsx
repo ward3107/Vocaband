@@ -179,6 +179,17 @@ export default function App() {
           // Auto-create teacher account for Google sign-ins only (not anonymous)
           const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
+            // Optional domain allowlist: set VITE_ALLOWED_TEACHER_DOMAINS=school.edu,district.org
+            const allowedDomains = import.meta.env.VITE_ALLOWED_TEACHER_DOMAINS
+              ? (import.meta.env.VITE_ALLOWED_TEACHER_DOMAINS as string).split(',').map((d: string) => d.trim().toLowerCase())
+              : [];
+            const emailDomain = (supabaseUser.email ?? "").split('@')[1]?.toLowerCase() ?? "";
+            if (allowedDomains.length > 0 && !allowedDomains.includes(emailDomain)) {
+              setError(`Only school staff accounts may sign in as teachers. (${emailDomain} is not an authorised domain)`);
+              await supabase.auth.signOut();
+              setLoading(false);
+              return;
+            }
             const newUser: AppUser = {
               uid: supabaseUser.id,
               email: supabaseUser.email || "",
@@ -461,23 +472,16 @@ export default function App() {
       }
       const classData = mapClass(classRows[0]);
 
-      // Fetch assignments for the class
-      const { data: assignRows, error: assignErr } = await supabase
-        .from('assignments').select('*').eq('class_id', classData.id);
-      if (assignErr) throw assignErr;
-      if (!assignRows || assignRows.length === 0) {
-        setError("No assignments found for this class yet!");
-        setLoading(false);
-        return;
-      }
-      const assignments = assignRows.map(mapAssignment);
-
-      // Upsert student profile
+      // Upsert student profile FIRST — must happen before fetching assignments so RLS can verify class membership
       const { data: userRow } = await supabase
         .from('users').select('*').eq('uid', studentUid).maybeSingle();
       let userData: AppUser;
       if (userRow) {
-        userData = mapUser(userRow);
+        // Always sync class_code to the class they're currently joining
+        userData = { ...mapUser(userRow), classCode: code };
+        const { error: updateErr } = await supabase
+          .from('users').update({ class_code: code }).eq('uid', studentUid);
+        if (updateErr) throw updateErr;
       } else {
         userData = {
           uid: studentUid,
@@ -491,11 +495,22 @@ export default function App() {
         if (insertErr) throw insertErr;
       }
 
-      // Load existing progress for this student in this class
+      // Fetch assignments for the class (user row now exists, so RLS class membership check passes)
+      const { data: assignRows, error: assignErr } = await supabase
+        .from('assignments').select('*').eq('class_id', classData.id);
+      if (assignErr) throw assignErr;
+      if (!assignRows || assignRows.length === 0) {
+        setError("No assignments found for this class yet!");
+        setLoading(false);
+        return;
+      }
+      const assignments = assignRows.map(mapAssignment);
+
+      // Load existing progress for this student in this class (use UID — name is spoofable)
       const { data: progressRows, error: progErr } = await supabase
         .from('progress').select('*')
         .eq('class_code', code)
-        .eq('student_name', name);
+        .eq('student_uid', studentUid);
       if (progErr) throw progErr;
       const progress = (progressRows ?? []).map(mapProgress);
 
@@ -734,12 +749,12 @@ export default function App() {
     };
 
     try {
-      // Dedup: check for existing progress for this assignment+mode
+      // Dedup: check for existing progress for this assignment+mode (use UID — name is spoofable)
       const { data: existingRows } = await supabase
         .from('progress').select('*')
         .eq('assignment_id', activeAssignment.id)
         .eq('mode', gameMode)
-        .eq('student_name', user.displayName)
+        .eq('student_uid', user.uid)
         .eq('class_code', user.classCode || "");
 
       if (existingRows && existingRows.length > 0) {
