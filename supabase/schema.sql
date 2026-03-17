@@ -49,6 +49,12 @@ CREATE TABLE IF NOT EXISTS public.progress (
   avatar        TEXT
 );
 
+-- Pre-approved teacher email addresses.
+-- Managed via the Supabase dashboard only (no client-side access).
+CREATE TABLE IF NOT EXISTS public.teacher_allowlist (
+  email TEXT PRIMARY KEY CHECK (char_length(email) > 0)
+);
+
 -- ---------------------------------------------------------------------------
 -- Indexes (mirrors the Firestore composite indexes)
 -- ---------------------------------------------------------------------------
@@ -74,10 +80,12 @@ CREATE INDEX IF NOT EXISTS idx_progress_score_desc
 -- Row Level Security
 -- ---------------------------------------------------------------------------
 
-ALTER TABLE public.users       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.classes     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.assignments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.progress    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.classes           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assignments       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.progress          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.teacher_allowlist ENABLE ROW LEVEL SECURITY;
+-- No RLS policies on teacher_allowlist — all client access is denied by default.
 
 -- Helper: check if the current user is a teacher
 CREATE OR REPLACE FUNCTION public.is_teacher()
@@ -94,6 +102,15 @@ RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.users
     WHERE uid = auth.uid()::text AND role = 'admin'
+  );
+$$;
+
+-- Check if an email is in the teacher allowlist (bypasses RLS via SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION public.is_teacher_allowed(check_email TEXT)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.teacher_allowlist
+    WHERE email = lower(check_email)
   );
 $$;
 
