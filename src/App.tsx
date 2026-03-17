@@ -166,7 +166,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const supabaseUser = session.user;
-        const { data: userRow } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).single();
+        const { data: userRow } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).maybeSingle();
         if (userRow) {
           const userData = mapUser(userRow);
           setUser(userData);
@@ -474,7 +474,7 @@ export default function App() {
 
       // Upsert student profile
       const { data: userRow } = await supabase
-        .from('users').select('*').eq('uid', studentUid).single();
+        .from('users').select('*').eq('uid', studentUid).maybeSingle();
       let userData: AppUser;
       if (userRow) {
         userData = mapUser(userRow);
