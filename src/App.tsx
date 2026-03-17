@@ -179,13 +179,11 @@ export default function App() {
           // Auto-create teacher account for Google sign-ins only (not anonymous)
           const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
-            // Optional domain allowlist: set VITE_ALLOWED_TEACHER_DOMAINS=school.edu,district.org
-            const allowedDomains = import.meta.env.VITE_ALLOWED_TEACHER_DOMAINS
-              ? (import.meta.env.VITE_ALLOWED_TEACHER_DOMAINS as string).split(',').map((d: string) => d.trim().toLowerCase())
-              : [];
-            const emailDomain = (supabaseUser.email ?? "").split('@')[1]?.toLowerCase() ?? "";
-            if (allowedDomains.length > 0 && !allowedDomains.includes(emailDomain)) {
-              setError(`Only school staff accounts may sign in as teachers. (${emailDomain} is not an authorised domain)`);
+            const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
+              check_email: supabaseUser.email ?? ""
+            });
+            if (!isAllowed) {
+              setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
               await supabase.auth.signOut();
               setLoading(false);
               return;
