@@ -36,7 +36,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
+import { auth, db, googleProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
 
@@ -199,6 +199,16 @@ export default function App() {
   }, []);
 
   // --- AUTH LOGIC ---
+  // Handle the result of a Google redirect sign-in (runs once on mount)
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      // auth/popup-closed-by-user and similar can surface here; silently ignore
+      if (err?.code !== "auth/popup-closed-by-user") {
+        console.error("Redirect sign-in error:", err);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -1164,7 +1174,7 @@ export default function App() {
                 >
                   <p className="text-stone-500 font-medium">Manage your classes, create assignments, and track student progress.</p>
                   <button 
-                    onClick={() => signInWithPopup(auth, googleProvider)} 
+                    onClick={() => signInWithRedirect(auth, googleProvider)}
                     className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-100 py-5 rounded-2xl font-black text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
                   >
                     <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
