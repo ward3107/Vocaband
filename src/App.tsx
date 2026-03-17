@@ -36,7 +36,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
+import { auth, db, googleProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
 
@@ -196,6 +196,16 @@ export default function App() {
     return () => {
       s.disconnect();
     };
+  }, []);
+
+  // Handle Google redirect sign-in result (runs once on page load after redirect)
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      if (err?.code && err.code !== "auth/null-user") {
+        console.error("Google redirect error:", err.code, err.message);
+        setError(`Google sign-in failed (${err.code}). Please try again.`);
+      }
+    });
   }, []);
 
   // --- AUTH LOGIC ---
@@ -1169,12 +1179,7 @@ export default function App() {
                   {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
 
                   <button
-                    onClick={() => signInWithPopup(auth, googleProvider).catch((err) => {
-                      console.error("Google sign-in error:", err.code, err.message);
-                      if (err?.code !== "auth/popup-closed-by-user") {
-                        setError(`Google sign-in failed (${err.code || "unknown"}). Allow popups and try again.`);
-                      }
-                    })}
+                    onClick={() => signInWithRedirect(auth, googleProvider)}
                     className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-200 py-5 rounded-2xl font-black text-lg text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
                   >
                     <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />

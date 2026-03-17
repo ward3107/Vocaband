@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, addDoc, orderBy, limit, deleteDoc } from 'firebase/firestore';
 
 // Import the Firebase configuration
@@ -92,4 +92,4 @@ export const deleteDocWrapped = async (docRef: any, path: string) => {
   }
 };
 
-export { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, addDoc, signInAnonymously, orderBy, limit, deleteDoc };
+export { signInWithPopup, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, addDoc, signInAnonymously, orderBy, limit, deleteDoc };
