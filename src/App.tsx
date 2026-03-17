@@ -45,6 +45,14 @@ import { shuffle, chunkArray } from './utils';
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
 
+const MOTIVATIONAL_MESSAGES = [
+  "Great job! 🎉", "Well done! 👏", "Awesome! 🌟", "Keep it up! 💪",
+  "Nailed it! 🎯", "Brilliant! ✨", "You're on fire! 🔥", "Fantastic! 🚀",
+  "Way to go! 🏆", "Superstar! ⭐",
+];
+const randomMotivation = () =>
+  MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
+
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
@@ -96,6 +104,7 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [mistakes, setMistakes] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("hebrew");
   const [isFinished, setIsFinished] = useState(false);
 
@@ -117,6 +126,7 @@ export default function App() {
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
   useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   useEffect(() => {
@@ -806,6 +816,7 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
+      setMotivationalMessage(randomMotivation());
       const newScore = score + 10;
       setScore(newScore);
       
@@ -837,6 +848,7 @@ export default function App() {
     
     if (isTrue === isActuallyTrue) {
       setFeedback("correct");
+      setMotivationalMessage(randomMotivation());
       const newScore = score + 15;
       setScore(newScore);
       
@@ -864,6 +876,8 @@ export default function App() {
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
     if (knewIt) {
+      setMotivationalMessage(randomMotivation());
+      setTimeout(() => setMotivationalMessage(null), 1000);
       const newScore = score + 5;
       setScore(newScore);
       if (socket && user?.classCode) {
@@ -890,6 +904,7 @@ export default function App() {
 
     if (spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase()) {
       setFeedback("correct");
+      setMotivationalMessage(randomMotivation());
       const newScore = score + 20;
       setScore(newScore);
       
@@ -2073,6 +2088,15 @@ export default function App() {
             >
               {/* Progress Bar */}
               <div className="absolute top-0 left-0 h-2 bg-emerald-500 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
+
+              {/* Motivational message */}
+              {motivationalMessage && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                  <span className="text-3xl sm:text-5xl font-black text-emerald-600 drop-shadow animate-bounce">
+                    {motivationalMessage}
+                  </span>
+                </div>
+              )}
 
               <div className="mb-6 sm:mb-12">
                 <span className="text-stone-300 font-black text-6xl sm:text-8xl opacity-20 absolute top-8 left-1/2 -translate-x-1/2">{currentIndex + 1}</span>
