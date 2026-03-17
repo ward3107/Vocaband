@@ -5,18 +5,20 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { createClient } from "@supabase/supabase-js";
 
-// Initialize Firebase Admin (projectId only — uses Google public keys for token verification)
-if (getApps().length === 0) {
-  initializeApp({ projectId: "vocaband-93fcf" });
-}
+// Supabase admin client — uses the service role key to verify tokens server-side
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 async function verifyToken(token: string): Promise<string | null> {
   try {
-    const decoded = await getAuth().verifyIdToken(token);
-    return decoded.uid;
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return null;
+    return user.id;
   } catch {
     return null;
   }
@@ -40,12 +42,12 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "https://apis.google.com", "https://www.google.com"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com", "wss://*.firebaseio.com", allowedOrigin],
-          frameSrc: ["https://vocaband-93fcf.firebaseapp.com", "https://accounts.google.com"],
+          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", allowedOrigin],
+          frameSrc: ["https://accounts.google.com"],
         },
       },
       // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure

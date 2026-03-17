@@ -36,50 +36,12 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
-import { auth, db, googleProvider, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, signInAnonymously, orderBy, limit, deleteDoc, getDocWrapped, setDocWrapped, getDocsWrapped, addDocWrapped, deleteDocWrapped, OperationType, handleFirestoreError } from "./firebase";
+import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
 
 // --- TYPES ---
-interface AppUser {
-  uid: string;
-  email?: string;
-  role: "teacher" | "student";
-  displayName: string;
-  classCode?: string;
-  avatar?: string;
-  badges?: string[];
-}
-
-interface ClassData {
-  id: string;
-  name: string;
-  code: string;
-  teacherUid: string;
-}
-
-interface AssignmentData {
-  id: string;
-  classId: string;
-  wordIds: number[];
-  words?: Word[];
-  title: string;
-  deadline?: string;
-  allowedModes?: string[];
-}
-
-interface ProgressData {
-  id: string;
-  studentName: string;
-  studentUid?: string;
-  assignmentId: string;
-  classCode: string;
-  score: number;
-  mode: string;
-  completedAt: string;
-  mistakes?: number[]; // Array of word IDs that were missed
-  avatar?: string;
-}
+// AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
 
 function shuffle<T>(array: T[]): T[] {
@@ -183,7 +145,8 @@ export default function App() {
       setSocketConnected(true);
       const currentUser = userRef.current;
       if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
-        auth.currentUser?.getIdToken().then(token => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          const token = session?.access_token ?? "";
           s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token });
         });
       }
@@ -198,44 +161,35 @@ export default function App() {
     };
   }, []);
 
-  // Handle Google redirect sign-in result (runs once on page load after redirect)
-  useEffect(() => {
-    getRedirectResult(auth).catch((err) => {
-      if (err?.code && err.code !== "auth/null-user") {
-        console.error("Google redirect error:", err.code, err.message);
-        setError(`Google sign-in failed (${err.code}). Please try again.`);
-      }
-    });
-  }, []);
-
   // --- AUTH LOGIC ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as AppUser;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const supabaseUser = session.user;
+        const { data: userRow } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).single();
+        if (userRow) {
+          const userData = mapUser(userRow);
           setUser(userData);
           if (userData.role === "teacher") {
-            fetchTeacherData(firebaseUser.uid);
+            fetchTeacherData(supabaseUser.id);
             setView("teacher-dashboard");
           }
-          // For students, don't change view - handleStudentLogin will do that
+          // For students, don't change view — handleStudentLogin will do that
         } else {
-          // Only auto-create teacher account for Google sign-ins (not anonymous)
-          const isGoogleSignIn = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+          // Auto-create teacher account for Google sign-ins only (not anonymous)
+          const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
             const newUser: AppUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || "",
+              uid: supabaseUser.id,
+              email: supabaseUser.email || "",
               role: "teacher",
-              displayName: firebaseUser.displayName || "Teacher",
+              displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
             };
-            await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+            await supabase.from('users').insert(mapUserToDb(newUser));
             setUser(newUser);
             setView("teacher-dashboard");
           }
-          // For anonymous users (students), don't create doc here - handleStudentLogin will do it
+          // For anonymous users (students), handleStudentLogin creates the profile
         }
       } else {
         setUser(null);
@@ -243,7 +197,7 @@ export default function App() {
       }
       setLoading(false);
     });
-    return unsubscribe;
+    return () => subscription.unsubscribe();
   }, []);
 
   // Warn before leaving while a score save is in flight
@@ -265,8 +219,8 @@ export default function App() {
       for (const key of keys) {
         try {
           const progress = JSON.parse(localStorage.getItem(key)!);
-          await addDoc(collection(db, "progress"), progress);
-          localStorage.removeItem(key);
+          const { error } = await supabase.from('progress').insert(progress);
+          if (!error) localStorage.removeItem(key);
         } catch {
           // Still offline — will retry on next load
         }
@@ -276,10 +230,8 @@ export default function App() {
   }, []);
 
   const fetchTeacherData = async (uid: string) => {
-    const q = query(collection(db, "classes"), where("teacherUid", "==", uid));
-    const querySnapshot = await getDocs(q);
-    const classesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassData));
-    setClasses(classesList);
+    const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
+    if (!error && data) setClasses(data.map(mapClass));
   };
 
   const handleCreateClass = async () => {
@@ -295,8 +247,9 @@ export default function App() {
     };
 
     try {
-      const docRef = await addDoc(collection(db, "classes"), newClass);
-      setClasses([...classes, { id: docRef.id, ...newClass }]);
+      const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
+      if (error) throw error;
+      setClasses([...classes, mapClass(docRow)]);
       setShowCreateClassModal(false);
       setNewClassName("");
       setCreatedClassCode(code);
@@ -411,7 +364,16 @@ export default function App() {
     };
 
     try {
-      await addDoc(collection(db, "assignments"), newAssignment);
+      const { error } = await supabase.from('assignments').insert({
+        class_id: newAssignment.classId,
+        word_ids: newAssignment.wordIds,
+        words: newAssignment.words,
+        title: newAssignment.title,
+        deadline: newAssignment.deadline,
+        created_at: newAssignment.createdAt,
+        allowed_modes: newAssignment.allowedModes,
+      });
+      if (error) throw error;
       alert("Assignment created successfully!");
       setView("teacher-dashboard");
       setSelectedWords([]);
@@ -419,7 +381,7 @@ export default function App() {
       setAssignmentDeadline("");
       setAssignmentModes(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, "assignments");
+      handleDbError(error, OperationType.CREATE, "assignments");
     }
   };
 
@@ -460,11 +422,12 @@ export default function App() {
     }
 
     try {
-      await deleteDoc(doc(db, "classes", classId));
+      const { error } = await supabase.from('classes').delete().eq('id', classId);
+      if (error) throw error;
       setClasses(prev => prev.filter(c => c.id !== classId));
       alert("Class deleted successfully.");
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `classes/${classId}`);
+      handleDbError(error, OperationType.DELETE, `classes/${classId}`);
     }
   };
 
@@ -473,101 +436,48 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    // FIRST: Sign in anonymously to get auth permissions for Firestore queries
-    let studentUid = "anonymous-student-" + Date.now();
     try {
-      const authResult = await signInAnonymously(auth);
-      studentUid = authResult.user.uid;
-    } catch (e) {
-      console.error("Anonymous auth failed:", e);
-      let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
-      try {
-        const parsed = JSON.parse(e instanceof Error ? e.message : String(e));
-        if (parsed.error) {
-          errorMsg = `Login failed: ${parsed.error} (Path: ${parsed.path}, Operation: ${parsed.operationType})`;
+      // Sign in anonymously — reuse existing session if present
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session || !session.user.is_anonymous) {
+        const { data, error: signInError } = await supabase.auth.signInAnonymously();
+        if (signInError || !data.session) {
+          setError("Login failed: " + (signInError?.message ?? "Could not create session"));
+          setLoading(false);
+          return;
         }
-      } catch (jsonErr) {
-        // Not a JSON error, keep original message
+        session = data.session;
       }
-      setError(errorMsg);
-      setLoading(false);
-      return;
-    }
+      const studentUid = session.user.id;
 
-    if (!auth.currentUser) {
-      console.error("User not authenticated after signInAnonymously");
-      setError("Login failed: User not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    // NOW we can query Firestore with auth
-    try {
-      const q = query(collection(db, "classes"), where("code", "==", code));
-      const classSnap = await getDocs(q);
-
-      if (classSnap.empty) {
+      // Look up class by code
+      const { data: classRows, error: classErr } = await supabase
+        .from('classes').select('*').eq('code', code);
+      if (classErr) throw classErr;
+      if (!classRows || classRows.length === 0) {
         setError("Invalid Class Code!");
         setLoading(false);
         return;
       }
+      const classData = mapClass(classRows[0]);
 
-      const classData = { id: classSnap.docs[0].id, ...classSnap.docs[0].data() } as ClassData;
-      const aq = query(collection(db, "assignments"), where("classId", "==", classData.id));
-      const assignSnap = await getDocs(aq);
-
-      if (assignSnap.empty) {
+      // Fetch assignments for the class
+      const { data: assignRows, error: assignErr } = await supabase
+        .from('assignments').select('*').eq('class_id', classData.id);
+      if (assignErr) throw assignErr;
+      if (!assignRows || assignRows.length === 0) {
         setError("No assignments found for this class yet!");
         setLoading(false);
         return;
       }
+      const assignments = assignRows.map(mapAssignment);
 
-      const assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() } as AssignmentData));
-
-      // Use Anonymous Auth for students to allow secure writes.
-      // Reuse an existing anonymous session to avoid the 300 accounts/hour rate limit.
-      let studentUid: string;
-      if (auth.currentUser && auth.currentUser.isAnonymous) {
-        studentUid = auth.currentUser.uid;
-      } else {
-        try {
-          const authResult = await signInAnonymously(auth);
-          studentUid = authResult.user.uid;
-          localStorage.setItem("vocaband_anon_uid", studentUid);
-        } catch (e) {
-          console.error("Anonymous auth failed:", e);
-          let errorMsg = "Login failed: " + (e instanceof Error ? e.message : String(e));
-          try {
-            const parsed = JSON.parse(e instanceof Error ? e.message : String(e));
-            if (parsed.error) {
-              errorMsg = `Login failed: ${parsed.error} (Path: ${parsed.path}, Operation: ${parsed.operationType})`;
-            }
-          } catch (jsonErr) {
-            // Not a JSON error, keep original message
-          }
-          setError(errorMsg);
-          setLoading(false);
-          return;
-        }
-      }
-
-      if (!auth.currentUser) {
-        console.error("User not authenticated after signInAnonymously");
-        setError("Login failed: User not authenticated");
-        setLoading(false);
-        return;
-      }
-
-      let userDoc;
-      try {
-        userDoc = await getDocWrapped(doc(db, "users", studentUid), "users/" + studentUid);
-      } catch (e) {
-        throw new Error("Login failed: " + (e instanceof Error ? e.message : String(e)));
-      }
-      
+      // Upsert student profile
+      const { data: userRow } = await supabase
+        .from('users').select('*').eq('uid', studentUid).single();
       let userData: AppUser;
-      if (userDoc && userDoc.exists()) {
-        userData = userDoc.data() as AppUser;
+      if (userRow) {
+        userData = mapUser(userRow);
       } else {
         userData = {
           uid: studentUid,
@@ -575,32 +485,28 @@ export default function App() {
           displayName: name,
           classCode: code,
           avatar: studentAvatar,
-          badges: []
+          badges: [],
         };
-        try {
-          await setDocWrapped(doc(db, "users", studentUid), userData, "users/" + studentUid);
-        } catch (e) {
-          throw new Error("Login failed: " + (e instanceof Error ? e.message : String(e)));
-        }
+        const { error: insertErr } = await supabase.from('users').insert(mapUserToDb(userData));
+        if (insertErr) throw insertErr;
       }
 
-      const pq = query(collection(db, "progress"), where("classCode", "==", code), where("studentName", "==", name));
-      let progSnap;
-      try {
-        progSnap = await getDocsWrapped(pq, "progress");
-      } catch (e) {
-        throw new Error("Login failed: " + (e instanceof Error ? e.message : String(e)));
-      }
-      const progress = progSnap ? progSnap.docs.map(d => ({ id: d.id, ...d.data() } as ProgressData)) : [];
-      
+      // Load existing progress for this student in this class
+      const { data: progressRows, error: progErr } = await supabase
+        .from('progress').select('*')
+        .eq('class_code', code)
+        .eq('student_name', name);
+      if (progErr) throw progErr;
+      const progress = (progressRows ?? []).map(mapProgress);
+
       setStudentAssignments(assignments);
       setStudentProgress(progress);
       setUser(userData);
       setBadges(userData.badges || []);
-      
+
       // Join Live Challenge
       if (socket) {
-        const token = await auth.currentUser?.getIdToken() ?? "";
+        const token = session.access_token;
         socket.emit("join-challenge", { classCode: code, name, uid: studentUid, token });
       }
 
@@ -624,7 +530,8 @@ export default function App() {
     });
 
     try {
-      await setDoc(doc(db, "users", user.uid), { ...user, badges: newBadges }, { merge: true });
+      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
+      if (error) throw error;
     } catch (error) {
       console.error("Error saving badge:", error);
       setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
@@ -635,22 +542,21 @@ export default function App() {
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allDocs: any[] = [];
+    const allRows: any[] = [];
 
     for (const chunk of chunks) {
-      const q = query(collection(db, "progress"), where("classCode", "in", chunk), limit(5000));
-      const snap = await getDocs(q);
-      allDocs.push(...snap.docs.map(d => d.data()));
+      const { data } = await supabase.from('progress').select('*').in('class_code', chunk).limit(5000);
+      if (data) allRows.push(...data);
     }
 
     const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    allDocs.forEach(data => {
-      const key = `${data.studentName}-${data.classCode}`;
-      if (!studentMap[key] || new Date(data.completedAt) > new Date(studentMap[key].lastActive)) {
+    allRows.forEach(row => {
+      const key = `${row.student_name}-${row.class_code}`;
+      if (!studentMap[key] || new Date(row.completed_at) > new Date(studentMap[key].lastActive)) {
         studentMap[key] = {
-          name: data.studentName,
-          classCode: data.classCode,
-          lastActive: data.completedAt
+          name: row.student_name,
+          classCode: row.class_code,
+          lastActive: row.completed_at,
         };
       }
     });
@@ -658,16 +564,14 @@ export default function App() {
     setClassStudents(Object.values(studentMap));
   };
   const fetchGlobalLeaderboard = async () => {
-    const q = query(collection(db, "progress"), orderBy("score", "desc"), limit(10));
-    const snap = await getDocs(q);
-    const scores = snap.docs.map(doc => {
-      const data = doc.data();
-      return {
-        name: data.studentName,
-        score: data.score,
-        avatar: data.avatar || "🦊"
-      };
-    });
+    const { data } = await supabase
+      .from('progress').select('student_name, score, avatar')
+      .order('score', { ascending: false }).limit(10);
+    const scores = (data ?? []).map(row => ({
+      name: row.student_name,
+      score: row.score,
+      avatar: row.avatar || "🦊",
+    }));
     setGlobalLeaderboard(scores);
   };
   const fetchScores = async () => {
@@ -681,20 +585,18 @@ export default function App() {
 
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
-    const allDocs: { id: string; [key: string]: unknown }[] = [];
+    const allRows: ProgressData[] = [];
 
     for (const chunk of chunks) {
-      const q = query(
-        collection(db, "progress"),
-        where("classCode", "in", chunk),
-        orderBy("completedAt", "desc"),
-        limit(200)
-      );
-      const snap = await getDocs(q);
-      allDocs.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const { data } = await supabase
+        .from('progress').select('*')
+        .in('class_code', chunk)
+        .order('completed_at', { ascending: false })
+        .limit(200);
+      if (data) allRows.push(...data.map(mapProgress));
     }
 
-    setAllScores(allDocs as unknown as ProgressData[]);
+    setAllScores(allRows);
     setView("gradebook");
   };
 
@@ -833,27 +735,28 @@ export default function App() {
 
     try {
       // Dedup: check for existing progress for this assignment+mode
-      const existingQ = query(
-        collection(db, "progress"),
-        where("assignmentId", "==", activeAssignment.id),
-        where("mode", "==", gameMode),
-        where("studentName", "==", user.displayName),
-        where("classCode", "==", user.classCode || "")
-      );
-      const existingSnap = await getDocs(existingQ);
+      const { data: existingRows } = await supabase
+        .from('progress').select('*')
+        .eq('assignment_id', activeAssignment.id)
+        .eq('mode', gameMode)
+        .eq('student_name', user.displayName)
+        .eq('class_code', user.classCode || "");
 
-      if (!existingSnap.empty) {
-        const existingDoc = existingSnap.docs[0];
-        const existingData = existingDoc.data();
-        if (score > existingData.score) {
-          await setDoc(existingDoc.ref, progress);
+      if (existingRows && existingRows.length > 0) {
+        const existing = existingRows[0];
+        if (score > existing.score) {
+          const { error } = await supabase
+            .from('progress').update(mapProgressToDb(progress)).eq('id', existing.id);
+          if (error) throw error;
           setStudentProgress(prev =>
-            prev.map(p => p.id === existingDoc.id ? { id: existingDoc.id, ...progress } : p)
+            prev.map(p => p.id === existing.id ? { id: existing.id, ...progress } : p)
           );
         }
       } else {
-        const docRef = await addDoc(collection(db, "progress"), progress);
-        setStudentProgress(prev => [...prev, { id: docRef.id, ...progress }]);
+        const { data: inserted, error } = await supabase
+          .from('progress').insert(mapProgressToDb(progress)).select().single();
+        if (error) throw error;
+        setStudentProgress(prev => [...prev, { id: inserted.id, ...progress }]);
       }
 
       // Clear any queued retry for this assignment+mode
@@ -865,7 +768,7 @@ export default function App() {
       console.error("Error saving score:", error);
       // Queue for retry on next load
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.setItem(retryKey, JSON.stringify(progress));
+      localStorage.setItem(retryKey, JSON.stringify(mapProgressToDb(progress)));
       setSaveError("Your score couldn't be saved. Check your connection — it will retry automatically.");
     } finally {
       setIsSaving(false);
@@ -1179,10 +1082,11 @@ export default function App() {
                   {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
 
                   <button
-                    onClick={() => signInWithPopup(auth, googleProvider).catch((err) => {
-                      if (err?.code !== "auth/popup-closed-by-user") {
-                        setError(`Google sign-in failed (${err.code || "unknown"}). Please try again.`);
-                      }
+                    onClick={() => supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: { redirectTo: window.location.origin },
+                    }).then(({ error: err }) => {
+                      if (err) setError(`Google sign-in failed: ${err.message}. Please try again.`);
                     })}
                     className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-200 py-5 rounded-2xl font-black text-lg text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
                   >
@@ -1333,7 +1237,7 @@ export default function App() {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-black text-stone-900">Teacher Dashboard</h1>
-            <button onClick={() => signOut(auth)} className="text-stone-500 font-bold hover:text-red-500">Logout</button>
+            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500">Logout</button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1398,7 +1302,8 @@ export default function App() {
                   setView("live-challenge");
                   setIsLiveChallenge(true);
                   if (socket) {
-                    auth.currentUser?.getIdToken().then(token => {
+                    supabase.auth.getSession().then(({ data: { session } }) => {
+                      const token = session?.access_token ?? "";
                       socket.emit("join-challenge", { classCode: classes[0].code, name: user?.displayName || "Teacher", uid: user?.uid || "", token });
                     });
                   }
