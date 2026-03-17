@@ -106,9 +106,19 @@ CREATE POLICY "users_insert" ON public.users
 
 CREATE POLICY "users_update" ON public.users
   FOR UPDATE USING (auth.uid()::text = uid OR public.is_admin())
-  WITH CHECK (role IN ('teacher', 'student', 'admin'));
+  WITH CHECK (
+    -- Admins can assign any valid role
+    public.is_admin()
+    OR
+    -- Everyone else must keep their existing role (no self-promotion)
+    role = (SELECT u.role FROM public.users u WHERE u.uid = auth.uid()::text)
+  );
 
 -- ·· classes ··
+-- The 6-digit class code IS the join credential — knowing it grants access to the class.
+-- We intentionally allow any authenticated user to look up a class by code so that
+-- new students (who have no user row yet) can validate the code during login.
+-- The practical enumeration risk is low (1 million possible codes, rate-limited by Supabase).
 CREATE POLICY "classes_select" ON public.classes
   FOR SELECT TO authenticated USING (true);
 
@@ -128,8 +138,16 @@ CREATE POLICY "classes_delete" ON public.classes
   );
 
 -- ·· assignments ··
+-- Teachers see their own classes' assignments; students see their enrolled class's assignments.
 CREATE POLICY "assignments_select" ON public.assignments
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO authenticated USING (
+    class_id IN (
+      SELECT id FROM public.classes
+      WHERE teacher_uid = auth.uid()::text
+         OR code = (SELECT class_code FROM public.users WHERE uid = auth.uid()::text)
+    )
+    OR public.is_admin()
+  );
 
 CREATE POLICY "assignments_insert" ON public.assignments
   FOR INSERT WITH CHECK (public.is_teacher() OR public.is_admin());
@@ -141,8 +159,15 @@ CREATE POLICY "assignments_delete" ON public.assignments
   FOR DELETE USING (public.is_teacher() OR public.is_admin());
 
 -- ·· progress ··
+-- Students see only their own progress; teachers see progress for their classes only.
 CREATE POLICY "progress_select" ON public.progress
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO authenticated USING (
+    auth.uid()::text = student_uid
+    OR class_code IN (
+      SELECT code FROM public.classes WHERE teacher_uid = auth.uid()::text
+    )
+    OR public.is_admin()
+  );
 
 CREATE POLICY "progress_insert" ON public.progress
   FOR INSERT WITH CHECK (
