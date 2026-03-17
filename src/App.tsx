@@ -292,15 +292,19 @@ export default function App() {
         setView("teacher-dashboard");
       }
     } catch (err: any) {
+      console.error("Teacher auth error:", err.code, err.message);
       const msg: Record<string, string> = {
         "auth/user-not-found": "No account found with this email.",
         "auth/wrong-password": "Incorrect password.",
         "auth/invalid-credential": "Incorrect email or password.",
-        "auth/email-already-in-use": "An account with this email already exists.",
+        "auth/email-already-in-use": "An account with this email already exists. Try logging in instead.",
         "auth/weak-password": "Password must be at least 6 characters.",
         "auth/invalid-email": "Please enter a valid email address.",
+        "auth/operation-not-allowed": "Email sign-in is not enabled. Please contact the administrator.",
+        "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
+        "auth/network-request-failed": "Network error. Check your connection and try again.",
       };
-      setError(msg[err.code] || "Sign-in failed. Please try again.");
+      setError(msg[err.code] || `Sign-in failed (${err.code || "unknown error"}). Please try again.`);
     } finally {
       setTeacherAuthLoading(false);
     }
@@ -1258,8 +1262,9 @@ export default function App() {
 
                   <button
                     onClick={() => signInWithPopup(auth, googleProvider).catch((err) => {
+                      console.error("Google sign-in error:", err.code, err.message);
                       if (err?.code !== "auth/popup-closed-by-user") {
-                        setError("Google sign-in failed. Please allow popups and try again.");
+                        setError(`Google sign-in failed (${err.code || "unknown"}). Allow popups and try again.`);
                       }
                     })}
                     className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-100 py-4 rounded-2xl font-bold text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
