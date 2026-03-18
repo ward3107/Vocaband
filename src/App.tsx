@@ -643,6 +643,13 @@ export default function App() {
     }));
     setCustomWords(prev => [...prev, ...newCustomWords]);
     setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
+    // Switch to Custom tab so users can see the added words
+    setSelectedLevel("Custom");
+    // Clear search and filters so all words are visible
+    setWordSearchQuery("");
+    setSelectedCore("");
+    setSelectedPos("");
+    setSelectedRecProd("");
     setShowPasteDialog(false);
     setPasteUnmatched([]);
     setPasteMatchedCount(0);
