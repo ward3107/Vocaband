@@ -1449,7 +1449,7 @@ export default function App() {
                         type="text"
                         placeholder="Class Code"
                         id="class-code"
-                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-600 outline-none transition-colors font-bold text-base"
+                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
                     <div className="relative">
@@ -1458,11 +1458,11 @@ export default function App() {
                         type="text"
                         placeholder="Your Name"
                         id="student-name"
-                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-600 outline-none transition-colors font-bold text-base"
+                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
 
-                    <div className="bg-stone-50 p-5 rounded-2xl">
+                    <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 rounded-2xl shadow-inner">
                       <p className="text-xs font-black text-stone-400 uppercase mb-4 tracking-widest">Choose Avatar</p>
 
                       {/* Category Tabs */}
@@ -1471,9 +1471,9 @@ export default function App() {
                           <button
                             key={category}
                             onClick={() => setSelectedAvatarCategory(category)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-md ${
                               selectedAvatarCategory === category
-                                ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white"
+                                ? "bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 text-white shadow-lg shadow-blue-200"
                                 : "bg-stone-200 text-stone-600 hover:bg-stone-300"
                             }`}
                           >
@@ -1490,8 +1490,8 @@ export default function App() {
                             onClick={() => setStudentAvatar(a)}
                             className={`w-9.5 h-9.5 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-lg sm:text-xl transition-all ${
                               studentAvatar === a
-                                ? "bg-gradient-to-r from-blue-500 to-blue-700 shadow-lg scale-110"
-                                : "bg-white hover:bg-stone-100 hover:scale-105"
+                                ? "bg-gradient-to-br from-blue-300 via-blue-500 to-blue-800 shadow-xl shadow-blue-300 ring-2 ring-blue-400 scale-110"
+                                : "bg-white hover:bg-gradient-to-br hover:from-stone-50 hover:to-stone-100 hover:scale-105 shadow-sm"
                             }`}
                           >
                             {a}
@@ -1506,9 +1506,10 @@ export default function App() {
                         if (code && name) handleStudentLogin(code, name);
                         else alert("Please enter both code and name!");
                       }}
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-lg shadow-blue-100 hover:from-blue-600 hover:to-blue-800 transition-all active:scale-95"
+                      className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 transition-all active:scale-95 relative overflow-hidden"
                     >
-                      Join Class
+                      <span className="relative z-10">Join Class</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-300 via-transparent to-blue-600 opacity-0 hover:opacity-20 transition-opacity"></div>
                     </button>
                     {error && <p className="text-red-500 text-sm font-bold mt-2">{error}</p>}
 
