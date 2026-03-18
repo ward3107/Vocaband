@@ -162,6 +162,13 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+
+    // Serve sitemap.xml with explicit XML content type so search engines
+    // don't mistake it for an HTML page (the catch-all below returns HTML).
+    app.get("/sitemap.xml", (_req, res) => {
+      res.type("application/xml").sendFile(path.join(distPath, "sitemap.xml"));
+    });
+
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

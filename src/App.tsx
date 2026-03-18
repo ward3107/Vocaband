@@ -158,55 +158,61 @@ export default function App() {
   // --- AUTH LOGIC ---
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const supabaseUser = session.user;
-        const { data: userRow } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).maybeSingle();
-        if (userRow) {
-          const userData = mapUser(userRow);
-          setUser(userData);
-          if (userData.role === "teacher") {
-            fetchTeacherData(supabaseUser.id);
-            setView("teacher-dashboard");
-          }
-          // For students, don't change view — handleStudentLogin will do that
-        } else {
-          // Auto-create teacher account for Google sign-ins only (not anonymous)
-          const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
-          if (isGoogleSignIn) {
-            const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
-              check_email: supabaseUser.email ?? ""
-            });
-            if (!isAllowed) {
-              setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
-              await supabase.auth.signOut();
-              setLoading(false);
-              return;
+      try {
+        if (session?.user) {
+          const supabaseUser = session.user;
+          const { data: userRow } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).maybeSingle();
+          if (userRow) {
+            const userData = mapUser(userRow);
+            setUser(userData);
+            if (userData.role === "teacher") {
+              fetchTeacherData(supabaseUser.id);
+              setView("teacher-dashboard");
             }
-            const newUser: AppUser = {
-              uid: supabaseUser.id,
-              email: supabaseUser.email || "",
-              role: "teacher",
-              displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
-            };
-            await supabase.from('users').insert(mapUserToDb(newUser));
-            setUser(newUser);
-            setView("teacher-dashboard");
+            // For students, don't change view — handleStudentLogin will do that
+          } else {
+            // Auto-create teacher account for Google sign-ins only (not anonymous)
+            const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
+            if (isGoogleSignIn) {
+              const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
+                check_email: supabaseUser.email ?? ""
+              });
+              if (!isAllowed) {
+                setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
+                await supabase.auth.signOut();
+                return;
+              }
+              const newUser: AppUser = {
+                uid: supabaseUser.id,
+                email: supabaseUser.email || "",
+                role: "teacher",
+                displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
+              };
+              await supabase.from('users').insert(mapUserToDb(newUser));
+              setUser(newUser);
+              setView("teacher-dashboard");
+            }
+            // For anonymous users (students), handleStudentLogin creates the profile
           }
-          // For anonymous users (students), handleStudentLogin creates the profile
+        } else {
+          setUser(null);
+          setView("landing");
         }
-      } else {
+      } catch (err) {
+        console.error("Auth state change error:", err);
         setUser(null);
         setView("landing");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => subscription.unsubscribe();
   }, []);
 
   // Safety timeout: if auth state never resolves (e.g. offline on mobile refresh),
-  // stop the spinner after 8 seconds so the app doesn't hang forever.
+  // stop the spinner after 3 seconds so the app doesn't hang forever.
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 8000);
+    const timeout = setTimeout(() => setLoading(false), 3000);
     return () => clearTimeout(timeout);
   }, []);
 
