@@ -1769,82 +1769,50 @@ export default function App() {
               <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={16} /></button>
             </div>
             {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
-              <div className="space-y-1 sm:space-y-1">
-                {[...classes].reverse().map(c => {
-                  const isExpanded = expandedClassIds.has(c.id);
-                  return (
-                    <div key={c.id} className="bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow overflow-hidden">
-                      {/* Header - always visible, clickable to toggle */}
-                      <div
-                        onClick={() => toggleClassExpanded(c.id)}
-                        className="flex items-center justify-between p-2 sm:p-3 cursor-pointer hover:bg-stone-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-stone-800 text-sm">{c.name}</p>
-                          <p className="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-bold">{c.code}</p>
-                        </div>
-                        <ChevronRight
-                          size={16}
-                          className={`text-stone-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
-                        />
-                      </div>
-
-                      {/* Expanded content */}
-                      {isExpanded && (
-                        <div className="px-2 pb-2 sm:px-4 sm:pb-4">
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-stone-200">
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(c.code);
-                                  setCopiedCode(c.code);
-                                  setTimeout(() => setCopiedCode(null), 2000);
-                                }}
-                                className="p-1.5 sm:p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
-                                title="Copy Code"
-                              >
-                                {copiedCode === c.code ? <Check size={14} className="text-blue-700" /> : <Copy size={14} />}
-                              </button>
-                              <a
-                                href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1.5 sm:p-2 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                                title="Share on WhatsApp"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MessageCircle size={14} />
-                              </a>
-                            </div>
-                            <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedClass(c);
-                                  setView("create-assignment");
-                                }}
-                                className="flex-1 sm:flex-none text-blue-700 font-bold text-xs sm:text-sm hover:underline py-1"
-                              >
-                                Assign Words
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteClass(c.id);
-                                }}
-                                className="p-1.5 sm:p-2 text-stone-400 hover:text-red-500 transition-colors"
-                                title="Delete Class"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+              <div className="space-y-1 sm:space-y-2">
+                {[...classes].reverse().map(c => (
+                  <div key={c.id} className="flex items-center justify-between gap-2 p-2 sm:p-3 bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-bold text-stone-800 text-sm truncate">{c.name}</p>
+                      <p className="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-bold flex-shrink-0">{c.code}</p>
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(c.code);
+                          setCopiedCode(c.code);
+                          setTimeout(() => setCopiedCode(null), 2000);
+                        }}
+                        className="p-1.5 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Copy Code"
+                      >
+                        {copiedCode === c.code ? <Check size={14} className="text-blue-700" /> : <Copy size={14} />}
+                      </button>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                        title="Share on WhatsApp"
+                      >
+                        <MessageCircle size={14} />
+                      </a>
+                      <button
+                        onClick={() => { setSelectedClass(c); setView("create-assignment"); }}
+                        className="px-3 py-1 text-blue-700 font-bold text-xs hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        Assign
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClass(c.id)}
+                        className="p-1.5 text-stone-400 hover:text-red-500 transition-colors"
+                        title="Delete Class"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
