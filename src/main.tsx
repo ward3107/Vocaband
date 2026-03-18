@@ -5,7 +5,7 @@ import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
-registerSW({ immediate: true });
+registerSW();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
