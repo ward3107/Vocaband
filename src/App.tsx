@@ -174,8 +174,26 @@ export default function App() {
             if (userData.role === "teacher") {
               fetchTeacherData(supabaseUser.id);
               setView("teacher-dashboard");
+            } else if (userData.role === "student" && userData.classCode) {
+              // Restore student dashboard on page refresh — load their assignments
+              // and progress exactly as handleStudentLogin does.
+              const code = userData.classCode;
+              const { data: classRows } = await supabase
+                .from('classes').select('*').eq('code', code);
+              if (classRows && classRows.length > 0) {
+                const classData = mapClass(classRows[0]);
+                const { data: assignRows } = await supabase
+                  .from('assignments').select('*').eq('class_id', classData.id);
+                setStudentAssignments((assignRows ?? []).map(mapAssignment));
+                const { data: progressRows } = await supabase
+                  .from('progress').select('*')
+                  .eq('class_code', code)
+                  .eq('student_uid', supabaseUser.id);
+                setStudentProgress((progressRows ?? []).map(mapProgress));
+              }
+              setBadges(userData.badges || []);
+              setView("student-dashboard");
             }
-            // For students, don't change view — handleStudentLogin will do that
           } else {
             // Auto-create teacher account for Google sign-ins only (not anonymous)
             const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
@@ -198,7 +216,6 @@ export default function App() {
               setUser(newUser);
               setView("teacher-dashboard");
             }
-            // For anonymous users (students), handleStudentLogin creates the profile
           }
         } else {
           setUser(null);
