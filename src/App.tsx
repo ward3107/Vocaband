@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
 import {
   Volume2, 
@@ -247,6 +247,10 @@ export default function App() {
   const [selectedCore, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
   const [selectedPos, setSelectedPos] = useState<string>("");
   const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
+
+  // --- PERFORMANCE OPTIMIZATIONS ---
+  // Use Set for O(1) lookup instead of array.includes() which is O(n)
+  const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -651,6 +655,17 @@ export default function App() {
     setPasteMatchedCount(0);
   };
 
+  // --- PERFORMANCE: Memoized toggle function to prevent re-renders
+  const toggleWordSelection = useCallback((wordId: number) => {
+    setSelectedWords(prev => {
+      if (prev.includes(wordId)) {
+        return prev.filter(id => id !== wordId);
+      } else {
+        return [...prev, wordId];
+      }
+    });
+  }, []);
+
   const currentLevelWords = useMemo(() => {
     let words = selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
 
@@ -689,7 +704,7 @@ export default function App() {
 
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToSave = uniqueWords.filter(w => selectedWords.includes(w.id));
+    const wordsToSave = uniqueWords.filter(w => selectedWordsSet.has(w.id));
     
     const newAssignment = {
       classId: selectedClass.id,
@@ -733,7 +748,7 @@ export default function App() {
     // Get the selected words
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToPreview = uniqueWords.filter(w => selectedWords.includes(w.id));
+    const wordsToPreview = uniqueWords.filter(w => selectedWordsSet.has(w.id));
 
     // Create a temporary assignment object with selected modes
     const previewAssignment: AssignmentData = {
@@ -1944,7 +1959,7 @@ Example formats:
               />
               <div className="flex justify-between items-center mt-2">
                 <span className="text-xs text-blue-600">
-                  {pastedText.trim() && `${extractWordsFromPaste(pastedText).length} words detected`}
+                  {pastedText.trim() && "✓ Text ready to extract"}
                 </span>
                 <button
                   onClick={handlePasteSubmit}
@@ -2072,27 +2087,24 @@ Example formats:
 
             {/* Compact Word List with Tap-to-Add */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-stone-50 rounded-2xl border-2 border-stone-100">
-              {currentLevelWords.map(word => (
-                <button
-                  key={word.id}
-                  onClick={() => {
-                    if (selectedWords.includes(word.id)) {
-                      setSelectedWords(selectedWords.filter(id => id !== word.id));
-                    } else {
-                      setSelectedWords([...selectedWords, word.id]);
-                    }
-                  }}
-                  className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-stone-100 border border-stone-200"}`}
-                >
-                  <div>
-                    <p className={`font-bold ${selectedWords.includes(word.id) ? "text-white" : "text-stone-900"}`}>{word.english}</p>
-                    <p className={`text-xs truncate ${selectedWords.includes(word.id) ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
-                  </div>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${selectedWords.includes(word.id) ? "bg-white/20" : "bg-stone-100"}`}>
-                    {selectedWords.includes(word.id) ? "✓" : "+"}
-                  </div>
-                </button>
-              ))}
+              {currentLevelWords.map(word => {
+                const isSelected = selectedWordsSet.has(word.id);
+                return (
+                  <button
+                    key={word.id}
+                    onClick={() => toggleWordSelection(word.id)}
+                    className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-stone-100 border border-stone-200"}`}
+                  >
+                    <div>
+                      <p className={`font-bold ${isSelected ? "text-white" : "text-stone-900"}`}>{word.english}</p>
+                      <p className={`text-xs truncate ${isSelected ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
+                    </div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-white/20" : "bg-stone-100"}`}>
+                      {isSelected ? "✓" : "+"}
+                    </div>
+                  </button>
+                );
+              })}
               {currentLevelWords.length === 0 && (
                 <p className="col-span-full text-center py-8 text-stone-400 italic">
                   No words found. Try a different search.
