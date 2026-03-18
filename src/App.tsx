@@ -1698,106 +1698,19 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-6 sm:mb-8">
+          <div className="flex justify-between items-center mb-4 sm:mb-8">
             <div>
-              <p className="text-base sm:text-sm text-stone-500">Welcome back,</p>
-              <h1 className="text-2xl sm:text-3xl font-black text-stone-900">{user?.displayName || "Teacher"}</h1>
+              <p className="text-xs sm:text-sm text-stone-500">Welcome back,</p>
+              <h1 className="text-xl sm:text-3xl font-black text-stone-900">{user?.displayName || "Teacher"}</h1>
             </div>
-            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm px-4 py-2 bg-white rounded-xl shadow-sm">Logout</button>
+            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm">Logout</button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-            <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md">
-              <div className="flex justify-between items-center mb-2 sm:mb-6">
-                <h2 className="text-sm sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
-                <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={16} /></button>
-              </div>
-              {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
-                <div className="space-y-1 sm:space-y-1">
-                  {[...classes].reverse().map(c => {
-                    const isExpanded = expandedClassIds.has(c.id);
-                    return (
-                      <div key={c.id} className="bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow overflow-hidden">
-                        {/* Header - always visible, clickable to toggle */}
-                        <div
-                          onClick={() => toggleClassExpanded(c.id)}
-                          className="flex items-center justify-between p-2 sm:p-3 cursor-pointer hover:bg-stone-100 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-stone-800 text-sm">{c.name}</p>
-                            <p className="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-bold">{c.code}</p>
-                          </div>
-                          <ChevronRight
-                            size={16}
-                            className={`text-stone-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
-                          />
-                        </div>
-
-                        {/* Expanded content */}
-                        {isExpanded && (
-                          <div className="px-2 pb-2 sm:px-4 sm:pb-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-stone-200">
-                              <div className="flex items-center gap-1.5 sm:gap-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(c.code);
-                                    setCopiedCode(c.code);
-                                    setTimeout(() => setCopiedCode(null), 2000);
-                                  }}
-                                  className="p-1.5 sm:p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
-                                  title="Copy Code"
-                                >
-                                  {copiedCode === c.code ? <Check size={14} className="text-blue-700" /> : <Copy size={14} />}
-                                </button>
-                                <a
-                                  href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1.5 sm:p-2 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                                  title="Share on WhatsApp"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MessageCircle size={14} />
-                                </a>
-                              </div>
-                              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedClass(c);
-                                    setView("create-assignment");
-                                  }}
-                                  className="flex-1 sm:flex-none text-blue-700 font-bold text-xs sm:text-sm hover:underline py-1"
-                                >
-                                  Assign Words
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClass(c.id);
-                                  }}
-                                  className="p-1.5 sm:p-2 text-stone-400 hover:text-red-500 transition-colors"
-                                  title="Delete Class"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <RefreshCw className="text-blue-600 mb-4 sm:mb-4" size={52} />
-              <h2 className="text-lg sm:text-xl font-bold mb-2 sm:mb-2">Live Challenge</h2>
-              <p className="text-stone-500 mb-6 text-base sm:text-sm">Start a real-time competition for your class.</p>
-              <button onClick={() => { 
+          {/* Quick Action Cards Grid - More compact on mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+            {/* Live Challenge */}
+            <button
+              onClick={() => {
                 if (classes.length === 0) alert("Create a class first!");
                 else {
                   setSelectedClass(classes[0]);
@@ -1810,29 +1723,130 @@ export default function App() {
                     });
                   }
                 }
-              }} className="w-full py-4 sm:py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-base sm:text-sm">Start Challenge</button>
-            </div>
+              }}
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+            >
+              <RefreshCw className="text-blue-600 mb-2 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
+              <h2 className="text-xs sm:text-base font-bold mb-1">Live Challenge</h2>
+              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Real-time competition</p>
+            </button>
 
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <BarChart3 className="text-purple-600 mb-4" size={52} />
-              <h2 className="text-lg sm:text-xl font-bold mb-2">Analytics</h2>
-              <p className="text-stone-500 mb-6 text-base sm:text-sm">Deep dive into class performance and difficulty.</p>
-              <button onClick={() => { fetchScores(); setView("analytics"); }} className="w-full py-4 sm:py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors text-base sm:text-sm">View Insights</button>
-            </div>
+            {/* Analytics */}
+            <button
+              onClick={() => { fetchScores(); setView("analytics"); }}
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+            >
+              <BarChart3 className="text-purple-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+              <h2 className="text-xs sm:text-base font-bold mb-1">Analytics</h2>
+              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Class insights</p>
+            </button>
 
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <UserCircle className="text-orange-600 mb-4" size={52} />
-              <h2 className="text-lg sm:text-xl font-bold mb-2">Students</h2>
-              <p className="text-stone-500 mb-6 text-base sm:text-sm">Manage and view all students in your classes.</p>
-              <button onClick={() => { fetchStudents(); setView("students"); }} className="w-full py-4 sm:py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors text-base sm:text-sm">View Students</button>
-            </div>
+            {/* Students */}
+            <button
+              onClick={() => { fetchStudents(); setView("students"); }}
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+            >
+              <UserCircle className="text-orange-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+              <h2 className="text-xs sm:text-base font-bold mb-1">Students</h2>
+              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Manage students</p>
+            </button>
 
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <Trophy className="text-blue-700 mb-4" size={52} />
-              <h2 className="text-lg sm:text-xl font-bold mb-2">Gradebook</h2>
-              <p className="text-stone-500 mb-6 text-base sm:text-sm">Track your students' progress and scores.</p>
-              <button onClick={() => { fetchScores(); setView("gradebook"); }} className="w-full py-4 sm:py-3 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors text-base sm:text-sm">View Scores</button>
+            {/* Gradebook */}
+            <button
+              onClick={() => { fetchScores(); setView("gradebook"); }}
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+            >
+              <Trophy className="text-blue-700 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+              <h2 className="text-xs sm:text-base font-bold mb-1">Gradebook</h2>
+              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Track progress</p>
+            </button>
+          </div>
+
+          {/* My Classes - Full width below */}
+          <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md">
+            <div className="flex justify-between items-center mb-2 sm:mb-6">
+              <h2 className="text-sm sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
+              <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={16} /></button>
             </div>
+            {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
+              <div className="space-y-1 sm:space-y-1">
+                {[...classes].reverse().map(c => {
+                  const isExpanded = expandedClassIds.has(c.id);
+                  return (
+                    <div key={c.id} className="bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow overflow-hidden">
+                      {/* Header - always visible, clickable to toggle */}
+                      <div
+                        onClick={() => toggleClassExpanded(c.id)}
+                        className="flex items-center justify-between p-2 sm:p-3 cursor-pointer hover:bg-stone-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-stone-800 text-sm">{c.name}</p>
+                          <p className="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-bold">{c.code}</p>
+                        </div>
+                        <ChevronRight
+                          size={16}
+                          className={`text-stone-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                        />
+                      </div>
+
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div className="px-2 pb-2 sm:px-4 sm:pb-4">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-stone-200">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(c.code);
+                                  setCopiedCode(c.code);
+                                  setTimeout(() => setCopiedCode(null), 2000);
+                                }}
+                                className="p-1.5 sm:p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                                title="Copy Code"
+                              >
+                                {copiedCode === c.code ? <Check size={14} className="text-blue-700" /> : <Copy size={14} />}
+                              </button>
+                              <a
+                                href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 sm:p-2 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                title="Share on WhatsApp"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MessageCircle size={14} />
+                              </a>
+                            </div>
+                            <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedClass(c);
+                                  setView("create-assignment");
+                                }}
+                                className="flex-1 sm:flex-none text-blue-700 font-bold text-xs sm:text-sm hover:underline py-1"
+                              >
+                                Assign Words
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClass(c.id);
+                                }}
+                                className="p-1.5 sm:p-2 text-stone-400 hover:text-red-500 transition-colors"
+                                title="Delete Class"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
