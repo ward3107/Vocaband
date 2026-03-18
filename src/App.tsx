@@ -189,16 +189,15 @@ export default function App() {
   };
 
   const ASSIGNMENT_TITLE_SUGGESTIONS = [
-    "Weekly Vocabulary Quiz",
-    "Band 2 Words Review",
-    "Common Nouns Practice",
-    "Verbs Challenge",
-    "Adjectives Test",
-    "Daily Words Assessment",
-    "Unit 1 Vocabulary",
-    "Unit 2 Vocabulary",
-    "Unit 3 Vocabulary",
-    "Unit 4 Vocabulary",
+    "Classic Mode Practice",
+    "Listening Challenge",
+    "Spelling Bee",
+    "Matching Pairs",
+    "True or False",
+    "Flashcard Review",
+    "Word Scramble",
+    "Reverse Mode",
+    "Mixed Modes Practice",
     "Unit 5 Vocabulary",
     "Midterm Review",
     "Final Exam Practice",
@@ -251,6 +250,26 @@ export default function App() {
   // --- CLASS CARDS COLLAPSE STATE ---
   // Track which class IDs are expanded (Set for O(1) lookup)
   const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
+
+  // --- TOAST NOTIFICATIONS STATE ---
+  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  };
+
+  // --- CONFIRMATION DIALOG STATE ---
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean,
+    message: string,
+    onConfirm: () => void
+  }>({ show: false, message: '', onConfirm: () => {} });
+
+  // --- ASSIGNMENT WELCOME POPUP STATE ---
+  const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(true);
   const toggleClassExpanded = (classId: string) => {
     setExpandedClassIds(prev => {
       const newSet = new Set(prev);
@@ -305,6 +324,13 @@ export default function App() {
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
+
+  // Reset welcome popup when entering assignment creation view
+  useEffect(() => {
+    if (view === "create-assignment") {
+      setShowAssignmentWelcome(true);
+    }
+  }, [view]);
 
   useEffect(() => {
     const s = io({ reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 1000 });
@@ -510,7 +536,7 @@ export default function App() {
       setCreatedClassCode(code);
     } catch (error) {
       console.error("Error creating class:", error);
-      alert("Failed to create class.");
+      showToast("Failed to create class.", "error");
     }
   };
 
@@ -574,17 +600,17 @@ export default function App() {
       const matchedWords = ALL_WORDS.filter(w => wordsInText.includes(w.english.toLowerCase()));
       
       if (matchedWords.length === 0) {
-        alert("No words from our vocabulary bank were found in this image.");
+        showToast("No words from our vocabulary bank were found in this image.", "info");
       } else {
         // 4. Add the matched words to the Custom tab and select them
         setCustomWords(matchedWords);
         setSelectedLevel("Custom");
         setSelectedWords(matchedWords.map(w => w.id));
-        alert(`Found ${matchedWords.length} words from the vocabulary bank!`);
+        showToast(`Found ${matchedWords.length} words from the vocabulary bank!`, "success");
       }
     } catch (err) {
       console.error("OCR Error:", err);
-      alert("Error processing image. Please try again.");
+      showToast("Error processing image. Please try again.", "error");
     } finally {
       setIsOcrProcessing(false);
       setOcrProgress(0);
@@ -720,7 +746,7 @@ export default function App() {
   }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd]);
   const handleSaveAssignment = async () => {
     if (!selectedClass || selectedWords.length === 0 || !assignmentTitle) {
-      alert("Please enter a title and select words.");
+      showToast("Please enter a title and select words.", "error");
       return;
     }
 
@@ -749,7 +775,7 @@ export default function App() {
         allowed_modes: newAssignment.allowedModes,
       });
       if (error) throw error;
-      alert("Assignment created successfully!");
+      showToast("Assignment created successfully!", "success");
       setView("teacher-dashboard");
       setSelectedWords([]);
       setAssignmentTitle("");
@@ -763,7 +789,7 @@ export default function App() {
   // Preview the assignment with selected words and modes (for teachers)
   const handlePreviewAssignment = () => {
     if (selectedWords.length === 0) {
-      alert("Please select at least one word to preview.");
+      showToast("Please select at least one word to preview.", "error");
       return;
     }
 
@@ -792,18 +818,21 @@ export default function App() {
   };
 
   const handleDeleteClass = async (classId: string) => {
-    if (!window.confirm("Are you sure you want to delete this class? This will also remove access for all students in this class.")) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('classes').delete().eq('id', classId);
-      if (error) throw error;
-      setClasses(prev => prev.filter(c => c.id !== classId));
-      alert("Class deleted successfully.");
-    } catch (error) {
-      handleDbError(error, OperationType.DELETE, `classes/${classId}`);
-    }
+    setConfirmDialog({
+      show: true,
+      message: "Are you sure you want to delete this class? This will also remove access for all students in this class.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from('classes').delete().eq('id', classId);
+          if (error) throw error;
+          setClasses(prev => prev.filter(c => c.id !== classId));
+          showToast("Class deleted successfully.", "success");
+        } catch (error) {
+          handleDbError(error, OperationType.DELETE, `classes/${classId}`);
+        }
+        setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+      }
+    });
   };
 
   const handleStudentLogin = async (code: string, name: string) => {
@@ -1511,7 +1540,7 @@ export default function App() {
                         const code = (document.getElementById("class-code") as HTMLInputElement).value;
                         const name = (document.getElementById("student-name") as HTMLInputElement).value;
                         if (code && name) handleStudentLogin(code, name);
-                        else alert("Please enter both code and name!");
+                        else showToast("Please enter both code and name!", "error");
                       }}
                       className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 transition-all active:scale-95 relative overflow-hidden"
                     >
@@ -1703,7 +1732,7 @@ export default function App() {
               <p className="text-xs sm:text-sm text-stone-500">Welcome back,</p>
               <h1 className="text-xl sm:text-3xl font-black text-stone-900">{user?.displayName || "Teacher"}</h1>
             </div>
-            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm">Logout</button>
+            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm border-2 border-blue-100 hover:border-red-200">Logout</button>
           </div>
 
           {/* Quick Action Cards Grid - More compact on mobile */}
@@ -1711,7 +1740,7 @@ export default function App() {
             {/* Live Challenge */}
             <button
               onClick={() => {
-                if (classes.length === 0) alert("Create a class first!");
+                if (classes.length === 0) showToast("Create a class first!", "error");
                 else {
                   setSelectedClass(classes[0]);
                   setView("live-challenge");
@@ -1724,7 +1753,7 @@ export default function App() {
                   }
                 }
               }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
             >
               <RefreshCw className="text-blue-600 mb-2 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
               <h2 className="text-xs sm:text-base font-bold mb-1">Live Challenge</h2>
@@ -1734,7 +1763,7 @@ export default function App() {
             {/* Analytics */}
             <button
               onClick={() => { fetchScores(); setView("analytics"); }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
             >
               <BarChart3 className="text-purple-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
               <h2 className="text-xs sm:text-base font-bold mb-1">Analytics</h2>
@@ -1744,7 +1773,7 @@ export default function App() {
             {/* Students */}
             <button
               onClick={() => { fetchStudents(); setView("students"); }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
             >
               <UserCircle className="text-orange-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
               <h2 className="text-xs sm:text-base font-bold mb-1">Students</h2>
@@ -1754,7 +1783,7 @@ export default function App() {
             {/* Gradebook */}
             <button
               onClick={() => { fetchScores(); setView("gradebook"); }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-shadow group"
+              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
             >
               <Trophy className="text-blue-700 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
               <h2 className="text-xs sm:text-base font-bold mb-1">Gradebook</h2>
@@ -1763,18 +1792,18 @@ export default function App() {
           </div>
 
           {/* My Classes - Full width below */}
-          <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md">
+          <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100">
             <div className="flex justify-between items-center mb-2 sm:mb-6">
               <h2 className="text-sm sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
-              <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={16} /></button>
+              <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 border-2 border-blue-200"><Plus size={16} /></button>
             </div>
             {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
               <div className="space-y-1 sm:space-y-2">
                 {[...classes].reverse().map(c => (
-                  <div key={c.id} className="flex items-center justify-between gap-2 p-2 sm:p-3 bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow">
+                  <div key={c.id} className="flex items-center justify-between gap-2 p-2 sm:p-3 bg-blue-50/50 rounded-xl border-2 border-blue-200 hover:shadow-md hover:border-blue-300 transition-all">
                     <div className="flex items-center gap-2 min-w-0">
                       <p className="font-bold text-stone-800 text-sm truncate">{c.name}</p>
-                      <p className="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-bold flex-shrink-0">{c.code}</p>
+                      <p className="text-sm font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-lg font-bold flex-shrink-0">{c.code}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
@@ -1783,29 +1812,29 @@ export default function App() {
                           setCopiedCode(c.code);
                           setTimeout(() => setCopiedCode(null), 2000);
                         }}
-                        className="p-1.5 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all border border-blue-200"
                         title="Copy Code"
                       >
-                        {copiedCode === c.code ? <Check size={14} className="text-blue-700" /> : <Copy size={14} />}
+                        {copiedCode === c.code ? <Check size={16} className="text-blue-700" /> : <Copy size={16} />}
                       </button>
                       <a
                         href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                        className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all border border-green-200"
                         title="Share on WhatsApp"
                       >
-                        <MessageCircle size={14} />
+                        <MessageCircle size={16} />
                       </a>
                       <button
                         onClick={() => { setSelectedClass(c); setView("create-assignment"); }}
-                        className="px-3 py-1 text-blue-700 font-bold text-xs hover:bg-blue-50 rounded-lg transition-all"
+                        className="px-4 py-2 text-blue-700 font-bold text-sm hover:bg-blue-50 rounded-lg transition-all border-2 border-blue-200"
                       >
                         Assign
                       </button>
                       <button
                         onClick={() => handleDeleteClass(c.id)}
-                        className="p-1.5 text-stone-400 hover:text-red-500 transition-colors"
+                        className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all border border-red-200 rounded-lg"
                         title="Delete Class"
                       >
                         <Trash2 size={14} />
@@ -1836,12 +1865,12 @@ export default function App() {
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
                   placeholder="Class Name"
-                  className="w-full px-6 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-600 outline-none mb-6 font-bold"
+                  className="w-full px-6 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-600 outline-none mb-6 font-bold"
                 />
                 <div className="flex gap-3">
                   <button 
                     onClick={() => setShowCreateClassModal(false)}
-                    className="flex-1 py-4 rounded-2xl font-bold text-stone-400 hover:bg-stone-50 transition-colors"
+                    className="flex-1 py-4 rounded-2xl font-bold text-stone-400 hover:bg-stone-50 transition-colors border-2 border-stone-200"
                   >
                     Cancel
                   </button>
@@ -1886,7 +1915,7 @@ export default function App() {
                       setCopiedCode(createdClassCode);
                       setTimeout(() => setCopiedCode(null), 2000);
                     }}
-                    className="py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2 hover:scale-105"
+                    className="py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2 border-blue-200"
                   >
                     {copiedCode === createdClassCode ? <Check size={20} className="text-blue-700" /> : <Copy size={20} />}
                     <span>Copy</span>
@@ -1912,6 +1941,69 @@ export default function App() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Toast Notifications */}
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
+          <AnimatePresence>
+            {toasts.map(toast => (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                className={`px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
+                  toast.type === 'success' ? 'bg-green-600 text-white' :
+                  toast.type === 'error' ? 'bg-red-600 text-white' :
+                  'bg-blue-600 text-white'
+                }`}
+              >
+                {toast.type === 'success' && <CheckCircle2 size={24} />}
+                {toast.type === 'error' && <AlertTriangle size={24} />}
+                {toast.type === 'info' && <Info size={24} />}
+                <span>{toast.message}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Confirmation Dialog */}
+        <AnimatePresence>
+          {confirmDialog.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-2xl font-black mb-3 text-stone-900">Confirm Action</h3>
+                <p className="text-stone-600 mb-8">{confirmDialog.message}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
+                    className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDialog.onConfirm}
+                    className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -1920,10 +2012,9 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-3xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
           <div className="bg-white rounded-[40px] shadow-xl p-10">
             <h2 className="text-3xl font-black mb-2 text-stone-900">Assign to {selectedClass.name}</h2>
-            <p className="text-stone-500 mb-8">Select a level or upload your own list.</p>
 
             <div className="space-y-4 mb-8">
               <div className="space-y-4">
@@ -1933,7 +2024,7 @@ export default function App() {
                   list="assignment-titles"
                   value={assignmentTitle}
                   onChange={(e) => setAssignmentTitle(e.target.value)}
-                  className="w-full p-4 rounded-2xl border border-stone-200"
+                  className="w-full p-4 rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
                 />
                 <datalist id="assignment-titles">
                   {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
@@ -1945,7 +2036,7 @@ export default function App() {
                     type="date" 
                     value={assignmentDeadline} 
                     onChange={(e) => setAssignmentDeadline(e.target.value)}
-                    className={`w-full p-4 rounded-2xl border ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-stone-200'}`}
+                    className={`w-full p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
                   />
                   {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
                     <p className="text-red-500 text-sm font-bold ml-2">Warning: Deadline is in the past!</p>
@@ -1974,7 +2065,7 @@ export default function App() {
                     <button
                       key={mode}
                       onClick={() => setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                      className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${assignmentModes.includes(mode) ? "bg-blue-700 text-white shadow-md" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
+                      className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${assignmentModes.includes(mode) ? "bg-blue-700 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
                     >
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
                     </button>
@@ -2021,7 +2112,7 @@ Example formats:
                 <button
                   key={level}
                   onClick={() => setSelectedLevel(level)}
-                  className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg shadow-blue-100" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
+                  className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg shadow-blue-100" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
                 >
                   {level}
                 </button>
@@ -2059,7 +2150,7 @@ Example formats:
                 placeholder="🔍 Search words..."
                 value={wordSearchQuery}
                 onChange={(e) => setWordSearchQuery(e.target.value)}
-                className="w-full p-3 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full p-3 rounded-xl border-2 border-blue-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
               />
             </div>
 
@@ -2071,7 +2162,7 @@ Example formats:
                   <select
                     value={selectedCore}
                     onChange={(e) => setSelectedCore(e.target.value as any)}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
                   >
                     <option value="">All Core</option>
                     <option value="Core I">Core I</option>
@@ -2082,7 +2173,7 @@ Example formats:
                   <select
                     value={selectedPos}
                     onChange={(e) => setSelectedPos(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
                   >
                     <option value="">All POS</option>
                     <option value="n">Nouns</option>
@@ -2097,7 +2188,7 @@ Example formats:
                   <select
                     value={selectedRecProd}
                     onChange={(e) => setSelectedRecProd(e.target.value as any)}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
                   >
                     <option value="">All Types</option>
                     <option value="Rec">Receptive</option>
@@ -2113,7 +2204,7 @@ Example formats:
                         setSelectedRecProd("");
                         setWordSearchQuery("");
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all"
+                      className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all border-2 border-red-200"
                     >
                       ✕ Clear
                     </button>
@@ -2131,14 +2222,14 @@ Example formats:
             )}
 
             {/* Compact Word List with Tap-to-Add */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-stone-50 rounded-2xl border-2 border-stone-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-blue-50/50 rounded-2xl border-2 border-blue-100">
               {currentLevelWords.map(word => {
                 const isSelected = selectedWordsSet.has(word.id);
                 return (
                   <button
                     key={word.id}
                     onClick={() => toggleWordSelection(word.id)}
-                    className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-stone-100 border border-stone-200"}`}
+                    className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
                   >
                     <div>
                       <p className={`font-bold ${isSelected ? "text-white" : "text-stone-900"}`}>{word.english}</p>
@@ -2158,7 +2249,7 @@ Example formats:
             </div>
 
             {/* Selection Summary */}
-            <div className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-stone-200">
+            <div className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-blue-100">
               <span className="font-bold text-stone-700">
                 {selectedWords.length} words selected
               </span>
@@ -2239,7 +2330,7 @@ Example formats:
                       </button>
                       <button
                         onClick={handleSkipUnmatched}
-                        className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all"
+                        className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
                       >
                         Skip
                       </button>
@@ -2257,6 +2348,62 @@ Example formats:
             </div>
           )}
         </div>
+
+        {/* Assignment Creation Welcome Popup */}
+        <AnimatePresence>
+          {showAssignmentWelcome && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+              >
+                <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <BookOpen size={40} />
+                </div>
+                <h3 className="text-2xl font-black mb-4 text-stone-900">Create Assignment</h3>
+                <p className="text-stone-600 mb-6 text-lg">Select a level or upload your own list to get started.</p>
+
+                <div className="space-y-3 mb-6 text-left">
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+                    <span className="text-2xl">📋</span>
+                    <div>
+                      <p className="font-bold text-stone-800">Quick Paste</p>
+                      <p className="text-sm text-stone-600">Paste word lists from PDFs, Word docs, or emails</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
+                    <span className="text-2xl">📚</span>
+                    <div>
+                      <p className="font-bold text-stone-800">Band 2 Words</p>
+                      <p className="text-sm text-stone-600">Choose from 1000+ vocabulary words</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
+                    <span className="text-2xl">📤</span>
+                    <div>
+                      <p className="font-bold text-stone-800">Upload Custom</p>
+                      <p className="text-sm text-stone-600">Upload CSV or scan with OCR</p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowAssignmentWelcome(false)}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  Got it, let's start! →
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -2359,18 +2506,19 @@ Example formats:
     return (
       <div className="min-h-screen bg-blue-600 p-6 text-white">
         <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12">
-            <div>
-              <h1 className="text-2xl sm:text-4xl font-black">Live Challenge: {selectedClass.name}</h1>
-              <p className="text-blue-100 font-bold mt-2 text-sm sm:text-base">Students join with code: <span className="bg-white text-blue-600 px-3 py-1 rounded-lg font-mono ml-2">{selectedClass.code}</span></p>
-            </div>
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
+            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm">
                 <span className={`w-2 h-2 rounded-full ${socketConnected ? "bg-green-400" : "bg-red-400 animate-pulse"}`} />
                 <span className="text-blue-100">{socketConnected ? "Live" : "Reconnecting..."}</span>
               </div>
-              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-white/20 hover:bg-white/30 px-4 sm:px-6 py-2 rounded-full font-bold transition-colors text-sm sm:text-base">End Challenge</button>
+              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-colors text-sm sm:text-base shadow-lg">End Challenge</button>
             </div>
+          </div>
+          <div className="mb-4 sm:mb-8">
+            <h1 className="text-2xl sm:text-4xl font-black">Live Challenge: {selectedClass.name}</h1>
+            <p className="text-blue-100 font-bold mt-2 text-sm sm:text-base">Students join with code: <span className="bg-white text-blue-600 px-3 py-1 rounded-lg font-mono ml-2">{selectedClass.code}</span></p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -2413,7 +2561,7 @@ Example formats:
     return (
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-2xl mx-auto">
-          <button onClick={() => setView("landing")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back</button>
+          <button onClick={() => setView("landing")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
           <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-4 bg-yellow-100 rounded-3xl">
@@ -2497,7 +2645,7 @@ Example formats:
       <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm">← Back</button>
+            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
             <h1 className="text-xl sm:text-3xl font-black text-stone-900">Student Performance Matrix</h1>
             <button
               onClick={() => setAllScores(TEST_ANALYTICS_DATA)}
@@ -2807,6 +2955,69 @@ Example formats:
           disabled={isSaving}
           className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >Done</button>
+
+        {/* Toast Notifications */}
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
+          <AnimatePresence>
+            {toasts.map(toast => (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                className={`px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
+                  toast.type === 'success' ? 'bg-green-600 text-white' :
+                  toast.type === 'error' ? 'bg-red-600 text-white' :
+                  'bg-blue-600 text-white'
+                }`}
+              >
+                {toast.type === 'success' && <CheckCircle2 size={24} />}
+                {toast.type === 'error' && <AlertTriangle size={24} />}
+                {toast.type === 'info' && <Info size={24} />}
+                <span>{toast.message}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Confirmation Dialog */}
+        <AnimatePresence>
+          {confirmDialog.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-2xl font-black mb-3 text-stone-900">Confirm Action</h3>
+                <p className="text-stone-600 mb-8">{confirmDialog.message}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
+                    className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDialog.onConfirm}
+                    className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
