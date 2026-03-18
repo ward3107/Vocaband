@@ -46,9 +46,13 @@ export default defineConfig(() => {
               },
             },
             {
-              // Static assets — serve from cache while revalidating in background.
-              urlPattern: ({ request }: { request: Request }) =>
-                ['script', 'style', 'image', 'font'].includes(request.destination),
+              // Same-origin static assets only — serve from cache while revalidating.
+              // Restricting to same-origin prevents the SW from trying to fetch
+              // external images (e.g. google.com/favicon.ico) which would be
+              // blocked by the connect-src CSP and produce console errors.
+              urlPattern: ({ request, url }: { request: Request, url: URL }) =>
+                ['script', 'style', 'image', 'font'].includes(request.destination) &&
+                url.origin === location.origin,
               handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: 'assets',
