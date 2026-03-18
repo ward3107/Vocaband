@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
 import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
 import {
-  Volume2, 
-  Languages, 
-  Trophy, 
-  RefreshCw, 
-  LogIn, 
-  UserCircle, 
-  Users, 
-  GraduationCap, 
-  Plus, 
-  CheckCircle2, 
+  Volume2,
+  Languages,
+  Trophy,
+  RefreshCw,
+  LogIn,
+  UserCircle,
+  Users,
+  GraduationCap,
+  Plus,
+  CheckCircle2,
   BookOpen,
   BarChart3,
-  ChevronRight, 
+  ChevronRight,
   Calendar,
   Flame,
   Settings,
@@ -35,7 +36,10 @@ import {
   Copy,
   Check,
   Share2,
-  MessageCircle
+  MessageCircle,
+  History,
+  Info,
+  ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
@@ -57,115 +61,95 @@ const MOTIVATIONAL_MESSAGES = [
 const randomMotivation = () =>
   MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
 
-// Test data for analytics view development
-const TEST_ANALYTICS_DATA: ProgressData[] = [
-  // Assignment 1 - "Classic Mode"
-  { id: "1", studentName: "Ahmed Al-Ahmad", assignmentId: "Classic Mode", classCode: "489409", score: 92, mode: "classic", completedAt: "2025-03-10T10:30:00", mistakes: [5] },
-  { id: "2", studentName: "Sara Hassan", assignmentId: "Classic Mode", classCode: "489409", score: 88, mode: "classic", completedAt: "2025-03-10T11:15:00", mistakes: [12, 18] },
-  { id: "3", studentName: "Omar Khalid", assignmentId: "Classic Mode", classCode: "489409", score: 65, mode: "classic", completedAt: "2025-03-10T14:20:00", mistakes: [1, 5, 8, 12, 15, 22] },
-  { id: "4", studentName: "Layla Mahmoud", assignmentId: "Classic Mode", classCode: "489409", score: 78, mode: "spelling", completedAt: "2025-03-10T15:45:00", mistakes: [3, 7, 11] },
-  { id: "5", studentName: "Khalid Rahman", assignmentId: "Classic Mode", classCode: "489409", score: 95, mode: "classic", completedAt: "2025-03-10T16:00:00", mistakes: [] },
-  { id: "6", studentName: "Noura Ahmed", assignmentId: "Classic Mode", classCode: "489409", score: 72, mode: "spelling", completedAt: "2025-03-10T17:30:00", mistakes: [2, 9, 13, 14] },
-  { id: "7", studentName: "Fahad Ali", assignmentId: "Classic Mode", classCode: "489409", score: 85, mode: "classic", completedAt: "2025-03-10T18:00:00", mistakes: [8, 20] },
-  { id: "8", studentName: "Rana Omar", assignmentId: "Classic Mode", classCode: "210443", score: 90, mode: "flashcards", completedAt: "2025-03-11T09:00:00", mistakes: [4] },
-  { id: "9", studentName: "Hassan Saeed", assignmentId: "Classic Mode", classCode: "210443", score: 68, mode: "classic", completedAt: "2025-03-11T10:30:00", mistakes: [1, 6, 11, 16, 19, 23] },
-  { id: "10", studentName: "Mona Youssef", assignmentId: "Classic Mode", classCode: "210443", score: 82, mode: "spelling", completedAt: "2025-03-11T11:45:00", mistakes: [5, 10] },
+// --- REUSABLE HELP TOOLTIP COMPONENT ---
+// Powered by @floating-ui/react - modern positioning engine
+// Desktop only - shows on hover, hidden on mobile devices
+const HelpTooltip = ({ children, content, position = "bottom" }: {
+  children: React.ReactNode;
+  content: string | string[];
+  position?: "top" | "bottom" | "left" | "right";
+}) => {
+  const arrowRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const isMobile = useMemo(() => 'ontouchstart' in window, []);
+  const contentArray = Array.isArray(content) ? content : [content];
 
-  // Assignment 2 - "Listening Mode"
-  { id: "11", studentName: "Ahmed Al-Ahmad", assignmentId: "Listening Mode", classCode: "489409", score: 78, mode: "spelling", completedAt: "2025-03-12T09:30:00", mistakes: [15, 21, 28] },
-  { id: "12", studentName: "Sara Hassan", assignmentId: "Listening Mode", classCode: "489409", score: 91, mode: "spelling", completedAt: "2025-03-12T10:15:00", mistakes: [17] },
-  { id: "13", studentName: "Omar Khalid", assignmentId: "Listening Mode", classCode: "489409", score: 58, mode: "flashcards", completedAt: "2025-03-12T14:00:00", mistakes: [2, 9, 13, 15, 20, 25, 30, 35] },
-  { id: "14", studentName: "Layla Mahmoud", assignmentId: "Listening Mode", classCode: "489409", score: 85, mode: "classic", completedAt: "2025-03-12T15:20:00", mistakes: [6] },
-  { id: "15", studentName: "Khalid Rahman", assignmentId: "Listening Mode", classCode: "489409", score: 98, mode: "spelling", completedAt: "2025-03-12T16:45:00", mistakes: [] },
-  { id: "16", studentName: "Noura Ahmed", assignmentId: "Listening Mode", classCode: "489409", score: 69, mode: "flashcards", completedAt: "2025-03-12T17:00:00", mistakes: [3, 8, 11, 14, 18, 21] },
-  { id: "17", studentName: "Fahad Ali", assignmentId: "Listening Mode", classCode: "489409", score: 88, mode: "classic", completedAt: "2025-03-12T18:30:00", mistakes: [7] },
-  { id: "18", studentName: "Rana Omar", assignmentId: "Listening Mode", classCode: "210443", score: 93, mode: "flashcards", completedAt: "2025-03-13T08:30:00", mistakes: [] },
-  { id: "19", studentName: "Hassan Saeed", assignmentId: "Listening Mode", classCode: "210443", score: 71, mode: "classic", completedAt: "2025-03-13T09:45:00", mistakes: [5, 12, 19] },
-  { id: "20", studentName: "Mona Youssef", assignmentId: "Listening Mode", classCode: "210443", score: 86, mode: "spelling", completedAt: "2025-03-13T11:00:00", mistakes: [8, 16] },
+  const { refs, floatingStyles, context, middlewareData } = useFloating({
+    open: isVisible && !isMobile,
+    onOpenChange: setIsVisible,
+    placement: position,
+    middleware: [
+      offset(8),
+      flip(),
+      shift({ padding: 8 }),
+      arrow({ element: arrowRef }),
+    ],
+  });
 
-  // Assignment 3 - "Spelling Mode" - more challenging!
-  { id: "21", studentName: "Ahmed Al-Ahmad", assignmentId: "Spelling Mode", classCode: "489409", score: 85, mode: "flashcards", completedAt: "2025-03-14T09:00:00", mistakes: [4, 11] },
-  { id: "22", studentName: "Sara Hassan", assignmentId: "Spelling Mode", classCode: "489409", score: 89, mode: "classic", completedAt: "2025-03-14T10:30:00", mistakes: [9, 22] },
-  { id: "23", studentName: "Omar Khalid", assignmentId: "Spelling Mode", classCode: "489409", score: 45, mode: "classic", completedAt: "2025-03-14T14:15:00", mistakes: [1, 2, 5, 6, 8, 10, 11, 13, 14, 15, 17, 19, 21, 24, 26, 28] },
-  { id: "24", studentName: "Layla Mahmoud", assignmentId: "Spelling Mode", classCode: "489409", score: 75, mode: "flashcards", completedAt: "2025-03-14T15:40:00", mistakes: [3, 7, 12, 18, 23] },
-  { id: "25", studentName: "Khalid Rahman", assignmentId: "Spelling Mode", classCode: "489409", score: 92, mode: "spelling", completedAt: "2025-03-14T17:00:00", mistakes: [5] },
-  // Noura didn't complete Assignment 3
-  { id: "26", studentName: "Fahad Ali", assignmentId: "Spelling Mode", classCode: "489409", score: 80, mode: "flashcards", completedAt: "2025-03-14T18:15:00", mistakes: [9, 15, 20] },
-  { id: "27", studentName: "Rana Omar", assignmentId: "Spelling Mode", classCode: "210443", score: 87, mode: "spelling", completedAt: "2025-03-15T09:15:00", mistakes: [6, 13] },
-  { id: "28", studentName: "Hassan Saeed", assignmentId: "Spelling Mode", classCode: "210443", score: 62, mode: "flashcards", completedAt: "2025-03-15T10:30:00", mistakes: [1, 4, 7, 10, 13, 16, 20, 25, 31] },
-  { id: "29", studentName: "Mona Youssef", assignmentId: "Spelling Mode", classCode: "210443", score: 79, mode: "classic", completedAt: "2025-03-15T11:45:00", mistakes: [8, 14, 19] },
+  // Handle hover events
+  const handleMouseEnter = () => {
+    if (!isMobile) setIsVisible(true);
+  };
 
-  // Assignment 4 - "Matching Mode"
-  { id: "30", studentName: "Ahmed Al-Ahmad", assignmentId: "Matching Mode", classCode: "489409", score: 88, mode: "classic", completedAt: "2025-03-16T09:20:00", mistakes: [10] },
-  { id: "31", studentName: "Sara Hassan", assignmentId: "Matching Mode", classCode: "489409", score: 94, mode: "spelling", completedAt: "2025-03-16T10:45:00", mistakes: [] },
-  { id: "32", studentName: "Omar Khalid", assignmentId: "Matching Mode", classCode: "489409", score: 52, mode: "flashcards", completedAt: "2025-03-16T14:30:00", mistakes: [2, 5, 9, 11, 14, 17, 20, 22, 25, 27, 30, 33] },
-  { id: "33", studentName: "Layla Mahmoud", assignmentId: "Matching Mode", classCode: "489409", score: 82, mode: "spelling", completedAt: "2025-03-16T15:50:00", mistakes: [7, 13] },
-  { id: "34", studentName: "Khalid Rahman", assignmentId: "Matching Mode", classCode: "489409", score: 96, mode: "classic", completedAt: "2025-03-16T17:15:00", mistakes: [] },
-  { id: "35", studentName: "Noura Ahmed", assignmentId: "Matching Mode", classCode: "489409", score: 74, mode: "spelling", completedAt: "2025-03-16T17:45:00", mistakes: [4, 8, 11, 15] },
-  { id: "36", studentName: "Fahad Ali", assignmentId: "Matching Mode", classCode: "489409", score: 86, mode: "flashcards", completedAt: "2025-03-16T18:30:00", mistakes: [12] },
-  { id: "37", studentName: "Rana Omar", assignmentId: "Matching Mode", classCode: "210443", score: 91, mode: "classic", completedAt: "2025-03-17T08:45:00", mistakes: [3] },
-  { id: "38", studentName: "Hassan Saeed", assignmentId: "Matching Mode", classCode: "210443", score: 67, mode: "spelling", completedAt: "2025-03-17T10:10:00", mistakes: [6, 12, 18, 21] },
-  { id: "39", studentName: "Mona Youssef", assignmentId: "Matching Mode", classCode: "210443", score: 84, mode: "flashcards", completedAt: "2025-03-17T11:30:00", mistakes: [9, 16] },
+  const staticSide = {
+    top: "bottom",
+    bottom: "top",
+    left: "right",
+    right: "left",
+  }[position];
 
-  // Assignment 5 - "Final Challenge" - most challenging!
-  { id: "40", studentName: "Ahmed Al-Ahmad", assignmentId: "True/False", classCode: "489409", score: 90, mode: "spelling", completedAt: "2025-03-18T09:30:00", mistakes: [7] },
-  { id: "41", studentName: "Sara Hassan", assignmentId: "True/False", classCode: "489409", score: 97, mode: "flashcards", completedAt: "2025-03-18T11:00:00", mistakes: [] },
-  { id: "42", studentName: "Omar Khalid", assignmentId: "True/False", classCode: "489409", score: 38, mode: "classic", completedAt: "2025-03-18T14:45:00", mistakes: [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] },
-  { id: "43", studentName: "Layla Mahmoud", assignmentId: "True/False", classCode: "489409", score: 79, mode: "classic", completedAt: "2025-03-18T16:00:00", mistakes: [8, 15, 22] },
-  { id: "44", studentName: "Khalid Rahman", assignmentId: "True/False", classCode: "489409", score: 94, mode: "spelling", completedAt: "2025-03-18T17:30:00", mistakes: [2] },
-  { id: "45", studentName: "Noura Ahmed", assignmentId: "True/False", classCode: "489409", score: 68, mode: "classic", completedAt: "2025-03-18T18:00:00", mistakes: [4, 9, 13, 16, 19, 22] },
-  { id: "46", studentName: "Fahad Ali", assignmentId: "True/False", classCode: "489409", score: 83, mode: "flashcards", completedAt: "2025-03-18T18:45:00", mistakes: [11, 18] },
-  { id: "47", studentName: "Rana Omar", assignmentId: "True/False", classCode: "210443", score: 89, mode: "spelling", completedAt: "2025-03-19T09:00:00", mistakes: [5] },
-  { id: "48", studentName: "Hassan Saeed", assignmentId: "True/False", classCode: "210443", score: 59, mode: "flashcards", completedAt: "2025-03-19T10:15:00", mistakes: [3, 7, 11, 14, 17, 20, 23, 26, 29, 32] },
-  { id: "49", studentName: "Mona Youssef", assignmentId: "True/False", classCode: "210443", score: 81, mode: "classic", completedAt: "2025-03-19T11:30:00", mistakes: [10, 17, 24] },
+  return (
+    <>
+      <span
+        ref={refs.setReference}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setIsVisible(false)}
+        className="inline"
+      >
+        {children}
+      </span>
+      {isVisible && !isMobile && (
+        <div
+          ref={refs.setFloating}
+          style={floatingStyles}
+          className="z-50"
+        >
+          <div className="w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl">
+            {contentArray.map((line, i) => (
+              <p key={i} className={i > 0 ? "mt-1 text-slate-300" : ""}>{line}</p>
+            ))}
+          </div>
+          {middlewareData.arrow?.x != null && (
+            <div
+              ref={arrowRef}
+              className="absolute w-2 h-2 bg-slate-900 rotate-45"
+              style={{
+                left: middlewareData.arrow.x ?? undefined,
+                top: middlewareData.arrow.y ?? undefined,
+                [staticSide]: '-4px',
+              }}
+            />
+          )}
+        </div>
+      )}
+    </>
+  );
+};
 
-  // Flashcards
-  { id: "50", studentName: "Ahmed Al-Ahmad", assignmentId: "Flashcards", classCode: "489409", score: 95, mode: "flashcards", completedAt: "2025-03-20T09:00:00", mistakes: [] },
-  { id: "51", studentName: "Sara Hassan", assignmentId: "Flashcards", classCode: "489409", score: 92, mode: "flashcards", completedAt: "2025-03-20T10:30:00", mistakes: [8] },
-  { id: "52", studentName: "Omar Khalid", assignmentId: "Flashcards", classCode: "489409", score: 72, mode: "flashcards", completedAt: "2025-03-20T14:00:00", mistakes: [3, 7, 11, 15] },
-  { id: "53", studentName: "Layla Mahmoud", assignmentId: "Flashcards", classCode: "489409", score: 88, mode: "flashcards", completedAt: "2025-03-20T15:30:00", mistakes: [5] },
-  { id: "54", studentName: "Khalid Rahman", assignmentId: "Flashcards", classCode: "489409", score: 98, mode: "flashcards", completedAt: "2025-03-20T17:00:00", mistakes: [] },
-  { id: "55", studentName: "Noura Ahmed", assignmentId: "Flashcards", classCode: "489409", score: 85, mode: "flashcards", completedAt: "2025-03-20T18:30:00", mistakes: [6, 12] },
-  { id: "56", studentName: "Fahad Ali", assignmentId: "Flashcards", classCode: "489409", score: 91, mode: "flashcards", completedAt: "2025-03-20T19:00:00", mistakes: [4] },
-  { id: "57", studentName: "Rana Omar", assignmentId: "Flashcards", classCode: "210443", score: 94, mode: "flashcards", completedAt: "2025-03-21T09:00:00", mistakes: [] },
-  { id: "58", studentName: "Hassan Saeed", assignmentId: "Flashcards", classCode: "210443", score: 78, mode: "flashcards", completedAt: "2025-03-21T10:15:00", mistakes: [2, 9, 14] },
-  { id: "59", studentName: "Mona Youssef", assignmentId: "Flashcards", classCode: "210443", score: 89, mode: "flashcards", completedAt: "2025-03-21T11:30:00", mistakes: [7] },
-
-  // Word Scramble
-  { id: "60", studentName: "Ahmed Al-Ahmad", assignmentId: "Word Scramble", classCode: "489409", score: 87, mode: "scramble", completedAt: "2025-03-22T09:30:00", mistakes: [10, 16] },
-  { id: "61", studentName: "Sara Hassan", assignmentId: "Word Scramble", classCode: "489409", score: 93, mode: "scramble", completedAt: "2025-03-22T11:00:00", mistakes: [5] },
-  { id: "62", studentName: "Omar Khalid", assignmentId: "Word Scramble", classCode: "489409", score: 48, mode: "scramble", completedAt: "2025-03-22T14:30:00", mistakes: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27] },
-  { id: "63", studentName: "Layla Mahmoud", assignmentId: "Word Scramble", classCode: "489409", score: 76, mode: "scramble", completedAt: "2025-03-22T16:00:00", mistakes: [4, 8, 12, 18, 22] },
-  { id: "64", studentName: "Khalid Rahman", assignmentId: "Word Scramble", classCode: "489409", score: 95, mode: "scramble", completedAt: "2025-03-22T17:30:00", mistakes: [2] },
-  // Noura skipped Word Scramble
-  { id: "65", studentName: "Fahad Ali", assignmentId: "Word Scramble", classCode: "489409", score: 82, mode: "scramble", completedAt: "2025-03-22T19:00:00", mistakes: [6, 13, 19] },
-  { id: "66", studentName: "Rana Omar", assignmentId: "Word Scramble", classCode: "210443", score: 88, mode: "scramble", completedAt: "2025-03-23T09:30:00", mistakes: [7] },
-  { id: "67", studentName: "Hassan Saeed", assignmentId: "Word Scramble", classCode: "210443", score: 54, mode: "scramble", completedAt: "2025-03-23T10:45:00", mistakes: [1, 4, 7, 10, 13, 16, 20, 24, 28, 31] },
-  { id: "68", studentName: "Mona Youssef", assignmentId: "Word Scramble", classCode: "210443", score: 79, mode: "scramble", completedAt: "2025-03-23T12:00:00", mistakes: [8, 15, 21] },
-
-  // Reverse Mode
-  { id: "69", studentName: "Ahmed Al-Ahmad", assignmentId: "Reverse Mode", classCode: "489409", score: 82, mode: "reverse", completedAt: "2025-03-24T09:00:00", mistakes: [11, 17, 23] },
-  { id: "70", studentName: "Sara Hassan", assignmentId: "Reverse Mode", classCode: "489409", score: 90, mode: "reverse", completedAt: "2025-03-24T10:30:00", mistakes: [6] },
-  { id: "71", studentName: "Omar Khalid", assignmentId: "Reverse Mode", classCode: "489409", score: 42, mode: "reverse", completedAt: "2025-03-24T14:15:00", mistakes: [1, 2, 4, 5, 7, 9, 10, 12, 14, 16, 18, 20, 22, 25, 28] },
-  { id: "72", studentName: "Layla Mahmoud", assignmentId: "Reverse Mode", classCode: "489409", score: 73, mode: "reverse", completedAt: "2025-03-24T15:45:00", mistakes: [3, 8, 13, 19, 24] },
-  { id: "73", studentName: "Khalid Rahman", assignmentId: "Reverse Mode", classCode: "489409", score: 93, mode: "reverse", completedAt: "2025-03-24T17:15:00", mistakes: [4] },
-  // Noura skipped Reverse Mode
-  { id: "74", studentName: "Fahad Ali", assignmentId: "Reverse Mode", classCode: "489409", score: 79, mode: "reverse", completedAt: "2025-03-24T18:45:00", mistakes: [7, 14, 20] },
-  { id: "75", studentName: "Rana Omar", assignmentId: "Reverse Mode", classCode: "210443", score: 86, mode: "reverse", completedAt: "2025-03-25T09:15:00", mistakes: [9] },
-  { id: "76", studentName: "Hassan Saeed", assignmentId: "Reverse Mode", classCode: "210443", score: 51, mode: "reverse", completedAt: "2025-03-25T10:30:00", mistakes: [1, 5, 8, 12, 15, 19, 22, 26, 30, 33] },
-  { id: "77", studentName: "Mona Youssef", assignmentId: "Reverse Mode", classCode: "210443", score: 77, mode: "reverse", completedAt: "2025-03-25T11:45:00", mistakes: [6, 13, 18, 25] },
-
-  // Some students reattempted for better scores
-  { id: "78", studentName: "Omar Khalid", assignmentId: "Classic Mode", classCode: "489409", score: 71, mode: "classic", completedAt: "2025-03-11T20:00:00", mistakes: [1, 5, 8, 12, 15, 22] },
-  { id: "79", studentName: "Layla Mahmoud", assignmentId: "Listening Mode", classCode: "489409", score: 90, mode: "listening", completedAt: "2025-03-13T12:00:00", mistakes: [3] },
-  { id: "80", studentName: "Ahmed Al-Ahmad", assignmentId: "Spelling Mode", classCode: "489409", score: 96, mode: "spelling", completedAt: "2025-03-15T14:00:00", mistakes: [] },
-];
+// Question mark icon for help hints
+const HelpIcon = ({ tooltip, position = "bottom" }: { tooltip: string | string[]; position?: "top" | "bottom" | "left" | "right" }) => (
+  <HelpTooltip content={tooltip} position={position}>
+    <span className="inline-flex items-center justify-center w-5 h-5 ml-1.5 text-slate-400 bg-slate-100 rounded-full cursor-help hover:bg-slate-200 hover:text-slate-600 transition-all">
+      <span className="text-[10px] font-bold">?</span>
+    </span>
+  </HelpTooltip>
+);
 
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "analytics" | "global-leaderboard" | "students">("landing");
+  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students">("landing");
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
@@ -177,6 +161,7 @@ export default function App() {
   const [badges, setBadges] = useState<string[]>([]);
 
   const [studentAvatar, setStudentAvatar] = useState("🦊");
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   const AVATAR_CATEGORIES = {
     Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜"],
@@ -216,7 +201,7 @@ export default function App() {
 
   // --- LIVE CHALLENGE STATE ---
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Record<string, { name: string, score: number }>>({});
+  const [leaderboard, setLeaderboard] = useState<Record<string, { name: string; baseScore: number; currentGameScore: number }>>({});
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
   // --- TEACHER DATA STATE ---
@@ -742,7 +727,10 @@ export default function App() {
       words = words.filter(w => w.recProd === selectedRecProd);
     }
 
-    return words;
+    // Deduplicate by word.id to prevent React key warnings
+    const uniqueWords = Array.from(new Map(words.map(w => [w.id, w])).values());
+
+    return uniqueWords;
   }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd]);
   const handleSaveAssignment = async () => {
     if (!selectedClass || selectedWords.length === 0 || !assignmentTitle) {
@@ -1127,9 +1115,16 @@ export default function App() {
     if (streak >= 5) await awardBadge("🔥 Streak Master");
     if (xp >= 500) await awardBadge("💎 XP Hunter");
 
+    // Get current auth session UID to ensure RLS policy compatibility
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentAuthUid = session?.user?.id;
+    if (!currentAuthUid) {
+      throw new Error("Not authenticated - please log in again");
+    }
+
     const progress: Omit<ProgressData, "id"> = {
       studentName: user.displayName,
-      studentUid: user.uid,
+      studentUid: currentAuthUid, // Use current auth session UID
       assignmentId: activeAssignment.id,
       classCode: user.classCode || "",
       score: score,
@@ -1140,12 +1135,12 @@ export default function App() {
     };
 
     try {
-      // Dedup: check for existing progress for this assignment+mode (use UID — name is spoofable)
+      // Dedup: check for existing progress for this assignment+mode (use current auth UID)
       const { data: existingRows } = await supabase
         .from('progress').select('*')
         .eq('assignment_id', activeAssignment.id)
         .eq('mode', gameMode)
-        .eq('student_uid', user.uid)
+        .eq('student_uid', currentAuthUid)
         .eq('class_code', user.classCode || "");
 
       if (existingRows && existingRows.length > 0) {
@@ -1172,10 +1167,14 @@ export default function App() {
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     } catch (error) {
       console.error("Error saving score:", error);
+      // Log detailed error for debugging
+      if (error && typeof error === 'object' && 'message' in error) {
+        console.error("Supabase error details:", error);
+      }
       // Queue for retry on next load
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.setItem(retryKey, JSON.stringify(mapProgressToDb(progress)));
-      setSaveError("Your score couldn't be saved. Check your connection — it will retry automatically.");
+      setSaveError(`Your score couldn't be saved. Check your connection — it will retry automatically.`);
     } finally {
       setIsSaving(false);
     }
@@ -1397,6 +1396,17 @@ export default function App() {
     const students = Array.from(studentMap.keys()).sort();
     const assignments = Array.from(assignmentSet).sort();
 
+    // Helper function to get student metadata from their first record
+    const getStudentClassCode = (studentName: string): string => {
+      const scores = studentMap.get(studentName);
+      return scores?.[0]?.classCode || "";
+    };
+
+    const getStudentAvatar = (studentName: string): string | undefined => {
+      const scores = studentMap.get(studentName);
+      return scores?.find(s => s.avatar)?.avatar;
+    };
+
     // Build matrix: for each student-assignment, get the most recent score
     const matrix: Map<string, Map<string, ProgressData>> = new Map();
     const averages: Map<string, number> = new Map(); // student averages
@@ -1422,11 +1432,12 @@ export default function App() {
       });
     });
 
-    return { students, assignments, matrix, averages, studentMap };
+    return { students, assignments, matrix, averages, studentMap, getStudentClassCode, getStudentAvatar };
   }, [allScores]);
 
   // State for selected score detail view
   const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
@@ -1445,11 +1456,14 @@ export default function App() {
             </div>
 
             <div className="relative z-10">
-              <div className="w-18 h-18 sm:w-20 sm:h-20 bg-gradient-to-br from-white/30 via-white/20 to-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-4 backdrop-blur-sm overflow-hidden shadow-xl shadow-blue-900/50 ring-2 ring-white/30">
-                <img src="/logo.webp" alt="Vocaband" className="w-full h-full object-cover" />
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-18 h-18 sm:w-20 sm:h-20 bg-gradient-to-br from-white/30 via-white/20 to-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center backdrop-blur-sm overflow-hidden shadow-xl shadow-blue-900/50 ring-2 ring-white/30">
+                  <img src="/logo.webp" alt="Vocaband" className="w-full h-full object-cover" />
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">Vocaband</h1>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black mb-2 bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">Vocaband</h1>
-              <p className="text-blue-100 text-sm sm:text-base font-medium">Israeli English Curriculum - Band II Vocabulary</p>
+              <p className="text-blue-100 text-base sm:text-lg font-medium">Israeli English Curriculum</p>
+              <p className="text-blue-100 text-base sm:text-lg font-medium">Band II Vocabulary</p>
             </div>
           </div>
 
@@ -1463,7 +1477,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setLandingTab("teacher")}
-                className={`flex-1 py-4 sm:py-3 rounded-xl font-bold transition-all text-lg sm:text-sm ${landingTab === "teacher" ? "bg-white text-blue-700 shadow-sm" : "text-stone-400 hover:text-ststone-600"}`}
+                className={`flex-1 py-4 sm:py-3 rounded-xl font-bold transition-all text-lg sm:text-sm ${landingTab === "teacher" ? "bg-white text-blue-700 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
               >
                 Teacher
               </button>
@@ -1485,7 +1499,7 @@ export default function App() {
                         type="text"
                         placeholder="Class Code"
                         id="class-code"
-                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
+                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
                     <div className="relative">
@@ -1494,12 +1508,15 @@ export default function App() {
                         type="text"
                         placeholder="Your Name"
                         id="student-name"
-                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
+                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
 
                     <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 rounded-2xl shadow-inner">
-                      <p className="text-xs font-black text-stone-400 uppercase mb-4 tracking-widest">Choose Avatar</p>
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-xs font-black text-stone-400 uppercase tracking-widest">Choose Avatar</p>
+                        <HelpIcon tooltip="Pick a fun emoji to represent you in class!" position="left" />
+                      </div>
 
                       {/* Category Tabs */}
                       <div className="flex flex-wrap gap-1 mb-4">
@@ -1738,57 +1755,65 @@ export default function App() {
           {/* Quick Action Cards Grid - More compact on mobile */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
             {/* Live Challenge */}
-            <button
-              onClick={() => {
-                if (classes.length === 0) showToast("Create a class first!", "error");
-                else {
-                  setSelectedClass(classes[0]);
-                  setView("live-challenge");
-                  setIsLiveChallenge(true);
-                  if (socket) {
-                    supabase.auth.getSession().then(({ data: { session } }) => {
-                      const token = session?.access_token ?? "";
-                      socket.emit("join-challenge", { classCode: classes[0].code, name: user?.displayName || "Teacher", uid: user?.uid || "", token });
-                    });
+            <HelpTooltip content="Start a real-time vocabulary competition - students race to answer correctly!">
+              <button
+                onClick={() => {
+                  if (classes.length === 0) showToast("Create a class first!", "error");
+                  else if (classes.length === 1) {
+                    setSelectedClass(classes[0]);
+                    setView("live-challenge");
+                    setIsLiveChallenge(true);
+                    if (socket) {
+                      socket.emit("observe-challenge", { classCode: classes[0].code });
+                    }
+                  } else {
+                    // Multiple classes - show selector
+                    setView("live-challenge-class-select");
                   }
-                }
-              }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-            >
-              <RefreshCw className="text-blue-600 mb-2 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
-              <h2 className="text-xs sm:text-base font-bold mb-1">Live Challenge</h2>
-              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Real-time competition</p>
-            </button>
+                }}
+                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+              >
+                <RefreshCw className="text-blue-600 mb-2 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
+                <h2 className="text-xs sm:text-base font-bold mb-1">Live Challenge</h2>
+                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Real-time competition</p>
+              </button>
+            </HelpTooltip>
 
             {/* Analytics */}
-            <button
-              onClick={() => { fetchScores(); setView("analytics"); }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-            >
-              <BarChart3 className="text-purple-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-              <h2 className="text-xs sm:text-base font-bold mb-1">Analytics</h2>
-              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Class insights</p>
-            </button>
+            <HelpTooltip content="View detailed class performance data, averages, and insights">
+              <button
+                onClick={() => { fetchScores(); setView("analytics"); }}
+                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+              >
+                <BarChart3 className="text-purple-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+                <h2 className="text-xs sm:text-base font-bold mb-1">Analytics</h2>
+                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Class insights</p>
+              </button>
+            </HelpTooltip>
 
             {/* Students */}
-            <button
-              onClick={() => { fetchStudents(); setView("students"); }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-            >
-              <UserCircle className="text-orange-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-              <h2 className="text-xs sm:text-base font-bold mb-1">Students</h2>
-              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Manage students</p>
-            </button>
+            <HelpTooltip content="Manage student list and view who has joined your classes">
+              <button
+                onClick={() => { fetchStudents(); setView("students"); }}
+                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+              >
+                <UserCircle className="text-orange-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+                <h2 className="text-xs sm:text-base font-bold mb-1">Students</h2>
+                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Manage students</p>
+              </button>
+            </HelpTooltip>
 
             {/* Gradebook */}
-            <button
-              onClick={() => { fetchScores(); setView("gradebook"); }}
-              className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-            >
-              <Trophy className="text-blue-700 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-              <h2 className="text-xs sm:text-base font-bold mb-1">Gradebook</h2>
-              <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Track progress</p>
-            </button>
+            <HelpTooltip content="Track individual student progress, scores, and activity history">
+              <button
+                onClick={() => { fetchScores(); setView("gradebook"); }}
+                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+              >
+                <Trophy className="text-blue-700 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+                <h2 className="text-xs sm:text-base font-bold mb-1">Gradebook</h2>
+                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Track progress</p>
+              </button>
+            </HelpTooltip>
           </div>
 
           {/* My Classes - Full width below */}
@@ -2023,7 +2048,10 @@ export default function App() {
                   placeholder="Assignment Title"
                   list="assignment-titles"
                   value={assignmentTitle}
-                  onChange={(e) => setAssignmentTitle(e.target.value)}
+                  onChange={(e) => {
+                    setAssignmentTitle(e.target.value);
+                  }}
+                  autoComplete="off"
                   className="w-full p-4 rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
                 />
                 <datalist id="assignment-titles">
@@ -2032,11 +2060,12 @@ export default function App() {
                   ))}
                 </datalist>
                 <div className="space-y-1">
-                  <input 
-                    type="date" 
-                    value={assignmentDeadline} 
+                  <input
+                    type="date"
+                    value={assignmentDeadline}
                     onChange={(e) => setAssignmentDeadline(e.target.value)}
-                    className={`w-full p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
                   />
                   {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
                     <p className="text-red-500 text-sm font-bold ml-2">Warning: Deadline is in the past!</p>
@@ -2045,7 +2074,7 @@ export default function App() {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <p className="font-bold text-stone-700">Allowed Game Modes:</p>
+                  <p className="font-bold text-stone-700">Choose Game Modes:</p>
                   <button 
                     onClick={() => {
                       const all = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
@@ -2061,15 +2090,27 @@ export default function App() {
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"] as const).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                      className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${assignmentModes.includes(mode) ? "bg-blue-700 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
-                    >
-                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                    </button>
-                  ))}
+                  {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"] as const).map(mode => {
+                    const modeEmojis: Record<string, string> = {
+                      classic: '📝',
+                      listening: '🎧',
+                      spelling: '✍️',
+                      matching: '🔗',
+                      'true-false': '✓',
+                      flashcards: '🎴',
+                      scramble: '🔤',
+                      reverse: '🔄'
+                    };
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
+                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${assignmentModes.includes(mode) ? "bg-blue-500 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
+                      >
+                        {modeEmojis[mode]} {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -2227,7 +2268,7 @@ Example formats:
                 const isSelected = selectedWordsSet.has(word.id);
                 return (
                   <button
-                    key={word.id}
+                    key={`word-select-${word.id}`}
                     onClick={() => toggleWordSelection(word.id)}
                     className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
                   >
@@ -2410,14 +2451,14 @@ Example formats:
 
   if (view === "game" && showModeSelection) {
     const modes = [
-      { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} /> },
-      { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} /> },
-      { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} /> },
-      { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} /> },
-      { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} /> },
-      { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} /> },
-      { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} /> },
-      { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} /> },
+      { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
+      { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
+      { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
+      { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
+      { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} />, tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"] },
+      { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} />, tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"] },
+      { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
+      { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
     ];
 
     const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
@@ -2461,21 +2502,21 @@ Example formats:
             <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">Choose Your Mode</h2>
             <p className="text-stone-500 text-base sm:text-xl font-medium">How do you want to learn today?</p>
           </motion.div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredModes.map((mode, idx) => {
               const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
-              
+
               return (
-                <motion.button 
+                <motion.button
                   key={mode.id}
+                  onClick={() => { setGameMode(mode.id as any); setShowModeSelection(false); }}
+                  className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   whileHover={{ scale: 1.05, translateY: -8 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => { setGameMode(mode.id as any); setShowModeSelection(false); }}
-                  className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                 >
                   <div className={`w-16 h-16 rounded-[24px] bg-white flex items-center justify-center mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
@@ -2487,7 +2528,7 @@ Example formats:
                   </div>
                   <p className="font-black text-xl mb-2 leading-tight">{mode.name}</p>
                   <p className="opacity-70 text-sm font-bold leading-snug">{mode.desc}</p>
-                  
+
                   <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Zap size={20} className="animate-pulse" />
                   </div>
@@ -2501,55 +2542,165 @@ Example formats:
   }
 
   if (view === "live-challenge" && selectedClass) {
-    const sortedLeaderboard = (Object.values(leaderboard) as { name: string, score: number }[]).sort((a, b) => b.score - a.score);
-    
+    // Calculate total scores (baseScore + currentGameScore) for each student
+    const sortedLeaderboard = (Object.entries(leaderboard) as [string, { name: string; baseScore: number; currentGameScore: number }][])
+      .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+
+    const top3 = sortedLeaderboard.slice(0, 3);
+    const rest = sortedLeaderboard.slice(3);
+
     return (
-      <div className="min-h-screen bg-blue-600 p-6 text-white">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
+        <div className="max-w-5xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
-            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
+            <button onClick={() => setView("teacher-dashboard")} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Dashboard</button>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm">
-                <span className={`w-2 h-2 rounded-full ${socketConnected ? "bg-green-400" : "bg-red-400 animate-pulse"}`} />
-                <span className="text-blue-100">{socketConnected ? "Live" : "Reconnecting..."}</span>
+              <div className="flex items-center gap-2 text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
+                <span className={`w-3 h-3 rounded-full ${socketConnected ? "bg-green-400 shadow-lg shadow-green-400/50" : "bg-red-400 animate-pulse"}`} />
+                <span className="font-bold">{socketConnected ? "🔴 LIVE" : "Reconnecting..."}</span>
               </div>
-              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-colors text-sm sm:text-base shadow-lg">End Challenge</button>
+              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105">End Challenge</button>
             </div>
           </div>
-          <div className="mb-4 sm:mb-8">
-            <h1 className="text-2xl sm:text-4xl font-black">Live Challenge: {selectedClass.name}</h1>
-            <p className="text-blue-100 font-bold mt-2 text-sm sm:text-base">Students join with code: <span className="bg-white text-blue-600 px-3 py-1 rounded-lg font-mono ml-2">{selectedClass.code}</span></p>
+
+          <div className="text-center mb-6 sm:mb-10">
+            <motion.h1
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
+            >
+              🏆 Live Challenge: {selectedClass.name}
+            </motion.h1>
+            <p className="text-white/90 font-bold text-sm sm:text-base">Class Code: <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg">{selectedClass.code}</span></p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white/10 rounded-[40px] p-8 backdrop-blur-md border border-white/20">
-              <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><Trophy /> Leaderboard</h2>
-              <div className="space-y-4">
-                {sortedLeaderboard.map((entry, idx) => (
-                  <motion.div 
-                    key={`${entry.name}-${idx}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="flex justify-between items-center p-4 bg-white/10 rounded-2xl border border-white/10"
+          {/* Winner's Podium for Top 3 */}
+          {top3.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-end justify-center gap-2 sm:gap-4 mb-6">
+                {/* 2nd Place */}
+                {top3[1] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="flex flex-col items-center"
                   >
-                    <div className="flex items-center gap-4">
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black ${idx === 0 ? "bg-yellow-400 text-stone-900" : "bg-white/20"}`}>{idx + 1}</span>
-                      <span className="font-bold text-xl">{entry.name}</span>
+                    <div className="relative">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-3xl sm:text-4xl shadow-xl shadow-slate-400/30 border-4 border-white">
+                        🥈
+                      </div>
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">2ND</div>
                     </div>
-                    <span className="text-2xl font-black">{entry.score}</span>
+                    <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36">
+                      <p className="font-bold text-sm sm:text-base truncate">{top3[1].name}</p>
+                      <p className="text-2xl sm:text-3xl font-black">{top3[1].totalScore}</p>
+                      <p className="text-[10px] text-white/70 font-bold">POINTS</p>
+                    </div>
+                    <div className="h-16 sm:h-24 w-full bg-gradient-to-t from-slate-400/30 to-transparent rounded-t-lg mt-2"></div>
                   </motion.div>
-                ))}
-                {sortedLeaderboard.length === 0 && <p className="text-blue-200 italic">Waiting for students to join...</p>}
+                )}
+
+                {/* 1st Place - Center and tallest */}
+                {top3[0] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="flex flex-col items-center relative"
+                  >
+                    {/* Crown animation */}
+                    <motion.div
+                      animate={{ y: [0, -10, 0] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="text-4xl sm:text-5xl mb-2 drop-shadow-lg"
+                    >
+                      👑
+                    </motion.div>
+                    <div className="relative">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-4xl sm:text-5xl shadow-2xl shadow-yellow-400/50 border-4 border-white animate-pulse">
+                        🥇
+                      </div>
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">1ST</div>
+                      {/* Sparkle effects */}
+                      <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
+                      <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce" style={{ animationDelay: "0.5s" }}>✨</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 shadow-2xl shadow-yellow-400/20">
+                      <p className="font-bold text-base sm:text-lg truncate">{top3[0].name}</p>
+                      <p className="text-3xl sm:text-4xl font-black">{top3[0].totalScore}</p>
+                      <p className="text-[10px] text-white/80 font-bold">POINTS</p>
+                    </div>
+                    <div className="h-24 sm:h-32 w-full bg-gradient-to-t from-yellow-400/40 to-transparent rounded-t-lg mt-2"></div>
+                  </motion.div>
+                )}
+
+                {/* 3rd Place */}
+                {top3[2] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex flex-col items-center"
+                  >
+                    <div className="relative">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl sm:text-4xl shadow-xl shadow-orange-400/30 border-4 border-white">
+                        🥉
+                      </div>
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">3RD</div>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36">
+                      <p className="font-bold text-sm sm:text-base truncate">{top3[2].name}</p>
+                      <p className="text-2xl sm:text-3xl font-black">{top3[2].totalScore}</p>
+                      <p className="text-[10px] text-white/70 font-bold">POINTS</p>
+                    </div>
+                    <div className="h-12 sm:h-20 w-full bg-gradient-to-t from-orange-400/30 to-transparent rounded-t-lg mt-2"></div>
+                  </motion.div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="flex flex-col justify-center items-center text-center p-8">
-              <div className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                <RefreshCw size={64} className="text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Live Competition Active</h3>
-              <p className="text-blue-100">Students see their rank in real-time as they play!</p>
+          {/* Rest of Leaderboard */}
+          <div className="bg-white/10 backdrop-blur-md rounded-[40px] p-6 sm:p-8 border border-white/20 shadow-2xl">
+            <h2 className="text-xl sm:text-2xl font-black mb-4 sm:mb-6 flex items-center gap-2">
+              <span className="text-2xl">📊</span> Full Leaderboard
+              {sortedLeaderboard.length > 0 && (
+                <span className="ml-auto text-sm font-normal bg-white/20 px-3 py-1 rounded-full">
+                  {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'Player' : 'Players'}
+                </span>
+              )}
+            </h2>
+            <div className="space-y-2 sm:space-y-3">
+              {rest.map((entry, idx) => (
+                <motion.div
+                  key={`${entry.uid}-${idx}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: (idx + 3) * 0.05 }}
+                  className="flex justify-between items-center p-3 sm:p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 hover:scale-[1.02] transition-all"
+                >
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base">{idx + 4}</span>
+                    <span className="font-bold text-base sm:text-lg">{entry.name}</span>
+                  </div>
+                  <span className="text-xl sm:text-2xl font-black">{entry.totalScore}</span>
+                </motion.div>
+              ))}
+              {sortedLeaderboard.length === 0 && (
+                <div className="text-center py-12">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="text-6xl mb-4"
+                  >
+                    ⏳
+                  </motion.div>
+                  <p className="text-white/80 font-bold text-lg">Waiting for students to join...</p>
+                  <p className="text-white/60 text-sm mt-2">Share the class code to start the competition!</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2647,34 +2798,11 @@ Example formats:
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
             <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
             <h1 className="text-xl sm:text-3xl font-black text-stone-900">Student Performance Matrix</h1>
-            <button
-              onClick={() => setAllScores(TEST_ANALYTICS_DATA)}
-              className="px-4 py-2.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors text-sm sm:text-sm"
-            >
-              Load Test Data
-            </button>
           </div>
 
           {allScores.length === 0 ? (
             <div className="bg-white p-8 rounded-[32px] sm:rounded-[40px] shadow-xl text-center">
               <p className="text-stone-400 italic mb-4 text-base sm:text-sm">No student data yet. Analytics will appear once students complete assignments.</p>
-              <button
-                onClick={() => {
-                  console.log("Loading test data...", TEST_ANALYTICS_DATA.length);
-                  console.log("Sample data:", TEST_ANALYTICS_DATA[0]);
-                  setAllScores(TEST_ANALYTICS_DATA);
-                  console.log("Data loaded, allScores length:", TEST_ANALYTICS_DATA.length);
-                }}
-                className="px-6 py-3.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors text-base sm:text-sm"
-              >
-                Load Test Data
-              </button>
-              <div className="mt-4 p-4 bg-stone-100 rounded text-left text-sm">
-                <p className="font-bold">Debug Info:</p>
-                <p>allScores.length: {allScores.length}</p>
-                <p>matrixData.students: {matrixData.students.length}</p>
-                <p>matrixData.assignments: {matrixData.assignments.length}</p>
-              </div>
             </div>
           ) : (
             <>
@@ -2716,10 +2844,21 @@ Example formats:
                 <tbody>
                   {matrixData.students.map(student => {
                     const studentAvg = matrixData.averages.get(student) || 0;
+                    const classCode = matrixData.getStudentClassCode(student);
+                    const avatar = matrixData.getStudentAvatar(student);
                     return (
                       <tr key={student} className="border-t border-stone-100 hover:bg-stone-50">
-                        <td className="px-4 py-3 font-bold text-stone-800 sticky left-0 bg-white hover:bg-stone-50">
-                          {student}
+                        <td
+                          className="px-4 py-3 font-bold text-stone-800 sticky left-0 bg-white hover:bg-stone-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all"
+                          onClick={() => setSelectedStudent(student)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {avatar && <span className="text-lg">{avatar}</span>}
+                            <div className="flex flex-col">
+                              <span>{student}</span>
+                              <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit">{classCode}</span>
+                            </div>
+                          </div>
                         </td>
                         {matrixData.assignments.map(assignmentId => {
                           const scoreData = matrixData.matrix.get(student)?.get(assignmentId);
@@ -2848,6 +2987,176 @@ Example formats:
               </div>
             </div>
           )}
+
+          {/* Student Profile Modal */}
+          {selectedStudent && (() => {
+            const studentScores = matrixData.studentMap.get(selectedStudent) || [];
+            const classCode = matrixData.getStudentClassCode(selectedStudent);
+            const avatar = matrixData.getStudentAvatar(selectedStudent);
+            const avgScore = matrixData.averages.get(selectedStudent) || 0;
+            const classAvg = Math.round(Array.from(matrixData.averages.values()).reduce((a, b) => a + b, 0) / matrixData.averages.size) || 0;
+
+            // Get top 5 mistake words across all attempts
+            const mistakeCounts: Record<number, number> = {};
+            studentScores.forEach(s => {
+              s.mistakes?.forEach(wordId => {
+                mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
+              });
+            });
+            const topMistakes = Object.entries(mistakeCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([wordId, count]) => ({ wordId: parseInt(wordId), count }));
+
+            // Build score trend data (sorted by date)
+            const scoreTrend = [...studentScores]
+              .sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime());
+
+            return (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedStudent(null)}>
+                <div className="bg-white rounded-[30px] shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      {avatar && <span className="text-4xl">{avatar}</span>}
+                      <div>
+                        <h2 className="text-2xl sm:text-3xl font-black text-stone-900">{selectedStudent}</h2>
+                        <p className="text-stone-500 flex items-center gap-2">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-sm font-bold">{classCode}</span>
+                          <span>•</span>
+                          <span>{studentScores.length} {studentScores.length === 1 ? 'attempt' : 'attempts'}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => setSelectedStudent(null)} className="text-stone-400 hover:text-stone-600">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div className={`p-4 rounded-2xl ${
+                      avgScore >= 90 ? "bg-blue-50" : avgScore >= 70 ? "bg-blue-100" : "bg-rose-100"
+                    }`}>
+                      <p className="text-stone-500 text-sm font-bold uppercase">Average Score</p>
+                      <p className={`text-3xl font-black ${
+                        avgScore >= 90 ? "text-blue-700" : avgScore >= 70 ? "text-blue-600" : "text-rose-600"
+                      }`}>{avgScore}%</p>
+                    </div>
+                    <div className="p-4 bg-stone-50 rounded-2xl">
+                      <p className="text-stone-500 text-sm font-bold uppercase">Class Average</p>
+                      <p className="text-3xl font-black text-stone-700">{classAvg}%</p>
+                      <p className={`text-sm mt-1 ${avgScore >= classAvg ? "text-green-600" : "text-rose-600"}`}>
+                        {avgScore >= classAvg ? "▲ Above class avg" : "▼ Below class avg"}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-stone-50 rounded-2xl">
+                      <p className="text-stone-500 text-sm font-bold uppercase">Total Score Points</p>
+                      <p className="text-3xl font-black text-stone-700">{studentScores.reduce((sum, s) => sum + s.score, 0)}</p>
+                    </div>
+                  </div>
+
+                  {/* Score Trend Chart (Simple Bar Visualization) */}
+                  {scoreTrend.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                        <TrendingUp className="text-blue-600" size={20} />
+                        Score Trend Over Time
+                      </h3>
+                      <div className="bg-stone-50 rounded-2xl p-4">
+                        <div className="flex items-end gap-1 h-32">
+                          {scoreTrend.map((s, idx) => {
+                            const height = Math.max(20, (s.score / 100) * 100);
+                            return (
+                              <div
+                                key={`${s.id}-${idx}`}
+                                className="flex-1 flex flex-col items-center gap-1 group relative"
+                              >
+                                <div
+                                  className={`w-full rounded-t-lg transition-all ${
+                                    s.score >= 90 ? "bg-blue-400" : s.score >= 70 ? "bg-blue-300" : "bg-rose-300"
+                                  }`}
+                                  style={{ height: `${height}%` }}
+                                />
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                  {s.score}%
+                                </div>
+                                <span className="text-xs text-stone-400 truncate w-full text-center">{idx + 1}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-center text-xs text-stone-400 mt-2">Click/tap bars to see exact scores</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Mistakes */}
+                  {topMistakes.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                        <AlertTriangle className="text-rose-500" size={20} />
+                        Most Challenging Words ({topMistakes.length} total)
+                      </h3>
+                      <div className="bg-stone-50 rounded-2xl p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {topMistakes.map(({ wordId, count }) => {
+                            const word = BAND_2_WORDS.find(w => w.id === wordId);
+                            return (
+                              <div key={wordId} className="bg-white p-3 rounded-xl border border-stone-200 flex justify-between items-center">
+                                <div>
+                                  <p className="font-bold text-stone-800">{word?.english || "Unknown"}</p>
+                                  <p className="text-xs text-stone-500">{word?.hebrew || ""}</p>
+                                </div>
+                                <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-sm font-bold">{count}×</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Assignment History */}
+                  <div>
+                    <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                      <History className="text-blue-600" size={20} />
+                      Assignment History
+                    </h3>
+                    <div className="bg-stone-50 rounded-2xl p-4 space-y-2">
+                      {scoreTrend.map((s, idx) => (
+                        <div
+                          key={`${s.id}-${idx}`}
+                          className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
+                            s.score >= 90 ? "bg-blue-50 border-blue-200" : s.score >= 70 ? "bg-blue-50 border-blue-200" : "bg-rose-50 border-rose-200"
+                          }`}
+                          onClick={() => { setSelectedStudent(null); setSelectedScore(s); }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <span className={`px-3 py-1 rounded-full font-bold text-lg ${
+                                s.score >= 90 ? "bg-blue-200 text-blue-800" : s.score >= 70 ? "bg-blue-200 text-blue-800" : "bg-rose-200 text-rose-800"
+                              }`}>
+                                {s.score}%
+                              </span>
+                              <div>
+                                <p className="font-bold text-stone-800">{s.assignmentId}</p>
+                                <p className="text-xs text-stone-500">
+                                  {s.mode} • {new Date(s.completedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronRight className="text-stone-400" size={18} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-stone-400 mt-2 text-center">Click any attempt to see details</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
             </>
           )}
         </div>
@@ -2855,38 +3164,314 @@ Example formats:
     );
   }
   if (view === "gradebook") {
+    // Group scores by student
+    const groupedByStudent = allScores.reduce((acc, score) => {
+      const key = `${score.studentName}-${score.classCode}`;
+      if (!acc[key]) {
+        acc[key] = {
+          studentName: score.studentName,
+          classCode: score.classCode,
+          scores: [],
+          totalScore: 0,
+          bestScore: 0,
+          lastDate: score.completedAt
+        };
+      }
+      acc[key].scores.push(score);
+      acc[key].totalScore += score.score;
+      acc[key].bestScore = Math.max(acc[key].bestScore, score.score);
+      if (new Date(score.completedAt) > new Date(acc[key].lastDate)) {
+        acc[key].lastDate = score.completedAt;
+      }
+      return acc;
+    }, {} as Record<string, {
+      studentName: string;
+      classCode: string;
+      scores: typeof allScores;
+      totalScore: number;
+      bestScore: number;
+      lastDate: string;
+    }>);
+
+    const studentEntries = Object.values(groupedByStudent);
+
+    // Score badge with color based on performance
+    const getScoreColor = (score: number) => {
+      if (score >= 90) return 'bg-gradient-to-br from-green-400 to-green-500 text-white';
+      if (score >= 70) return 'bg-gradient-to-br from-blue-400 to-blue-500 text-white';
+      if (score >= 50) return 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white';
+      return 'bg-gradient-to-br from-red-400 to-red-500 text-white';
+    };
+
+    // Mode icon and color
+    const getModeInfo = (mode: string) => {
+      const modeMap: Record<string, { icon: string; color: string; label: string; name: string }> = {
+        classic: { icon: '📝', color: 'from-blue-400 to-blue-500', label: 'Multiple Choice', name: 'Classic' },
+        spelling: { icon: '✍️', color: 'from-purple-400 to-purple-500', label: 'Type the answer', name: 'Spelling' },
+        flashcards: { icon: '🎴', color: 'from-green-400 to-green-500', label: 'Study mode', name: 'Flashcards' },
+        listening: { icon: '🎧', color: 'from-pink-400 to-pink-500', label: 'Audio questions', name: 'Listening' },
+        matching: { icon: '🔗', color: 'from-orange-400 to-orange-500', label: 'Match pairs', name: 'Matching' },
+        scramble: { icon: '🔤', color: 'from-teal-400 to-teal-500', label: 'Unscramble letters', name: 'Scramble' },
+        reverse: { icon: '🔄', color: 'from-indigo-400 to-indigo-500', label: 'Reverse definitions', name: 'Reverse' },
+        'true-false': { icon: '✓', color: 'from-rose-400 to-rose-500', label: 'True or False', name: 'T/F' }
+      };
+      return modeMap[mode] || { icon: '📊', color: 'from-gray-400 to-gray-500', label: 'Unknown', name: 'Unknown' };
+    };
+
     return (
-      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm">← Back to Dashboard</button>
-          <div className="bg-white rounded-[28px] sm:rounded-3xl shadow-xl p-5 sm:p-8">
-            <h2 className="text-2xl font-black mb-6">Student Gradebook</h2>
-            {allScores.length === 0 ? <p className="text-stone-400 italic text-base sm:text-sm">No scores recorded yet.</p> : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-stone-100">
-                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Student</th>
-                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Class</th>
-                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Mode</th>
-                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Score</th>
-                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allScores.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()).map(s => (
-                      <tr key={s.id} className="border-b border-stone-50">
-                        <td className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-800 text-base sm:text-sm">{s.studentName}</td>
-                        <td className="py-3 px-3 sm:py-4 sm:px-4 text-stone-500 text-base sm:text-sm">{s.classCode}</td>
-                        <td className="py-3 px-3 sm:py-4 sm:px-4"><span className="px-2 py-1 bg-stone-100 rounded text-xs font-bold uppercase">{s.mode}</span></td>
-                        <td className="py-3 px-3 sm:py-4 sm:px-4 font-black text-blue-700 text-base sm:text-sm">{s.score}</td>
-                        <td className="py-3 px-3 sm:py-4 sm:px-4 text-stone-400 text-sm sm:text-sm">{new Date(s.completedAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-slate-600 font-bold flex items-center gap-2 hover:text-slate-900 bg-white px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all text-sm">
+            <span>←</span> Back to Dashboard
+          </button>
+
+          {/* Header */}
+          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Student Gradebook
+                </h2>
+                <p className="text-slate-500 mt-2">Click on a student to see their detailed scores</p>
               </div>
-            )}
+              <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
+                <span className="text-2xl">📚</span>
+                <span className="font-bold text-blue-700">{studentEntries.length} Students</span>
+              </div>
+            </div>
+          </div>
+
+          {studentEntries.length === 0 ? (
+            <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
+              <div className="text-6xl mb-4">📭</div>
+              <p className="text-slate-400 italic text-lg">No scores recorded yet.</p>
+              <p className="text-slate-300 text-sm mt-2">Student results will appear here once they complete assignments.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {studentEntries
+                .sort((a, b) => new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime())
+                .map((entry, idx) => {
+                  const avgScore = Math.round(entry.totalScore / entry.scores.length);
+                  const isExpanded = expandedStudent === `${entry.studentName}-${entry.classCode}`;
+                  const entryKey = `${entry.studentName}-${entry.classCode}`;
+
+                  return (
+                    <motion.div
+                      key={entryKey}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all overflow-hidden"
+                    >
+                      {/* Summary Row - Always Visible */}
+                      <div
+                        onClick={() => setExpandedStudent(isExpanded ? null : entryKey)}
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          {/* Expand/Collapse Icon */}
+                          <motion.div
+                            animate={{ rotate: isExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="text-slate-400"
+                          >
+                            <ChevronDown size={20} />
+                          </motion.div>
+
+                          {/* Avatar */}
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-sm sm:text-lg shadow-lg">
+                            {entry.studentName.charAt(0)}
+                          </div>
+
+                          {/* Name and Class */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-slate-800 text-base sm:text-lg truncate">{entry.studentName}</h3>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">
+                                {entry.classCode}
+                              </span>
+                              <span className="text-slate-400 text-xs">
+                                {entry.scores.length} {entry.scores.length === 1 ? 'attempt' : 'attempts'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Stats */}
+                        <div className="flex items-center gap-3 sm:gap-6">
+                          <div className="text-center">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Avg</div>
+                            <div className={`text-lg sm:text-xl font-black ${
+                              avgScore >= 90 ? 'text-green-600' :
+                              avgScore >= 70 ? 'text-blue-600' :
+                              avgScore >= 50 ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>{avgScore}%</div>
+                          </div>
+                          <div className="text-center hidden sm:block">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Best</div>
+                            <div className="text-lg sm:text-xl font-black text-yellow-600">{entry.bestScore}%</div>
+                          </div>
+                          <div className="text-center hidden sm:block">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Total</div>
+                            <div className="text-lg sm:text-xl font-black text-purple-600">{entry.totalScore}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Last</div>
+                            <div className="text-xs sm:text-sm font-bold text-green-600">
+                              {new Date(entry.lastDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Details */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-4 border-t border-slate-100">
+                              {/* Detailed Stats Header */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                                <HelpTooltip content={`Average Score: ${avgScore}% - Mean performance across all attempts`}>
+                                  <div className="text-center p-3 bg-slate-50 rounded-xl cursor-help hover:bg-slate-100 transition-colors">
+                                    <div className="text-xs text-slate-500 font-bold uppercase">Average</div>
+                                    <div className={`text-2xl font-black ${getScoreColor(avgScore)}`}>
+                                      {avgScore}%
+                                    </div>
+                                  </div>
+                                </HelpTooltip>
+
+                                <HelpTooltip content={`Best Score: ${entry.bestScore}% - Highest score achieved`}>
+                                  <div className="text-center p-3 bg-yellow-50 rounded-xl cursor-help hover:bg-yellow-100 transition-colors">
+                                    <div className="flex items-center gap-1 justify-center">
+                                      <span className="text-xs text-yellow-600 font-bold uppercase">Best</span>
+                                      <span>⭐</span>
+                                    </div>
+                                    <div className="text-2xl font-black text-yellow-600">{entry.bestScore}%</div>
+                                  </div>
+                                </HelpTooltip>
+
+                                <HelpTooltip content={`Total Points: ${entry.totalScore} - Sum of all scores earned`}>
+                                  <div className="text-center p-3 bg-purple-50 rounded-xl cursor-help hover:bg-purple-100 transition-colors">
+                                    <div className="text-xs text-purple-600 font-bold uppercase">Total</div>
+                                    <div className="text-2xl font-black text-purple-600">{entry.totalScore}</div>
+                                  </div>
+                                </HelpTooltip>
+
+                                <HelpTooltip content={`Last Activity: ${new Date(entry.lastDate).toLocaleString()} - Most recent attempt`}>
+                                  <div className="text-center p-3 bg-green-50 rounded-xl cursor-help hover:bg-green-100 transition-colors">
+                                    <div className="flex items-center gap-1 justify-center">
+                                      <span className="text-xs text-green-600 font-bold uppercase">Last</span>
+                                      <span>🕐</span>
+                                    </div>
+                                    <div className="text-sm font-bold text-green-600">
+                                      {new Date(entry.lastDate).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                </HelpTooltip>
+                              </div>
+
+                              {/* All Scores */}
+                              <div className="mt-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <HelpTooltip content="Individual scores for each attempt with detailed information">
+                                    <span className="text-xs text-slate-400 font-bold uppercase cursor-help">All Attempts</span>
+                                  </HelpTooltip>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {entry.scores.map((s, i) => {
+                                    const modeInfo = getModeInfo(s.mode);
+                                    return (
+                                      <HelpTooltip
+                                        key={i}
+                                        content={`${modeInfo.name} Mode • ${s.score}% • ${new Date(s.completedAt).toLocaleString()} • ${s.mistakes?.length || 0} mistake${(s.mistakes?.length || 0) !== 1 ? 's' : ''}`}
+                                      >
+                                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-xl border-2 border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all cursor-help">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-lg">{modeInfo.icon}</span>
+                                            <div>
+                                              <div className="font-bold text-slate-700 text-sm">{modeInfo.name}</div>
+                                              <div className="text-[10px] text-slate-400">{modeInfo.label}</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-3">
+                                            <div className={`px-3 py-1 rounded-lg font-bold text-sm ${getScoreColor(s.score)}`}>
+                                              {s.score}%
+                                            </div>
+                                            <div className="text-[10px] text-slate-400">
+                                              {new Date(s.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </HelpTooltip>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "live-challenge-class-select") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
+        <div className="max-w-2xl mx-auto">
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-white/80 font-bold flex items-center gap-1 hover:text-white bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all text-sm">← Back to Dashboard</button>
+
+          <div className="text-center mb-8">
+            <motion.h1
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
+            >
+              🏆 Select Class
+            </motion.h1>
+            <p className="text-white/90 font-bold">Choose which class to start the Live Challenge for</p>
+          </div>
+
+          <div className="grid gap-4">
+            {classes.map((cls, idx) => (
+              <motion.button
+                key={cls.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                onClick={() => {
+                  setSelectedClass(cls);
+                  setView("live-challenge");
+                  setIsLiveChallenge(true);
+                  if (socket) {
+                    socket.emit("observe-challenge", { classCode: cls.code });
+                  }
+                }}
+                className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30 hover:bg-white/30 hover:border-white/50 hover:scale-105 transition-all shadow-xl"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <h3 className="text-xl sm:text-2xl font-black mb-1">{cls.name}</h3>
+                    <p className="text-white/80 text-sm">Code: <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-bold ml-1">{cls.code}</span></p>
+                  </div>
+                  <div className="text-4xl">🚀</div>
+                </div>
+              </motion.button>
+            ))}
           </div>
         </div>
       </div>
@@ -3204,22 +3789,59 @@ Example formats:
 
       {/* Live Leaderboard Widget */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-3xl shadow-md p-6 border border-stone-100 sticky top-6">
-          <h3 className="text-lg font-black mb-4 flex items-center gap-2"><Trophy size={18} className="text-yellow-500" /> Live Rank</h3>
-          <div className="space-y-3">
-            {(Object.values(leaderboard) as { name: string, score: number }[])
-              .sort((a, b) => b.score - a.score)
+        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
+          <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
+          <div className="space-y-2">
+            {(Object.entries(leaderboard) as [string, { name: string; baseScore: number; currentGameScore: number }][])
+              .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore }))
+              .sort((a, b) => b.totalScore - a.totalScore)
               .slice(0, 5)
-              .map((entry, idx) => (
-                <div key={`${entry.name}-${idx}`} className={`flex justify-between items-center p-2 rounded-xl ${entry.name === user?.displayName ? "bg-blue-50 border border-blue-100" : ""}`}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-stone-400 w-4">{idx + 1}</span>
-                    <span className={`text-sm font-bold ${entry.name === user?.displayName ? "text-blue-700" : "text-stone-600"}`}>{entry.name}</span>
+              .map((entry, idx) => {
+                const isUser = entry.name === user?.displayName;
+                const rankIcon = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`;
+                const rankClass = idx === 0 ? "bg-gradient-to-r from-yellow-300 to-yellow-500 text-stone-900 shadow-lg shadow-yellow-400/30" :
+                                   idx === 1 ? "bg-gradient-to-r from-slate-200 to-slate-400 text-stone-900" :
+                                   idx === 2 ? "bg-gradient-to-r from-orange-300 to-orange-500 text-white" :
+                                   "bg-white/20 text-white";
+
+                return (
+                  <div
+                    key={`${entry.uid}-${idx}`}
+                    className={`flex justify-between items-center p-2 sm:p-3 rounded-xl transition-all ${isUser ? "bg-white/30 border-2 border-white/50 scale-105 shadow-lg" : "bg-white/10"}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold ${rankClass}`}>
+                        {rankIcon}
+                      </span>
+                      <span className={`text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-[100px] ${isUser ? "text-white" : "text-white/90"}`}>
+                        {entry.name}
+                      </span>
+                      {idx === 0 && (
+                        <motion.span
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="text-xs"
+                        >
+                          👑
+                        </motion.span>
+                      )}
+                    </div>
+                    <span className={`text-sm sm:text-base font-black ${isUser ? "text-white" : "text-white/80"}`}>{entry.totalScore}</span>
                   </div>
-                  <span className="text-sm font-black text-stone-900">{entry.score}</span>
-                </div>
-              ))}
-            {Object.values(leaderboard).length === 0 && <p className="text-xs text-stone-400 italic">No other players yet.</p>}
+                );
+              })}
+            {Object.values(leaderboard).length === 0 && (
+              <div className="text-center py-6">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="text-3xl mb-2"
+                >
+                  ⏳
+                </motion.div>
+                <p className="text-xs text-white/70 italic">Waiting for players...</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
