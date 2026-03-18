@@ -1409,12 +1409,19 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-5 sm:p-6">
         <div className="w-full max-w-md bg-white rounded-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden">
-          <div className="bg-blue-700 p-7 sm:p-8 text-center text-white">
-            <div className="w-18 h-18 sm:w-20 sm:h-20 bg-white/20 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-4 backdrop-blur-sm overflow-hidden">
-              <img src="/logo.webp" alt="Vocaband" className="w-full h-full object-cover" />
+          <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 via-indigo-900 p-7 sm:p-8 text-center text-white relative overflow-hidden">
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black mb-2">Vocaband</h1>
-            <p className="text-blue-100 text-sm sm:text-base font-medium">Israeli English Curriculum - Band II Vocabulary</p>
+
+            <div className="relative z-10">
+              <div className="w-18 h-18 sm:w-20 sm:h-20 bg-gradient-to-br from-white/30 via-white/20 to-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-4 backdrop-blur-sm overflow-hidden shadow-xl shadow-blue-900/50 ring-2 ring-white/30">
+                <img src="/logo.webp" alt="Vocaband" className="w-full h-full object-cover" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black mb-2 bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">Vocaband</h1>
+              <p className="text-blue-100 text-sm sm:text-base font-medium">Israeli English Curriculum - Band II Vocabulary</p>
+            </div>
           </div>
 
           <div className="p-6 sm:p-8">
