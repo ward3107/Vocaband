@@ -209,6 +209,50 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Safety timeout: if auth state never resolves (e.g. offline on mobile refresh),
+  // stop the spinner after 8 seconds so the app doesn't hang forever.
+  useEffect(() => {
+    const timeout = setTimeout(() => setLoading(false), 8000);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  // --- BACK BUTTON (History API) ---
+  // Track whether a view change was triggered by the browser back/forward button
+  // so we don't double-push the same entry.
+  const isPopStateNavRef = useRef(false);
+
+  // On first mount, seed the history stack with the initial view so the browser
+  // has something to pop back to.
+  useEffect(() => {
+    window.history.replaceState({ view: 'landing' }, '');
+  }, []);
+
+  // Whenever the app navigates to a new view, push a history entry so the
+  // Android/iOS back button can walk back through them.
+  useEffect(() => {
+    if (isPopStateNavRef.current) {
+      // This change came from popstate — don't push another entry.
+      isPopStateNavRef.current = false;
+      return;
+    }
+    window.history.pushState({ view }, '');
+  }, [view]);
+
+  // Handle the physical back button (popstate fires on Android hardware back
+  // and browser back gesture on iOS).
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const prevView = e.state?.view as typeof view | undefined;
+      if (prevView) {
+        isPopStateNavRef.current = true;
+        setView(prevView);
+      }
+      // If no state, the browser will naturally close/go to the previous page.
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Warn before leaving while a score save is in flight
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
