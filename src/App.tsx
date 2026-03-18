@@ -1473,7 +1473,7 @@ export default function App() {
                             onClick={() => setSelectedAvatarCategory(category)}
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                               selectedAvatarCategory === category
-                                ? "bg-blue-600 text-white"
+                                ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white"
                                 : "bg-stone-200 text-stone-600 hover:bg-stone-300"
                             }`}
                           >
@@ -1490,7 +1490,7 @@ export default function App() {
                             onClick={() => setStudentAvatar(a)}
                             className={`w-9.5 h-9.5 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-lg sm:text-xl transition-all ${
                               studentAvatar === a
-                                ? "bg-blue-600 shadow-lg scale-110"
+                                ? "bg-gradient-to-r from-blue-500 to-blue-700 shadow-lg scale-110"
                                 : "bg-white hover:bg-stone-100 hover:scale-105"
                             }`}
                           >
@@ -1506,7 +1506,7 @@ export default function App() {
                         if (code && name) handleStudentLogin(code, name);
                         else alert("Please enter both code and name!");
                       }}
-                      className="w-full bg-blue-700 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-lg shadow-blue-100 hover:bg-blue-800 transition-all active:scale-95"
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-lg shadow-blue-100 hover:from-blue-600 hover:to-blue-800 transition-all active:scale-95"
                     >
                       Join Class
                     </button>
