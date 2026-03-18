@@ -574,11 +574,113 @@ export default function App() {
     }
   };
 
+  // --- SMART PASTE FUNCTIONS ---
+
+  // Extract words from pasted text - handles commas, newlines, semicolons, pipes
+  const extractWordsFromPaste = (text: string): string[] => {
+    const words = text
+      .split(/[,\n;|]+/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length > 1 && w.length < 50); // Filter invalid
+    return [...new Set(words)]; // Remove duplicates
+  };
+
+  // Find matching Band 2 words (exact or partial match)
+  const findMatchesInBand2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
+    const matched: Word[] = [];
+    const unmatched: string[] = [];
+
+    for (const word of words) {
+      const found = BAND_2_WORDS.find(w =>
+        w.english.toLowerCase() === word ||
+        w.english.toLowerCase().startsWith(word) ||
+        w.english.toLowerCase().endsWith(word)
+      );
+      if (found) {
+        matched.push(found);
+      } else {
+        unmatched.push(word);
+      }
+    }
+
+    return { matched, unmatched };
+  };
+
+  // Handle paste submission
+  const handlePasteSubmit = () => {
+    const words = extractWordsFromPaste(pastedText);
+    if (words.length === 0) return;
+
+    const { matched, unmatched } = findMatchesInBand2(words);
+
+    setPasteMatchedCount(matched.length);
+    setPasteUnmatched(unmatched);
+    setShowPasteDialog(true);
+
+    // Auto-add matched words
+    const newSelected = [...selectedWords];
+    matched.forEach(w => {
+      if (!newSelected.includes(w.id)) {
+        newSelected.push(w.id);
+      }
+    });
+    setSelectedWords(newSelected);
+    setPastedText("");
+  };
+
+  // Add unmatched as custom words
+  const handleAddUnmatchedAsCustom = () => {
+    const newCustomWords = pasteUnmatched.map((word, idx) => ({
+      id: Date.now() + idx,
+      english: word,
+      hebrew: "",
+      arabic: "",
+      level: "Custom" as const
+    }));
+    setCustomWords(prev => [...prev, ...newCustomWords]);
+    setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
+    setShowPasteDialog(false);
+    setPasteUnmatched([]);
+    setPasteMatchedCount(0);
+  };
+
+  // Skip unmatched words
+  const handleSkipUnmatched = () => {
+    setShowPasteDialog(false);
+    setPasteUnmatched([]);
+    setPasteMatchedCount(0);
+  };
+
   const currentLevelWords = useMemo(() => {
-    if (selectedLevel === "Band 2") return BAND_2_WORDS;
-  
-    return customWords;
-  }, [selectedLevel, customWords]);
+    let words = selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
+
+    // Apply search filter
+    if (wordSearchQuery.trim()) {
+      const query = wordSearchQuery.toLowerCase();
+      words = words.filter(w =>
+        w.english.toLowerCase().includes(query) ||
+        w.hebrew.includes(query) ||
+        w.arabic.includes(query)
+      );
+    }
+
+    // Core filter
+    if (selectedCore) {
+      words = words.filter(w => w.core === selectedCore);
+    }
+
+    // Part of speech filter
+    if (selectedPos) {
+      words = words.filter(w => w.pos && w.pos.includes(selectedPos));
+    }
+
+    // Rec/Prod filter
+    if (selectedRecProd) {
+      words = words.filter(w => w.recProd === selectedRecProd);
+    }
+
+    return words;
+  }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd]);
   const handleSaveAssignment = async () => {
     if (!selectedClass || selectedWords.length === 0 || !assignmentTitle) {
       alert("Please enter a title and select words.");
@@ -1821,6 +1923,39 @@ export default function App() {
               </div>
             </div>
 
+            {/* Smart Paste Box - NEW */}
+            <div className="bg-blue-50 rounded-2xl p-4 mb-6 border-2 border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">📋</span>
+                <h3 className="font-bold text-blue-900">Quick Paste</h3>
+                <span className="text-xs text-blue-600 ml-auto">Paste from PDF, Word, email...</span>
+              </div>
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste your word list here...
+
+Example formats:
+• apple, banana, orange
+• One word per line
+• Separated by commas or semicolons"
+                className="w-full p-3 rounded-xl border border-blue-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                rows={3}
+              />
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-xs text-blue-600">
+                  {pastedText.trim() && `${extractWordsFromPaste(pastedText).length} words detected`}
+                </span>
+                <button
+                  onClick={handlePasteSubmit}
+                  disabled={!pastedText.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all"
+                >
+                  Extract Words
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-nowrap gap-2 sm:gap-3 mb-6 overflow-x-auto pb-2">
               {(["Band 2", "Custom"] as const).map(level => (
                 <button
@@ -1857,47 +1992,127 @@ export default function App() {
               </label>
             </div>
 
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-stone-700">Words ({currentLevelWords.length})</h3>
-              <button 
-                onClick={() => {
-                  if (selectedWords.length === currentLevelWords.length) {
-                    setSelectedWords([]);
-                  } else {
-                    setSelectedWords(currentLevelWords.map(w => w.id));
-                  }
-                }}
-                className="text-sm font-bold text-blue-700 hover:text-blue-800"
-              >
-                {selectedWords.length === currentLevelWords.length ? "Deselect All" : "Select All"}
-              </button>
+            {/* Quick Search */}
+            <div className="mb-3">
+              <input
+                type="text"
+                placeholder="🔍 Search words..."
+                value={wordSearchQuery}
+                onChange={(e) => setWordSearchQuery(e.target.value)}
+                className="w-full p-3 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8 max-h-[250px] sm:max-h-[400px] overflow-y-auto p-4 border-2 border-stone-50 rounded-[32px] bg-stone-50/50">
+            {/* Quick Category Filters - Only show when search or filters active */}
+            {(wordSearchQuery || selectedCore || selectedPos || selectedRecProd) && (
+              <>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {/* Core Filter */}
+                  <select
+                    value={selectedCore}
+                    onChange={(e) => setSelectedCore(e.target.value as any)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">All Core</option>
+                    <option value="Core I">Core I</option>
+                    <option value="Core II">Core II</option>
+                  </select>
+
+                  {/* Part of Speech Filter */}
+                  <select
+                    value={selectedPos}
+                    onChange={(e) => setSelectedPos(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">All POS</option>
+                    <option value="n">Nouns</option>
+                    <option value="v">Verbs</option>
+                    <option value="adj">Adjectives</option>
+                    <option value="adv">Adverbs</option>
+                    <option value="prep">Prepositions</option>
+                    <option value="conj">Conjunctions</option>
+                  </select>
+
+                  {/* Rec/Prod Filter */}
+                  <select
+                    value={selectedRecProd}
+                    onChange={(e) => setSelectedRecProd(e.target.value as any)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">All Types</option>
+                    <option value="Rec">Receptive</option>
+                    <option value="Prod">Productive</option>
+                  </select>
+
+                  {/* Clear Filters Button */}
+                  {(selectedCore || selectedPos || selectedRecProd || wordSearchQuery) && (
+                    <button
+                      onClick={() => {
+                        setSelectedCore("");
+                        setSelectedPos("");
+                        setSelectedRecProd("");
+                        setWordSearchQuery("");
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all"
+                    >
+                      ✕ Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Active Filter Summary */}
+                <div className="text-xs text-stone-500 mb-2">
+                  {wordSearchQuery && `Search: "${wordSearchQuery}" `}
+                  {selectedCore && `| Core: ${selectedCore} `}
+                  {selectedPos && `| POS: ${selectedPos} `}
+                  {selectedRecProd && `| Type: ${selectedRecProd}`}
+                </div>
+              </>
+            )}
+
+            {/* Compact Word List with Tap-to-Add */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-stone-50 rounded-2xl border-2 border-stone-100">
               {currentLevelWords.map(word => (
-                <motion.button 
-                  key={word.id} 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
+                  key={word.id}
                   onClick={() => {
                     if (selectedWords.includes(word.id)) {
                       setSelectedWords(selectedWords.filter(id => id !== word.id));
                     } else {
                       setSelectedWords([...selectedWords, word.id]);
                     }
-                  }} 
-                  className={`p-4 rounded-2xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-white border-2 border-blue-600 shadow-lg" : "bg-white border-2 border-transparent hover:border-stone-200"}`}
+                  }}
+                  className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-stone-100 border border-stone-200"}`}
                 >
                   <div>
-                    <p className="font-black text-stone-900">{word.english}</p>
-                    <p className="text-xs text-stone-400 font-bold uppercase">{word.hebrew} | {word.arabic}</p>
+                    <p className={`font-bold ${selectedWords.includes(word.id) ? "text-white" : "text-stone-900"}`}>{word.english}</p>
+                    <p className={`text-xs truncate ${selectedWords.includes(word.id) ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
                   </div>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedWords.includes(word.id) ? "bg-blue-600 scale-110" : "bg-stone-100"}`}>
-                    {selectedWords.includes(word.id) ? <CheckCircle2 size={14} className="text-white" /> : <div className="w-2 h-2 bg-stone-300 rounded-full" />}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${selectedWords.includes(word.id) ? "bg-white/20" : "bg-stone-100"}`}>
+                    {selectedWords.includes(word.id) ? "✓" : "+"}
                   </div>
-                </motion.button>
+                </button>
               ))}
-              {currentLevelWords.length === 0 && <p className="col-span-full text-center py-12 text-stone-400 italic">No words found in this level.</p>}
+              {currentLevelWords.length === 0 && (
+                <p className="col-span-full text-center py-8 text-stone-400 italic">
+                  No words found. Try a different search.
+                </p>
+              )}
+            </div>
+
+            {/* Selection Summary */}
+            <div className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-stone-200">
+              <span className="font-bold text-stone-700">
+                {selectedWords.length} words selected
+              </span>
+              {selectedWords.length > 0 && (
+                <button
+                  onClick={() => setSelectedWords([])}
+                  className="text-sm font-bold text-red-600 hover:text-red-700"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -1917,6 +2132,73 @@ export default function App() {
               </button>
             </div>
           </div>
+
+          {/* Paste Match Confirmation Dialog - NEW */}
+          {showPasteDialog && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
+                <h3 className="text-xl font-black text-stone-900 mb-4">Word Import Results</h3>
+
+                <div className="space-y-3 mb-6">
+                  {/* Matched Words */}
+                  <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-green-600 text-lg">✓</span>
+                      <p className="font-bold text-green-700">Matched Band 2 Words</p>
+                    </div>
+                    <p className="text-2xl font-black text-green-600">{pasteMatchedCount}</p>
+                    <p className="text-sm text-green-600">Added to your assignment automatically</p>
+                  </div>
+
+                  {/* Unmatched Words */}
+                  {pasteUnmatched.length > 0 && (
+                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-amber-600 text-lg">⚠</span>
+                        <p className="font-bold text-amber-700">Not Found in Band 2</p>
+                      </div>
+                      <p className="text-sm text-amber-600 mb-2">These words weren't found:</p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {pasteUnmatched.map(w => (
+                          <span key={w} className="px-2 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold">
+                            {w}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-amber-600">Add them as custom words instead?</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  {pasteUnmatched.length > 0 ? (
+                    <>
+                      <button
+                        onClick={handleAddUnmatchedAsCustom}
+                        className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                      >
+                        Add {pasteUnmatched.length} as Custom
+                      </button>
+                      <button
+                        onClick={handleSkipUnmatched}
+                        className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all"
+                      >
+                        Skip
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setShowPasteDialog(false)}
+                      className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                    >
+                      Done
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
