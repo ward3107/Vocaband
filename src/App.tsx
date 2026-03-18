@@ -13,7 +13,7 @@ import {
   CheckCircle2, 
   BookOpen,
   BarChart3,
-  ChevronRight,
+  ChevronRight, 
   Calendar,
   Flame,
   Settings,
@@ -31,7 +31,11 @@ import {
   Zap,
   Layers,
   Shuffle,
-  Repeat
+  Repeat,
+  Copy,
+  Check,
+  Share2,
+  MessageCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
@@ -53,6 +57,110 @@ const MOTIVATIONAL_MESSAGES = [
 const randomMotivation = () =>
   MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
 
+// Test data for analytics view development
+const TEST_ANALYTICS_DATA: ProgressData[] = [
+  // Assignment 1 - "Classic Mode"
+  { id: "1", studentName: "Ahmed Al-Ahmad", assignmentId: "Classic Mode", classCode: "489409", score: 92, mode: "classic", completedAt: "2025-03-10T10:30:00", mistakes: [5] },
+  { id: "2", studentName: "Sara Hassan", assignmentId: "Classic Mode", classCode: "489409", score: 88, mode: "classic", completedAt: "2025-03-10T11:15:00", mistakes: [12, 18] },
+  { id: "3", studentName: "Omar Khalid", assignmentId: "Classic Mode", classCode: "489409", score: 65, mode: "classic", completedAt: "2025-03-10T14:20:00", mistakes: [1, 5, 8, 12, 15, 22] },
+  { id: "4", studentName: "Layla Mahmoud", assignmentId: "Classic Mode", classCode: "489409", score: 78, mode: "spelling", completedAt: "2025-03-10T15:45:00", mistakes: [3, 7, 11] },
+  { id: "5", studentName: "Khalid Rahman", assignmentId: "Classic Mode", classCode: "489409", score: 95, mode: "classic", completedAt: "2025-03-10T16:00:00", mistakes: [] },
+  { id: "6", studentName: "Noura Ahmed", assignmentId: "Classic Mode", classCode: "489409", score: 72, mode: "spelling", completedAt: "2025-03-10T17:30:00", mistakes: [2, 9, 13, 14] },
+  { id: "7", studentName: "Fahad Ali", assignmentId: "Classic Mode", classCode: "489409", score: 85, mode: "classic", completedAt: "2025-03-10T18:00:00", mistakes: [8, 20] },
+  { id: "8", studentName: "Rana Omar", assignmentId: "Classic Mode", classCode: "210443", score: 90, mode: "flashcards", completedAt: "2025-03-11T09:00:00", mistakes: [4] },
+  { id: "9", studentName: "Hassan Saeed", assignmentId: "Classic Mode", classCode: "210443", score: 68, mode: "classic", completedAt: "2025-03-11T10:30:00", mistakes: [1, 6, 11, 16, 19, 23] },
+  { id: "10", studentName: "Mona Youssef", assignmentId: "Classic Mode", classCode: "210443", score: 82, mode: "spelling", completedAt: "2025-03-11T11:45:00", mistakes: [5, 10] },
+
+  // Assignment 2 - "Listening Mode"
+  { id: "11", studentName: "Ahmed Al-Ahmad", assignmentId: "Listening Mode", classCode: "489409", score: 78, mode: "spelling", completedAt: "2025-03-12T09:30:00", mistakes: [15, 21, 28] },
+  { id: "12", studentName: "Sara Hassan", assignmentId: "Listening Mode", classCode: "489409", score: 91, mode: "spelling", completedAt: "2025-03-12T10:15:00", mistakes: [17] },
+  { id: "13", studentName: "Omar Khalid", assignmentId: "Listening Mode", classCode: "489409", score: 58, mode: "flashcards", completedAt: "2025-03-12T14:00:00", mistakes: [2, 9, 13, 15, 20, 25, 30, 35] },
+  { id: "14", studentName: "Layla Mahmoud", assignmentId: "Listening Mode", classCode: "489409", score: 85, mode: "classic", completedAt: "2025-03-12T15:20:00", mistakes: [6] },
+  { id: "15", studentName: "Khalid Rahman", assignmentId: "Listening Mode", classCode: "489409", score: 98, mode: "spelling", completedAt: "2025-03-12T16:45:00", mistakes: [] },
+  { id: "16", studentName: "Noura Ahmed", assignmentId: "Listening Mode", classCode: "489409", score: 69, mode: "flashcards", completedAt: "2025-03-12T17:00:00", mistakes: [3, 8, 11, 14, 18, 21] },
+  { id: "17", studentName: "Fahad Ali", assignmentId: "Listening Mode", classCode: "489409", score: 88, mode: "classic", completedAt: "2025-03-12T18:30:00", mistakes: [7] },
+  { id: "18", studentName: "Rana Omar", assignmentId: "Listening Mode", classCode: "210443", score: 93, mode: "flashcards", completedAt: "2025-03-13T08:30:00", mistakes: [] },
+  { id: "19", studentName: "Hassan Saeed", assignmentId: "Listening Mode", classCode: "210443", score: 71, mode: "classic", completedAt: "2025-03-13T09:45:00", mistakes: [5, 12, 19] },
+  { id: "20", studentName: "Mona Youssef", assignmentId: "Listening Mode", classCode: "210443", score: 86, mode: "spelling", completedAt: "2025-03-13T11:00:00", mistakes: [8, 16] },
+
+  // Assignment 3 - "Spelling Mode" - more challenging!
+  { id: "21", studentName: "Ahmed Al-Ahmad", assignmentId: "Spelling Mode", classCode: "489409", score: 85, mode: "flashcards", completedAt: "2025-03-14T09:00:00", mistakes: [4, 11] },
+  { id: "22", studentName: "Sara Hassan", assignmentId: "Spelling Mode", classCode: "489409", score: 89, mode: "classic", completedAt: "2025-03-14T10:30:00", mistakes: [9, 22] },
+  { id: "23", studentName: "Omar Khalid", assignmentId: "Spelling Mode", classCode: "489409", score: 45, mode: "classic", completedAt: "2025-03-14T14:15:00", mistakes: [1, 2, 5, 6, 8, 10, 11, 13, 14, 15, 17, 19, 21, 24, 26, 28] },
+  { id: "24", studentName: "Layla Mahmoud", assignmentId: "Spelling Mode", classCode: "489409", score: 75, mode: "flashcards", completedAt: "2025-03-14T15:40:00", mistakes: [3, 7, 12, 18, 23] },
+  { id: "25", studentName: "Khalid Rahman", assignmentId: "Spelling Mode", classCode: "489409", score: 92, mode: "spelling", completedAt: "2025-03-14T17:00:00", mistakes: [5] },
+  // Noura didn't complete Assignment 3
+  { id: "26", studentName: "Fahad Ali", assignmentId: "Spelling Mode", classCode: "489409", score: 80, mode: "flashcards", completedAt: "2025-03-14T18:15:00", mistakes: [9, 15, 20] },
+  { id: "27", studentName: "Rana Omar", assignmentId: "Spelling Mode", classCode: "210443", score: 87, mode: "spelling", completedAt: "2025-03-15T09:15:00", mistakes: [6, 13] },
+  { id: "28", studentName: "Hassan Saeed", assignmentId: "Spelling Mode", classCode: "210443", score: 62, mode: "flashcards", completedAt: "2025-03-15T10:30:00", mistakes: [1, 4, 7, 10, 13, 16, 20, 25, 31] },
+  { id: "29", studentName: "Mona Youssef", assignmentId: "Spelling Mode", classCode: "210443", score: 79, mode: "classic", completedAt: "2025-03-15T11:45:00", mistakes: [8, 14, 19] },
+
+  // Assignment 4 - "Matching Mode"
+  { id: "30", studentName: "Ahmed Al-Ahmad", assignmentId: "Matching Mode", classCode: "489409", score: 88, mode: "classic", completedAt: "2025-03-16T09:20:00", mistakes: [10] },
+  { id: "31", studentName: "Sara Hassan", assignmentId: "Matching Mode", classCode: "489409", score: 94, mode: "spelling", completedAt: "2025-03-16T10:45:00", mistakes: [] },
+  { id: "32", studentName: "Omar Khalid", assignmentId: "Matching Mode", classCode: "489409", score: 52, mode: "flashcards", completedAt: "2025-03-16T14:30:00", mistakes: [2, 5, 9, 11, 14, 17, 20, 22, 25, 27, 30, 33] },
+  { id: "33", studentName: "Layla Mahmoud", assignmentId: "Matching Mode", classCode: "489409", score: 82, mode: "spelling", completedAt: "2025-03-16T15:50:00", mistakes: [7, 13] },
+  { id: "34", studentName: "Khalid Rahman", assignmentId: "Matching Mode", classCode: "489409", score: 96, mode: "classic", completedAt: "2025-03-16T17:15:00", mistakes: [] },
+  { id: "35", studentName: "Noura Ahmed", assignmentId: "Matching Mode", classCode: "489409", score: 74, mode: "spelling", completedAt: "2025-03-16T17:45:00", mistakes: [4, 8, 11, 15] },
+  { id: "36", studentName: "Fahad Ali", assignmentId: "Matching Mode", classCode: "489409", score: 86, mode: "flashcards", completedAt: "2025-03-16T18:30:00", mistakes: [12] },
+  { id: "37", studentName: "Rana Omar", assignmentId: "Matching Mode", classCode: "210443", score: 91, mode: "classic", completedAt: "2025-03-17T08:45:00", mistakes: [3] },
+  { id: "38", studentName: "Hassan Saeed", assignmentId: "Matching Mode", classCode: "210443", score: 67, mode: "spelling", completedAt: "2025-03-17T10:10:00", mistakes: [6, 12, 18, 21] },
+  { id: "39", studentName: "Mona Youssef", assignmentId: "Matching Mode", classCode: "210443", score: 84, mode: "flashcards", completedAt: "2025-03-17T11:30:00", mistakes: [9, 16] },
+
+  // Assignment 5 - "Final Challenge" - most challenging!
+  { id: "40", studentName: "Ahmed Al-Ahmad", assignmentId: "True/False", classCode: "489409", score: 90, mode: "spelling", completedAt: "2025-03-18T09:30:00", mistakes: [7] },
+  { id: "41", studentName: "Sara Hassan", assignmentId: "True/False", classCode: "489409", score: 97, mode: "flashcards", completedAt: "2025-03-18T11:00:00", mistakes: [] },
+  { id: "42", studentName: "Omar Khalid", assignmentId: "True/False", classCode: "489409", score: 38, mode: "classic", completedAt: "2025-03-18T14:45:00", mistakes: [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] },
+  { id: "43", studentName: "Layla Mahmoud", assignmentId: "True/False", classCode: "489409", score: 79, mode: "classic", completedAt: "2025-03-18T16:00:00", mistakes: [8, 15, 22] },
+  { id: "44", studentName: "Khalid Rahman", assignmentId: "True/False", classCode: "489409", score: 94, mode: "spelling", completedAt: "2025-03-18T17:30:00", mistakes: [2] },
+  { id: "45", studentName: "Noura Ahmed", assignmentId: "True/False", classCode: "489409", score: 68, mode: "classic", completedAt: "2025-03-18T18:00:00", mistakes: [4, 9, 13, 16, 19, 22] },
+  { id: "46", studentName: "Fahad Ali", assignmentId: "True/False", classCode: "489409", score: 83, mode: "flashcards", completedAt: "2025-03-18T18:45:00", mistakes: [11, 18] },
+  { id: "47", studentName: "Rana Omar", assignmentId: "True/False", classCode: "210443", score: 89, mode: "spelling", completedAt: "2025-03-19T09:00:00", mistakes: [5] },
+  { id: "48", studentName: "Hassan Saeed", assignmentId: "True/False", classCode: "210443", score: 59, mode: "flashcards", completedAt: "2025-03-19T10:15:00", mistakes: [3, 7, 11, 14, 17, 20, 23, 26, 29, 32] },
+  { id: "49", studentName: "Mona Youssef", assignmentId: "True/False", classCode: "210443", score: 81, mode: "classic", completedAt: "2025-03-19T11:30:00", mistakes: [10, 17, 24] },
+
+  // Flashcards
+  { id: "50", studentName: "Ahmed Al-Ahmad", assignmentId: "Flashcards", classCode: "489409", score: 95, mode: "flashcards", completedAt: "2025-03-20T09:00:00", mistakes: [] },
+  { id: "51", studentName: "Sara Hassan", assignmentId: "Flashcards", classCode: "489409", score: 92, mode: "flashcards", completedAt: "2025-03-20T10:30:00", mistakes: [8] },
+  { id: "52", studentName: "Omar Khalid", assignmentId: "Flashcards", classCode: "489409", score: 72, mode: "flashcards", completedAt: "2025-03-20T14:00:00", mistakes: [3, 7, 11, 15] },
+  { id: "53", studentName: "Layla Mahmoud", assignmentId: "Flashcards", classCode: "489409", score: 88, mode: "flashcards", completedAt: "2025-03-20T15:30:00", mistakes: [5] },
+  { id: "54", studentName: "Khalid Rahman", assignmentId: "Flashcards", classCode: "489409", score: 98, mode: "flashcards", completedAt: "2025-03-20T17:00:00", mistakes: [] },
+  { id: "55", studentName: "Noura Ahmed", assignmentId: "Flashcards", classCode: "489409", score: 85, mode: "flashcards", completedAt: "2025-03-20T18:30:00", mistakes: [6, 12] },
+  { id: "56", studentName: "Fahad Ali", assignmentId: "Flashcards", classCode: "489409", score: 91, mode: "flashcards", completedAt: "2025-03-20T19:00:00", mistakes: [4] },
+  { id: "57", studentName: "Rana Omar", assignmentId: "Flashcards", classCode: "210443", score: 94, mode: "flashcards", completedAt: "2025-03-21T09:00:00", mistakes: [] },
+  { id: "58", studentName: "Hassan Saeed", assignmentId: "Flashcards", classCode: "210443", score: 78, mode: "flashcards", completedAt: "2025-03-21T10:15:00", mistakes: [2, 9, 14] },
+  { id: "59", studentName: "Mona Youssef", assignmentId: "Flashcards", classCode: "210443", score: 89, mode: "flashcards", completedAt: "2025-03-21T11:30:00", mistakes: [7] },
+
+  // Word Scramble
+  { id: "60", studentName: "Ahmed Al-Ahmad", assignmentId: "Word Scramble", classCode: "489409", score: 87, mode: "scramble", completedAt: "2025-03-22T09:30:00", mistakes: [10, 16] },
+  { id: "61", studentName: "Sara Hassan", assignmentId: "Word Scramble", classCode: "489409", score: 93, mode: "scramble", completedAt: "2025-03-22T11:00:00", mistakes: [5] },
+  { id: "62", studentName: "Omar Khalid", assignmentId: "Word Scramble", classCode: "489409", score: 48, mode: "scramble", completedAt: "2025-03-22T14:30:00", mistakes: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27] },
+  { id: "63", studentName: "Layla Mahmoud", assignmentId: "Word Scramble", classCode: "489409", score: 76, mode: "scramble", completedAt: "2025-03-22T16:00:00", mistakes: [4, 8, 12, 18, 22] },
+  { id: "64", studentName: "Khalid Rahman", assignmentId: "Word Scramble", classCode: "489409", score: 95, mode: "scramble", completedAt: "2025-03-22T17:30:00", mistakes: [2] },
+  // Noura skipped Word Scramble
+  { id: "65", studentName: "Fahad Ali", assignmentId: "Word Scramble", classCode: "489409", score: 82, mode: "scramble", completedAt: "2025-03-22T19:00:00", mistakes: [6, 13, 19] },
+  { id: "66", studentName: "Rana Omar", assignmentId: "Word Scramble", classCode: "210443", score: 88, mode: "scramble", completedAt: "2025-03-23T09:30:00", mistakes: [7] },
+  { id: "67", studentName: "Hassan Saeed", assignmentId: "Word Scramble", classCode: "210443", score: 54, mode: "scramble", completedAt: "2025-03-23T10:45:00", mistakes: [1, 4, 7, 10, 13, 16, 20, 24, 28, 31] },
+  { id: "68", studentName: "Mona Youssef", assignmentId: "Word Scramble", classCode: "210443", score: 79, mode: "scramble", completedAt: "2025-03-23T12:00:00", mistakes: [8, 15, 21] },
+
+  // Reverse Mode
+  { id: "69", studentName: "Ahmed Al-Ahmad", assignmentId: "Reverse Mode", classCode: "489409", score: 82, mode: "reverse", completedAt: "2025-03-24T09:00:00", mistakes: [11, 17, 23] },
+  { id: "70", studentName: "Sara Hassan", assignmentId: "Reverse Mode", classCode: "489409", score: 90, mode: "reverse", completedAt: "2025-03-24T10:30:00", mistakes: [6] },
+  { id: "71", studentName: "Omar Khalid", assignmentId: "Reverse Mode", classCode: "489409", score: 42, mode: "reverse", completedAt: "2025-03-24T14:15:00", mistakes: [1, 2, 4, 5, 7, 9, 10, 12, 14, 16, 18, 20, 22, 25, 28] },
+  { id: "72", studentName: "Layla Mahmoud", assignmentId: "Reverse Mode", classCode: "489409", score: 73, mode: "reverse", completedAt: "2025-03-24T15:45:00", mistakes: [3, 8, 13, 19, 24] },
+  { id: "73", studentName: "Khalid Rahman", assignmentId: "Reverse Mode", classCode: "489409", score: 93, mode: "reverse", completedAt: "2025-03-24T17:15:00", mistakes: [4] },
+  // Noura skipped Reverse Mode
+  { id: "74", studentName: "Fahad Ali", assignmentId: "Reverse Mode", classCode: "489409", score: 79, mode: "reverse", completedAt: "2025-03-24T18:45:00", mistakes: [7, 14, 20] },
+  { id: "75", studentName: "Rana Omar", assignmentId: "Reverse Mode", classCode: "210443", score: 86, mode: "reverse", completedAt: "2025-03-25T09:15:00", mistakes: [9] },
+  { id: "76", studentName: "Hassan Saeed", assignmentId: "Reverse Mode", classCode: "210443", score: 51, mode: "reverse", completedAt: "2025-03-25T10:30:00", mistakes: [1, 5, 8, 12, 15, 19, 22, 26, 30, 33] },
+  { id: "77", studentName: "Mona Youssef", assignmentId: "Reverse Mode", classCode: "210443", score: 77, mode: "reverse", completedAt: "2025-03-25T11:45:00", mistakes: [6, 13, 18, 25] },
+
+  // Some students reattempted for better scores
+  { id: "78", studentName: "Omar Khalid", assignmentId: "Classic Mode", classCode: "489409", score: 71, mode: "classic", completedAt: "2025-03-11T20:00:00", mistakes: [1, 5, 8, 12, 15, 22] },
+  { id: "79", studentName: "Layla Mahmoud", assignmentId: "Listening Mode", classCode: "489409", score: 90, mode: "listening", completedAt: "2025-03-13T12:00:00", mistakes: [3] },
+  { id: "80", studentName: "Ahmed Al-Ahmad", assignmentId: "Spelling Mode", classCode: "489409", score: 96, mode: "spelling", completedAt: "2025-03-15T14:00:00", mistakes: [] },
+];
+
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
@@ -62,12 +170,50 @@ export default function App() {
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
+  const [createdClassName, setCreatedClassName] = useState<string>("");
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
 
   const [studentAvatar, setStudentAvatar] = useState("🦊");
-  const AVATARS = ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄"];
+
+  const AVATAR_CATEGORIES = {
+    Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜"],
+    Faces: ["😎", "🤓", "🥳", "😊", "🤩", "🥹", "😜", "🤗", "🥰", "😇", "🧐", "🤠"],
+    Sports: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🏉", "🎱", "🏓", "🏸", "🥊", "⛳"],
+    Food: ["🍕", "🍔", "🍟", "🌭", "🍿", "🧁", "🥨", "🍦", "🍩", "🍪", "🎂", "🍰"],
+    Objects: ["🎸", "🎹", "🎺", "🎷", "🪕", "🎻", "🎤", "🎧", "📷", "🎮", "🕹️", "💎"],
+    Nature: ["🌸", "🌺", "🌻", "🌷", "🌹", "🍀", "🌲", "🌳", "🌵", "🌴", "🍄", "🌾"],
+    Space: ["🚀", "🛸", "🌙", "⭐", "🌟", "💫", "✨", "☄️", "🪐", "🌍", "🔥", "💧"]
+  };
+
+  const ASSIGNMENT_TITLE_SUGGESTIONS = [
+    "Weekly Vocabulary Quiz",
+    "Band 2 Words Review",
+    "Common Nouns Practice",
+    "Verbs Challenge",
+    "Adjectives Test",
+    "Daily Words Assessment",
+    "Unit 1 Vocabulary",
+    "Unit 2 Vocabulary",
+    "Unit 3 Vocabulary",
+    "Unit 4 Vocabulary",
+    "Unit 5 Vocabulary",
+    "Midterm Review",
+    "Final Exam Practice",
+    "Spelling Bee Practice",
+    "Word Building Exercise",
+    "Flashcard Mastery",
+    "Listening Comprehension",
+    "Reading Vocabulary",
+    "Grammar & Vocabulary",
+    "Advanced Vocabulary Test"
+  ];
+
+  const ALL_AVATARS = Object.values(AVATAR_CATEGORIES).flat();
+
+  const [selectedAvatarCategory, setSelectedAvatarCategory] = useState<keyof typeof AVATAR_CATEGORIES>("Animals");
 
   // --- LIVE CHALLENGE STATE ---
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -89,6 +235,18 @@ export default function App() {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
   const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]);
+
+  // --- SMART PASTE STATE ---
+  const [pastedText, setPastedText] = useState("");
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [pasteMatchedCount, setPasteMatchedCount] = useState(0);
+  const [pasteUnmatched, setPasteUnmatched] = useState<string[]>([]);
+
+  // --- QUICK SEARCH & FILTERS STATE ---
+  const [wordSearchQuery, setWordSearchQuery] = useState("");
+  const [selectedCore, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
+  const [selectedPos, setSelectedPos] = useState<string>("");
+  const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -211,11 +369,14 @@ export default function App() {
               setView("teacher-dashboard");
             }
           }
-        } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
-          // Only redirect to landing on an explicit sign-out or when there is
-          // genuinely no session on first load.  Other null-session events (e.g.
-          // a failed TOKEN_REFRESHED) must not discard an already-authenticated
-          // user because multiple async callback invocations can race.
+        } else if (event === 'SIGNED_OUT') {
+          // Only redirect to landing on an explicit sign-out.  INITIAL_SESSION
+          // fires before Supabase finishes restoring the session from storage,
+          // so we must wait for the actual session state instead of redirecting.
+          setUser(null);
+          setView("landing");
+        } else if (!session && event !== 'INITIAL_SESSION') {
+          // No session exists (after restoration completed) - show landing
           setUser(null);
           setView("landing");
         }
@@ -324,6 +485,7 @@ export default function App() {
       const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
       if (error) throw error;
       setClasses([...classes, mapClass(docRow)]);
+      setCreatedClassName(newClass.name);
       setShowCreateClassModal(false);
       setNewClassName("");
       setCreatedClassCode(code);
@@ -657,7 +819,6 @@ export default function App() {
 
     if (classes.length === 0) {
       setAllScores([]);
-      setView("gradebook");
       return;
     }
 
@@ -675,7 +836,6 @@ export default function App() {
     }
 
     setAllScores(allRows);
-    setView("gradebook");
   };
 
   // --- GAME LOGIC ---
@@ -1052,35 +1212,83 @@ export default function App() {
     return { heatmap, progress, modes };
   }, [allScores]);
 
+  // Matrix data for Student × Assignment view
+  const matrixData = useMemo(() => {
+    // Get unique students and assignments
+    const studentMap = new Map<string, ProgressData[]>();
+    const assignmentSet = new Set<string>();
+
+    allScores.forEach(s => {
+      if (!studentMap.has(s.studentName)) {
+        studentMap.set(s.studentName, []);
+      }
+      studentMap.get(s.studentName)!.push(s);
+      assignmentSet.add(s.assignmentId);
+    });
+
+    const students = Array.from(studentMap.keys()).sort();
+    const assignments = Array.from(assignmentSet).sort();
+
+    // Build matrix: for each student-assignment, get the most recent score
+    const matrix: Map<string, Map<string, ProgressData>> = new Map();
+    const averages: Map<string, number> = new Map(); // student averages
+
+    students.forEach(student => {
+      matrix.set(student, new Map());
+      const studentScores = studentMap.get(student)!;
+
+      // Calculate student average
+      const avgScore = studentScores.reduce((sum, s) => sum + s.score, 0) / studentScores.length;
+      averages.set(student, Math.round(avgScore));
+
+      // For each assignment, get the most recent score
+      assignments.forEach(assignmentId => {
+        const assignmentScores = studentScores.filter(s => s.assignmentId === assignmentId);
+        if (assignmentScores.length > 0) {
+          // Sort by completedAt descending and take the first (most recent)
+          assignmentScores.sort((a, b) =>
+            new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+          );
+          matrix.get(student)!.set(assignmentId, assignmentScores[0]);
+        }
+      });
+    });
+
+    return { students, assignments, matrix, averages, studentMap };
+  }, [allScores]);
+
+  // State for selected score detail view
+  const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
-      <RefreshCw className="animate-spin text-emerald-600" size={48} />
+      <RefreshCw className="animate-spin text-blue-700" size={48} />
     </div>;
   }
 
   if (view === "landing" && !user) {
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl overflow-hidden">
-          <div className="bg-emerald-600 p-8 text-center text-white">
-            <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-              <GraduationCap size={48} />
+      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-5 sm:p-6">
+        <div className="w-full max-w-md bg-white rounded-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden">
+          <div className="bg-blue-700 p-7 sm:p-8 text-center text-white">
+            <div className="w-18 h-18 sm:w-20 sm:h-20 bg-white/20 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-4 backdrop-blur-sm overflow-hidden">
+              <img src="/logo.webp" alt="Vocaband" className="w-full h-full object-cover" />
             </div>
-            <h1 className="text-3xl font-black mb-1">Vocaband</h1>
-            <p className="text-emerald-100 font-bold">based on the Israeli English curriculum - band 2 vocabulary</p>
+            <h1 className="text-2xl sm:text-3xl font-black mb-2">Vocaband</h1>
+            <p className="text-blue-100 text-sm sm:text-base font-medium">Israeli English Curriculum - Band II Vocabulary</p>
           </div>
 
-          <div className="p-8">
-            <div className="flex bg-stone-100 p-1 rounded-2xl mb-8">
-              <button 
+          <div className="p-6 sm:p-8">
+            <div className="flex bg-stone-100 p-1 rounded-2xl mb-8 sm:mb-8">
+              <button
                 onClick={() => setLandingTab("student")}
-                className={`flex-1 py-3 rounded-xl font-bold transition-all ${landingTab === "student" ? "bg-white text-emerald-600 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
+                className={`flex-1 py-4 sm:py-3 rounded-xl font-bold transition-all text-lg sm:text-sm ${landingTab === "student" ? "bg-white text-blue-700 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
               >
                 Student
               </button>
-              <button 
+              <button
                 onClick={() => setLandingTab("teacher")}
-                className={`flex-1 py-3 rounded-xl font-bold transition-all ${landingTab === "teacher" ? "bg-white text-emerald-600 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
+                className={`flex-1 py-4 sm:py-3 rounded-xl font-bold transition-all text-lg sm:text-sm ${landingTab === "teacher" ? "bg-white text-blue-700 shadow-sm" : "text-stone-400 hover:text-ststone-600"}`}
               >
                 Teacher
               </button>
@@ -1093,60 +1301,85 @@ export default function App() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="space-y-4"
+                  className="space-y-5"
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div className="relative">
-                      <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
-                      <input 
-                        type="text" 
-                        placeholder="Class Code" 
-                        id="class-code" 
-                        className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-stone-100 focus:border-emerald-500 outline-none transition-colors font-bold text-lg" 
+                      <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Class Code"
+                        id="class-code"
+                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-600 outline-none transition-colors font-bold text-base"
                       />
                     </div>
                     <div className="relative">
-                      <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
-                      <input 
-                        type="text" 
-                        placeholder="Your Name" 
-                        id="student-name" 
-                        className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-stone-100 focus:border-emerald-500 outline-none transition-colors font-bold text-lg" 
+                      <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Your Name"
+                        id="student-name"
+                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-600 outline-none transition-colors font-bold text-base"
                       />
                     </div>
-                    
-                    <div className="bg-stone-50 p-4 rounded-2xl">
-                      <p className="text-xs font-black text-stone-400 uppercase mb-3 tracking-widest">Choose Avatar</p>
+
+                    <div className="bg-stone-50 p-5 rounded-2xl">
+                      <p className="text-xs font-black text-stone-400 uppercase mb-4 tracking-widest">Choose Avatar</p>
+
+                      {/* Category Tabs */}
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map(category => (
+                          <button
+                            key={category}
+                            onClick={() => setSelectedAvatarCategory(category)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                              selectedAvatarCategory === category
+                                ? "bg-blue-600 text-white"
+                                : "bg-stone-200 text-stone-600 hover:bg-stone-300"
+                            }`}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Avatar Grid */}
                       <div className="flex flex-wrap gap-2">
-                        {AVATARS.map(a => (
-                          <button 
+                        {AVATAR_CATEGORIES[selectedAvatarCategory].map(a => (
+                          <button
                             key={a}
                             onClick={() => setStudentAvatar(a)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl text-xl transition-all ${studentAvatar === a ? "bg-emerald-500 shadow-lg scale-110" : "bg-white hover:bg-stone-100"}`}
+                            className={`w-9.5 h-9.5 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-lg sm:text-xl transition-all ${
+                              studentAvatar === a
+                                ? "bg-blue-600 shadow-lg scale-110"
+                                : "bg-white hover:bg-stone-100 hover:scale-105"
+                            }`}
                           >
                             {a}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         const code = (document.getElementById("class-code") as HTMLInputElement).value;
                         const name = (document.getElementById("student-name") as HTMLInputElement).value;
                         if (code && name) handleStudentLogin(code, name);
                         else alert("Please enter both code and name!");
-                      }} 
-                      className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+                      }}
+                      className="w-full bg-blue-700 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-lg shadow-blue-100 hover:bg-blue-800 transition-all active:scale-95"
                     >
                       Join Class
                     </button>
                     {error && <p className="text-red-500 text-sm font-bold mt-2">{error}</p>}
-                    
-                    <button 
+
+                    <button
                       onClick={() => { fetchGlobalLeaderboard(); setView("global-leaderboard"); }}
-                      className="w-full flex items-center justify-center gap-2 text-stone-400 font-bold hover:text-stone-600 transition-colors text-sm"
+                      className="w-full flex items-center justify-center gap-2 text-stone-400 font-bold hover:text-stone-600 transition-colors text-sm mt-3"
                     >
-                      <Trophy size={16} /> View Global Leaderboard
+                      <Trophy size={16} />
+                      <span className="hidden sm:inline">View Global Leaderboard</span>
+                      <span className="sm:hidden">Leaderboard</span>
                     </button>
                   </div>
                 </motion.div>
@@ -1156,13 +1389,13 @@ export default function App() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="space-y-4"
+                  className="space-y-12 sm:space-y-4"
                 >
-                  <p className="text-center text-stone-500 text-sm font-medium">
+                  <p className="text-center text-stone-500 text-xl sm:text-sm font-medium">
                     Sign in with your school Google account
                   </p>
 
-                  {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
+                  {error && <p className="text-red-500 text-xl sm:text-sm font-bold text-center">{error}</p>}
 
                   <button
                     onClick={() => supabase.auth.signInWithOAuth({
@@ -1171,9 +1404,9 @@ export default function App() {
                     }).then(({ error: err }) => {
                       if (err) setError(`Google sign-in failed: ${err.message}. Please try again.`);
                     })}
-                    className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-200 py-5 rounded-2xl font-black text-lg text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-sm"
+                    className="w-full flex items-center justify-center gap-5 bg-white border-3 border-stone-200 py-14 sm:py-4 rounded-2xl font-black text-2xl sm:text-base text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-md"
                   >
-                    <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+                    <img src="https://www.google.com/favicon.ico" className="w-10 h-10 sm:w-5 sm:h-5" alt="Google" />
                     Sign in with Google
                   </button>
                 </motion.div>
@@ -1187,20 +1420,20 @@ export default function App() {
 
   if (user?.role === "student" && view === "student-dashboard") {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
+      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-6 sm:mb-8">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-14 h-14 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
                 {user.avatar}
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
-                <p className="text-stone-500 font-bold">Class Code: <span className="text-emerald-600">{user.classCode}</span></p>
+                <p className="text-stone-500 font-bold text-base sm:text-sm">Class Code: <span className="text-blue-700">{user.classCode}</span></p>
                 {badges.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {badges.map(badge => (
-                      <div key={badge} className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1">
+                      <div key={badge} className="bg-blue-50 text-blue-900 px-3 py-1.5 rounded-full font-bold text-sm flex items-center gap-1">
                         <Trophy size={14} />
                         {badge}
                       </div>
@@ -1209,67 +1442,67 @@ export default function App() {
                 )}
               </div>
             </div>
-            <button onClick={() => { setUser(null); setView("landing"); }} className="text-stone-500 font-bold hover:text-red-500">Logout</button>
+            <button onClick={() => { setUser(null); setView("landing"); }} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm">Logout</button>
           </div>
 
           {studentAssignments.length > 0 && (
-            <div className="bg-white p-6 rounded-[32px] shadow-sm mb-8">
-              <h3 className="text-lg font-bold text-stone-800 mb-2">Overall Progress</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-4 bg-stone-100 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-emerald-500 transition-all duration-1000"
-                    style={{ 
+            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[32px] shadow-sm mb-6 sm:mb-8">
+              <h3 className="text-lg sm:text-lg font-bold text-stone-800 mb-3 sm:mb-2">Overall Progress</h3>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="flex-1 h-5 sm:h-4 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-1000"
+                    style={{
                       width: `${Math.round((studentAssignments.filter(a => {
                         const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
                         const completedModes = new Set(
                           studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
                         ).size;
                         return completedModes >= allowedModes.length;
-                      }).length / studentAssignments.length) * 100)}%` 
+                      }).length / studentAssignments.length) * 100)}%`
                     }}
                   />
                 </div>
-                <span className="font-bold text-stone-500">
+                <span className="font-bold text-stone-500 text-sm sm:text-sm">
                   {studentAssignments.filter(a => {
                     const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
                     const completedModes = new Set(
                       studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
                     ).size;
                     return completedModes >= allowedModes.length;
-                  }).length} / {studentAssignments.length} Assignments
+                  }).length} / {studentAssignments.length}
                 </span>
               </div>
             </div>
           )}
 
-          <div className="bg-white p-8 rounded-[40px] shadow-xl">
-            <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><BookOpen className="text-emerald-600" /> Your Assignments</h2>
+          <div className="bg-white p-5 sm:p-8 rounded-[28px] sm:rounded-[40px] shadow-xl">
+            <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2"><BookOpen className="text-blue-700" size={22} /> Your Assignments</h2>
             
             {studentAssignments.length === 0 ? (
-              <p className="text-stone-400 italic text-center py-8">No assignments yet. Check back later!</p>
+              <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">No assignments yet. Check back later!</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5 sm:space-y-4">
                 {studentAssignments.map(assignment => {
                   const allowedModes = assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
                   const totalModes = allowedModes.length;
-                  
+
                   // Find unique modes completed for this assignment
                   const completedModes = new Set(
                     studentProgress
                       .filter(p => p.assignmentId === assignment.id)
                       .map(p => p.mode)
                   ).size;
-                  
+
                   const progressPercentage = Math.min(100, Math.round((completedModes / totalModes) * 100));
                   const isComplete = completedModes >= totalModes;
 
                   return (
-                    <div key={assignment.id} className="bg-stone-50 p-6 rounded-3xl border-2 border-stone-100 hover:border-emerald-200 transition-colors">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                        <div>
-                          <h3 className="text-xl font-bold text-stone-800">{assignment.title}</h3>
-                          <p className="text-stone-500 text-sm font-medium mt-1">
+                    <div key={assignment.id} className="bg-stone-50 p-5 sm:p-6 rounded-3xl border-2 border-stone-100 hover:border-blue-200 transition-colors">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                        <div className="flex-1">
+                          <h3 className="text-xl sm:text-xl font-bold text-stone-800">{assignment.title}</h3>
+                          <p className="text-stone-500 text-base sm:text-sm font-medium mt-2 sm:mt-1">
                             {assignment.wordIds.length} Vocabulary Words
                             {assignment.deadline && ` • Due: ${new Date(assignment.deadline).toLocaleDateString()}`}
                           </p>
@@ -1282,24 +1515,24 @@ export default function App() {
                             setView("game");
                             setShowModeSelection(true);
                           }}
-                          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors whitespace-nowrap"
+                          className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors whitespace-nowrap text-base sm:text-sm"
                         >
                           {isComplete ? "Play Again" : "Start Learning"}
                         </button>
                       </div>
-                      
+
                       {/* Progress Bar */}
                       <div>
-                        <div className="flex justify-between text-xs font-bold mb-2">
+                        <div className="flex justify-between text-sm sm:text-xs font-bold mb-3 sm:mb-2">
                           <span className="text-stone-500 uppercase tracking-widest">Progress</span>
-                          <span className={isComplete ? "text-emerald-600" : "text-stone-500"}>
+                          <span className={isComplete ? "text-blue-700" : "text-stone-500"}>
                             {completedModes} / {totalModes} Modes ({progressPercentage}%)
                           </span>
                         </div>
-                        <div className="h-3 w-full bg-stone-200 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all duration-1000 ${isComplete ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                            style={{ width: `${progressPercentage}%` }} 
+                        <div className="h-4 sm:h-3 w-full bg-stone-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-1000 ${isComplete ? 'bg-blue-600' : 'bg-blue-500'}`}
+                            style={{ width: `${progressPercentage}%` }}
                           />
                         </div>
                       </div>
@@ -1316,53 +1549,59 @@ export default function App() {
 
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
+      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-black text-stone-900">Teacher Dashboard</h1>
-            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500">Logout</button>
+          <div className="flex justify-between items-center mb-6 sm:mb-8">
+            <div>
+              <p className="text-base sm:text-sm text-stone-500">Welcome back,</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-stone-900">{user?.displayName || "Teacher"}</h1>
+            </div>
+            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm px-4 py-2 bg-white rounded-xl shadow-sm">Logout</button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-8 rounded-3xl shadow-md">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold flex items-center gap-2"><Users className="text-emerald-600" /> My Classes</h2>
-                <button onClick={() => setShowCreateClassModal(true)} className="p-3 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200"><Plus size={20} /></button>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+            <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md">
+              <div className="flex justify-between items-center mb-2 sm:mb-6">
+                <h2 className="text-base sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={20} /> My Classes</h2>
+                <button onClick={() => setShowCreateClassModal(true)} className="p-2 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={20} /></button>
               </div>
-              {classes.length === 0 ? <p className="text-stone-400 italic">No classes yet. Create one to get a code!</p> : (
-                <div className="space-y-3">
-                  {classes.map(c => (
-                    <div key={c.id} className="flex justify-between items-center p-4 bg-stone-50 rounded-xl border border-stone-100">
-                      <div>
-                        <p className="font-bold text-stone-800">{c.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block">CODE: {c.code}</p>
-                          <button 
-                            onClick={() => {
-                              navigator.clipboard.writeText(c.code);
-                              console.log("Class code copied to clipboard!");
-                            }}
-                            className="text-xs text-stone-500 hover:text-emerald-600 transition-colors"
-                            title="Copy Code"
-                          >
-                            Copy
-                          </button>
-                          <a 
-                            href={`https://wa.me/?text=Join%20my%20class%20on%20Vocaband!%20The%20class%20code%20is:%20${c.code}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-stone-500 hover:text-green-500 transition-colors"
-                            title="Share on WhatsApp"
-                          >
-                            WhatsApp
-                          </a>
+              {classes.length === 0 ? <p className="text-stone-400 italic text-sm sm:text-sm">No classes yet. Create one to get a code!</p> : (
+                <div className="space-y-1">
+                  {[...classes].reverse().map(c => (
+                    <div key={c.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 sm:p-4 bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow">
+                      <div className="w-full sm:w-auto">
+                        <p className="font-bold text-stone-800 text-base sm:text-sm">{c.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
+                          <p className="text-sm font-mono text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg font-bold">{c.code}</p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(c.code);
+                                setCopiedCode(c.code);
+                                setTimeout(() => setCopiedCode(null), 2000);
+                              }}
+                              className="p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                              title="Copy Code"
+                            >
+                              {copiedCode === c.code ? <Check size={18} className="text-blue-700" /> : <Copy size={18} />}
+                            </button>
+                            <a
+                              href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                              title="Share on WhatsApp"
+                            >
+                              <MessageCircle size={18} />
+                            </a>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="text-emerald-600 font-bold text-sm hover:underline">Assign Words</button>
-                        <button 
-                          onClick={() => handleDeleteClass(c.id)} 
-                          className="p-3 text-stone-400 hover:text-red-500 transition-colors"
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="flex-1 sm:flex-none text-blue-700 font-bold text-base sm:text-sm hover:underline">Assign Words</button>
+                        <button
+                          onClick={() => handleDeleteClass(c.id)}
+                          className="p-2 text-stone-400 hover:text-red-500 transition-colors"
                           title="Delete Class"
                         >
                           <Trash2 size={18} />
@@ -1373,11 +1612,11 @@ export default function App() {
                 </div>
               )}
             </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <RefreshCw className="text-blue-600 mb-4" size={48} />
-              <h2 className="text-xl font-bold mb-2">Live Challenge</h2>
-              <p className="text-stone-500 mb-6">Start a real-time competition for your class.</p>
+
+            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
+              <RefreshCw className="text-blue-600 mb-4 sm:mb-4" size={52} />
+              <h2 className="text-lg sm:text-xl font-bold mb-2 sm:mb-2">Live Challenge</h2>
+              <p className="text-stone-500 mb-6 text-base sm:text-sm">Start a real-time competition for your class.</p>
               <button onClick={() => { 
                 if (classes.length === 0) alert("Create a class first!");
                 else {
@@ -1391,28 +1630,28 @@ export default function App() {
                     });
                   }
                 }
-              }} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors">Start Challenge</button>
+              }} className="w-full py-4 sm:py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-base sm:text-sm">Start Challenge</button>
             </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <BarChart3 className="text-purple-600 mb-4" size={48} />
-              <h2 className="text-xl font-bold mb-2">Analytics</h2>
-              <p className="text-stone-500 mb-6">Deep dive into class performance and difficulty.</p>
-              <button onClick={() => { fetchScores(); setView("analytics"); }} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors">View Insights</button>
+
+            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
+              <BarChart3 className="text-purple-600 mb-4" size={52} />
+              <h2 className="text-lg sm:text-xl font-bold mb-2">Analytics</h2>
+              <p className="text-stone-500 mb-6 text-base sm:text-sm">Deep dive into class performance and difficulty.</p>
+              <button onClick={() => { fetchScores(); setView("analytics"); }} className="w-full py-4 sm:py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors text-base sm:text-sm">View Insights</button>
             </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <UserCircle className="text-orange-600 mb-4" size={48} />
-              <h2 className="text-xl font-bold mb-2">Students</h2>
-              <p className="text-stone-500 mb-6">Manage and view all students in your classes.</p>
-              <button onClick={() => { fetchStudents(); setView("students"); }} className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors">View Students</button>
+
+            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
+              <UserCircle className="text-orange-600 mb-4" size={52} />
+              <h2 className="text-lg sm:text-xl font-bold mb-2">Students</h2>
+              <p className="text-stone-500 mb-6 text-base sm:text-sm">Manage and view all students in your classes.</p>
+              <button onClick={() => { fetchStudents(); setView("students"); }} className="w-full py-4 sm:py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors text-base sm:text-sm">View Students</button>
             </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
-              <Trophy className="text-emerald-600 mb-4" size={48} />
-              <h2 className="text-xl font-bold mb-2">Gradebook</h2>
-              <p className="text-stone-500 mb-6">Track your students' progress and scores.</p>
-              <button onClick={fetchScores} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors">View Scores</button>
+
+            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex flex-col items-center justify-center text-center">
+              <Trophy className="text-blue-700 mb-4" size={52} />
+              <h2 className="text-lg sm:text-xl font-bold mb-2">Gradebook</h2>
+              <p className="text-stone-500 mb-6 text-base sm:text-sm">Track your students' progress and scores.</p>
+              <button onClick={() => { fetchScores(); setView("gradebook"); }} className="w-full py-4 sm:py-3 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors text-base sm:text-sm">View Scores</button>
             </div>
           </div>
         </div>
@@ -1420,8 +1659,8 @@ export default function App() {
         {/* Create Class Modal */}
         <AnimatePresence>
           {showCreateClassModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-              <motion.div 
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+              <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -1435,7 +1674,7 @@ export default function App() {
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
                   placeholder="Class Name"
-                  className="w-full px-6 py-4 rounded-2xl border-2 border-stone-100 focus:border-emerald-500 outline-none mb-6 font-bold"
+                  className="w-full px-6 py-4 rounded-2xl border-2 border-stone-100 focus:border-blue-600 outline-none mb-6 font-bold"
                 />
                 <div className="flex gap-3">
                   <button 
@@ -1446,7 +1685,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={handleCreateClass}
-                    className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100"
+                    className="flex-1 py-4 bg-blue-700 text-white rounded-2xl font-bold hover:bg-blue-800 transition-colors shadow-lg shadow-blue-100"
                   >
                     Create
                   </button>
@@ -1466,41 +1705,47 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
               >
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-blue-50 text-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 size={32} />
                 </div>
                 <h2 className="text-2xl font-black mb-2">Class Created!</h2>
                 <p className="text-stone-500 mb-6">Share this code with your students so they can join.</p>
                 
-                <div className="bg-stone-50 p-6 rounded-2xl border-2 border-stone-100 mb-6">
-                  <p className="text-4xl font-mono font-black text-emerald-600 tracking-widest">{createdClassCode}</p>
+                <div className="bg-gradient-to-br from-blue-50 to-stone-50 p-6 rounded-3xl border-2 border-blue-100 mb-6 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 opacity-50"></div>
+                  <div className="absolute bottom-0 left-0 w-16 h-16 bg-stone-100 rounded-full -ml-8 -mb-8 opacity-50"></div>
+                  <p className="text-5xl font-mono font-black text-blue-700 tracking-widest relative z-10">{createdClassCode}</p>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <button 
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <button
                     onClick={() => {
-                      navigator.clipboard.writeText(createdClassCode);
-                      console.log("Class code copied to clipboard!");
+                      navigator.clipboard.writeText(`${createdClassName} - Class Code: ${createdClassCode}`);
+                      setCopiedCode(createdClassCode);
+                      setTimeout(() => setCopiedCode(null), 2000);
                     }}
-                    className="w-full py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-colors flex items-center justify-center gap-2"
+                    className="py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2 hover:scale-105"
                   >
-                    Copy Code
+                    {copiedCode === createdClassCode ? <Check size={20} className="text-blue-700" /> : <Copy size={20} />}
+                    <span>Copy</span>
                   </button>
-                  <a 
-                    href={`https://wa.me/?text=Join%20my%20class%20on%20Vocaband!%20The%20class%20code%20is:%20${createdClassCode}`}
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${createdClassName}" on Vocaband!\n\n🔑 Class Code: ${createdClassCode}\n\nSee you there!`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2"
+                    className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
                   >
-                    Share on WhatsApp
+                    <MessageCircle size={20} />
+                    <span>WhatsApp</span>
                   </a>
-                  <button 
-                    onClick={() => setCreatedClassCode(null)}
-                    className="w-full py-4 mt-2 text-stone-500 font-bold hover:text-stone-700 transition-colors"
-                  >
-                    Done
-                  </button>
                 </div>
+
+                <button
+                  onClick={() => setCreatedClassCode(null)}
+                  className="w-full py-4 text-stone-500 font-bold hover:text-stone-700 hover:bg-stone-50 rounded-2xl transition-all"
+                >
+                  Done
+                </button>
               </motion.div>
             </div>
           )}
@@ -1520,13 +1765,19 @@ export default function App() {
 
             <div className="space-y-4 mb-8">
               <div className="space-y-4">
-                <input 
-                  type="text" 
-                  placeholder="Assignment Title" 
-                  value={assignmentTitle} 
+                <input
+                  type="text"
+                  placeholder="Assignment Title"
+                  list="assignment-titles"
+                  value={assignmentTitle}
                   onChange={(e) => setAssignmentTitle(e.target.value)}
                   className="w-full p-4 rounded-2xl border border-stone-200"
                 />
+                <datalist id="assignment-titles">
+                  {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
+                    <option key={title} value={title} />
+                  ))}
+                </datalist>
                 <div className="space-y-1">
                   <input 
                     type="date" 
@@ -1551,17 +1802,17 @@ export default function App() {
                         setAssignmentModes(all);
                       }
                     }}
-                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                    className="text-xs font-bold text-blue-700 hover:text-blue-800"
                   >
                     {assignmentModes.length === 8 ? "Deselect All" : "Select All"}
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"] as const).map(mode => (
-                    <button 
+                    <button
                       key={mode}
                       onClick={() => setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                      className={`px-4 py-2 rounded-xl font-bold transition-all active:scale-95 ${assignmentModes.includes(mode) ? "bg-emerald-600 text-white shadow-md" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
+                      className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${assignmentModes.includes(mode) ? "bg-blue-700 text-white shadow-md" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
                     >
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
                     </button>
@@ -1570,37 +1821,37 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 mb-8">
+            <div className="flex flex-nowrap gap-2 sm:gap-3 mb-6 overflow-x-auto pb-2">
               {(["Band 2", "Custom"] as const).map(level => (
-                <button 
+                <button
                   key={level}
                   onClick={() => setSelectedLevel(level)}
-                  className={`px-6 py-3 rounded-2xl font-bold transition-all ${selectedLevel === level ? "bg-emerald-600 text-white shadow-lg shadow-emerald-100" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
+                  className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg shadow-blue-100" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}
                 >
                   {level}
                 </button>
               ))}
-              <label className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-2xl font-bold cursor-pointer hover:bg-black transition-all">
-                <Upload size={18} />
-                Upload CSV
+              <label className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-stone-900 text-white rounded-xl font-bold cursor-pointer hover:bg-black transition-all whitespace-nowrap text-xs sm:text-sm">
+                <Upload size={16} />
+                <span className="hidden sm:inline">Upload CSV</span>
                 <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
               </label>
-              
-              <label className={`flex items-center gap-2 px-6 py-3 text-white rounded-2xl font-bold cursor-pointer transition-all relative overflow-hidden ${isOcrProcessing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                <Camera size={18} />
-                {isOcrProcessing ? `Scanning... ${ocrProgress}%` : "Scan Page (OCR)"}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment" 
-                  onChange={handleOcrUpload} 
-                  className="hidden" 
-                  disabled={isOcrProcessing} 
+
+              <label className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 text-white rounded-xl font-bold cursor-pointer transition-all relative overflow-hidden whitespace-nowrap text-xs sm:text-sm ${isOcrProcessing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                <Camera size={16} />
+                {isOcrProcessing ? `Scanning... ${ocrProgress}%` : <span className="hidden sm:inline">Scan Page (OCR)</span>}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleOcrUpload}
+                  className="hidden"
+                  disabled={isOcrProcessing}
                 />
                 {isOcrProcessing && (
-                  <div 
-                    className="absolute bottom-0 left-0 h-1 bg-white/50 transition-all duration-300" 
-                    style={{ width: `${ocrProgress}%` }} 
+                  <div
+                    className="absolute bottom-0 left-0 h-1 bg-white/50 transition-all duration-300"
+                    style={{ width: `${ocrProgress}%` }}
                   />
                 )}
               </label>
@@ -1616,7 +1867,7 @@ export default function App() {
                     setSelectedWords(currentLevelWords.map(w => w.id));
                   }
                 }}
-                className="text-sm font-bold text-emerald-600 hover:text-emerald-700"
+                className="text-sm font-bold text-blue-700 hover:text-blue-800"
               >
                 {selectedWords.length === currentLevelWords.length ? "Deselect All" : "Select All"}
               </button>
@@ -1635,13 +1886,13 @@ export default function App() {
                       setSelectedWords([...selectedWords, word.id]);
                     }
                   }} 
-                  className={`p-4 rounded-2xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-white border-2 border-emerald-500 shadow-lg" : "bg-white border-2 border-transparent hover:border-stone-200"}`}
+                  className={`p-4 rounded-2xl text-left flex justify-between items-center transition-all ${selectedWords.includes(word.id) ? "bg-white border-2 border-blue-600 shadow-lg" : "bg-white border-2 border-transparent hover:border-stone-200"}`}
                 >
                   <div>
                     <p className="font-black text-stone-900">{word.english}</p>
                     <p className="text-xs text-stone-400 font-bold uppercase">{word.hebrew} | {word.arabic}</p>
                   </div>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedWords.includes(word.id) ? "bg-emerald-500 scale-110" : "bg-stone-100"}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedWords.includes(word.id) ? "bg-blue-600 scale-110" : "bg-stone-100"}`}>
                     {selectedWords.includes(word.id) ? <CheckCircle2 size={14} className="text-white" /> : <div className="w-2 h-2 bg-stone-300 rounded-full" />}
                   </div>
                 </motion.button>
@@ -1649,18 +1900,18 @@ export default function App() {
               {currentLevelWords.length === 0 && <p className="col-span-full text-center py-12 text-stone-400 italic">No words found in this level.</p>}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-2">
               <button
                 disabled={selectedWords.length === 0}
                 onClick={handlePreviewAssignment}
-                className="flex-1 py-5 bg-stone-200 text-stone-700 rounded-2xl font-black text-xl hover:bg-stone-300 transition-all active:scale-95 disabled:opacity-50"
+                className="flex-1 py-2 bg-stone-200 text-stone-700 rounded-2xl font-black text-sm hover:bg-stone-300 transition-all active:scale-95 disabled:opacity-50"
               >
                 👁️ Preview
               </button>
               <button
                 disabled={selectedWords.length === 0 || !assignmentTitle}
                 onClick={handleSaveAssignment}
-                className="flex-1 py-5 bg-emerald-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 transition-all active:scale-95"
+                className="flex-1 py-2 bg-blue-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none hover:bg-blue-800 transition-all active:scale-95"
               >
                 Create Assignment ({selectedWords.length} Words)
               </button>
@@ -1687,7 +1938,7 @@ export default function App() {
     const filteredModes = modes.filter(m => allowedModes.includes(m.id));
 
     const colorClasses: Record<string, string> = {
-      emerald: "bg-emerald-50 border-emerald-100 hover:bg-emerald-100 text-emerald-700",
+      emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
       blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
       purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
       amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
@@ -1698,7 +1949,7 @@ export default function App() {
     };
 
     const iconColorClasses: Record<string, string> = {
-      emerald: "text-emerald-600",
+      emerald: "text-blue-700",
       blue: "text-blue-600",
       purple: "text-purple-600",
       amber: "text-amber-600",
@@ -1711,7 +1962,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-4xl bg-white rounded-[48px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-3 bg-emerald-500" />
+          <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
           <button onClick={handleExitGame} className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300">
             <X size={28} />
           </button>
@@ -1743,7 +1994,7 @@ export default function App() {
                   <div className={`w-16 h-16 rounded-[24px] bg-white flex items-center justify-center mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
                     {isCompleted && (
-                      <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-1 shadow-md">
+                      <div className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full p-1 shadow-md">
                         <CheckCircle2 size={16} />
                       </div>
                     )}
@@ -1852,7 +2103,7 @@ export default function App() {
                     <span className="font-black text-stone-800 text-lg">{entry.name}</span>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-black text-emerald-600">{entry.score}</p>
+                    <p className="text-2xl font-black text-blue-700">{entry.score}</p>
                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Points</p>
                   </div>
                 </motion.div>
@@ -1866,31 +2117,31 @@ export default function App() {
 
   if (view === "students") {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
+      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
-          <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
-            <h2 className="text-3xl font-black mb-6 text-stone-900">Class Students</h2>
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm">← Back to Dashboard</button>
+          <div className="bg-white rounded-[32px] sm:rounded-[40px] shadow-xl p-5 sm:p-10">
+            <h2 className="text-2xl sm:text-3xl font-black mb-6 text-stone-900">Class Students</h2>
             <div className="overflow-x-auto rounded-3xl border border-stone-100">
               <table className="w-full text-left">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    <th className="py-4 px-6 font-bold text-stone-400 uppercase text-xs">Student Name</th>
-                    <th className="py-4 px-6 font-bold text-stone-400 uppercase text-xs">Class Code</th>
-                    <th className="py-4 px-6 font-bold text-stone-400 uppercase text-xs">Last Active</th>
+                    <th className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-400 uppercase text-xs">Student Name</th>
+                    <th className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-400 uppercase text-xs">Class Code</th>
+                    <th className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-400 uppercase text-xs">Last Active</th>
                   </tr>
                 </thead>
                 <tbody>
                   {classStudents.map((s, idx) => (
                     <tr key={idx} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
-                      <td className="py-4 px-6 font-bold text-stone-800">{s.name}</td>
-                      <td className="py-4 px-6 text-stone-500">{s.classCode}</td>
-                      <td className="py-4 px-6 text-stone-400 text-sm">{new Date(s.lastActive).toLocaleString()}</td>
+                      <td className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-800 text-base sm:text-sm">{s.name}</td>
+                      <td className="py-3 px-4 sm:py-4 sm:px-6 text-stone-500 text-base sm:text-sm">{s.classCode}</td>
+                      <td className="py-3 px-4 sm:py-4 sm:px-6 text-stone-400 text-sm sm:text-sm">{new Date(s.lastActive).toLocaleString()}</td>
                     </tr>
                   ))}
                   {classStudents.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="py-12 text-center text-stone-400 italic">No students found for your classes.</td>
+                      <td colSpan={3} className="py-12 text-center text-stone-400 italic text-base sm:text-sm">No students found for your classes.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1902,105 +2153,247 @@ export default function App() {
     );
   }
 
-  if (view === "analytics" && analyticsData) {
+  if (view === "analytics") {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back</button>
-            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Class Insights</h1>
-            <div className="w-12 sm:w-24"></div>
+      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm">← Back</button>
+            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Student Performance Matrix</h1>
+            <button
+              onClick={() => setAllScores(TEST_ANALYTICS_DATA)}
+              className="px-4 py-2.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors text-sm sm:text-sm"
+            >
+              Load Test Data
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Progress Chart */}
-            <div className="bg-white p-4 sm:p-8 rounded-[40px] shadow-xl">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-2"><TrendingUp className="text-blue-600" /> Average Score Trend</h3>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analyticsData.progress}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#999'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#999'}} domain={[0, 100]} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Line type="monotone" dataKey="avg" stroke="#2563eb" strokeWidth={4} dot={{ r: 6, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+          {allScores.length === 0 ? (
+            <div className="bg-white p-8 rounded-[32px] sm:rounded-[40px] shadow-xl text-center">
+              <p className="text-stone-400 italic mb-4 text-base sm:text-sm">No student data yet. Analytics will appear once students complete assignments.</p>
+              <button
+                onClick={() => {
+                  console.log("Loading test data...", TEST_ANALYTICS_DATA.length);
+                  console.log("Sample data:", TEST_ANALYTICS_DATA[0]);
+                  setAllScores(TEST_ANALYTICS_DATA);
+                  console.log("Data loaded, allScores length:", TEST_ANALYTICS_DATA.length);
+                }}
+                className="px-6 py-3.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors text-base sm:text-sm"
+              >
+                Load Test Data
+              </button>
+              <div className="mt-4 p-4 bg-stone-100 rounded text-left text-sm">
+                <p className="font-bold">Debug Info:</p>
+                <p>allScores.length: {allScores.length}</p>
+                <p>matrixData.students: {matrixData.students.length}</p>
+                <p>matrixData.assignments: {matrixData.assignments.length}</p>
               </div>
             </div>
+          ) : (
+            <>
+              {/* Summary Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-sm font-bold uppercase">Total Students</p>
+              <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.students.length}</p>
+            </div>
+            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-sm font-bold uppercase">Total Assignments</p>
+              <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.assignments.length}</p>
+            </div>
+            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-sm font-bold uppercase">Class Average</p>
+              <p className="text-3xl font-black text-blue-700">
+                {matrixData.students.length > 0
+                  ? Math.round(Array.from(matrixData.averages.values()).reduce((a, b) => a + b, 0) / matrixData.averages.size)
+                  : 0}%
+              </p>
+            </div>
+          </div>
 
-            {/* Mode Performance */}
-            <div className="bg-white p-4 sm:p-8 rounded-[40px] shadow-xl">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-2"><LayoutGrid className="text-emerald-600" /> Performance by Mode</h3>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsData.modes}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="mode" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#999'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#999'}} domain={[0, 100]} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="avg" radius={[10, 10, 0, 0]}>
-                      {analyticsData.modes.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b'][index % 4]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+          {/* Matrix Table */}
+          <div className="bg-white rounded-[30px] shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-stone-50">
+                  <tr>
+                    <th className="px-4 py-4 text-left font-bold text-stone-400 uppercase text-xs sticky left-0 bg-stone-50">Student</th>
+                    {matrixData.assignments.map(assignmentId => (
+                      <th key={assignmentId} className="px-4 py-4 text-center font-bold text-stone-400 uppercase text-xs min-w-[100px]">
+                        {assignmentId}
+                      </th>
+                    ))}
+                    <th className="px-4 py-4 text-center font-bold text-stone-400 uppercase text-xs min-w-[80px]">Average</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrixData.students.map(student => {
+                    const studentAvg = matrixData.averages.get(student) || 0;
+                    return (
+                      <tr key={student} className="border-t border-stone-100 hover:bg-stone-50">
+                        <td className="px-4 py-3 font-bold text-stone-800 sticky left-0 bg-white hover:bg-stone-50">
+                          {student}
+                        </td>
+                        {matrixData.assignments.map(assignmentId => {
+                          const scoreData = matrixData.matrix.get(student)?.get(assignmentId);
+                          const score = scoreData?.score || 0;
+                          const hasScore = scoreData !== undefined;
+
+                          let cellClass = "bg-stone-100";
+                          let indicator = "";
+
+                          if (hasScore) {
+                            if (score >= 90) {
+                              cellClass = "bg-blue-50";
+                              indicator = "★";
+                            } else if (score >= 70) {
+                              cellClass = "bg-blue-50";
+                            } else {
+                              cellClass = "bg-rose-100";
+                              indicator = "⚠️";
+                            }
+                          }
+
+                          return (
+                            <td
+                              key={assignmentId}
+                              className={`px-4 py-3 text-center ${cellClass} ${hasScore ? "cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all" : ""}`}
+                              onClick={() => hasScore && setSelectedScore(scoreData!)}
+                            >
+                              {hasScore ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="font-black text-stone-800">{score}%</span>
+                                  <span className="text-xs">{indicator}</span>
+                                </div>
+                              ) : (
+                                <span className="text-stone-300">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className={`px-4 py-3 text-center font-bold ${
+                          studentAvg >= 90 ? "text-blue-700" : studentAvg >= 70 ? "text-blue-600" : "text-rose-600"
+                        }`}>
+                          {studentAvg}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend */}
+            <div className="p-4 bg-stone-50 border-t border-stone-100 flex flex-wrap gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-50 rounded"></div>
+                <span className="text-stone-600">Excellent (90%+)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-50 rounded"></div>
+                <span className="text-stone-600">Good (70-89%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-rose-100 rounded"></div>
+                <span className="text-stone-600">Needs Attention (&lt;70%)</span>
               </div>
             </div>
           </div>
 
-          {/* Difficulty Heatmap */}
-          <div className="bg-white p-4 sm:p-8 rounded-[40px] shadow-xl">
-            <h3 className="text-xl font-black mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-600" /> Difficulty Heatmap (Most Missed Words)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {analyticsData.heatmap.map((item, idx) => (
-                <div key={`${item.word}-${idx}`} className="bg-stone-50 p-6 rounded-3xl border border-stone-100 text-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-bl-xl">
-                    {item.count} MISSES
+          {/* Score Detail Modal */}
+          {selectedScore && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedScore(null)}>
+              <div className="bg-white rounded-[30px] shadow-2xl max-w-lg w-full p-8" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-black text-stone-900">{selectedScore.studentName}</h2>
+                    <p className="text-stone-500">Assignment: {selectedScore.assignmentId}</p>
                   </div>
-                  <p className="text-lg font-black text-stone-900">{item.word}</p>
-                  <p className="text-xs text-stone-400 font-bold uppercase mt-1">Difficulty: {item.count > 5 ? 'High' : 'Medium'}</p>
+                  <button onClick={() => setSelectedScore(null)} className="text-stone-400 hover:text-stone-600">
+                    <X size={24} />
+                  </button>
                 </div>
-              ))}
-              {analyticsData.heatmap.length === 0 && <p className="col-span-full text-center text-stone-400 italic py-12">No mistakes recorded yet. Keep playing!</p>}
+
+                <div className="space-y-6">
+                  {/* Score */}
+                  <div className="flex items-center gap-4">
+                    <div className={`px-6 py-3 rounded-2xl font-black text-2xl ${
+                      selectedScore.score >= 90 ? "bg-blue-50 text-blue-700" :
+                      selectedScore.score >= 70 ? "bg-blue-100 text-blue-700" :
+                      "bg-rose-100 text-rose-700"
+                    }`}>
+                      {selectedScore.score}%
+                    </div>
+                    <div className="text-stone-500">
+                      <p>Mode: <span className="font-bold text-stone-800 capitalize">{selectedScore.mode}</span></p>
+                      <p>Completed: <span className="font-bold text-stone-800">{new Date(selectedScore.completedAt).toLocaleDateString()}</span></p>
+                    </div>
+                  </div>
+
+                  {/* Mistakes */}
+                  {selectedScore.mistakes && selectedScore.mistakes.length > 0 && (
+                    <div>
+                      <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                        <AlertTriangle className="text-rose-500" size={20} />
+                        Words Missed ({selectedScore.mistakes.length})
+                      </h3>
+                      <div className="bg-stone-50 rounded-2xl p-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedScore.mistakes.map((wordId, idx) => {
+                            const word = BAND_2_WORDS.find(w => w.id === wordId);
+                            return (
+                              <div key={`${selectedScore.id}-${wordId}-${idx}`} className="bg-white p-3 rounded-xl border border-stone-200">
+                                <p className="font-bold text-stone-800">{word?.english || "Unknown"}</p>
+                                <p className="text-xs text-stone-500">{word?.hebrew || ""}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Class Info */}
+                  <p className="text-stone-500">
+                    Class: <span className="font-bold text-stone-800">{selectedScore.classCode}</span>
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+            </>
+          )}
         </div>
       </div>
     );
   }
   if (view === "gradebook") {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
+      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
-          <div className="bg-white rounded-3xl shadow-xl p-8">
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm">← Back to Dashboard</button>
+          <div className="bg-white rounded-[28px] sm:rounded-3xl shadow-xl p-5 sm:p-8">
             <h2 className="text-2xl font-black mb-6">Student Gradebook</h2>
-            {allScores.length === 0 ? <p className="text-stone-400 italic">No scores recorded yet.</p> : (
+            {allScores.length === 0 ? <p className="text-stone-400 italic text-base sm:text-sm">No scores recorded yet.</p> : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-stone-100">
-                      <th className="py-4 font-bold text-stone-400 uppercase text-xs">Student</th>
-                      <th className="py-4 font-bold text-stone-400 uppercase text-xs">Class</th>
-                      <th className="py-4 font-bold text-stone-400 uppercase text-xs">Mode</th>
-                      <th className="py-4 font-bold text-stone-400 uppercase text-xs">Score</th>
-                      <th className="py-4 font-bold text-stone-400 uppercase text-xs">Date</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Student</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Class</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Mode</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Score</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-400 uppercase text-xs">Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {allScores.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()).map(s => (
                       <tr key={s.id} className="border-b border-stone-50">
-                        <td className="py-4 font-bold text-stone-800">{s.studentName}</td>
-                        <td className="py-4 text-stone-500">{s.classCode}</td>
-                        <td className="py-4"><span className="px-2 py-1 bg-stone-100 rounded text-xs font-bold uppercase">{s.mode}</span></td>
-                        <td className="py-4 font-black text-emerald-600">{s.score}</td>
-                        <td className="py-4 text-stone-400 text-sm">{new Date(s.completedAt).toLocaleDateString()}</td>
+                        <td className="py-3 px-3 sm:py-4 sm:px-4 font-bold text-stone-800 text-base sm:text-sm">{s.studentName}</td>
+                        <td className="py-3 px-3 sm:py-4 sm:px-4 text-stone-500 text-base sm:text-sm">{s.classCode}</td>
+                        <td className="py-3 px-3 sm:py-4 sm:px-4"><span className="px-2 py-1 bg-stone-100 rounded text-xs font-bold uppercase">{s.mode}</span></td>
+                        <td className="py-3 px-3 sm:py-4 sm:px-4 font-black text-blue-700 text-base sm:text-sm">{s.score}</td>
+                        <td className="py-3 px-3 sm:py-4 sm:px-4 text-stone-400 text-sm sm:text-sm">{new Date(s.completedAt).toLocaleDateString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2015,24 +2408,24 @@ export default function App() {
 
   if (isFinished) {
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
         >
-          <Trophy className="w-24 h-24 text-yellow-500 mb-4 mx-auto" />
+          <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
         </motion.div>
-        <h1 className="text-4xl font-bold mb-2">Kol Hakavod, {user?.displayName}!</h1>
-        <p className="text-xl mb-6">You finished the assignment.</p>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2">Kol Hakavod, {user?.displayName}!</h1>
+        <p className="text-lg sm:text-xl mb-6">You finished the assignment.</p>
         <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
-          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
-            <p className="text-5xl sm:text-6xl font-black text-emerald-600">{score}</p>
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
+            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
+            <p className="text-4xl sm:text-6xl font-black text-blue-700">{score}</p>
           </div>
-          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-sm uppercase tracking-widest text-stone-500 mb-1">Total XP</p>
-            <p className="text-5xl sm:text-6xl font-black text-blue-600">{xp}</p>
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
+            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Total XP</p>
+            <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
           </div>
           {streak > 0 && (
             <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
@@ -2094,8 +2487,8 @@ export default function App() {
             <Trophy className="text-amber-500" size={18} />
             <span className="font-black text-stone-800">{score}</span>
           </div>
-          <div className="bg-emerald-100 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2">
-            <span className="text-emerald-700 font-bold text-xs uppercase tracking-widest">XP: {xp}</span>
+          <div className="bg-blue-50 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2">
+            <span className="text-blue-700 font-bold text-xs uppercase tracking-widest">XP: {xp}</span>
           </div>
           {streak > 0 && (
             <motion.div
@@ -2138,9 +2531,9 @@ export default function App() {
                   disabled={matchedIds.includes(item.id)}
                   className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-lg h-28 sm:h-32 flex items-center justify-center transition-all duration-300 ${
                     matchedIds.includes(item.id) 
-                      ? "bg-emerald-50 text-emerald-300 shadow-none" 
+                      ? "bg-blue-50 text-blue-400 shadow-none" 
                       : selectedMatch?.id === item.id && selectedMatch?.type === item.type
-                      ? "bg-emerald-500 text-white shadow-lg ring-4 ring-emerald-200"
+                      ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
                   }`}
                 >
@@ -2155,15 +2548,15 @@ export default function App() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-4 border-emerald-500" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
             >
               {/* Progress Bar */}
-              <div className="absolute top-0 left-0 h-2 bg-emerald-500 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
+              <div className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
 
               {/* Motivational message */}
               {motivationalMessage && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                  <span className="text-3xl sm:text-5xl font-black text-emerald-600 drop-shadow animate-bounce">
+                  <span className="text-3xl sm:text-5xl font-black text-blue-700 drop-shadow animate-bounce">
                     {motivationalMessage}
                   </span>
                 </div>
@@ -2204,7 +2597,7 @@ export default function App() {
                       onClick={() => handleAnswer(option)}
                       className={`py-6 px-8 rounded-3xl text-2xl font-bold transition-all duration-300 ${
                         feedback === "correct" && option.id === currentWord.id
-                          ? "bg-emerald-500 text-white scale-105 shadow-xl"
+                          ? "bg-blue-600 text-white scale-105 shadow-xl"
                           : feedback === "wrong" && option.id !== currentWord.id
                           ? "bg-rose-100 text-rose-500 opacity-50"
                           : "bg-stone-100 text-stone-800 hover:bg-stone-200"
@@ -2220,7 +2613,7 @@ export default function App() {
                     <p className="text-3xl font-bold text-stone-800">{tfOption?.[targetLanguage]}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-6 rounded-3xl text-2xl font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors">True</button>
+                    <button onClick={() => handleTFAnswer(true)} className="py-6 rounded-3xl text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
                     <button onClick={() => handleTFAnswer(false)} className="py-6 rounded-3xl text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
                   </div>
                 </div>
@@ -2231,7 +2624,7 @@ export default function App() {
                   </button>
                   <div className="grid grid-cols-2 gap-4">
                     <button onClick={() => handleFlashcardAnswer(false)} className="py-4 rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">Still Learning</button>
-                    <button onClick={() => handleFlashcardAnswer(true)} className="py-4 rounded-3xl font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">Got It!</button>
+                    <button onClick={() => handleFlashcardAnswer(true)} className="py-4 rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">Got It!</button>
                   </div>
                 </div>
               ) : (
@@ -2243,7 +2636,7 @@ export default function App() {
                     onChange={(e) => setSpellingInput(e.target.value)}
                     placeholder="Type in English..."
                     className={`w-full p-6 text-3xl font-black text-center border-4 rounded-3xl mb-6 transition-all ${
-                      feedback === "correct" ? "border-emerald-500 bg-emerald-50 text-emerald-700" :
+                      feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       "border-stone-100 focus:border-stone-900 outline-none"
                     }`}
@@ -2268,10 +2661,10 @@ export default function App() {
               .sort((a, b) => b.score - a.score)
               .slice(0, 5)
               .map((entry, idx) => (
-                <div key={`${entry.name}-${idx}`} className={`flex justify-between items-center p-2 rounded-xl ${entry.name === user?.displayName ? "bg-emerald-50 border border-emerald-100" : ""}`}>
+                <div key={`${entry.name}-${idx}`} className={`flex justify-between items-center p-2 rounded-xl ${entry.name === user?.displayName ? "bg-blue-50 border border-blue-100" : ""}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-stone-400 w-4">{idx + 1}</span>
-                    <span className={`text-sm font-bold ${entry.name === user?.displayName ? "text-emerald-700" : "text-stone-600"}`}>{entry.name}</span>
+                    <span className={`text-sm font-bold ${entry.name === user?.displayName ? "text-blue-700" : "text-stone-600"}`}>{entry.name}</span>
                   </div>
                   <span className="text-sm font-black text-stone-900">{entry.score}</span>
                 </div>
@@ -2286,7 +2679,7 @@ export default function App() {
       <div className="w-full max-w-5xl mt-12 flex justify-center">
         <div className="w-full max-w-md">
           <div className="h-2 w-full bg-stone-200 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
+            <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
           </div>
           <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {gameWords.length}</p>
         </div>
