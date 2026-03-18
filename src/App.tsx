@@ -248,6 +248,21 @@ export default function App() {
   const [selectedPos, setSelectedPos] = useState<string>("");
   const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
 
+  // --- CLASS CARDS COLLAPSE STATE ---
+  // Track which class IDs are expanded (Set for O(1) lookup)
+  const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
+  const toggleClassExpanded = (classId: string) => {
+    setExpandedClassIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(classId)) {
+        newSet.delete(classId);
+      } else {
+        newSet.add(classId);
+      }
+      return newSet;
+    });
+  };
+
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
@@ -1692,12 +1707,12 @@ export default function App() {
               {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
                 <div className="space-y-1 sm:space-y-1">
                   {[...classes].reverse().map(c => {
-                    const [isExpanded, setIsExpanded] = useState(true);
+                    const isExpanded = expandedClassIds.has(c.id);
                     return (
                       <div key={c.id} className="bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow overflow-hidden">
                         {/* Header - always visible, clickable to toggle */}
                         <div
-                          onClick={() => setIsExpanded(!isExpanded)}
+                          onClick={() => toggleClassExpanded(c.id)}
                           className="flex items-center justify-between p-2 sm:p-3 cursor-pointer hover:bg-stone-100 transition-colors"
                         >
                           <div className="flex items-center gap-2">
