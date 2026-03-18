@@ -211,14 +211,18 @@ export default function App() {
               setView("teacher-dashboard");
             }
           }
-        } else {
+        } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+          // Only redirect to landing on an explicit sign-out or when there is
+          // genuinely no session on first load.  Other null-session events (e.g.
+          // a failed TOKEN_REFRESHED) must not discard an already-authenticated
+          // user because multiple async callback invocations can race.
           setUser(null);
           setView("landing");
         }
       } catch (err) {
+        // Log the error but do NOT redirect to landing — a transient Supabase
+        // error should not sign the user out of a session they already have.
         console.error("Auth state change error:", err);
-        setUser(null);
-        setView("landing");
       } finally {
         setLoading(false);
       }
