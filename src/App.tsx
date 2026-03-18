@@ -1686,49 +1686,49 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md">
               <div className="flex justify-between items-center mb-2 sm:mb-6">
-                <h2 className="text-base sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={20} /> My Classes</h2>
-                <button onClick={() => setShowCreateClassModal(true)} className="p-2 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={20} /></button>
+                <h2 className="text-sm sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
+                <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100"><Plus size={16} /></button>
               </div>
-              {classes.length === 0 ? <p className="text-stone-400 italic text-sm sm:text-sm">No classes yet. Create one to get a code!</p> : (
-                <div className="space-y-1">
+              {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
+                <div className="space-y-1 sm:space-y-1">
                   {[...classes].reverse().map(c => (
-                    <div key={c.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 sm:p-4 bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow">
+                    <div key={c.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2 p-1.5 sm:p-4 bg-stone-50 rounded-xl border border-stone-100 hover:shadow-md transition-shadow">
                       <div className="w-full sm:w-auto">
-                        <p className="font-bold text-stone-800 text-base sm:text-sm">{c.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
-                          <p className="text-sm font-mono text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg font-bold">{c.code}</p>
-                          <div className="flex items-center gap-1">
+                        <p className="font-bold text-stone-800 text-sm">{c.name}</p>
+                        <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+                          <p className="text-xs font-mono text-blue-700 bg-blue-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-bold">{c.code}</p>
+                          <div className="flex items-center gap-0.5 sm:gap-1">
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(c.code);
                                 setCopiedCode(c.code);
                                 setTimeout(() => setCopiedCode(null), 2000);
                               }}
-                              className="p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                              className="p-1.5 sm:p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
                               title="Copy Code"
                             >
-                              {copiedCode === c.code ? <Check size={18} className="text-blue-700" /> : <Copy size={18} />}
+                              {copiedCode === c.code ? <Check size={14} className="text-blue-700" /> : <Copy size={14} />}
                             </button>
                             <a
                               href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-2 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                              className="p-1.5 sm:p-2 text-stone-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
                               title="Share on WhatsApp"
                             >
-                              <MessageCircle size={18} />
+                              <MessageCircle size={14} />
                             </a>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="flex-1 sm:flex-none text-blue-700 font-bold text-base sm:text-sm hover:underline">Assign Words</button>
+                      <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                        <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="flex-1 sm:flex-none text-blue-700 font-bold text-xs sm:text-sm hover:underline py-1">Assign Words</button>
                         <button
                           onClick={() => handleDeleteClass(c.id)}
-                          className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                          className="p-1.5 sm:p-2 text-stone-400 hover:text-red-500 transition-colors"
                           title="Delete Class"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
