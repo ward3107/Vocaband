@@ -39,27 +39,19 @@ import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import Tesseract from 'tesseract.js';
+import { shuffle, chunkArray } from './utils';
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
 
-function shuffle<T>(array: T[]): T[] {
-  const result = [...array];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
-}
+const MOTIVATIONAL_MESSAGES = [
+  "Great job! 🎉", "Well done! 👏", "Awesome! 🌟", "Keep it up! 💪",
+  "Nailed it! 🎯", "Brilliant! ✨", "You're on fire! 🔥", "Fantastic! 🚀",
+  "Way to go! 🏆", "Superstar! ⭐",
+];
+const randomMotivation = () =>
+  MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
 
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
@@ -112,6 +104,7 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [mistakes, setMistakes] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("hebrew");
   const [isFinished, setIsFinished] = useState(false);
 
@@ -133,6 +126,7 @@ export default function App() {
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
   useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   useEffect(() => {
@@ -866,6 +860,7 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
+      setMotivationalMessage(randomMotivation());
       const newScore = score + 10;
       setScore(newScore);
       
@@ -897,6 +892,7 @@ export default function App() {
     
     if (isTrue === isActuallyTrue) {
       setFeedback("correct");
+      setMotivationalMessage(randomMotivation());
       const newScore = score + 15;
       setScore(newScore);
       
@@ -924,6 +920,8 @@ export default function App() {
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
     if (knewIt) {
+      setMotivationalMessage(randomMotivation());
+      setTimeout(() => setMotivationalMessage(null), 1000);
       const newScore = score + 5;
       setScore(newScore);
       if (socket && user?.classCode) {
@@ -950,6 +948,7 @@ export default function App() {
 
     if (spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase()) {
       setFeedback("correct");
+      setMotivationalMessage(randomMotivation());
       const newScore = score + 20;
       setScore(newScore);
       
@@ -1301,7 +1300,7 @@ export default function App() {
             <div className="bg-white p-8 rounded-3xl shadow-md">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Users className="text-emerald-600" /> My Classes</h2>
-                <button onClick={() => setShowCreateClassModal(true)} className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200"><Plus size={20} /></button>
+                <button onClick={() => setShowCreateClassModal(true)} className="p-3 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200"><Plus size={20} /></button>
               </div>
               {classes.length === 0 ? <p className="text-stone-400 italic">No classes yet. Create one to get a code!</p> : (
                 <div className="space-y-3">
@@ -1336,7 +1335,7 @@ export default function App() {
                         <button onClick={() => { setSelectedClass(c); setView("create-assignment"); }} className="text-emerald-600 font-bold text-sm hover:underline">Assign Words</button>
                         <button 
                           onClick={() => handleDeleteClass(c.id)} 
-                          className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                          className="p-3 text-stone-400 hover:text-red-500 transition-colors"
                           title="Delete Class"
                         >
                           <Trash2 size={18} />
@@ -1399,7 +1398,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl"
+                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto"
               >
                 <h2 className="text-2xl font-black mb-2">Create New Class</h2>
                 <p className="text-stone-500 mb-6">Enter a name for your class (e.g. Grade 8-B)</p>
@@ -1438,7 +1437,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl text-center"
+                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
               >
                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 size={32} />
@@ -1596,7 +1595,7 @@ export default function App() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8 max-h-[400px] overflow-y-auto p-4 border-2 border-stone-50 rounded-[32px] bg-stone-50/50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8 max-h-[250px] sm:max-h-[400px] overflow-y-auto p-4 border-2 border-stone-50 rounded-[32px] bg-stone-50/50">
               {currentLevelWords.map(word => (
                 <motion.button 
                   key={word.id} 
@@ -1712,7 +1711,7 @@ export default function App() {
                   whileHover={{ scale: 1.05, translateY: -8 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => { setGameMode(mode.id as any); setShowModeSelection(false); }}
-                  className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl`}
+                  className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                 >
                   <div className={`w-16 h-16 rounded-[24px] bg-white flex items-center justify-center mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
@@ -1845,7 +1844,7 @@ export default function App() {
           <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900">← Back to Dashboard</button>
           <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
             <h2 className="text-3xl font-black mb-6 text-stone-900">Class Students</h2>
-            <div className="overflow-hidden rounded-3xl border border-stone-100">
+            <div className="overflow-x-auto rounded-3xl border border-stone-100">
               <table className="w-full text-left">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
@@ -2098,7 +2097,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+              className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4"
             >
               {matchingPairs.map((item, idx) => {
                 const key = `${item.id}-${item.type}-${idx}`;
@@ -2110,7 +2109,7 @@ export default function App() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
                   disabled={matchedIds.includes(item.id)}
-                  className={`p-6 rounded-2xl shadow-sm font-bold text-lg h-32 flex items-center justify-center transition-all duration-300 ${
+                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-lg h-28 sm:h-32 flex items-center justify-center transition-all duration-300 ${
                     matchedIds.includes(item.id) 
                       ? "bg-emerald-50 text-emerald-300 shadow-none" 
                       : selectedMatch?.id === item.id && selectedMatch?.type === item.type
@@ -2134,8 +2133,17 @@ export default function App() {
               {/* Progress Bar */}
               <div className="absolute top-0 left-0 h-2 bg-emerald-500 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
 
+              {/* Motivational message */}
+              {motivationalMessage && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                  <span className="text-3xl sm:text-5xl font-black text-emerald-600 drop-shadow animate-bounce">
+                    {motivationalMessage}
+                  </span>
+                </div>
+              )}
+
               <div className="mb-6 sm:mb-12">
-                <span className="text-stone-300 font-black text-6xl sm:text-8xl opacity-20 absolute top-8 left-1/2 -translate-x-1/2">{currentIndex + 1}</span>
+                <span className="text-stone-300 font-black text-4xl sm:text-6xl lg:text-8xl opacity-20 absolute top-8 left-1/2 -translate-x-1/2">{currentIndex + 1}</span>
                 <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 mb-6 sm:mb-12">
                   {currentWord?.imageUrl && (
                     <motion.img
@@ -2147,7 +2155,7 @@ export default function App() {
                       className="w-32 h-32 sm:w-48 sm:h-48 object-cover rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-4xl sm:text-6xl font-black text-stone-900 relative z-10 ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
+                  <h2 className={`text-4xl sm:text-6xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
                     {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] : 
                      gameMode === "scramble" ? scrambledWord :
                      gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
