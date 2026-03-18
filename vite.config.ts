@@ -29,26 +29,27 @@ export default defineConfig(() => {
           ]
         },
         workbox: {
-          // Always fetch the HTML document from the network so a refresh never
-          // serves a stale shell that blocks auth from resolving.
-          navigateFallback: 'index.html',
-          navigationPreload: true,
+          cleanupOutdatedCaches: true,
+          // Block the default NavigationRoute that always serves cached HTML.
+          // Our NetworkFirst runtimeCaching handler below will handle navigation
+          // requests instead, ensuring the user always gets fresh HTML on refresh.
+          navigateFallbackDenylist: [/./],
           runtimeCaching: [
             {
-              // Navigation requests (the HTML page itself) — network first,
-              // fall back to cache only when fully offline.
-              urlPattern: ({ request }) => request.mode === 'navigate',
+              // Navigation requests — always try network first so the user
+              // gets the latest HTML.  Falls back to cache only when offline.
+              urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'pages',
-                networkTimeoutSeconds: 5,
+                networkTimeoutSeconds: 3,
               },
             },
             {
-              // Static assets (JS, CSS, images) — cache first for speed.
-              urlPattern: ({ request }) =>
+              // Static assets — serve from cache while revalidating in background.
+              urlPattern: ({ request }: { request: Request }) =>
                 ['script', 'style', 'image', 'font'].includes(request.destination),
-              handler: 'CacheFirst',
+              handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: 'assets',
                 expiration: { maxEntries: 100, maxAgeSeconds: 7 * 24 * 60 * 60 },
