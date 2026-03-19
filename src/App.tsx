@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
-import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
+import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
 import {
   normalizeText,
   findMatchesEnhanced,
@@ -206,7 +206,7 @@ export default function App() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<"Band 2" | "Custom">("Band 2");
+  const [selectedLevel, setSelectedLevel] = useState<"Band 1" | "Band 2" | "Custom">("Band 2");
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -716,7 +716,8 @@ export default function App() {
   }, []);
 
   const currentLevelWords = useMemo(() => {
-    let words = selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
+    let words = selectedLevel === "Band 1" ? BAND_1_WORDS :
+                 selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
 
     // Enhanced multi-language search with fuzzy matching
     if (wordSearchQuery.trim()) {
@@ -2165,7 +2166,7 @@ Examples:
             </div>
 
             <div className="flex flex-nowrap gap-2 sm:gap-3 mb-6 overflow-x-auto pb-2">
-              {(["Band 2", "Custom"] as const).map(level => (
+              {(["Band 1", "Band 2", "Custom"] as const).map(level => (
                 <button
                   key={level}
                   onClick={() => setSelectedLevel(level)}
