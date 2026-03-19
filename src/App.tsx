@@ -2,6 +2,13 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
 import { ALL_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
 import {
+  normalizeText,
+  findMatchesEnhanced,
+  searchWords,
+  filterWords,
+  type WordFilters
+} from "./vocabulary-matching";
+import {
   Volume2,
   Languages,
   Trophy,
@@ -9,23 +16,12 @@ import {
   LogIn,
   UserCircle,
   Users,
-  GraduationCap,
-  Plus,
   CheckCircle2,
   BookOpen,
   BarChart3,
   ChevronRight,
-  Calendar,
-  Flame,
-  Settings,
-  Download,
   Upload,
-  Image as ImageIcon,
-  Smile,
-  TrendingUp,
   AlertTriangle,
-  LayoutGrid,
-  X,
   Camera,
   Trash2,
   PenTool,
@@ -35,17 +31,19 @@ import {
   Repeat,
   Copy,
   Check,
-  Share2,
   MessageCircle,
   History,
   Info,
-  ChevronDown
+  ChevronDown,
+  Plus,
+  X,
+  TrendingUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';     
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
 
@@ -231,6 +229,9 @@ export default function App() {
   const [selectedCore, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
   const [selectedPos, setSelectedPos] = useState<string>("");
   const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
+  const [showWordBank, setShowWordBank] = useState(false);
+  const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
+  const [enableWordFamilies, setEnableWordFamilies] = useState(false);
 
   // --- CLASS CARDS COLLAPSE STATE ---
   // Track which class IDs are expanded (Set for O(1) lookup)
@@ -615,7 +616,7 @@ export default function App() {
     return [...new Set(words)]; // Remove duplicates
   };
 
-  // Find matching Band 2 words (exact or partial match)
+  // Find matching Band 2 words (EXACT OR PARTIAL MATCH)
   const findMatchesInBand2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
     const matched: Word[] = [];
     const unmatched: string[] = [];
@@ -634,6 +635,21 @@ export default function App() {
     }
 
     return { matched, unmatched };
+  };
+
+  // Enhanced matching with fuzzy search, word families, and multi-language support
+  const findMatchesInBand2Enhanced = (words: string[]) => {
+    const result = findMatchesEnhanced(words, BAND_2_WORDS, {
+      enableFuzzy: enableFuzzyMatch,
+      enableWordFamilies: enableWordFamilies,
+      fuzzyThreshold: 0.3
+    });
+
+    return {
+      matched: result.matched.map(m => m.word),
+      unmatched: result.unmatched,
+      matchDetails: result.matched
+    };
   };
 
   // Handle paste submission
@@ -702,14 +718,14 @@ export default function App() {
   const currentLevelWords = useMemo(() => {
     let words = selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
 
-    // Apply search filter
+    // Enhanced multi-language search with fuzzy matching
     if (wordSearchQuery.trim()) {
-      const query = wordSearchQuery.toLowerCase();
-      words = words.filter(w =>
-        w.english.toLowerCase().includes(query) ||
-        w.hebrew.includes(query) ||
-        w.arabic.includes(query)
-      );
+      const searchResults = searchWords(wordSearchQuery, words, {
+        fuzzy: enableFuzzyMatch,
+        includeWordFamilies: enableWordFamilies,
+        maxResults: 500
+      });
+      words = searchResults.map(m => m.word);
     }
 
     // Core filter
@@ -2051,7 +2067,6 @@ export default function App() {
                   onChange={(e) => {
                     setAssignmentTitle(e.target.value);
                   }}
-                  autoComplete="off"
                   className="w-full p-4 rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
                 />
                 <datalist id="assignment-titles">
@@ -2064,7 +2079,6 @@ export default function App() {
                     type="date"
                     value={assignmentDeadline}
                     onChange={(e) => setAssignmentDeadline(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
                     className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
                   />
                   {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
@@ -2116,34 +2130,36 @@ export default function App() {
             </div>
 
             {/* Smart Paste Box - NEW */}
-            <div className="bg-blue-50 rounded-2xl p-4 mb-6 border-2 border-blue-100">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">📋</span>
-                <h3 className="font-bold text-blue-900">Quick Paste</h3>
-                <span className="text-xs text-blue-600 ml-auto">Paste from PDF, Word, email...</span>
+            <div className="bg-blue-50 rounded-2xl p-3 mb-3 border-2 border-blue-100">
+              <div className="flex items-center gap-1 mb-1.5">
+                <span className="text-lg">📋</span>
+                <h3 className="font-bold text-blue-900 text-sm">Import Word List</h3>
+                <span className="text-xs text-blue-600 ml-auto">Paste from anywhere</span>
               </div>
               <textarea
                 value={pastedText}
                 onChange={(e) => setPastedText(e.target.value)}
-                placeholder="Paste your word list here...
+                placeholder="Paste Hebrew and/or English words here...
 
-Example formats:
+Examples:
+• שלום, peace, hello
+• תפוח, apple
 • apple, banana, orange
 • One word per line
 • Separated by commas or semicolons"
-                className="w-full p-3 rounded-xl border border-blue-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
-                rows={3}
+                className="w-full p-2.5 rounded-xl border border-blue-200 text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                rows={12}
               />
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-blue-600">
-                  {pastedText.trim() && "✓ Text ready to extract"}
+              <div className="flex justify-between items-center mt-1.5">
+                <span className="text-sm text-blue-600 font-medium">
+                  {pastedText.trim() && `✓ ${pastedText.split(/[\n,;]+/).filter(w => w.trim()).length} word(s) detected`}
                 </span>
                 <button
                   onClick={handlePasteSubmit}
                   disabled={!pastedText.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all"
                 >
-                  Extract Words
+                  Import Words
                 </button>
               </div>
             </div>
@@ -2184,110 +2200,148 @@ Example formats:
               </label>
             </div>
 
-            {/* Quick Search */}
-            <div className="mb-3">
-              <input
-                type="text"
-                placeholder="🔍 Search words..."
-                value={wordSearchQuery}
-                onChange={(e) => setWordSearchQuery(e.target.value)}
-                className="w-full p-3 rounded-xl border-2 border-blue-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              />
+            {/* Browse Word Bank Toggle */}
+            <button
+              onClick={() => setShowWordBank(!showWordBank)}
+              className="w-full mb-4 px-4 py-3 bg-stone-100 hover:bg-stone-200 rounded-xl border-2 border-stone-200 transition-all flex items-center justify-between"
+            >
+              <span className="font-bold text-stone-700">📚 Browse Word Bank</span>
+              <span className="text-stone-500">{showWordBank ? "▲" : "▼"}</span>
+            </button>
+
+            {/* Search Options */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              <button
+                onClick={() => setEnableFuzzyMatch(!enableFuzzyMatch)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  enableFuzzyMatch
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                }`}
+              >
+                🔤 Fuzzy Match: {enableFuzzyMatch ? 'ON' : 'OFF'}
+              </button>
+              <button
+                onClick={() => setEnableWordFamilies(!enableWordFamilies)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  enableWordFamilies
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                }`}
+              >
+                🌳 Word Families: {enableWordFamilies ? 'ON' : 'OFF'}
+              </button>
             </div>
 
-            {/* Quick Category Filters - Only show when search or filters active */}
-            {(wordSearchQuery || selectedCore || selectedPos || selectedRecProd) && (
+            {/* Collapsible Word Bank */}
+            {showWordBank && (
               <>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {/* Core Filter */}
-                  <select
-                    value={selectedCore}
-                    onChange={(e) => setSelectedCore(e.target.value as any)}
-                    className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
-                  >
-                    <option value="">All Core</option>
-                    <option value="Core I">Core I</option>
-                    <option value="Core II">Core II</option>
-                  </select>
-
-                  {/* Part of Speech Filter */}
-                  <select
-                    value={selectedPos}
-                    onChange={(e) => setSelectedPos(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
-                  >
-                    <option value="">All POS</option>
-                    <option value="n">Nouns</option>
-                    <option value="v">Verbs</option>
-                    <option value="adj">Adjectives</option>
-                    <option value="adv">Adverbs</option>
-                    <option value="prep">Prepositions</option>
-                    <option value="conj">Conjunctions</option>
-                  </select>
-
-                  {/* Rec/Prod Filter */}
-                  <select
-                    value={selectedRecProd}
-                    onChange={(e) => setSelectedRecProd(e.target.value as any)}
-                    className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
-                  >
-                    <option value="">All Types</option>
-                    <option value="Rec">Receptive</option>
-                    <option value="Prod">Productive</option>
-                  </select>
-
-                  {/* Clear Filters Button */}
-                  {(selectedCore || selectedPos || selectedRecProd || wordSearchQuery) && (
-                    <button
-                      onClick={() => {
-                        setSelectedCore("");
-                        setSelectedPos("");
-                        setSelectedRecProd("");
-                        setWordSearchQuery("");
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all border-2 border-red-200"
-                    >
-                      ✕ Clear
-                    </button>
-                  )}
+                {/* Quick Search */}
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    placeholder="🔍 Search words..."
+                    value={wordSearchQuery}
+                    onChange={(e) => setWordSearchQuery(e.target.value)}
+                    className="w-full p-3 rounded-xl border-2 border-blue-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
                 </div>
 
-                {/* Active Filter Summary */}
-                <div className="text-xs text-stone-500 mb-2">
-                  {wordSearchQuery && `Search: "${wordSearchQuery}" `}
-                  {selectedCore && `| Core: ${selectedCore} `}
-                  {selectedPos && `| POS: ${selectedPos} `}
-                  {selectedRecProd && `| Type: ${selectedRecProd}`}
+                {/* Quick Category Filters - Only show when search or filters active */}
+                {(wordSearchQuery || selectedCore || selectedPos || selectedRecProd) && (
+                  <>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {/* Core Filter */}
+                      <select
+                        value={selectedCore}
+                        onChange={(e) => setSelectedCore(e.target.value as any)}
+                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                      >
+                        <option value="">All Core</option>
+                        <option value="Core I">Core I</option>
+                        <option value="Core II">Core II</option>
+                      </select>
+
+                      {/* Part of Speech Filter */}
+                      <select
+                        value={selectedPos}
+                        onChange={(e) => setSelectedPos(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                      >
+                        <option value="">All POS</option>
+                        <option value="n">Nouns</option>
+                        <option value="v">Verbs</option>
+                        <option value="adj">Adjectives</option>
+                        <option value="adv">Adverbs</option>
+                        <option value="prep">Prepositions</option>
+                        <option value="conj">Conjunctions</option>
+                      </select>
+
+                      {/* Rec/Prod Filter */}
+                      <select
+                        value={selectedRecProd}
+                        onChange={(e) => setSelectedRecProd(e.target.value as any)}
+                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                      >
+                        <option value="">All Types</option>
+                        <option value="Rec">Receptive</option>
+                        <option value="Prod">Productive</option>
+                      </select>
+
+                      {/* Clear Filters Button */}
+                      {(selectedCore || selectedPos || selectedRecProd || wordSearchQuery) && (
+                        <button
+                          onClick={() => {
+                            setSelectedCore("");
+                            setSelectedPos("");
+                            setSelectedRecProd("");
+                            setWordSearchQuery("");
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all border-2 border-red-200"
+                        >
+                          ✕ Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Active Filter Summary */}
+                    <div className="text-xs text-stone-500 mb-2">
+                      {wordSearchQuery && `Search: "${wordSearchQuery}" `}
+                      {selectedCore && `| Core: ${selectedCore} `}
+                      {selectedPos && `| POS: ${selectedPos} `}
+                      {selectedRecProd && `| Type: ${selectedRecProd}`}
+                    </div>
+                  </>
+                )}
+
+                {/* Compact Word List with Tap-to-Add */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-blue-50/50 rounded-2xl border-2 border-blue-100">
+                  {currentLevelWords.map(word => {
+                    const isSelected = selectedWordsSet.has(word.id);
+                    return (
+                      <button
+                        key={`word-select-${word.id}`}
+                        onClick={() => toggleWordSelection(word.id)}
+                        className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
+                      >
+                        <div>
+                          <p className={`font-bold ${isSelected ? "text-white" : "text-stone-900"}`}>{word.english}</p>
+                          <p className={`text-xs truncate ${isSelected ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
+                        </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-white/20" : "bg-stone-100"}`}>
+                          {isSelected ? "✓" : "+"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {currentLevelWords.length === 0 && (
+                    <p className="col-span-full text-center py-8 text-stone-400 italic">
+                      No words found. Try a different search.
+                    </p>
+                  )}
                 </div>
               </>
             )}
-
-            {/* Compact Word List with Tap-to-Add */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-blue-50/50 rounded-2xl border-2 border-blue-100">
-              {currentLevelWords.map(word => {
-                const isSelected = selectedWordsSet.has(word.id);
-                return (
-                  <button
-                    key={`word-select-${word.id}`}
-                    onClick={() => toggleWordSelection(word.id)}
-                    className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
-                  >
-                    <div>
-                      <p className={`font-bold ${isSelected ? "text-white" : "text-stone-900"}`}>{word.english}</p>
-                      <p className={`text-xs truncate ${isSelected ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
-                    </div>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-white/20" : "bg-stone-100"}`}>
-                      {isSelected ? "✓" : "+"}
-                    </div>
-                  </button>
-                );
-              })}
-              {currentLevelWords.length === 0 && (
-                <p className="col-span-full text-center py-8 text-stone-400 italic">
-                  No words found. Try a different search.
-                </p>
-              )}
-            </div>
 
             {/* Selection Summary */}
             <div className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-blue-100">
@@ -2415,8 +2469,8 @@ Example formats:
                   <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
                     <span className="text-2xl">📋</span>
                     <div>
-                      <p className="font-bold text-stone-800">Quick Paste</p>
-                      <p className="text-sm text-stone-600">Paste word lists from PDFs, Word docs, or emails</p>
+                      <p className="font-bold text-stone-800">Import Word List</p>
+                      <p className="text-sm text-stone-600">Paste Hebrew/English words from anywhere</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
