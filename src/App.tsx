@@ -2,11 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
 import {
-  normalizeText,
-  findMatchesEnhanced,
-  searchWords,
-  filterWords,
-  type WordFilters
+  searchWords
 } from "./vocabulary-matching";
 import {
   Volume2,
@@ -43,7 +39,6 @@ import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';     
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './types';
@@ -68,12 +63,12 @@ const HelpTooltip = ({ children, content, position = "bottom" }: {
   content: string | string[];
   position?: "top" | "bottom" | "left" | "right";
 }) => {
-  const arrowRef = useRef<HTMLDivElement>(null);
+  const [arrowEl, setArrowEl] = useState<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const isMobile = useMemo(() => 'ontouchstart' in window, []);
   const contentArray = Array.isArray(content) ? content : [content];
 
-  const { refs, floatingStyles, context, middlewareData } = useFloating({
+  const { refs, floatingStyles, middlewareData } = useFloating({
     open: isVisible && !isMobile,
     onOpenChange: setIsVisible,
     placement: position,
@@ -81,9 +76,10 @@ const HelpTooltip = ({ children, content, position = "bottom" }: {
       offset(8),
       flip(),
       shift({ padding: 8 }),
-      arrow({ element: arrowRef }),
+      arrow({ element: arrowEl }),
     ],
   });
+  const { setReference, setFloating } = refs;
 
   // Handle hover events
   const handleMouseEnter = () => {
@@ -100,7 +96,7 @@ const HelpTooltip = ({ children, content, position = "bottom" }: {
   return (
     <>
       <span
-        ref={refs.setReference}
+        ref={setReference}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsVisible(false)}
         className="inline"
@@ -109,7 +105,7 @@ const HelpTooltip = ({ children, content, position = "bottom" }: {
       </span>
       {isVisible && !isMobile && (
         <div
-          ref={refs.setFloating}
+          ref={setFloating}
           style={floatingStyles}
           className="z-50"
         >
@@ -120,7 +116,7 @@ const HelpTooltip = ({ children, content, position = "bottom" }: {
           </div>
           {middlewareData.arrow?.x != null && (
             <div
-              ref={arrowRef}
+              ref={setArrowEl}
               className="absolute w-2 h-2 bg-slate-900 rotate-45"
               style={{
                 left: middlewareData.arrow.x ?? undefined,
@@ -145,6 +141,7 @@ const HelpIcon = ({ tooltip, position = "bottom" }: { tooltip: string | string[]
 );
 
 export default function App() {
+  type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse";
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -194,8 +191,6 @@ export default function App() {
     "Advanced Vocabulary Test"
   ];
 
-  const ALL_AVATARS = Object.values(AVATAR_CATEGORIES).flat();
-
   const [selectedAvatarCategory, setSelectedAvatarCategory] = useState<keyof typeof AVATAR_CATEGORIES>("Animals");
 
   // --- LIVE CHALLENGE STATE ---
@@ -234,10 +229,6 @@ export default function App() {
   const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
 
-  // --- CLASS CARDS COLLAPSE STATE ---
-  // Track which class IDs are expanded (Set for O(1) lookup)
-  const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
-
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -257,21 +248,16 @@ export default function App() {
 
   // --- ASSIGNMENT WELCOME POPUP STATE ---
   const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(true);
-  const toggleClassExpanded = (classId: string) => {
-    setExpandedClassIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(classId)) {
-        newSet.delete(classId);
-      } else {
-        newSet.add(classId);
-      }
-      return newSet;
-    });
-  };
-
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
+  const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const toScoreHeightClass = (score: number) => {
+    if (score < 25) return "h-1/4";
+    if (score < 50) return "h-2/4";
+    if (score < 75) return "h-3/4";
+    return "h-full";
+  };
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -280,7 +266,7 @@ export default function App() {
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
 
   // --- GAME STATE ---
-  const [gameMode, setGameMode] = useState<"classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse">("classic");
+  const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -638,21 +624,6 @@ export default function App() {
     return { matched, unmatched };
   };
 
-  // Enhanced matching with fuzzy search, word families, and multi-language support
-  const findMatchesInBand2Enhanced = (words: string[]) => {
-    const result = findMatchesEnhanced(words, BAND_2_WORDS, {
-      enableFuzzy: enableFuzzyMatch,
-      enableWordFamilies: enableWordFamilies,
-      fuzzyThreshold: 0.3
-    });
-
-    return {
-      matched: result.matched.map(m => m.word),
-      unmatched: result.unmatched,
-      matchDetails: result.matched
-    };
-  };
-
   // Handle paste submission
   const handlePasteSubmit = () => {
     const words = extractWordsFromPaste(pastedText);
@@ -749,7 +720,7 @@ export default function App() {
     const uniqueWords = Array.from(new Map(words.map(w => [w.id, w])).values());
 
     return uniqueWords;
-  }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd]);
+  }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd, enableFuzzyMatch, enableWordFamilies]);
   const handleSaveAssignment = async () => {
     if (!selectedClass || selectedWords.length === 0 || !assignmentTitle) {
       showToast("Please enter a title and select words.", "error");
@@ -1032,7 +1003,7 @@ export default function App() {
     
     const shuffledOthers = shuffle(possibleDistractors).slice(0, 3);
     return shuffle([...shuffledOthers, correct]);
-  }, [currentIndex, currentWord, gameWords]);
+  }, [currentWord, gameWords]);
 
   useEffect(() => {
     if (currentWord) {
@@ -1347,56 +1318,6 @@ export default function App() {
     }
   };
 
-  // --- ANALYTICS CALCULATIONS ---
-  const analyticsData = useMemo(() => {
-    if (allScores.length === 0) return null;
-
-    // 1. Difficulty Heatmap
-    const mistakeCounts: Record<number, number> = {};
-    allScores.forEach(score => {
-      score.mistakes?.forEach(wordId => {
-        mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
-      });
-    });
-
-    const heatmap = Object.entries(mistakeCounts)
-      .map(([id, count]) => ({
-        word: BAND_2_WORDS.find(w => w.id === parseInt(id))?.english || "Unknown",
-        count
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    // 2. Daily Progress
-    const dailyScores: Record<string, { total: number, count: number }> = {};
-    allScores.forEach(score => {
-      const date = new Date(score.completedAt).toLocaleDateString();
-      if (!dailyScores[date]) dailyScores[date] = { total: 0, count: 0 };
-      dailyScores[date].total += score.score;
-      dailyScores[date].count += 1;
-    });
-
-    const progress = Object.entries(dailyScores).map(([date, data]) => ({
-      date,
-      avg: Math.round(data.total / data.count)
-    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    // 3. Mode Stats
-    const modeScores: Record<string, { total: number, count: number }> = {};
-    allScores.forEach(score => {
-      if (!modeScores[score.mode]) modeScores[score.mode] = { total: 0, count: 0 };
-      modeScores[score.mode].total += score.score;
-      modeScores[score.mode].count += 1;
-    });
-
-    const modes = Object.entries(modeScores).map(([mode, data]) => ({
-      mode: mode.charAt(0).toUpperCase() + mode.slice(1),
-      avg: Math.round(data.total / data.count)
-    }));
-
-    return { heatmap, progress, modes };
-  }, [allScores]);
-
   // Matrix data for Student × Assignment view
   const matrixData = useMemo(() => {
     // Get unique students and assignments
@@ -1660,20 +1581,17 @@ export default function App() {
             <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[32px] shadow-sm mb-6 sm:mb-8">
               <h3 className="text-lg sm:text-lg font-bold text-stone-800 mb-3 sm:mb-2">Overall Progress</h3>
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="flex-1 h-5 sm:h-4 bg-stone-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 transition-all duration-1000"
-                    style={{
-                      width: `${Math.round((studentAssignments.filter(a => {
-                        const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
-                        const completedModes = new Set(
-                          studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
-                        ).size;
-                        return completedModes >= allowedModes.length;
-                      }).length / studentAssignments.length) * 100)}%`
-                    }}
-                  />
-                </div>
+                <progress
+                  className="flex-1 h-5 sm:h-4 [&::-webkit-progress-bar]:bg-stone-100 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600 rounded-full overflow-hidden"
+                  max={100}
+                  value={toProgressValue((studentAssignments.filter(a => {
+                    const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                    const completedModes = new Set(
+                      studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
+                    ).size;
+                    return completedModes >= allowedModes.length;
+                  }).length / studentAssignments.length) * 100)}
+                />
                 <span className="font-bold text-stone-500 text-sm sm:text-sm">
                   {studentAssignments.filter(a => {
                     const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
@@ -1740,12 +1658,11 @@ export default function App() {
                             {completedModes} / {totalModes} Modes ({progressPercentage}%)
                           </span>
                         </div>
-                        <div className="h-4 sm:h-3 w-full bg-stone-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-1000 ${isComplete ? 'bg-blue-600' : 'bg-blue-500'}`}
-                            style={{ width: `${progressPercentage}%` }}
-                          />
-                        </div>
+                        <progress
+                          className={`h-4 sm:h-3 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${isComplete ? "[&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600" : "[&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500"}`}
+                          max={100}
+                          value={toProgressValue(progressPercentage)}
+                        />
                       </div>
                     </div>
                   );
@@ -1782,7 +1699,10 @@ export default function App() {
                     setView("live-challenge");
                     setIsLiveChallenge(true);
                     if (socket) {
-                      socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
+                      supabase.auth.getSession().then(({ data: { session } }) => {
+                        const token = session?.access_token ?? "";
+                        socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code, token });
+                      });
                     }
                   } else {
                     // Multiple classes - show selector
@@ -1838,7 +1758,14 @@ export default function App() {
           <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100">
             <div className="flex justify-between items-center mb-2 sm:mb-6">
               <h2 className="text-sm sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
-              <button onClick={() => setShowCreateClassModal(true)} className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 border-2 border-blue-200"><Plus size={16} /></button>
+              <button
+                onClick={() => setShowCreateClassModal(true)}
+                className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 border-2 border-blue-200"
+                aria-label="Create new class"
+                title="Create new class"
+              >
+                <Plus size={16} />
+              </button>
             </div>
             {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
               <div className="space-y-1 sm:space-y-2">
@@ -2081,6 +2008,8 @@ export default function App() {
                     type="date"
                     value={assignmentDeadline}
                     onChange={(e) => setAssignmentDeadline(e.target.value)}
+                    aria-label="Assignment deadline"
+                    title="Assignment deadline"
                     className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
                   />
                   {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
@@ -2194,9 +2123,10 @@ Examples:
                   disabled={isOcrProcessing}
                 />
                 {isOcrProcessing && (
-                  <div
-                    className="absolute bottom-0 left-0 h-1 bg-white/50 transition-all duration-300"
-                    style={{ width: `${ocrProgress}%` }}
+                  <progress
+                    className="absolute bottom-0 left-0 h-1 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white/50 [&::-moz-progress-bar]:bg-white/50"
+                    max={100}
+                    value={toProgressValue(ocrProgress)}
                   />
                 )}
               </label>
@@ -2256,7 +2186,9 @@ Examples:
                       {/* Core Filter */}
                       <select
                         value={selectedCore}
-                        onChange={(e) => setSelectedCore(e.target.value as any)}
+                        onChange={(e) => setSelectedCore(e.target.value as "Core I" | "Core II" | "")}
+                        aria-label="Filter by core"
+                        title="Filter by core"
                         className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
                       >
                         <option value="">All Core</option>
@@ -2268,6 +2200,8 @@ Examples:
                       <select
                         value={selectedPos}
                         onChange={(e) => setSelectedPos(e.target.value)}
+                        aria-label="Filter by part of speech"
+                        title="Filter by part of speech"
                         className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
                       >
                         <option value="">All POS</option>
@@ -2282,7 +2216,9 @@ Examples:
                       {/* Rec/Prod Filter */}
                       <select
                         value={selectedRecProd}
-                        onChange={(e) => setSelectedRecProd(e.target.value as any)}
+                        onChange={(e) => setSelectedRecProd(e.target.value as "Rec" | "Prod" | "")}
+                        aria-label="Filter by receptive or productive type"
+                        title="Filter by receptive or productive type"
                         className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
                       >
                         <option value="">All Types</option>
@@ -2506,7 +2442,7 @@ Examples:
   }
 
   if (view === "game" && showModeSelection) {
-    const modes = [
+    const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
       { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
       { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
       { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
@@ -2546,7 +2482,12 @@ Examples:
       <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-4xl bg-white rounded-[48px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
-          <button onClick={handleExitGame} className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300">
+          <button
+            onClick={handleExitGame}
+            className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
+            aria-label="Close mode selection"
+            title="Close mode selection"
+          >
             <X size={28} />
           </button>
 
@@ -2566,7 +2507,7 @@ Examples:
               return (
                 <motion.button
                   key={mode.id}
-                  onClick={() => { setGameMode(mode.id as any); setShowModeSelection(false); }}
+                  onClick={() => { setGameMode(mode.id); setShowModeSelection(false); }}
                   className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -2681,7 +2622,7 @@ Examples:
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">1ST</div>
                       {/* Sparkle effects */}
                       <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
-                      <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce" style={{ animationDelay: "0.5s" }}>✨</div>
+                      <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
                     </div>
                     <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 shadow-2xl shadow-yellow-400/20">
                       <p className="font-bold text-base sm:text-lg truncate">{top3[0].name}</p>
@@ -2991,7 +2932,12 @@ Examples:
                     <h2 className="text-2xl font-black text-stone-900">{selectedScore.studentName}</h2>
                     <p className="text-stone-500">Assignment: {selectedScore.assignmentId}</p>
                   </div>
-                  <button onClick={() => setSelectedScore(null)} className="text-stone-400 hover:text-stone-600">
+                  <button
+                    onClick={() => setSelectedScore(null)}
+                    className="text-stone-400 hover:text-stone-600"
+                    aria-label="Close score details"
+                    title="Close score details"
+                  >
                     <X size={24} />
                   </button>
                 </div>
@@ -3084,7 +3030,12 @@ Examples:
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => setSelectedStudent(null)} className="text-stone-400 hover:text-stone-600">
+                    <button
+                      onClick={() => setSelectedStudent(null)}
+                      className="text-stone-400 hover:text-stone-600"
+                      aria-label="Close student details"
+                      title="Close student details"
+                    >
                       <X size={24} />
                     </button>
                   </div>
@@ -3122,7 +3073,6 @@ Examples:
                       <div className="bg-stone-50 rounded-2xl p-4">
                         <div className="flex items-end gap-1 h-32">
                           {scoreTrend.map((s, idx) => {
-                            const height = Math.max(20, (s.score / 100) * 100);
                             return (
                               <div
                                 key={`${s.id}-${idx}`}
@@ -3131,8 +3081,7 @@ Examples:
                                 <div
                                   className={`w-full rounded-t-lg transition-all ${
                                     s.score >= 90 ? "bg-blue-400" : s.score >= 70 ? "bg-blue-300" : "bg-rose-300"
-                                  }`}
-                                  style={{ height: `${height}%` }}
+                                  } ${toScoreHeightClass(s.score)}`}
                                 />
                                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                                   {s.score}%
@@ -3514,7 +3463,10 @@ Examples:
                   setView("live-challenge");
                   setIsLiveChallenge(true);
                   if (socket) {
-                    socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code });
+                    supabase.auth.getSession().then(({ data: { session } }) => {
+                      const token = session?.access_token ?? "";
+                      socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code, token });
+                    });
                   }
                 }}
                 className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30 hover:bg-white/30 hover:border-white/50 hover:scale-105 transition-all shadow-xl"
@@ -3669,7 +3621,14 @@ Examples:
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
           <span className="text-sm">{saveError}</span>
-          <button onClick={() => setSaveError(null)} className="ml-1 hover:opacity-75"><X size={16} /></button>
+          <button
+            onClick={() => setSaveError(null)}
+            className="ml-1 hover:opacity-75"
+            aria-label="Dismiss error message"
+            title="Dismiss error message"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
       <div className="w-full max-w-5xl flex flex-wrap justify-between items-center gap-2 mb-6 sm:mb-8">
@@ -3742,7 +3701,11 @@ Examples:
               className={`bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
             >
               {/* Progress Bar */}
-              <div className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
+              <progress
+                className="absolute top-0 left-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
+                max={100}
+                value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
+              />
 
               {/* Motivational message */}
               {motivationalMessage && (
@@ -3774,7 +3737,12 @@ Examples:
                   </h2>
                 </div>
                 <div className="flex justify-center gap-2">
-                  <button onClick={() => speak(currentWord?.english)} className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors">
+                  <button
+                    onClick={() => speak(currentWord?.english)}
+                    className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                    aria-label="Play pronunciation"
+                    title="Play pronunciation"
+                  >
                     <Volume2 size={24} className="text-stone-600" />
                   </button>
                 </div>
@@ -3906,9 +3874,11 @@ Examples:
     {gameMode !== "matching" && (
       <div className="w-full max-w-5xl mt-12 flex justify-center">
         <div className="w-full max-w-md">
-          <div className="h-2 w-full bg-stone-200 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${((currentIndex + 1) / gameWords.length) * 100}%` }} />
-          </div>
+          <progress
+            className="h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
+            max={100}
+            value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
+          />
           <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {gameWords.length}</p>
         </div>
       </div>

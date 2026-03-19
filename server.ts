@@ -53,6 +53,39 @@ async function verifyToken(token: string): Promise<string | null> {
   }
 }
 
+type UserRole = "teacher" | "student" | "admin";
+
+async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select("role, class_code")
+      .eq("uid", uid)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      role: data.role as UserRole,
+      classCode: data.class_code ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function isTeacherForClass(uid: string, classCode: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("classes")
+      .select("id")
+      .eq("teacher_uid", uid)
+      .eq("code", classCode)
+      .maybeSingle();
+    return !error && !!data;
+  } catch {
+    return false;
+  }
+}
+
 // Rate limiter utility for socket connections with automatic cleanup
 function createSocketRateLimiter(windowMs: number, maxAttempts: number, cleanupIntervalMs: number) {
   const records: Record<string, { count: number; resetAt: number }> = {};
@@ -92,11 +125,6 @@ function createSocketRateLimiter(windowMs: number, maxAttempts: number, cleanupI
     return true;
   };
 
-  // Clean up specific IP (call when socket disconnects)
-  const cleanupIp = (ip: string) => {
-    delete records[ip];
-  };
-
   // Shutdown cleanup
   const shutdown = () => {
     clearInterval(intervalId);
@@ -106,7 +134,7 @@ function createSocketRateLimiter(windowMs: number, maxAttempts: number, cleanupI
     }
   };
 
-  return { checkLimit, cleanupIp, cleanup, shutdown, records };
+  return { checkLimit, cleanup, shutdown, records };
 }
 
 async function startServer() {
@@ -180,7 +208,7 @@ async function startServer() {
     const clientIp = (socket.handshake.headers["x-forwarded-for"] as string || socket.handshake.address).toString();
     console.log("User connected:", socket.id);
 
-    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }) => {
+    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid) || !isValidToken(token)) return;
 
       // Rate limit join-challenge by client IP
@@ -189,6 +217,14 @@ async function startServer() {
       // Verify Firebase ID token and confirm uid matches
       const verifiedUid = await verifyToken(token);
       if (!verifiedUid || verifiedUid !== uid) return;
+
+      const userData = await getUserRoleAndClass(uid);
+      if (!userData) return;
+
+      // Only class members (students) or teachers who own the class can join.
+      const canJoinAsStudent = userData.role === "student" && userData.classCode === classCode;
+      const canJoinAsTeacher = userData.role === "teacher" && await isTeacherForClass(uid, classCode);
+      if (!canJoinAsStudent && !canJoinAsTeacher) return;
 
       // Fetch student's TOTAL score using database aggregation
       // Uses a single aggregated query instead of fetching all records
@@ -217,10 +253,20 @@ async function startServer() {
     });
 
     // Observe-only mode for teachers - joins room without being on leaderboard
-    socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, ({ classCode }) => {
-      if (!isValidClassCode(classCode)) return;
+    socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, async ({ classCode, token }: ObserveChallengePayload) => {
+      if (!isValidClassCode(classCode) || !isValidToken(token)) return;
+
+      const verifiedUid = await verifyToken(token);
+      if (!verifiedUid) return;
+
+      const userData = await getUserRoleAndClass(verifiedUid);
+      if (!userData || userData.role !== "teacher") return;
+
+      const isOwner = await isTeacherForClass(verifiedUid, classCode);
+      if (!isOwner) return;
+
       socket.join(classCode);
-      // Send current leaderboard state to the observer
+      // Send current leaderboard state to the authorized observer
       if (liveSessions[classCode]) {
         socket.emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
       }
@@ -255,8 +301,6 @@ async function startServer() {
         }
         delete socketSessions[socket.id];
       }
-      // Clean up rate limit record for this IP to prevent memory leaks
-      rateLimiter.cleanupIp(clientIp);
     });
   });
 

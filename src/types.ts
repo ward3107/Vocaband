@@ -35,6 +35,7 @@ export interface JoinChallengePayload {
 
 export interface ObserveChallengePayload {
   classCode: string;
+  token: string;
 }
 
 export interface UpdateScorePayload {

@@ -88,6 +88,18 @@ See `.env.example` for available configuration:
 | `ALLOWED_ORIGIN` | CORS origin for WebSocket server | `http://localhost:3000` |
 | `PORT` | Server port | `3000` |
 
+## Security Notes
+
+- Live challenge sockets are server-authorized:
+  - `join-challenge` requires a valid auth token and class membership/ownership checks.
+  - `observe-challenge` is restricted to authenticated teachers who own the class.
+- Rate limiting for live challenge joins uses a time window and does not reset on disconnect.
+- `npm audit --omit=dev` is the production security baseline and is currently clean.
+- Current `npm audit` (including dev/build tooling) may still report advisories in the PWA/workbox chain. These affect build-time tooling, not runtime phone access.
+- PWA is kept enabled. Students can use the app on phones with or without PWA:
+  - Without PWA: app works via mobile browser URL.
+  - With PWA: install-to-home-screen and offline caching improve UX.
+
 ## Project Structure
 
 ```
