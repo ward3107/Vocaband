@@ -36,8 +36,12 @@ async function startServer() {
 
   const PORT = process.env.PORT || 3000;
 
-  // Security headers — applied in production only (Vite dev server handles its own headers)
+  // Security middleware — applied in production only (Vite dev server handles its own headers)
   if (process.env.NODE_ENV === "production") {
+    // Trust proxy so req.ip reflects the real client IP behind Cloudflare/Render
+    app.set("trust proxy", 1);
+
+    // Security headers via helmet
     app.use(helmet({
       contentSecurityPolicy: {
         directives: {
@@ -58,19 +62,15 @@ async function startServer() {
       },
     }));
 
-    // Trust Cloudflare/Render proxy so req.ip reflects the real client IP for rate limiting
-    app.set("trust proxy", 1);
+    // Rate limit: max 60 requests per minute per IP
+    app.use(rateLimit({
+      windowMs: 60 * 1000,
+      max: 60,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: "Too many requests, please try again later." },
+    }));
   }
-
-  // Rate limit: max 60 requests per minute per IP for general HTTP traffic
-  const httpLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please try again later." },
-  });
-  app.use(httpLimiter);
 
   // Rate limit socket connections: track join-challenge attempts per IP
   const socketJoinAttempts: Record<string, { count: number; resetAt: number }> = {};
