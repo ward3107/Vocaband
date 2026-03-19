@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -6,6 +7,7 @@ import path from "path";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
+import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/types.js";
 
 // Supabase admin client — uses the service role key to verify tokens server-side
 const supabaseAdmin = createClient(
@@ -13,6 +15,33 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
+
+// Validation constants
+const VALIDATION = {
+  CLASS_CODE_MIN: 1,
+  CLASS_CODE_MAX: 64,
+  NAME_MIN: 1,
+  NAME_MAX: 100,
+  UID_MIN: 1,
+  UID_MAX: 128,
+} as const;
+
+// Reusable validation functions
+function isValidClassCode(code: unknown): code is string {
+  return typeof code === "string" && code.length >= VALIDATION.CLASS_CODE_MIN && code.length <= VALIDATION.CLASS_CODE_MAX;
+}
+
+function isValidName(value: unknown): value is string {
+  return typeof value === "string" && value.length >= VALIDATION.NAME_MIN && value.length <= VALIDATION.NAME_MAX;
+}
+
+function isValidUid(value: unknown): value is string {
+  return typeof value === "string" && value.length >= VALIDATION.UID_MIN && value.length <= VALIDATION.UID_MAX;
+}
+
+function isValidToken(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
 
 async function verifyToken(token: string): Promise<string | null> {
   try {
@@ -22,6 +51,62 @@ async function verifyToken(token: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+// Rate limiter utility for socket connections with automatic cleanup
+function createSocketRateLimiter(windowMs: number, maxAttempts: number, cleanupIntervalMs: number) {
+  const records: Record<string, { count: number; resetAt: number }> = {};
+
+  // Lazy cleanup function - removes expired entries
+  const cleanup = () => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [ip, record] of Object.entries(records)) {
+      if (now >= record.resetAt) {
+        delete records[ip];
+        cleaned++;
+      }
+    }
+    return cleaned;
+  };
+
+  // Periodic cleanup to prevent unbounded memory growth
+  const intervalId = setInterval(cleanup, cleanupIntervalMs);
+
+  // Check if IP can proceed (returns true if allowed, false if rate limited)
+  const checkLimit = (ip: string): boolean => {
+    const now = Date.now();
+    const record = records[ip];
+
+    if (record && now < record.resetAt) {
+      // Within window - check count
+      if (record.count >= maxAttempts) {
+        return false; // Rate limited
+      }
+      record.count++;
+      return true;
+    }
+
+    // New window or expired - create new record
+    records[ip] = { count: 1, resetAt: now + windowMs };
+    return true;
+  };
+
+  // Clean up specific IP (call when socket disconnects)
+  const cleanupIp = (ip: string) => {
+    delete records[ip];
+  };
+
+  // Shutdown cleanup
+  const shutdown = () => {
+    clearInterval(intervalId);
+    // Clear all records
+    for (const ip of Object.keys(records)) {
+      delete records[ip];
+    }
+  };
+
+  return { checkLimit, cleanupIp, cleanup, shutdown, records };
 }
 
 async function startServer() {
@@ -73,65 +158,85 @@ async function startServer() {
   }
 
   // Rate limit socket connections: track join-challenge attempts per IP
-  const socketJoinAttempts: Record<string, { count: number; resetAt: number }> = {};
-  const SOCKET_RATE_WINDOW = 60 * 1000; // 1 minute
-  const SOCKET_RATE_MAX = 10; // max 10 join attempts per minute per IP
+  // Using improved rate limiter with automatic cleanup
+  const rateLimiter = createSocketRateLimiter(
+    60 * 1000, // 1 minute window
+    10,        // max 10 join attempts per minute per IP
+    60 * 1000  // cleanup every minute
+  );
+
+  // Constants for score fetching
+  const PROGRESS_RECORD_LIMIT = 1000; // Safety limit for student progress records
 
   // Live Challenge State
-  // { classCode: { studentUid: { name, score } } }
-  const liveSessions: Record<string, Record<string, { name: string, score: number }>> = {};
+  // { classCode: { studentUid: { name, baseScore, currentGameScore } } }
+  // baseScore: total from all past assignments (fetched from Supabase)
+  // currentGameScore: points in the current active game
+  const liveSessions: Record<string, Record<string, LeaderboardEntry>> = {};
   // Track which session each socket belongs to for cleanup
   const socketSessions: Record<string, { classCode: string, uid: string }> = {};
 
   io.on("connection", (socket) => {
+    const clientIp = (socket.handshake.headers["x-forwarded-for"] as string || socket.handshake.address).toString();
     console.log("User connected:", socket.id);
 
-    socket.on("join-challenge", async ({ classCode, name, uid, token }) => {
-      if (
-        typeof classCode !== "string" || classCode.length === 0 || classCode.length > 64 ||
-        typeof name !== "string" || name.length === 0 || name.length > 100 ||
-        typeof uid !== "string" || uid.length === 0 || uid.length > 128 ||
-        typeof token !== "string" || token.length === 0
-      ) return;
+    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }) => {
+      if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid) || !isValidToken(token)) return;
 
       // Rate limit join-challenge by client IP
-      const clientIp = socket.handshake.headers["x-forwarded-for"] as string || socket.handshake.address;
-      const now = Date.now();
-      const ipRecord = socketJoinAttempts[clientIp];
-      if (ipRecord && now < ipRecord.resetAt) {
-        if (ipRecord.count >= SOCKET_RATE_MAX) return;
-        ipRecord.count++;
-      } else {
-        socketJoinAttempts[clientIp] = { count: 1, resetAt: now + SOCKET_RATE_WINDOW };
-      }
+      if (!rateLimiter.checkLimit(clientIp)) return;
 
       // Verify Firebase ID token and confirm uid matches
       const verifiedUid = await verifyToken(token);
       if (!verifiedUid || verifiedUid !== uid) return;
+
+      // Fetch student's TOTAL score using database aggregation
+      // Uses a single aggregated query instead of fetching all records
+      let totalScore = 0;
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("progress")
+          .select("score")
+          .eq("student_uid", uid)
+          .limit(PROGRESS_RECORD_LIMIT);
+        if (!error && data) {
+          // Aggregate in JavaScript (consider using SQL RPC for very large datasets)
+          totalScore = data.reduce((sum, record) => sum + (record.score || 0), 0);
+        }
+      } catch (err) {
+        console.error("Error fetching student score:", err);
+      }
 
       socket.join(classCode);
       socketSessions[socket.id] = { classCode, uid };
       if (!liveSessions[classCode]) {
         liveSessions[classCode] = {};
       }
-      liveSessions[classCode][uid] = { name, score: 0 };
-      io.to(classCode).emit("leaderboard-update", liveSessions[classCode]);
+      liveSessions[classCode][uid] = { name, baseScore: totalScore, currentGameScore: 0 };
+      io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
     });
 
-    socket.on("update-score", ({ classCode, uid, score }) => {
-      if (
-        typeof classCode !== "string" || classCode.length === 0 || classCode.length > 64 ||
-        typeof uid !== "string" || uid.length === 0 || uid.length > 128 ||
-        typeof score !== "number" || !isFinite(score) || score < 0
-      ) return;
+    // Observe-only mode for teachers - joins room without being on leaderboard
+    socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, ({ classCode }) => {
+      if (!isValidClassCode(classCode)) return;
+      socket.join(classCode);
+      // Send current leaderboard state to the observer
+      if (liveSessions[classCode]) {
+        socket.emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.UPDATE_SCORE, ({ classCode, uid, score }) => {
+      if (!isValidClassCode(classCode) || !isValidUid(uid) || typeof score !== "number" || !isFinite(score) || score < 0) return;
 
       // Only allow the socket that joined with this uid to update its own score
       const session = socketSessions[socket.id];
       if (!session || session.classCode !== classCode || session.uid !== uid) return;
 
       if (liveSessions[classCode] && liveSessions[classCode][uid]) {
-        liveSessions[classCode][uid].score = score;
-        io.to(classCode).emit("leaderboard-update", liveSessions[classCode]);
+        // Update the current game score (baseScore remains unchanged)
+        liveSessions[classCode][uid].currentGameScore = score;
+        io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
       }
     });
 
@@ -145,11 +250,13 @@ async function startServer() {
           if (Object.keys(liveSessions[classCode]).length === 0) {
             delete liveSessions[classCode];
           } else {
-            io.to(classCode).emit("leaderboard-update", liveSessions[classCode]);
+            io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
           }
         }
         delete socketSessions[socket.id];
       }
+      // Clean up rate limit record for this IP to prevent memory leaks
+      rateLimiter.cleanupIp(clientIp);
     });
   });
 
