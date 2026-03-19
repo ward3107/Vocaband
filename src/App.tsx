@@ -46,6 +46,7 @@ import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';     
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
+import { LeaderboardEntry, SOCKET_EVENTS } from './types';
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -199,7 +200,7 @@ export default function App() {
 
   // --- LIVE CHALLENGE STATE ---
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Record<string, { name: string; baseScore: number; currentGameScore: number }>>({});
+  const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
   // --- TEACHER DATA STATE ---
@@ -335,7 +336,7 @@ export default function App() {
       }
     });
     s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
-    s.on("leaderboard-update", (data) => {
+    s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data) => {
       setLeaderboard(data);
     });
 
@@ -920,7 +921,7 @@ export default function App() {
       // Join Live Challenge
       if (socket) {
         const token = session.access_token;
-        socket.emit("join-challenge", { classCode: code, name, uid: studentUid, token });
+        socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, { classCode: code, name, uid: studentUid, token });
       }
 
       setView("student-dashboard");
@@ -1209,7 +1210,7 @@ export default function App() {
         setScore(newScore);
         
         if (socket && user?.classCode) {
-          socket.emit("update-score", { classCode: user.classCode, uid: user.uid, score: newScore });
+          socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
         }
 
         setSelectedMatch(null);
@@ -1236,7 +1237,7 @@ export default function App() {
       setScore(newScore);
       
       if (socket && user?.classCode) {
-        socket.emit("update-score", { classCode: user.classCode, uid: user.uid, score: newScore });
+        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
       }
 
       setTimeout(() => {
@@ -1268,7 +1269,7 @@ export default function App() {
       setScore(newScore);
       
       if (socket && user?.classCode) {
-        socket.emit("update-score", { classCode: user.classCode, uid: user.uid, score: newScore });
+        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
       }
 
       setTimeout(() => {
@@ -1296,7 +1297,7 @@ export default function App() {
       const newScore = score + 5;
       setScore(newScore);
       if (socket && user?.classCode) {
-        socket.emit("update-score", { classCode: user.classCode, uid: user.uid, score: newScore });
+        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
       }
     } else {
       if (!mistakes.includes(currentWord.id)) {
@@ -1324,7 +1325,7 @@ export default function App() {
       setScore(newScore);
       
       if (socket && user?.classCode) {
-        socket.emit("update-score", { classCode: user.classCode, uid: user.uid, score: newScore });
+        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
       }
 
       setTimeout(() => {
@@ -1769,8 +1770,8 @@ export default function App() {
             <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm border-2 border-blue-100 hover:border-red-200">Logout</button>
           </div>
 
-          {/* Quick Action Cards Grid - More compact on mobile */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+          {/* Quick Action Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
             {/* Live Challenge */}
             <HelpTooltip content="Start a real-time vocabulary competition - students race to answer correctly!">
               <button
@@ -1781,18 +1782,18 @@ export default function App() {
                     setView("live-challenge");
                     setIsLiveChallenge(true);
                     if (socket) {
-                      socket.emit("observe-challenge", { classCode: classes[0].code });
+                      socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
                     }
                   } else {
                     // Multiple classes - show selector
                     setView("live-challenge-class-select");
                   }
                 }}
-                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
-                <RefreshCw className="text-blue-600 mb-2 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
-                <h2 className="text-xs sm:text-base font-bold mb-1">Live Challenge</h2>
-                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Real-time competition</p>
+                <RefreshCw className="text-blue-600 mb-3 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
+                <h2 className="text-sm sm:text-base font-bold mb-1">Live Challenge</h2>
+                <p className="text-stone-500 text-xs hidden sm:block">Real-time competition</p>
               </button>
             </HelpTooltip>
 
@@ -1800,11 +1801,11 @@ export default function App() {
             <HelpTooltip content="View detailed class performance data, averages, and insights">
               <button
                 onClick={() => { fetchScores(); setView("analytics"); }}
-                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
-                <BarChart3 className="text-purple-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-xs sm:text-base font-bold mb-1">Analytics</h2>
-                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Class insights</p>
+                <BarChart3 className="text-purple-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+                <h2 className="text-sm sm:text-base font-bold mb-1">Analytics</h2>
+                <p className="text-stone-500 text-xs hidden sm:block">Class insights</p>
               </button>
             </HelpTooltip>
 
@@ -1812,11 +1813,11 @@ export default function App() {
             <HelpTooltip content="Manage student list and view who has joined your classes">
               <button
                 onClick={() => { fetchStudents(); setView("students"); }}
-                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
-                <UserCircle className="text-orange-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-xs sm:text-base font-bold mb-1">Students</h2>
-                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Manage students</p>
+                <UserCircle className="text-orange-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+                <h2 className="text-sm sm:text-base font-bold mb-1">Students</h2>
+                <p className="text-stone-500 text-xs hidden sm:block">Manage students</p>
               </button>
             </HelpTooltip>
 
@@ -1824,11 +1825,11 @@ export default function App() {
             <HelpTooltip content="Track individual student progress, scores, and activity history">
               <button
                 onClick={() => { fetchScores(); setView("gradebook"); }}
-                className="bg-white p-3 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
-                <Trophy className="text-blue-700 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-xs sm:text-base font-bold mb-1">Gradebook</h2>
-                <p className="text-stone-500 text-[10px] sm:text-xs hidden sm:block">Track progress</p>
+                <Trophy className="text-blue-700 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
+                <h2 className="text-sm sm:text-base font-bold mb-1">Gradebook</h2>
+                <p className="text-stone-500 text-xs hidden sm:block">Track progress</p>
               </button>
             </HelpTooltip>
           </div>
@@ -2598,7 +2599,7 @@ Examples:
 
   if (view === "live-challenge" && selectedClass) {
     // Calculate total scores (baseScore + currentGameScore) for each student
-    const sortedLeaderboard = (Object.entries(leaderboard) as [string, { name: string; baseScore: number; currentGameScore: number }][])
+    const sortedLeaderboard = (Object.entries(leaderboard) as [string, LeaderboardEntry][])
       .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore }))
       .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -3513,7 +3514,7 @@ Examples:
                   setView("live-challenge");
                   setIsLiveChallenge(true);
                   if (socket) {
-                    socket.emit("observe-challenge", { classCode: cls.code });
+                    socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code });
                   }
                 }}
                 className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30 hover:bg-white/30 hover:border-white/50 hover:scale-105 transition-all shadow-xl"
@@ -3847,7 +3848,7 @@ Examples:
         <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
           <div className="space-y-2">
-            {(Object.entries(leaderboard) as [string, { name: string; baseScore: number; currentGameScore: number }][])
+            {(Object.entries(leaderboard) as [string, LeaderboardEntry][])
               .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore }))
               .sort((a, b) => b.totalScore - a.totalScore)
               .slice(0, 5)
