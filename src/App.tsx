@@ -333,6 +333,19 @@ export default function App() {
 
   // --- AUTH LOGIC ---
   useEffect(() => {
+    // Exchange PKCE code from URL before subscribing to auth changes.
+    // We do this manually (detectSessionInUrl: false in supabase.ts) to
+    // avoid lock contention when React StrictMode double-mounts.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code')) {
+      supabase.auth.exchangeCodeForSession(params.get('code')!).then(() => {
+        // Clean the URL so a page refresh doesn't try to re-use the code
+        window.history.replaceState({}, '', window.location.pathname);
+      }).catch(() => {
+        // Code may have already been exchanged (StrictMode double-mount) — ignore
+      });
+    }
+
     // Helper: fetch user profile with retry (mobile networks are flaky)
     const fetchUserProfile = async (uid: string, retries = 2): Promise<ReturnType<typeof mapUser> | null> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
