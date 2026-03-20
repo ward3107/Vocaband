@@ -353,75 +353,86 @@ export default function App() {
       return null;
     };
 
-    // Restore session from a Supabase user.  Shared by onAuthStateChange and
-    // the getSession fallback so we don't duplicate the logic.
+    // Restore session from a Supabase user.  Called OUTSIDE the auth lock
+    // (fire-and-forget from the non-async onAuthStateChange callback).
     const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
-      const userData = await fetchUserProfile(supabaseUser.id);
-      if (userData) {
-        setUser(userData);
-        if (userData.role === "teacher") {
-          fetchTeacherData(supabaseUser.id);
-          setView("teacher-dashboard");
-        } else if (userData.role === "student" && userData.classCode) {
-          const code = userData.classCode;
-          const { data: classRows } = await supabase
-            .from('classes').select('*').eq('code', code);
-          if (classRows && classRows.length > 0) {
-            const classData = mapClass(classRows[0]);
-            const { data: assignRows } = await supabase
-              .from('assignments').select('*').eq('class_id', classData.id);
-            setStudentAssignments((assignRows ?? []).map(mapAssignment));
-            const { data: progressRows } = await supabase
-              .from('progress').select('*')
-              .eq('class_code', code)
-              .eq('student_uid', supabaseUser.id);
-            setStudentProgress((progressRows ?? []).map(mapProgress));
+      try {
+        const userData = await fetchUserProfile(supabaseUser.id);
+        if (userData) {
+          setUser(userData);
+          if (userData.role === "teacher") {
+            fetchTeacherData(supabaseUser.id);
+            setView("teacher-dashboard");
+          } else if (userData.role === "student" && userData.classCode) {
+            const code = userData.classCode;
+            const { data: classRows } = await supabase
+              .from('classes').select('*').eq('code', code);
+            if (classRows && classRows.length > 0) {
+              const classData = mapClass(classRows[0]);
+              // Fetch assignments + progress in parallel for faster restore
+              const [assignResult, progressResult] = await Promise.all([
+                supabase.from('assignments').select('*').eq('class_id', classData.id),
+                supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', supabaseUser.id),
+              ]);
+              setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+              setStudentProgress((progressResult.data ?? []).map(mapProgress));
+            }
+            setBadges(userData.badges || []);
+            setView("student-dashboard");
           }
-          setBadges(userData.badges || []);
-          setView("student-dashboard");
-        }
-      } else {
-        // Auto-create teacher account for Google sign-ins only (not anonymous)
-        const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
-        if (isGoogleSignIn) {
-          const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
-            check_email: supabaseUser.email ?? ""
-          });
-          if (!isAllowed) {
-            setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
-            await supabase.auth.signOut();
-            return;
+        } else {
+          // Auto-create teacher account for Google sign-ins only (not anonymous)
+          const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
+          if (isGoogleSignIn) {
+            const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
+              check_email: supabaseUser.email ?? ""
+            });
+            if (!isAllowed) {
+              setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
+              await supabase.auth.signOut();
+              return;
+            }
+            const newUser: AppUser = {
+              uid: supabaseUser.id,
+              email: supabaseUser.email || "",
+              role: "teacher",
+              displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
+            };
+            await supabase.from('users').insert(mapUserToDb(newUser));
+            setUser(newUser);
+            setView("teacher-dashboard");
           }
-          const newUser: AppUser = {
-            uid: supabaseUser.id,
-            email: supabaseUser.email || "",
-            role: "teacher",
-            displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
-          };
-          await supabase.from('users').insert(mapUserToDb(newUser));
-          setUser(newUser);
-          setView("teacher-dashboard");
         }
+      } catch (err) {
+        console.error("Session restore error:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // CRITICAL: This callback must NOT be async.
+    // Supabase runs it inside an exclusive Navigator Lock. If the callback
+    // is async and does slow work (DB queries, retries), it holds the lock
+    // the whole time — blocking getSession(), signInAnonymously(), signOut(),
+    // and every other auth operation.  This causes the 5-second lock timeout
+    // → steal → AbortError chain that made login hang on mobile.
+    //
+    // Instead, we synchronously read the event/session, then fire-and-forget
+    // the async restore work.  The lock is released immediately.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // If handleStudentLogin is running, it owns loading/view — don't interfere.
       if (manualLoginInProgress.current) return;
 
-      try {
-        if (session?.user) {
-          await restoreSession(session.user);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setView("landing");
-        } else if (!session && event !== 'INITIAL_SESSION') {
-          setUser(null);
-          setView("landing");
-        }
-      } catch (err) {
-        console.error("Auth state change error:", err);
-      } finally {
+      if (session?.user) {
+        // Fire-and-forget: releases the auth lock immediately, then
+        // does the slow DB work asynchronously.
+        restoreSession(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setView("landing");
+        setLoading(false);
+      } else if (event === 'INITIAL_SESSION') {
+        // No session exists — user needs to log in.
         setLoading(false);
       }
     });
@@ -850,7 +861,7 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    // Safety: if the whole login takes longer than 15 seconds on a slow
+    // Safety: if the whole login takes longer than 20 seconds on a slow
     // mobile network, stop the spinner and show an error.
     const loginTimeout = setTimeout(() => {
       if (manualLoginInProgress.current) {
@@ -858,40 +869,36 @@ export default function App() {
         setLoading(false);
         setError("Login is taking too long. Please check your connection and try again.");
       }
-    }, 15000);
+    }, 20000);
 
     try {
-      // Sign in anonymously — reuse existing session if present
-      let session = (await supabase.auth.getSession()).data.session;
-      if (!session || !session.user.is_anonymous) {
-        const { data, error: signInError } = await supabase.auth.signInAnonymously();
-        if (signInError || !data.session) {
-          setError("Login failed: " + (signInError?.message ?? "Could not create session"));
-          setLoading(false);
-          return;
-        }
-        session = data.session;
-      }
-      const studentUid = session.user.id;
-
-      // Look up class by code
-      const { data: classRows, error: classErr } = await supabase
-        .from('classes').select('*').eq('code', code);
-      if (classErr) throw classErr;
-      if (!classRows || classRows.length === 0) {
-        setError("Invalid Class Code!");
-        setLoading(false);
+      // Step 1: Sign in anonymously — reuse existing anonymous session if present.
+      // signInAnonymously() acquires the Supabase auth lock, so we avoid
+      // calling getSession() first (that would acquire the lock twice).
+      const { data, error: signInError } = await supabase.auth.signInAnonymously();
+      if (signInError || !data.session) {
+        setError("Login failed: " + (signInError?.message ?? "Could not create session"));
         return;
       }
-      const classData = mapClass(classRows[0]);
+      const session = data.session;
+      const studentUid = session.user.id;
 
-      // Upsert student profile FIRST — must happen before fetching assignments so RLS can verify class membership
-      const { data: userRow } = await supabase
-        .from('users').select('*').eq('uid', studentUid).maybeSingle();
+      // Step 2: Look up class + existing user profile in parallel
+      const [classResult, userResult] = await Promise.all([
+        supabase.from('classes').select('*').eq('code', code),
+        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
+      ]);
+      if (classResult.error) throw classResult.error;
+      if (!classResult.data || classResult.data.length === 0) {
+        setError("Invalid Class Code!");
+        return;
+      }
+      const classData = mapClass(classResult.data[0]);
+
+      // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
       let userData: AppUser;
-      if (userRow) {
-        // Always sync class_code to the class they're currently joining
-        userData = { ...mapUser(userRow), classCode: code };
+      if (userResult.data) {
+        userData = { ...mapUser(userResult.data), classCode: code };
         const { error: updateErr } = await supabase
           .from('users').update({ class_code: code }).eq('uid', studentUid);
         if (updateErr) throw updateErr;
@@ -908,34 +915,27 @@ export default function App() {
         if (insertErr) throw insertErr;
       }
 
-      // Fetch assignments for the class (user row now exists, so RLS class membership check passes)
-      const { data: assignRows, error: assignErr } = await supabase
-        .from('assignments').select('*').eq('class_id', classData.id);
-      if (assignErr) throw assignErr;
-      if (!assignRows || assignRows.length === 0) {
+      // Step 4: Fetch assignments + progress in parallel (user row now exists, RLS passes)
+      const [assignResult, progressResult] = await Promise.all([
+        supabase.from('assignments').select('*').eq('class_id', classData.id),
+        supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid),
+      ]);
+      if (assignResult.error) throw assignResult.error;
+      if (!assignResult.data || assignResult.data.length === 0) {
         setError("No assignments found for this class yet!");
-        setLoading(false);
         return;
       }
-      const assignments = assignRows.map(mapAssignment);
 
-      // Load existing progress for this student in this class (use UID — name is spoofable)
-      const { data: progressRows, error: progErr } = await supabase
-        .from('progress').select('*')
-        .eq('class_code', code)
-        .eq('student_uid', studentUid);
-      if (progErr) throw progErr;
-      const progress = (progressRows ?? []).map(mapProgress);
-
-      setStudentAssignments(assignments);
-      setStudentProgress(progress);
+      setStudentAssignments(assignResult.data.map(mapAssignment));
+      setStudentProgress((progressResult.data ?? []).map(mapProgress));
       setUser(userData);
       setBadges(userData.badges || []);
 
       // Join Live Challenge
       if (socket) {
-        const token = session.access_token;
-        socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, { classCode: code, name, uid: studentUid, token });
+        socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
+          classCode: code, name, uid: studentUid, token: session.access_token,
+        });
       }
 
       setView("student-dashboard");
@@ -1592,6 +1592,8 @@ export default function App() {
                       options: { redirectTo: window.location.origin },
                     }).then(({ error: err }) => {
                       if (err) setError(`Google sign-in failed: ${err.message}. Please try again.`);
+                    }).catch(() => {
+                      setError("Could not connect to Google. Please try again.");
                     })}
                     className="w-full flex items-center justify-center gap-5 bg-white border-3 border-stone-200 py-14 sm:py-4 rounded-2xl font-black text-2xl sm:text-base text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-md"
                   >
