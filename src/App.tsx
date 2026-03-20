@@ -478,10 +478,19 @@ export default function App() {
   // Retry any progress writes that failed during a previous session
   useEffect(() => {
     const retryPending = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // No session — skip retries
+
+      const currentUid = session.user.id;
       const keys = Object.keys(localStorage).filter(k => k.startsWith("vocaband_retry_"));
       for (const key of keys) {
         try {
           const progress = JSON.parse(localStorage.getItem(key)!);
+          // Only retry records that belong to the current authenticated user
+          if (progress.student_uid !== currentUid) {
+            localStorage.removeItem(key); // Discard stale/foreign entries
+            continue;
+          }
           const { error } = await supabase.from('progress').insert(progress);
           if (!error) localStorage.removeItem(key);
         } catch {
@@ -959,8 +968,13 @@ export default function App() {
     setClassStudents(Object.values(studentMap));
   };
   const fetchGlobalLeaderboard = async () => {
+    // Scope to the student's own class to avoid cross-class PII leaks.
+    // RLS already restricts results, but filtering explicitly makes the intent clear.
+    const classCode = user?.classCode;
+    if (!classCode) return;
     const { data } = await supabase
       .from('progress').select('student_name, score, avatar')
+      .eq('class_code', classCode)
       .order('score', { ascending: false }).limit(10);
     const scores = (data ?? []).map(row => ({
       name: row.student_name,
@@ -1584,7 +1598,7 @@ export default function App() {
                 )}
               </div>
             </div>
-            <button onClick={() => { setUser(null); setView("landing"); }} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm">Logout</button>
+            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm">Logout</button>
           </div>
 
           {studentAssignments.length > 0 && (

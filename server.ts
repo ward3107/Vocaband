@@ -205,7 +205,8 @@ async function startServer() {
   const socketSessions: Record<string, { classCode: string, uid: string }> = {};
 
   io.on("connection", (socket) => {
-    const clientIp = (socket.handshake.headers["x-forwarded-for"] as string || socket.handshake.address).toString();
+    const fwdHeader = socket.handshake.headers["x-forwarded-for"];
+    const clientIp = (typeof fwdHeader === "string" ? fwdHeader.split(",")[0].trim() : socket.handshake.address) || "unknown";
     console.log("User connected:", socket.id);
 
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
@@ -214,7 +215,7 @@ async function startServer() {
       // Rate limit join-challenge by client IP
       if (!rateLimiter.checkLimit(clientIp)) return;
 
-      // Verify Firebase ID token and confirm uid matches
+      // Verify Supabase JWT and confirm uid matches
       const verifiedUid = await verifyToken(token);
       if (!verifiedUid || verifiedUid !== uid) return;
 
@@ -273,7 +274,8 @@ async function startServer() {
     });
 
     socket.on(SOCKET_EVENTS.UPDATE_SCORE, ({ classCode, uid, score }) => {
-      if (!isValidClassCode(classCode) || !isValidUid(uid) || typeof score !== "number" || !isFinite(score) || score < 0) return;
+      const MAX_LIVE_SCORE = 10000;
+      if (!isValidClassCode(classCode) || !isValidUid(uid) || typeof score !== "number" || !isFinite(score) || score < 0 || score > MAX_LIVE_SCORE) return;
 
       // Only allow the socket that joined with this uid to update its own score
       const session = socketSessions[socket.id];
