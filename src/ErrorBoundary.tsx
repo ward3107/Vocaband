@@ -28,20 +28,8 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      let errorMessage = "Something went wrong.";
-      let details = "";
-
-      try {
-        if (this.state.error?.message) {
-          const parsed = JSON.parse(this.state.error.message);
-          if (parsed.error) {
-            errorMessage = "Database Permission Error";
-            details = `Operation: ${parsed.operationType} on ${parsed.path}. Error: ${parsed.error}`;
-          }
-        }
-      } catch (e) {
-        errorMessage = this.state.error?.message || errorMessage;
-      }
+      const errorMessage = "Something went wrong.";
+      const details = "Please refresh the page and try again. If the problem persists, contact your teacher or administrator.";
 
       return (
         <div className="min-h-screen bg-stone-100 flex items-center justify-center p-6 font-sans">
