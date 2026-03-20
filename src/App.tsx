@@ -433,7 +433,19 @@ export default function App() {
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
-        setLoading(false);
+        // Exception: if the URL has an OAuth code (?code=) or implicit token
+        // fragment (#access_token=), Supabase is still in the middle of the
+        // async code exchange.  Keep the spinner until SIGNED_IN fires and
+        // restoreSession → setLoading(false) completes.  Without this guard,
+        // the landing page flashes on mobile between INITIAL_SESSION (no
+        // session yet) and SIGNED_IN (exchange done), making the teacher
+        // think login failed and prompting a second attempt.
+        const isOAuthCallback =
+          window.location.search.includes("code=") ||
+          window.location.hash.includes("access_token=");
+        if (!isOAuthCallback) {
+          setLoading(false);
+        }
       }
     });
 
