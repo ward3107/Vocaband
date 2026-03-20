@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Use PKCE flow for better mobile/redirect support
     flowType: 'pkce',
     // Disable automatic URL detection — we exchange the PKCE code manually
-    // in App.tsx to avoid lock contention when React StrictMode double-mounts.
+    // in main.tsx before React mounts.
     detectSessionInUrl: false,
   },
 });
