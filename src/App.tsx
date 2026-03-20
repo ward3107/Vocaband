@@ -1105,10 +1105,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (view === "game" && !isFinished && currentWord && !showModeSelection) {
+    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro) {
       speak(currentWord.english);
     }
-  }, [currentIndex, isFinished, view, currentWord, showModeSelection]);
+  }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro]);
 
   useEffect(() => {
     if (view === "game" && !showModeSelection && gameMode === "matching") {
@@ -1807,14 +1807,14 @@ export default function App() {
             </HelpTooltip>
 
             {/* Analytics */}
-            <HelpTooltip className="h-full" content="View detailed class performance data, averages, and insights">
+            <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
               <button
                 onClick={() => { fetchScores(); setView("analytics"); }}
-                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-purple-100 hover:border-purple-200 group"
               >
                 <BarChart3 className="text-purple-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-sm sm:text-base font-bold mb-1">Analytics</h2>
-                <p className="text-stone-500 text-xs hidden sm:block">Class insights</p>
+                <h2 className="text-sm sm:text-base font-bold mb-1">Student Analytics</h2>
+                <p className="text-stone-500 text-xs hidden sm:block">Scores, trends & weak words</p>
               </button>
             </HelpTooltip>
 
@@ -2881,9 +2881,22 @@ Examples:
     return (
       <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
-            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Student Performance Matrix</h1>
+            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Student Analytics</h1>
+          </div>
+
+          {/* Explanation banner */}
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
+            <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-1">What does this show?</h2>
+            <p className="text-purple-700 text-xs sm:text-sm leading-relaxed">
+              This dashboard tracks <strong>every student's performance</strong> across all assignments. The table below shows each student's latest score per assignment — click any <strong>score</strong> to see details (mode played, date, missed words), or click a <strong>student name</strong> to see their full profile with score trends and most-challenging words.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-3 text-xs">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block"></span> 70–89% Good</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-200 border border-blue-400 inline-block"></span> 90%+ Excellent</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> Below 70% Needs attention</span>
+            </div>
           </div>
 
           {allScores.length === 0 ? (
@@ -2893,18 +2906,18 @@ Examples:
           ) : (
             <>
               {/* Summary Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-sm font-bold uppercase">Total Students</p>
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Students Tracked</p>
               <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.students.length}</p>
             </div>
-            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-sm font-bold uppercase">Total Assignments</p>
+            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Assignments</p>
               <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.assignments.length}</p>
             </div>
-            <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-sm font-bold uppercase">Class Average</p>
-              <p className="text-3xl font-black text-blue-700">
+            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Class Average</p>
+              <p className="text-2xl sm:text-3xl font-black text-blue-700">
                 {matrixData.students.length > 0
                   ? Math.round(Array.from(matrixData.averages.values()).reduce((a, b) => a + b, 0) / matrixData.averages.size)
                   : 0}%
@@ -3753,7 +3766,7 @@ Examples:
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col items-center p-4 sm:p-8 font-sans">
+    <div className="min-h-screen bg-stone-100 flex flex-col items-center p-2 sm:p-8 font-sans">
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -3768,7 +3781,7 @@ Examples:
           </button>
         </div>
       )}
-      <div className="w-full max-w-5xl flex flex-wrap justify-between items-center gap-2 mb-6 sm:mb-8">
+      <div className="w-full max-w-5xl flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-8">
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="bg-white px-3 sm:px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
             <Trophy className="text-amber-500" size={18} />
@@ -3795,7 +3808,7 @@ Examples:
         </div>
       </div>
 
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
         <div className="lg:col-span-3">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
@@ -3834,7 +3847,7 @@ Examples:
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-4 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-3 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
             >
               {/* Progress Bar */}
               <progress
@@ -3845,16 +3858,16 @@ Examples:
 
               {/* Motivational message - positioned at top to not block answers */}
               {motivationalMessage && (
-                <div className="absolute top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
-                  <span className="text-2xl sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-4 py-2 rounded-2xl">
+                <div className="absolute top-2 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <span className="text-lg sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
                     {motivationalMessage}
                   </span>
                 </div>
               )}
 
-              <div className="mb-4 sm:mb-12">
-                <span className="inline-block bg-stone-100 text-stone-500 font-black text-sm sm:text-base px-3 py-1 rounded-full mb-2">{currentIndex + 1} / {gameWords.length}</span>
-                <div className="flex flex-col items-center justify-center gap-3 sm:gap-6 mb-4 sm:mb-12">
+              <div className="mb-3 sm:mb-12">
+                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {gameWords.length}</span>
+                <div className="flex flex-col items-center justify-center gap-2 sm:gap-6 mb-3 sm:mb-12">
                   {currentWord?.imageUrl && (
                     <motion.img
                       initial={{ scale: 0.8, opacity: 0 }}
@@ -3862,35 +3875,35 @@ Examples:
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-[20px] sm:rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-16 h-16 sm:w-48 sm:h-48 object-cover rounded-[16px] sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-2xl sm:text-4xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
+                  <h2 className={`text-xl sm:text-4xl md:text-5xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
                     {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] : 
                      gameMode === "scramble" ? scrambledWord :
                      gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
                      currentWord?.english}
                   </h2>
                 </div>
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center gap-2 mt-1 sm:mt-0">
                   <button
                     onClick={() => speak(currentWord?.english)}
-                    className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                    className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"
                   >
-                    <Volume2 size={24} className="text-stone-600" />
+                    <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                   </button>
                 </div>
               </div>
 
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4">
                   {options.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => handleAnswer(option)}
-                      className={`py-3 px-3 sm:py-6 sm:px-8 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold transition-all duration-300 ${
+                      className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
                         feedback === "correct" && option.id === currentWord.id
                           ? "bg-blue-600 text-white scale-105 shadow-xl"
                           : feedback === "wrong" && option.id !== currentWord.id
@@ -3904,22 +3917,22 @@ Examples:
                 </div>
               ) : gameMode === "true-false" ? (
                 <div className="max-w-md mx-auto">
-                  <div className="bg-stone-100 p-4 sm:p-8 rounded-3xl mb-4 sm:mb-8">
-                    <p className="text-xl sm:text-3xl font-bold text-stone-800">{tfOption?.[targetLanguage]}</p>
+                  <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-3 sm:mb-8">
+                    <p className="text-lg sm:text-3xl font-bold text-stone-800">{tfOption?.[targetLanguage]}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-4 sm:py-6 rounded-3xl text-lg sm:text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-4 sm:py-6 rounded-3xl text-lg sm:text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <button onClick={() => handleTFAnswer(true)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
+                    <button onClick={() => handleTFAnswer(false)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
-                <div className="max-w-md mx-auto space-y-4">
-                  <button onClick={() => setIsFlipped(!isFlipped)} className="w-full py-6 rounded-3xl text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors">
+                <div className="max-w-md mx-auto space-y-3 sm:space-y-4">
+                  <button onClick={() => setIsFlipped(!isFlipped)} className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors">
                     {isFlipped ? "Show English" : "Show Translation"}
                   </button>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => handleFlashcardAnswer(false)} className="py-4 rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">Still Learning</button>
-                    <button onClick={() => handleFlashcardAnswer(true)} className="py-4 rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">Got It!</button>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <button onClick={() => handleFlashcardAnswer(false)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">Still Learning</button>
+                    <button onClick={() => handleFlashcardAnswer(true)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">Got It!</button>
                   </div>
                 </div>
               ) : (
@@ -3930,16 +3943,16 @@ Examples:
                     value={spellingInput}
                     onChange={(e) => setSpellingInput(e.target.value)}
                     placeholder="Type in English..."
-                    className={`w-full p-4 sm:p-6 text-xl sm:text-3xl font-black text-center border-4 rounded-3xl mb-4 sm:mb-6 transition-all ${
+                    className={`w-full p-3 sm:p-6 text-lg sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       "border-stone-100 focus:border-stone-900 outline-none"
                     }`}
                   />
                   {gameMode === "spelling" && (
-                    <p className="text-stone-400 font-bold mb-8">Translation: <span className="text-stone-900">{currentWord?.[targetLanguage]}</span></p>
+                    <p className="text-stone-400 font-bold mb-4 sm:mb-8 text-sm sm:text-base">Translation: <span className="text-stone-900">{currentWord?.[targetLanguage]}</span></p>
                   )}
-                  <button type="submit" className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-xl hover:bg-black transition-colors">Check Answer</button>
+                  <button type="submit" className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors">Check Answer</button>
                 </form>
               )}
             </motion.div>
