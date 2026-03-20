@@ -58,10 +58,11 @@ const randomMotivation = () =>
 // --- REUSABLE HELP TOOLTIP COMPONENT ---
 // Powered by @floating-ui/react - modern positioning engine
 // Desktop only - shows on hover, hidden on mobile devices
-const HelpTooltip = ({ children, content, position = "bottom" }: {
+const HelpTooltip = ({ children, content, position = "bottom", className = "" }: {
   children: React.ReactNode;
   content: string | string[];
   position?: "top" | "bottom" | "left" | "right";
+  className?: string;
 }) => {
   const [arrowEl, setArrowEl] = useState<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -99,7 +100,7 @@ const HelpTooltip = ({ children, content, position = "bottom" }: {
         ref={setReference}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsVisible(false)}
-        className="inline"
+        className={className || "inline"}
       >
         {children}
       </span>
@@ -1725,7 +1726,7 @@ export default function App() {
           {/* Quick Action Cards Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {/* Live Challenge */}
-            <HelpTooltip content="Start a real-time vocabulary competition - students race to answer correctly!">
+            <HelpTooltip className="h-full" content="Start a real-time vocabulary competition - students race to answer correctly!">
               <button
                 onClick={() => {
                   if (classes.length === 0) showToast("Create a class first!", "error");
@@ -1744,7 +1745,7 @@ export default function App() {
                     setView("live-challenge-class-select");
                   }
                 }}
-                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
                 <RefreshCw className="text-blue-600 mb-3 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
                 <h2 className="text-sm sm:text-base font-bold mb-1">Live Challenge</h2>
@@ -1753,10 +1754,10 @@ export default function App() {
             </HelpTooltip>
 
             {/* Analytics */}
-            <HelpTooltip content="View detailed class performance data, averages, and insights">
+            <HelpTooltip className="h-full" content="View detailed class performance data, averages, and insights">
               <button
                 onClick={() => { fetchScores(); setView("analytics"); }}
-                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
                 <BarChart3 className="text-purple-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
                 <h2 className="text-sm sm:text-base font-bold mb-1">Analytics</h2>
@@ -1765,10 +1766,10 @@ export default function App() {
             </HelpTooltip>
 
             {/* Students */}
-            <HelpTooltip content="Manage student list and view who has joined your classes">
+            <HelpTooltip className="h-full" content="Manage student list and view who has joined your classes">
               <button
                 onClick={() => { fetchStudents(); setView("students"); }}
-                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
                 <UserCircle className="text-orange-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
                 <h2 className="text-sm sm:text-base font-bold mb-1">Students</h2>
@@ -1777,10 +1778,10 @@ export default function App() {
             </HelpTooltip>
 
             {/* Gradebook */}
-            <HelpTooltip content="Track individual student progress, scores, and activity history">
+            <HelpTooltip className="h-full" content="Track individual student progress, scores, and activity history">
               <button
                 onClick={() => { fetchScores(); setView("gradebook"); }}
-                className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
+                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
                 <Trophy className="text-blue-700 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
                 <h2 className="text-sm sm:text-base font-bold mb-1">Gradebook</h2>
@@ -1790,9 +1791,9 @@ export default function App() {
           </div>
 
           {/* My Classes - Full width below */}
-          <div className="bg-white p-2 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100">
-            <div className="flex justify-between items-center mb-2 sm:mb-6">
-              <h2 className="text-sm sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
+          <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100">
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
               <button
                 onClick={() => setShowCreateClassModal(true)}
                 className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 border-2 border-blue-200"
@@ -1805,12 +1806,12 @@ export default function App() {
             {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
               <div className="space-y-1 sm:space-y-2">
                 {[...classes].reverse().map(c => (
-                  <div key={c.id} className="flex items-center justify-between gap-2 p-2 sm:p-3 bg-blue-50/50 rounded-xl border-2 border-blue-200 hover:shadow-md hover:border-blue-300 transition-all">
+                  <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50/50 rounded-xl border-2 border-blue-200 hover:shadow-md hover:border-blue-300 transition-all">
                     <div className="flex items-center gap-2 min-w-0">
                       <p className="font-bold text-stone-800 text-sm truncate">{c.name}</p>
-                      <p className="text-sm font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-lg font-bold flex-shrink-0">{c.code}</p>
+                      <p className="text-xs sm:text-sm font-mono text-blue-700 bg-blue-50 px-2 sm:px-3 py-1 rounded-lg font-bold flex-shrink-0">{c.code}</p>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(c.code);

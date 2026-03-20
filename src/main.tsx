@@ -8,21 +8,28 @@ import { supabase } from './supabase.ts';
 
 registerSW();
 
-// Exchange PKCE auth code BEFORE React mounts.  This runs exactly once,
-// outside the React lifecycle, so StrictMode double-mounting can't cause
-// a race where the code is consumed twice or the listener is unsubscribed
-// before the exchange completes.
-const params = new URLSearchParams(window.location.search);
-if (params.has('code')) {
-  supabase.auth.exchangeCodeForSession(params.get('code')!).finally(() => {
+// Exchange PKCE auth code BEFORE React mounts.  We must await this so the
+// lock is released before onAuthStateChange tries to acquire it — otherwise
+// they fight for 5 seconds, onAuthStateChange steals the lock, and the
+// exchange is aborted (teacher session never established).
+async function boot() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('code')) {
+    try {
+      await supabase.auth.exchangeCodeForSession(params.get('code')!);
+    } catch {
+      // Code may already have been consumed (e.g. back-button replay)
+    }
     window.history.replaceState({}, '', window.location.pathname);
-  });
+  }
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>,
+  );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>,
-);
+boot();
