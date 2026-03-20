@@ -582,13 +582,18 @@ export default function App() {
         return {
           id: 5000 + idx,
           english: english?.trim(),
-          hebrew: hebrew?.trim(),
-          arabic: arabic?.trim(),
+          hebrew: hebrew?.trim() || "",
+          arabic: arabic?.trim() || "",
           level: "Custom" as const
         };
-      }).filter(w => w.english && w.hebrew);
-      
-      setCustomWords(words);
+      }).filter(w => w.english);
+
+      if (words.length === 0) {
+        showToast("No valid words found in CSV. Make sure the first column is English.", "error");
+        return;
+      }
+      setCustomWords(prev => [...prev, ...words]);
+      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
       setSelectedLevel("Custom");
     };
     reader.readAsText(file);
@@ -1245,13 +1250,18 @@ export default function App() {
         setMatchedIds([...matchedIds, item.id]);
         const newScore = score + 15;
         setScore(newScore);
-        
+
+        // Pronounce the matched English word
+        const englishCard = selectedMatch.type === 'english' ? selectedMatch : item;
+        const matchedPair = matchingPairs.find(p => p.id === englishCard.id && p.type === 'english');
+        if (matchedPair) speak(matchedPair.text);
+
         if (socket && user?.classCode) {
           socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
         }
 
         setSelectedMatch(null);
-        
+
         if (matchedIds.length + 1 === matchingPairs.length / 2) {
           setTimeout(() => {
             setIsFinished(true);
@@ -1638,7 +1648,7 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
-                <p className="text-stone-500 font-bold text-base sm:text-sm">Class Code: <span className="text-blue-700">{user.classCode}</span></p>
+                <p className="text-stone-500 font-bold text-base sm:text-sm">Class Code: <button onClick={() => { navigator.clipboard.writeText(user.classCode || ""); setCopiedCode(user.classCode || ""); setTimeout(() => setCopiedCode(null), 2000); }} className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-mono hover:bg-blue-100 active:scale-95 transition-all inline-flex items-center gap-1" title="Tap to copy code">{user.classCode} {copiedCode === user.classCode ? <Check size={14} className="text-blue-700" /> : <Copy size={14} className="text-blue-400" />}</button></p>
                 {badges.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {badges.map(badge => (
@@ -1877,7 +1887,7 @@ export default function App() {
                         {copiedCode === c.code ? <Check size={16} className="text-blue-700" /> : <Copy size={16} />}
                       </button>
                       <a
-                        href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code: ${c.code}\n\nSee you there!`)}`}
+                        href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code:\n\n${c.code}\n\nCopy the code above and paste it in the app!`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all border border-green-200"
@@ -1980,7 +1990,7 @@ export default function App() {
                     <span>Copy</span>
                   </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${createdClassName}" on Vocaband!\n\n🔑 Class Code: ${createdClassCode}\n\nSee you there!`)}`}
+                    href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${createdClassName}" on Vocaband!\n\n🔑 Class Code:\n\n${createdClassCode}\n\nCopy the code above and paste it in the app!`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
@@ -3645,11 +3655,18 @@ Examples:
             <span className="text-sm">{saveError}</span>
           </div>
         ) : null}
-        <button
-          onClick={handleExitGame}
-          disabled={isSaving}
-          className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >Done</button>
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={handleExitGame}
+            disabled={isSaving}
+            className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >Choose Another Mode</button>
+          <button
+            onClick={() => { setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true); setView("student-dashboard"); }}
+            disabled={isSaving}
+            className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+          >Back to Dashboard</button>
+        </div>
 
         {/* Toast Notifications */}
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
@@ -3759,6 +3776,12 @@ Examples:
             className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors"
           >
             Let's Go!
+          </button>
+          <button
+            onClick={() => { setShowModeIntro(false); setShowModeSelection(true); }}
+            className="w-full mt-2 py-2 text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+          >
+            ← Back to Modes
           </button>
         </motion.div>
       </div>
