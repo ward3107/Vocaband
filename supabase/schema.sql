@@ -167,13 +167,37 @@ CREATE POLICY "assignments_select" ON public.assignments
   );
 
 CREATE POLICY "assignments_insert" ON public.assignments
-  FOR INSERT WITH CHECK (public.is_teacher() OR public.is_admin());
+  FOR INSERT WITH CHECK (
+    (
+      public.is_teacher()
+      AND class_id IN (
+        SELECT id FROM public.classes WHERE teacher_uid = auth.uid()::text
+      )
+    )
+    OR public.is_admin()
+  );
 
 CREATE POLICY "assignments_update" ON public.assignments
-  FOR UPDATE USING (public.is_teacher() OR public.is_admin());
+  FOR UPDATE USING (
+    (
+      public.is_teacher()
+      AND class_id IN (
+        SELECT id FROM public.classes WHERE teacher_uid = auth.uid()::text
+      )
+    )
+    OR public.is_admin()
+  );
 
 CREATE POLICY "assignments_delete" ON public.assignments
-  FOR DELETE USING (public.is_teacher() OR public.is_admin());
+  FOR DELETE USING (
+    (
+      public.is_teacher()
+      AND class_id IN (
+        SELECT id FROM public.classes WHERE teacher_uid = auth.uid()::text
+      )
+    )
+    OR public.is_admin()
+  );
 
 -- ·· progress ··
 -- Students see only their own progress; teachers see progress for their classes only.
@@ -189,6 +213,9 @@ CREATE POLICY "progress_select" ON public.progress
 CREATE POLICY "progress_insert" ON public.progress
   FOR INSERT WITH CHECK (
     auth.uid()::text = student_uid
+    AND class_code = (
+      SELECT class_code FROM public.users WHERE uid = auth.uid()::text
+    )
   );
 
 -- Students can only update their own records, and only to a higher score
