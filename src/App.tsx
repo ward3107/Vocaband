@@ -1148,9 +1148,11 @@ export default function App() {
     };
 
     try {
-      // Dedup: check for existing progress for this assignment+mode (use current auth UID)
+      // Upsert: insert or update if higher score. The unique constraint
+      // (assignment_id, student_uid, mode, class_code) prevents duplicates.
+      // Check for existing record first so we only update when score is higher.
       const { data: existingRows } = await supabase
-        .from('progress').select('*')
+        .from('progress').select('id, score')
         .eq('assignment_id', activeAssignment.id)
         .eq('mode', gameMode)
         .eq('student_uid', currentAuthUid)
@@ -1568,6 +1570,11 @@ export default function App() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+          <div className="mt-8 text-center">
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-stone-400 text-xs hover:text-stone-600 underline">Privacy Policy</a>
+            <span className="text-stone-300 mx-2">|</span>
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-stone-400 text-xs hover:text-stone-600 underline">Terms of Service</a>
           </div>
         </div>
       </div>
@@ -3695,7 +3702,6 @@ Examples:
             >
               {matchingPairs.map((item, idx) => {
                 const key = `${item.id}-${item.type}-${idx}`;
-                console.log(`Rendering item: ${item.text}, key: ${key}`);
                 return (
                 <motion.button
                   key={key}

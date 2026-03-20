@@ -41,18 +41,9 @@ export async function handleDbError(
   operationType: OperationType,
   path: string | null
 ): Promise<never> {
-  const session = (await supabase.auth.getSession()).data.session;
-  const errInfo: DbErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: session?.user.id,
-      email: session?.user.email,
-      isAnonymous: session?.user.is_anonymous,
-    },
-    operationType,
-    path,
-  };
-  console.error('Supabase Error: ', JSON.stringify(errInfo));
+  // Log only non-PII details in production to avoid leaking user emails/IDs
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  console.error(`Supabase ${operationType} error on ${path}: ${errorMsg}`);
   throw new Error('Database error — please try again.');
 }
 
