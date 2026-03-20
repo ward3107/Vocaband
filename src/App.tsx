@@ -273,6 +273,7 @@ export default function App() {
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
+  const [showModeIntro, setShowModeIntro] = useState(false);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -1688,7 +1689,7 @@ export default function App() {
               <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">No assignments yet. Check back later!</p>
             ) : (
               <div className="space-y-5 sm:space-y-4">
-                {studentAssignments.map(assignment => {
+                {studentAssignments.map((assignment, assignmentIdx) => {
                   const allowedModes = assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
                   const totalModes = allowedModes.length;
 
@@ -1702,8 +1703,20 @@ export default function App() {
                   const progressPercentage = Math.min(100, Math.round((completedModes / totalModes) * 100));
                   const isComplete = completedModes >= totalModes;
 
+                  // Cycle through accent colors for visual differentiation
+                  const accentColors = [
+                    { bg: "bg-blue-50", border: "border-blue-100", hoverBorder: "hover:border-blue-300", bar: "[&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600", btn: "bg-blue-700 hover:bg-blue-800", strip: "bg-blue-500" },
+                    { bg: "bg-purple-50", border: "border-purple-100", hoverBorder: "hover:border-purple-300", bar: "[&::-webkit-progress-value]:bg-purple-600 [&::-moz-progress-bar]:bg-purple-600", btn: "bg-purple-700 hover:bg-purple-800", strip: "bg-purple-500" },
+                    { bg: "bg-emerald-50", border: "border-emerald-100", hoverBorder: "hover:border-emerald-300", bar: "[&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:bg-emerald-600", btn: "bg-emerald-700 hover:bg-emerald-800", strip: "bg-emerald-500" },
+                    { bg: "bg-amber-50", border: "border-amber-100", hoverBorder: "hover:border-amber-300", bar: "[&::-webkit-progress-value]:bg-amber-600 [&::-moz-progress-bar]:bg-amber-600", btn: "bg-amber-700 hover:bg-amber-800", strip: "bg-amber-500" },
+                    { bg: "bg-rose-50", border: "border-rose-100", hoverBorder: "hover:border-rose-300", bar: "[&::-webkit-progress-value]:bg-rose-600 [&::-moz-progress-bar]:bg-rose-600", btn: "bg-rose-700 hover:bg-rose-800", strip: "bg-rose-500" },
+                    { bg: "bg-cyan-50", border: "border-cyan-100", hoverBorder: "hover:border-cyan-300", bar: "[&::-webkit-progress-value]:bg-cyan-600 [&::-moz-progress-bar]:bg-cyan-600", btn: "bg-cyan-700 hover:bg-cyan-800", strip: "bg-cyan-500" },
+                  ];
+                  const accent = accentColors[assignmentIdx % accentColors.length];
+
                   return (
-                    <div key={assignment.id} className="bg-stone-50 p-5 sm:p-6 rounded-3xl border-2 border-stone-100 hover:border-blue-200 transition-colors">
+                    <div key={assignment.id} className={`${accent.bg} p-5 sm:p-6 rounded-3xl border-2 ${accent.border} ${accent.hoverBorder} transition-colors relative overflow-hidden`}>
+                      <div className={`absolute top-0 left-0 w-1.5 h-full ${accent.strip} rounded-l-3xl`} />
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
                         <div className="flex-1">
                           <h3 className="text-xl sm:text-xl font-bold text-stone-800">{assignment.title}</h3>
@@ -1720,7 +1733,7 @@ export default function App() {
                             setView("game");
                             setShowModeSelection(true);
                           }}
-                          className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors whitespace-nowrap text-base sm:text-sm"
+                          className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
                         >
                           {isComplete ? "Play Again" : "Start Learning"}
                         </button>
@@ -1735,7 +1748,7 @@ export default function App() {
                           </span>
                         </div>
                         <progress
-                          className={`h-4 sm:h-3 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${isComplete ? "[&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600" : "[&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500"}`}
+                          className={`h-4 sm:h-3 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${accent.bar}`}
                           max={100}
                           value={toProgressValue(progressPercentage)}
                         />
@@ -2583,7 +2596,7 @@ Examples:
               return (
                 <motion.button
                   key={mode.id}
-                  onClick={() => { setGameMode(mode.id); setShowModeSelection(false); }}
+                  onClick={() => { setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
                   className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -3691,6 +3704,54 @@ Examples:
     );
   }
 
+  // Mode intro instructions
+  const modeInstructions: Record<GameMode, { title: string; steps: string[]; icon: string }> = {
+    classic: { title: "Classic Mode", icon: "📖", steps: ["See the English word", "Listen to pronunciation", "Pick the correct translation"] },
+    listening: { title: "Listening Mode", icon: "🎧", steps: ["Listen carefully to the word", "The text is hidden!", "Choose the correct translation"] },
+    spelling: { title: "Spelling Mode", icon: "✏️", steps: ["See the translation", "Type the English word", "Spelling must be exact!"] },
+    matching: { title: "Matching Mode", icon: "⚡", steps: ["Find matching pairs", "Tap English then translation", "Match all pairs to finish!"] },
+    "true-false": { title: "True / False", icon: "✅", steps: ["See a word and translation", "Decide if the pair is correct", "Think fast!"] },
+    flashcards: { title: "Flashcards", icon: "🃏", steps: ["Review words at your pace", "Flip to see the answer", "No pressure — just learn!"] },
+    scramble: { title: "Word Scramble", icon: "🔤", steps: ["Letters are scrambled", "Type the correct English word", "Unscramble them all!"] },
+    reverse: { title: "Reverse Mode", icon: "🔄", steps: ["See the Hebrew/Arabic word", "Pick the English translation", "Reverse of classic!"] },
+  };
+
+  if (showModeIntro) {
+    const info = modeInstructions[gameMode];
+    return (
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-[32px] shadow-2xl p-8 sm:p-12 max-w-md w-full text-center"
+        >
+          <div className="text-5xl mb-4">{info.icon}</div>
+          <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-6">{info.title}</h2>
+          <div className="space-y-3 mb-8">
+            {info.steps.map((step, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.15 }}
+                className="flex items-center gap-3 text-left bg-stone-50 p-3 rounded-xl"
+              >
+                <span className="w-7 h-7 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">{i + 1}</span>
+                <span className="text-stone-700 font-medium text-sm sm:text-base">{step}</span>
+              </motion.div>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowModeIntro(false)}
+            className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors"
+          >
+            Let's Go!
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center p-4 sm:p-8 font-sans">
       {saveError && (
@@ -3782,18 +3843,18 @@ Examples:
                 value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
               />
 
-              {/* Motivational message */}
+              {/* Motivational message - positioned at top to not block answers */}
               {motivationalMessage && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                  <span className="text-3xl sm:text-5xl font-black text-blue-700 drop-shadow animate-bounce">
+                <div className="absolute top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <span className="text-2xl sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-4 py-2 rounded-2xl">
                     {motivationalMessage}
                   </span>
                 </div>
               )}
 
-              <div className="mb-6 sm:mb-12">
-                <span className="text-stone-300 font-black text-4xl sm:text-6xl lg:text-8xl opacity-20 absolute top-8 left-1/2 -translate-x-1/2">{currentIndex + 1}</span>
-                <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 mb-6 sm:mb-12">
+              <div className="mb-4 sm:mb-12">
+                <span className="inline-block bg-stone-100 text-stone-500 font-black text-sm sm:text-base px-3 py-1 rounded-full mb-2">{currentIndex + 1} / {gameWords.length}</span>
+                <div className="flex flex-col items-center justify-center gap-3 sm:gap-6 mb-4 sm:mb-12">
                   {currentWord?.imageUrl && (
                     <motion.img
                       initial={{ scale: 0.8, opacity: 0 }}
@@ -3801,7 +3862,7 @@ Examples:
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-24 h-24 sm:w-48 sm:h-48 object-cover rounded-[24px] sm:rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-[20px] sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
                   <h2 className={`text-2xl sm:text-4xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
@@ -3829,7 +3890,7 @@ Examples:
                     <button
                       key={option.id}
                       onClick={() => handleAnswer(option)}
-                      className={`py-4 px-4 sm:py-6 sm:px-8 rounded-3xl text-base sm:text-2xl font-bold transition-all duration-300 ${
+                      className={`py-3 px-3 sm:py-6 sm:px-8 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold transition-all duration-300 ${
                         feedback === "correct" && option.id === currentWord.id
                           ? "bg-blue-600 text-white scale-105 shadow-xl"
                           : feedback === "wrong" && option.id !== currentWord.id
