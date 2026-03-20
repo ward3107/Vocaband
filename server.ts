@@ -175,22 +175,29 @@ async function startServer() {
       },
     }));
 
-    // Rate limit: max 300 requests per minute per IP
-    // High limit because an entire school class (100+ students) may share one public IP
+    // Rate limit page/API requests per IP — skip static assets (JS/CSS/images/fonts)
+    // so a classroom of 100+ students behind one IP can all load the app smoothly
     app.use(rateLimit({
       windowMs: 60 * 1000,
-      max: 300,
+      max: 200,
       standardHeaders: true,
       legacyHeaders: false,
       message: { error: "Too many requests, please try again later." },
+      skip: (req) => /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|webp|map)$/i.test(req.path),
     }));
   }
 
-  // Rate limit socket connections: track join-challenge attempts per IP
-  // Using improved rate limiter with automatic cleanup
-  const rateLimiter = createSocketRateLimiter(
+  // Rate limit socket joins by AUTHENTICATED USER ID (not IP).
+  // This way 100+ students behind the same school WiFi aren't blocked.
+  // A lightweight IP-based pre-auth limiter still stops unauthenticated flooding.
+  const preAuthIpLimiter = createSocketRateLimiter(
     60 * 1000, // 1 minute window
-    150,       // max 150 join attempts per minute per IP (school WiFi shares one IP)
+    200,       // generous — only catches raw flooding from a single IP
+    60 * 1000  // cleanup every minute
+  );
+  const perUserLimiter = createSocketRateLimiter(
+    60 * 1000, // 1 minute window
+    5,         // each user gets max 5 join attempts per minute (reconnects)
     60 * 1000  // cleanup every minute
   );
 
@@ -238,12 +245,15 @@ async function startServer() {
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid) || !isValidToken(token)) return;
 
-      // Rate limit join-challenge by client IP
-      if (!rateLimiter.checkLimit(clientIp)) return;
+      // Pre-auth IP limiter: stops raw flooding before we hit Supabase
+      if (!preAuthIpLimiter.checkLimit(clientIp)) return;
 
       // Verify Supabase JWT and confirm uid matches
       const verifiedUid = await verifyToken(token);
       if (!verifiedUid || verifiedUid !== uid) return;
+
+      // Post-auth per-user limiter: each authenticated user gets 5 joins/min
+      if (!perUserLimiter.checkLimit(verifiedUid)) return;
 
       const userData = await getUserRoleAndClass(uid);
       if (!userData) return;
