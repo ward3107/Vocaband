@@ -125,30 +125,6 @@ Teachers launch a class-wide competition from their dashboard. All students in t
    npm run dev
    ```
 
----
-
-## Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `VITE_SUPABASE_URL` | Supabase project URL | — |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | — |
-| `ALLOWED_ORIGIN` | CORS origin for WebSocket server | `http://localhost:3000` |
-| `PORT` | Server port | `3000` |
-
----
-
-## Security Notes
-
-- Live challenge sockets are server-authorized:
-  - `join-challenge` requires a valid auth token and class membership/ownership checks
-  - `observe-challenge` is restricted to authenticated teachers who own the class
-- Rate limiting for live challenge joins uses a time window and does not reset on disconnect
-- `npm audit --omit=dev` is the production security baseline and is currently clean
-- PWA is kept enabled. Students can use the app via mobile browser URL or install to home screen
-
----
-
 ## Project Structure
 
 ```
