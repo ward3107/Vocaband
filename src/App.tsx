@@ -147,6 +147,10 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students">("landing");
+  // Track whether handleStudentLogin is in progress so onAuthStateChange
+  // doesn't clobber loading/view mid-login (signInAnonymously fires the
+  // listener before handleStudentLogin finishes its DB queries).
+  const manualLoginInProgress = useRef(false);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
@@ -402,6 +406,9 @@ export default function App() {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // If handleStudentLogin is running, it owns loading/view — don't interfere.
+      if (manualLoginInProgress.current) return;
+
       try {
         if (session?.user) {
           await restoreSession(session.user);
@@ -419,29 +426,16 @@ export default function App() {
       }
     });
 
-    // Fallback: if onAuthStateChange is delayed by lock contention (common on
-    // mobile refresh), explicitly check for an existing session.  This ensures
-    // the user isn't shown the login page while a valid session sits in storage.
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        try {
-          await restoreSession(session.user);
-        } catch (err) {
-          console.error("getSession restore error:", err);
-        }
-      }
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  // Safety timeout: if auth state never resolves (e.g. fully offline),
-  // stop the spinner after 8 seconds so the app doesn't hang forever.
+  // Safety timeout: if onAuthStateChange never fires (e.g. fully offline),
+  // stop the spinner so the app doesn't hang forever.  Skip if a manual
+  // login (handleStudentLogin) is in progress — it manages its own loading.
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 8000);
+    const timeout = setTimeout(() => {
+      if (!manualLoginInProgress.current) setLoading(false);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -852,8 +846,19 @@ export default function App() {
 
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
+    manualLoginInProgress.current = true;
     setLoading(true);
     setError(null);
+
+    // Safety: if the whole login takes longer than 15 seconds on a slow
+    // mobile network, stop the spinner and show an error.
+    const loginTimeout = setTimeout(() => {
+      if (manualLoginInProgress.current) {
+        manualLoginInProgress.current = false;
+        setLoading(false);
+        setError("Login is taking too long. Please check your connection and try again.");
+      }
+    }, 15000);
 
     try {
       // Sign in anonymously — reuse existing session if present
@@ -937,8 +942,11 @@ export default function App() {
     } catch (error) {
       console.error("Login error:", error);
       setError("Something went wrong during login.");
+    } finally {
+      clearTimeout(loginTimeout);
+      manualLoginInProgress.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const awardBadge = async (badge: string) => {
@@ -1537,15 +1545,19 @@ export default function App() {
                       </div>
                     </div>
                     <button
+                      disabled={loading}
                       onClick={() => {
                         const code = (document.getElementById("class-code") as HTMLInputElement).value;
                         const name = (document.getElementById("student-name") as HTMLInputElement).value;
                         if (code && name) handleStudentLogin(code, name);
                         else showToast("Please enter both code and name!", "error");
                       }}
-                      className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 transition-all active:scale-95 relative overflow-hidden"
+                      className={`w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 transition-all relative overflow-hidden ${loading ? "opacity-70 cursor-not-allowed" : "hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 active:scale-95"}`}
                     >
-                      <span className="relative z-10">Join Class</span>
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        {loading && <RefreshCw className="animate-spin" size={20} />}
+                        {loading ? "Joining..." : "Join Class"}
+                      </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-300 via-transparent to-blue-600 opacity-0 hover:opacity-20 transition-opacity"></div>
                     </button>
                     {error && <p className="text-red-500 text-sm font-bold mt-2">{error}</p>}
