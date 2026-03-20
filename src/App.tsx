@@ -147,6 +147,10 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students">("landing");
+  // Track whether handleStudentLogin is in progress so onAuthStateChange
+  // doesn't clobber loading/view mid-login (signInAnonymously fires the
+  // listener before handleStudentLogin finishes its DB queries).
+  const manualLoginInProgress = useRef(false);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
@@ -349,85 +353,89 @@ export default function App() {
       return null;
     };
 
+    // Restore session from a Supabase user.  Shared by onAuthStateChange and
+    // the getSession fallback so we don't duplicate the logic.
+    const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
+      const userData = await fetchUserProfile(supabaseUser.id);
+      if (userData) {
+        setUser(userData);
+        if (userData.role === "teacher") {
+          fetchTeacherData(supabaseUser.id);
+          setView("teacher-dashboard");
+        } else if (userData.role === "student" && userData.classCode) {
+          const code = userData.classCode;
+          const { data: classRows } = await supabase
+            .from('classes').select('*').eq('code', code);
+          if (classRows && classRows.length > 0) {
+            const classData = mapClass(classRows[0]);
+            const { data: assignRows } = await supabase
+              .from('assignments').select('*').eq('class_id', classData.id);
+            setStudentAssignments((assignRows ?? []).map(mapAssignment));
+            const { data: progressRows } = await supabase
+              .from('progress').select('*')
+              .eq('class_code', code)
+              .eq('student_uid', supabaseUser.id);
+            setStudentProgress((progressRows ?? []).map(mapProgress));
+          }
+          setBadges(userData.badges || []);
+          setView("student-dashboard");
+        }
+      } else {
+        // Auto-create teacher account for Google sign-ins only (not anonymous)
+        const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
+        if (isGoogleSignIn) {
+          const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
+            check_email: supabaseUser.email ?? ""
+          });
+          if (!isAllowed) {
+            setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
+            await supabase.auth.signOut();
+            return;
+          }
+          const newUser: AppUser = {
+            uid: supabaseUser.id,
+            email: supabaseUser.email || "",
+            role: "teacher",
+            displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
+          };
+          await supabase.from('users').insert(mapUserToDb(newUser));
+          setUser(newUser);
+          setView("teacher-dashboard");
+        }
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // If handleStudentLogin is running, it owns loading/view — don't interfere.
+      if (manualLoginInProgress.current) return;
+
       try {
         if (session?.user) {
-          const supabaseUser = session.user;
-          const userData = await fetchUserProfile(supabaseUser.id);
-          if (userData) {
-            setUser(userData);
-            if (userData.role === "teacher") {
-              fetchTeacherData(supabaseUser.id);
-              setView("teacher-dashboard");
-            } else if (userData.role === "student" && userData.classCode) {
-              // Restore student dashboard on page refresh — load their assignments
-              // and progress exactly as handleStudentLogin does.
-              const code = userData.classCode;
-              const { data: classRows } = await supabase
-                .from('classes').select('*').eq('code', code);
-              if (classRows && classRows.length > 0) {
-                const classData = mapClass(classRows[0]);
-                const { data: assignRows } = await supabase
-                  .from('assignments').select('*').eq('class_id', classData.id);
-                setStudentAssignments((assignRows ?? []).map(mapAssignment));
-                const { data: progressRows } = await supabase
-                  .from('progress').select('*')
-                  .eq('class_code', code)
-                  .eq('student_uid', supabaseUser.id);
-                setStudentProgress((progressRows ?? []).map(mapProgress));
-              }
-              setBadges(userData.badges || []);
-              setView("student-dashboard");
-            }
-          } else {
-            // Auto-create teacher account for Google sign-ins only (not anonymous)
-            const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
-            if (isGoogleSignIn) {
-              const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
-                check_email: supabaseUser.email ?? ""
-              });
-              if (!isAllowed) {
-                setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
-                await supabase.auth.signOut();
-                return;
-              }
-              const newUser: AppUser = {
-                uid: supabaseUser.id,
-                email: supabaseUser.email || "",
-                role: "teacher",
-                displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
-              };
-              await supabase.from('users').insert(mapUserToDb(newUser));
-              setUser(newUser);
-              setView("teacher-dashboard");
-            }
-          }
+          await restoreSession(session.user);
         } else if (event === 'SIGNED_OUT') {
-          // Only redirect to landing on an explicit sign-out.  INITIAL_SESSION
-          // fires before Supabase finishes restoring the session from storage,
-          // so we must wait for the actual session state instead of redirecting.
           setUser(null);
           setView("landing");
         } else if (!session && event !== 'INITIAL_SESSION') {
-          // No session exists (after restoration completed) - show landing
           setUser(null);
           setView("landing");
         }
       } catch (err) {
-        // Log the error but do NOT redirect to landing — a transient Supabase
-        // error should not sign the user out of a session they already have.
         console.error("Auth state change error:", err);
       } finally {
         setLoading(false);
       }
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
-  // Safety timeout: if auth state never resolves (e.g. offline on mobile refresh),
-  // stop the spinner after 3 seconds so the app doesn't hang forever.
+  // Safety timeout: if onAuthStateChange never fires (e.g. fully offline),
+  // stop the spinner so the app doesn't hang forever.  Skip if a manual
+  // login (handleStudentLogin) is in progress — it manages its own loading.
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 3000);
+    const timeout = setTimeout(() => {
+      if (!manualLoginInProgress.current) setLoading(false);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -838,8 +846,19 @@ export default function App() {
 
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
+    manualLoginInProgress.current = true;
     setLoading(true);
     setError(null);
+
+    // Safety: if the whole login takes longer than 15 seconds on a slow
+    // mobile network, stop the spinner and show an error.
+    const loginTimeout = setTimeout(() => {
+      if (manualLoginInProgress.current) {
+        manualLoginInProgress.current = false;
+        setLoading(false);
+        setError("Login is taking too long. Please check your connection and try again.");
+      }
+    }, 15000);
 
     try {
       // Sign in anonymously — reuse existing session if present
@@ -923,8 +942,11 @@ export default function App() {
     } catch (error) {
       console.error("Login error:", error);
       setError("Something went wrong during login.");
+    } finally {
+      clearTimeout(loginTimeout);
+      manualLoginInProgress.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const awardBadge = async (badge: string) => {
@@ -1523,15 +1545,19 @@ export default function App() {
                       </div>
                     </div>
                     <button
+                      disabled={loading}
                       onClick={() => {
                         const code = (document.getElementById("class-code") as HTMLInputElement).value;
                         const name = (document.getElementById("student-name") as HTMLInputElement).value;
                         if (code && name) handleStudentLogin(code, name);
                         else showToast("Please enter both code and name!", "error");
                       }}
-                      className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 transition-all active:scale-95 relative overflow-hidden"
+                      className={`w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 transition-all relative overflow-hidden ${loading ? "opacity-70 cursor-not-allowed" : "hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 active:scale-95"}`}
                     >
-                      <span className="relative z-10">Join Class</span>
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        {loading && <RefreshCw className="animate-spin" size={20} />}
+                        {loading ? "Joining..." : "Join Class"}
+                      </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-300 via-transparent to-blue-600 opacity-0 hover:opacity-20 transition-opacity"></div>
                     </button>
                     {error && <p className="text-red-500 text-sm font-bold mt-2">{error}</p>}
@@ -2536,7 +2562,7 @@ Examples:
             <p className="text-stone-500 text-base sm:text-xl font-medium">How do you want to learn today?</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {filteredModes.map((mode, idx) => {
               const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
 
@@ -2544,14 +2570,14 @@ Examples:
                 <motion.button
                   key={mode.id}
                   onClick={() => { setGameMode(mode.id); setShowModeSelection(false); }}
-                  className={`p-8 rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   whileHover={{ scale: 1.05, translateY: -8 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <div className={`w-16 h-16 rounded-[24px] bg-white flex items-center justify-center mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
+                  <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
                     {isCompleted && (
                       <div className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full p-1 shadow-md">
@@ -2559,8 +2585,8 @@ Examples:
                       </div>
                     )}
                   </div>
-                  <p className="font-black text-xl mb-2 leading-tight">{mode.name}</p>
-                  <p className="opacity-70 text-sm font-bold leading-snug">{mode.desc}</p>
+                  <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
+                  <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
 
                   <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Zap size={20} className="animate-pulse" />
@@ -3714,7 +3740,7 @@ Examples:
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
                   disabled={matchedIds.includes(item.id)}
-                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-lg h-28 sm:h-32 flex items-center justify-center transition-all duration-300 ${
+                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg h-20 sm:h-32 flex items-center justify-center transition-all duration-300 ${
                     matchedIds.includes(item.id) 
                       ? "bg-blue-50 text-blue-400 shadow-none" 
                       : selectedMatch?.id === item.id && selectedMatch?.type === item.type
@@ -3733,7 +3759,7 @@ Examples:
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-4 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
             >
               {/* Progress Bar */}
               <progress
@@ -3761,10 +3787,10 @@ Examples:
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-32 h-32 sm:w-48 sm:h-48 object-cover rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-24 h-24 sm:w-48 sm:h-48 object-cover rounded-[24px] sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-4xl sm:text-6xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
+                  <h2 className={`text-2xl sm:text-4xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
                     {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] : 
                      gameMode === "scramble" ? scrambledWord :
                      gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
@@ -3789,7 +3815,7 @@ Examples:
                     <button
                       key={option.id}
                       onClick={() => handleAnswer(option)}
-                      className={`py-6 px-8 rounded-3xl text-2xl font-bold transition-all duration-300 ${
+                      className={`py-4 px-4 sm:py-6 sm:px-8 rounded-3xl text-base sm:text-2xl font-bold transition-all duration-300 ${
                         feedback === "correct" && option.id === currentWord.id
                           ? "bg-blue-600 text-white scale-105 shadow-xl"
                           : feedback === "wrong" && option.id !== currentWord.id
@@ -3803,12 +3829,12 @@ Examples:
                 </div>
               ) : gameMode === "true-false" ? (
                 <div className="max-w-md mx-auto">
-                  <div className="bg-stone-100 p-8 rounded-3xl mb-8">
-                    <p className="text-3xl font-bold text-stone-800">{tfOption?.[targetLanguage]}</p>
+                  <div className="bg-stone-100 p-4 sm:p-8 rounded-3xl mb-4 sm:mb-8">
+                    <p className="text-xl sm:text-3xl font-bold text-stone-800">{tfOption?.[targetLanguage]}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-6 rounded-3xl text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-6 rounded-3xl text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
+                    <button onClick={() => handleTFAnswer(true)} className="py-4 sm:py-6 rounded-3xl text-lg sm:text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
+                    <button onClick={() => handleTFAnswer(false)} className="py-4 sm:py-6 rounded-3xl text-lg sm:text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
@@ -3829,7 +3855,7 @@ Examples:
                     value={spellingInput}
                     onChange={(e) => setSpellingInput(e.target.value)}
                     placeholder="Type in English..."
-                    className={`w-full p-6 text-3xl font-black text-center border-4 rounded-3xl mb-6 transition-all ${
+                    className={`w-full p-4 sm:p-6 text-xl sm:text-3xl font-black text-center border-4 rounded-3xl mb-4 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       "border-stone-100 focus:border-stone-900 outline-none"
