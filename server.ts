@@ -175,10 +175,11 @@ async function startServer() {
       },
     }));
 
-    // Rate limit: max 60 requests per minute per IP
+    // Rate limit: max 300 requests per minute per IP
+    // High limit because an entire school class (100+ students) may share one public IP
     app.use(rateLimit({
       windowMs: 60 * 1000,
-      max: 60,
+      max: 300,
       standardHeaders: true,
       legacyHeaders: false,
       message: { error: "Too many requests, please try again later." },
@@ -189,7 +190,7 @@ async function startServer() {
   // Using improved rate limiter with automatic cleanup
   const rateLimiter = createSocketRateLimiter(
     60 * 1000, // 1 minute window
-    10,        // max 10 join attempts per minute per IP
+    150,       // max 150 join attempts per minute per IP (school WiFi shares one IP)
     60 * 1000  // cleanup every minute
   );
 
