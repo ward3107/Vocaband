@@ -333,13 +333,23 @@ export default function App() {
 
   // --- AUTH LOGIC ---
   useEffect(() => {
+    // Helper: fetch user profile with retry (mobile networks are flaky)
+    const fetchUserProfile = async (uid: string, retries = 2): Promise<ReturnType<typeof mapUser> | null> => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const { data: userRow, error } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
+        if (userRow) return mapUser(userRow);
+        if (!error) return null; // No row exists — don't retry
+        if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+      return null;
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         if (session?.user) {
           const supabaseUser = session.user;
-          const { data: userRow } = await supabase.from('users').select('*').eq('uid', supabaseUser.id).maybeSingle();
-          if (userRow) {
-            const userData = mapUser(userRow);
+          const userData = await fetchUserProfile(supabaseUser.id);
+          if (userData) {
             setUser(userData);
             if (userData.role === "teacher") {
               fetchTeacherData(supabaseUser.id);
@@ -1678,7 +1688,7 @@ export default function App() {
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
       <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-4 sm:mb-8">
             <div>
               <p className="text-xs sm:text-sm text-stone-500">Welcome back,</p>
@@ -1688,7 +1698,7 @@ export default function App() {
           </div>
 
           {/* Quick Action Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {/* Live Challenge */}
             <HelpTooltip content="Start a real-time vocabulary competition - students race to answer correctly!">
               <button
