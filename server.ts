@@ -204,6 +204,31 @@ async function startServer() {
   // Track which session each socket belongs to for cleanup
   const socketSessions: Record<string, { classCode: string, uid: string }> = {};
 
+  // Throttled leaderboard broadcast — batches rapid score updates so the server
+  // emits at most once every BROADCAST_INTERVAL_MS per class instead of once per
+  // answer.  Keeps the leaderboard snappy without flooding 40 sockets per keystroke.
+  const BROADCAST_INTERVAL_MS = 1500;
+  const pendingBroadcasts = new Set<string>();
+  let broadcastTimer: ReturnType<typeof setInterval> | null = null;
+
+  function scheduleBroadcast(classCode: string) {
+    pendingBroadcasts.add(classCode);
+    if (!broadcastTimer) {
+      broadcastTimer = setInterval(() => {
+        for (const code of pendingBroadcasts) {
+          if (liveSessions[code]) {
+            io.to(code).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[code]);
+          }
+        }
+        pendingBroadcasts.clear();
+        if (broadcastTimer) {
+          clearInterval(broadcastTimer);
+          broadcastTimer = null;
+        }
+      }, BROADCAST_INTERVAL_MS);
+    }
+  }
+
   io.on("connection", (socket) => {
     const fwdHeader = socket.handshake.headers["x-forwarded-for"];
     const clientIp = (typeof fwdHeader === "string" ? fwdHeader.split(",")[0].trim() : socket.handshake.address) || "unknown";
@@ -284,7 +309,8 @@ async function startServer() {
       if (liveSessions[classCode] && liveSessions[classCode][uid]) {
         // Update the current game score (baseScore remains unchanged)
         liveSessions[classCode][uid].currentGameScore = score;
-        io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+        // Throttle: batch rapid score updates to avoid flooding sockets
+        scheduleBroadcast(classCode);
       }
     });
 
