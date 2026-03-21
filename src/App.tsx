@@ -241,6 +241,7 @@ export default function App() {
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
   // listener before handleStudentLogin finishes its DB queries).
   const manualLoginInProgress = useRef(false);
+  const restoreInProgress = useRef(false);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
@@ -524,6 +525,7 @@ export default function App() {
     // Restore session from a Supabase user.  Called OUTSIDE the auth lock
     // (fire-and-forget from the non-async onAuthStateChange callback).
     const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
+      restoreInProgress.current = true;
       try {
         const userData = await fetchUserProfile(supabaseUser.id);
         if (userData) {
@@ -576,6 +578,7 @@ export default function App() {
       } catch (err) {
         console.error("Session restore error:", err);
       } finally {
+        restoreInProgress.current = false;
         setLoading(false);
       }
     };
@@ -613,7 +616,16 @@ export default function App() {
         const isOAuthCallback =
           window.location.search.includes("code=") ||
           window.location.hash.includes("access_token=");
-        if (!isOAuthCallback) {
+
+        // If the PKCE exchange failed in boot(), show a toast and let the
+        // teacher try again immediately instead of silently showing landing.
+        const exchangeFailed = sessionStorage.getItem('oauth_exchange_failed');
+        if (exchangeFailed) {
+          sessionStorage.removeItem('oauth_exchange_failed');
+          setError("Sign-in timed out. Please try again.");
+          setLandingTab("teacher");
+          setLoading(false);
+        } else if (!isOAuthCallback) {
           setLoading(false);
         }
       }
@@ -624,11 +636,12 @@ export default function App() {
 
   // Safety timeout: if onAuthStateChange never fires (e.g. fully offline),
   // stop the spinner so the app doesn't hang forever.  Skip if a manual
-  // login (handleStudentLogin) is in progress — it manages its own loading.
+  // login (handleStudentLogin) or session restore (restoreSession) is in
+  // progress — they manage their own loading state.
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!manualLoginInProgress.current) setLoading(false);
-    }, 5000);
+      if (!manualLoginInProgress.current && !restoreInProgress.current) setLoading(false);
+    }, 8000);
     return () => clearTimeout(timeout);
   }, []);
 
