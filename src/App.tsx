@@ -2585,27 +2585,17 @@ export default function App() {
               </button>
             </HelpTooltip>
 
-            {/* Students */}
-            <HelpTooltip className="h-full" content="Manage student list and view who has joined your classes">
-              <button
-                onClick={() => { fetchStudents(); setView("students"); }}
-                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-              >
-                <UserCircle className="text-orange-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-sm sm:text-base font-bold mb-1">Students</h2>
-                <p className="text-stone-500 text-xs hidden sm:block">Manage students</p>
-              </button>
-            </HelpTooltip>
 
-            {/* Gradebook */}
-            <HelpTooltip className="h-full" content="Track individual student progress, scores, and activity history">
+
+            {/* Gradebook & Students */}
+            <HelpTooltip className="h-full" content="View all students, track scores, progress, and activity history">
               <button
-                onClick={() => { fetchScores(); setView("gradebook"); }}
+                onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
                 className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
               >
                 <Trophy className="text-blue-700 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-sm sm:text-base font-bold mb-1">Gradebook</h2>
-                <p className="text-stone-500 text-xs hidden sm:block">Track progress</p>
+                <h2 className="text-sm sm:text-base font-bold mb-1">Students & Grades</h2>
+                <p className="text-stone-500 text-xs hidden sm:block">All students & scores</p>
               </button>
             </HelpTooltip>
           </div>
@@ -3806,43 +3796,8 @@ export default function App() {
     );
   }
 
-  if (view === "students") {
-    return (
-      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 text-base sm:text-sm">← Back to Dashboard</button>
-          <div className="bg-white rounded-[32px] sm:rounded-[40px] shadow-xl p-5 sm:p-10">
-            <h2 className="text-2xl sm:text-3xl font-black mb-6 text-stone-900">Class Students</h2>
-            <div className="overflow-x-auto rounded-3xl border border-stone-100">
-              <table className="w-full text-left">
-                <thead className="bg-stone-50 border-b border-stone-100">
-                  <tr>
-                    <th className="py-2.5 px-3 sm:px-4 font-bold text-stone-400 uppercase text-[10px] sm:text-xs">Student</th>
-                    <th className="py-2.5 px-3 sm:px-4 font-bold text-stone-400 uppercase text-[10px] sm:text-xs">Class</th>
-                    <th className="py-2.5 px-3 sm:px-4 font-bold text-stone-400 uppercase text-[10px] sm:text-xs">Last Active</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classStudents.map((s, idx) => (
-                    <tr key={idx} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
-                      <td className="py-2 px-3 sm:px-4 font-bold text-stone-800 text-sm">{s.name}</td>
-                      <td className="py-2 px-3 sm:px-4 text-stone-500 text-sm">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</td>
-                      <td className="py-2 px-3 sm:px-4 text-stone-400 text-xs">{new Date(s.lastActive).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                  {classStudents.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-12 text-center text-stone-400 italic text-base sm:text-sm">No students found for your classes.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // "students" view merged into gradebook — redirect if somehow navigated here
+  if (view === "students") { setView("gradebook"); fetchScores(); fetchStudents(); }
 
   if (view === "analytics") {
     return (
@@ -4507,6 +4462,36 @@ export default function App() {
                 })}
             </div>
           )}
+
+          {/* Enrolled Students Without Scores */}
+          {(() => {
+            const scoredNames = new Set(studentEntries.map(e => e.studentName));
+            const noScoreStudents = classStudents.filter(s => !scoredNames.has(s.name));
+            if (noScoreStudents.length === 0) return null;
+            return (
+              <div className="bg-white rounded-3xl shadow-md p-6 mt-6">
+                <h3 className="text-lg font-black text-slate-700 mb-1 flex items-center gap-2">
+                  <UserCircle size={20} className="text-orange-500" />
+                  Enrolled Students ({noScoreStudents.length})
+                </h3>
+                <p className="text-slate-400 text-xs mb-4">Students who joined but haven't completed any assignments yet.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {noScoreStudents.map((s, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm">
+                        {s.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-700 text-sm truncate">{s.name}</p>
+                        <p className="text-slate-400 text-xs">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</p>
+                      </div>
+                      <span className="text-xs text-slate-400">Last: {new Date(s.lastActive).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
