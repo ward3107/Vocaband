@@ -55,6 +55,11 @@ const MOTIVATIONAL_MESSAGES = [
   "Nailed it! 🎯", "Brilliant! ✨", "You're on fire! 🔥", "Fantastic! 🚀",
   "Way to go! 🏆", "Superstar! ⭐",
 ];
+const SPEAKABLE_MOTIVATIONS = [
+  "Great job!", "Well done!", "Awesome!", "Keep it up!",
+  "Nailed it!", "Brilliant!", "You're on fire!", "Fantastic!",
+  "Way to go!", "Superstar!", "Amazing!", "Perfect!",
+];
 const randomMotivation = () =>
   MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
 
@@ -86,6 +91,19 @@ const PREMIUM_AVATARS = [
   { emoji: '🥷', name: 'Ninja', cost: 250 },
   { emoji: '🤖', name: 'Robot', cost: 125 },
 ];
+
+// Avatar categories unlock at XP milestones — students see locked categories and feel motivated to earn XP
+const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label: string }> = {
+  Animals: { xpRequired: 0, label: 'Free' },
+  Faces: { xpRequired: 0, label: 'Free' },
+  Food: { xpRequired: 50, label: '50 XP' },
+  Nature: { xpRequired: 100, label: '100 XP' },
+  Sports: { xpRequired: 200, label: '200 XP' },
+  Objects: { xpRequired: 400, label: '400 XP' },
+  Vehicles: { xpRequired: 600, label: '600 XP' },
+  Fantasy: { xpRequired: 1000, label: '1000 XP' },
+  Space: { xpRequired: 1500, label: '1500 XP' },
+};
 
 const THEMES = [
   { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0 },
@@ -398,6 +416,29 @@ export default function App() {
   const isLiveChallengeRef = useRef(isLiveChallenge);
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
+
+  // Speak motivational message during gameplay when correct answer
+  useEffect(() => {
+    if (motivationalMessage) {
+      const speakable = SPEAKABLE_MOTIVATIONS[Math.floor(Math.random() * SPEAKABLE_MOTIVATIONS.length)];
+      speak(speakable);
+    }
+  }, [motivationalMessage]);
+
+  // Speak congratulatory message when a mode is finished
+  useEffect(() => {
+    if (isFinished && user?.displayName) {
+      const phrases = [
+        `Kol Hakavod ${user.displayName}! You did amazing!`,
+        `Excellent work ${user.displayName}! You're a superstar!`,
+        `Wow ${user.displayName}! That was fantastic!`,
+        `Great job ${user.displayName}! Keep going!`,
+        `Well done ${user.displayName}! You're getting better and better!`,
+      ];
+      const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+      setTimeout(() => speak(phrase), 500);
+    }
+  }, [isFinished]);
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   // Reset welcome popup when entering assignment creation view
@@ -1842,9 +1883,11 @@ export default function App() {
                         <HelpIcon tooltip="Pick a fun emoji to represent you in class!" position="left" />
                       </div>
 
-                      {/* Category Tabs */}
+                      {/* Category Tabs — only free categories at login */}
                       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
-                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map(category => (
+                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
+                          .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0)
+                          .map(category => (
                           <button
                             key={category}
                             onClick={() => setSelectedAvatarCategory(category)}
@@ -1858,6 +1901,7 @@ export default function App() {
                           </button>
                         ))}
                       </div>
+                      <p className="text-xs text-stone-400 text-center mb-3">🔒 Earn XP playing games to unlock more avatar categories!</p>
 
                       {/* Avatar Grid */}
                       <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 justify-items-center">
@@ -2168,31 +2212,93 @@ export default function App() {
 
           {/* Avatar Shop */}
           {shopTab === "avatars" && (
-            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
-              <h2 className="text-xl font-black mb-4">Premium Avatars</h2>
-              <p className="text-stone-500 text-sm mb-4">Unlock special avatars to stand out!</p>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                {PREMIUM_AVATARS.map(avatar => {
-                  const isOwned = (user.unlockedAvatars ?? []).includes(avatar.emoji);
-                  const isEquipped = user.avatar === avatar.emoji;
-                  const canAfford = xp >= avatar.cost;
-                  return (
-                    <div key={avatar.emoji} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${isEquipped ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
-                      <span className="text-4xl mb-2">{avatar.emoji}</span>
-                      <span className="text-xs font-bold text-stone-700 text-center">{avatar.name}</span>
-                      {isEquipped ? (
-                        <span className="text-xs font-bold text-blue-600 mt-1">Equipped</span>
-                      ) : isOwned ? (
-                        <button onClick={() => equipAvatar(avatar.emoji)} className="text-xs font-bold text-green-600 mt-1 hover:text-green-800 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200 transition-all">Equip</button>
-                      ) : (
-                        <button onClick={() => purchaseAvatar(avatar)} disabled={!canAfford}
-                          className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
-                          {avatar.cost} XP
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+            <div className="space-y-6">
+              {/* Avatar Collections — Category-based unlocking */}
+              <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
+                <h2 className="text-xl font-black mb-2">Avatar Collections</h2>
+                <p className="text-stone-500 text-sm mb-4">Earn XP to unlock new avatar packs! Select any unlocked avatar to equip it.</p>
+                <div className="space-y-4">
+                  {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map(category => {
+                    const unlock = AVATAR_CATEGORY_UNLOCKS[category] ?? { xpRequired: 0, label: 'Free' };
+                    const isUnlocked = xp >= unlock.xpRequired;
+                    const progressPercent = unlock.xpRequired > 0 ? Math.min(100, Math.round((xp / unlock.xpRequired) * 100)) : 100;
+                    return (
+                      <div key={category} className={`rounded-2xl border-2 overflow-hidden transition-all ${isUnlocked ? "border-green-200 bg-green-50/50" : "border-stone-200 bg-stone-50"}`}>
+                        <div className={`flex items-center justify-between px-4 py-3 ${isUnlocked ? "bg-green-100/50" : "bg-stone-100"}`}>
+                          <div className="flex items-center gap-2">
+                            {isUnlocked ? (
+                              <CheckCircle2 size={16} className="text-green-600" />
+                            ) : (
+                              <span className="text-sm">🔒</span>
+                            )}
+                            <span className={`text-sm font-black ${isUnlocked ? "text-green-800" : "text-stone-500"}`}>{category}</span>
+                            <span className="text-xs text-stone-400">({AVATAR_CATEGORIES[category].length} avatars)</span>
+                          </div>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isUnlocked ? "bg-green-200 text-green-800" : "bg-amber-100 text-amber-700"}`}>
+                            {unlock.xpRequired === 0 ? "Free" : isUnlocked ? "Unlocked!" : `${unlock.label} needed`}
+                          </span>
+                        </div>
+                        {!isUnlocked && (
+                          <div className="px-4 pt-2 pb-1">
+                            <div className="w-full bg-stone-200 rounded-full h-1.5">
+                              <div className="bg-amber-400 h-1.5 rounded-full transition-all" style={{ width: `${progressPercent}%` }}></div>
+                            </div>
+                            <p className="text-xs text-stone-400 mt-1">{xp} / {unlock.xpRequired} XP ({progressPercent}%)</p>
+                          </div>
+                        )}
+                        <div className={`grid grid-cols-6 sm:grid-cols-10 gap-1.5 p-3 ${!isUnlocked ? "opacity-40 pointer-events-none" : ""}`}>
+                          {AVATAR_CATEGORIES[category].map(a => {
+                            const isEquipped = user.avatar === a;
+                            return (
+                              <button
+                                key={a}
+                                onClick={() => { if (isUnlocked) equipAvatar(a); }}
+                                className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl text-xl sm:text-2xl transition-all ${
+                                  isEquipped
+                                    ? "bg-gradient-to-br from-blue-300 via-blue-500 to-blue-800 shadow-lg shadow-blue-200 ring-2 ring-blue-400 scale-110"
+                                    : isUnlocked
+                                    ? "bg-white hover:scale-110 hover:shadow-md shadow-sm cursor-pointer"
+                                    : "bg-stone-100 grayscale"
+                                }`}
+                              >
+                                {isUnlocked ? a : "?"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Featured Premium Avatars */}
+              <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-amber-100">
+                <h2 className="text-xl font-black mb-2">Featured Avatars</h2>
+                <p className="text-stone-500 text-sm mb-4">Exclusive avatars you can buy with XP!</p>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                  {PREMIUM_AVATARS.map(avatar => {
+                    const isOwned = (user.unlockedAvatars ?? []).includes(avatar.emoji);
+                    const isEquipped = user.avatar === avatar.emoji;
+                    const canAfford = xp >= avatar.cost;
+                    return (
+                      <div key={avatar.emoji} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${isEquipped ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
+                        <span className="text-4xl mb-2">{isOwned ? avatar.emoji : "?"}</span>
+                        <span className="text-xs font-bold text-stone-700 text-center">{avatar.name}</span>
+                        {isEquipped ? (
+                          <span className="text-xs font-bold text-blue-600 mt-1">Equipped</span>
+                        ) : isOwned ? (
+                          <button onClick={() => equipAvatar(avatar.emoji)} className="text-xs font-bold text-green-600 mt-1 hover:text-green-800 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200 transition-all">Equip</button>
+                        ) : (
+                          <button onClick={() => purchaseAvatar(avatar)} disabled={!canAfford}
+                            className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
+                            {avatar.cost} XP
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -4705,19 +4811,29 @@ export default function App() {
               gameMode === "letter-sounds" ? (
                 <div className="max-w-lg mx-auto">
                   <p className="text-stone-400 text-sm font-bold mb-4 text-center">{currentWord?.[targetLanguage]}</p>
-                  <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6">
-                    {currentWord?.english.split("").map((letter, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={i < revealedLetters ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0.15 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="w-10 h-12 sm:w-14 sm:h-16 rounded-xl font-black text-xl sm:text-2xl flex items-center justify-center border-4"
-                        style={{ color: LETTER_COLORS[i % LETTER_COLORS.length], borderColor: LETTER_COLORS[i % LETTER_COLORS.length], background: LETTER_COLORS[i % LETTER_COLORS.length] + "18" }}
-                      >
-                        {i < revealedLetters ? letter.toUpperCase() : "?"}
-                      </motion.div>
-                    ))}
+                  <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
+                    {currentWord?.english.split(" ").map((word, wordIdx, allWords) => {
+                      const charOffset = allWords.slice(0, wordIdx).reduce((acc, w) => acc + w.length + 1, 0);
+                      return (
+                        <div key={wordIdx} className="flex justify-center gap-1 sm:gap-2">
+                          {word.split("").map((letter, i) => {
+                            const globalIdx = charOffset + i;
+                            return (
+                              <motion.div
+                                key={globalIdx}
+                                initial={{ scale: 0.5, opacity: 0 }}
+                                animate={globalIdx < revealedLetters ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0.15 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-3 sm:border-4 flex-shrink-0"
+                                style={{ color: LETTER_COLORS[globalIdx % LETTER_COLORS.length], borderColor: LETTER_COLORS[globalIdx % LETTER_COLORS.length], background: LETTER_COLORS[globalIdx % LETTER_COLORS.length] + "18" }}
+                              >
+                                {globalIdx < revealedLetters ? letter.toUpperCase() : "?"}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                   {revealedLetters >= (currentWord?.english.length || 99) && (
                     <form onSubmit={handleSpellingSubmit} className="max-w-sm mx-auto">
