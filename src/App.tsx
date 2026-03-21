@@ -1206,12 +1206,8 @@ export default function App() {
         supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid),
       ]);
       if (assignResult.error) throw assignResult.error;
-      if (!assignResult.data || assignResult.data.length === 0) {
-        setError("No assignments found for this class yet!");
-        return;
-      }
 
-      setStudentAssignments(assignResult.data.map(mapAssignment));
+      setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
       setStudentProgress((progressResult.data ?? []).map(mapProgress));
       setUser(userData);
       setBadges(userData.badges || []);
