@@ -16,9 +16,17 @@ async function boot() {
   const params = new URLSearchParams(window.location.search);
   if (params.has('code')) {
     try {
-      await supabase.auth.exchangeCodeForSession(params.get('code')!);
+      const { error } = await supabase.auth.exchangeCodeForSession(params.get('code')!);
+      if (error) {
+        // Exchange failed (expired code, missing verifier, etc.).
+        // Store a flag so App can show a helpful message instead of
+        // silently dumping the teacher on the landing page.
+        console.error('OAuth code exchange failed:', error.message);
+        sessionStorage.setItem('oauth_exchange_failed', '1');
+      }
     } catch {
-      // Code may already have been consumed (e.g. back-button replay)
+      // Network error or code already consumed (e.g. back-button replay)
+      sessionStorage.setItem('oauth_exchange_failed', '1');
     }
     window.history.replaceState({}, '', window.location.pathname);
   }
