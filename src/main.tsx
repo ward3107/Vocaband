@@ -15,22 +15,35 @@ registerSW();
 async function boot() {
   const params = new URLSearchParams(window.location.search);
   if (params.has('code')) {
-    try {
-      const { error } = await supabase.auth.exchangeCodeForSession(params.get('code')!);
-      if (error) {
-        // Exchange failed (expired code, missing verifier, etc.).
-        // Store a flag so App can show a helpful message instead of
-        // silently dumping the teacher on the landing page.
-        console.error('OAuth code exchange failed:', error.message);
-        sessionStorage.setItem('oauth_exchange_failed', '1');
-        // Sign out any stale anonymous session so the teacher doesn't
-        // accidentally land on the student dashboard.
-        await supabase.auth.signOut();
+    const code = params.get('code')!;
+    // Retry the exchange up to 2 times (cold-start / flaky network)
+    let succeeded = false;
+    for (let attempt = 0; attempt < 3 && !succeeded; attempt++) {
+      try {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          succeeded = true;
+        } else if (error.message?.includes('already used') || error.message?.includes('expired')) {
+          // Code consumed or expired — don't retry, just let onAuthStateChange
+          // pick up whatever session exists (e.g. from a previous exchange).
+          break;
+        } else {
+          console.warn(`OAuth exchange attempt ${attempt + 1} failed:`, error.message);
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      } catch {
+        console.warn(`OAuth exchange attempt ${attempt + 1} threw`);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
       }
-    } catch {
-      // Network error or code already consumed (e.g. back-button replay)
-      sessionStorage.setItem('oauth_exchange_failed', '1');
-      await supabase.auth.signOut().catch(() => {});
+    }
+    if (!succeeded) {
+      // Only flag as failed if no session exists at all — if a previous
+      // exchange already established the session, the user is fine.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        sessionStorage.setItem('oauth_exchange_failed', '1');
+        await supabase.auth.signOut().catch(() => {});
+      }
     }
     window.history.replaceState({}, '', window.location.pathname);
   }
