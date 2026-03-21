@@ -492,38 +492,65 @@ export default function App() {
     }
   }, [view]);
 
+  // Defer socket connection until we have a valid auth session.
+  // Connecting immediately on mount (before OAuth exchange completes) would
+  // always fail with "Authentication required" on the first attempt, causing
+  // the console error the teacher sees before the retry succeeds.
   useEffect(() => {
-    // Pass auth token at connection time for server-side middleware verification
+    let s: ReturnType<typeof io> | null = null;
+    let cancelled = false;
+
     const getToken = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       return session?.access_token ?? "";
     };
-    const s = io({
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      auth: (cb) => { getToken().then(token => cb({ token })); },
-    });
-    setSocket(s);
 
-    s.on("connect", () => setSocketConnected(true));
-    s.on("disconnect", () => setSocketConnected(false));
-    s.on("reconnect", () => {
-      setSocketConnected(true);
-      const currentUser = userRef.current;
-      if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
-        getToken().then(token => {
-          s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token });
+    const connectSocket = async () => {
+      // Wait for a valid session before opening the socket
+      const token = await getToken();
+      if (cancelled) return;
+      if (!token) {
+        // No session yet — listen for auth changes and retry
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+          if (cancelled) { subscription.unsubscribe(); return; }
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            subscription.unsubscribe();
+            connectSocket();
+          }
         });
+        return;
       }
-    });
-    s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
-    s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data) => {
-      setLeaderboard(data);
-    });
+
+      s = io({
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        auth: (cb) => { getToken().then(t => cb({ token: t })); },
+      });
+      setSocket(s);
+
+      s.on("connect", () => setSocketConnected(true));
+      s.on("disconnect", () => setSocketConnected(false));
+      s.on("reconnect", () => {
+        setSocketConnected(true);
+        const currentUser = userRef.current;
+        if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
+          getToken().then(t => {
+            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token: t });
+          });
+        }
+      });
+      s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
+      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data) => {
+        setLeaderboard(data);
+      });
+    };
+
+    connectSocket();
 
     return () => {
-      s.disconnect();
+      cancelled = true;
+      s?.disconnect();
     };
   }, []);
 
@@ -554,7 +581,15 @@ export default function App() {
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
-            fetchTeacherData(supabaseUser.id);
+            // Await so the dashboard has data before we show it — prevents
+            // the "empty dashboard until refresh" bug.  Retry once on failure.
+            try {
+              await fetchTeacherData(supabaseUser.id);
+            } catch {
+              // Retry once after a short delay (flaky network / cold start)
+              await new Promise(r => setTimeout(r, 1500));
+              await fetchTeacherData(supabaseUser.id).catch(() => {});
+            }
             setView("teacher-dashboard");
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;
@@ -2229,13 +2264,13 @@ export default function App() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="space-y-12 sm:space-y-4"
+                  className="space-y-5 sm:space-y-4"
                 >
-                  <p className="text-center text-stone-500 text-xl sm:text-sm font-medium">
+                  <p className="text-center text-stone-500 text-sm font-medium">
                     Sign in with your school Google account
                   </p>
 
-                  {error && <p className="text-red-500 text-xl sm:text-sm font-bold text-center">{error}</p>}
+                  {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
 
                   <button
                     onClick={() => supabase.auth.signInWithOAuth({
@@ -2246,9 +2281,9 @@ export default function App() {
                     }).catch(() => {
                       setError("Could not connect to Google. Please try again.");
                     })}
-                    className="w-full flex items-center justify-center gap-5 bg-white border-3 border-stone-200 py-14 sm:py-4 rounded-2xl font-black text-2xl sm:text-base text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-md"
+                    className="w-full flex items-center justify-center gap-3 bg-white border-3 border-stone-200 py-4 rounded-2xl font-black text-base text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-md"
                   >
-                    <img src="https://www.google.com/favicon.ico" className="w-10 h-10 sm:w-5 sm:h-5" alt="Google" />
+                    <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
                     Sign in with Google
                   </button>
                 </motion.div>
@@ -2268,16 +2303,36 @@ export default function App() {
   // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
   const consentModal = needsConsent && user ? (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-sm shadow-2xl">
-        <p className="text-stone-600 text-sm mb-3">
-          By continuing, you agree to our{' '}
-          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Privacy Policy</a>
-          {' '}and{' '}
-          <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Terms of Service</a>.
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
+        <h2 className="text-base sm:text-lg font-black text-stone-900 mb-2">Privacy Policy Update</h2>
+        <p className="text-stone-600 text-xs sm:text-sm mb-3">
+          We&apos;ve updated our Privacy Policy (v{PRIVACY_POLICY_VERSION}). Please review and accept to continue using Vocaband.
         </p>
+        <div className="bg-stone-50 rounded-xl p-3 mb-3 text-xs sm:text-sm text-stone-600 space-y-1.5">
+          <p><strong>What we collect:</strong> Display name, class code, game scores & progress. Student accounts are anonymous — no emails or personal info required.</p>
+          <p><strong>For teachers:</strong> Email (via Google) and display name, used only for authentication.</p>
+          <p><strong>How we use it:</strong> To run the app — games, progress tracking, leaderboards. No ads, no profiling, no third-party trackers.</p>
+          <p><strong>Your rights:</strong> You can export or delete your data anytime from Privacy Settings.</p>
+          <div className="flex gap-3 pt-1">
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs font-bold hover:underline">Full Privacy Policy</a>
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs font-bold hover:underline">Terms of Service</a>
+          </div>
+        </div>
+        <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={consentChecked}
+            onChange={(e) => setConsentChecked(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-xs sm:text-sm text-stone-700">
+            I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Terms of Service</a>.
+          </span>
+        </label>
         <button
           onClick={() => recordConsent()}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all"
+          disabled={!consentChecked}
+          className={`w-full py-2.5 rounded-xl font-bold transition-all text-sm ${consentChecked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}
         >
           Accept & Continue
         </button>
