@@ -2249,11 +2249,10 @@ export default function App() {
   if (user?.role === "student" && view === "shop") {
     const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
       if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
-      const newXp = xp - avatar.cost;
-      const newUnlocked = [...(user.unlockedAvatars ?? []), avatar.emoji];
-      setXp(newXp);
-      setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
-      await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: avatar.emoji, item_cost: avatar.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), avatar.emoji] } : prev);
       showToast(`Unlocked ${avatar.name}!`, "success");
     };
     const equipAvatar = async (emoji: string) => {
@@ -2263,11 +2262,10 @@ export default function App() {
     };
     const purchaseTheme = async (theme: typeof THEMES[0]) => {
       if (xp < theme.cost) { showToast("Not enough XP!", "error"); return; }
-      const newXp = xp - theme.cost;
-      const newUnlocked = [...(user.unlockedThemes ?? []), theme.id];
-      setXp(newXp);
-      setUser(prev => prev ? { ...prev, unlockedThemes: newUnlocked } : prev);
-      await supabase.from('users').update({ xp: newXp, unlocked_themes: newUnlocked }).eq('uid', user.uid);
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'theme', item_id: theme.id, item_cost: theme.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      setUser(prev => prev ? { ...prev, unlockedThemes: [...(prev.unlockedThemes ?? []), theme.id] } : prev);
       showToast(`Unlocked ${theme.name}!`, "success");
     };
     const equipTheme = async (themeId: string) => {
@@ -2277,11 +2275,10 @@ export default function App() {
     };
     const purchasePowerUp = async (powerUp: typeof POWER_UP_DEFS[0]) => {
       if (xp < powerUp.cost) { showToast("Not enough XP!", "error"); return; }
-      const newXp = xp - powerUp.cost;
-      const newPowerUps = { ...(user.powerUps ?? {}), [powerUp.id]: ((user.powerUps ?? {})[powerUp.id] ?? 0) + 1 };
-      setXp(newXp);
-      setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-      await supabase.from('users').update({ xp: newXp, power_ups: newPowerUps }).eq('uid', user.uid);
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'power_up', item_id: powerUp.id, item_cost: powerUp.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
       showToast(`Got ${powerUp.name}!`, "success");
     };
 
@@ -2464,11 +2461,10 @@ export default function App() {
                       ) : (
                         <button onClick={async () => {
                           if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
-                          const newXp = xp - title.cost;
-                          const newUnlocked = [...(user.unlockedAvatars ?? []), `title_${title.id}`];
-                          setXp(newXp);
-                          setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
-                          await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+                          const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
+                          if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                          setXp(data.new_xp);
+                          setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
                           showToast(`Unlocked "${title.display}"!`, "success");
                         }} disabled={!canAfford}
                           className={`text-xs font-bold px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
@@ -2509,11 +2505,10 @@ export default function App() {
                       ) : (
                         <button onClick={async () => {
                           if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
-                          const newXp = xp - frame.cost;
-                          const newUnlocked = [...(user.unlockedAvatars ?? []), `frame_${frame.id}`];
-                          setXp(newXp);
-                          setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
-                          await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+                          const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
+                          if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                          setXp(data.new_xp);
+                          setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
                           showToast(`Unlocked ${frame.name}!`, "success");
                         }} disabled={!canAfford}
                           className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
