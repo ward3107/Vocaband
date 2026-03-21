@@ -977,7 +977,7 @@ export default function App() {
     };
 
     try {
-      const { error } = await supabase.from('assignments').insert({
+      const insertPayload: Record<string, unknown> = {
         class_id: newAssignment.classId,
         word_ids: newAssignment.wordIds,
         words: newAssignment.words,
@@ -985,8 +985,11 @@ export default function App() {
         deadline: newAssignment.deadline,
         created_at: newAssignment.createdAt,
         allowed_modes: newAssignment.allowedModes,
-        sentences: newAssignment.sentences,
-      });
+      };
+      if (newAssignment.sentences.length > 0) {
+        insertPayload.sentences = newAssignment.sentences;
+      }
+      const { error } = await supabase.from('assignments').insert(insertPayload);
       if (error) throw error;
       showToast("Assignment created successfully!", "success");
       setView("teacher-dashboard");
