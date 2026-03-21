@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
 import mammoth from "mammoth";
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./vocabulary";
@@ -494,7 +493,17 @@ export default function App() {
   }, [view]);
 
   useEffect(() => {
-    const s = io({ reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 1000 });
+    // Pass auth token at connection time for server-side middleware verification
+    const getToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token ?? "";
+    };
+    const s = io({
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      auth: (cb) => { getToken().then(token => cb({ token })); },
+    });
     setSocket(s);
 
     s.on("connect", () => setSocketConnected(true));
@@ -503,8 +512,7 @@ export default function App() {
       setSocketConnected(true);
       const currentUser = userRef.current;
       if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          const token = session?.access_token ?? "";
+        getToken().then(token => {
           s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token });
         });
       }
@@ -981,33 +989,34 @@ export default function App() {
     setTagInput("");
   };
 
-  // Excel (.xlsx) upload
+  // CSV upload handler (also used for the Excel button — teachers export as CSV)
   const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      showToast("Please save your Excel file as CSV first (File > Save As > CSV).", "info");
+      e.target.value = "";
+      return;
+    }
     if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
-      const words: Word[] = rows.slice(1).map((row, idx) => ({
-        id: 6000 + idx,
-        english: String(row[0] ?? "").trim(),
-        hebrew: String(row[1] ?? "").trim(),
-        arabic: String(row[2] ?? "").trim(),
-        level: "Custom" as const,
-      })).filter(w => w.english);
-      if (words.length === 0) { showToast("No valid words found in Excel file.", "error"); return; }
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length <= 1) { showToast("No valid words found in CSV file.", "error"); return; }
+      const words: Word[] = lines.slice(1).map((line, idx) => {
+        const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+        return { id: 6000 + idx, english: cols[0] ?? "", hebrew: cols[1] ?? "", arabic: cols[2] ?? "", level: "Custom" as const };
+      }).filter(w => w.english);
+      if (words.length === 0) { showToast("No valid words found in CSV file.", "error"); return; }
       const limited = words.slice(0, MAX_IMPORT_WORDS);
       if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
       setCustomWords(prev => [...prev, ...limited]);
       setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
-      showToast(`Imported ${limited.length} words from Excel.`, "success");
+      showToast(`Imported ${limited.length} words from CSV.`, "success");
     };
-    reader.readAsArrayBuffer(file);
+    reader.readAsText(file);
     e.target.value = "";
   };
 
@@ -1227,11 +1236,21 @@ export default function App() {
     setConsentChecked(false);
   };
 
+  const loginAttemptsRef = useRef<number[]>([]);
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
     const trimmedName = name.trim().slice(0, 30);
     const trimmedCode = code.trim().slice(0, 20);
     if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
+
+    // Client-side rate limit: max 5 attempts per 60 seconds
+    const now = Date.now();
+    loginAttemptsRef.current = loginAttemptsRef.current.filter(t => now - t < 60_000);
+    if (loginAttemptsRef.current.length >= 5) {
+      setError("Too many login attempts. Please wait a minute and try again.");
+      return;
+    }
+    loginAttemptsRef.current.push(now);
     manualLoginInProgress.current = true;
     setLoading(true);
     setError(null);
@@ -1477,19 +1496,34 @@ export default function App() {
     return scrambled;
   }, [currentWord]);
 
+  // Cache the selected voice so the same voice is used consistently
+  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const getVoice = () => {
+    if (cachedVoiceRef.current) return cachedVoiceRef.current;
+    const voices = window.speechSynthesis.getVoices();
+    const picked = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
+      || voices.find(v => v.lang.startsWith("en-US"));
+    if (picked) cachedVoiceRef.current = picked;
+    return picked ?? null;
+  };
+  // Re-cache when voices load (they load asynchronously in some browsers)
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const onVoicesChanged = () => { cachedVoiceRef.current = null; getVoice(); };
+    window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
+    getVoice();
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
+  }, []);
+
   const speak = (text: string) => {
     if (!("speechSynthesis" in window)) return;
-    // Cancel any queued/ongoing speech so voice stays in sync with fast skipping
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     utterance.rate = 0.85;
     utterance.pitch = 1.05;
-    // Prefer a natural-sounding voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
-      || voices.find(v => v.lang.startsWith("en-US"));
-    if (preferred) utterance.voice = preferred;
+    const voice = getVoice();
+    if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -1557,6 +1591,8 @@ export default function App() {
       setAvailableWords(words);
       setBuiltSentence([]);
       setSentenceFeedback(null);
+      // Speak the target sentence so students know what to build
+      setTimeout(() => speak(validSentences[0]), 400);
     }
   }, [view, showModeSelection, gameMode, activeAssignment]);
 
@@ -1591,6 +1627,8 @@ export default function App() {
           setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
           setBuiltSentence([]);
           setSentenceFeedback(null);
+          // Speak the next sentence so students know what to build
+          setTimeout(() => speak(validSentences[next]), 400);
         }
       }, 1800);
     } else {
@@ -3485,8 +3523,8 @@ export default function App() {
                   <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} className="hidden" />
                 </label>
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-green-700 text-white rounded-xl font-bold cursor-pointer hover:bg-green-800 text-xs whitespace-nowrap">
-                  <Upload size={14} /> Excel (.xlsx)
-                  <input type="file" accept=".xlsx" onChange={handleXlsxUpload} className="hidden" />
+                  <Upload size={14} /> Excel (.csv)
+                  <input type="file" accept=".csv,.xlsx" onChange={handleXlsxUpload} className="hidden" />
                 </label>
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
                   <Upload size={14} /> Word (.docx)
@@ -5616,7 +5654,10 @@ export default function App() {
                   );
                   return (
                     <div className="max-w-xl mx-auto">
-                      <p className="text-stone-400 text-xs font-bold uppercase mb-3 text-center">Sentence {sentenceIndex + 1} / {sentences.length}</p>
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <p className="text-stone-400 text-xs font-bold uppercase">Sentence {sentenceIndex + 1} / {sentences.length}</p>
+                        <button onClick={() => speak(sentences[sentenceIndex])} className="text-blue-500 hover:text-blue-700 active:scale-90 transition-all" title="Listen to sentence">🔊</button>
+                      </div>
                       {/* Built sentence area */}
                       <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
                         sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :

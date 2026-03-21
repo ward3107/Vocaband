@@ -9,10 +9,16 @@ import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/types.js";
 
+// Validate required environment variables before starting
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+  process.exit(1);
+}
+
 // Supabase admin client — uses the service role key to verify tokens server-side
 const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
@@ -32,7 +38,8 @@ function isValidClassCode(code: unknown): code is string {
 }
 
 function isValidName(value: unknown): value is string {
-  return typeof value === "string" && value.length >= VALIDATION.NAME_MIN && value.length <= VALIDATION.NAME_MAX;
+  return typeof value === "string" && value.length >= VALIDATION.NAME_MIN && value.length <= VALIDATION.NAME_MAX
+    && !/[\x00-\x1f]/.test(value); // Reject control characters
 }
 
 function isValidUid(value: unknown): value is string {
@@ -159,12 +166,13 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],  // unsafe-inline needed for motion library animation styles
           fontSrc: ["'self'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", allowedOrigin],
           frameSrc: ["https://accounts.google.com"],
+          workerSrc: ["'self'", "blob:"],
         },
       },
       // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure
@@ -218,6 +226,8 @@ async function startServer() {
   const liveSessions: Record<string, Record<string, LeaderboardEntry>> = {};
   // Track which session each socket belongs to for cleanup
   const socketSessions: Record<string, { classCode: string, uid: string }> = {};
+  // Reference count: how many sockets each uid has in each class (handles multi-tab)
+  const socketRefCounts: Record<string, number> = {}; // key: "classCode:uid"
 
   // Throttled leaderboard broadcast — batches rapid score updates so the server
   // emits at most once every BROADCAST_INTERVAL_MS per class instead of once per
@@ -244,9 +254,32 @@ async function startServer() {
     }
   }
 
+  // Helper: extract client IP from socket, respecting trust proxy in production
+  function getSocketIp(socket: import("socket.io").Socket): string {
+    if (process.env.NODE_ENV === "production") {
+      const fwd = socket.handshake.headers["x-forwarded-for"];
+      if (typeof fwd === "string") return fwd.split(",")[0].trim() || "unknown";
+    }
+    return socket.handshake.address || "unknown";
+  }
+
+  // Socket.IO connection-level auth middleware — reject unauthenticated connections early
+  io.use(async (socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (typeof token !== "string" || token.length === 0) {
+      return next(new Error("Authentication required"));
+    }
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return next(new Error("Invalid token"));
+    }
+    // Attach verified uid to socket data for use in event handlers
+    (socket.data as { uid: string }).uid = uid;
+    next();
+  });
+
   io.on("connection", (socket) => {
-    const fwdHeader = socket.handshake.headers["x-forwarded-for"];
-    const clientIp = (typeof fwdHeader === "string" ? fwdHeader.split(",")[0].trim() : socket.handshake.address) || "unknown";
+    const clientIp = getSocketIp(socket);
     console.log("User connected:", socket.id);
 
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
@@ -289,6 +322,8 @@ async function startServer() {
 
       socket.join(classCode);
       socketSessions[socket.id] = { classCode, uid };
+      const refKey = `${classCode}:${uid}`;
+      socketRefCounts[refKey] = (socketRefCounts[refKey] || 0) + 1;
       if (!liveSessions[classCode]) {
         liveSessions[classCode] = {};
       }
@@ -344,27 +379,32 @@ async function startServer() {
       const session = socketSessions[socket.id];
       if (session) {
         const { classCode, uid } = session;
-        if (liveSessions[classCode]) {
-          delete liveSessions[classCode][uid];
-          if (Object.keys(liveSessions[classCode]).length === 0) {
-            delete liveSessions[classCode];
-          } else {
-            io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+        const refKey = `${classCode}:${uid}`;
+        const remaining = (socketRefCounts[refKey] || 1) - 1;
+        if (remaining <= 0) {
+          // Last tab closed — remove from leaderboard
+          delete socketRefCounts[refKey];
+          if (liveSessions[classCode]) {
+            delete liveSessions[classCode][uid];
+            if (Object.keys(liveSessions[classCode]).length === 0) {
+              delete liveSessions[classCode];
+            } else {
+              io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+            }
           }
+        } else {
+          socketRefCounts[refKey] = remaining;
         }
         delete socketSessions[socket.id];
       }
     });
   });
 
-  // Health check endpoint for monitoring and incident response
+  // Health check endpoint for monitoring — minimal info to avoid leaking server state
   app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
-      uptime: process.uptime(),
       timestamp: new Date().toISOString(),
-      activeSockets: io.engine.clientsCount,
-      activeSessions: Object.keys(liveSessions).length,
     });
   });
 
