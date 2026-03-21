@@ -743,8 +743,9 @@ export default function App() {
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
 
-    const code = Array.from(crypto.getRandomValues(new Uint32Array(6)))
-      .map(x => x % 10)
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
+    const code = Array.from(crypto.getRandomValues(new Uint32Array(8)))
+      .map(x => alphabet[x % alphabet.length])
       .join("");
     const newClass = {
       name: newClassName,
@@ -766,9 +767,13 @@ export default function App() {
     }
   };
 
+  const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
+  const MAX_IMPORT_WORDS = 500;
+
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -789,8 +794,10 @@ export default function App() {
         showToast("No valid words found in CSV. Make sure the first column is English.", "error");
         return;
       }
-      setCustomWords(prev => [...prev, ...words]);
-      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      const limited = words.slice(0, MAX_IMPORT_WORDS);
+      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
+      setCustomWords(prev => [...prev, ...limited]);
+      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
     };
     reader.readAsText(file);
@@ -808,6 +815,7 @@ export default function App() {
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { showToast("Image too large (max 10 MB).", "error"); e.target.value = ""; return; }
 
     setIsOcrProcessing(true);
     setOcrProgress(0);
@@ -949,6 +957,7 @@ export default function App() {
   const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const data = new Uint8Array(ev.target?.result as ArrayBuffer);
@@ -963,10 +972,12 @@ export default function App() {
         level: "Custom" as const,
       })).filter(w => w.english);
       if (words.length === 0) { showToast("No valid words found in Excel file.", "error"); return; }
-      setCustomWords(prev => [...prev, ...words]);
-      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      const limited = words.slice(0, MAX_IMPORT_WORDS);
+      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
+      setCustomWords(prev => [...prev, ...limited]);
+      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
-      showToast(`Imported ${words.length} words from Excel.`, "success");
+      showToast(`Imported ${limited.length} words from Excel.`, "success");
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
@@ -976,6 +987,7 @@ export default function App() {
   const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     try {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
@@ -990,6 +1002,16 @@ export default function App() {
   // Google Sheets URL import
   const handleGSheetsImport = async () => {
     if (!gSheetsUrl.trim()) return;
+    try {
+      const parsed = new URL(gSheetsUrl.trim());
+      if (!parsed.hostname.endsWith("google.com")) {
+        showToast("Only Google Sheets URLs are allowed.", "error");
+        return;
+      }
+    } catch {
+      showToast("Invalid URL.", "error");
+      return;
+    }
     setGSheetsLoading(true);
     try {
       const csvUrl = gSheetsUrl.replace(/\/edit.*$/, "/export?format=csv");
@@ -1002,11 +1024,13 @@ export default function App() {
         return { id: 7000 + idx, english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
       }).filter(w => w.english);
       if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
-      setCustomWords(prev => [...prev, ...words]);
-      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      const limited = words.slice(0, MAX_IMPORT_WORDS);
+      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
+      setCustomWords(prev => [...prev, ...limited]);
+      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
       setGSheetsUrl("");
-      showToast(`Imported ${words.length} words from Google Sheets.`, "success");
+      showToast(`Imported ${limited.length} words from Google Sheets.`, "success");
     } catch {
       showToast("Could not import from Google Sheets. Make sure the sheet is public and the URL is correct.", "error");
     } finally {
@@ -1161,6 +1185,9 @@ export default function App() {
 
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
+    const trimmedName = name.trim().slice(0, 30);
+    const trimmedCode = code.trim().slice(0, 20);
+    if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
     manualLoginInProgress.current = true;
     setLoading(true);
     setError(null);
@@ -1189,7 +1216,7 @@ export default function App() {
 
       // Step 2: Look up class + existing user profile in parallel
       const [classResult, userResult] = await Promise.all([
-        supabase.from('classes').select('*').eq('code', code),
+        supabase.from('classes').select('*').eq('code', trimmedCode),
         supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
       ]);
       if (classResult.error) throw classResult.error;
@@ -1202,16 +1229,16 @@ export default function App() {
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
       let userData: AppUser;
       if (userResult.data) {
-        userData = { ...mapUser(userResult.data), classCode: code };
+        userData = { ...mapUser(userResult.data), classCode: trimmedCode };
         const { error: updateErr } = await supabase
-          .from('users').update({ class_code: code }).eq('uid', studentUid);
+          .from('users').update({ class_code: trimmedCode }).eq('uid', studentUid);
         if (updateErr) throw updateErr;
       } else {
         userData = {
           uid: studentUid,
           role: "student",
-          displayName: name,
-          classCode: code,
+          displayName: trimmedName,
+          classCode: trimmedCode,
           avatar: studentAvatar,
           badges: [],
         };
@@ -1222,7 +1249,7 @@ export default function App() {
       // Step 4: Fetch assignments + progress in parallel (user row now exists, RLS passes)
       const [assignResult, progressResult] = await Promise.all([
         supabase.from('assignments').select('*').eq('class_id', classData.id),
-        supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid),
+        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
       ]);
       if (assignResult.error) throw assignResult.error;
       if (progressResult.error) throw progressResult.error;
@@ -1237,7 +1264,7 @@ export default function App() {
       // Join Live Challenge
       if (socket) {
         socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
-          classCode: code, name, uid: studentUid, token: session.access_token,
+          classCode: trimmedCode, name: trimmedName, uid: studentUid, token: session.access_token,
         });
       }
 
@@ -1564,13 +1591,17 @@ export default function App() {
     setIsSaving(true);
     setSaveError(null);
 
-    const xpEarned = score;
+    // Cap score to the maximum possible for this assignment (10 pts per word)
+    const maxPossible = gameWords.length * 10;
+    const cappedScore = Math.min(Math.max(0, score), maxPossible);
+
+    const xpEarned = cappedScore;
     const newXp = xp + xpEarned;
-    const newStreak = score >= 80 ? streak + 1 : 0;
+    const newStreak = cappedScore >= 80 ? streak + 1 : 0;
     setXp(newXp);
     setStreak(newStreak);
 
-    if (score === 100) await awardBadge("🎯 Perfect Score");
+    if (cappedScore === 100) await awardBadge("🎯 Perfect Score");
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
@@ -1589,7 +1620,7 @@ export default function App() {
       studentUid: currentAuthUid, // Use current auth session UID
       assignmentId: activeAssignment.id,
       classCode: user.classCode || "",
-      score: score,
+      score: cappedScore,
       mode: gameMode,
       completedAt: new Date().toISOString(),
       mistakes: mistakes,
@@ -1924,6 +1955,7 @@ export default function App() {
                         type="text"
                         placeholder="Class Code"
                         id="class-code"
+                        maxLength={20}
                         className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
@@ -1933,6 +1965,7 @@ export default function App() {
                         type="text"
                         placeholder="Your Name"
                         id="student-name"
+                        maxLength={30}
                         className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
@@ -2778,6 +2811,7 @@ export default function App() {
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
                   placeholder="Class Name"
+                  maxLength={50}
                   className="w-full px-6 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-600 outline-none mb-6 font-bold"
                 />
                 <div className="flex gap-3">
