@@ -437,6 +437,10 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
 
+  // --- QUERY DEDUPLICATION ---
+  // Track when data was last fetched to avoid redundant Supabase calls
+  const lastFetchRef = useRef<Record<string, number>>({});
+
   // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
@@ -716,6 +720,21 @@ export default function App() {
     retryPending();
   }, []);
 
+  // Auto-refresh student assignments every 30s while on the dashboard
+  // so new assignments from the teacher appear without re-login
+  useEffect(() => {
+    if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
+    const code = user.classCode;
+    const refresh = async () => {
+      const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
+      if (!classRows || classRows.length === 0) return;
+      const { data } = await supabase.from('assignments').select('*').eq('class_id', classRows[0].id);
+      if (data) setStudentAssignments(data.map(mapAssignment));
+    };
+    const id = setInterval(refresh, 30000);
+    return () => clearInterval(id);
+  }, [user?.role, user?.classCode, view]);
+
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
     if (!error && data) setClasses(data.map(mapClass));
@@ -724,8 +743,9 @@ export default function App() {
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
 
-    const code = Array.from(crypto.getRandomValues(new Uint32Array(6)))
-      .map(x => x % 10)
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
+    const code = Array.from(crypto.getRandomValues(new Uint32Array(8)))
+      .map(x => alphabet[x % alphabet.length])
       .join("");
     const newClass = {
       name: newClassName,
@@ -747,9 +767,13 @@ export default function App() {
     }
   };
 
+  const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
+  const MAX_IMPORT_WORDS = 500;
+
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -770,8 +794,10 @@ export default function App() {
         showToast("No valid words found in CSV. Make sure the first column is English.", "error");
         return;
       }
-      setCustomWords(prev => [...prev, ...words]);
-      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      const limited = words.slice(0, MAX_IMPORT_WORDS);
+      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
+      setCustomWords(prev => [...prev, ...limited]);
+      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
     };
     reader.readAsText(file);
@@ -789,6 +815,7 @@ export default function App() {
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { showToast("Image too large (max 10 MB).", "error"); e.target.value = ""; return; }
 
     setIsOcrProcessing(true);
     setOcrProgress(0);
@@ -930,6 +957,7 @@ export default function App() {
   const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const data = new Uint8Array(ev.target?.result as ArrayBuffer);
@@ -944,10 +972,12 @@ export default function App() {
         level: "Custom" as const,
       })).filter(w => w.english);
       if (words.length === 0) { showToast("No valid words found in Excel file.", "error"); return; }
-      setCustomWords(prev => [...prev, ...words]);
-      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      const limited = words.slice(0, MAX_IMPORT_WORDS);
+      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
+      setCustomWords(prev => [...prev, ...limited]);
+      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
-      showToast(`Imported ${words.length} words from Excel.`, "success");
+      showToast(`Imported ${limited.length} words from Excel.`, "success");
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
@@ -957,6 +987,7 @@ export default function App() {
   const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     try {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
@@ -971,6 +1002,16 @@ export default function App() {
   // Google Sheets URL import
   const handleGSheetsImport = async () => {
     if (!gSheetsUrl.trim()) return;
+    try {
+      const parsed = new URL(gSheetsUrl.trim());
+      if (!parsed.hostname.endsWith("google.com")) {
+        showToast("Only Google Sheets URLs are allowed.", "error");
+        return;
+      }
+    } catch {
+      showToast("Invalid URL.", "error");
+      return;
+    }
     setGSheetsLoading(true);
     try {
       const csvUrl = gSheetsUrl.replace(/\/edit.*$/, "/export?format=csv");
@@ -983,11 +1024,13 @@ export default function App() {
         return { id: 7000 + idx, english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
       }).filter(w => w.english);
       if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
-      setCustomWords(prev => [...prev, ...words]);
-      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      const limited = words.slice(0, MAX_IMPORT_WORDS);
+      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
+      setCustomWords(prev => [...prev, ...limited]);
+      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
       setGSheetsUrl("");
-      showToast(`Imported ${words.length} words from Google Sheets.`, "success");
+      showToast(`Imported ${limited.length} words from Google Sheets.`, "success");
     } catch {
       showToast("Could not import from Google Sheets. Make sure the sheet is public and the URL is correct.", "error");
     } finally {
@@ -1142,6 +1185,9 @@ export default function App() {
 
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
+    const trimmedName = name.trim().slice(0, 30);
+    const trimmedCode = code.trim().slice(0, 20);
+    if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
     manualLoginInProgress.current = true;
     setLoading(true);
     setError(null);
@@ -1170,7 +1216,7 @@ export default function App() {
 
       // Step 2: Look up class + existing user profile in parallel
       const [classResult, userResult] = await Promise.all([
-        supabase.from('classes').select('*').eq('code', code),
+        supabase.from('classes').select('*').eq('code', trimmedCode),
         supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
       ]);
       if (classResult.error) throw classResult.error;
@@ -1183,16 +1229,16 @@ export default function App() {
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
       let userData: AppUser;
       if (userResult.data) {
-        userData = { ...mapUser(userResult.data), classCode: code };
+        userData = { ...mapUser(userResult.data), classCode: trimmedCode };
         const { error: updateErr } = await supabase
-          .from('users').update({ class_code: code }).eq('uid', studentUid);
+          .from('users').update({ class_code: trimmedCode }).eq('uid', studentUid);
         if (updateErr) throw updateErr;
       } else {
         userData = {
           uid: studentUid,
           role: "student",
-          displayName: name,
-          classCode: code,
+          displayName: trimmedName,
+          classCode: trimmedCode,
           avatar: studentAvatar,
           badges: [],
         };
@@ -1203,15 +1249,12 @@ export default function App() {
       // Step 4: Fetch assignments + progress in parallel (user row now exists, RLS passes)
       const [assignResult, progressResult] = await Promise.all([
         supabase.from('assignments').select('*').eq('class_id', classData.id),
-        supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid),
+        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
       ]);
       if (assignResult.error) throw assignResult.error;
-      if (!assignResult.data || assignResult.data.length === 0) {
-        setError("No assignments found for this class yet!");
-        return;
-      }
+      if (progressResult.error) throw progressResult.error;
 
-      setStudentAssignments(assignResult.data.map(mapAssignment));
+      setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
       setStudentProgress((progressResult.data ?? []).map(mapProgress));
       setUser(userData);
       setBadges(userData.badges || []);
@@ -1221,7 +1264,7 @@ export default function App() {
       // Join Live Challenge
       if (socket) {
         socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
-          classCode: code, name, uid: studentUid, token: session.access_token,
+          classCode: trimmedCode, name: trimmedName, uid: studentUid, token: session.access_token,
         });
       }
 
@@ -1257,6 +1300,9 @@ export default function App() {
   };
   const fetchStudents = async () => {
     if (!user || user.role !== "teacher" || classes.length === 0) return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.students ?? 0) < 10000) return;
+    lastFetchRef.current.students = now;
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1282,10 +1328,11 @@ export default function App() {
     setClassStudents(Object.values(studentMap));
   };
   const fetchGlobalLeaderboard = async () => {
-    // Scope to the student's own class to avoid cross-class PII leaks.
-    // RLS already restricts results, but filtering explicitly makes the intent clear.
     const classCode = user?.classCode;
     if (!classCode) return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.leaderboard ?? 0) < 10000) return;
+    lastFetchRef.current.leaderboard = now;
     const { data } = await supabase
       .from('progress').select('student_name, score, avatar')
       .eq('class_code', classCode)
@@ -1299,6 +1346,9 @@ export default function App() {
   };
   const fetchScores = async () => {
     if (!user || user.role !== "teacher") return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
+    lastFetchRef.current.scores = now;
 
     if (classes.length === 0) {
       setAllScores([]);
@@ -1323,6 +1373,9 @@ export default function App() {
 
   const fetchTeacherAssignments = async () => {
     if (!user || user.role !== "teacher" || classes.length === 0) return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.teacherAssignments ?? 0) < 10000) return;
+    lastFetchRef.current.teacherAssignments = now;
     setTeacherAssignmentsLoading(true);
     const classIds = classes.map(c => c.id);
     const { data } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
@@ -1538,13 +1591,17 @@ export default function App() {
     setIsSaving(true);
     setSaveError(null);
 
-    const xpEarned = score;
+    // Cap score to the maximum possible for this assignment (10 pts per word)
+    const maxPossible = gameWords.length * 10;
+    const cappedScore = Math.min(Math.max(0, score), maxPossible);
+
+    const xpEarned = cappedScore;
     const newXp = xp + xpEarned;
-    const newStreak = score >= 80 ? streak + 1 : 0;
+    const newStreak = cappedScore >= 80 ? streak + 1 : 0;
     setXp(newXp);
     setStreak(newStreak);
 
-    if (score === 100) await awardBadge("🎯 Perfect Score");
+    if (cappedScore === 100) await awardBadge("🎯 Perfect Score");
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
@@ -1563,7 +1620,7 @@ export default function App() {
       studentUid: currentAuthUid, // Use current auth session UID
       assignmentId: activeAssignment.id,
       classCode: user.classCode || "",
-      score: score,
+      score: cappedScore,
       mode: gameMode,
       completedAt: new Date().toISOString(),
       mistakes: mistakes,
@@ -1898,6 +1955,7 @@ export default function App() {
                         type="text"
                         placeholder="Class Code"
                         id="class-code"
+                        maxLength={20}
                         className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
@@ -1907,6 +1965,7 @@ export default function App() {
                         type="text"
                         placeholder="Your Name"
                         id="student-name"
+                        maxLength={30}
                         className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
                       />
                     </div>
@@ -2190,11 +2249,10 @@ export default function App() {
   if (user?.role === "student" && view === "shop") {
     const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
       if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
-      const newXp = xp - avatar.cost;
-      const newUnlocked = [...(user.unlockedAvatars ?? []), avatar.emoji];
-      setXp(newXp);
-      setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
-      await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: avatar.emoji, item_cost: avatar.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), avatar.emoji] } : prev);
       showToast(`Unlocked ${avatar.name}!`, "success");
     };
     const equipAvatar = async (emoji: string) => {
@@ -2204,11 +2262,10 @@ export default function App() {
     };
     const purchaseTheme = async (theme: typeof THEMES[0]) => {
       if (xp < theme.cost) { showToast("Not enough XP!", "error"); return; }
-      const newXp = xp - theme.cost;
-      const newUnlocked = [...(user.unlockedThemes ?? []), theme.id];
-      setXp(newXp);
-      setUser(prev => prev ? { ...prev, unlockedThemes: newUnlocked } : prev);
-      await supabase.from('users').update({ xp: newXp, unlocked_themes: newUnlocked }).eq('uid', user.uid);
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'theme', item_id: theme.id, item_cost: theme.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      setUser(prev => prev ? { ...prev, unlockedThemes: [...(prev.unlockedThemes ?? []), theme.id] } : prev);
       showToast(`Unlocked ${theme.name}!`, "success");
     };
     const equipTheme = async (themeId: string) => {
@@ -2218,11 +2275,10 @@ export default function App() {
     };
     const purchasePowerUp = async (powerUp: typeof POWER_UP_DEFS[0]) => {
       if (xp < powerUp.cost) { showToast("Not enough XP!", "error"); return; }
-      const newXp = xp - powerUp.cost;
-      const newPowerUps = { ...(user.powerUps ?? {}), [powerUp.id]: ((user.powerUps ?? {})[powerUp.id] ?? 0) + 1 };
-      setXp(newXp);
-      setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-      await supabase.from('users').update({ xp: newXp, power_ups: newPowerUps }).eq('uid', user.uid);
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'power_up', item_id: powerUp.id, item_cost: powerUp.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
       showToast(`Got ${powerUp.name}!`, "success");
     };
 
@@ -2405,11 +2461,10 @@ export default function App() {
                       ) : (
                         <button onClick={async () => {
                           if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
-                          const newXp = xp - title.cost;
-                          const newUnlocked = [...(user.unlockedAvatars ?? []), `title_${title.id}`];
-                          setXp(newXp);
-                          setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
-                          await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+                          const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
+                          if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                          setXp(data.new_xp);
+                          setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
                           showToast(`Unlocked "${title.display}"!`, "success");
                         }} disabled={!canAfford}
                           className={`text-xs font-bold px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
@@ -2450,11 +2505,10 @@ export default function App() {
                       ) : (
                         <button onClick={async () => {
                           if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
-                          const newXp = xp - frame.cost;
-                          const newUnlocked = [...(user.unlockedAvatars ?? []), `frame_${frame.id}`];
-                          setXp(newXp);
-                          setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
-                          await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+                          const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
+                          if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                          setXp(data.new_xp);
+                          setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
                           showToast(`Unlocked ${frame.name}!`, "success");
                         }} disabled={!canAfford}
                           className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
@@ -2752,6 +2806,7 @@ export default function App() {
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
                   placeholder="Class Name"
+                  maxLength={50}
                   className="w-full px-6 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-600 outline-none mb-6 font-bold"
                 />
                 <div className="flex gap-3">

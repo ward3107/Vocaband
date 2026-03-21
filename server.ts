@@ -201,6 +201,13 @@ async function startServer() {
     60 * 1000  // cleanup every minute
   );
 
+  // Per-socket rate limiter for score updates (max 2 per second per socket)
+  const scoreUpdateLimiter = createSocketRateLimiter(
+    1000,      // 1 second window
+    2,         // max 2 updates per second
+    30 * 1000  // cleanup every 30s
+  );
+
   // Constants for score fetching
   const PROGRESS_RECORD_LIMIT = 1000; // Safety limit for student progress records
 
@@ -317,9 +324,16 @@ async function startServer() {
       const session = socketSessions[socket.id];
       if (!session || session.classCode !== classCode || session.uid !== uid) return;
 
+      // Rate limit: max 2 score updates per second per socket
+      if (!scoreUpdateLimiter.checkLimit(socket.id)) return;
+
       if (liveSessions[classCode] && liveSessions[classCode][uid]) {
+        const entry = liveSessions[classCode][uid];
+        // Validate: score can only increase, and by at most 10 points per update (one correct answer)
+        const MAX_SCORE_INCREMENT = 10;
+        if (score < entry.currentGameScore || score > entry.currentGameScore + MAX_SCORE_INCREMENT) return;
         // Update the current game score (baseScore remains unchanged)
-        liveSessions[classCode][uid].currentGameScore = score;
+        entry.currentGameScore = score;
         // Throttle: batch rapid score updates to avoid flooding sockets
         scheduleBroadcast(classCode);
       }
