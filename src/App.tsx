@@ -258,7 +258,7 @@ export default function App() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<"Band 1" | "Band 2" | "Custom">("Band 2");
+  const [selectedLevel, setSelectedLevel] = useState<"Band 1" | "Band 2" | "Custom">("Band 1");
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -1319,18 +1319,37 @@ export default function App() {
   }, [view, showModeSelection, gameMode, gameWords]);
 
   // Letter Sounds: reveal one letter at a time, speak each letter
+  // Uses sequential timeouts so each letter's sound plays AFTER the letter
+  // is visually revealed (300ms spring delay) and previous speech finishes.
   useEffect(() => {
     if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "letter-sounds" || !currentWord || isFinished) return;
     setRevealedLetters(0);
     const word = currentWord.english;
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setRevealedLetters(i);
-      speak(word[i - 1]);
-      if (i >= word.length) clearInterval(interval);
-    }, 600);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    const revealNext = (idx: number) => {
+      if (cancelled || idx >= word.length) return;
+      setRevealedLetters(idx + 1);
+      // Delay speech 250ms so the spring animation shows the letter first
+      setTimeout(() => {
+        if (cancelled) return;
+        // Cancel any ongoing speech before starting the new letter
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(word[idx]);
+        utter.rate = 0.8;
+        utter.onend = () => {
+          if (!cancelled) setTimeout(() => revealNext(idx + 1), 200);
+        };
+        // Fallback if onend doesn't fire (some browsers)
+        const fallbackTimer = setTimeout(() => {
+          if (!cancelled) revealNext(idx + 1);
+        }, 1500);
+        utter.onend = () => { clearTimeout(fallbackTimer); if (!cancelled) setTimeout(() => revealNext(idx + 1), 200); };
+        window.speechSynthesis.speak(utter);
+      }, 250);
+    };
+    // Start after a short initial delay
+    const startTimer = setTimeout(() => revealNext(0), 400);
+    return () => { cancelled = true; clearTimeout(startTimer); window.speechSynthesis.cancel(); };
   }, [currentIndex, view, showModeSelection, showModeIntro, gameMode, currentWord, isFinished]);
 
   // Sentence Builder: load sentences from active assignment
@@ -1711,8 +1730,13 @@ export default function App() {
       });
     });
 
-    return { students, assignments, matrix, averages, studentMap, getStudentClassCode, getStudentAvatar };
-  }, [allScores]);
+    // Build assignment title lookup from teacherAssignments
+    const assignmentTitleMap = new Map<string, string>();
+    teacherAssignments.forEach(a => assignmentTitleMap.set(a.id, a.title));
+    const getAssignmentTitle = (id: string) => assignmentTitleMap.get(id) || id.slice(0, 8) + '…';
+
+    return { students, assignments, matrix, averages, studentMap, getStudentClassCode, getStudentAvatar, getAssignmentTitle };
+  }, [allScores, teacherAssignments]);
 
   // State for selected score detail view
   const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
@@ -2293,7 +2317,7 @@ export default function App() {
             {/* Analytics */}
             <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
               <button
-                onClick={() => { fetchScores(); setView("analytics"); }}
+                onClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
                 className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-purple-100 hover:border-purple-200 group"
               >
                 <BarChart3 className="text-purple-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
@@ -3490,17 +3514,17 @@ export default function App() {
               <table className="w-full text-left">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    <th className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-400 uppercase text-xs">Student Name</th>
-                    <th className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-400 uppercase text-xs">Class Code</th>
-                    <th className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-400 uppercase text-xs">Last Active</th>
+                    <th className="py-2.5 px-3 sm:px-4 font-bold text-stone-400 uppercase text-[10px] sm:text-xs">Student</th>
+                    <th className="py-2.5 px-3 sm:px-4 font-bold text-stone-400 uppercase text-[10px] sm:text-xs">Class</th>
+                    <th className="py-2.5 px-3 sm:px-4 font-bold text-stone-400 uppercase text-[10px] sm:text-xs">Last Active</th>
                   </tr>
                 </thead>
                 <tbody>
                   {classStudents.map((s, idx) => (
                     <tr key={idx} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
-                      <td className="py-3 px-4 sm:py-4 sm:px-6 font-bold text-stone-800 text-base sm:text-sm">{s.name}</td>
-                      <td className="py-3 px-4 sm:py-4 sm:px-6 text-stone-500 text-base sm:text-sm">{s.classCode}</td>
-                      <td className="py-3 px-4 sm:py-4 sm:px-6 text-stone-400 text-sm sm:text-sm">{new Date(s.lastActive).toLocaleString()}</td>
+                      <td className="py-2 px-3 sm:px-4 font-bold text-stone-800 text-sm">{s.name}</td>
+                      <td className="py-2 px-3 sm:px-4 text-stone-500 text-sm">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</td>
+                      <td className="py-2 px-3 sm:px-4 text-stone-400 text-xs">{new Date(s.lastActive).toLocaleDateString()}</td>
                     </tr>
                   ))}
                   {classStudents.length === 0 && (
@@ -3528,14 +3552,19 @@ export default function App() {
 
           {/* Explanation banner */}
           <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
-            <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-1">What does this show?</h2>
-            <p className="text-purple-700 text-xs sm:text-sm leading-relaxed">
-              This dashboard tracks <strong>every student's performance</strong> across all assignments. The table below shows each student's latest score per assignment — click any <strong>score</strong> to see details (mode played, date, missed words), or click a <strong>student name</strong> to see their full profile with score trends and most-challenging words.
-            </p>
+            <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-2">How to read this dashboard</h2>
+            <ul className="text-purple-700 text-xs sm:text-sm space-y-1.5 list-none">
+              <li className="flex items-start gap-2"><span className="mt-0.5">📊</span> <span>Each <strong>column</strong> is an assignment (shown by title). Each <strong>row</strong> is a student.</span></li>
+              <li className="flex items-start gap-2"><span className="mt-0.5">🔢</span> <span>The <strong>score</strong> in each cell is the student's <strong>latest attempt</strong> on that assignment.</span></li>
+              <li className="flex items-start gap-2"><span className="mt-0.5">👆</span> <span>Click a <strong>score cell</strong> to see details: mode played, date, and missed words.</span></li>
+              <li className="flex items-start gap-2"><span className="mt-0.5">👤</span> <span>Click a <strong>student name</strong> to see their full profile with score trends.</span></li>
+              <li className="flex items-start gap-2"><span className="mt-0.5">📈</span> <span>The <strong>Average</strong> column shows each student's mean score across all assignments.</span></li>
+            </ul>
             <div className="flex flex-wrap gap-3 mt-3 text-xs">
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block"></span> 70–89% Good</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-200 border border-blue-400 inline-block"></span> 90%+ Excellent</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> Below 70% Needs attention</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-200 border border-blue-400 inline-block"></span> ★ 90%+ Excellent</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> ⚠️ Below 70%</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 border border-stone-200 inline-block"></span> — Not attempted</span>
             </div>
           </div>
 
@@ -3571,13 +3600,13 @@ export default function App() {
               <table className="w-full">
                 <thead className="bg-stone-50">
                   <tr>
-                    <th className="px-4 py-4 text-left font-bold text-stone-400 uppercase text-xs sticky left-0 bg-stone-50">Student</th>
+                    <th className="px-3 py-2.5 text-left font-bold text-stone-400 uppercase text-[10px] sm:text-xs sticky left-0 bg-stone-50">Student</th>
                     {matrixData.assignments.map(assignmentId => (
-                      <th key={assignmentId} className="px-4 py-4 text-center font-bold text-stone-400 uppercase text-xs min-w-[100px]">
-                        {assignmentId}
+                      <th key={assignmentId} className="px-2 py-2.5 text-center font-bold text-stone-400 text-[10px] sm:text-xs min-w-[70px] max-w-[120px]" title={assignmentId}>
+                        <span className="line-clamp-2 leading-tight">{matrixData.getAssignmentTitle(assignmentId)}</span>
                       </th>
                     ))}
-                    <th className="px-4 py-4 text-center font-bold text-stone-400 uppercase text-xs min-w-[80px]">Average</th>
+                    <th className="px-2 py-2.5 text-center font-bold text-stone-400 uppercase text-[10px] sm:text-xs min-w-[60px]">Avg</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3585,17 +3614,18 @@ export default function App() {
                     const studentAvg = matrixData.averages.get(student) || 0;
                     const classCode = matrixData.getStudentClassCode(student);
                     const avatar = matrixData.getStudentAvatar(student);
+                    const className = classes.find(c => c.code === classCode)?.name;
                     return (
                       <tr key={student} className="border-t border-stone-100 hover:bg-stone-50">
                         <td
-                          className="px-4 py-3 font-bold text-stone-800 sticky left-0 bg-white hover:bg-stone-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all"
+                          className="px-3 py-2 font-bold text-stone-800 text-sm sticky left-0 bg-white hover:bg-stone-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all"
                           onClick={() => setSelectedStudent(student)}
                         >
-                          <div className="flex items-center gap-2">
-                            {avatar && <span className="text-lg">{avatar}</span>}
+                          <div className="flex items-center gap-1.5">
+                            {avatar && <span className="text-base">{avatar}</span>}
                             <div className="flex flex-col">
-                              <span>{student}</span>
-                              <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit">{classCode}</span>
+                              <span className="text-xs sm:text-sm leading-tight">{student}</span>
+                              {className && <span className="text-[10px] font-normal text-stone-400 leading-tight">{className}</span>}
                             </div>
                           </div>
                         </td>
@@ -3622,21 +3652,18 @@ export default function App() {
                           return (
                             <td
                               key={assignmentId}
-                              className={`px-4 py-3 text-center ${cellClass} ${hasScore ? "cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all" : ""}`}
+                              className={`px-2 py-2 text-center text-xs ${cellClass} ${hasScore ? "cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all" : ""}`}
                               onClick={() => hasScore && setSelectedScore(scoreData!)}
                             >
                               {hasScore ? (
-                                <div className="flex flex-col items-center gap-1">
-                                  <span className="font-black text-stone-800">{score}%</span>
-                                  <span className="text-xs">{indicator}</span>
-                                </div>
+                                <span className="font-black text-stone-800">{indicator}{score}%</span>
                               ) : (
                                 <span className="text-stone-300">—</span>
                               )}
                             </td>
                           );
                         })}
-                        <td className={`px-4 py-3 text-center font-bold ${
+                        <td className={`px-2 py-2 text-center text-xs font-bold ${
                           studentAvg >= 90 ? "text-blue-700" : studentAvg >= 70 ? "text-blue-600" : "text-rose-600"
                         }`}>
                           {studentAvg}%
