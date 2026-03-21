@@ -74,9 +74,6 @@ export interface AppUser {
   unlockedThemes?: string[];
   powerUps?: Record<string, number>;
   activeTheme?: string;
-  consentPolicyVersion?: string;
-  consentGivenAt?: string;
-  firstSeenAt?: string;
 }
 
 export interface ClassData {
@@ -127,9 +124,6 @@ export function mapUser(row: any): AppUser {
     unlockedThemes: row.unlocked_themes ?? [],
     powerUps: row.power_ups ?? {},
     activeTheme: row.active_theme ?? 'default',
-    consentPolicyVersion: row.consent_policy_version ?? undefined,
-    consentGivenAt: row.consent_given_at ?? undefined,
-    firstSeenAt: row.first_seen_at ?? undefined,
   };
 }
 
@@ -148,8 +142,6 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.unlockedThemes !== undefined && { unlocked_themes: u.unlockedThemes }),
     ...(u.powerUps !== undefined && { power_ups: u.powerUps }),
     ...(u.activeTheme !== undefined && { active_theme: u.activeTheme }),
-    ...(u.consentPolicyVersion !== undefined && { consent_policy_version: u.consentPolicyVersion }),
-    ...(u.consentGivenAt !== undefined && { consent_given_at: u.consentGivenAt }),
   };
 }
 

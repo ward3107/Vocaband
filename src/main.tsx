@@ -23,10 +23,14 @@ async function boot() {
         // silently dumping the teacher on the landing page.
         console.error('OAuth code exchange failed:', error.message);
         sessionStorage.setItem('oauth_exchange_failed', '1');
+        // Sign out any stale anonymous session so the teacher doesn't
+        // accidentally land on the student dashboard.
+        await supabase.auth.signOut();
       }
     } catch {
       // Network error or code already consumed (e.g. back-button replay)
       sessionStorage.setItem('oauth_exchange_failed', '1');
+      await supabase.auth.signOut().catch(() => {});
     }
     window.history.replaceState({}, '', window.location.pathname);
   }
