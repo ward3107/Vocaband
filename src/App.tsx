@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./privacy-config";
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './types';
@@ -234,7 +235,7 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students" | "shop">("landing");
+  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students" | "shop" | "privacy-settings">("landing");
   const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames">("avatars");
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
@@ -253,6 +254,10 @@ export default function App() {
   const [badges, setBadges] = useState<string[]>([]);
 
   const [studentAvatar, setStudentAvatar] = useState("🦊");
+  const [needsConsent, setNeedsConsent] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState("");
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   const AVATAR_CATEGORIES = {
@@ -530,6 +535,7 @@ export default function App() {
         const userData = await fetchUserProfile(supabaseUser.id);
         if (userData) {
           setUser(userData);
+          checkConsent(userData);
           if (userData.role === "teacher") {
             fetchTeacherData(supabaseUser.id);
             setView("teacher-dashboard");
@@ -1196,6 +1202,50 @@ export default function App() {
     });
   };
 
+  // Check if user needs to accept the current privacy policy version
+  const checkConsent = (userData: AppUser) => {
+    // Teachers: always require consent. Students: require on first login (new user has no consent yet).
+    const hasCurrentConsent = (userData as AppUser & { consentPolicyVersion?: string }).consentPolicyVersion === PRIVACY_POLICY_VERSION;
+    if (!hasCurrentConsent) {
+      setNeedsConsent(true);
+    }
+  };
+
+  const recordConsent = async (action: 'accept' | 'withdraw' = 'accept') => {
+    if (!user) return;
+    try {
+      await supabase.from('consent_log').insert({
+        uid: user.uid,
+        policy_version: PRIVACY_POLICY_VERSION,
+        terms_version: TERMS_VERSION,
+        action,
+      });
+      await supabase.from('users').update({
+        consent_policy_version: PRIVACY_POLICY_VERSION,
+        consent_given_at: new Date().toISOString(),
+      }).eq('uid', user.uid);
+      setNeedsConsent(false);
+      setConsentChecked(false);
+    } catch (err) {
+      console.error("Consent recording error:", err);
+    }
+  };
+
+  const logAudit = async (action: string, dataCategory: string, targetUid?: string, metadata?: Record<string, unknown>) => {
+    if (!user) return;
+    try {
+      await supabase.from('audit_log').insert({
+        actor_uid: user.uid,
+        action,
+        data_category: dataCategory,
+        target_uid: targetUid ?? null,
+        metadata: metadata ?? null,
+      });
+    } catch {
+      // Audit logging is best-effort — don't block the user
+    }
+  };
+
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
     const trimmedName = name.trim().slice(0, 30);
@@ -1273,6 +1323,7 @@ export default function App() {
       setBadges(userData.badges || []);
       setXp(userData.xp ?? 0);
       setStreak(userData.streak ?? 0);
+      checkConsent(userData);
 
       // Join Live Challenge
       if (socket) {
@@ -1362,6 +1413,7 @@ export default function App() {
     const now = Date.now();
     if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
     lastFetchRef.current.scores = now;
+    logAudit('view_gradebook', 'progress');
 
     if (classes.length === 0) {
       setAllScores([]);
@@ -2054,6 +2106,9 @@ export default function App() {
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-300 via-transparent to-blue-600 opacity-0 hover:opacity-20 transition-opacity"></div>
                     </button>
+                    <p className="text-xs text-stone-400 text-center mt-1">
+                      By joining, you agree to our <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Privacy Policy</a>.
+                    </p>
                     {error && <p className="text-red-500 text-sm font-bold mt-2">{error}</p>}
 
                     <button
@@ -2108,15 +2163,62 @@ export default function App() {
     );
   }
 
+  // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
+  const consentModal = needsConsent && user ? (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <h2 className="text-xl font-black text-stone-900 mb-4">Privacy Policy Update</h2>
+        <p className="text-stone-600 text-sm mb-4">
+          We've updated our Privacy Policy (v{PRIVACY_POLICY_VERSION}). Please review and accept to continue using Vocaband.
+        </p>
+        <div className="bg-stone-50 rounded-2xl p-4 mb-4 text-sm text-stone-600 space-y-2">
+          <p><strong>What we collect:</strong> Your name, class code, assignment scores, and gamification data (XP, badges, avatars).</p>
+          <p><strong>Why:</strong> To enable classroom vocabulary practice, track your progress, and power the leaderboard.</p>
+          <p><strong>Your rights:</strong> You can view, export, or delete your data at any time from Privacy Settings.</p>
+          <p><strong>Contact:</strong> {DATA_CONTROLLER.contactEmail}</p>
+        </div>
+        <div className="flex items-center gap-3 mb-4">
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">Full Privacy Policy</a>
+          <span className="text-stone-300">|</span>
+          <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">Terms of Service</a>
+        </div>
+        <label className="flex items-start gap-3 mb-6 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={consentChecked}
+            onChange={(e) => setConsentChecked(e.target.checked)}
+            className="mt-1 w-5 h-5 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm text-stone-700">
+            I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Terms of Service</a>.
+          </span>
+        </label>
+        <button
+          disabled={!consentChecked}
+          onClick={() => recordConsent('accept')}
+          className={`w-full py-3 rounded-2xl font-bold text-white transition-all ${consentChecked ? "bg-blue-600 hover:bg-blue-700" : "bg-stone-300 cursor-not-allowed"}`}
+        >
+          Accept & Continue
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (user?.role === "student" && view === "student-dashboard") {
     return (
       <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
+        {consentModal}
         <div className="max-w-4xl mx-auto">
           {/* Top bar with logout */}
           <div className="flex justify-between items-center mb-4">
-            <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
-              🛍️ Shop
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
+                🛍️ Shop
+              </button>
+              <button onClick={() => setView("privacy-settings")} className="px-3 py-2 text-stone-400 hover:text-stone-600 hover:bg-stone-200 rounded-xl text-xs font-bold transition-all" title="Privacy Settings">
+                Privacy
+              </button>
+            </div>
             <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 text-stone-500 font-bold hover:text-red-500 hover:bg-red-50 rounded-xl text-sm transition-all">Logout</button>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -2252,6 +2354,199 @@ export default function App() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- PRIVACY SETTINGS VIEW ---
+  if (user && view === "privacy-settings") {
+    const handleExportData = async () => {
+      try {
+        const { data, error: rpcError } = await supabase.rpc('export_my_data');
+        if (rpcError) throw rpcError;
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vocaband-data-${user.uid.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Data exported successfully!", "success");
+      } catch (err) {
+        console.error("Export error:", err);
+        showToast("Failed to export data.", "error");
+      }
+    };
+
+    const handleDeleteAccount = async () => {
+      setConfirmDialog({
+        show: true,
+        message: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
+        onConfirm: async () => {
+          try {
+            const { data, error: rpcError } = await supabase.rpc('delete_my_account');
+            if (rpcError) throw rpcError;
+            if (data?.success) {
+              await supabase.auth.signOut();
+              showToast("Account deleted successfully.", "success");
+            } else {
+              showToast(data?.error || "Could not delete account.", "error");
+            }
+          } catch (err) {
+            console.error("Delete account error:", err);
+            showToast("Failed to delete account.", "error");
+          }
+          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+        },
+      });
+    };
+
+    const handleSaveName = async () => {
+      const trimmed = newDisplayName.trim().slice(0, 30);
+      if (!trimmed) return;
+      try {
+        const { error: updateErr } = await supabase.from('users').update({ display_name: trimmed }).eq('uid', user.uid);
+        if (updateErr) throw updateErr;
+        setUser(prev => prev ? { ...prev, displayName: trimmed } : prev);
+        setEditingName(false);
+        showToast("Name updated!", "success");
+      } catch {
+        showToast("Failed to update name.", "error");
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
+        {consentModal}
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={() => setView(user.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
+              <ChevronRight className="rotate-180" size={18} /> Back
+            </button>
+            <h1 className="text-2xl font-black text-stone-900">Privacy & Data Settings</h1>
+          </div>
+
+          {/* Profile Info (editable name) */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+            <h2 className="font-bold text-stone-800 mb-3">Your Profile</h2>
+            <div className="space-y-2 text-sm text-stone-600">
+              <p><strong>Role:</strong> {user.role}</p>
+              <div className="flex items-center gap-2">
+                <strong>Name:</strong>
+                {editingName ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="text"
+                      value={newDisplayName}
+                      onChange={(e) => setNewDisplayName(e.target.value)}
+                      maxLength={30}
+                      className="border rounded-lg px-2 py-1 text-sm flex-1"
+                      autoFocus
+                    />
+                    <button onClick={handleSaveName} className="text-blue-600 font-bold text-xs">Save</button>
+                    <button onClick={() => setEditingName(false)} className="text-stone-400 font-bold text-xs">Cancel</button>
+                  </div>
+                ) : (
+                  <>
+                    {user.displayName}
+                    <button onClick={() => { setNewDisplayName(user.displayName); setEditingName(true); }} className="text-blue-600 text-xs font-bold ml-2">Edit</button>
+                  </>
+                )}
+              </div>
+              {user.email && <p><strong>Email:</strong> {user.email}</p>}
+              {user.classCode && <p><strong>Class Code:</strong> {user.classCode}</p>}
+            </div>
+          </div>
+
+          {/* What data we store */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+            <h2 className="font-bold text-stone-800 mb-3">What Data We Store</h2>
+            <div className="space-y-3">
+              {DATA_COLLECTION_POINTS
+                .filter(p => p.role === user.role || p.role === "both")
+                .map((point, i) => (
+                <div key={i} className="text-sm border-b border-stone-100 pb-2 last:border-0">
+                  <p className="font-bold text-stone-700">{point.location}</p>
+                  <p className="text-stone-500">Fields: {point.fields.join(", ")}</p>
+                  <p className="text-stone-500">Purpose: {point.purpose}</p>
+                  <p className="text-stone-400 text-xs">{point.mandatory ? "Required" : "Optional"}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Third-party services */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+            <h2 className="font-bold text-stone-800 mb-3">Third-Party Services</h2>
+            <div className="space-y-3">
+              {THIRD_PARTY_REGISTRY.map((tp, i) => (
+                <div key={i} className="text-sm border-b border-stone-100 pb-2 last:border-0">
+                  <p className="font-bold text-stone-700">{tp.name} <span className="text-stone-400 font-normal">({tp.hostingRegion})</span></p>
+                  <p className="text-stone-500">{tp.purpose}</p>
+                  <p className="text-stone-400 text-xs">Data: {tp.dataCategories.join(", ")}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Consent status */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+            <h2 className="font-bold text-stone-800 mb-3">Consent Status</h2>
+            <div className="text-sm text-stone-600 space-y-1">
+              <p><strong>Current policy version:</strong> {PRIVACY_POLICY_VERSION}</p>
+              <p><strong>Your accepted version:</strong> {user.consentPolicyVersion || "Not yet accepted"}</p>
+              {user.consentGivenAt && <p><strong>Accepted on:</strong> {new Date(user.consentGivenAt).toLocaleDateString()}</p>}
+              <p><strong>First seen:</strong> {user.firstSeenAt ? new Date(user.firstSeenAt).toLocaleDateString() : "Unknown"}</p>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">Full Privacy Policy</a>
+              <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">Terms of Service</a>
+            </div>
+            {user.consentPolicyVersion && (
+              <button
+                onClick={() => {
+                  setConfirmDialog({
+                    show: true,
+                    message: "Withdrawing consent will log you out. You can re-accept when you log in again. Continue?",
+                    onConfirm: async () => {
+                      await recordConsent('withdraw');
+                      await supabase.from('users').update({ consent_policy_version: null, consent_given_at: null }).eq('uid', user.uid);
+                      await supabase.auth.signOut();
+                      setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+                    },
+                  });
+                }}
+                className="mt-3 text-red-500 text-sm font-bold hover:underline"
+              >
+                Withdraw Consent
+              </button>
+            )}
+          </div>
+
+          {/* Data export & deletion */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+            <h2 className="font-bold text-stone-800 mb-3">Your Data Rights</h2>
+            <p className="text-sm text-stone-500 mb-4">Under Israeli privacy law (PPA Amendment 13), you have the right to access, correct, and delete your personal data.</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleExportData}
+                className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-xl text-sm hover:bg-blue-200 transition-all"
+              >
+                Download My Data (JSON)
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-xl text-sm hover:bg-red-200 transition-all"
+              >
+                Delete My Account
+              </button>
+            </div>
+            <p className="text-xs text-stone-400 mt-3">
+              Note: Data in encrypted backups may be retained for up to 30 days after deletion.
+              Contact {DATA_CONTROLLER.contactEmail} for questions.
+            </p>
           </div>
         </div>
       </div>
@@ -2601,13 +2896,17 @@ export default function App() {
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
       <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
+        {consentModal}
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-4 sm:mb-8">
             <div>
               <p className="text-xs sm:text-sm text-stone-500">Welcome back,</p>
               <h1 className="text-xl sm:text-3xl font-black text-stone-900">{user?.displayName || "Teacher"}</h1>
             </div>
-            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm border-2 border-blue-100 hover:border-red-200">Logout</button>
+            <div className="flex gap-2">
+              <button onClick={() => setView("privacy-settings")} className="text-stone-400 hover:text-stone-600 font-bold text-xs px-3 py-2 bg-white rounded-xl shadow-sm border-2 border-stone-100 hover:border-stone-200 transition-all">Privacy</button>
+              <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm border-2 border-blue-100 hover:border-red-200">Logout</button>
+            </div>
           </div>
 
           {/* Quick Action Cards Grid */}

@@ -357,6 +357,17 @@ async function startServer() {
     });
   });
 
+  // Health check endpoint for monitoring and incident response
+  app.get("/api/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      activeSockets: io.engine.clientsCount,
+      activeSessions: Object.keys(liveSessions).length,
+    });
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
