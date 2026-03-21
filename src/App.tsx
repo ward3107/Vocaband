@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
+import mammoth from "mammoth";
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
-import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, Word } from "./vocabulary";
+import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./vocabulary";
 import {
   searchWords
 } from "./vocabulary-matching";
@@ -54,6 +56,51 @@ const MOTIVATIONAL_MESSAGES = [
 ];
 const randomMotivation = () =>
   MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
+
+// --- XP REWARD SYSTEM CONSTANTS ---
+const XP_TITLES = [
+  { min: 0, title: 'Beginner', emoji: '🌱' },
+  { min: 100, title: 'Learner', emoji: '📚' },
+  { min: 300, title: 'Scholar', emoji: '🎓' },
+  { min: 700, title: 'Expert', emoji: '🏅' },
+  { min: 1500, title: 'Master', emoji: '👑' },
+  { min: 3000, title: 'Legend', emoji: '🌟' },
+];
+const getXpTitle = (xpAmount: number) => XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
+
+const PREMIUM_AVATARS = [
+  { emoji: '🐉', name: 'Dragon', cost: 50 },
+  { emoji: '🦅', name: 'Eagle', cost: 50 },
+  { emoji: '🐺', name: 'Wolf', cost: 75 },
+  { emoji: '🦖', name: 'Dinosaur', cost: 100 },
+  { emoji: '🧙‍♂️', name: 'Wizard', cost: 150 },
+  { emoji: '🦸', name: 'Superhero', cost: 200 },
+  { emoji: '👾', name: 'Alien', cost: 250 },
+  { emoji: '🤴', name: 'Prince', cost: 300 },
+  { emoji: '👸', name: 'Princess', cost: 300 },
+  { emoji: '🦄', name: 'Unicorn', cost: 150 },
+  { emoji: '🐲', name: 'Dragon Face', cost: 100 },
+  { emoji: '🧛', name: 'Vampire', cost: 200 },
+  { emoji: '🧜', name: 'Merperson', cost: 175 },
+  { emoji: '🥷', name: 'Ninja', cost: 250 },
+  { emoji: '🤖', name: 'Robot', cost: 125 },
+];
+
+const THEMES = [
+  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0 },
+  { id: 'dark', name: 'Dark Mode', preview: '⬛', colors: { bg: 'bg-gray-900', card: 'bg-gray-800', text: 'text-white', accent: 'blue' }, cost: 100 },
+  { id: 'ocean', name: 'Ocean', preview: '🌊', colors: { bg: 'bg-cyan-50', card: 'bg-white', text: 'text-stone-900', accent: 'cyan' }, cost: 150 },
+  { id: 'sunset', name: 'Sunset', preview: '🌅', colors: { bg: 'bg-orange-50', card: 'bg-white', text: 'text-stone-900', accent: 'orange' }, cost: 150 },
+  { id: 'neon', name: 'Neon', preview: '💚', colors: { bg: 'bg-gray-950', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 200 },
+  { id: 'forest', name: 'Forest', preview: '🌲', colors: { bg: 'bg-green-50', card: 'bg-white', text: 'text-stone-900', accent: 'green' }, cost: 150 },
+  { id: 'royal', name: 'Royal', preview: '👑', colors: { bg: 'bg-purple-50', card: 'bg-white', text: 'text-stone-900', accent: 'purple' }, cost: 200 },
+];
+
+const POWER_UP_DEFS = [
+  { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 30 },
+  { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 40 },
+  { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
+];
 
 // --- REUSABLE HELP TOOLTIP COMPONENT ---
 // Powered by @floating-ui/react - modern positioning engine
@@ -142,11 +189,13 @@ const HelpIcon = ({ tooltip, position = "bottom" }: { tooltip: string | string[]
 );
 
 export default function App() {
-  type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse";
+  type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder";
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students">("landing");
+  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students" | "shop">("landing");
+  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups">("avatars");
+  const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
   // listener before handleStudentLogin finishes its DB queries).
@@ -165,13 +214,15 @@ export default function App() {
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   const AVATAR_CATEGORIES = {
-    Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜"],
-    Faces: ["😎", "🤓", "🥳", "😊", "🤩", "🥹", "😜", "🤗", "🥰", "😇", "🧐", "🤠"],
-    Sports: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🏉", "🎱", "🏓", "🏸", "🥊", "⛳"],
-    Food: ["🍕", "🍔", "🍟", "🌭", "🍿", "🧁", "🥨", "🍦", "🍩", "🍪", "🎂", "🍰"],
-    Objects: ["🎸", "🎹", "🎺", "🎷", "🪕", "🎻", "🎤", "🎧", "📷", "🎮", "🕹️", "💎"],
-    Nature: ["🌸", "🌺", "🌻", "🌷", "🌹", "🍀", "🌲", "🌳", "🌵", "🌴", "🍄", "🌾"],
-    Space: ["🚀", "🛸", "🌙", "⭐", "🌟", "💫", "✨", "☄️", "🪐", "🌍", "🔥", "💧"]
+    Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜", "🐶", "🐱", "🦈", "🐬", "🦅", "🐝", "🦉"],
+    Faces: ["😎", "🤓", "🥳", "😊", "🤩", "🥹", "😜", "🤗", "🥰", "😇", "🧐", "🤠", "😈", "🤡", "👻", "🤖", "👽", "💀"],
+    Fantasy: ["🧙", "🧛", "🧜", "🧚", "🦸", "🦹", "🧝", "👸", "🤴", "🥷", "🦖", "🐉", "🧞", "🧟", "🎃"],
+    Sports: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🏉", "🎱", "🏓", "🏸", "🥊", "⛳", "🏊", "🚴", "🏄"],
+    Food: ["🍕", "🍔", "🍟", "🌭", "🍿", "🧁", "🥨", "🍦", "🍩", "🍪", "🎂", "🍰", "🍉", "🍇", "🥑"],
+    Objects: ["🎸", "🎹", "🎺", "🎷", "🪕", "🎻", "🎤", "🎧", "📷", "🎮", "🕹️", "💎", "🎨", "🔮", "🏆"],
+    Vehicles: ["🚗", "🚕", "🏎️", "🚓", "🚑", "🚒", "✈️", "🚀", "🛶", "🚲", "🛸", "🚁", "🚂", "⛵", "🛵"],
+    Nature: ["🌸", "🌺", "🌻", "🌷", "🌹", "🍀", "🌲", "🌳", "🌵", "🌴", "🍄", "🌾", "🌈", "❄️", "🌊"],
+    Space: ["🚀", "🛸", "🌙", "⭐", "🌟", "💫", "✨", "☄️", "🪐", "🌍", "🔥", "💧", "🌕", "🌑", "🌌"]
   };
 
   const ASSIGNMENT_TITLE_SUGGESTIONS = [
@@ -217,13 +268,17 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
-  const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]);
+  const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
 
   // --- SMART PASTE STATE ---
   const [pastedText, setPastedText] = useState("");
   const [showPasteDialog, setShowPasteDialog] = useState(false);
   const [pasteMatchedCount, setPasteMatchedCount] = useState(0);
   const [pasteUnmatched, setPasteUnmatched] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [gSheetsUrl, setGSheetsUrl] = useState("");
+  const [gSheetsLoading, setGSheetsLoading] = useState(false);
+  const [showTopicPacks, setShowTopicPacks] = useState(false);
 
   // --- QUICK SEARCH & FILTERS STATE ---
   const [wordSearchQuery, setWordSearchQuery] = useState("");
@@ -270,6 +325,12 @@ export default function App() {
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
 
+  // --- THEME ---
+  const activeThemeConfig = useMemo(() => {
+    const themeId = user?.activeTheme ?? 'default';
+    return THEMES.find(t => t.id === themeId) ?? THEMES[0];
+  }, [user?.activeTheme]);
+
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
@@ -280,7 +341,7 @@ export default function App() {
   const [mistakes, setMistakes] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("hebrew");
+  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
   const [isFinished, setIsFinished] = useState(false);
 
   // --- NEW MODES STATE ---
@@ -288,9 +349,23 @@ export default function App() {
   const [isFlipped, setIsFlipped] = useState(false);
 
   // --- MATCHING MODE STATE ---
-  const [matchingPairs, setMatchingPairs] = useState<{id: number, text: string, type: 'english' | 'hebrew'}[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'hebrew'} | null>(null);
+  const [matchingPairs, setMatchingPairs] = useState<{id: number, text: string, type: 'english' | 'arabic'}[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'arabic'} | null>(null);
   const [matchedIds, setMatchedIds] = useState<number[]>([]);
+
+  // --- LETTER SOUNDS MODE STATE ---
+  const [revealedLetters, setRevealedLetters] = useState(0);
+  const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
+
+  // --- SENTENCE BUILDER MODE STATE ---
+  const [sentenceIndex, setSentenceIndex] = useState(0);
+  const [availableWords, setAvailableWords] = useState<string[]>([]);
+  const [builtSentence, setBuiltSentence] = useState<string[]>([]);
+  const [assignmentSentences, setAssignmentSentences] = useState<string[]>([]);
+  const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
+  const [showTeacherAssignments, setShowTeacherAssignments] = useState(false);
+  const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
 
   // --- RELIABILITY STATE ---
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -379,6 +454,8 @@ export default function App() {
               setStudentProgress((progressResult.data ?? []).map(mapProgress));
             }
             setBadges(userData.badges || []);
+            setXp(userData.xp ?? 0);
+            setStreak(userData.streak ?? 0);
             setView("student-dashboard");
           }
         } else {
@@ -397,7 +474,7 @@ export default function App() {
               uid: supabaseUser.id,
               email: supabaseUser.email || "",
               role: "teacher",
-              displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || "Teacher",
+              displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
             };
             await supabase.from('users').insert(mapUserToDb(newUser));
             setUser(newUser);
@@ -482,7 +559,15 @@ export default function App() {
       isPopStateNavRef.current = false;
       return;
     }
-    window.history.pushState({ view }, '');
+    // When an authenticated user transitions from landing to their dashboard,
+    // replace the landing entry instead of pushing so back doesn't go to login.
+    const isAuthTransition = userRef.current && (view === 'teacher-dashboard' || view === 'student-dashboard')
+      && window.history.state?.view === 'landing';
+    if (isAuthTransition) {
+      window.history.replaceState({ view }, '');
+    } else {
+      window.history.pushState({ view }, '');
+    }
   }, [view]);
 
   // Handle the physical back button (popstate fires on Android hardware back
@@ -490,6 +575,11 @@ export default function App() {
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       const prevView = e.state?.view as typeof view | undefined;
+      // Don't navigate back to landing if user is logged in
+      if (prevView === 'landing' && userRef.current) {
+        window.history.pushState({ view }, '');
+        return;
+      }
       if (prevView) {
         isPopStateNavRef.current = true;
         setView(prevView);
@@ -737,6 +827,86 @@ export default function App() {
     setPasteMatchedCount(0);
   };
 
+  // Tag-style single word entry
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter" || !tagInput.trim()) return;
+    e.preventDefault();
+    const word: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
+    setCustomWords(prev => [...prev, word]);
+    setSelectedWords(prev => [...prev, word.id]);
+    setSelectedLevel("Custom");
+    setTagInput("");
+  };
+
+  // Excel (.xlsx) upload
+  const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
+      const words: Word[] = rows.slice(1).map((row, idx) => ({
+        id: 6000 + idx,
+        english: String(row[0] ?? "").trim(),
+        hebrew: String(row[1] ?? "").trim(),
+        arabic: String(row[2] ?? "").trim(),
+        level: "Custom" as const,
+      })).filter(w => w.english);
+      if (words.length === 0) { showToast("No valid words found in Excel file.", "error"); return; }
+      setCustomWords(prev => [...prev, ...words]);
+      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      setSelectedLevel("Custom");
+      showToast(`Imported ${words.length} words from Excel.`, "success");
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
+  // Word (.docx) upload — extract text then use smart paste logic
+  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      setPastedText(result.value);
+      showToast("Word document text extracted — click Import Words to continue.", "info");
+    } catch {
+      showToast("Could not read Word document.", "error");
+    }
+    e.target.value = "";
+  };
+
+  // Google Sheets URL import
+  const handleGSheetsImport = async () => {
+    if (!gSheetsUrl.trim()) return;
+    setGSheetsLoading(true);
+    try {
+      const csvUrl = gSheetsUrl.replace(/\/edit.*$/, "/export?format=csv");
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error("Could not fetch sheet");
+      const text = await res.text();
+      const lines = text.split("\n");
+      const words: Word[] = lines.slice(1).map((line, idx) => {
+        const [english, hebrew, arabic] = line.split(",");
+        return { id: 7000 + idx, english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
+      }).filter(w => w.english);
+      if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
+      setCustomWords(prev => [...prev, ...words]);
+      setSelectedWords(prev => [...prev, ...words.map(w => w.id)]);
+      setSelectedLevel("Custom");
+      setGSheetsUrl("");
+      showToast(`Imported ${words.length} words from Google Sheets.`, "success");
+    } catch {
+      showToast("Could not import from Google Sheets. Make sure the sheet is public and the URL is correct.", "error");
+    } finally {
+      setGSheetsLoading(false);
+    }
+  };
+
   // --- PERFORMANCE: Memoized toggle function to prevent re-renders
   const toggleWordSelection = useCallback((wordId: number) => {
     setSelectedWords(prev => {
@@ -749,8 +919,11 @@ export default function App() {
   }, []);
 
   const currentLevelWords = useMemo(() => {
-    let words = selectedLevel === "Band 1" ? BAND_1_WORDS :
-                 selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
+    // When searching, search ALL words (both bands + custom) regardless of selected tab
+    let words = wordSearchQuery.trim()
+      ? [...ALL_WORDS, ...customWords.filter(cw => !ALL_WORDS.some(aw => aw.id === cw.id))]
+      : selectedLevel === "Band 1" ? BAND_1_WORDS
+      : selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
 
     // Enhanced multi-language search with fuzzy matching
     if (wordSearchQuery.trim()) {
@@ -799,7 +972,8 @@ export default function App() {
       title: assignmentTitle,
       deadline: assignmentDeadline || null,
       createdAt: new Date().toISOString(),
-      allowedModes: assignmentModes
+      allowedModes: assignmentModes,
+      sentences: assignmentSentences.filter(s => s.trim()),
     };
 
     try {
@@ -811,6 +985,7 @@ export default function App() {
         deadline: newAssignment.deadline,
         created_at: newAssignment.createdAt,
         allowed_modes: newAssignment.allowedModes,
+        sentences: newAssignment.sentences,
       });
       if (error) throw error;
       showToast("Assignment created successfully!", "success");
@@ -818,7 +993,8 @@ export default function App() {
       setSelectedWords([]);
       setAssignmentTitle("");
       setAssignmentDeadline("");
-      setAssignmentModes(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]);
+      setAssignmentModes(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
+      setAssignmentSentences([]);
     } catch (error) {
       handleDbError(error, OperationType.CREATE, "assignments");
     }
@@ -948,6 +1124,8 @@ export default function App() {
       setStudentProgress((progressResult.data ?? []).map(mapProgress));
       setUser(userData);
       setBadges(userData.badges || []);
+      setXp(userData.xp ?? 0);
+      setStreak(userData.streak ?? 0);
 
       // Join Live Challenge
       if (socket) {
@@ -1052,6 +1230,15 @@ export default function App() {
     setAllScores(allRows);
   };
 
+  const fetchTeacherAssignments = async () => {
+    if (!user || user.role !== "teacher" || classes.length === 0) return;
+    setTeacherAssignmentsLoading(true);
+    const classIds = classes.map(c => c.id);
+    const { data } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
+    setTeacherAssignments((data ?? []).map(mapAssignment));
+    setTeacherAssignmentsLoading(false);
+  };
+
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
   const currentWord = gameWords[currentIndex];
@@ -1120,13 +1307,81 @@ export default function App() {
       const shuffled = shuffle(gameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
-        ...shuffled.map(w => ({ id: w.id, text: w.hebrew, type: 'hebrew' as const }))
+        ...shuffled.map(w => ({ id: w.id, text: w.arabic || w.hebrew, type: 'arabic' as const }))
       ]);
       setMatchingPairs(pairs);
       setMatchedIds([]);
       setSelectedMatch(null);
     }
   }, [view, showModeSelection, gameMode, gameWords]);
+
+  // Letter Sounds: reveal one letter at a time, speak each letter
+  useEffect(() => {
+    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "letter-sounds" || !currentWord || isFinished) return;
+    setRevealedLetters(0);
+    const word = currentWord.english;
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setRevealedLetters(i);
+      speak(word[i - 1]);
+      if (i >= word.length) clearInterval(interval);
+    }, 600);
+    return () => clearInterval(interval);
+  }, [currentIndex, view, showModeSelection, showModeIntro, gameMode, currentWord, isFinished]);
+
+  // Sentence Builder: load sentences from active assignment
+  useEffect(() => {
+    if (view !== "game" || showModeSelection || gameMode !== "sentence-builder" || !activeAssignment) return;
+    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
+    const validSentences = sentences.filter(s => s.trim().length > 0);
+    if (validSentences.length > 0) {
+      setSentenceIndex(0);
+      const words = shuffle(validSentences[0].split(" ").filter(Boolean));
+      setAvailableWords(words);
+      setBuiltSentence([]);
+      setSentenceFeedback(null);
+    }
+  }, [view, showModeSelection, gameMode, activeAssignment]);
+
+  const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
+    if (fromAvailable) {
+      setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
+      setBuiltSentence(prev => [...prev, word]);
+    } else {
+      setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
+      setAvailableWords(prev => [...prev, word]);
+    }
+  };
+
+  const handleSentenceCheck = () => {
+    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
+    const validSentences = sentences.filter(s => s.trim().length > 0);
+    const target = validSentences[sentenceIndex]?.trim().toLowerCase();
+    const built = builtSentence.join(" ").toLowerCase();
+    if (built === target) {
+      setSentenceFeedback("correct");
+      speak(validSentences[sentenceIndex]);
+      const newScore = score + 20;
+      setScore(newScore);
+      if (socket && user?.classCode) socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+      setTimeout(() => {
+        const next = sentenceIndex + 1;
+        if (next >= validSentences.length) {
+          setIsFinished(true);
+          saveScore();
+        } else {
+          setSentenceIndex(next);
+          setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
+          setBuiltSentence([]);
+          setSentenceFeedback(null);
+        }
+      }, 1800);
+    } else {
+      setSentenceFeedback("wrong");
+      setTimeout(() => { setBuiltSentence([]); setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean))); setSentenceFeedback(null); }, 1200);
+    }
+  };
 
   const handleExitGame = () => {
     setIsFinished(false);
@@ -1139,6 +1394,12 @@ export default function App() {
     setSelectedMatch(null);
     setIsFlipped(false);
     setTfOption(null);
+    setRevealedLetters(0);
+    setSentenceIndex(0);
+    setAvailableWords([]);
+    setBuiltSentence([]);
+    setSentenceFeedback(null);
+    setHiddenOptions([]);
 
     if (user?.role === "teacher") {
       setView("teacher-dashboard");
@@ -1160,18 +1421,17 @@ export default function App() {
     setSaveError(null);
 
     const xpEarned = score;
-    setXp(prev => prev + xpEarned);
-
-    // Streak logic: if score >= 80, increment streak
-    if (score >= 80) {
-      setStreak(prev => prev + 1);
-    } else {
-      setStreak(0);
-    }
+    const newXp = xp + xpEarned;
+    const newStreak = score >= 80 ? streak + 1 : 0;
+    setXp(newXp);
+    setStreak(newStreak);
 
     if (score === 100) await awardBadge("🎯 Perfect Score");
-    if (streak >= 5) await awardBadge("🔥 Streak Master");
-    if (xp >= 500) await awardBadge("💎 XP Hunter");
+    if (newStreak >= 5) await awardBadge("🔥 Streak Master");
+    if (newXp >= 500) await awardBadge("💎 XP Hunter");
+
+    // Persist XP and streak to database
+    await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
 
     // Get current auth session UID to ensure RLS policy compatibility
     const { data: { session } } = await supabase.auth.getSession();
@@ -1240,7 +1500,7 @@ export default function App() {
     }
   };
 
-  const handleMatchClick = (item: {id: number, type: 'english' | 'hebrew'}) => {
+  const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
     if (matchedIds.includes(item.id)) return;
     
     if (!selectedMatch) {
@@ -1291,6 +1551,7 @@ export default function App() {
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
+          setHiddenOptions([]);
         } else {
           setIsFinished(true);
           saveScore();
@@ -1534,12 +1795,12 @@ export default function App() {
                       </div>
 
                       {/* Category Tabs */}
-                      <div className="flex flex-wrap gap-1 mb-4">
+                      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
                         {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map(category => (
                           <button
                             key={category}
                             onClick={() => setSelectedAvatarCategory(category)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-md ${
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md whitespace-nowrap flex-shrink-0 ${
                               selectedAvatarCategory === category
                                 ? "bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 text-white shadow-lg shadow-blue-200"
                                 : "bg-stone-200 text-stone-600 hover:bg-stone-300"
@@ -1551,12 +1812,12 @@ export default function App() {
                       </div>
 
                       {/* Avatar Grid */}
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 justify-items-center">
                         {AVATAR_CATEGORIES[selectedAvatarCategory].map(a => (
                           <button
                             key={a}
                             onClick={() => setStudentAvatar(a)}
-                            className={`w-9.5 h-9.5 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-lg sm:text-xl transition-all ${
+                            className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-xl text-2xl sm:text-3xl transition-all ${
                               studentAvatar === a
                                 ? "bg-gradient-to-br from-blue-300 via-blue-500 to-blue-800 shadow-xl shadow-blue-300 ring-2 ring-blue-400 scale-110"
                                 : "bg-white hover:bg-gradient-to-br hover:from-stone-50 hover:to-stone-100 hover:scale-105 shadow-sm"
@@ -1639,7 +1900,7 @@ export default function App() {
 
   if (user?.role === "student" && view === "student-dashboard") {
     return (
-      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
+      <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-wrap justify-between items-center gap-4 mb-6 sm:mb-8">
             <div className="flex items-center gap-3 sm:gap-4">
@@ -1649,19 +1910,33 @@ export default function App() {
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
                 <p className="text-stone-500 font-bold text-base sm:text-sm">Class Code: <button onClick={() => { navigator.clipboard.writeText(user.classCode || ""); setCopiedCode(user.classCode || ""); setTimeout(() => setCopiedCode(null), 2000); }} className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-mono hover:bg-blue-100 active:scale-95 transition-all inline-flex items-center gap-1" title="Tap to copy code">{user.classCode} {copiedCode === user.classCode ? <Check size={14} className="text-blue-700" /> : <Copy size={14} className="text-blue-400" />}</button></p>
-                {badges.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {badges.map(badge => (
-                      <div key={badge} className="bg-blue-50 text-blue-900 px-3 py-1.5 rounded-full font-bold text-sm flex items-center gap-1">
-                        <Trophy size={14} />
-                        {badge}
-                      </div>
-                    ))}
+                <div className="mt-2 flex flex-wrap gap-2 items-center">
+                  <div className="bg-amber-50 text-amber-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-amber-200">
+                    <Zap size={14} /> {xp} XP
                   </div>
-                )}
+                  <div className="bg-purple-50 text-purple-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-purple-200">
+                    {getXpTitle(xp).emoji} {getXpTitle(xp).title}
+                  </div>
+                  {streak > 0 && (
+                    <div className="bg-orange-50 text-orange-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-orange-200">
+                      🔥 {streak} streak
+                    </div>
+                  )}
+                  {badges.map(badge => (
+                    <div key={badge} className="bg-blue-50 text-blue-900 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1">
+                      <Trophy size={14} />
+                      {badge}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm">Logout</button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
+                🛍️ Shop
+              </button>
+              <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm">Logout</button>
+            </div>
           </div>
 
           {studentAssignments.length > 0 && (
@@ -1672,18 +1947,18 @@ export default function App() {
                   className="flex-1 h-5 sm:h-4 [&::-webkit-progress-bar]:bg-stone-100 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600 rounded-full overflow-hidden"
                   max={100}
                   value={toProgressValue((studentAssignments.filter(a => {
-                    const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                    const allowedModes = (a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]).filter(m => m !== "flashcards");
                     const completedModes = new Set(
-                      studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
+                      studentProgress.filter(p => p.assignmentId === a.id && p.mode !== "flashcards").map(p => p.mode)
                     ).size;
                     return completedModes >= allowedModes.length;
                   }).length / studentAssignments.length) * 100)}
                 />
                 <span className="font-bold text-stone-500 text-sm sm:text-sm">
                   {studentAssignments.filter(a => {
-                    const allowedModes = a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                    const allowedModes = (a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]).filter(m => m !== "flashcards");
                     const completedModes = new Set(
-                      studentProgress.filter(p => p.assignmentId === a.id).map(p => p.mode)
+                      studentProgress.filter(p => p.assignmentId === a.id && p.mode !== "flashcards").map(p => p.mode)
                     ).size;
                     return completedModes >= allowedModes.length;
                   }).length} / {studentAssignments.length}
@@ -1700,17 +1975,17 @@ export default function App() {
             ) : (
               <div className="space-y-5 sm:space-y-4">
                 {studentAssignments.map((assignment, assignmentIdx) => {
-                  const allowedModes = assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+                  const allowedModes = (assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]).filter(m => m !== "flashcards");
                   const totalModes = allowedModes.length;
 
-                  // Find unique modes completed for this assignment
+                  // Find unique modes completed for this assignment (flashcards excluded from progress)
                   const completedModes = new Set(
                     studentProgress
-                      .filter(p => p.assignmentId === assignment.id)
+                      .filter(p => p.assignmentId === assignment.id && p.mode !== "flashcards")
                       .map(p => p.mode)
                   ).size;
 
-                  const progressPercentage = Math.min(100, Math.round((completedModes / totalModes) * 100));
+                  const progressPercentage = Math.min(100, Math.round((completedModes / Math.max(totalModes, 1)) * 100));
                   const isComplete = completedModes >= totalModes;
 
                   // Cycle through accent colors for visual differentiation
@@ -1768,6 +2043,202 @@ export default function App() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- SHOP VIEW ---
+  if (user?.role === "student" && view === "shop") {
+    const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
+      if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
+      const newXp = xp - avatar.cost;
+      const newUnlocked = [...(user.unlockedAvatars ?? []), avatar.emoji];
+      setXp(newXp);
+      setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
+      await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+      showToast(`Unlocked ${avatar.name}!`, "success");
+    };
+    const equipAvatar = async (emoji: string) => {
+      setUser(prev => prev ? { ...prev, avatar: emoji } : prev);
+      await supabase.from('users').update({ avatar: emoji }).eq('uid', user.uid);
+      showToast("Avatar equipped!", "success");
+    };
+    const purchaseTheme = async (theme: typeof THEMES[0]) => {
+      if (xp < theme.cost) { showToast("Not enough XP!", "error"); return; }
+      const newXp = xp - theme.cost;
+      const newUnlocked = [...(user.unlockedThemes ?? []), theme.id];
+      setXp(newXp);
+      setUser(prev => prev ? { ...prev, unlockedThemes: newUnlocked } : prev);
+      await supabase.from('users').update({ xp: newXp, unlocked_themes: newUnlocked }).eq('uid', user.uid);
+      showToast(`Unlocked ${theme.name}!`, "success");
+    };
+    const equipTheme = async (themeId: string) => {
+      setUser(prev => prev ? { ...prev, activeTheme: themeId } : prev);
+      await supabase.from('users').update({ active_theme: themeId }).eq('uid', user.uid);
+      showToast("Theme applied!", "success");
+    };
+    const purchasePowerUp = async (powerUp: typeof POWER_UP_DEFS[0]) => {
+      if (xp < powerUp.cost) { showToast("Not enough XP!", "error"); return; }
+      const newXp = xp - powerUp.cost;
+      const newPowerUps = { ...(user.powerUps ?? {}), [powerUp.id]: ((user.powerUps ?? {})[powerUp.id] ?? 0) + 1 };
+      setXp(newXp);
+      setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
+      await supabase.from('users').update({ xp: newXp, power_ups: newPowerUps }).eq('uid', user.uid);
+      showToast(`Got ${powerUp.name}!`, "success");
+    };
+
+    const activeThemeConfig = THEMES.find(t => t.id === (user.activeTheme ?? 'default')) ?? THEMES[0];
+
+    return (
+      <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => setView("student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
+              ← Back
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl font-black text-lg flex items-center gap-2 border-2 border-amber-200">
+                <Zap size={18} /> {xp} XP
+              </div>
+            </div>
+          </div>
+
+          <h1 className={`text-3xl font-black mb-6 ${activeThemeConfig.colors.text}`}>🛍️ Shop</h1>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6">
+            {(["avatars", "themes", "powerups"] as const).map(tab => (
+              <button key={tab} onClick={() => setShopTab(tab)}
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${shopTab === tab ? "bg-blue-600 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
+                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : "⚡ Power-ups"}
+              </button>
+            ))}
+          </div>
+
+          {/* Avatar Shop */}
+          {shopTab === "avatars" && (
+            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
+              <h2 className="text-xl font-black mb-4">Premium Avatars</h2>
+              <p className="text-stone-500 text-sm mb-4">Unlock special avatars to stand out!</p>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {PREMIUM_AVATARS.map(avatar => {
+                  const isOwned = (user.unlockedAvatars ?? []).includes(avatar.emoji);
+                  const isEquipped = user.avatar === avatar.emoji;
+                  const canAfford = xp >= avatar.cost;
+                  return (
+                    <div key={avatar.emoji} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${isEquipped ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
+                      <span className="text-4xl mb-2">{avatar.emoji}</span>
+                      <span className="text-xs font-bold text-stone-700 text-center">{avatar.name}</span>
+                      {isEquipped ? (
+                        <span className="text-xs font-bold text-blue-600 mt-1">Equipped</span>
+                      ) : isOwned ? (
+                        <button onClick={() => equipAvatar(avatar.emoji)} className="text-xs font-bold text-green-600 mt-1 hover:text-green-800 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200 transition-all">Equip</button>
+                      ) : (
+                        <button onClick={() => purchaseAvatar(avatar)} disabled={!canAfford}
+                          className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
+                          {avatar.cost} XP
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Theme Shop */}
+          {shopTab === "themes" && (
+            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
+              <h2 className="text-xl font-black mb-4">Themes</h2>
+              <p className="text-stone-500 text-sm mb-4">Customize your game experience!</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {THEMES.map(theme => {
+                  const isOwned = theme.cost === 0 || (user.unlockedThemes ?? []).includes(theme.id);
+                  const isActive = (user.activeTheme ?? 'default') === theme.id;
+                  const canAfford = xp >= theme.cost;
+                  return (
+                    <div key={theme.id} className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all ${isActive ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
+                      <div className={`w-full h-16 rounded-xl mb-3 ${theme.colors.bg} border border-stone-200 flex items-center justify-center`}>
+                        <span className="text-2xl">{theme.preview}</span>
+                      </div>
+                      <span className="text-sm font-bold text-stone-700">{theme.name}</span>
+                      {isActive ? (
+                        <span className="text-xs font-bold text-blue-600 mt-1">Active</span>
+                      ) : isOwned ? (
+                        <button onClick={() => equipTheme(theme.id)} className="text-xs font-bold text-green-600 mt-1 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200 transition-all">Apply</button>
+                      ) : (
+                        <button onClick={() => purchaseTheme(theme)} disabled={!canAfford}
+                          className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
+                          {theme.cost} XP
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Power-ups Shop */}
+          {shopTab === "powerups" && (
+            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
+              <h2 className="text-xl font-black mb-4">Power-ups</h2>
+              <p className="text-stone-500 text-sm mb-4">Buy boosts to use during games!</p>
+              <div className="space-y-3">
+                {POWER_UP_DEFS.map(powerUp => {
+                  const owned = (user.powerUps ?? {})[powerUp.id] ?? 0;
+                  const canAfford = xp >= powerUp.cost;
+                  return (
+                    <div key={powerUp.id} className="flex items-center gap-4 p-4 bg-stone-50 rounded-2xl border-2 border-stone-100">
+                      <span className="text-3xl">{powerUp.emoji}</span>
+                      <div className="flex-1">
+                        <p className="font-bold text-stone-800">{powerUp.name}</p>
+                        <p className="text-xs text-stone-500">{powerUp.desc}</p>
+                      </div>
+                      <div className="text-center">
+                        {owned > 0 && <p className="text-xs font-bold text-blue-600 mb-1">×{owned}</p>}
+                        <button onClick={() => purchasePowerUp(powerUp)} disabled={!canAfford}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${canAfford ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-stone-100 text-stone-400 cursor-not-allowed"}`}>
+                          {powerUp.cost} XP
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* XP Title Progress */}
+          <div className="mt-6 bg-white rounded-3xl p-6 shadow-md border-2 border-purple-100">
+            <h2 className="text-lg font-black mb-3 flex items-center gap-2">{getXpTitle(xp).emoji} {getXpTitle(xp).title}</h2>
+            <div className="space-y-2">
+              {XP_TITLES.map((tier, i) => {
+                const nextTier = XP_TITLES[i + 1];
+                const isCurrentTier = xp >= tier.min && (!nextTier || xp < nextTier.min);
+                const isCompleted = nextTier ? xp >= nextTier.min : false;
+                const progress = nextTier ? Math.min(100, Math.round(((xp - tier.min) / (nextTier.min - tier.min)) * 100)) : 100;
+                return (
+                  <div key={tier.title} className={`flex items-center gap-3 p-2 rounded-xl ${isCurrentTier ? "bg-purple-50 border border-purple-200" : ""}`}>
+                    <span className="text-lg">{tier.emoji}</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs font-bold mb-0.5">
+                        <span className={isCompleted ? "text-green-600" : isCurrentTier ? "text-purple-700" : "text-stone-400"}>{tier.title}</span>
+                        <span className="text-stone-400">{tier.min} XP</span>
+                      </div>
+                      {nextTier && (
+                        <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${isCompleted ? "bg-green-500" : isCurrentTier ? "bg-purple-500" : "bg-stone-200"}`} style={{ width: `${isCompleted ? 100 : isCurrentTier ? progress : 0}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -1911,6 +2382,64 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* My Assignments - Collapsible */}
+          <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100 mt-4">
+            <button
+              className="w-full flex justify-between items-center"
+              onClick={() => {
+                const next = !showTeacherAssignments;
+                setShowTeacherAssignments(next);
+                if (next && teacherAssignments.length === 0) fetchTeacherAssignments();
+              }}
+            >
+              <h2 className="text-base sm:text-xl font-bold flex items-center gap-2"><BookOpen className="text-blue-700" size={16} /> My Assignments</h2>
+              <span className="text-stone-400">{showTeacherAssignments ? "▲" : "▼"}</span>
+            </button>
+            {showTeacherAssignments && (
+              <div className="mt-4">
+                {teacherAssignmentsLoading ? (
+                  <p className="text-stone-400 text-sm italic">Loading...</p>
+                ) : teacherAssignments.length === 0 ? (
+                  <p className="text-stone-400 italic text-xs sm:text-sm">No assignments yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {teacherAssignments.map(a => {
+                      const cls = classes.find(c => c.id === a.classId);
+                      return (
+                        <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-50/50 rounded-xl border-2 border-blue-100">
+                          <div className="min-w-0">
+                            <p className="font-bold text-stone-800 text-sm truncate">{a.title}</p>
+                            <p className="text-xs text-stone-500">{cls?.name || "Unknown class"} · {a.wordIds.length} words</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              // Pre-fill assignment creation with this assignment's words
+                              const knownIds = a.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
+                              const unknownWords: Word[] = (a.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
+                              setSelectedWords(a.wordIds);
+                              setCustomWords(unknownWords);
+                              setAssignmentTitle(a.title + " (Copy)");
+                              setAssignmentModes(a.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+                              setAssignmentSentences(a.sentences ?? []);
+                              if (knownIds.some(id => BAND_1_WORDS.some(w => w.id === id))) setSelectedLevel("Band 1");
+                              else if (unknownWords.length > 0) setSelectedLevel("Custom");
+                              else setSelectedLevel("Band 2");
+                              setSelectedClass(cls ?? selectedClass);
+                              setView("create-assignment");
+                            }}
+                            className="flex-shrink-0 px-4 py-2 bg-amber-100 text-amber-700 font-bold text-xs rounded-xl hover:bg-amber-200 border-2 border-amber-200 transition-all"
+                          >
+                            📋 Duplicate
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2121,20 +2650,20 @@ export default function App() {
                   <p className="font-bold text-stone-700">Choose Game Modes:</p>
                   <button 
                     onClick={() => {
-                      const all = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
-                      if (assignmentModes.length === all.length) {
-                        setAssignmentModes([]);
+                      const toggleable = ["classic", "listening", "spelling", "matching", "true-false", "scramble", "reverse", "letter-sounds", "sentence-builder"];
+                      if (assignmentModes.length >= toggleable.length + 1) {
+                        setAssignmentModes(["flashcards"]);
                       } else {
-                        setAssignmentModes(all);
+                        setAssignmentModes(["flashcards", ...toggleable]);
                       }
                     }}
                     className="text-xs font-bold text-blue-700 hover:text-blue-800"
                   >
-                    {assignmentModes.length === 8 ? "Deselect All" : "Select All"}
+                    {assignmentModes.length >= 10 ? "Deselect All" : "Select All"}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"] as const).map(mode => {
+                  {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"] as const).map(mode => {
                     const modeEmojis: Record<string, string> = {
                       classic: '📝',
                       listening: '🎧',
@@ -2143,15 +2672,18 @@ export default function App() {
                       'true-false': '✓',
                       flashcards: '🎴',
                       scramble: '🔤',
-                      reverse: '🔄'
+                      reverse: '🔄',
+                      'letter-sounds': '🔡',
+                      'sentence-builder': '🧩',
                     };
+                    const isFlashcards = mode === "flashcards";
                     return (
                       <button
                         key={mode}
-                        onClick={() => setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${assignmentModes.includes(mode) ? "bg-blue-500 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
+                        onClick={() => !isFlashcards && setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
+                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${isFlashcards ? "bg-blue-500 text-white shadow-md opacity-80 cursor-default" : assignmentModes.includes(mode) ? "bg-blue-500 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
                       >
-                        {modeEmojis[mode]} {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                        {modeEmojis[mode]} {mode.charAt(0).toUpperCase() + mode.slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
                       </button>
                     );
                   })}
@@ -2159,76 +2691,113 @@ export default function App() {
               </div>
             </div>
 
-            {/* Smart Paste Box - NEW */}
-            <div className="bg-blue-50 rounded-2xl p-3 mb-3 border-2 border-blue-100">
-              <div className="flex items-center gap-1 mb-1.5">
-                <span className="text-lg">📋</span>
-                <h3 className="font-bold text-blue-900 text-sm">Import Word List</h3>
-                <span className="text-xs text-blue-600 ml-auto">Paste from anywhere</span>
+            {/* Sentences for Sentence Builder mode */}
+            {assignmentModes.includes("sentence-builder") && (
+              <div className="bg-teal-50 border-2 border-teal-100 rounded-2xl p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🧩</span>
+                  <h3 className="font-bold text-teal-900 text-sm">Sentences for Sentence Builder</h3>
+                  <span className="text-xs text-teal-600 ml-auto">One sentence per line</span>
+                </div>
+                <textarea
+                  value={assignmentSentences.join("\n")}
+                  onChange={(e) => setAssignmentSentences(e.target.value.split("\n"))}
+                  placeholder={"Type one sentence per line using your selected words.\n\nExamples:\nThe dog runs fast\nShe likes going to school\nWe play football every day"}
+                  className="w-full p-2.5 rounded-xl border border-teal-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  rows={5}
+                />
+                <p className="text-xs text-teal-600 mt-1">{assignmentSentences.filter(s => s.trim()).length} sentence(s) added</p>
               </div>
-              <textarea
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                placeholder="Paste Hebrew and/or English words here...
+            )}
 
-Examples:
-• שלום, peace, hello
-• תפוח, apple
-• apple, banana, orange
-• One word per line
-• Separated by commas or semicolons"
-                className="w-full p-2.5 rounded-xl border border-blue-200 text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
-                rows={12}
-              />
-              <div className="flex justify-between items-center mt-1.5">
-                <span className="text-sm text-blue-600 font-medium">
-                  {pastedText.trim() && `✓ ${pastedText.split(/[\n,;]+/).filter(w => w.trim()).length} word(s) detected`}
-                </span>
+            {/* ── Add Words ──────────────────────────────────────── */}
+            <div className="bg-blue-50 rounded-2xl p-3 mb-3 border-2 border-blue-100 space-y-3">
+              <div className="flex items-center gap-1">
+                <span className="text-lg">✏️</span>
+                <h3 className="font-bold text-blue-900 text-sm">Add Words</h3>
+              </div>
+
+              {/* Tag-style single word entry */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagInputKeyDown}
+                  placeholder="Type a word and press Enter"
+                  className="flex-1 p-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
                 <button
-                  onClick={handlePasteSubmit}
-                  disabled={!pastedText.trim()}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all"
-                >
-                  Import Words
+                  onClick={() => { if (!tagInput.trim()) return; const w: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" }; setCustomWords(prev => [...prev, w]); setSelectedWords(prev => [...prev, w.id]); setSelectedLevel("Custom"); setTagInput(""); }}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all"
+                >+ Add</button>
+              </div>
+
+              {/* Smart Paste textarea */}
+              <div>
+                <p className="text-xs text-blue-700 font-bold mb-1">📋 Paste a list (comma, newline, tab separated)</p>
+                <textarea
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  placeholder={"Paste words here…\nExamples: apple, banana\nOr one per line\nWorks with Excel copy-paste too"}
+                  className="w-full p-2.5 rounded-xl border border-blue-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  rows={4}
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-xs text-blue-600">{pastedText.trim() && `${pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words detected`}</span>
+                  <button onClick={handlePasteSubmit} disabled={!pastedText.trim()} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 disabled:opacity-50 transition-all">Import Words</button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Import from file or URL ─────────────────────── */}
+            <div className="bg-stone-50 rounded-2xl p-3 mb-3 border-2 border-stone-200 space-y-2">
+              <p className="text-xs font-bold text-stone-500 uppercase">Import from file or URL</p>
+              <div className="flex flex-wrap gap-2">
+                <label className="flex items-center gap-1.5 px-3 py-2 bg-stone-800 text-white rounded-xl font-bold cursor-pointer hover:bg-black text-xs whitespace-nowrap">
+                  <Upload size={14} /> .csv / .txt
+                  <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} className="hidden" />
+                </label>
+                <label className="flex items-center gap-1.5 px-3 py-2 bg-green-700 text-white rounded-xl font-bold cursor-pointer hover:bg-green-800 text-xs whitespace-nowrap">
+                  <Upload size={14} /> Excel (.xlsx)
+                  <input type="file" accept=".xlsx" onChange={handleXlsxUpload} className="hidden" />
+                </label>
+                <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
+                  <Upload size={14} /> Word (.docx)
+                  <input type="file" accept=".docx" onChange={handleDocxUpload} className="hidden" />
+                </label>
+                <label className={`flex items-center gap-1.5 px-3 py-2 text-white rounded-xl font-bold cursor-pointer text-xs whitespace-nowrap relative overflow-hidden ${isOcrProcessing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                  <Camera size={14} /> {isOcrProcessing ? `Scanning… ${ocrProgress}%` : "Scan (OCR)"}
+                  <input type="file" accept="image/*" capture="environment" onChange={handleOcrUpload} className="hidden" disabled={isOcrProcessing} />
+                  {isOcrProcessing && <progress className="absolute bottom-0 left-0 h-1 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white/50 [&::-moz-progress-bar]:bg-white/50" max={100} value={toProgressValue(ocrProgress)} />}
+                </label>
+              </div>
+              {/* Google Sheets URL */}
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={gSheetsUrl}
+                  onChange={(e) => setGSheetsUrl(e.target.value)}
+                  placeholder="Paste public Google Sheets URL…"
+                  className="flex-1 p-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+                <button onClick={handleGSheetsImport} disabled={gSheetsLoading || !gSheetsUrl.trim()} className="px-3 py-2 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap">
+                  {gSheetsLoading ? "Importing…" : "🔗 Import"}
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-nowrap gap-2 sm:gap-3 mb-6 overflow-x-auto pb-2">
+            {/* ── Browse & Pick ──────────────────────────────── */}
+            <div className="flex flex-nowrap gap-2 mb-3 overflow-x-auto pb-1">
               {(["Band 1", "Band 2", "Custom"] as const).map(level => (
-                <button
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg shadow-blue-100" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
-                >
-                  {level}
+                <button key={level} onClick={() => setSelectedLevel(level)}
+                  className={`px-4 py-2 rounded-xl font-bold transition-all text-xs whitespace-nowrap ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
+                  {level} {level === "Custom" && customWords.length > 0 && `(${customWords.length})`}
                 </button>
               ))}
-              <label className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-stone-900 text-white rounded-xl font-bold cursor-pointer hover:bg-black transition-all whitespace-nowrap text-xs sm:text-sm">
-                <Upload size={16} />
-                <span className="hidden sm:inline">Upload CSV</span>
-                <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
-              </label>
-
-              <label className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 text-white rounded-xl font-bold cursor-pointer transition-all relative overflow-hidden whitespace-nowrap text-xs sm:text-sm ${isOcrProcessing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                <Camera size={16} />
-                {isOcrProcessing ? `Scanning... ${ocrProgress}%` : <span className="hidden sm:inline">Scan Page (OCR)</span>}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleOcrUpload}
-                  className="hidden"
-                  disabled={isOcrProcessing}
-                />
-                {isOcrProcessing && (
-                  <progress
-                    className="absolute bottom-0 left-0 h-1 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white/50 [&::-moz-progress-bar]:bg-white/50"
-                    max={100}
-                    value={toProgressValue(ocrProgress)}
-                  />
-                )}
-              </label>
+              <button onClick={() => setShowTopicPacks(true)} className="flex items-center gap-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold text-xs whitespace-nowrap hover:bg-amber-600 transition-all">
+                📦 Topic Packs
+              </button>
             </div>
 
             {/* Browse Word Bank Toggle */}
@@ -2536,6 +3105,58 @@ Examples:
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Topic Packs Modal ─────────────────────────────── */}
+        <AnimatePresence>
+          {showTopicPacks && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              onClick={() => setShowTopicPacks(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-xl font-black text-stone-900">📦 Topic Packs</h3>
+                  <button onClick={() => setShowTopicPacks(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 transition-all">
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-sm text-stone-500 mb-5">Click a topic to add its words to your assignment.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {TOPIC_PACKS.map(pack => {
+                    const alreadyAdded = pack.ids.every(id => selectedWords.includes(id));
+                    return (
+                      <button
+                        key={pack.name}
+                        onClick={() => {
+                          const newIds = pack.ids.filter(id => !selectedWords.includes(id));
+                          setSelectedWords(prev => [...prev, ...newIds]);
+                          setSelectedLevel("Band 1");
+                          setShowTopicPacks(false);
+                        }}
+                        disabled={alreadyAdded}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${alreadyAdded ? "border-green-200 bg-green-50 opacity-70 cursor-default" : "border-amber-100 bg-amber-50 hover:bg-amber-100 hover:border-amber-300"}`}
+                      >
+                        <span className="text-3xl">{pack.icon}</span>
+                        <span className="font-bold text-stone-800 text-sm">{pack.name}</span>
+                        <span className="text-xs text-stone-500">{pack.ids.length} words</span>
+                        {alreadyAdded && <span className="text-xs text-green-600 font-bold">✓ Added</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -2550,10 +3171,12 @@ Examples:
       { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} />, tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"] },
       { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
       { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
+      { id: "letter-sounds", name: "Letter Sounds", desc: "Watch each letter light up and hear its sound.", color: "violet", icon: <span className="text-2xl">🔡</span>, tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"] },
+      { id: "sentence-builder", name: "Sentence Builder", desc: "Tap words in the right order to build the sentence.", color: "teal", icon: <span className="text-2xl">🧩</span>, tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"] },
     ];
 
     const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
-    const filteredModes = modes.filter(m => allowedModes.includes(m.id));
+    const filteredModes = modes.filter(m => m.id === "flashcards" || allowedModes.includes(m.id));
 
     const colorClasses: Record<string, string> = {
       emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
@@ -2564,6 +3187,8 @@ Examples:
       cyan: "bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700",
       indigo: "bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700",
       fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
+      violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
+      teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
     };
 
     const iconColorClasses: Record<string, string> = {
@@ -2575,6 +3200,8 @@ Examples:
       cyan: "text-cyan-600",
       indigo: "text-indigo-600",
       fuchsia: "text-fuchsia-600",
+      violet: "text-violet-600",
+      teal: "text-teal-600",
     };
 
     return (
@@ -3744,6 +4371,8 @@ Examples:
     flashcards: { title: "Flashcards", icon: "🃏", steps: ["Review words at your pace", "Flip to see the answer", "No pressure — just learn!"] },
     scramble: { title: "Word Scramble", icon: "🔤", steps: ["Letters are scrambled", "Type the correct English word", "Unscramble them all!"] },
     reverse: { title: "Reverse Mode", icon: "🔄", steps: ["See the Hebrew/Arabic word", "Pick the English translation", "Reverse of classic!"] },
+    "letter-sounds": { title: "Letter Sounds", icon: "🔡", steps: ["Each letter appears in a color", "Listen to each letter sound", "Type the full word when ready"] },
+    "sentence-builder": { title: "Sentence Builder", icon: "🧩", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
   };
 
   if (showModeIntro) {
@@ -3789,7 +4418,7 @@ Examples:
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col items-center p-2 sm:p-8 font-sans">
+    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans`}>
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -3842,19 +4471,19 @@ Examples:
               exit={{ opacity: 0, y: -20 }}
               className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4"
             >
-              {matchingPairs.map((item, idx) => {
+              <AnimatePresence>
+              {matchingPairs.filter(item => !matchedIds.includes(item.id)).map((item, idx) => {
                 const key = `${item.id}-${item.type}-${idx}`;
                 return (
                 <motion.button
                   key={key}
-                  whileHover={{ scale: matchedIds.includes(item.id) ? 1 : 1.05 }}
+                  initial={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.4, transition: { duration: 0.25 } }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
-                  disabled={matchedIds.includes(item.id)}
-                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg h-20 sm:h-32 flex items-center justify-center transition-all duration-300 ${
-                    matchedIds.includes(item.id) 
-                      ? "bg-blue-50 text-blue-400 shadow-none" 
-                      : selectedMatch?.id === item.id && selectedMatch?.type === item.type
+                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                    selectedMatch?.id === item.id && selectedMatch?.type === item.type
                       ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
                   }`}
@@ -3863,6 +4492,7 @@ Examples:
                 </motion.button>
                 );
               })}
+              </AnimatePresence>
             </motion.div>
           ) : (
             <motion.div
@@ -3920,9 +4550,48 @@ Examples:
                 </div>
               </div>
 
+              {/* Power-up toolbar */}
+              {user?.role === "student" && gameMode !== "flashcards" && gameMode !== "sentence-builder" && !isFinished && (
+                <div className="flex justify-center gap-2 mb-3">
+                  {(gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") && ((user.powerUps ?? {})['fifty_fifty'] ?? 0) > 0 && hiddenOptions.length === 0 && !feedback && (
+                    <button onClick={() => {
+                      const wrong = options.filter(o => o.id !== currentWord.id);
+                      const toHide = shuffle(wrong).slice(0, 2).map(o => o.id);
+                      setHiddenOptions(toHide);
+                      const newPowerUps = { ...(user.powerUps ?? {}), fifty_fifty: ((user.powerUps ?? {})['fifty_fifty'] ?? 1) - 1 };
+                      setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
+                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                    }} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
+                      ✂️ 50/50 <span className="bg-amber-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['fifty_fifty']}</span>
+                    </button>
+                  )}
+                  {((user.powerUps ?? {})['skip'] ?? 0) > 0 && !feedback && (
+                    <button onClick={() => {
+                      setCurrentIndex(prev => Math.min(prev + 1, gameWords.length - 1));
+                      setHiddenOptions([]);
+                      const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
+                      setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
+                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                    }} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
+                      ⏭️ Skip <span className="bg-blue-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['skip']}</span>
+                    </button>
+                  )}
+                  {(gameMode === "spelling" || gameMode === "letter-sounds") && ((user.powerUps ?? {})['reveal_letter'] ?? 0) > 0 && !feedback && spellingInput.length === 0 && (
+                    <button onClick={() => {
+                      if (currentWord) setSpellingInput(currentWord.english[0]);
+                      const newPowerUps = { ...(user.powerUps ?? {}), reveal_letter: ((user.powerUps ?? {})['reveal_letter'] ?? 1) - 1 };
+                      setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
+                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                    }} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
+                      💡 Hint <span className="bg-green-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['reveal_letter']}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
                 <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4">
-                  {options.map((option) => (
+                  {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
                     <button
                       key={option.id}
                       onClick={() => handleAnswer(option)}
@@ -3959,6 +4628,88 @@ Examples:
                   </div>
                 </div>
               ) : (
+              gameMode === "letter-sounds" ? (
+                <div className="max-w-lg mx-auto">
+                  <p className="text-stone-400 text-sm font-bold mb-4 text-center">{currentWord?.[targetLanguage]}</p>
+                  <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6">
+                    {currentWord?.english.split("").map((letter, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={i < revealedLetters ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0.15 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="w-10 h-12 sm:w-14 sm:h-16 rounded-xl font-black text-xl sm:text-2xl flex items-center justify-center border-4"
+                        style={{ color: LETTER_COLORS[i % LETTER_COLORS.length], borderColor: LETTER_COLORS[i % LETTER_COLORS.length], background: LETTER_COLORS[i % LETTER_COLORS.length] + "18" }}
+                      >
+                        {i < revealedLetters ? letter.toUpperCase() : "?"}
+                      </motion.div>
+                    ))}
+                  </div>
+                  {revealedLetters >= (currentWord?.english.length || 99) && (
+                    <form onSubmit={handleSpellingSubmit} className="max-w-sm mx-auto">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={spellingInput}
+                        onChange={(e) => setSpellingInput(e.target.value)}
+                        placeholder="Type the word..."
+                        className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
+                          feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
+                          feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
+                          "border-stone-100 focus:border-stone-900 outline-none"
+                        }`}
+                      />
+                      <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors">Check Answer</button>
+                    </form>
+                  )}
+                </div>
+              ) : gameMode === "sentence-builder" ? (
+                (() => {
+                  const sentences = (activeAssignment as AssignmentData & { sentences?: string[] })?.sentences?.filter(s => s.trim()) || [];
+                  if (sentences.length === 0) return (
+                    <div className="text-center p-8">
+                      <p className="text-stone-400 text-lg">No sentences were added to this assignment.</p>
+                      <p className="text-stone-400 text-sm mt-2">Ask your teacher to add sentences.</p>
+                    </div>
+                  );
+                  return (
+                    <div className="max-w-xl mx-auto">
+                      <p className="text-stone-400 text-xs font-bold uppercase mb-3 text-center">Sentence {sentenceIndex + 1} / {sentences.length}</p>
+                      {/* Built sentence area */}
+                      <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
+                        sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
+                        sentenceFeedback === "wrong" ? "border-rose-500 bg-rose-50" :
+                        "border-stone-200 bg-stone-50"
+                      }`}>
+                        {builtSentence.length === 0 && <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>}
+                        {builtSentence.map((word, i) => (
+                          <motion.button
+                            key={i}
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, false)}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
+                          >{word}</motion.button>
+                        ))}
+                      </div>
+                      {/* Available words */}
+                      <div className="flex flex-wrap gap-2 mb-4 justify-center">
+                        {availableWords.map((word, i) => (
+                          <motion.button
+                            key={i}
+                            onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, true)}
+                            className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
+                          >{word}</motion.button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }} className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">Clear</button>
+                        <button onClick={handleSentenceCheck} disabled={builtSentence.length === 0 || sentenceFeedback !== null} className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50">Check ✓</button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
                 <form onSubmit={handleSpellingSubmit} className="max-w-md mx-auto">
                   <input
                     autoFocus
@@ -3977,6 +4728,7 @@ Examples:
                   )}
                   <button type="submit" className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors">Check Answer</button>
                 </form>
+              )
               )}
             </motion.div>
           )}

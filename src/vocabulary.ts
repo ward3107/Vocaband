@@ -2108,3 +2108,52 @@ export const ALL_WORDS: Word[] = [
   ...BAND_1_WORDS,
   ...BAND_2_WORDS
 ];
+
+// ============================================================================
+// TOPIC PACKS — curated word lists by theme (IDs from ALL_WORDS)
+// ============================================================================
+const byEnglish = (terms: string[]) =>
+  ALL_WORDS.filter(w => terms.includes(w.english.toLowerCase())).map(w => w.id);
+
+export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
+  {
+    name: "Family",
+    icon: "👨‍👩‍👧",
+    ids: byEnglish(["family","mother","father","sister","brother","son","daughter","parent","grandparent","grandmother","grandfather","aunt","uncle","cousin","wife","husband","child","children","baby","relative","marry","wedding","divorce","pregnant","twins"]),
+  },
+  {
+    name: "School",
+    icon: "🏫",
+    ids: byEnglish(["school","class","lesson","teacher","student","homework","exam","test","grade","mark","study","learn","library","subject","history","mathematics","science","english","geography","classroom","pencil","notebook","board","university","college","graduate","education","knowledge","diploma","quiz"]),
+  },
+  {
+    name: "Animals",
+    icon: "🐾",
+    ids: byEnglish(["animal","cat","dog","bird","fish","horse","cow","sheep","lion","tiger","elephant","bear","wolf","fox","rabbit","snake","mouse","rat","chicken","duck","bee","fly","insect","wild","pet","zoo","hunt","bite","feather","wing","tail","paw","fur"]),
+  },
+  {
+    name: "Food & Drink",
+    icon: "🍎",
+    ids: byEnglish(["food","eat","drink","meal","breakfast","lunch","dinner","fruit","vegetable","bread","meat","fish","chicken","egg","rice","soup","salad","sugar","salt","cook","kitchen","restaurant","hungry","thirsty","taste","sweet","sour","fresh","healthy","diet"]),
+  },
+  {
+    name: "Nature",
+    icon: "🌿",
+    ids: byEnglish(["nature","tree","flower","plant","forest","mountain","river","sea","ocean","beach","sky","sun","moon","star","cloud","rain","snow","wind","storm","weather","earth","stone","sand","water","fire","light","dark","green","environment","air"]),
+  },
+  {
+    name: "Travel",
+    icon: "✈️",
+    ids: byEnglish(["travel","trip","journey","holiday","vacation","country","city","airport","plane","train","bus","car","map","hotel","passport","tourist","visit","tour","road","direction","north","south","east","west","arrive","depart","ticket","border","culture","adventure"]),
+  },
+  {
+    name: "Health & Body",
+    icon: "🏥",
+    ids: byEnglish(["health","body","head","hand","foot","eye","ear","nose","mouth","heart","blood","brain","hospital","doctor","medicine","sick","pain","fever","injury","exercise","sleep","rest","strong","weak","breathe","stomach","back","arm","leg","bone"]),
+  },
+  {
+    name: "Feelings",
+    icon: "😊",
+    ids: byEnglish(["happy","sad","angry","scared","worried","excited","bored","proud","lonely","nervous","calm","love","hate","fear","hope","joy","laugh","cry","smile","sorry","shame","jealous","kind","friendly","rude","shy","brave","confident","mood","feeling"]),
+  },
+];
