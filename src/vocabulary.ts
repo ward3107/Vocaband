@@ -14,6 +14,7 @@ export interface Word {
   core?: "Core I" | "Core II";
   pos?: string; // Part of Speech
   recProd?: "Rec" | "Prod" | "Rec/Prod"; // Receptive or Productive or Both
+  sentences?: string[]; // Pre-written example sentences for Sentence Builder
 }
 
 // ============================================================================
