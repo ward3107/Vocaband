@@ -44,8 +44,14 @@ export async function handleDbError(
   operationType: OperationType,
   path: string | null
 ): Promise<never> {
-  // Log only non-PII details in production to avoid leaking user emails/IDs
-  const errorMsg = error instanceof Error ? error.message : String(error);
+  // Log full error details for Supabase errors
+  let errorMsg: string;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const e = error as { message?: string; details?: string; hint?: string; code?: string };
+    errorMsg = [e.message, e.details, e.hint, e.code].filter(Boolean).join(' | ');
+  } else {
+    errorMsg = error instanceof Error ? error.message : String(error);
+  }
   console.error(`Supabase ${operationType} error on ${path}: ${errorMsg}`);
   throw new Error('Database error — please try again.');
 }
