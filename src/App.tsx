@@ -574,6 +574,7 @@ export default function App() {
     // Restore session from a Supabase user.  Called OUTSIDE the auth lock
     // (fire-and-forget from the non-async onAuthStateChange callback).
     const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
+      if (restoreInProgress.current) return;
       restoreInProgress.current = true;
       try {
         const userData = await fetchUserProfile(supabaseUser.id);
@@ -1327,9 +1328,9 @@ export default function App() {
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
       let userData: AppUser;
       if (userResult.data) {
-        userData = { ...mapUser(userResult.data), classCode: trimmedCode };
+        userData = { ...mapUser(userResult.data), classCode: trimmedCode, role: "student", displayName: trimmedName };
         const { error: updateErr } = await supabase
-          .from('users').update({ class_code: trimmedCode }).eq('uid', studentUid);
+          .from('users').update({ class_code: trimmedCode, role: "student", display_name: trimmedName }).eq('uid', studentUid);
         if (updateErr) throw updateErr;
       } else {
         userData = {
@@ -1617,7 +1618,7 @@ export default function App() {
 
   // Sentence Builder: load sentences from active assignment
   useEffect(() => {
-    if (view !== "game" || showModeSelection || gameMode !== "sentence-builder" || !activeAssignment) return;
+    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "sentence-builder" || !activeAssignment) return;
     const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
     const validSentences = sentences.filter(s => s.trim().length > 0);
     if (validSentences.length > 0) {
@@ -1629,7 +1630,7 @@ export default function App() {
       // Speak the target sentence so students know what to build
       setTimeout(() => speak(validSentences[0]), 400);
     }
-  }, [view, showModeSelection, gameMode, activeAssignment]);
+  }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
 
   const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
     if (fromAvailable) {
@@ -3479,7 +3480,7 @@ export default function App() {
                         onClick={() => !isFlashcards && setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
                         className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-md` : "bg-white text-stone-500 hover:bg-stone-50 border-2 border-stone-200 hover:border-stone-300"}`}
                       >
-                        {cfg.emoji} {mode.charAt(0).toUpperCase() + mode.slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
+                        {cfg.emoji} {(mode ?? "").charAt(0).toUpperCase() + (mode ?? "").slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
                       </button>
                     );
                   })}
@@ -3573,14 +3574,6 @@ export default function App() {
             <div className="bg-stone-50 rounded-2xl p-3 mb-3 border-2 border-stone-200 space-y-2">
               <p className="text-sm font-black text-blue-700 uppercase tracking-wide bg-blue-50 inline-block px-3 py-1 rounded-lg">Import from file or URL</p>
               <div className="flex flex-wrap gap-2">
-                <label className="flex items-center gap-1.5 px-3 py-2 bg-stone-800 text-white rounded-xl font-bold cursor-pointer hover:bg-black text-xs whitespace-nowrap">
-                  <Upload size={14} /> .csv / .txt
-                  <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} className="hidden" />
-                </label>
-                <label className="flex items-center gap-1.5 px-3 py-2 bg-green-700 text-white rounded-xl font-bold cursor-pointer hover:bg-green-800 text-xs whitespace-nowrap">
-                  <Upload size={14} /> Excel (.csv)
-                  <input type="file" accept=".csv,.xlsx" onChange={handleXlsxUpload} className="hidden" />
-                </label>
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
                   <Upload size={14} /> Word (.docx)
                   <input type="file" accept=".docx" onChange={handleDocxUpload} className="hidden" />
@@ -3882,48 +3875,49 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+                className="bg-white rounded-3xl p-4 sm:p-8 max-w-md w-full shadow-2xl text-center max-h-[90vh] overflow-y-auto"
               >
-                <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <BookOpen size={40} />
+                <div className="w-14 h-14 sm:w-20 sm:h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-6">
+                  <BookOpen size={28} className="sm:hidden" />
+                  <BookOpen size={40} className="hidden sm:block" />
                 </div>
-                <h3 className="text-2xl font-black mb-4 text-stone-900">Welcome to Vocaband!</h3>
-                <p className="text-stone-600 mb-6 text-lg">Create engaging vocabulary assignments with 10 game modes.</p>
+                <h3 className="text-xl sm:text-2xl font-black mb-2 sm:mb-4 text-stone-900">Welcome to Vocaband!</h3>
+                <p className="text-stone-600 mb-4 sm:mb-6 text-sm sm:text-lg">Create engaging vocabulary assignments with 10 game modes.</p>
 
-                <div className="space-y-3 mb-6 text-left">
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
-                    <span className="text-2xl">📋</span>
+                <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 text-left">
+                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 rounded-xl">
+                    <span className="text-lg sm:text-2xl">📋</span>
                     <div>
-                      <p className="font-bold text-stone-800">Import Words</p>
-                      <p className="text-sm text-stone-600">Paste, upload CSV/Excel/Word, scan with OCR, or Google Sheets</p>
+                      <p className="font-bold text-stone-800 text-sm sm:text-base">Import Words</p>
+                      <p className="text-xs sm:text-sm text-stone-600">Paste, upload Word docs, scan with OCR, or Google Sheets</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
-                    <span className="text-2xl">🎮</span>
+                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-purple-50 rounded-xl">
+                    <span className="text-lg sm:text-2xl">🎮</span>
                     <div>
-                      <p className="font-bold text-stone-800">10 Game Modes</p>
-                      <p className="text-sm text-stone-600">Classic, Listening, Spelling, Matching, Scramble, Letter Sounds & more</p>
+                      <p className="font-bold text-stone-800 text-sm sm:text-base">10 Game Modes</p>
+                      <p className="text-xs sm:text-sm text-stone-600">Classic, Listening, Spelling, Matching, Scramble & more</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
-                    <span className="text-2xl">⭐</span>
+                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-green-50 rounded-xl">
+                    <span className="text-lg sm:text-2xl">⭐</span>
                     <div>
-                      <p className="font-bold text-stone-800">XP & Rewards</p>
-                      <p className="text-sm text-stone-600">Students earn XP to unlock avatars, themes, name titles & more</p>
+                      <p className="font-bold text-stone-800 text-sm sm:text-base">XP & Rewards</p>
+                      <p className="text-xs sm:text-sm text-stone-600">Students earn XP to unlock avatars, themes & more</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl">
-                    <span className="text-2xl">📊</span>
+                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-amber-50 rounded-xl">
+                    <span className="text-lg sm:text-2xl">📊</span>
                     <div>
-                      <p className="font-bold text-stone-800">Track Progress</p>
-                      <p className="text-sm text-stone-600">Gradebook with detailed analytics per student and assignment</p>
+                      <p className="font-bold text-stone-800 text-sm sm:text-base">Track Progress</p>
+                      <p className="text-xs sm:text-sm text-stone-600">Gradebook with detailed analytics per student</p>
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => { setShowAssignmentWelcome(false); try { localStorage.setItem('vocaband_welcome_seen', '1'); } catch {} }}
-                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  className="w-full py-3 sm:py-4 bg-blue-600 text-white rounded-2xl font-black text-base sm:text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                 >
                   Got it, let's start! →
                 </button>
@@ -5672,7 +5666,7 @@ export default function App() {
                                 className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-3 sm:border-4 flex-shrink-0"
                                 style={{ color: LETTER_COLORS[globalIdx % LETTER_COLORS.length], borderColor: LETTER_COLORS[globalIdx % LETTER_COLORS.length], background: LETTER_COLORS[globalIdx % LETTER_COLORS.length] + "18" }}
                               >
-                                {globalIdx < revealedLetters ? letter.toUpperCase() : "?"}
+                                {globalIdx < revealedLetters ? (letter ?? "").toUpperCase() : "?"}
                               </motion.div>
                             );
                           })}
