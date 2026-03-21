@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
 import mammoth from "mammoth";
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./vocabulary";
@@ -990,34 +989,34 @@ export default function App() {
     setTagInput("");
   };
 
-  // Excel (.xlsx) upload
+  // CSV upload handler (also used for the Excel button — teachers export as CSV)
   const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      showToast("Please save your Excel file as CSV first (File > Save As > CSV).", "info");
+      e.target.value = "";
+      return;
+    }
     if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array", dense: true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      if (!ws) { showToast("Empty spreadsheet.", "error"); return; }
-      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
-      const words: Word[] = rows.slice(1).map((row, idx) => ({
-        id: 6000 + idx,
-        english: String(row[0] ?? "").trim(),
-        hebrew: String(row[1] ?? "").trim(),
-        arabic: String(row[2] ?? "").trim(),
-        level: "Custom" as const,
-      })).filter(w => w.english);
-      if (words.length === 0) { showToast("No valid words found in Excel file.", "error"); return; }
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length <= 1) { showToast("No valid words found in CSV file.", "error"); return; }
+      const words: Word[] = lines.slice(1).map((line, idx) => {
+        const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+        return { id: 6000 + idx, english: cols[0] ?? "", hebrew: cols[1] ?? "", arabic: cols[2] ?? "", level: "Custom" as const };
+      }).filter(w => w.english);
+      if (words.length === 0) { showToast("No valid words found in CSV file.", "error"); return; }
       const limited = words.slice(0, MAX_IMPORT_WORDS);
       if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
       setCustomWords(prev => [...prev, ...limited]);
       setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
       setSelectedLevel("Custom");
-      showToast(`Imported ${limited.length} words from Excel.`, "success");
+      showToast(`Imported ${limited.length} words from CSV.`, "success");
     };
-    reader.readAsArrayBuffer(file);
+    reader.readAsText(file);
     e.target.value = "";
   };
 
@@ -3524,8 +3523,8 @@ export default function App() {
                   <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} className="hidden" />
                 </label>
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-green-700 text-white rounded-xl font-bold cursor-pointer hover:bg-green-800 text-xs whitespace-nowrap">
-                  <Upload size={14} /> Excel (.xlsx)
-                  <input type="file" accept=".xlsx" onChange={handleXlsxUpload} className="hidden" />
+                  <Upload size={14} /> Excel (.csv)
+                  <input type="file" accept=".csv,.xlsx" onChange={handleXlsxUpload} className="hidden" />
                 </label>
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
                   <Upload size={14} /> Word (.docx)

@@ -166,8 +166,8 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],  // unsafe-inline needed for motion library animation styles
           fontSrc: ["'self'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", allowedOrigin],
