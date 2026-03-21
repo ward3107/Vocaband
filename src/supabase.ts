@@ -80,6 +80,7 @@ export interface AssignmentData {
   deadline?: string | null;
   createdAt?: string;
   allowedModes?: string[];
+  sentences?: string[];
 }
 
 export interface ProgressData {
@@ -140,6 +141,7 @@ export function mapAssignment(row: any): AssignmentData {
     title: row.title,
     deadline: row.deadline,
     allowedModes: row.allowed_modes,
+    sentences: row.sentences ?? [],
   };
 }
 
