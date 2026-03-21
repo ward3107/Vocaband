@@ -494,7 +494,17 @@ export default function App() {
   }, [view]);
 
   useEffect(() => {
-    const s = io({ reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 1000 });
+    // Pass auth token at connection time for server-side middleware verification
+    const getToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token ?? "";
+    };
+    const s = io({
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      auth: (cb) => { getToken().then(token => cb({ token })); },
+    });
     setSocket(s);
 
     s.on("connect", () => setSocketConnected(true));
@@ -503,8 +513,7 @@ export default function App() {
       setSocketConnected(true);
       const currentUser = userRef.current;
       if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          const token = session?.access_token ?? "";
+        getToken().then(token => {
           s.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token });
         });
       }
@@ -989,8 +998,9 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array" });
+      const wb = XLSX.read(data, { type: "array", dense: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) { showToast("Empty spreadsheet.", "error"); return; }
       const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
       const words: Word[] = rows.slice(1).map((row, idx) => ({
         id: 6000 + idx,
@@ -1227,11 +1237,21 @@ export default function App() {
     setConsentChecked(false);
   };
 
+  const loginAttemptsRef = useRef<number[]>([]);
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
     const trimmedName = name.trim().slice(0, 30);
     const trimmedCode = code.trim().slice(0, 20);
     if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
+
+    // Client-side rate limit: max 5 attempts per 60 seconds
+    const now = Date.now();
+    loginAttemptsRef.current = loginAttemptsRef.current.filter(t => now - t < 60_000);
+    if (loginAttemptsRef.current.length >= 5) {
+      setError("Too many login attempts. Please wait a minute and try again.");
+      return;
+    }
+    loginAttemptsRef.current.push(now);
     manualLoginInProgress.current = true;
     setLoading(true);
     setError(null);
