@@ -62,6 +62,12 @@ export interface AppUser {
   classCode?: string;
   avatar?: string;
   badges?: string[];
+  xp?: number;
+  streak?: number;
+  unlockedAvatars?: string[];
+  unlockedThemes?: string[];
+  powerUps?: Record<string, number>;
+  activeTheme?: string;
 }
 
 export interface ClassData {
@@ -106,6 +112,12 @@ export function mapUser(row: any): AppUser {
     classCode: row.class_code,
     avatar: row.avatar,
     badges: row.badges ?? [],
+    xp: row.xp ?? 0,
+    streak: row.streak ?? 0,
+    unlockedAvatars: row.unlocked_avatars ?? [],
+    unlockedThemes: row.unlocked_themes ?? [],
+    powerUps: row.power_ups ?? {},
+    activeTheme: row.active_theme ?? 'default',
   };
 }
 
@@ -118,6 +130,12 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.classCode !== undefined && { class_code: u.classCode }),
     ...(u.avatar !== undefined && { avatar: u.avatar }),
     ...(u.badges !== undefined && { badges: u.badges }),
+    ...(u.xp !== undefined && { xp: u.xp }),
+    ...(u.streak !== undefined && { streak: u.streak }),
+    ...(u.unlockedAvatars !== undefined && { unlocked_avatars: u.unlockedAvatars }),
+    ...(u.unlockedThemes !== undefined && { unlocked_themes: u.unlockedThemes }),
+    ...(u.powerUps !== undefined && { power_ups: u.powerUps }),
+    ...(u.activeTheme !== undefined && { active_theme: u.activeTheme }),
   };
 }
 
