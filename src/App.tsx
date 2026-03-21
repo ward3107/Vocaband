@@ -1206,6 +1206,7 @@ export default function App() {
         supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid),
       ]);
       if (assignResult.error) throw assignResult.error;
+      if (progressResult.error) throw progressResult.error;
 
       setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
       setStudentProgress((progressResult.data ?? []).map(mapProgress));
