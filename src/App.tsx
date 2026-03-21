@@ -121,6 +121,28 @@ const POWER_UP_DEFS = [
   { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
 ];
 
+// Name frames — decorative borders around student avatar on dashboard & leaderboard
+const NAME_FRAMES = [
+  { id: 'gold', name: 'Gold Frame', preview: '🥇', border: 'ring-4 ring-yellow-400', cost: 200 },
+  { id: 'fire', name: 'Fire Frame', preview: '🔥', border: 'ring-4 ring-orange-500', cost: 300 },
+  { id: 'diamond', name: 'Diamond Frame', preview: '💎', border: 'ring-4 ring-cyan-400', cost: 500 },
+  { id: 'rainbow', name: 'Rainbow Frame', preview: '🌈', border: 'ring-4 ring-purple-400 ring-offset-2 ring-offset-pink-200', cost: 400 },
+  { id: 'lightning', name: 'Lightning Frame', preview: '⚡', border: 'ring-4 ring-amber-300 shadow-lg shadow-amber-200', cost: 350 },
+  { id: 'crown', name: 'Crown Frame', preview: '👑', border: 'ring-4 ring-yellow-500 shadow-lg shadow-yellow-200', cost: 750 },
+];
+
+// Custom name titles — shown below student name
+const NAME_TITLES = [
+  { id: 'champion', name: 'Champion', display: 'Champion', cost: 150 },
+  { id: 'genius', name: 'Genius', display: 'Genius', cost: 200 },
+  { id: 'word_wizard', name: 'Word Wizard', display: 'Word Wizard', cost: 300 },
+  { id: 'vocab_king', name: 'Vocab King', display: 'Vocab King', cost: 250 },
+  { id: 'vocab_queen', name: 'Vocab Queen', display: 'Vocab Queen', cost: 250 },
+  { id: 'speed_demon', name: 'Speed Demon', display: 'Speed Demon', cost: 400 },
+  { id: 'legend', name: 'Living Legend', display: 'Living Legend', cost: 500 },
+  { id: 'brain', name: 'Big Brain', display: 'Big Brain', cost: 350 },
+];
+
 // --- REUSABLE HELP TOOLTIP COMPONENT ---
 // Powered by @floating-ui/react - modern positioning engine
 // Desktop only - shows on hover, hidden on mobile devices
@@ -213,7 +235,7 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students" | "shop">("landing");
-  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups">("avatars");
+  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames">("avatars");
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
@@ -253,17 +275,19 @@ export default function App() {
     "Flashcard Review",
     "Word Scramble",
     "Reverse Mode",
+    "Letter Sounds Practice",
+    "Sentence Builder Challenge",
     "Mixed Modes Practice",
     "Unit 5 Vocabulary",
     "Midterm Review",
     "Final Exam Practice",
-    "Spelling Bee Practice",
     "Word Building Exercise",
-    "Flashcard Mastery",
     "Listening Comprehension",
     "Reading Vocabulary",
     "Grammar & Vocabulary",
-    "Advanced Vocabulary Test"
+    "Advanced Vocabulary Test",
+    "XP Challenge",
+    "Speed Round",
   ];
 
   const [selectedAvatarCategory, setSelectedAvatarCategory] = useState<keyof typeof AVATAR_CATEGORIES>("Animals");
@@ -326,7 +350,9 @@ export default function App() {
   }>({ show: false, message: '', onConfirm: () => {} });
 
   // --- ASSIGNMENT WELCOME POPUP STATE ---
-  const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(true);
+  const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(() => {
+    try { return !localStorage.getItem('vocaband_welcome_seen'); } catch { return true; }
+  });
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
@@ -417,11 +443,11 @@ export default function App() {
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
 
-  // Speak motivational message during gameplay when correct answer
+  // Speak motivational message during gameplay — strip emojis so TTS reads the actual text
   useEffect(() => {
     if (motivationalMessage) {
-      const speakable = SPEAKABLE_MOTIVATIONS[Math.floor(Math.random() * SPEAKABLE_MOTIVATIONS.length)];
-      speak(speakable);
+      const textOnly = motivationalMessage.replace(/[\u{1F600}-\u{1F9FF}\u{2600}-\u{2B55}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
+      if (textOnly) speak(textOnly);
     }
   }, [motivationalMessage]);
 
@@ -1355,9 +1381,17 @@ export default function App() {
 
   const speak = (text: string) => {
     if (!("speechSynthesis" in window)) return;
+    // Cancel any queued/ongoing speech so voice stays in sync with fast skipping
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 0.9;
+    utterance.rate = 0.85;
+    utterance.pitch = 1.05;
+    // Prefer a natural-sounding voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
+      || voices.find(v => v.lang.startsWith("en-US"));
+    if (preferred) utterance.voice = preferred;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -1879,7 +1913,7 @@ export default function App() {
 
                     <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 rounded-2xl shadow-inner">
                       <div className="flex items-center justify-between mb-4">
-                        <p className="text-xs font-black text-stone-400 uppercase tracking-widest">Choose Avatar</p>
+                        <p className="text-sm font-black text-blue-700 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-lg">Choose Avatar</p>
                         <HelpIcon tooltip="Pick a fun emoji to represent you in class!" position="left" />
                       </div>
 
@@ -1901,8 +1935,6 @@ export default function App() {
                           </button>
                         ))}
                       </div>
-                      <p className="text-xs text-stone-400 text-center mb-3">🔒 Earn XP playing games to unlock more avatar categories!</p>
-
                       {/* Avatar Grid */}
                       <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 justify-items-center">
                         {AVATAR_CATEGORIES[selectedAvatarCategory].map(a => (
@@ -1918,6 +1950,20 @@ export default function App() {
                             {a}
                           </button>
                         ))}
+                      </div>
+
+                      {/* Locked categories preview */}
+                      <div className="mt-4 pt-3 border-t border-stone-200">
+                        <p className="text-xs font-bold text-stone-400 mb-2 text-center">🔒 Play games to unlock more!</p>
+                        <div className="flex flex-wrap gap-1.5 justify-center">
+                          {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
+                            .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired > 0)
+                            .map(cat => (
+                            <span key={cat} className="px-2 py-1 bg-stone-200 text-stone-400 rounded-lg text-[10px] font-bold">
+                              🔒 {cat} ({AVATAR_CATEGORY_UNLOCKS[cat].label})
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <button
@@ -1994,40 +2040,39 @@ export default function App() {
     return (
       <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
         <div className="max-w-4xl mx-auto">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6 sm:mb-8">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-14 h-14 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
-                {user.avatar}
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
-                <p className="text-stone-500 font-bold text-base sm:text-sm">Class Code: <button onClick={() => { navigator.clipboard.writeText(user.classCode || ""); setCopiedCode(user.classCode || ""); setTimeout(() => setCopiedCode(null), 2000); }} className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-mono hover:bg-blue-100 active:scale-95 transition-all inline-flex items-center gap-1" title="Tap to copy code">{user.classCode} {copiedCode === user.classCode ? <Check size={14} className="text-blue-700" /> : <Copy size={14} className="text-blue-400" />}</button></p>
-                <div className="mt-2 flex flex-wrap gap-2 items-center">
-                  <div className="bg-amber-50 text-amber-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-amber-200">
-                    <Zap size={14} /> {xp} XP
-                  </div>
-                  <div className="bg-purple-50 text-purple-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-purple-200">
-                    {getXpTitle(xp).emoji} {getXpTitle(xp).title}
-                  </div>
-                  {streak > 0 && (
-                    <div className="bg-orange-50 text-orange-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-orange-200">
-                      🔥 {streak} streak
-                    </div>
-                  )}
-                  {badges.map(badge => (
-                    <div key={badge} className="bg-blue-50 text-blue-900 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1">
-                      <Trophy size={14} />
-                      {badge}
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {/* Top bar with logout */}
+          <div className="flex justify-between items-center mb-4">
+            <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
+              🛍️ Shop
+            </button>
+            <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 text-stone-500 font-bold hover:text-red-500 hover:bg-red-50 rounded-xl text-sm transition-all">Logout</button>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <div className="w-14 h-14 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
+              {user.avatar}
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
-                🛍️ Shop
-              </button>
-              <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-base sm:text-sm">Logout</button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-stone-900">Hello, {user.displayName}!</h1>
+              <p className="text-stone-500 font-bold text-base sm:text-sm">Class Code: <button onClick={() => { navigator.clipboard.writeText(user.classCode || ""); setCopiedCode(user.classCode || ""); setTimeout(() => setCopiedCode(null), 2000); }} className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg font-mono hover:bg-blue-100 active:scale-95 transition-all inline-flex items-center gap-1" title="Tap to copy code">{user.classCode} {copiedCode === user.classCode ? <Check size={14} className="text-blue-700" /> : <Copy size={14} className="text-blue-400" />}</button></p>
+              <div className="mt-2 flex flex-wrap gap-2 items-center">
+                <div className="bg-amber-50 text-amber-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-amber-200">
+                  <Zap size={14} /> {xp} XP
+                </div>
+                <div className="bg-purple-50 text-purple-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-purple-200">
+                  {getXpTitle(xp).emoji} {getXpTitle(xp).title}
+                </div>
+                {streak > 0 && (
+                  <div className="bg-orange-50 text-orange-800 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 border border-orange-200">
+                    🔥 {streak} streak
+                  </div>
+                )}
+                {badges.map(badge => (
+                  <div key={badge} className="bg-blue-50 text-blue-900 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1">
+                    <Trophy size={14} />
+                    {badge}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -2201,11 +2246,11 @@ export default function App() {
           <h1 className={`text-3xl font-black mb-6 ${activeThemeConfig.colors.text}`}>🛍️ Shop</h1>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-6">
-            {(["avatars", "themes", "powerups"] as const).map(tab => (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {(["avatars", "themes", "titles", "frames", "powerups"] as const).map(tab => (
               <button key={tab} onClick={() => setShopTab(tab)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${shopTab === tab ? "bg-blue-600 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
-                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : "⚡ Power-ups"}
+                className={`px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all ${shopTab === tab ? "bg-blue-600 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
+                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : tab === "titles" ? "🏷️ Titles" : tab === "frames" ? "🖼️ Frames" : "⚡ Power-ups"}
               </button>
             ))}
           </div>
@@ -2327,6 +2372,93 @@ export default function App() {
                         <button onClick={() => purchaseTheme(theme)} disabled={!canAfford}
                           className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
                           {theme.cost} XP
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Name Titles Shop */}
+          {shopTab === "titles" && (
+            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
+              <h2 className="text-xl font-black mb-2">Name Titles</h2>
+              <p className="text-stone-500 text-sm mb-4">Show off a custom title below your name!</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {NAME_TITLES.map(title => {
+                  const isOwned = (user.unlockedAvatars ?? []).includes(`title_${title.id}`);
+                  const isActive = (user as any).activeTitle === title.id;
+                  const canAfford = xp >= title.cost;
+                  return (
+                    <div key={title.id} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${isActive ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
+                      <span className="text-sm font-black text-stone-800 mb-1">{title.display}</span>
+                      {isActive ? (
+                        <span className="text-xs font-bold text-blue-600">Active</span>
+                      ) : isOwned ? (
+                        <button onClick={async () => {
+                          setUser(prev => prev ? { ...prev, activeTitle: title.id } as any : prev);
+                          await supabase.from('users').update({ active_title: title.id } as any).eq('uid', user.uid);
+                          showToast("Title equipped!", "success");
+                        }} className="text-xs font-bold text-green-600 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200">Equip</button>
+                      ) : (
+                        <button onClick={async () => {
+                          if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
+                          const newXp = xp - title.cost;
+                          const newUnlocked = [...(user.unlockedAvatars ?? []), `title_${title.id}`];
+                          setXp(newXp);
+                          setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
+                          await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+                          showToast(`Unlocked "${title.display}"!`, "success");
+                        }} disabled={!canAfford}
+                          className={`text-xs font-bold px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
+                          {title.cost} XP
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Name Frames Shop */}
+          {shopTab === "frames" && (
+            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
+              <h2 className="text-xl font-black mb-2">Avatar Frames</h2>
+              <p className="text-stone-500 text-sm mb-4">Add a glowing border around your avatar!</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {NAME_FRAMES.map(frame => {
+                  const isOwned = (user.unlockedAvatars ?? []).includes(`frame_${frame.id}`);
+                  const isActive = (user as any).activeFrame === frame.id;
+                  const canAfford = xp >= frame.cost;
+                  return (
+                    <div key={frame.id} className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all ${isActive ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-2 bg-white ${frame.border}`}>
+                        {user.avatar || "😎"}
+                      </div>
+                      <span className="text-xs font-bold text-stone-700">{frame.name}</span>
+                      {isActive ? (
+                        <span className="text-xs font-bold text-blue-600 mt-1">Active</span>
+                      ) : isOwned ? (
+                        <button onClick={async () => {
+                          setUser(prev => prev ? { ...prev, activeFrame: frame.id } as any : prev);
+                          await supabase.from('users').update({ active_frame: frame.id } as any).eq('uid', user.uid);
+                          showToast("Frame equipped!", "success");
+                        }} className="text-xs font-bold text-green-600 mt-1 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200">Equip</button>
+                      ) : (
+                        <button onClick={async () => {
+                          if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
+                          const newXp = xp - frame.cost;
+                          const newUnlocked = [...(user.unlockedAvatars ?? []), `frame_${frame.id}`];
+                          setXp(newXp);
+                          setUser(prev => prev ? { ...prev, unlockedAvatars: newUnlocked } : prev);
+                          await supabase.from('users').update({ xp: newXp, unlocked_avatars: newUnlocked }).eq('uid', user.uid);
+                          showToast(`Unlocked ${frame.name}!`, "success");
+                        }} disabled={!canAfford}
+                          className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
+                          {frame.cost} XP
                         </button>
                       )}
                     </div>
@@ -2569,26 +2701,39 @@ export default function App() {
                             <p className="font-bold text-stone-800 text-sm truncate">{a.title}</p>
                             <p className="text-xs text-stone-500">{cls?.name || "Unknown class"} · {a.wordIds.length} words</p>
                           </div>
-                          <button
-                            onClick={() => {
-                              // Pre-fill assignment creation with this assignment's words
-                              const knownIds = a.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
-                              const unknownWords: Word[] = (a.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
-                              setSelectedWords(a.wordIds);
-                              setCustomWords(unknownWords);
-                              setAssignmentTitle(a.title + " (Copy)");
-                              setAssignmentModes(a.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
-                              setAssignmentSentences(a.sentences ?? []);
-                              if (knownIds.some(id => BAND_1_WORDS.some(w => w.id === id))) setSelectedLevel("Band 1");
-                              else if (unknownWords.length > 0) setSelectedLevel("Custom");
-                              else setSelectedLevel("Band 2");
-                              setSelectedClass(cls ?? selectedClass);
-                              setView("create-assignment");
-                            }}
-                            className="flex-shrink-0 px-4 py-2 bg-amber-100 text-amber-700 font-bold text-xs rounded-xl hover:bg-amber-200 border-2 border-amber-200 transition-all"
-                          >
-                            📋 Duplicate
-                          </button>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => {
+                                const knownIds = a.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
+                                const unknownWords: Word[] = (a.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
+                                setSelectedWords(a.wordIds);
+                                setCustomWords(unknownWords);
+                                setAssignmentTitle(a.title + " (Copy)");
+                                setAssignmentModes(a.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+                                setAssignmentSentences(a.sentences ?? []);
+                                if (knownIds.some(id => BAND_1_WORDS.some(w => w.id === id))) setSelectedLevel("Band 1");
+                                else if (unknownWords.length > 0) setSelectedLevel("Custom");
+                                else setSelectedLevel("Band 2");
+                                setSelectedClass(cls ?? selectedClass);
+                                setView("create-assignment");
+                              }}
+                              className="px-3 py-2 bg-amber-100 text-amber-700 font-bold text-xs rounded-xl hover:bg-amber-200 border-2 border-amber-200 transition-all"
+                            >
+                              📋 Duplicate
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Delete "${a.title}"? This cannot be undone.`)) return;
+                                const { error } = await supabase.from('assignments').delete().eq('id', a.id);
+                                if (error) { showToast("Failed to delete: " + error.message, "error"); return; }
+                                setTeacherAssignments(prev => prev.filter(x => x.id !== a.id));
+                                showToast("Assignment deleted", "success");
+                              }}
+                              className="px-3 py-2 bg-rose-100 text-rose-600 font-bold text-xs rounded-xl hover:bg-rose-200 border-2 border-rose-200 transition-all"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -2778,7 +2923,7 @@ export default function App() {
                   onChange={(e) => {
                     setAssignmentTitle(e.target.value);
                   }}
-                  className="w-full p-4 rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
+                  className="w-full p-3 sm:p-4 text-sm sm:text-base rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
                 />
                 <datalist id="assignment-titles">
                   {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
@@ -2816,28 +2961,29 @@ export default function App() {
                     {assignmentModes.length >= 10 ? "Deselect All" : "Select All"}
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
                   {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"] as const).map(mode => {
-                    const modeEmojis: Record<string, string> = {
-                      classic: '📝',
-                      listening: '🎧',
-                      spelling: '✍️',
-                      matching: '🔗',
-                      'true-false': '✓',
-                      flashcards: '🎴',
-                      scramble: '🔤',
-                      reverse: '🔄',
-                      'letter-sounds': '🔡',
-                      'sentence-builder': '🧩',
+                    const modeConfig: Record<string, { emoji: string; activeColor: string; activeBg: string }> = {
+                      classic: { emoji: '📝', activeColor: 'text-white', activeBg: 'bg-blue-500' },
+                      listening: { emoji: '🎧', activeColor: 'text-white', activeBg: 'bg-purple-500' },
+                      spelling: { emoji: '✍️', activeColor: 'text-white', activeBg: 'bg-green-600' },
+                      matching: { emoji: '🔗', activeColor: 'text-white', activeBg: 'bg-orange-500' },
+                      'true-false': { emoji: '✓', activeColor: 'text-white', activeBg: 'bg-rose-500' },
+                      flashcards: { emoji: '🎴', activeColor: 'text-white', activeBg: 'bg-teal-500' },
+                      scramble: { emoji: '🔤', activeColor: 'text-white', activeBg: 'bg-amber-500' },
+                      reverse: { emoji: '🔄', activeColor: 'text-white', activeBg: 'bg-indigo-500' },
+                      'letter-sounds': { emoji: '🔡', activeColor: 'text-white', activeBg: 'bg-pink-500' },
+                      'sentence-builder': { emoji: '🧩', activeColor: 'text-white', activeBg: 'bg-cyan-600' },
                     };
+                    const cfg = modeConfig[mode];
                     const isFlashcards = mode === "flashcards";
                     return (
                       <button
                         key={mode}
                         onClick={() => !isFlashcards && setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap ${isFlashcards ? "bg-blue-500 text-white shadow-md opacity-80 cursor-default" : assignmentModes.includes(mode) ? "bg-blue-500 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-md` : "bg-white text-stone-500 hover:bg-stone-50 border-2 border-stone-200 hover:border-stone-300"}`}
                       >
-                        {modeEmojis[mode]} {mode.charAt(0).toUpperCase() + mode.slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
+                        {cfg.emoji} {mode.charAt(0).toUpperCase() + mode.slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
                       </button>
                     );
                   })}
@@ -2929,7 +3075,7 @@ export default function App() {
 
             {/* ── Import from file or URL ─────────────────────── */}
             <div className="bg-stone-50 rounded-2xl p-3 mb-3 border-2 border-stone-200 space-y-2">
-              <p className="text-xs font-bold text-stone-500 uppercase">Import from file or URL</p>
+              <p className="text-sm font-black text-blue-700 uppercase tracking-wide bg-blue-50 inline-block px-3 py-1 rounded-lg">Import from file or URL</p>
               <div className="flex flex-wrap gap-2">
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-stone-800 text-white rounded-xl font-bold cursor-pointer hover:bg-black text-xs whitespace-nowrap">
                   <Upload size={14} /> .csv / .txt
@@ -2965,14 +3111,14 @@ export default function App() {
             </div>
 
             {/* ── Browse & Pick ──────────────────────────────── */}
-            <div className="flex flex-nowrap gap-2 mb-3 overflow-x-auto pb-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               {(["Band 1", "Band 2", "Custom"] as const).map(level => (
                 <button key={level} onClick={() => setSelectedLevel(level)}
-                  className={`px-4 py-2 rounded-xl font-bold transition-all text-xs whitespace-nowrap ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
+                  className={`px-4 py-2 rounded-xl font-bold transition-all text-xs ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
                   {level} {level === "Custom" && customWords.length > 0 && `(${customWords.length})`}
                 </button>
               ))}
-              <button onClick={() => setShowTopicPacks(true)} className="flex items-center gap-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold text-xs whitespace-nowrap hover:bg-amber-600 transition-all">
+              <button onClick={() => setShowTopicPacks(true)} className="flex items-center justify-center gap-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold text-xs hover:bg-amber-600 transition-all">
                 📦 Topic Packs
               </button>
             </div>
@@ -3245,35 +3391,42 @@ export default function App() {
                 <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
                   <BookOpen size={40} />
                 </div>
-                <h3 className="text-2xl font-black mb-4 text-stone-900">Create Assignment</h3>
-                <p className="text-stone-600 mb-6 text-lg">Select a level or upload your own list to get started.</p>
+                <h3 className="text-2xl font-black mb-4 text-stone-900">Welcome to Vocaband!</h3>
+                <p className="text-stone-600 mb-6 text-lg">Create engaging vocabulary assignments with 10 game modes.</p>
 
                 <div className="space-y-3 mb-6 text-left">
                   <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
                     <span className="text-2xl">📋</span>
                     <div>
-                      <p className="font-bold text-stone-800">Import Word List</p>
-                      <p className="text-sm text-stone-600">Paste Hebrew/English words from anywhere</p>
+                      <p className="font-bold text-stone-800">Import Words</p>
+                      <p className="text-sm text-stone-600">Paste, upload CSV/Excel/Word, scan with OCR, or Google Sheets</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
-                    <span className="text-2xl">📚</span>
+                    <span className="text-2xl">🎮</span>
                     <div>
-                      <p className="font-bold text-stone-800">Band 2 Words</p>
-                      <p className="text-sm text-stone-600">Choose from 1000+ vocabulary words</p>
+                      <p className="font-bold text-stone-800">10 Game Modes</p>
+                      <p className="text-sm text-stone-600">Classic, Listening, Spelling, Matching, Scramble, Letter Sounds & more</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
-                    <span className="text-2xl">📤</span>
+                    <span className="text-2xl">⭐</span>
                     <div>
-                      <p className="font-bold text-stone-800">Upload Custom</p>
-                      <p className="text-sm text-stone-600">Upload CSV or scan with OCR</p>
+                      <p className="font-bold text-stone-800">XP & Rewards</p>
+                      <p className="text-sm text-stone-600">Students earn XP to unlock avatars, themes, name titles & more</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl">
+                    <span className="text-2xl">📊</span>
+                    <div>
+                      <p className="font-bold text-stone-800">Track Progress</p>
+                      <p className="text-sm text-stone-600">Gradebook with detailed analytics per student and assignment</p>
                     </div>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => setShowAssignmentWelcome(false)}
+                  onClick={() => { setShowAssignmentWelcome(false); try { localStorage.setItem('vocaband_welcome_seen', '1'); } catch {} }}
                   className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                 >
                   Got it, let's start! →
@@ -3826,18 +3979,24 @@ export default function App() {
             </div>
 
             {/* Legend */}
-            <div className="p-4 bg-stone-50 border-t border-stone-100 flex flex-wrap gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-50 rounded"></div>
-                <span className="text-stone-600">Excellent (90%+)</span>
+            <div className="p-4 bg-stone-50 border-t border-stone-100">
+              <div className="flex items-center gap-2 mb-2 text-stone-400 text-xs sm:hidden">
+                <span>Scroll for legend</span>
+                <span>→</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-50 rounded"></div>
-                <span className="text-stone-600">Good (70-89%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-rose-100 rounded"></div>
-                <span className="text-stone-600">Needs Attention (&lt;70%)</span>
+              <div className="flex flex-wrap gap-4 sm:gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-100 border-2 border-green-400 rounded"></div>
+                  <span className="text-stone-800 font-bold">Excellent (90%+)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-100 border-2 border-blue-400 rounded"></div>
+                  <span className="text-stone-800 font-bold">Good (70-89%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-rose-100 border-2 border-rose-400 rounded"></div>
+                  <span className="text-stone-800 font-bold">Needs Attention (&lt;70%)</span>
+                </div>
               </div>
             </div>
           </div>
@@ -3849,7 +4008,7 @@ export default function App() {
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h2 className="text-2xl font-black text-stone-900">{selectedScore.studentName}</h2>
-                    <p className="text-stone-500">Assignment: {selectedScore.assignmentId}</p>
+                    <p className="text-stone-500">Assignment: {matrixData.getAssignmentTitle(selectedScore.assignmentId)}</p>
                   </div>
                   <button
                     onClick={() => setSelectedScore(null)}
@@ -4415,8 +4574,27 @@ export default function App() {
         >
           <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
         </motion.div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2">Kol Hakavod, {user?.displayName}!</h1>
-        <p className="text-lg sm:text-xl mb-6">You finished the assignment.</p>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{
+          [
+            `Kol Hakavod, ${user?.displayName}!`,
+            `Amazing work, ${user?.displayName}!`,
+            `You crushed it, ${user?.displayName}!`,
+            `${user?.displayName}, you're a star!`,
+            `Incredible, ${user?.displayName}!`,
+            `Way to go, ${user?.displayName}!`,
+            `${user?.displayName} is on fire!`,
+            `Bravo, ${user?.displayName}!`,
+          ][Math.floor(Math.random() * 8)]
+        }</h1>
+        <p className="text-lg sm:text-xl mb-6">{
+          [
+            "You finished the assignment!",
+            "Another challenge conquered!",
+            "Your vocabulary is growing!",
+            "Keep this momentum going!",
+            "You're making great progress!",
+          ][Math.floor(Math.random() * 5)]
+        }</p>
         <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
             <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
@@ -4541,19 +4719,47 @@ export default function App() {
     );
   }
 
-  // Mode intro instructions
-  const modeInstructions: Record<GameMode, { title: string; steps: string[]; icon: string }> = {
-    classic: { title: "Classic Mode", icon: "📖", steps: ["See the English word", "Listen to pronunciation", "Pick the correct translation"] },
-    listening: { title: "Listening Mode", icon: "🎧", steps: ["Listen carefully to the word", "The text is hidden!", "Choose the correct translation"] },
-    spelling: { title: "Spelling Mode", icon: "✏️", steps: ["See the translation", "Type the English word", "Spelling must be exact!"] },
-    matching: { title: "Matching Mode", icon: "⚡", steps: ["Find matching pairs", "Tap English then translation", "Match all pairs to finish!"] },
-    "true-false": { title: "True / False", icon: "✅", steps: ["See a word and translation", "Decide if the pair is correct", "Think fast!"] },
-    flashcards: { title: "Flashcards", icon: "🃏", steps: ["Review words at your pace", "Flip to see the answer", "No pressure — just learn!"] },
-    scramble: { title: "Word Scramble", icon: "🔤", steps: ["Letters are scrambled", "Type the correct English word", "Unscramble them all!"] },
-    reverse: { title: "Reverse Mode", icon: "🔄", steps: ["See the Hebrew/Arabic word", "Pick the English translation", "Reverse of classic!"] },
-    "letter-sounds": { title: "Letter Sounds", icon: "🔡", steps: ["Each letter appears in a color", "Listen to each letter sound", "Type the full word when ready"] },
-    "sentence-builder": { title: "Sentence Builder", icon: "🧩", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
+  // Mode intro instructions with translations
+  const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
+  const modeInstructionsAll: Record<string, Record<GameMode, { title: string; steps: string[]; icon: string }>> = {
+    en: {
+      classic: { title: "Classic Mode", icon: "📖", steps: ["See the English word", "Listen to pronunciation", "Pick the correct translation"] },
+      listening: { title: "Listening Mode", icon: "🎧", steps: ["Listen carefully to the word", "The text is hidden!", "Choose the correct translation"] },
+      spelling: { title: "Spelling Mode", icon: "✏️", steps: ["See the translation", "Type the English word", "Spelling must be exact!"] },
+      matching: { title: "Matching Mode", icon: "⚡", steps: ["Find matching pairs", "Tap English then translation", "Match all pairs to finish!"] },
+      "true-false": { title: "True / False", icon: "✅", steps: ["See a word and translation", "Decide if the pair is correct", "Think fast!"] },
+      flashcards: { title: "Flashcards", icon: "🃏", steps: ["Review words at your pace", "Flip to see the answer", "No pressure — just learn!"] },
+      scramble: { title: "Word Scramble", icon: "🔤", steps: ["Letters are scrambled", "Type the correct English word", "Unscramble them all!"] },
+      reverse: { title: "Reverse Mode", icon: "🔄", steps: ["See the Hebrew/Arabic word", "Pick the English translation", "Reverse of classic!"] },
+      "letter-sounds": { title: "Letter Sounds", icon: "🔡", steps: ["Each letter appears in a color", "Listen to each letter sound", "Type the full word when ready"] },
+      "sentence-builder": { title: "Sentence Builder", icon: "🧩", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
+    },
+    ar: {
+      classic: { title: "الوضع الكلاسيكي", icon: "📖", steps: ["شاهد الكلمة بالإنجليزية", "استمع إلى النطق", "اختر الترجمة الصحيحة"] },
+      listening: { title: "وضع الاستماع", icon: "🎧", steps: ["استمع جيداً للكلمة", "النص مخفي!", "اختر الترجمة الصحيحة"] },
+      spelling: { title: "وضع التهجئة", icon: "✏️", steps: ["شاهد الترجمة", "اكتب الكلمة بالإنجليزية", "التهجئة يجب أن تكون دقيقة!"] },
+      matching: { title: "وضع المطابقة", icon: "⚡", steps: ["ابحث عن الأزواج المتطابقة", "اضغط الإنجليزية ثم الترجمة", "طابق كل الأزواج!"] },
+      "true-false": { title: "صح أو خطأ", icon: "✅", steps: ["شاهد كلمة وترجمتها", "قرر إذا كانت صحيحة", "فكر بسرعة!"] },
+      flashcards: { title: "البطاقات", icon: "🃏", steps: ["راجع الكلمات بسرعتك", "اقلب لترى الإجابة", "بدون ضغط - فقط تعلم!"] },
+      scramble: { title: "خلط الحروف", icon: "🔤", steps: ["الحروف مخلوطة", "اكتب الكلمة الصحيحة", "رتب كل الكلمات!"] },
+      reverse: { title: "الوضع العكسي", icon: "🔄", steps: ["شاهد الكلمة بالعربية/العبرية", "اختر الترجمة بالإنجليزية", "عكس الكلاسيكي!"] },
+      "letter-sounds": { title: "أصوات الحروف", icon: "🔡", steps: ["كل حرف يظهر بلون", "استمع لصوت كل حرف", "اكتب الكلمة كاملة عندما تكون جاهزاً"] },
+      "sentence-builder": { title: "بناء الجمل", icon: "🧩", steps: ["الكلمات مخلوطة في الأسفل", "اضغط الكلمات بالترتيب الصحيح", "ابنِ الجملة لتنتهي!"] },
+    },
+    he: {
+      classic: { title: "מצב קלאסי", icon: "📖", steps: ["ראה את המילה באנגלית", "הקשב להגייה", "בחר את התרגום הנכון"] },
+      listening: { title: "מצב הקשבה", icon: "🎧", steps: ["הקשב היטב למילה", "הטקסט מוסתר!", "בחר את התרגום הנכון"] },
+      spelling: { title: "מצב איות", icon: "✏️", steps: ["ראה את התרגום", "הקלד את המילה באנגלית", "האיות חייב להיות מדויק!"] },
+      matching: { title: "מצב התאמה", icon: "⚡", steps: ["מצא זוגות תואמים", "לחץ אנגלית ואז תרגום", "התאם את כל הזוגות!"] },
+      "true-false": { title: "נכון / לא נכון", icon: "✅", steps: ["ראה מילה ותרגום", "החלט אם הזוג נכון", "חשוב מהר!"] },
+      flashcards: { title: "כרטיסיות", icon: "🃏", steps: ["חזור על מילים בקצב שלך", "הפוך לראות תשובה", "בלי לחץ - רק ללמוד!"] },
+      scramble: { title: "ערבוב מילים", icon: "🔤", steps: ["האותיות מעורבבות", "הקלד את המילה הנכונה", "פתור את כולן!"] },
+      reverse: { title: "מצב הפוך", icon: "🔄", steps: ["ראה את המילה בעברית/ערבית", "בחר את התרגום באנגלית", "הפוך מקלאסי!"] },
+      "letter-sounds": { title: "צלילי אותיות", icon: "🔡", steps: ["כל אות מופיעה בצבע", "הקשב לצליל כל אות", "הקלד את המילה כשמוכן"] },
+      "sentence-builder": { title: "בניית משפטים", icon: "🧩", steps: ["המילים מעורבבות למטה", "לחץ על מילים בסדר הנכון", "בנה את המשפט!"] },
+    },
   };
+  const modeInstructions = modeInstructionsAll[introLang];
 
   if (showModeIntro) {
     const info = modeInstructions[gameMode];
@@ -4564,8 +4770,17 @@ export default function App() {
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white rounded-[32px] shadow-2xl p-8 sm:p-12 max-w-md w-full text-center"
         >
+          {/* Language toggle */}
+          <div className="flex justify-center gap-2 mb-4">
+            {([["en", "EN"], ["ar", "عربي"], ["he", "עברית"]] as const).map(([code, label]) => (
+              <button key={code} onClick={() => setIntroLang(code as "en" | "ar" | "he")}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${introLang === code ? "bg-blue-600 text-white" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="text-5xl mb-4">{info.icon}</div>
-          <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-6">{info.title}</h2>
+          <h2 className={`text-2xl sm:text-3xl font-black text-stone-900 mb-6 ${introLang !== "en" ? "dir-rtl" : ""}`} dir={introLang !== "en" ? "rtl" : "ltr"}>{info.title}</h2>
           <div className="space-y-3 mb-8">
             {info.steps.map((step, i) => (
               <motion.div
@@ -4576,7 +4791,7 @@ export default function App() {
                 className="flex items-center gap-3 text-left bg-stone-50 p-3 rounded-xl"
               >
                 <span className="w-7 h-7 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">{i + 1}</span>
-                <span className="text-stone-700 font-medium text-sm sm:text-base">{step}</span>
+                <span className="text-stone-700 font-medium text-sm sm:text-base" dir={introLang !== "en" ? "rtl" : "ltr"}>{step}</span>
               </motion.div>
             ))}
           </div>
@@ -4711,8 +4926,9 @@ export default function App() {
                       className="w-16 h-16 sm:w-48 sm:h-48 object-cover rounded-[16px] sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-xl sm:text-4xl md:text-5xl font-black text-stone-900 relative z-10 break-words w-full ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}>
-                    {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] : 
+                  <h2 className={`text-2xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
+                    dir={(gameMode === "spelling" || gameMode === "reverse" || (gameMode === "flashcards" && isFlipped)) ? "auto" : "ltr"}>
+                    {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] :
                      gameMode === "scramble" ? scrambledWord :
                      gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
                      currentWord?.english}
@@ -4790,7 +5006,7 @@ export default function App() {
               ) : gameMode === "true-false" ? (
                 <div className="max-w-md mx-auto">
                   <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-3 sm:mb-8">
-                    <p className="text-lg sm:text-3xl font-bold text-stone-800">{tfOption?.[targetLanguage]}</p>
+                    <p className="text-xl sm:text-3xl font-bold text-stone-800" dir="auto">{tfOption?.[targetLanguage]}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <button onClick={() => handleTFAnswer(true)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
@@ -4810,7 +5026,7 @@ export default function App() {
               ) : (
               gameMode === "letter-sounds" ? (
                 <div className="max-w-lg mx-auto">
-                  <p className="text-stone-400 text-sm font-bold mb-4 text-center">{currentWord?.[targetLanguage]}</p>
+                  <p className="text-stone-600 text-lg sm:text-xl font-bold mb-4 text-center" dir="auto">{currentWord?.[targetLanguage]}</p>
                   <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
                     {currentWord?.english.split(" ").map((word, wordIdx, allWords) => {
                       const charOffset = allWords.slice(0, wordIdx).reduce((acc, w) => acc + w.length + 1, 0);
