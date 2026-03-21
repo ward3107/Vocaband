@@ -165,6 +165,7 @@ async function startServer() {
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", allowedOrigin],
           frameSrc: ["https://accounts.google.com"],
+          workerSrc: ["'self'", "blob:"],
         },
       },
       // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure

@@ -1477,19 +1477,34 @@ export default function App() {
     return scrambled;
   }, [currentWord]);
 
+  // Cache the selected voice so the same voice is used consistently
+  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const getVoice = () => {
+    if (cachedVoiceRef.current) return cachedVoiceRef.current;
+    const voices = window.speechSynthesis.getVoices();
+    const picked = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
+      || voices.find(v => v.lang.startsWith("en-US"));
+    if (picked) cachedVoiceRef.current = picked;
+    return picked ?? null;
+  };
+  // Re-cache when voices load (they load asynchronously in some browsers)
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const onVoicesChanged = () => { cachedVoiceRef.current = null; getVoice(); };
+    window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
+    getVoice();
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
+  }, []);
+
   const speak = (text: string) => {
     if (!("speechSynthesis" in window)) return;
-    // Cancel any queued/ongoing speech so voice stays in sync with fast skipping
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     utterance.rate = 0.85;
     utterance.pitch = 1.05;
-    // Prefer a natural-sounding voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
-      || voices.find(v => v.lang.startsWith("en-US"));
-    if (preferred) utterance.voice = preferred;
+    const voice = getVoice();
+    if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -1557,6 +1572,8 @@ export default function App() {
       setAvailableWords(words);
       setBuiltSentence([]);
       setSentenceFeedback(null);
+      // Speak the target sentence so students know what to build
+      setTimeout(() => speak(validSentences[0]), 400);
     }
   }, [view, showModeSelection, gameMode, activeAssignment]);
 
@@ -1591,6 +1608,8 @@ export default function App() {
           setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
           setBuiltSentence([]);
           setSentenceFeedback(null);
+          // Speak the next sentence so students know what to build
+          setTimeout(() => speak(validSentences[next]), 400);
         }
       }, 1800);
     } else {
@@ -5616,7 +5635,10 @@ export default function App() {
                   );
                   return (
                     <div className="max-w-xl mx-auto">
-                      <p className="text-stone-400 text-xs font-bold uppercase mb-3 text-center">Sentence {sentenceIndex + 1} / {sentences.length}</p>
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <p className="text-stone-400 text-xs font-bold uppercase">Sentence {sentenceIndex + 1} / {sentences.length}</p>
+                        <button onClick={() => speak(sentences[sentenceIndex])} className="text-blue-500 hover:text-blue-700 active:scale-90 transition-all" title="Listen to sentence">🔊</button>
+                      </div>
                       {/* Built sentence area */}
                       <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
                         sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
