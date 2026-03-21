@@ -453,6 +453,14 @@ export default function App() {
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
 
+  // Redirect legacy "students" view to gradebook
+  useEffect(() => {
+    if (view === "students") {
+      setView("gradebook");
+      fetchScores();
+    }
+  }, [view]);
+
   // Speak motivational message during gameplay — strip emojis so TTS reads the actual text
   useEffect(() => {
     if (motivationalMessage) {
@@ -1213,21 +1221,23 @@ export default function App() {
 
   const recordConsent = async (action: 'accept' | 'withdraw' = 'accept') => {
     if (!user) return;
+    // Always dismiss the modal even if DB operations fail (tables may not exist yet)
+    setNeedsConsent(false);
+    setConsentChecked(false);
     try {
+      // Best-effort: log consent (table may not exist pre-migration)
       await supabase.from('consent_log').insert({
         uid: user.uid,
         policy_version: PRIVACY_POLICY_VERSION,
         terms_version: TERMS_VERSION,
         action,
-      });
+      }).then(() => {});
       await supabase.from('users').update({
         consent_policy_version: PRIVACY_POLICY_VERSION,
         consent_given_at: new Date().toISOString(),
       }).eq('uid', user.uid);
-      setNeedsConsent(false);
-      setConsentChecked(false);
     } catch (err) {
-      console.error("Consent recording error:", err);
+      console.error("Consent recording error (non-blocking):", err);
     }
   };
 
@@ -1959,6 +1969,90 @@ export default function App() {
   // State for selected score detail view
   const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [analyticsClassFilter, setAnalyticsClassFilter] = useState<string>("all");
+
+  // Per-class analytics computed from allScores
+  const classAnalytics = useMemo(() => {
+    const filteredScores = analyticsClassFilter === "all"
+      ? allScores
+      : allScores.filter(s => s.classCode === analyticsClassFilter);
+
+    if (filteredScores.length === 0) return null;
+
+    // Score distribution buckets
+    const distribution = { excellent: 0, good: 0, needsWork: 0 };
+    filteredScores.forEach(s => {
+      if (s.score >= 90) distribution.excellent++;
+      else if (s.score >= 70) distribution.good++;
+      else distribution.needsWork++;
+    });
+
+    // Mode usage
+    const modeCount: Record<string, number> = {};
+    filteredScores.forEach(s => {
+      modeCount[s.mode] = (modeCount[s.mode] || 0) + 1;
+    });
+    const topModes = Object.entries(modeCount).sort((a, b) => b[1] - a[1]);
+    const maxModeCount = topModes.length > 0 ? topModes[0][1] : 1;
+
+    // Activity over time (group by week)
+    const weekMap: Record<string, { count: number; totalScore: number }> = {};
+    filteredScores.forEach(s => {
+      const d = new Date(s.completedAt);
+      // Get Monday of the week
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      const weekKey = monday.toISOString().slice(0, 10);
+      if (!weekMap[weekKey]) weekMap[weekKey] = { count: 0, totalScore: 0 };
+      weekMap[weekKey].count++;
+      weekMap[weekKey].totalScore += s.score;
+    });
+    const weeklyActivity = Object.entries(weekMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-12); // last 12 weeks
+    const maxWeekCount = Math.max(...weeklyActivity.map(([, v]) => v.count), 1);
+
+    // Most missed words across all students
+    const mistakeCounts: Record<number, number> = {};
+    filteredScores.forEach(s => {
+      s.mistakes?.forEach(wordId => {
+        mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
+      });
+    });
+    const topMistakes = Object.entries(mistakeCounts)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 8)
+      .map(([wordId, count]) => ({ wordId: parseInt(wordId), count }));
+    const maxMistakeCount = topMistakes.length > 0 ? topMistakes[0].count : 1;
+
+    // Unique students
+    const uniqueStudents = new Set(filteredScores.map(s => s.studentUid || s.studentName));
+
+    // Average score
+    const avgScore = Math.round(filteredScores.reduce((sum, s) => sum + s.score, 0) / filteredScores.length);
+
+    // Completion rate per assignment
+    const assignmentStudents: Record<string, Set<string>> = {};
+    filteredScores.forEach(s => {
+      if (!assignmentStudents[s.assignmentId]) assignmentStudents[s.assignmentId] = new Set();
+      assignmentStudents[s.assignmentId].add(s.studentName);
+    });
+
+    return {
+      totalAttempts: filteredScores.length,
+      uniqueStudents: uniqueStudents.size,
+      avgScore,
+      distribution,
+      topModes,
+      maxModeCount,
+      weeklyActivity,
+      maxWeekCount,
+      topMistakes,
+      maxMistakeCount,
+      assignmentStudents,
+    };
+  }, [allScores, analyticsClassFilter]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
@@ -4164,7 +4258,11 @@ export default function App() {
   }
 
   // "students" view merged into gradebook — redirect if somehow navigated here
-  if (view === "students") { setView("gradebook"); fetchScores(); fetchStudents(); }
+  // (wrapped in useEffect-safe pattern to avoid setState during render)
+  if (view === "students") {
+    // Return a loading state while the effect below redirects
+    return <div className="min-h-screen flex items-center justify-center bg-stone-100"><RefreshCw className="animate-spin text-blue-700" size={48} /></div>;
+  }
 
   if (view === "analytics") {
     return (
@@ -4172,26 +4270,29 @@ export default function App() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
-            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Student Analytics</h1>
+            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Classroom Analytics</h1>
           </div>
 
-          {/* Explanation banner */}
-          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
-            <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-2">How to read this dashboard</h2>
-            <ul className="text-purple-700 text-xs sm:text-sm space-y-1.5 list-none">
-              <li className="flex items-start gap-2"><span className="mt-0.5">📊</span> <span>Each <strong>column</strong> is an assignment (shown by title). Each <strong>row</strong> is a student.</span></li>
-              <li className="flex items-start gap-2"><span className="mt-0.5">🔢</span> <span>The <strong>score</strong> in each cell is the student's <strong>latest attempt</strong> on that assignment.</span></li>
-              <li className="flex items-start gap-2"><span className="mt-0.5">👆</span> <span>Click a <strong>score cell</strong> to see details: mode played, date, and missed words.</span></li>
-              <li className="flex items-start gap-2"><span className="mt-0.5">👤</span> <span>Click a <strong>student name</strong> to see their full profile with score trends.</span></li>
-              <li className="flex items-start gap-2"><span className="mt-0.5">📈</span> <span>The <strong>Average</strong> column shows each student's mean score across all assignments.</span></li>
-            </ul>
-            <div className="flex flex-wrap gap-3 mt-3 text-xs">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block"></span> 70–89% Good</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-200 border border-blue-400 inline-block"></span> ★ 90%+ Excellent</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> ⚠️ Below 70%</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 border border-stone-200 inline-block"></span> — Not attempted</span>
+          {/* Class Filter Tabs */}
+          {classes.length > 1 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button
+                onClick={() => setAnalyticsClassFilter("all")}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsClassFilter === "all" ? "bg-purple-600 text-white shadow-md" : "bg-white text-stone-600 hover:bg-purple-50 border border-stone-200"}`}
+              >
+                All Classes
+              </button>
+              {classes.map(c => (
+                <button
+                  key={c.code}
+                  onClick={() => setAnalyticsClassFilter(c.code)}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsClassFilter === c.code ? "bg-purple-600 text-white shadow-md" : "bg-white text-stone-600 hover:bg-purple-50 border border-stone-200"}`}
+                >
+                  {c.name}
+                </button>
+              ))}
             </div>
-          </div>
+          )}
 
           {allScores.length === 0 ? (
             <div className="bg-white p-8 rounded-[32px] sm:rounded-[40px] shadow-xl text-center">
@@ -4200,22 +4301,152 @@ export default function App() {
           ) : (
             <>
               {/* Summary Stats */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Students Tracked</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.students.length}</p>
+              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Students</p>
+              <p className="text-2xl sm:text-3xl font-black text-stone-900">{classAnalytics?.uniqueStudents ?? 0}</p>
+            </div>
+            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Attempts</p>
+              <p className="text-2xl sm:text-3xl font-black text-stone-900">{classAnalytics?.totalAttempts ?? 0}</p>
+            </div>
+            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
+              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Avg Score</p>
+              <p className="text-2xl sm:text-3xl font-black text-blue-700">{classAnalytics?.avgScore ?? 0}%</p>
             </div>
             <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
               <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Assignments</p>
               <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.assignments.length}</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Class Average</p>
-              <p className="text-2xl sm:text-3xl font-black text-blue-700">
-                {matrixData.students.length > 0
-                  ? Math.round(Array.from(matrixData.averages.values()).reduce((a, b) => a + b, 0) / matrixData.averages.size)
-                  : 0}%
-              </p>
+          </div>
+
+          {/* Charts Row */}
+          {classAnalytics && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Score Distribution Chart */}
+              <div className="bg-white p-5 rounded-2xl shadow-lg">
+                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
+                  <BarChart3 className="text-purple-600" size={18} />
+                  Score Distribution
+                </h3>
+                <div className="space-y-3">
+                  {[
+                    { label: "Excellent (90%+)", count: classAnalytics.distribution.excellent, color: "bg-emerald-400", textColor: "text-emerald-700" },
+                    { label: "Good (70-89%)", count: classAnalytics.distribution.good, color: "bg-blue-400", textColor: "text-blue-700" },
+                    { label: "Needs Work (<70%)", count: classAnalytics.distribution.needsWork, color: "bg-rose-400", textColor: "text-rose-700" },
+                  ].map(({ label, count, color, textColor }) => {
+                    const total = classAnalytics.totalAttempts;
+                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                    return (
+                      <div key={label}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-stone-600 font-bold">{label}</span>
+                          <span className={`font-black ${textColor}`}>{count} ({pct}%)</span>
+                        </div>
+                        <div className="h-4 bg-stone-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Game Mode Usage */}
+              <div className="bg-white p-5 rounded-2xl shadow-lg">
+                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
+                  <Layers className="text-purple-600" size={18} />
+                  Game Mode Usage
+                </h3>
+                <div className="space-y-2">
+                  {classAnalytics.topModes.slice(0, 6).map(([mode, count]) => {
+                    const pct = Math.round((count / classAnalytics.maxModeCount) * 100);
+                    return (
+                      <div key={mode} className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-stone-600 w-24 truncate capitalize">{mode.replace(/-/g, ' ')}</span>
+                        <div className="flex-1 h-5 bg-stone-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-purple-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-stone-700 w-8 text-right">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Weekly Activity Chart */}
+              <div className="bg-white p-5 rounded-2xl shadow-lg">
+                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
+                  <TrendingUp className="text-purple-600" size={18} />
+                  Weekly Activity
+                </h3>
+                {classAnalytics.weeklyActivity.length > 0 ? (
+                  <div className="flex items-end gap-1 h-32">
+                    {classAnalytics.weeklyActivity.map(([week, data]) => {
+                      const heightPct = Math.round((data.count / classAnalytics.maxWeekCount) * 100);
+                      const avgPct = Math.round(data.totalScore / data.count);
+                      return (
+                        <div key={week} className="flex-1 flex flex-col items-center gap-1 group relative">
+                          <div
+                            className={`w-full rounded-t-md transition-all ${avgPct >= 90 ? "bg-emerald-400" : avgPct >= 70 ? "bg-blue-400" : "bg-rose-300"}`}
+                            style={{ height: `${Math.max(heightPct, 8)}%` }}
+                          />
+                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            {data.count} attempts, avg {avgPct}%
+                          </div>
+                          <span className="text-[9px] text-stone-400 truncate w-full text-center">{week.slice(5)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-stone-400 text-sm italic">No activity data yet</p>
+                )}
+                <p className="text-[10px] text-stone-400 mt-2 text-center">Bar color = average score quality. Hover for details.</p>
+              </div>
+
+              {/* Most Missed Words */}
+              <div className="bg-white p-5 rounded-2xl shadow-lg">
+                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
+                  <AlertTriangle className="text-rose-500" size={18} />
+                  Most Missed Words
+                </h3>
+                {classAnalytics.topMistakes.length > 0 ? (
+                  <div className="space-y-2">
+                    {classAnalytics.topMistakes.map(({ wordId, count }) => {
+                      const word = ALL_WORDS.find(w => w.id === wordId);
+                      const pct = Math.round((count / classAnalytics.maxMistakeCount) * 100);
+                      return (
+                        <div key={wordId} className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between text-xs mb-0.5">
+                              <span className="font-bold text-stone-700 truncate">{word?.english || `#${wordId}`}</span>
+                              <span className="text-rose-600 font-bold ml-2">{count}x</span>
+                            </div>
+                            <div className="h-3 bg-stone-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-rose-300 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                          {word?.hebrew && <span className="text-xs text-stone-400 w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-stone-400 text-sm italic">No mistake data yet</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Explanation banner */}
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
+            <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-2">Student Scores Matrix</h2>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-50 border border-blue-300 inline-block"></span> ★ 90%+ Excellent</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-50 border border-blue-200 inline-block"></span> 70-89% Good</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> Below 70%</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 border border-stone-200 inline-block"></span> — Not attempted</span>
             </div>
           </div>
 
@@ -4235,7 +4466,9 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {matrixData.students.map(student => {
+                  {matrixData.students
+                    .filter(student => analyticsClassFilter === "all" || matrixData.getStudentClassCode(student) === analyticsClassFilter)
+                    .map(student => {
                     const studentAvg = matrixData.averages.get(student) || 0;
                     const classCode = matrixData.getStudentClassCode(student);
                     const avatar = matrixData.getStudentAvatar(student);
