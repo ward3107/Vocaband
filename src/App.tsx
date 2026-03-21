@@ -437,6 +437,10 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
 
+  // --- QUERY DEDUPLICATION ---
+  // Track when data was last fetched to avoid redundant Supabase calls
+  const lastFetchRef = useRef<Record<string, number>>({});
+
   // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
@@ -715,6 +719,21 @@ export default function App() {
     };
     retryPending();
   }, []);
+
+  // Auto-refresh student assignments every 30s while on the dashboard
+  // so new assignments from the teacher appear without re-login
+  useEffect(() => {
+    if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
+    const code = user.classCode;
+    const refresh = async () => {
+      const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
+      if (!classRows || classRows.length === 0) return;
+      const { data } = await supabase.from('assignments').select('*').eq('class_id', classRows[0].id);
+      if (data) setStudentAssignments(data.map(mapAssignment));
+    };
+    const id = setInterval(refresh, 30000);
+    return () => clearInterval(id);
+  }, [user?.role, user?.classCode, view]);
 
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
@@ -1254,6 +1273,9 @@ export default function App() {
   };
   const fetchStudents = async () => {
     if (!user || user.role !== "teacher" || classes.length === 0) return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.students ?? 0) < 10000) return;
+    lastFetchRef.current.students = now;
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1279,10 +1301,11 @@ export default function App() {
     setClassStudents(Object.values(studentMap));
   };
   const fetchGlobalLeaderboard = async () => {
-    // Scope to the student's own class to avoid cross-class PII leaks.
-    // RLS already restricts results, but filtering explicitly makes the intent clear.
     const classCode = user?.classCode;
     if (!classCode) return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.leaderboard ?? 0) < 10000) return;
+    lastFetchRef.current.leaderboard = now;
     const { data } = await supabase
       .from('progress').select('student_name, score, avatar')
       .eq('class_code', classCode)
@@ -1296,6 +1319,9 @@ export default function App() {
   };
   const fetchScores = async () => {
     if (!user || user.role !== "teacher") return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
+    lastFetchRef.current.scores = now;
 
     if (classes.length === 0) {
       setAllScores([]);
@@ -1320,6 +1346,9 @@ export default function App() {
 
   const fetchTeacherAssignments = async () => {
     if (!user || user.role !== "teacher" || classes.length === 0) return;
+    const now = Date.now();
+    if (now - (lastFetchRef.current.teacherAssignments ?? 0) < 10000) return;
+    lastFetchRef.current.teacherAssignments = now;
     setTeacherAssignmentsLoading(true);
     const classIds = classes.map(c => c.id);
     const { data } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
