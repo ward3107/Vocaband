@@ -3216,8 +3216,8 @@ export default function App() {
                   iconColor="text-purple-600"
                   title="Classroom Analytics"
                   description="Scores, trends & weak words"
-                  buttonText="View"
-                  buttonVariant="secondary"
+                  buttonText="View Insights"
+                  buttonVariant="primary"
                   onClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
                 />
               </div>
@@ -3232,8 +3232,8 @@ export default function App() {
                   iconColor="text-amber-600"
                   title="Students & Grades"
                   description="All students & scores"
-                  buttonText="View"
-                  buttonVariant="secondary"
+                  buttonText="Open Gradebook"
+                  buttonVariant="primary"
                   onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
                 />
               </div>
