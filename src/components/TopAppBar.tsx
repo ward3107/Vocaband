@@ -25,14 +25,11 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
-      // Show header when at top or scrolling up
+      // Only show header when at the very top of the page
       if (currentScrollY < 10) {
         setIsVisible(true);
-      } else if (currentScrollY < lastScrollY) {
-        // Scrolling up
-        setIsVisible(true);
-      } else if (currentScrollY > lastScrollY) {
-        // Scrolling down
+      } else {
+        // Hide when anywhere else on the page
         setIsVisible(false);
       }
 
