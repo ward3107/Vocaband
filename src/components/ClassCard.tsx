@@ -29,7 +29,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
           <div>
             <h3 className="text-2xl font-black text-on-surface leading-tight">{name}</h3>
             <div className="flex items-center gap-2 mt-2">
-              <span className="px-3 py-1 bg-primary text-white text-xs font-black rounded-full uppercase tracking-tighter shadow-sm">
+              <span className="px-4 py-2 bg-primary text-white text-sm font-black rounded-full uppercase tracking-wide shadow-md">
                 Code: {code}
               </span>
               {studentCount !== undefined && (
