@@ -3168,6 +3168,7 @@ export default function App() {
         <TopAppBar
           title="Vocaband"
           subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
+          userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
         />

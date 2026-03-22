@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 interface TopAppBarProps {
   title: string;
   subtitle?: string;
+  userName?: string;
   showBack?: boolean;
   onBack?: () => void;
   userAvatar?: string;
@@ -13,6 +14,7 @@ interface TopAppBarProps {
 const TopAppBar: React.FC<TopAppBarProps> = ({
   title,
   subtitle,
+  userName,
   showBack = false,
   onBack,
   userAvatar,
@@ -68,6 +70,12 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {userName && (
+          <div className="hidden sm:flex flex-col items-end">
+            <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>
+            <span className="text-sm font-bold text-on-surface">{userName}</span>
+          </div>
+        )}
         {onLogout && (
           <button
             onClick={onLogout}
@@ -81,7 +89,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             <img alt="Profile" src={userAvatar} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-on-primary-container font-bold">
-              {title.charAt(0).toUpperCase()}
+              {userName ? userName.charAt(0).toUpperCase() : title.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
