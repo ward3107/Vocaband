@@ -8,7 +8,6 @@ interface TopAppBarProps {
   onBack?: () => void;
   userAvatar?: string;
   onLogout?: () => void;
-  onPrivacy?: () => void;
 }
 
 const TopAppBar: React.FC<TopAppBarProps> = ({
@@ -18,10 +17,9 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   onBack,
   userAvatar,
   onLogout,
-  onPrivacy,
 }) => {
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md flex justify-between items-center px-6 py-4 border-b border-stone-200/50">
+    <header className="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md flex justify-between items-center px-6 py-4 border-b border-stone-100">
       <div className="flex items-center gap-4">
         {showBack && (
           <button
@@ -44,14 +42,6 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {onPrivacy && (
-          <button
-            onClick={onPrivacy}
-            className="text-on-surface-variant hover:text-on-surface font-bold text-xs px-3 py-2 bg-surface-container-lowest rounded-xl shadow-sm border-2 border-surface-container-high hover:border-outline-variant transition-all"
-          >
-            Privacy
-          </button>
-        )}
         {onLogout && (
           <button
             onClick={onLogout}

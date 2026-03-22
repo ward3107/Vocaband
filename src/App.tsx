@@ -3170,7 +3170,6 @@ export default function App() {
           subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
-          onPrivacy={() => setView("privacy-settings")}
         />
 
         <div className="max-w-6xl mx-auto">
