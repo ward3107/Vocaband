@@ -3166,8 +3166,9 @@ export default function App() {
 
         {/* Top App Bar */}
         <TopAppBar
-          title={user?.displayName || "Teacher"}
-          subtitle="Dashboard"
+          title="Vocaband"
+          subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
+          userAvatar={user?.avatarUrl}
           onLogout={() => supabase.auth.signOut()}
           onPrivacy={() => setView("privacy-settings")}
         />
