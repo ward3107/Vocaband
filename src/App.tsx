@@ -2425,9 +2425,19 @@ export default function App() {
         {/* Footer with Privacy Links */}
         <footer className="text-center py-6 sm:py-8 text-on-surface-variant font-bold text-xs sm:text-sm border-t border-surface-variant/30">
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-on-surface-variant hover:text-primary transition-colors">Privacy Policy</a>
+            <button
+              onClick={() => setView("public-privacy")}
+              className="text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Privacy Policy
+            </button>
             <span className="text-surface-dim">•</span>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-on-surface-variant hover:text-primary transition-colors">Terms of Service</a>
+            <button
+              onClick={() => setView("public-terms")}
+              className="text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Terms of Service
+            </button>
           </div>
           <p className="text-on-surface-variant/70">Vocaband © 2024 • Powered by Vocabulary Mastery</p>
         </footer>
