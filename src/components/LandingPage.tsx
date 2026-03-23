@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
 import { motion } from "motion/react";
 import {
   Rocket,
@@ -6,17 +6,11 @@ import {
   Users,
   Coins,
   ArrowRight,
-  ArrowUp,
-  MessageCircle,
-  Share2,
-  X,
-  Linkedin,
-  Mail,
   Link2,
-  Check,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
+import FloatingButtons from "./FloatingButtons";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
@@ -24,85 +18,7 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) => {
-  const [showBackToTop, setShowBackToTop] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const shareRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Close share widget when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
-        setShareOpen(false);
-      }
-    };
-    if (shareOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [shareOpen]);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const shareUrl = window.location.href;
-  const shareText = "Check out Vocaband - the fun way to master English vocabulary for Israeli EFL students!";
-
-  const shareOptions = [
-    {
-      name: "WhatsApp",
-      icon: MessageCircle,
-      color: "bg-green-500",
-      action: () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(shareUrl)}`, "_blank");
-      },
-    },
-    {
-      name: "X",
-      icon: X,
-      color: "bg-black",
-      action: () => {
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
-      },
-    },
-    {
-      name: "LinkedIn",
-      icon: Linkedin,
-      color: "bg-blue-600",
-      action: () => {
-        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, "_blank");
-      },
-    },
-    {
-      name: "Email",
-      icon: Mail,
-      color: "bg-red-500",
-      action: () => {
-        window.open(`mailto:?subject=${encodeURIComponent("Vocaband - Learn English Vocabulary")}&body=${encodeURIComponent(shareText + "\n\n" + shareUrl)}`, "_blank");
-      },
-    },
-    {
-      name: "Copy Link",
-      icon: copied ? Check : Link2,
-      color: copied ? "bg-green-500" : "bg-stone-600",
-      action: async () => {
-        await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-    },
-  ];
+  const [copied, setCopied] = React.useState(false);
 
   return (
     <div className="min-h-screen bg-surface overflow-x-hidden">
@@ -576,54 +492,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
       </main>
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
-
-      {/* Share Widget - Visible on all devices */}
-      <div ref={shareRef} className="fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-2 md:gap-3">
-        <button
-          onClick={() => setShareOpen(!shareOpen)}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg ${
-            shareOpen
-              ? "bg-primary text-white"
-              : "bg-primary text-white hover:bg-primary/90"
-          }`}
-          title="Share"
-        >
-          <Share2 size={22} />
-        </button>
-
-        {/* Expanded options - Vertical on mobile */}
-        {shareOpen && (
-          <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-2 bg-white rounded-2xl p-3 shadow-2xl border border-stone-200">
-            {shareOptions.map((option) => {
-              const Icon = option.icon;
-              return (
-                <button
-                  key={option.name}
-                  onClick={() => {
-                    option.action();
-                    if (option.name !== "Copy Link") setShareOpen(false);
-                  }}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-md ${option.color} text-white`}
-                  title={option.name}
-                >
-                  <Icon size={22} strokeWidth={2.5} />
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Back to Top */}
-        {showBackToTop && (
-          <button
-            onClick={scrollToTop}
-            className="w-12 h-12 bg-primary rounded-full flex items-center justify-center hover:bg-primary/90 transition-all hover:scale-110 shadow-lg text-white"
-            title="Back to top"
-          >
-            <ArrowUp size={22} strokeWidth={2.5} />
-          </button>
-        )}
-      </div>
+      <FloatingButtons />
     </div>
   );
 };
