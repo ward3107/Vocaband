@@ -18,8 +18,6 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) => {
-  const [copied, setCopied] = React.useState(false);
-
   return (
     <div className="min-h-screen bg-surface overflow-x-hidden">
       <PublicNav

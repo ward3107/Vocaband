@@ -4,6 +4,11 @@ import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
 
+interface TermsPageProps {
+  onNavigate: (page: "home" | "terms" | "privacy") => void;
+  onGetStarted: () => void;
+}
+
 const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
   const handlePrint = () => {
     window.print();
