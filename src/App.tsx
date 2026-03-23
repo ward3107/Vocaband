@@ -5347,17 +5347,17 @@ export default function App() {
 
         <main className="pt-24 px-6 max-w-2xl mx-auto">
           {/* Header Card */}
-          <div className="bg-tertiary-container/30 rounded-2xl p-6 mb-8 text-center border-2 border-tertiary-container/50">
+          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 mb-8 text-center shadow-xl">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="flex flex-col items-center"
             >
-              <div className="w-16 h-16 rounded-full bg-tertiary-container flex items-center justify-center mb-4 shadow-lg">
-                <Zap className="text-on-tertiary-container" size={32} />
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 shadow-lg">
+                <Zap className="text-white" size={32} />
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">Select a Class</h2>
-              <p className="text-on-surface-variant font-medium">Choose which class to start the Live Challenge for</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Select a Class</h2>
+              <p className="text-white/90 font-medium">Choose which class to start the Live Challenge for</p>
             </motion.div>
           </div>
 
