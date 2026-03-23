@@ -490,9 +490,16 @@ export default function App() {
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   // Reset welcome popup when entering assignment creation view
+  // Only show if user hasn't seen it before (checked via localStorage)
   useEffect(() => {
     if (view === "create-assignment") {
-      setShowAssignmentWelcome(true);
+      try {
+        if (!localStorage.getItem('vocaband_welcome_seen')) {
+          setShowAssignmentWelcome(true);
+        }
+      } catch {
+        setShowAssignmentWelcome(true);
+      }
     }
   }, [view]);
 
