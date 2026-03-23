@@ -2182,6 +2182,13 @@ export default function App() {
               <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Israeli English Curriculum • Bands Vocabulary</span>
             </div>
           </div>
+          <button
+            onClick={() => setView("public-landing")}
+            className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Learn More
+          </button>
         </header>
 
         <main className="flex-grow flex flex-col items-center px-4 py-6 sm:py-8 max-w-4xl mx-auto w-full space-y-6 sm:space-y-8 pb-24 lg:pb-8">
