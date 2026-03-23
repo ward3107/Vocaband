@@ -35,7 +35,8 @@ import {
   ChevronDown,
   Plus,
   X,
-  TrendingUp
+  TrendingUp,
+  GraduationCap
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
@@ -45,6 +46,13 @@ import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './types';
+import TopAppBar from "./components/TopAppBar";
+import ActionCard from "./components/ActionCard";
+import ClassCard from "./components/ClassCard";
+import LandingPage from "./components/LandingPage";
+import TermsPage from "./components/TermsPage";
+import PublicPrivacyPage from "./components/PublicPrivacyPage";
+import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -234,7 +242,56 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students" | "shop" | "privacy-settings">("landing");
+  const [view, setView] = useState<
+    | "public-landing"
+    | "public-terms"
+    | "public-privacy"
+    | "landing"
+    | "game"
+    | "teacher-dashboard"
+    | "student-dashboard"
+    | "create-assignment"
+    | "gradebook"
+    | "live-challenge"
+    | "live-challenge-class-select"
+    | "analytics"
+    | "global-leaderboard"
+    | "students"
+    | "shop"
+    | "privacy-settings"
+  >("public-landing");
+
+  // Cookie consent state
+  const [showCookieBanner, setShowCookieBanner] = useState(() => {
+    try {
+      return !localStorage.getItem("vocaband_cookie_consent");
+    } catch {
+      return true;
+    }
+  });
+
+  const handleCookieAccept = (preferences?: CookiePreferences) => {
+    try {
+      const consentData = preferences
+        ? JSON.stringify(preferences)
+        : JSON.stringify({ essential: true, analytics: true, functional: true });
+      localStorage.setItem("vocaband_cookie_consent", consentData);
+    } catch {}
+    setShowCookieBanner(false);
+  };
+
+  const handleCookieCustomize = (preferences: CookiePreferences) => {
+    handleCookieAccept(preferences);
+  };
+
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy") => {
+    const viewMap = {
+      home: "public-landing",
+      terms: "public-terms",
+      privacy: "public-privacy",
+    } as const;
+    setView(viewMap[page]);
+  };
   const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames">("avatars");
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
@@ -486,9 +543,16 @@ export default function App() {
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   // Reset welcome popup when entering assignment creation view
+  // Only show if user hasn't seen it before (checked via localStorage)
   useEffect(() => {
     if (view === "create-assignment") {
-      setShowAssignmentWelcome(true);
+      try {
+        if (!localStorage.getItem('vocaband_welcome_seen')) {
+          setShowAssignmentWelcome(true);
+        }
+      } catch {
+        setShowAssignmentWelcome(true);
+      }
     }
   }, [view]);
 
@@ -842,39 +906,6 @@ export default function App() {
   const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
   const MAX_IMPORT_WORDS = 500;
 
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n");
-      const words: Word[] = lines.slice(1).map((line, idx) => {
-        const [english, hebrew, arabic] = line.split(",");
-        return {
-          id: 5000 + idx,
-          english: english?.trim(),
-          hebrew: hebrew?.trim() || "",
-          arabic: arabic?.trim() || "",
-          level: "Custom" as const
-        };
-      }).filter(w => w.english);
-
-      if (words.length === 0) {
-        showToast("No valid words found in CSV. Make sure the first column is English.", "error");
-        return;
-      }
-      const limited = words.slice(0, MAX_IMPORT_WORDS);
-      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
-      setCustomWords(prev => [...prev, ...limited]);
-      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
-      setSelectedLevel("Custom");
-    };
-    reader.readAsText(file);
-  };
-
   /**
    * handleOcrUpload
    * This function takes an image file (e.g., a photo of a book page),
@@ -1023,37 +1054,6 @@ export default function App() {
     setSelectedWords(prev => [...prev, word.id]);
     setSelectedLevel("Custom");
     setTagInput("");
-  };
-
-  // CSV upload handler (also used for the Excel button — teachers export as CSV)
-  const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
-      showToast("Please save your Excel file as CSV first (File > Save As > CSV).", "info");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length <= 1) { showToast("No valid words found in CSV file.", "error"); return; }
-      const words: Word[] = lines.slice(1).map((line, idx) => {
-        const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
-        return { id: 6000 + idx, english: cols[0] ?? "", hebrew: cols[1] ?? "", arabic: cols[2] ?? "", level: "Custom" as const };
-      }).filter(w => w.english);
-      if (words.length === 0) { showToast("No valid words found in CSV file.", "error"); return; }
-      const limited = words.slice(0, MAX_IMPORT_WORDS);
-      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
-      setCustomWords(prev => [...prev, ...limited]);
-      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
-      setSelectedLevel("Custom");
-      showToast(`Imported ${limited.length} words from CSV.`, "success");
-    };
-    reader.readAsText(file);
-    e.target.value = "";
   };
 
   // Word (.docx) upload — extract text then use smart paste logic
@@ -2104,130 +2104,142 @@ export default function App() {
     </div>;
   }
 
+  // --- PUBLIC VIEWS (No authentication required) ---
+  if (view === "public-landing") {
+    return (
+      <>
+        <LandingPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieCustomize}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "public-terms") {
+    return (
+      <>
+        <TermsPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieCustomize}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "public-privacy") {
+    return (
+      <>
+        <PublicPrivacyPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieCustomize}
+          />
+        )}
+      </>
+    );
+  }
+
   if (view === "landing" && !user) {
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-5 sm:p-6">
-        <div className="w-full max-w-md bg-white rounded-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 via-indigo-900 p-7 sm:p-8 text-center text-white relative overflow-hidden">
-            {/* Animated background pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+      <div className="min-h-screen flex flex-col bg-surface">
+        {/* Header */}
+        <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-4 sm:px-6 py-4 z-50">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
             </div>
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-18 h-18 sm:w-20 sm:h-20 bg-gradient-to-br from-white/30 via-white/20 to-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center backdrop-blur-sm overflow-hidden shadow-xl shadow-blue-900/50 ring-2 ring-white/30">
-                  <img src="/logo.webp" alt="Vocaband" className="w-full h-full object-cover" />
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">Vocaband</h1>
-              </div>
-              <p className="text-blue-100 text-base sm:text-lg font-medium">Israeli English Curriculum</p>
-              <p className="text-blue-100 text-base sm:text-lg font-medium">Band II Vocabulary</p>
+            <div className="flex flex-col">
+              <span className="text-xl sm:text-2xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Israeli English Curriculum • Bands Vocabulary</span>
             </div>
           </div>
+          <button
+            onClick={() => setView("public-landing")}
+            className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Learn More
+          </button>
+        </header>
 
-          <div className="p-6 sm:p-8">
-            <div className="flex bg-stone-100 p-1 rounded-2xl mb-8 sm:mb-8">
+        <main className="flex-grow flex flex-col items-center px-4 py-6 sm:py-8 max-w-4xl mx-auto w-full space-y-6 sm:space-y-8 pb-24 lg:pb-8">
+          {/* Tabs Section */}
+          <div className="w-full flex justify-center">
+            <div className="bg-surface-container-low p-1.5 rounded-full flex items-center gap-1 shadow-inner border border-surface-container-high">
               <button
                 onClick={() => setLandingTab("student")}
-                className={`flex-1 py-4 sm:py-3 rounded-xl font-bold transition-all text-lg sm:text-sm ${landingTab === "student" ? "bg-white text-blue-700 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
+                className={`px-6 sm:px-8 py-2 sm:py-2.5 rounded-full font-black text-sm transition-all font-headline ${landingTab === "student" ? "bg-white shadow-md text-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
               >
                 Student
               </button>
               <button
                 onClick={() => setLandingTab("teacher")}
-                className={`flex-1 py-4 sm:py-3 rounded-xl font-bold transition-all text-lg sm:text-sm ${landingTab === "teacher" ? "bg-white text-blue-700 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}
+                className={`px-6 sm:px-8 py-2 sm:py-2.5 rounded-full font-bold text-sm transition-all font-headline ${landingTab === "teacher" ? "bg-white shadow-md text-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
               >
                 Teacher
               </button>
             </div>
+          </div>
 
-            <AnimatePresence mode="wait">
-              {landingTab === "student" ? (
-                <motion.div
-                  key="student"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-5"
-                >
-                  <div className="space-y-5">
-                    <div className="relative">
-                      <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-                      <input
-                        type="text"
-                        placeholder="Class Code"
-                        id="class-code"
-                        maxLength={20}
-                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
-                      />
-                    </div>
-                    <div className="relative">
-                      <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-                      <input
-                        type="text"
-                        placeholder="Your Name"
-                        id="student-name"
-                        maxLength={30}
-                        className="w-full pl-11 pr-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-bold text-base"
-                      />
-                    </div>
+          <AnimatePresence mode="wait">
+            {landingTab === "student" ? (
+              <motion.div
+                key="student"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch"
+              >
+                {/* Left Column: Form Section */}
+                <div className="flex flex-col space-y-6 sm:space-y-8">
+                  <div className="space-y-2 text-center lg:text-left">
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-on-surface tracking-tighter font-headline leading-none">
+                      Ready to <br/><span className="text-primary">Learn?</span>
+                    </h1>
+                    <p className="text-on-surface-variant font-bold text-base sm:text-lg">Enter your class code and pick your avatar to start your journey.</p>
+                  </div>
 
-                    <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 rounded-2xl shadow-inner">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm font-black text-blue-700 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-lg">Choose Avatar</p>
-                        <HelpIcon tooltip="Pick a fun emoji to represent you in class!" position="left" />
+                  <div className="space-y-5 sm:space-y-6">
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="relative group">
+                        <label className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">CLASS CODE</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. BAND-2024"
+                          id="class-code"
+                          maxLength={20}
+                          className="w-full bg-surface-container-lowest border-2 border-surface-container-high focus:border-primary rounded-xl px-5 sm:px-6 py-4 sm:py-5 font-bold text-base sm:text-lg text-on-surface outline-none transition-all placeholder:text-surface-dim"
+                        />
                       </div>
-
-                      {/* Category Tabs — only free categories at login */}
-                      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
-                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
-                          .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0)
-                          .map(category => (
-                          <button
-                            key={category}
-                            onClick={() => setSelectedAvatarCategory(category)}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md whitespace-nowrap flex-shrink-0 ${
-                              selectedAvatarCategory === category
-                                ? "bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 text-white shadow-lg shadow-blue-200"
-                                : "bg-stone-200 text-stone-600 hover:bg-stone-300"
-                            }`}
-                          >
-                            {category}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Avatar Grid */}
-                      <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 justify-items-center">
-                        {AVATAR_CATEGORIES[selectedAvatarCategory].map(a => (
-                          <button
-                            key={a}
-                            onClick={() => setStudentAvatar(a)}
-                            className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-xl text-2xl sm:text-3xl transition-all ${
-                              studentAvatar === a
-                                ? "bg-gradient-to-br from-blue-300 via-blue-500 to-blue-800 shadow-xl shadow-blue-300 ring-2 ring-blue-400 scale-110"
-                                : "bg-white hover:bg-gradient-to-br hover:from-stone-50 hover:to-stone-100 hover:scale-105 shadow-sm"
-                            }`}
-                          >
-                            {a}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Locked categories preview */}
-                      <div className="mt-4 pt-3 border-t border-stone-200">
-                        <p className="text-xs font-bold text-stone-400 mb-2 text-center">🔒 Play games to unlock more!</p>
-                        <div className="flex flex-wrap gap-1.5 justify-center">
-                          {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
-                            .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired > 0)
-                            .map(cat => (
-                            <span key={cat} className="px-2 py-1 bg-stone-200 text-stone-400 rounded-lg text-[10px] font-bold">
-                              🔒 {cat} ({AVATAR_CATEGORY_UNLOCKS[cat].label})
-                            </span>
-                          ))}
-                        </div>
+                      <div className="relative group">
+                        <label className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">YOUR NAME</label>
+                        <input
+                          type="text"
+                          placeholder="What should we call you?"
+                          id="student-name"
+                          maxLength={30}
+                          className="w-full bg-surface-container-lowest border-2 border-surface-container-high focus:border-primary rounded-xl px-5 sm:px-6 py-4 sm:py-5 font-bold text-base sm:text-lg text-on-surface outline-none transition-all placeholder:text-surface-dim"
+                        />
                       </div>
                     </div>
+
                     <button
                       disabled={loading}
                       onClick={() => {
@@ -2236,43 +2248,117 @@ export default function App() {
                         if (code && name) handleStudentLogin(code, name);
                         else showToast("Please enter both code and name!", "error");
                       }}
-                      className={`w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 via-blue-800 text-white py-5 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-blue-200 transition-all relative overflow-hidden ${loading ? "opacity-70 cursor-not-allowed" : "hover:shadow-2xl hover:shadow-blue-300 hover:from-blue-500 hover:via-blue-600 hover:to-blue-900 active:scale-95"}`}
+                      className={`signature-gradient w-full py-5 sm:py-6 rounded-full flex items-center justify-center gap-3 sm:gap-4 text-white font-black text-xl sm:text-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all group font-headline ${loading ? "opacity-70" : ""}`}
                     >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {loading && <RefreshCw className="animate-spin" size={20} />}
-                        {loading ? "Joining..." : "Join Class"}
-                      </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-300 via-transparent to-blue-600 opacity-0 hover:opacity-20 transition-opacity"></div>
+                      {loading && <RefreshCw className="animate-spin w-5 h-5 sm:w-6 sm:h-6" />}
+                      {loading ? "Joining..." : "Join Class"}
+                      {!loading && <span className="material-symbols-outlined text-2xl sm:text-3xl group-hover:translate-x-1 transition-transform">arrow_forward</span>}
                     </button>
-                    <p className="text-xs text-stone-400 text-center mt-1">
-                      By joining, you agree to our <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Privacy Policy</a>.
-                    </p>
-                    {error && <p className="text-red-500 text-sm font-bold mt-2">{error}</p>}
 
-                    <button
-                      onClick={() => { fetchGlobalLeaderboard(); setView("global-leaderboard"); }}
-                      className="w-full flex items-center justify-center gap-2 text-stone-400 font-bold hover:text-stone-600 transition-colors text-sm mt-3"
-                    >
-                      <Trophy size={16} />
-                      <span className="hidden sm:inline">View Global Leaderboard</span>
-                      <span className="sm:hidden">Leaderboard</span>
-                    </button>
+                    {error && <p className="text-error text-xs sm:text-sm font-bold text-center">{error}</p>}
                   </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="teacher"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-5 sm:space-y-4"
-                >
-                  <p className="text-center text-stone-500 text-sm font-medium">
-                    Sign in with your school Google account
+
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4">
+                    <div className="bg-surface-container-low px-3 sm:px-4 py-1.5 sm:py-2 rounded-full flex items-center gap-2">
+                      <span className="material-symbols-outlined text-tertiary text-lg sm:text-xl" style={{fontVariationSettings: "'FILL' 1"}}>workspace_premium</span>
+                      <span className="font-bold text-[10px] sm:text-xs text-on-surface">Curriculum Approved</span>
+                    </div>
+                    <div className="bg-surface-container-low px-3 sm:px-4 py-1.5 sm:py-2 rounded-full flex items-center gap-2">
+                      <span className="material-symbols-outlined text-secondary text-lg sm:text-xl" style={{fontVariationSettings: "'FILL' 1"}}>trending_up</span>
+                      <span className="font-bold text-[10px] sm:text-xs text-on-surface">Earn XP & Level Up</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Avatar Picker */}
+                <div className="bg-surface-container-low rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-6 relative overflow-hidden flex flex-col border border-surface-container-high">
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl font-black text-on-surface font-headline">Pick Your Avatar</h2>
+                    <div className="bg-surface-container-lowest px-2 sm:px-3 py-1 rounded-full border border-surface-container-high flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                      <span className="text-[9px] sm:text-[10px] font-black text-on-surface-variant font-headline uppercase">Required</span>
+                    </div>
+                  </div>
+
+                  {/* Avatar Categories Navigation */}
+                  <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 hide-scrollbar">
+                    {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
+                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0)
+                      .map(category => (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedAvatarCategory(category)}
+                          className={`whitespace-nowrap px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold font-headline transition-all ${
+                            selectedAvatarCategory === category
+                              ? "bg-primary text-white"
+                              : "bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high"
+                          }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                  </div>
+
+                  {/* Avatar Grid */}
+                  <div className="grid grid-cols-6 sm:grid-cols-5 gap-2 sm:gap-3 overflow-y-auto max-h-[240px] sm:max-h-[320px] pr-1 sm:pr-2 hide-scrollbar">
+                    {AVATAR_CATEGORIES[selectedAvatarCategory].slice(0, 20).map(a => (
+                      <button
+                        key={a}
+                        onClick={() => setStudentAvatar(a)}
+                        className={`aspect-square rounded-xl sm:rounded-2xl p-1 transition-all cursor-pointer transform hover:scale-110 border-3 sm:border-4 ${
+                          studentAvatar === a
+                            ? "bg-primary-container border-primary shadow-lg scale-105"
+                            : "bg-surface-container-lowest border-transparent hover:border-secondary hover:shadow-md"
+                        }`}
+                      >
+                        <span className="text-2xl sm:text-3xl">{a}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Bottom category indicator */}
+                  <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5">
+                    {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
+                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0)
+                      .map((cat) => (
+                        <div
+                          key={cat}
+                          className={`rounded-full transition-all ${
+                            selectedAvatarCategory === cat ? 'w-2 h-2 bg-primary' : 'w-1.5 h-1.5 bg-surface-dim'
+                          }`}
+                        />
+                      ))}
+                  </div>
+
+                  {/* Glassmorphism Accent Elements */}
+                  <div className="absolute -bottom-10 -right-10 w-28 sm:w-32 h-28 sm:h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+                  <div className="absolute -top-10 -left-10 w-28 sm:w-32 h-28 sm:h-32 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="teacher"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="w-full max-w-xl mx-auto"
+              >
+                <div className="bg-surface-container-lowest rounded-3xl shadow-2xl shadow-on-surface/5 p-6 sm:p-8 md:p-12 text-center relative border border-surface-variant/20">
+                  {/* Icon/Badge for Teachers */}
+                  <div className="inline-flex items-center justify-center w-16 sm:w-20 h-16 sm:h-20 bg-primary-container/20 rounded-full mb-6 sm:mb-8 border-4 border-primary/10">
+                    <span className="material-symbols-outlined text-primary text-3xl sm:text-4xl" style={{fontVariationSettings: "'FILL' 1"}}>supervisor_account</span>
+                  </div>
+
+                  <h1 className="font-headline font-black text-3xl sm:text-4xl md:text-5xl text-on-surface tracking-tight mb-3 sm:mb-4">
+                    Welcome, Teacher!
+                  </h1>
+                  <p className="text-on-surface-variant text-base sm:text-lg md:text-xl font-medium mb-8 sm:mb-12 max-w-sm mx-auto">
+                    Manage your classes and track student progress.
                   </p>
 
-                  {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
+                  {error && <p className="text-error text-xs sm:text-sm font-bold text-center mb-4">{error}</p>}
 
+                  {/* Google Sign-In Button */}
                   <button
                     onClick={() => supabase.auth.signInWithOAuth({
                       provider: 'google',
@@ -2282,41 +2368,148 @@ export default function App() {
                     }).catch(() => {
                       setError("Could not connect to Google. Please try again.");
                     })}
-                    className="w-full flex items-center justify-center gap-3 bg-white border-3 border-stone-200 py-4 rounded-2xl font-black text-base text-stone-700 hover:bg-stone-50 transition-all active:scale-95 shadow-md"
+                    className="w-full bg-white border-2 border-surface-variant flex items-center justify-center gap-3 sm:gap-4 py-3.5 sm:py-4 px-6 sm:px-8 rounded-full shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all group"
                   >
-                    <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-                    Sign in with Google
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                    </svg>
+                    <span className="font-headline font-bold text-base sm:text-lg text-on-surface">Sign in with Google</span>
                   </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+                  <div className="flex items-center gap-4 py-4 sm:py-6">
+                    <div className="h-[1px] flex-grow bg-surface-variant/50"></div>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-outline uppercase tracking-widest">Educator Portal</span>
+                    <div className="h-[1px] flex-grow bg-surface-variant/50"></div>
+                  </div>
+
+                  <p className="text-on-surface-variant/80 text-xs sm:text-sm font-medium flex items-start justify-center gap-2 sm:gap-3 text-center leading-relaxed">
+                    <span className="material-symbols-outlined text-sm sm:text-base mt-0.5">lock</span>
+                    By signing in, you authorize Vocaband to access your educator credentials for class management.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Leaderboard Access Link */}
+          {landingTab === "student" && (
+            <div className="w-full flex justify-center pt-2 sm:pt-4">
+              <button
+                onClick={() => { fetchGlobalLeaderboard(); setView("global-leaderboard"); }}
+                className="flex items-center gap-2 group"
+              >
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-surface-container-low flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                  <span className="material-symbols-outlined text-xl sm:text-2xl">leaderboard</span>
+                </div>
+                <span className="font-black text-on-surface-variant group-hover:text-primary transition-colors font-headline text-sm sm:text-base">View Global Leaderboard</span>
+              </button>
+            </div>
+          )}
+        </main>
+
+        {/* Footer with Privacy Links */}
+        <footer className="text-center py-6 sm:py-8 text-on-surface-variant font-bold text-xs sm:text-sm border-t border-surface-variant/30">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <button
+              onClick={() => setView("public-privacy")}
+              className="text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Privacy Policy
+            </button>
+            <span className="text-surface-dim">•</span>
+            <button
+              onClick={() => setView("public-terms")}
+              className="text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Terms of Service
+            </button>
           </div>
-          <div className="mt-8 text-center">
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-stone-400 text-xs hover:text-stone-600 underline">Privacy Policy</a>
-            <span className="text-stone-300 mx-2">|</span>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-stone-400 text-xs hover:text-stone-600 underline">Terms of Service</a>
+          <p className="text-on-surface-variant/70">Vocaband © 2024 • Powered by Vocabulary Mastery</p>
+        </footer>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 w-full z-50 flex flex-col items-center gap-2 px-4 pb-4 sm:pb-6 pt-2 bg-surface/90 backdrop-blur-xl border-t border-surface-variant/20 lg:hidden">
+          {/* Top row: Student / Teacher tabs */}
+          <div className="flex justify-center items-center w-full max-w-sm bg-white rounded-full p-1 sm:p-1.5 shadow-lg shadow-on-surface/5">
+            <button
+              onClick={() => setLandingTab("student")}
+              className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 transition-all ${
+                landingTab === "student"
+                  ? "bg-primary-container text-primary rounded-full"
+                  : "text-on-surface-variant/60 hover:text-on-surface"
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl sm:text-2xl">school</span>
+              <span className="font-bold text-[10px] sm:text-xs font-label">Student</span>
+            </button>
+            <button
+              onClick={() => setLandingTab("teacher")}
+              className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 transition-all ${
+                landingTab === "teacher"
+                  ? "bg-primary-container text-primary rounded-full"
+                  : "text-on-surface-variant/60 hover:text-on-surface"
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl sm:text-2xl">supervisor_account</span>
+              <span className="font-bold text-[10px] sm:text-xs font-label">Teacher</span>
+            </button>
           </div>
-        </div>
+          {/* Bottom row: Contact buttons */}
+          <div className="flex justify-center items-center gap-3 sm:gap-4">
+            <a
+              href="https://wa.me/972501234567"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 sm:gap-2 text-on-surface-variant/60 hover:text-green-600 transition-all"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              <span className="font-bold text-[10px] sm:text-xs">WhatsApp</span>
+            </a>
+            <span className="text-surface-dim">•</span>
+            <a
+              href="mailto:support@vocaband.com"
+              className="flex items-center gap-1.5 sm:gap-2 text-on-surface-variant/60 hover:text-primary transition-all"
+            >
+              <span className="material-symbols-outlined text-base sm:text-lg">mail</span>
+              <span className="font-bold text-[10px] sm:text-xs">Email</span>
+            </a>
+            <span className="text-surface-dim">•</span>
+            <a
+              href="/privacy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 sm:gap-2 text-on-surface-variant/60 hover:text-on-surface transition-all"
+            >
+              <span className="material-symbols-outlined text-base sm:text-lg">policy</span>
+              <span className="font-bold text-[10px] sm:text-xs">Privacy</span>
+            </a>
+          </div>
+        </nav>
       </div>
     );
   }
 
   // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
   const consentModal = needsConsent && user ? (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
-        <h2 className="text-base sm:text-lg font-black text-stone-900 mb-2">Privacy Policy Update</h2>
-        <p className="text-stone-600 text-xs sm:text-sm mb-3">
+    <div className="fixed inset-0 bg-inverse-surface/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20">
+        <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">Privacy Policy Update</h2>
+        <p className="text-on-surface-variant text-xs sm:text-sm mb-3">
           We&apos;ve updated our Privacy Policy (v{PRIVACY_POLICY_VERSION}). Please review and accept to continue using Vocaband.
         </p>
-        <div className="bg-stone-50 rounded-xl p-3 mb-3 text-xs sm:text-sm text-stone-600 space-y-1.5">
+        <div className="bg-surface-container-low rounded-xl p-3 mb-3 text-xs sm:text-sm text-on-surface-variant space-y-1.5">
           <p><strong>What we collect:</strong> Display name, class code, game scores & progress. Student accounts are anonymous — no emails or personal info required.</p>
           <p><strong>For teachers:</strong> Email (via Google) and display name, used only for authentication.</p>
           <p><strong>How we use it:</strong> To run the app — games, progress tracking, leaderboards. No ads, no profiling, no third-party trackers.</p>
           <p><strong>Your rights:</strong> You can export or delete your data anytime from Privacy Settings.</p>
           <div className="flex gap-3 pt-1">
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs font-bold hover:underline">Full Privacy Policy</a>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs font-bold hover:underline">Terms of Service</a>
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">Full Privacy Policy</a>
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">Terms of Service</a>
           </div>
         </div>
         <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
@@ -2324,16 +2517,16 @@ export default function App() {
             type="checkbox"
             checked={consentChecked}
             onChange={(e) => setConsentChecked(e.target.checked)}
-            className="mt-0.5 w-4 h-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+            className="mt-0.5 w-4 h-4 rounded border-outline text-primary focus:ring-primary"
           />
-          <span className="text-xs sm:text-sm text-stone-700">
-            I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">Terms of Service</a>.
+          <span className="text-xs sm:text-sm text-on-surface">
+            I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Terms of Service</a>.
           </span>
         </label>
         <button
           onClick={() => recordConsent()}
           disabled={!consentChecked}
-          className={`w-full py-2.5 rounded-xl font-bold transition-all text-sm ${consentChecked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}
+          className={`w-full py-2.5 rounded-xl font-bold transition-all text-sm font-headline ${consentChecked ? 'signature-gradient text-white hover:shadow-lg' : 'bg-surface-container text-on-surface-variant/50 cursor-not-allowed'}`}
         >
           Accept & Continue
         </button>
@@ -3035,141 +3228,136 @@ export default function App() {
 
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
-      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
+      <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
         {consentModal}
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-4 sm:mb-8">
-            <div>
-              <p className="text-xs sm:text-sm text-stone-500">Welcome back,</p>
-              <h1 className="text-xl sm:text-3xl font-black text-stone-900">{user?.displayName || "Teacher"}</h1>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setView("privacy-settings")} className="text-stone-400 hover:text-stone-600 font-bold text-xs px-3 py-2 bg-white rounded-xl shadow-sm border-2 border-stone-100 hover:border-stone-200 transition-all">Privacy</button>
-              <button onClick={() => supabase.auth.signOut()} className="text-stone-500 font-bold hover:text-red-500 text-xs sm:text-sm px-3 sm:px-4 py-2 bg-white rounded-xl shadow-sm border-2 border-blue-100 hover:border-red-200">Logout</button>
-            </div>
-          </div>
 
+        {/* Top App Bar */}
+        <TopAppBar
+          title="Vocaband"
+          subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
+
+        <div className="max-w-6xl mx-auto">
           {/* Quick Action Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             {/* Live Challenge */}
             <HelpTooltip className="h-full" content="Start a real-time vocabulary competition - students race to answer correctly!">
-              <button
-                onClick={() => {
-                  if (classes.length === 0) showToast("Create a class first!", "error");
-                  else if (classes.length === 1) {
-                    setSelectedClass(classes[0]);
-                    setView("live-challenge");
-                    setIsLiveChallenge(true);
-                    if (socket) {
-                      supabase.auth.getSession().then(({ data: { session } }) => {
-                        const token = session?.access_token ?? "";
-                        socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code, token });
-                      });
+              <div className="h-full">
+                <ActionCard
+                  icon={<RefreshCw size={24} />}
+                  iconBg="bg-blue-100"
+                  iconColor="text-blue-600"
+                  title="Live Challenge"
+                  description="Start a real-time vocabulary competition"
+                  buttonText="Start"
+                  buttonVariant="primary"
+                  onClick={() => {
+                    if (classes.length === 0) showToast("Create a class first!", "error");
+                    else if (classes.length === 1) {
+                      setSelectedClass(classes[0]);
+                      setView("live-challenge");
+                      setIsLiveChallenge(true);
+                      if (socket) {
+                        supabase.auth.getSession().then(({ data: { session } }) => {
+                          const token = session?.access_token ?? "";
+                          socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code, token });
+                        });
+                      }
+                    } else {
+                      setView("live-challenge-class-select");
                     }
-                  } else {
-                    // Multiple classes - show selector
-                    setView("live-challenge-class-select");
-                  }
-                }}
-                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-              >
-                <RefreshCw className="text-blue-600 mb-3 sm:mb-4 group-hover:rotate-180 transition-transform duration-500" size={24} />
-                <h2 className="text-sm sm:text-base font-bold mb-1">Live Challenge</h2>
-                <p className="text-stone-500 text-xs hidden sm:block">Real-time competition</p>
-              </button>
+                  }}
+                />
+              </div>
             </HelpTooltip>
 
             {/* Analytics */}
             <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
-              <button
-                onClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
-                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-purple-100 hover:border-purple-200 group"
-              >
-                <BarChart3 className="text-purple-600 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-sm sm:text-base font-bold mb-1">Classroom Analytics</h2>
-                <p className="text-stone-500 text-xs hidden sm:block">Scores, trends & weak words</p>
-              </button>
+              <div className="h-full">
+                <ActionCard
+                  icon={<BarChart3 size={24} />}
+                  iconBg="bg-purple-100"
+                  iconColor="text-purple-600"
+                  title="Classroom Analytics"
+                  description="Scores, trends & weak words"
+                  buttonText="View Insights"
+                  buttonVariant="primary"
+                  onClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
+                />
+              </div>
             </HelpTooltip>
-
-
 
             {/* Gradebook & Students */}
             <HelpTooltip className="h-full" content="View all students, track scores, progress, and activity history">
-              <button
-                onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
-                className="h-full w-full bg-white p-4 sm:p-6 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-lg transition-all border-2 border-blue-100 hover:border-blue-200 group"
-              >
-                <Trophy className="text-blue-700 mb-3 sm:mb-4 group-hover:scale-110 transition-transform" size={24} />
-                <h2 className="text-sm sm:text-base font-bold mb-1">Students & Grades</h2>
-                <p className="text-stone-500 text-xs hidden sm:block">All students & scores</p>
-              </button>
+              <div className="h-full">
+                <ActionCard
+                  icon={<Trophy size={24} />}
+                  iconBg="bg-amber-100"
+                  iconColor="text-amber-600"
+                  title="Students & Grades"
+                  description="All students & scores"
+                  buttonText="Open Gradebook"
+                  buttonVariant="primary"
+                  onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
+                />
+              </div>
             </HelpTooltip>
           </div>
 
-          {/* My Classes - Full width below */}
-          <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100">
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h2 className="text-base sm:text-xl font-bold flex items-center gap-2"><Users className="text-blue-700" size={16} /> My Classes</h2>
+          {/* My Classes Section */}
+          <div className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
+                <Users className="text-primary" size={20} /> My Classes
+              </h2>
               <button
                 onClick={() => setShowCreateClassModal(true)}
-                className="p-1.5 sm:p-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 border-2 border-blue-200"
+                className="px-4 py-2 signature-gradient text-white rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
                 aria-label="Create new class"
-                title="Create new class"
               >
-                <Plus size={16} />
+                <Plus size={16} /> New Class
               </button>
             </div>
-            {classes.length === 0 ? <p className="text-stone-400 italic text-xs sm:text-sm">No classes yet. Create one to get a code!</p> : (
-              <div className="space-y-1 sm:space-y-2">
+
+            {classes.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users size={32} className="text-on-surface-variant" />
+                </div>
+                <p className="text-on-surface-variant font-medium">No classes yet. Create one to get a code!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[...classes].reverse().map(c => (
-                  <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50/50 rounded-xl border-2 border-blue-200 hover:shadow-md hover:border-blue-300 transition-all">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <p className="font-bold text-stone-800 text-sm truncate">{c.name}</p>
-                      <p className="text-xs sm:text-sm font-mono text-blue-700 bg-blue-50 px-2 sm:px-3 py-1 rounded-lg font-bold flex-shrink-0">{c.code}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(c.code);
-                          setCopiedCode(c.code);
-                          setTimeout(() => setCopiedCode(null), 2000);
-                        }}
-                        className="p-2 text-stone-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all border border-blue-200"
-                        title="Copy Code"
-                      >
-                        {copiedCode === c.code ? <Check size={16} className="text-blue-700" /> : <Copy size={16} />}
-                      </button>
-                      <a
-                        href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code:\n\n${c.code}\n\nCopy the code above and paste it in the app!`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all border border-green-200"
-                        title="Share on WhatsApp"
-                      >
-                        <MessageCircle size={16} />
-                      </a>
-                      <button
-                        onClick={() => { setSelectedClass(c); setView("create-assignment"); }}
-                        className="px-4 py-2 text-blue-700 font-bold text-sm hover:bg-blue-50 rounded-lg transition-all border-2 border-blue-200"
-                      >
-                        Assign
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClass(c.id)}
-                        className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 transition-all border border-red-200 rounded-lg"
-                        title="Delete Class"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
+                  <ClassCard
+                    key={c.id}
+                    name={c.name}
+                    code={c.code}
+                    copiedCode={copiedCode}
+                    onAssign={() => { setSelectedClass(c); setView("create-assignment"); }}
+                    onCopyCode={() => {
+                      navigator.clipboard.writeText(c.code);
+                      setCopiedCode(c.code);
+                      setTimeout(() => setCopiedCode(null), 2000);
+                    }}
+                    onWhatsApp={() => {
+                      window.open(
+                        `https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code:\n\n${c.code}\n\nCopy the code above and paste it in the app!`)}`,
+                        '_blank'
+                      );
+                    }}
+                    onDelete={() => handleDeleteClass(c.id)}
+                  />
                 ))}
               </div>
             )}
           </div>
 
           {/* My Assignments - Collapsible */}
-          <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-md border-2 border-blue-100 mt-4">
+          <div className="bg-surface-container-low rounded-2xl p-6 shadow-lg border-2 border-surface-container-high">
             <button
               className="w-full flex justify-between items-center"
               onClick={() => {
@@ -3178,24 +3366,26 @@ export default function App() {
                 if (next && teacherAssignments.length === 0) fetchTeacherAssignments();
               }}
             >
-              <h2 className="text-base sm:text-xl font-bold flex items-center gap-2"><BookOpen className="text-blue-700" size={16} /> My Assignments</h2>
-              <span className="text-stone-400">{showTeacherAssignments ? "▲" : "▼"}</span>
+              <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
+                <BookOpen className="text-primary" size={20} /> My Assignments
+              </h2>
+              <span className="text-on-surface-variant font-bold">{showTeacherAssignments ? "▲" : "▼"}</span>
             </button>
             {showTeacherAssignments && (
               <div className="mt-4">
                 {teacherAssignmentsLoading ? (
-                  <p className="text-stone-400 text-sm italic">Loading...</p>
+                  <p className="text-on-surface-variant text-sm italic">Loading...</p>
                 ) : teacherAssignments.length === 0 ? (
-                  <p className="text-stone-400 italic text-xs sm:text-sm">No assignments yet.</p>
+                  <p className="text-on-surface-variant italic text-sm">No assignments yet.</p>
                 ) : (
                   <div className="space-y-2">
                     {teacherAssignments.map(a => {
                       const cls = classes.find(c => c.id === a.classId);
                       return (
-                        <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-50/50 rounded-xl border-2 border-blue-100">
+                        <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-surface-container rounded-xl border-2 border-surface-container-highest">
                           <div className="min-w-0">
-                            <p className="font-bold text-stone-800 text-sm truncate">{a.title}</p>
-                            <p className="text-xs text-stone-500">{cls?.name || "Unknown class"} · {a.wordIds.length} words</p>
+                            <p className="font-bold text-on-surface text-sm truncate">{a.title}</p>
+                            <p className="text-xs text-on-surface-variant">{cls?.name || "Unknown class"} · {a.wordIds.length} words</p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             <button
@@ -3215,7 +3405,7 @@ export default function App() {
                               }}
                               className="px-3 py-2 bg-amber-100 text-amber-700 font-bold text-xs rounded-xl hover:bg-amber-200 border-2 border-amber-200 transition-all"
                             >
-                              📋 Duplicate
+                              Duplicate
                             </button>
                             <button
                               onClick={async () => {
@@ -3404,11 +3594,13 @@ export default function App() {
 
   if (view === "create-assignment" && selectedClass) {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-3xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
-          <div className="bg-white rounded-[40px] shadow-xl p-10">
-            <h2 className="text-3xl font-black mb-2 text-stone-900">Assign to {selectedClass.name}</h2>
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-on-surface-variant font-bold flex items-center gap-2 hover:text-primary bg-surface-container-lowest px-5 py-2.5 rounded-full shadow-sm border-2 border-primary-container/30 hover:border-primary transition-all group">
+              <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Dashboard
+            </button>
+          <div className="bg-surface-container-lowest rounded-[40px] shadow-xl border-2 border-surface-container p-10">
+            <h2 className="text-3xl font-black mb-2 text-on-surface">Assign to {selectedClass.name}</h2>
 
             <div className="space-y-4 mb-8">
               <div className="space-y-4">
@@ -3420,7 +3612,7 @@ export default function App() {
                   onChange={(e) => {
                     setAssignmentTitle(e.target.value);
                   }}
-                  className="w-full p-3 sm:p-4 text-sm sm:text-base rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
+                  className="w-full p-3 sm:p-4 text-sm sm:text-base rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                 />
                 <datalist id="assignment-titles">
                   {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
@@ -3434,17 +3626,19 @@ export default function App() {
                     onChange={(e) => setAssignmentDeadline(e.target.value)}
                     aria-label="Assignment deadline"
                     title="Assignment deadline"
-                    className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
+                    className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 bg-surface-container-lowest text-on-surface outline-none transition-all ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20' : 'border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/20'}`}
                   />
                   {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
-                    <p className="text-red-500 text-sm font-bold ml-2">Warning: Deadline is in the past!</p>
+                    <p className="text-error text-sm font-bold ml-2 flex items-center gap-1">
+                      <span>⚠️</span> Warning: Deadline is in the past!
+                    </p>
                   )}
                 </div>
               </div>
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="font-bold text-stone-700">Choose Game Modes:</p>
-                  <button 
+                <div className="flex justify-between items-center mb-3">
+                  <p className="font-bold text-on-surface">Choose Game Modes:</p>
+                  <button
                     onClick={() => {
                       const toggleable = ["classic", "listening", "spelling", "matching", "true-false", "scramble", "reverse", "letter-sounds", "sentence-builder"];
                       if (assignmentModes.length >= toggleable.length + 1) {
@@ -3453,7 +3647,7 @@ export default function App() {
                         setAssignmentModes(["flashcards", ...toggleable]);
                       }
                     }}
-                    className="text-xs font-bold text-blue-700 hover:text-blue-800"
+                    className="text-xs font-bold text-primary hover:text-primary-dim transition-colors"
                   >
                     {assignmentModes.length >= 10 ? "Deselect All" : "Select All"}
                   </button>
@@ -3461,10 +3655,10 @@ export default function App() {
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
                   {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"] as const).map(mode => {
                     const modeConfig: Record<string, { emoji: string; activeColor: string; activeBg: string }> = {
-                      classic: { emoji: '📝', activeColor: 'text-white', activeBg: 'bg-blue-500' },
-                      listening: { emoji: '🎧', activeColor: 'text-white', activeBg: 'bg-purple-500' },
+                      classic: { emoji: '📝', activeColor: 'text-white', activeBg: 'bg-primary' },
+                      listening: { emoji: '🎧', activeColor: 'text-white', activeBg: 'bg-secondary' },
                       spelling: { emoji: '✍️', activeColor: 'text-white', activeBg: 'bg-green-600' },
-                      matching: { emoji: '🔗', activeColor: 'text-white', activeBg: 'bg-orange-500' },
+                      matching: { emoji: '🔗', activeColor: 'text-white', activeBg: 'bg-tertiary' },
                       'true-false': { emoji: '✓', activeColor: 'text-white', activeBg: 'bg-rose-500' },
                       flashcards: { emoji: '🎴', activeColor: 'text-white', activeBg: 'bg-teal-500' },
                       scramble: { emoji: '🔤', activeColor: 'text-white', activeBg: 'bg-amber-500' },
@@ -3478,7 +3672,7 @@ export default function App() {
                       <button
                         key={mode}
                         onClick={() => !isFlashcards && setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-md` : "bg-white text-stone-500 hover:bg-stone-50 border-2 border-stone-200 hover:border-stone-300"}`}
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-lg` : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20 hover:border-outline-variant/40"}`}
                       >
                         {cfg.emoji} {(mode ?? "").charAt(0).toUpperCase() + (mode ?? "").slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
                       </button>
@@ -3488,53 +3682,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sentences for Sentence Builder mode */}
-            {assignmentModes.includes("sentence-builder") && (
-              <div className="bg-teal-50 border-2 border-teal-100 rounded-2xl p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">🧩</span>
-                  <h3 className="font-bold text-teal-900 text-sm">Sentences for Sentence Builder</h3>
-                  <span className="text-xs text-teal-600 ml-auto">One sentence per line</span>
-                </div>
-                {sentencesAutoGenerated && assignmentSentences.filter(s => s.trim()).length > 0 && (
-                  <div className="flex items-center gap-2 mb-2 bg-teal-100 rounded-lg px-3 py-1.5">
-                    <Zap size={14} className="text-teal-700" />
-                    <span className="text-xs text-teal-800 font-medium">
-                      Auto-generated {assignmentSentences.filter(s => s.trim()).length} sentences from word bank
-                    </span>
-                    <button
-                      onClick={() => {
-                        const allPossibleWords = [...ALL_WORDS, ...customWords];
-                        const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-                        const words = uniqueWords.filter(w => selectedWordsSet.has(w.id));
-                        setAssignmentSentences(generateSentencesForAssignment(words));
-                        setSentencesAutoGenerated(true);
-                      }}
-                      className="ml-auto text-xs text-teal-700 underline hover:text-teal-900 font-medium"
-                    >
-                      Regenerate
-                    </button>
-                  </div>
-                )}
-                <textarea
-                  value={assignmentSentences.join("\n")}
-                  onChange={(e) => {
-                    setAssignmentSentences(e.target.value.split("\n"));
-                    setSentencesAutoGenerated(false);
-                  }}
-                  placeholder={"Sentences auto-generate when you select words.\nYou can also edit or type your own sentences here.\n\nExamples:\nThe dog runs fast\nShe likes going to school"}
-                  className="w-full p-2.5 rounded-xl border border-teal-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  rows={5}
-                />
-                <p className="text-xs text-teal-600 mt-1">{assignmentSentences.filter(s => s.trim()).length} sentence(s) added</p>
-              </div>
-            )}
-
             {/* ── Add Words ──────────────────────────────────────── */}
-            <div className="bg-blue-50 rounded-2xl p-3 mb-3 border-2 border-blue-100 space-y-3">
-              <div className="flex items-center gap-1">
-                <span className="text-lg">✏️</span>
-                <h3 className="font-bold text-blue-900 text-sm">Add Words</h3>
+            <div className="bg-primary-container/10 rounded-2xl p-4 mb-3 border-2 border-primary-container/30 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center">
+                  <span className="text-base">✏️</span>
+                </div>
+                <h3 className="font-black text-on-surface text-sm">Add Words</h3>
               </div>
 
               {/* Tag-style single word entry */}
@@ -3545,40 +3699,42 @@ export default function App() {
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleTagInputKeyDown}
                   placeholder="Type a word and press Enter"
-                  className="flex-1 p-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="flex-1 p-2.5 rounded-xl border-2 border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                 />
                 <button
                   onClick={() => { if (!tagInput.trim()) return; const w: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" }; setCustomWords(prev => [...prev, w]); setSelectedWords(prev => [...prev, w.id]); setSelectedLevel("Custom"); setTagInput(""); }}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all"
+                  className="px-4 py-2 signature-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all active:scale-95"
                 >+ Add</button>
               </div>
 
               {/* Smart Paste textarea */}
               <div>
-                <p className="text-xs text-blue-700 font-bold mb-1">📋 Paste a list (comma, newline, tab separated)</p>
+                <p className="text-xs text-on-surface-variant font-bold mb-1.5 flex items-center gap-1">
+                  <span>📋</span> Paste a list (comma, newline, tab separated)
+                </p>
                 <textarea
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}
                   placeholder={"Paste words here…\nExamples: apple, banana\nOr one per line\nWorks with Excel copy-paste too"}
-                  className="w-full p-2.5 rounded-xl border border-blue-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full p-2.5 rounded-xl border-2 border-outline-variant/30 text-sm resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                   rows={4}
                 />
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-xs text-blue-600">{pastedText.trim() && `${pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words detected`}</span>
-                  <button onClick={handlePasteSubmit} disabled={!pastedText.trim()} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 disabled:opacity-50 transition-all">Import Words</button>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-primary font-medium">{pastedText.trim() && `${pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words detected`}</span>
+                  <button onClick={handlePasteSubmit} disabled={!pastedText.trim()} className="px-4 py-1.5 signature-gradient text-white rounded-lg font-bold text-xs shadow-md shadow-blue-500/20 hover:shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">Import Words</button>
                 </div>
               </div>
             </div>
 
             {/* ── Import from file or URL ─────────────────────── */}
-            <div className="bg-stone-50 rounded-2xl p-3 mb-3 border-2 border-stone-200 space-y-2">
-              <p className="text-sm font-black text-blue-700 uppercase tracking-wide bg-blue-50 inline-block px-3 py-1 rounded-lg">Import from file or URL</p>
+            <div className="bg-surface-container rounded-2xl p-4 mb-3 border-2 border-outline-variant/20 space-y-3">
+              <p className="text-sm font-black text-on-surface uppercase tracking-wide bg-secondary-container/30 inline-block px-3 py-1.5 rounded-lg">Import from file or URL</p>
               <div className="flex flex-wrap gap-2">
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
                   <Upload size={14} /> Word (.docx)
                   <input type="file" accept=".docx" onChange={handleDocxUpload} className="hidden" />
                 </label>
-                <label className={`flex items-center gap-1.5 px-3 py-2 text-white rounded-xl font-bold cursor-pointer text-xs whitespace-nowrap relative overflow-hidden ${isOcrProcessing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                <label className={`flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl font-bold cursor-pointer text-xs whitespace-nowrap relative overflow-hidden transition-all active:scale-95 ${isOcrProcessing ? 'bg-primary/50 cursor-not-allowed' : 'bg-secondary hover:bg-secondary-dim shadow-md shadow-secondary/20'}`}>
                   <Camera size={14} /> {isOcrProcessing ? `Scanning… ${ocrProgress}%` : "Scan (OCR)"}
                   <input type="file" accept="image/*" capture="environment" onChange={handleOcrUpload} className="hidden" disabled={isOcrProcessing} />
                   {isOcrProcessing && <progress className="absolute bottom-0 left-0 h-1 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white/50 [&::-moz-progress-bar]:bg-white/50" max={100} value={toProgressValue(ocrProgress)} />}
@@ -3591,9 +3747,9 @@ export default function App() {
                   value={gSheetsUrl}
                   onChange={(e) => setGSheetsUrl(e.target.value)}
                   placeholder="Paste public Google Sheets URL…"
-                  className="flex-1 p-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                  className="flex-1 p-2.5 rounded-xl border-2 border-outline-variant/30 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                 />
-                <button onClick={handleGSheetsImport} disabled={gSheetsLoading || !gSheetsUrl.trim()} className="px-3 py-2 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap">
+                <button onClick={handleGSheetsImport} disabled={gSheetsLoading || !gSheetsUrl.trim()} className="px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap shadow-md shadow-green-600/20 active:scale-95">
                   {gSheetsLoading ? "Importing…" : "🔗 Import"}
                 </button>
               </div>
@@ -3603,11 +3759,11 @@ export default function App() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               {(["Band 1", "Band 2", "Custom"] as const).map(level => (
                 <button key={level} onClick={() => setSelectedLevel(level)}
-                  className={`px-4 py-2 rounded-xl font-bold transition-all text-xs ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
+                  className={`px-4 py-2.5 rounded-xl font-bold transition-all text-xs active:scale-95 ${selectedLevel === level ? "signature-gradient text-white shadow-lg shadow-blue-500/20" : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container border-2 border-outline-variant/20 hover:border-primary-container/50"}`}>
                   {level} {level === "Custom" && customWords.length > 0 && `(${customWords.length})`}
                 </button>
               ))}
-              <button onClick={() => setShowTopicPacks(true)} className="flex items-center justify-center gap-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold text-xs hover:bg-amber-600 transition-all">
+              <button onClick={() => setShowTopicPacks(true)} className="flex items-center justify-center gap-1 px-4 py-2.5 bg-tertiary-container text-on-tertiary-fixed rounded-xl font-bold text-xs hover:bg-tertiary-fixed-dim transition-all shadow-md shadow-tertiary-container/20 active:scale-95">
                 📦 Topic Packs
               </button>
             </div>
@@ -3615,30 +3771,33 @@ export default function App() {
             {/* Browse Word Bank Toggle */}
             <button
               onClick={() => setShowWordBank(!showWordBank)}
-              className="w-full mb-4 px-4 py-3 bg-stone-100 hover:bg-stone-200 rounded-xl border-2 border-stone-200 transition-all flex items-center justify-between"
+              className="w-full mb-4 px-4 py-3.5 bg-surface-container-high hover:bg-surface-container-highest rounded-xl border-2 border-outline-variant/20 hover:border-primary-container/50 transition-all flex items-center justify-between group"
             >
-              <span className="font-bold text-stone-700">📚 Browse Word Bank</span>
-              <span className="text-stone-500">{showWordBank ? "▲" : "▼"}</span>
+              <span className="font-bold text-on-surface flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center">📚</span>
+                Browse Word Bank
+              </span>
+              <span className={`text-on-surface-variant transition-transform ${showWordBank ? "rotate-180" : ""}`}>▼</span>
             </button>
 
             {/* Search Options */}
             <div className="flex flex-wrap gap-2 mb-3">
               <button
                 onClick={() => setEnableFuzzyMatch(!enableFuzzyMatch)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                   enableFuzzyMatch
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
                 }`}
               >
                 🔤 Fuzzy Match: {enableFuzzyMatch ? 'ON' : 'OFF'}
               </button>
               <button
                 onClick={() => setEnableWordFamilies(!enableWordFamilies)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                   enableWordFamilies
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
                 }`}
               >
                 🌳 Word Families: {enableWordFamilies ? 'ON' : 'OFF'}
@@ -3655,7 +3814,7 @@ export default function App() {
                     placeholder="🔍 Search words..."
                     value={wordSearchQuery}
                     onChange={(e) => setWordSearchQuery(e.target.value)}
-                    className="w-full p-3 rounded-xl border-2 border-blue-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full p-3 rounded-xl border-2 border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                   />
                 </div>
 
@@ -3669,7 +3828,7 @@ export default function App() {
                         onChange={(e) => setSelectedCore(e.target.value as "Core I" | "Core II" | "")}
                         aria-label="Filter by core"
                         title="Filter by core"
-                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       >
                         <option value="">All Core</option>
                         <option value="Core I">Core I</option>
@@ -3682,7 +3841,7 @@ export default function App() {
                         onChange={(e) => setSelectedPos(e.target.value)}
                         aria-label="Filter by part of speech"
                         title="Filter by part of speech"
-                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       >
                         <option value="">All POS</option>
                         <option value="n">Nouns</option>
@@ -3699,7 +3858,7 @@ export default function App() {
                         onChange={(e) => setSelectedRecProd(e.target.value as "Rec" | "Prod" | "")}
                         aria-label="Filter by receptive or productive type"
                         title="Filter by receptive or productive type"
-                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       >
                         <option value="">All Types</option>
                         <option value="Rec">Receptive</option>
@@ -3715,7 +3874,7 @@ export default function App() {
                             setSelectedRecProd("");
                             setWordSearchQuery("");
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all border-2 border-red-200"
+                          className="px-3 py-2 rounded-xl bg-error-container/10 text-error text-sm font-bold hover:bg-error-container/20 transition-all border-2 border-error/30 active:scale-95"
                         >
                           ✕ Clear
                         </button>
@@ -3723,7 +3882,7 @@ export default function App() {
                     </div>
 
                     {/* Active Filter Summary */}
-                    <div className="text-xs text-stone-500 mb-2">
+                    <div className="text-xs text-on-surface-variant mb-2 px-1">
                       {wordSearchQuery && `Search: "${wordSearchQuery}" `}
                       {selectedCore && `| Core: ${selectedCore} `}
                       {selectedPos && `| POS: ${selectedPos} `}
@@ -3733,27 +3892,27 @@ export default function App() {
                 )}
 
                 {/* Compact Word List with Tap-to-Add */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-blue-50/50 rounded-2xl border-2 border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-primary-container/5 rounded-2xl border-2 border-primary-container/20 hide-scrollbar">
                   {currentLevelWords.map(word => {
                     const isSelected = selectedWordsSet.has(word.id);
                     return (
                       <button
                         key={`word-select-${word.id}`}
                         onClick={() => toggleWordSelection(word.id)}
-                        className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
+                        className={`p-3 rounded-xl text-left flex justify-between items-center transition-all active:scale-[0.98] ${isSelected ? "signature-gradient text-white shadow-lg shadow-blue-500/20" : "bg-surface-container-lowest hover:bg-surface-container border-2 border-outline-variant/20 hover:border-primary-container/50"}`}
                       >
                         <div>
-                          <p className={`font-bold ${isSelected ? "text-white" : "text-stone-900"}`}>{word.english}</p>
-                          <p className={`text-xs truncate ${isSelected ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
+                          <p className={`font-bold ${isSelected ? "text-white" : "text-on-surface"}`}>{word.english}</p>
+                          <p className={`text-xs truncate ${isSelected ? "text-white/70" : "text-on-surface-variant"}`}>{word.hebrew} | {word.arabic}</p>
                         </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-white/20" : "bg-stone-100"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold ${isSelected ? "bg-white/20 text-white" : "bg-surface-container text-on-surface-variant"}`}>
                           {isSelected ? "✓" : "+"}
                         </div>
                       </button>
                     );
                   })}
                   {currentLevelWords.length === 0 && (
-                    <p className="col-span-full text-center py-8 text-stone-400 italic">
+                    <p className="col-span-full text-center py-8 text-on-surface-variant italic">
                       No words found. Try a different search.
                     </p>
                   )}
@@ -3762,32 +3921,35 @@ export default function App() {
             )}
 
             {/* Selection Summary */}
-            <div className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-blue-100">
-              <span className="font-bold text-stone-700">
-                {selectedWords.length} words selected
+            <div className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border-2 border-primary-container/30 mb-4">
+              <span className="font-bold text-on-surface flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg signature-gradient flex items-center justify-center text-white text-sm font-black">
+                  {selectedWords.length}
+                </span>
+                words selected
               </span>
               {selectedWords.length > 0 && (
                 <button
                   onClick={() => setSelectedWords([])}
-                  className="text-sm font-bold text-red-600 hover:text-red-700"
+                  className="text-sm font-bold text-error hover:text-error-dim transition-colors px-3 py-1.5 rounded-lg bg-error-container/10 hover:bg-error-container/20"
                 >
                   Clear All
                 </button>
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 disabled={selectedWords.length === 0}
                 onClick={handlePreviewAssignment}
-                className="flex-1 py-2 bg-stone-200 text-stone-700 rounded-2xl font-black text-sm hover:bg-stone-300 transition-all active:scale-95 disabled:opacity-50"
+                className="flex-1 py-3.5 bg-surface-container text-on-surface rounded-2xl font-black text-sm hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 👁️ Preview
               </button>
               <button
                 disabled={selectedWords.length === 0 || !assignmentTitle}
                 onClick={handleSaveAssignment}
-                className="flex-1 py-2 bg-blue-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none hover:bg-blue-800 transition-all active:scale-95"
+                className="flex-1 py-3.5 signature-gradient text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none hover:shadow-2xl hover:shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 Create Assignment ({selectedWords.length} Words)
               </button>
@@ -3796,37 +3958,37 @@ export default function App() {
 
           {/* Paste Match Confirmation Dialog - NEW */}
           {showPasteDialog && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
-                <h3 className="text-xl font-black text-stone-900 mb-4">Word Import Results</h3>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-surface-container-lowest rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-outline-variant/20">
+                <h3 className="text-xl font-black text-on-surface mb-4">Word Import Results</h3>
 
                 <div className="space-y-3 mb-6">
                   {/* Matched Words */}
-                  <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
+                  <div className="p-4 bg-primary-container/20 rounded-2xl border-2 border-primary-container/30">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-green-600 text-lg">✓</span>
-                      <p className="font-bold text-green-700">Matched Band 2 Words</p>
+                      <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary text-sm">✓</span>
+                      <p className="font-bold text-on-surface">Matched Band 2 Words</p>
                     </div>
-                    <p className="text-2xl font-black text-green-600">{pasteMatchedCount}</p>
-                    <p className="text-sm text-green-600">Added to your assignment automatically</p>
+                    <p className="text-2xl font-black text-primary">{pasteMatchedCount}</p>
+                    <p className="text-sm text-on-surface-variant">Added to your assignment automatically</p>
                   </div>
 
                   {/* Unmatched Words */}
                   {pasteUnmatched.length > 0 && (
-                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                    <div className="p-4 bg-tertiary-container/20 rounded-2xl border-2 border-tertiary-container/30">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-amber-600 text-lg">⚠</span>
-                        <p className="font-bold text-amber-700">Not Found in Band 2</p>
+                        <span className="w-6 h-6 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-sm">⚠</span>
+                        <p className="font-bold text-on-surface">Not Found in Band 2</p>
                       </div>
-                      <p className="text-sm text-amber-600 mb-2">These words weren't found:</p>
+                      <p className="text-sm text-on-surface-variant mb-2">These words weren't found:</p>
                       <div className="flex flex-wrap gap-1 mb-3">
                         {pasteUnmatched.map(w => (
-                          <span key={w} className="px-2 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold">
+                          <span key={w} className="px-2.5 py-1 bg-tertiary-container/30 text-on-tertiary-container rounded-lg text-xs font-bold">
                             {w}
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-amber-600">Add them as custom words instead?</p>
+                      <p className="text-xs text-on-surface-variant">Add them as custom words instead?</p>
                     </div>
                   )}
                 </div>
@@ -3837,13 +3999,13 @@ export default function App() {
                     <>
                       <button
                         onClick={handleAddUnmatchedAsCustom}
-                        className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                        className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all active:scale-95"
                       >
                         Add {pasteUnmatched.length} as Custom
                       </button>
                       <button
                         onClick={handleSkipUnmatched}
-                        className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
+                        className="flex-1 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all active:scale-95"
                       >
                         Skip
                       </button>
@@ -3851,7 +4013,7 @@ export default function App() {
                   ) : (
                     <button
                       onClick={() => setShowPasteDialog(false)}
-                      className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                      className="w-full py-3 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all active:scale-95"
                     >
                       Done
                     </button>
@@ -3940,16 +4102,19 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+                className="bg-surface-container-lowest rounded-3xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto border-2 border-outline-variant/20"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-xl font-black text-stone-900">📦 Topic Packs</h3>
-                  <button onClick={() => setShowTopicPacks(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 transition-all">
+                  <h3 className="text-xl font-black text-on-surface flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-lg bg-tertiary-container/30 flex items-center justify-center">📦</span>
+                    Topic Packs
+                  </h3>
+                  <button onClick={() => setShowTopicPacks(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all">
                     <X size={16} />
                   </button>
                 </div>
-                <p className="text-sm text-stone-500 mb-5">Click a topic to add its words to your assignment.</p>
+                <p className="text-sm text-on-surface-variant mb-5">Click a topic to add its words to your assignment.</p>
                 <div className="grid grid-cols-2 gap-3">
                   {TOPIC_PACKS.map(pack => {
                     const alreadyAdded = pack.ids.every(id => selectedWords.includes(id));
@@ -3963,12 +4128,12 @@ export default function App() {
                           setShowTopicPacks(false);
                         }}
                         disabled={alreadyAdded}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${alreadyAdded ? "border-green-200 bg-green-50 opacity-70 cursor-default" : "border-amber-100 bg-amber-50 hover:bg-amber-100 hover:border-amber-300"}`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center active:scale-95 ${alreadyAdded ? "border-primary-container/30 bg-primary-container/10 opacity-70 cursor-default" : "border-tertiary-container/30 bg-tertiary-container/10 hover:bg-tertiary-container/20 hover:border-tertiary-container/50"}`}
                       >
                         <span className="text-3xl">{pack.icon}</span>
-                        <span className="font-bold text-stone-800 text-sm">{pack.name}</span>
-                        <span className="text-xs text-stone-500">{pack.ids.length} words</span>
-                        {alreadyAdded && <span className="text-xs text-green-600 font-bold">✓ Added</span>}
+                        <span className="font-bold text-on-surface text-sm">{pack.name}</span>
+                        <span className="text-xs text-on-surface-variant">{pack.ids.length} words</span>
+                        {alreadyAdded && <span className="text-xs text-primary font-bold">✓ Added</span>}
                       </button>
                     );
                   })}
@@ -4097,13 +4262,13 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
-            <button onClick={() => setView("teacher-dashboard")} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Dashboard</button>
+            <button onClick={() => { setView("live-challenge-class-select"); setIsLiveChallenge(false); }} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Class Selection</button>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
                 <span className={`w-3 h-3 rounded-full ${socketConnected ? "bg-green-400 shadow-lg shadow-green-400/50" : "bg-red-400 animate-pulse"}`} />
                 <span className="font-bold">{socketConnected ? "🔴 LIVE" : "Reconnecting..."}</span>
               </div>
-              <button onClick={() => { setView("teacher-dashboard"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105">End Challenge</button>
+              <button onClick={() => { setView("live-challenge-class-select"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105">End Challenge</button>
             </div>
           </div>
 
@@ -4305,19 +4470,28 @@ export default function App() {
 
   if (view === "analytics") {
     return (
-      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
-            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Classroom Analytics</h1>
-          </div>
+      <div className="min-h-screen bg-background pb-8">
+        <TopAppBar
+          title="Analytics"
+          subtitle="CLASSROOM INSIGHTS & PERFORMANCE"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
 
+        <main className="pt-24 px-6 max-w-7xl mx-auto">
           {/* Class Filter Tabs */}
           {classes.length > 1 && (
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-8">
               <button
                 onClick={() => setAnalyticsClassFilter("all")}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsClassFilter === "all" ? "bg-purple-600 text-white shadow-md" : "bg-white text-stone-600 hover:bg-purple-50 border border-stone-200"}`}
+                className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
+                  analyticsClassFilter === "all"
+                    ? "bg-secondary text-white shadow-lg shadow-purple-500/20"
+                    : "bg-surface-container-lowest text-on-surface hover:bg-surface-container border-2 border-surface-container"
+                }`}
               >
                 All Classes
               </button>
@@ -4325,7 +4499,11 @@ export default function App() {
                 <button
                   key={c.code}
                   onClick={() => setAnalyticsClassFilter(c.code)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsClassFilter === c.code ? "bg-purple-600 text-white shadow-md" : "bg-white text-stone-600 hover:bg-purple-50 border border-stone-200"}`}
+                  className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
+                    analyticsClassFilter === c.code
+                      ? "bg-secondary text-white shadow-lg shadow-purple-500/20"
+                      : "bg-surface-container-lowest text-on-surface hover:bg-surface-container border-2 border-surface-container"
+                  }`}
                 >
                   {c.name}
                 </button>
@@ -4334,38 +4512,61 @@ export default function App() {
           )}
 
           {allScores.length === 0 ? (
-            <div className="bg-white p-8 rounded-[32px] sm:rounded-[40px] shadow-xl text-center">
-              <p className="text-stone-400 italic mb-4 text-base sm:text-sm">No student data yet. Analytics will appear once students complete assignments.</p>
+            <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-blue-50">
+              <BarChart3 className="mx-auto text-on-surface-variant mb-4" size={48} />
+              <p className="text-on-surface-variant font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
             </div>
           ) : (
             <>
               {/* Summary Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Students</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{classAnalytics?.uniqueStudents ?? 0}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Users className="text-secondary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Students</p>
+              <p className="text-3xl font-black text-on-surface">{classAnalytics?.uniqueStudents ?? 0}</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Attempts</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{classAnalytics?.totalAttempts ?? 0}</p>
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-blue-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <RefreshCw className="text-primary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Attempts</p>
+              <p className="text-3xl font-black text-on-surface">{classAnalytics?.totalAttempts ?? 0}</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Avg Score</p>
-              <p className="text-2xl sm:text-3xl font-black text-blue-700">{classAnalytics?.avgScore ?? 0}%</p>
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-emerald-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <TrendingUp className="text-emerald-600" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Avg Score</p>
+              <p className="text-3xl font-black text-primary">{classAnalytics?.avgScore ?? 0}%</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Assignments</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.assignments.length}</p>
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-amber-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <BookOpen className="text-tertiary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Assignments</p>
+              <p className="text-3xl font-black text-on-surface">{matrixData.assignments.length}</p>
             </div>
           </div>
 
           {/* Charts Row */}
           {classAnalytics && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               {/* Score Distribution Chart */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <BarChart3 className="text-purple-600" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center">
+                    <BarChart3 className="text-secondary" size={16} />
+                  </div>
                   Score Distribution
                 </h3>
                 <div className="space-y-3">
@@ -4379,10 +4580,10 @@ export default function App() {
                     return (
                       <div key={label}>
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-stone-600 font-bold">{label}</span>
+                          <span className="text-on-surface-variant font-bold">{label}</span>
                           <span className={`font-black ${textColor}`}>{count} ({pct}%)</span>
                         </div>
-                        <div className="h-4 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-4 bg-surface-container rounded-full overflow-hidden">
                           <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -4392,9 +4593,11 @@ export default function App() {
               </div>
 
               {/* Game Mode Usage */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <Layers className="text-purple-600" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center">
+                    <Layers className="text-secondary" size={16} />
+                  </div>
                   Game Mode Usage
                 </h3>
                 <div className="space-y-2">
@@ -4402,11 +4605,11 @@ export default function App() {
                     const pct = Math.round((count / classAnalytics.maxModeCount) * 100);
                     return (
                       <div key={mode} className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-stone-600 w-24 truncate capitalize">{mode.replace(/-/g, ' ')}</span>
-                        <div className="flex-1 h-5 bg-stone-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        <span className="text-xs font-bold text-on-surface-variant w-24 truncate capitalize">{mode.replace(/-/g, ' ')}</span>
+                        <div className="flex-1 h-5 bg-surface-container rounded-full overflow-hidden">
+                          <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs font-black text-stone-700 w-8 text-right">{count}</span>
+                        <span className="text-xs font-black text-on-surface w-8 text-right">{count}</span>
                       </div>
                     );
                   })}
@@ -4414,9 +4617,11 @@ export default function App() {
               </div>
 
               {/* Weekly Activity Chart */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <TrendingUp className="text-purple-600" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <TrendingUp className="text-emerald-600" size={16} />
+                  </div>
                   Weekly Activity
                 </h3>
                 {classAnalytics.weeklyActivity.length > 0 ? (
@@ -4427,27 +4632,29 @@ export default function App() {
                       return (
                         <div key={week} className="flex-1 flex flex-col items-center gap-1 group relative">
                           <div
-                            className={`w-full rounded-t-md transition-all ${avgPct >= 90 ? "bg-emerald-400" : avgPct >= 70 ? "bg-blue-400" : "bg-rose-300"}`}
+                            className={`w-full rounded-t-md transition-all ${avgPct >= 90 ? "bg-emerald-400" : avgPct >= 70 ? "bg-primary" : "bg-rose-400"}`}
                             style={{ height: `${Math.max(heightPct, 8)}%` }}
                           />
-                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                             {data.count} attempts, avg {avgPct}%
                           </div>
-                          <span className="text-[9px] text-stone-400 truncate w-full text-center">{week.slice(5)}</span>
+                          <span className="text-[9px] text-on-surface-variant truncate w-full text-center">{week.slice(5)}</span>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-stone-400 text-sm italic">No activity data yet</p>
+                  <p className="text-on-surface-variant text-sm italic">No activity data yet</p>
                 )}
-                <p className="text-[10px] text-stone-400 mt-2 text-center">Bar color = average score quality. Hover for details.</p>
+                <p className="text-[10px] text-on-surface-variant mt-2 text-center">Bar color = average score quality</p>
               </div>
 
               {/* Most Missed Words */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <AlertTriangle className="text-rose-500" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-rose-100">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-error-container/20 flex items-center justify-center">
+                    <AlertTriangle className="text-error" size={16} />
+                  </div>
                   Most Missed Words
                 </h3>
                 {classAnalytics.topMistakes.length > 0 ? (
@@ -4459,20 +4666,20 @@ export default function App() {
                         <div key={wordId} className="flex items-center gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between text-xs mb-0.5">
-                              <span className="font-bold text-stone-700 truncate">{word?.english || `#${wordId}`}</span>
-                              <span className="text-rose-600 font-bold ml-2">{count}x</span>
+                              <span className="font-bold text-on-surface truncate">{word?.english || `#${wordId}`}</span>
+                              <span className="text-error font-bold ml-2">{count}x</span>
                             </div>
-                            <div className="h-3 bg-stone-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-rose-300 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                            <div className="h-3 bg-surface-container rounded-full overflow-hidden">
+                              <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
-                          {word?.hebrew && <span className="text-xs text-stone-400 w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
+                          {word?.hebrew && <span className="text-xs text-on-surface-variant w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-stone-400 text-sm italic">No mistake data yet</p>
+                  <p className="text-on-surface-variant text-sm italic">No mistake data yet</p>
                 )}
               </div>
             </div>
@@ -4836,7 +5043,7 @@ export default function App() {
           })()}
             </>
           )}
-        </div>
+        </main>
       </div>
     );
   }
@@ -4896,36 +5103,57 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-slate-600 font-bold flex items-center gap-2 hover:text-slate-900 bg-white px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all text-sm">
-            <span>←</span> Back to Dashboard
-          </button>
+      <div className="min-h-screen bg-background pb-8">
+        <TopAppBar
+          title="Gradebook"
+          subtitle="STUDENT SCORES & PROGRESS"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
 
-          {/* Header */}
-          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Student Gradebook
-                </h2>
-                <p className="text-slate-500 mt-2">Click on a student to see their detailed scores</p>
+        <main className="pt-24 px-6 max-w-4xl mx-auto">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-xl border-2 border-tertiary-container/30">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-tertiary-container flex items-center justify-center">
+                  <Users className="text-tertiary" size={20} />
+                </div>
               </div>
-              <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
-                <span className="text-2xl">📚</span>
-                <span className="font-bold text-blue-700">{studentEntries.length} Students</span>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Students</p>
+              <p className="text-3xl font-black text-on-surface">{studentEntries.length}</p>
+            </div>
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-xl border-2 border-emerald-100">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <Trophy className="text-emerald-600" size={20} />
+                </div>
               </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Total Attempts</p>
+              <p className="text-3xl font-black text-on-surface">{allScores.length}</p>
+            </div>
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-xl border-2 border-secondary-container/30">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center">
+                  <GraduationCap className="text-secondary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Classes</p>
+              <p className="text-3xl font-black text-on-surface">{classes.length}</p>
             </div>
           </div>
 
           {studentEntries.length === 0 ? (
-            <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
-              <div className="text-6xl mb-4">📭</div>
-              <p className="text-slate-400 italic text-lg">No scores recorded yet.</p>
-              <p className="text-slate-300 text-sm mt-2">Student results will appear here once they complete assignments.</p>
+            <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-tertiary-container/30">
+              <GraduationCap className="mx-auto text-on-surface-variant mb-4" size={48} />
+              <p className="text-on-surface-variant font-medium">No scores recorded yet.</p>
+              <p className="text-on-surface-variant/60 text-sm mt-2">Student results will appear here once they complete assignments.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {studentEntries
                 .sort((a, b) => new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime())
                 .map((entry, idx) => {
@@ -4939,36 +5167,36 @@ export default function App() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.03 }}
-                      className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all overflow-hidden"
+                      className="bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden border-2 border-surface-container"
                     >
                       {/* Summary Row - Always Visible */}
                       <div
                         onClick={() => setExpandedStudent(isExpanded ? null : entryKey)}
-                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-container-low transition-colors"
                       >
                         <div className="flex items-center gap-4 flex-1">
                           {/* Expand/Collapse Icon */}
                           <motion.div
                             animate={{ rotate: isExpanded ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
-                            className="text-slate-400"
+                            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant"
                           >
                             <ChevronDown size={20} />
                           </motion.div>
 
                           {/* Avatar */}
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-sm sm:text-lg shadow-lg">
+                          <div className="w-12 h-12 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-black text-lg shadow-md">
                             {entry.studentName.charAt(0)}
                           </div>
 
                           {/* Name and Class */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-slate-800 text-base sm:text-lg truncate">{entry.studentName}</h3>
+                            <h3 className="font-black text-on-surface text-lg truncate">{entry.studentName}</h3>
                             <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">
+                              <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold">
                                 {entry.classCode}
                               </span>
-                              <span className="text-slate-400 text-xs">
+                              <span className="text-on-surface-variant text-xs font-medium">
                                 {entry.scores.length} {entry.scores.length === 1 ? 'attempt' : 'attempts'}
                               </span>
                             </div>
@@ -4978,25 +5206,25 @@ export default function App() {
                         {/* Quick Stats */}
                         <div className="flex items-center gap-3 sm:gap-6">
                           <div className="text-center">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Avg</div>
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Avg</div>
                             <div className={`text-lg sm:text-xl font-black ${
-                              avgScore >= 90 ? 'text-green-600' :
-                              avgScore >= 70 ? 'text-blue-600' :
-                              avgScore >= 50 ? 'text-yellow-600' :
-                              'text-red-600'
+                              avgScore >= 90 ? 'text-emerald-600' :
+                              avgScore >= 70 ? 'text-primary' :
+                              avgScore >= 50 ? 'text-amber-600' :
+                              'text-rose-600'
                             }`}>{avgScore}%</div>
                           </div>
                           <div className="text-center hidden sm:block">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Best</div>
-                            <div className="text-lg sm:text-xl font-black text-yellow-600">{entry.bestScore}%</div>
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Best</div>
+                            <div className="text-lg sm:text-xl font-black text-tertiary">{entry.bestScore}%</div>
                           </div>
                           <div className="text-center hidden sm:block">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Total</div>
-                            <div className="text-lg sm:text-xl font-black text-purple-600">{entry.totalScore}</div>
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Total</div>
+                            <div className="text-lg sm:text-xl font-black text-secondary">{entry.totalScore}</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Last</div>
-                            <div className="text-xs sm:text-sm font-bold text-green-600">
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Last</div>
+                            <div className="text-xs sm:text-sm font-bold text-primary">
                               {new Date(entry.lastDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </div>
                           </div>
@@ -5013,12 +5241,12 @@ export default function App() {
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="px-4 pb-4 border-t border-slate-100">
+                            <div className="px-4 pb-4 border-t border-surface-container">
                               {/* Detailed Stats Header */}
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                                 <HelpTooltip content={`Average Score: ${avgScore}% - Mean performance across all attempts`}>
-                                  <div className="text-center p-3 bg-slate-50 rounded-xl cursor-help hover:bg-slate-100 transition-colors">
-                                    <div className="text-xs text-slate-500 font-bold uppercase">Average</div>
+                                  <div className="text-center p-3 bg-surface-container rounded-xl cursor-help hover:bg-surface-container-high transition-colors">
+                                    <div className="text-xs text-on-surface-variant font-bold uppercase">Average</div>
                                     <div className={`text-2xl font-black ${getScoreColor(avgScore)}`}>
                                       {avgScore}%
                                     </div>
@@ -5026,19 +5254,19 @@ export default function App() {
                                 </HelpTooltip>
 
                                 <HelpTooltip content={`Best Score: ${entry.bestScore}% - Highest score achieved`}>
-                                  <div className="text-center p-3 bg-yellow-50 rounded-xl cursor-help hover:bg-yellow-100 transition-colors">
+                                  <div className="text-center p-3 bg-tertiary-container/30 rounded-xl cursor-help hover:bg-tertiary-container/50 transition-colors">
                                     <div className="flex items-center gap-1 justify-center">
-                                      <span className="text-xs text-yellow-600 font-bold uppercase">Best</span>
+                                      <span className="text-xs text-tertiary font-bold uppercase">Best</span>
                                       <span>⭐</span>
                                     </div>
-                                    <div className="text-2xl font-black text-yellow-600">{entry.bestScore}%</div>
+                                    <div className="text-2xl font-black text-tertiary">{entry.bestScore}%</div>
                                   </div>
                                 </HelpTooltip>
 
                                 <HelpTooltip content={`Total Points: ${entry.totalScore} - Sum of all scores earned`}>
-                                  <div className="text-center p-3 bg-purple-50 rounded-xl cursor-help hover:bg-purple-100 transition-colors">
-                                    <div className="text-xs text-purple-600 font-bold uppercase">Total</div>
-                                    <div className="text-2xl font-black text-purple-600">{entry.totalScore}</div>
+                                  <div className="text-center p-3 bg-secondary-container/30 rounded-xl cursor-help hover:bg-secondary-container/50 transition-colors">
+                                    <div className="text-xs text-secondary font-bold uppercase">Total</div>
+                                    <div className="text-2xl font-black text-secondary">{entry.totalScore}</div>
                                   </div>
                                 </HelpTooltip>
 
@@ -5059,7 +5287,7 @@ export default function App() {
                               <div className="mt-4">
                                 <div className="flex items-center gap-2 mb-3">
                                   <HelpTooltip content="Individual scores for each attempt with detailed information">
-                                    <span className="text-xs text-slate-400 font-bold uppercase cursor-help">All Attempts</span>
+                                    <span className="text-xs text-on-surface-variant font-bold uppercase cursor-help">All Attempts</span>
                                   </HelpTooltip>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -5070,19 +5298,19 @@ export default function App() {
                                         key={i}
                                         content={`${modeInfo.name} Mode • ${s.score}% • ${new Date(s.completedAt).toLocaleString()} • ${s.mistakes?.length || 0} mistake${(s.mistakes?.length || 0) !== 1 ? 's' : ''}`}
                                       >
-                                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-xl border-2 border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all cursor-help">
+                                        <div className="flex items-center justify-between p-3 bg-surface-container rounded-xl border-2 border-surface-container-high hover:border-primary/30 hover:shadow-sm transition-all cursor-help">
                                           <div className="flex items-center gap-2">
                                             <span className="text-lg">{modeInfo.icon}</span>
                                             <div>
-                                              <div className="font-bold text-slate-700 text-sm">{modeInfo.name}</div>
-                                              <div className="text-[10px] text-slate-400">{modeInfo.label}</div>
+                                              <div className="font-bold text-on-surface text-sm">{modeInfo.name}</div>
+                                              <div className="text-[10px] text-on-surface-variant">{modeInfo.label}</div>
                                             </div>
                                           </div>
                                           <div className="flex items-center gap-3">
                                             <div className={`px-3 py-1 rounded-lg font-bold text-sm ${getScoreColor(s.score)}`}>
                                               {s.score}%
                                             </div>
-                                            <div className="text-[10px] text-slate-400">
+                                            <div className="text-[10px] text-on-surface-variant">
                                               {new Date(s.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                             </div>
                                           </div>
@@ -5108,51 +5336,66 @@ export default function App() {
             const noScoreStudents = classStudents.filter(s => !scoredNames.has(s.name));
             if (noScoreStudents.length === 0) return null;
             return (
-              <div className="bg-white rounded-3xl shadow-md p-6 mt-6">
-                <h3 className="text-lg font-black text-slate-700 mb-1 flex items-center gap-2">
-                  <UserCircle size={20} className="text-orange-500" />
+              <div className="bg-surface-container-lowest rounded-xl shadow-xl p-6 mt-6 border-2 border-surface-container">
+                <h3 className="text-lg font-black text-on-surface mb-1 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-tertiary-container flex items-center justify-center">
+                    <UserCircle size={20} className="text-tertiary" />
+                  </div>
                   Enrolled Students ({noScoreStudents.length})
                 </h3>
-                <p className="text-slate-400 text-xs mb-4">Students who joined but haven't completed any assignments yet.</p>
+                <p className="text-on-surface-variant text-xs mb-4 font-medium">Students who joined but haven't completed any assignments yet.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {noScoreStudents.map((s, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm">
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-surface-container rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold text-sm">
                         {s.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-700 text-sm truncate">{s.name}</p>
-                        <p className="text-slate-400 text-xs">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</p>
+                        <p className="font-bold text-on-surface text-sm truncate">{s.name}</p>
+                        <p className="text-on-surface-variant text-xs font-medium">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</p>
                       </div>
-                      <span className="text-xs text-slate-400">Last: {new Date(s.lastActive).toLocaleDateString()}</span>
+                      <span className="text-xs text-on-surface-variant font-medium">Last: {new Date(s.lastActive).toLocaleDateString()}</span>
                     </div>
                   ))}
                 </div>
               </div>
             );
           })()}
-        </div>
+        </main>
       </div>
     );
   }
 
   if (view === "live-challenge-class-select") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
-        <div className="max-w-2xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-white/80 font-bold flex items-center gap-1 hover:text-white bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all text-sm">← Back to Dashboard</button>
+      <div className="min-h-screen bg-background pb-8">
+        <TopAppBar
+          title="Live Challenge"
+          subtitle="SELECT A CLASS TO START"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
 
-          <div className="text-center mb-8">
-            <motion.h1
+        <main className="pt-24 px-6 max-w-2xl mx-auto">
+          {/* Header Card */}
+          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 mb-8 text-center shadow-xl">
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
+              className="flex flex-col items-center"
             >
-              🏆 Select Class
-            </motion.h1>
-            <p className="text-white/90 font-bold">Choose which class to start the Live Challenge for</p>
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 shadow-lg">
+                <Zap className="text-white" size={32} />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Select a Class</h2>
+              <p className="text-white/90 font-medium">Choose which class to start the Live Challenge for</p>
+            </motion.div>
           </div>
 
+          {/* Class Selection */}
           <div className="grid gap-4">
             {classes.map((cls, idx) => (
               <motion.button
@@ -5171,19 +5414,26 @@ export default function App() {
                     });
                   }
                 }}
-                className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30 hover:bg-white/30 hover:border-white/50 hover:scale-105 transition-all shadow-xl"
+                className="bg-surface-container-lowest rounded-xl p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
               >
                 <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <h3 className="text-xl sm:text-2xl font-black mb-1">{cls.name}</h3>
-                    <p className="text-white/80 text-sm">Code: <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-bold ml-1">{cls.code}</span></p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                      <Zap className="text-on-primary-container" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-on-surface">{cls.name}</h3>
+                      <p className="text-on-surface-variant text-sm font-medium">
+                        Code: <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ml-1">{cls.code}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-4xl">🚀</div>
+                  <ChevronRight className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-1 transition-all" size={24} />
                 </div>
               </motion.button>
             ))}
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -5663,7 +5913,7 @@ export default function App() {
                                 initial={{ scale: 0.5, opacity: 0 }}
                                 animate={globalIdx < revealedLetters ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0.15 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-3 sm:border-4 flex-shrink-0"
+                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
                                 style={{ color: LETTER_COLORS[globalIdx % LETTER_COLORS.length], borderColor: LETTER_COLORS[globalIdx % LETTER_COLORS.length], background: LETTER_COLORS[globalIdx % LETTER_COLORS.length] + "18" }}
                               >
                                 {globalIdx < revealedLetters ? (letter ?? "").toUpperCase() : "?"}
