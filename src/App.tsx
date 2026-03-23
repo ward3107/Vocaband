@@ -49,6 +49,11 @@ import { LeaderboardEntry, SOCKET_EVENTS } from './types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
+import LandingPage from "./components/LandingPage";
+import TermsPage from "./components/TermsPage";
+import PublicPrivacyPage from "./components/PublicPrivacyPage";
+import PlaygroundPage from "./components/PlaygroundPage";
+import CookieBanner from "./components/CookieBanner";
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -238,7 +243,51 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"landing" | "game" | "teacher-dashboard" | "student-dashboard" | "create-assignment" | "gradebook" | "live-challenge" | "live-challenge-class-select" | "analytics" | "global-leaderboard" | "students" | "shop" | "privacy-settings">("landing");
+  const [view, setView] = useState<
+    | "public-landing"
+    | "public-terms"
+    | "public-privacy"
+    | "public-playground"
+    | "landing"
+    | "game"
+    | "teacher-dashboard"
+    | "student-dashboard"
+    | "create-assignment"
+    | "gradebook"
+    | "live-challenge"
+    | "live-challenge-class-select"
+    | "analytics"
+    | "global-leaderboard"
+    | "students"
+    | "shop"
+    | "privacy-settings"
+  >("public-landing");
+
+  // Cookie consent state
+  const [showCookieBanner, setShowCookieBanner] = useState(() => {
+    try {
+      return !localStorage.getItem("vocaband_cookie_consent");
+    } catch {
+      return true;
+    }
+  });
+
+  const handleCookieAccept = () => {
+    try {
+      localStorage.setItem("vocaband_cookie_consent", "true");
+    } catch {}
+    setShowCookieBanner(false);
+  };
+
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "playground") => {
+    const viewMap = {
+      home: "public-landing",
+      terms: "public-terms",
+      privacy: "public-privacy",
+      playground: "public-playground",
+    } as const;
+    setView(viewMap[page]);
+  };
   const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames">("avatars");
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
@@ -2048,6 +2097,75 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <RefreshCw className="animate-spin text-blue-700" size={48} />
     </div>;
+  }
+
+  // --- PUBLIC VIEWS (No authentication required) ---
+  if (view === "public-landing") {
+    return (
+      <>
+        <LandingPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieAccept}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "public-terms") {
+    return (
+      <>
+        <TermsPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieAccept}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "public-privacy") {
+    return (
+      <>
+        <PublicPrivacyPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieAccept}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "public-playground") {
+    return (
+      <>
+        <PlaygroundPage
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("landing")}
+        />
+        {showCookieBanner && (
+          <CookieBanner
+            onAccept={handleCookieAccept}
+            onCustomize={handleCookieAccept}
+          />
+        )}
+      </>
+    );
   }
 
   if (view === "landing" && !user) {
