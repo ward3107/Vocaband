@@ -5334,21 +5334,34 @@ export default function App() {
 
   if (view === "live-challenge-class-select") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
-        <div className="max-w-2xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-white/80 font-bold flex items-center gap-1 hover:text-white bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all text-sm">← Back to Dashboard</button>
+      <div className="min-h-screen bg-background pb-8">
+        <TopAppBar
+          title="Live Challenge"
+          subtitle="SELECT A CLASS TO START"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
 
-          <div className="text-center mb-8">
-            <motion.h1
+        <main className="pt-24 px-6 max-w-2xl mx-auto">
+          {/* Header Card */}
+          <div className="bg-tertiary-container/30 rounded-2xl p-6 mb-8 text-center border-2 border-tertiary-container/50">
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
+              className="flex flex-col items-center"
             >
-              🏆 Select Class
-            </motion.h1>
-            <p className="text-white/90 font-bold">Choose which class to start the Live Challenge for</p>
+              <div className="w-16 h-16 rounded-full bg-tertiary-container flex items-center justify-center mb-4 shadow-lg">
+                <Zap className="text-on-tertiary-container" size={32} />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">Select a Class</h2>
+              <p className="text-on-surface-variant font-medium">Choose which class to start the Live Challenge for</p>
+            </motion.div>
           </div>
 
+          {/* Class Selection */}
           <div className="grid gap-4">
             {classes.map((cls, idx) => (
               <motion.button
@@ -5367,19 +5380,26 @@ export default function App() {
                     });
                   }
                 }}
-                className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30 hover:bg-white/30 hover:border-white/50 hover:scale-105 transition-all shadow-xl"
+                className="bg-surface-container-lowest rounded-xl p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
               >
                 <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <h3 className="text-xl sm:text-2xl font-black mb-1">{cls.name}</h3>
-                    <p className="text-white/80 text-sm">Code: <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-bold ml-1">{cls.code}</span></p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                      <Zap className="text-on-primary-container" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-on-surface">{cls.name}</h3>
+                      <p className="text-on-surface-variant text-sm font-medium">
+                        Code: <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ml-1">{cls.code}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-4xl">🚀</div>
+                  <ChevronRight className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-1 transition-all" size={24} />
                 </div>
               </motion.button>
             ))}
           </div>
-        </div>
+        </main>
       </div>
     );
   }
