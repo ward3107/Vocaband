@@ -15,21 +15,26 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
   return (
     <div className="min-h-screen bg-surface">
       {/* Header */}
-      <header className="bg-stone-100/80 backdrop-blur-md flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 border-b border-stone-200/50">
-        <div className="flex items-center gap-4">
+      <header className="bg-stone-100/80 backdrop-blur-md flex justify-between items-center w-full px-4 md:px-6 py-2 fixed top-0 z-50 border-b border-stone-200/50">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate("home")}
-            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-stone-200 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-stone-200 transition-colors"
           >
-            <ArrowLeft className="text-primary" size={20} />
+            <ArrowLeft className="text-primary" size={18} />
           </button>
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-primary font-headline tracking-tight">
-              Vocaband
-            </span>
-            <span className="text-[10px] font-bold tracking-[0.15em] text-on-surface-variant uppercase">
-              TERMS OF USE
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg signature-gradient flex items-center justify-center shadow-md shadow-primary/20">
+              <span className="text-white text-base font-black font-headline italic">V</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-black text-primary font-headline tracking-tight">
+                Vocaband
+              </span>
+              <span className="text-[9px] font-bold tracking-[0.15em] text-on-surface-variant uppercase">
+                TERMS OF USE
+              </span>
+            </div>
           </div>
         </div>
       </header>

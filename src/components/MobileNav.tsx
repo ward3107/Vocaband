@@ -15,7 +15,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/90 backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.04)] rounded-t-[3rem]">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-white/90 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = currentPage === item.id;
@@ -24,14 +24,14 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className={`flex flex-col items-center justify-center p-3 transition-all ${
+            className={`flex flex-col items-center justify-center p-2 transition-all ${
               isActive
-                ? "bg-primary text-white rounded-full scale-110 shadow-lg shadow-blue-500/30"
+                ? "bg-primary text-white rounded-full scale-105 shadow-md shadow-blue-500/30"
                 : "text-stone-400"
             }`}
           >
-            <Icon size={24} />
-            <span className="text-[10px] font-black font-headline mt-1">
+            <Icon size={20} />
+            <span className="text-[9px] font-black font-headline mt-0.5">
               {item.label}
             </span>
           </button>

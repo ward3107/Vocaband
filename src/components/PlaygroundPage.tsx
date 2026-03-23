@@ -13,15 +13,15 @@ const PlaygroundPage: React.FC<PlaygroundPageProps> = ({
 }) => {
   return (
     <div className="min-h-screen bg-surface">
-      <nav className="bg-[#fff5ee]/90 backdrop-blur-md shadow-xl shadow-stone-900/5 fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-8 h-20">
+      <nav className="bg-[#fff5ee]/90 backdrop-blur-md shadow-xl shadow-stone-900/5 fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-8 py-2">
         <button
           onClick={() => onNavigate("home")}
           className="flex items-center gap-3"
         >
-          <span className="material-symbols-outlined text-blue-600 text-3xl">
-            auto_stories
-          </span>
-          <span className="text-xl md:text-2xl font-black text-blue-600 font-headline tracking-tighter">
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+            <span className="text-white text-xl md:text-2xl font-black font-headline italic">V</span>
+          </div>
+          <span className="text-xl md:text-2xl font-black text-primary font-headline tracking-tighter">
             Vocaband
           </span>
         </button>
@@ -49,10 +49,8 @@ const PlaygroundPage: React.FC<PlaygroundPageProps> = ({
       <section className="pt-32 pb-20 px-6 signature-gradient text-on-primary relative overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-col items-center text-center relative z-10">
           <div className="mb-6 flex flex-col items-center">
-            <div className="w-24 h-24 bg-surface-container-lowest rounded-3xl shadow-xl flex items-center justify-center mb-4 rotate-3 hover:rotate-0 transition-transform duration-300">
-              <span className="text-6xl font-black text-primary font-headline">
-                V
-              </span>
+            <div className="w-24 h-24 rounded-xl signature-gradient flex items-center justify-center mb-4 shadow-xl shadow-primary/20 rotate-3 hover:rotate-0 transition-transform duration-300">
+              <span className="text-6xl font-black text-white font-headline italic">V</span>
             </div>
             <p className="text-sm font-black tracking-widest uppercase opacity-90">
               Israeli English Curriculum • Bands Vocabulary
@@ -182,21 +180,26 @@ const PlaygroundPage: React.FC<PlaygroundPageProps> = ({
       </section>
 
       {/* Footer */}
-      <footer className="bg-stone-100 py-12 mb-20 md:mb-0">
-        <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-8">
-          <span className="text-lg font-black text-stone-800 font-headline">
-            Vocaband
-          </span>
-          <div className="flex gap-8">
+      <footer className="bg-stone-100 py-2 mb-20 md:mb-0">
+        <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg signature-gradient flex items-center justify-center shadow-md shadow-primary/20">
+              <span className="text-white text-sm font-black font-headline italic">V</span>
+            </div>
+            <span className="text-base font-black text-stone-800 font-headline">
+              Vocaband
+            </span>
+          </div>
+          <div className="flex gap-6">
             <button
               onClick={() => onNavigate("privacy")}
-              className="text-stone-500 font-bold hover:text-primary transition-colors"
+              className="text-stone-500 text-sm font-bold hover:text-primary transition-colors"
             >
               Privacy
             </button>
             <button
               onClick={() => onNavigate("terms")}
-              className="text-stone-500 font-bold hover:text-primary transition-colors"
+              className="text-stone-500 text-sm font-bold hover:text-primary transition-colors"
             >
               Terms
             </button>
