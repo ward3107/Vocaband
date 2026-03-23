@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Rocket,
   Gamepad2,
@@ -6,8 +6,7 @@ import {
   Coins,
   ArrowRight,
   ArrowUp,
-  Share2,
-  Mail,
+  MessageCircle,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
@@ -18,8 +17,24 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) => {
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const shareOnWhatsApp = () => {
+    const text = encodeURIComponent("Check out Vocaband - the fun way to master English vocabulary for Israeli EFL students!");
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://wa.me/?text=${text}%20${url}`, "_blank");
   };
 
   return (
@@ -259,8 +274,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
         </section>
 
         {/* Footer */}
-        <footer className="bg-stone-100 dark:bg-stone-900 w-full py-12">
-          <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-8">
+        <footer className="bg-stone-100 dark:bg-stone-900 w-full py-8">
+          <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-4">
             <p className="text-stone-500 dark:text-stone-400 font-bold text-sm text-center md:text-left">
                 © 2026 Vocaband • All rights reserved.
             </p>
@@ -284,26 +299,34 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                 Privacy
               </button>
             </div>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors">
-                <Share2 size={18} className="text-stone-600 dark:text-stone-300" />
-              </div>
-              <div className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors">
-                <Mail size={18} className="text-stone-600 dark:text-stone-300" />
-              </div>
-              <button
-                onClick={scrollToTop}
-                className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors"
-                title="Back to top"
-              >
-                <ArrowUp size={18} className="text-stone-600 dark:text-stone-300" />
-              </button>
-            </div>
           </div>
         </footer>
       </main>
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
+
+      {/* Floating Social Sidebar */}
+      <div className="fixed left-4 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3">
+        {/* WhatsApp */}
+        <button
+          onClick={shareOnWhatsApp}
+          className="w-10 h-10 md:w-12 md:h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-500/80 transition-all hover:scale-110"
+          title="Share on WhatsApp"
+        >
+          <MessageCircle size={18} className="text-white dark:text-stone-800 md:size-6" />
+        </button>
+
+        {/* Back to Top - only shows when scrolled down */}
+        {showBackToTop && (
+          <button
+            onClick={scrollToTop}
+            className="w-10 h-10 md:w-12 md:h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-primary/80 transition-all hover:scale-110"
+            title="Back to top"
+          >
+            <ArrowUp size={20} className="text-white dark:text-stone-800 md:w-6 md:h-6" />
+          </button>
+        )}
+      </div>
     </div>
   );
 };
