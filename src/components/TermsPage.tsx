@@ -3,7 +3,7 @@ import { ArrowLeft, Printer } from "lucide-react";
 import MobileNav from "./MobileNav";
 
 interface TermsPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "playground") => void;
+  onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
 }
 

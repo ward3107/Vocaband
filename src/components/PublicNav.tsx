@@ -1,10 +1,12 @@
 import React from "react";
 
 interface PublicNavProps {
-  currentPage: "home" | "terms" | "privacy" | "playground";
-  onNavigate: (page: "home" | "terms" | "privacy" | "playground") => void;
+  currentPage: "home" | "terms" | "privacy";
+  onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
-}const PublicNav: React.FC<PublicNavProps> = ({
+}
+
+const PublicNav: React.FC<PublicNavProps> = ({
   currentPage,
   onNavigate,
   onGetStarted,
@@ -28,16 +30,6 @@ interface PublicNavProps {
 
       <div className="hidden md:flex items-center gap-6">
         <button
-          onClick={() => onNavigate("playground")}
-          className={`text-sm font-bold transition-colors ${
-            currentPage === "playground"
-              ? "text-primary"
-              : "text-stone-500 hover:text-primary"
-          }`}
-        >
-          Games
-        </button>
-        <button
           onClick={() => onNavigate("terms")}
           className={`text-sm font-bold transition-colors ${
             currentPage === "terms"
@@ -60,12 +52,6 @@ interface PublicNavProps {
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        <button
-          onClick={onGetStarted}
-          className="text-stone-600 text-sm font-bold px-3 py-1.5 hover:bg-stone-200 rounded-full transition-all"
-        >
-          Login
-        </button>
         <button
           onClick={onGetStarted}
           className="signature-gradient text-white text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-md shadow-blue-500/20"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import {
   Rocket,
@@ -19,7 +19,7 @@ import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 
 interface LandingPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "playground") => void;
+  onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
 }
 
@@ -27,6 +27,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const shareRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,6 +36,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Close share widget when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
+        setShareOpen(false);
+      }
+    };
+    if (shareOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [shareOpen]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -89,7 +105,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
   ];
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface overflow-x-hidden">
       <PublicNav
         currentPage="home"
         onNavigate={onNavigate}
@@ -104,12 +120,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-container/10 rounded-full blur-3xl -ml-32 - mb-32" />
 
           <div className="max-w-7xl mx-auto flex flex-col items-center text-center relative z-10">
+            {/* Tagline */}
+            <motion.p
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="text-sm font-black tracking-widest uppercase opacity-90 mb-4"
+            >
+              Israeli English Curriculum • Bands Vocabulary
+            </motion.p>
+
             {/* Headline */}
             <motion.h1
               initial={{ opacity: 0, x: -100 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="text-5xl md:text-8xl font-black font-headline leading-none tracking-tighter mb-6 max-w-4xl"
+              className="text-5xl md:text-8xl font-black font-headline italic leading-none tracking-tighter mb-6 max-w-4xl"
             >
               Level Up Your Vocabulary
             </motion.h1>
@@ -125,19 +151,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
 
             {/* CTA Buttons */}
             <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
-              <button
+              <motion.button
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
                 onClick={onGetStarted}
                 className="bg-tertiary-container text-on-tertiary-container px-12 py-5 rounded-xl text-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
                 Start Learning
                 <Rocket size={24} />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.4 }}
                 onClick={onGetStarted}
                 className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
               >
                 Teacher Login
-              </button>
+              </motion.button>
             </div>
 
             {/* Social Proof */}
@@ -177,21 +209,49 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                   From "Word War" to "Grammar Galaxy," we turn every vocabulary list into an epic quest.
                 </p>
               </div>
-              <div className="mt-12 flex gap-4 overflow-hidden flex-wrap">
-                <div className="px-6 py-3 bg-surface-container-lowest rounded-full font-black shadow-sm group-hover:-translate-y-2 transition-transform duration-300">
-                  Flashcards
+              {/* Game Modes - Two columns, animate from both sides */}
+              <div className="mt-12 grid grid-cols-2 gap-3">
+                {/* Left column - slide from left */}
+                <div className="flex flex-col gap-3">
+                  {["📝 Classic", "🎧 Listening", "✍️ Spelling", "🔗 Matching", "✓ True-false"].map((mode, i) => (
+                    <motion.div
+                      key={mode}
+                      initial={{ opacity: 0, x: -50 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                      className="px-4 py-2 bg-surface-container-lowest rounded-full font-black text-sm shadow-sm text-center"
+                    >
+                      {mode}
+                    </motion.div>
+                  ))}
                 </div>
-                <div className="px-6 py-3 bg-surface-container-lowest rounded-full font-black shadow-sm group-hover:-translate-y-4 transition-transform duration-500 delay-75">
-                  Speed Match
-                </div>
-                <div className="px-6 py-3 bg-surface-container-lowest rounded-full font-black shadow-sm group-hover:-translate-y-6 transition-transform duration-400 delay-150">
-                  Vocab Tower
+                {/* Right column - slide from right */}
+                <div className="flex flex-col gap-3">
+                  {["🎴 Flashcards", "🔤 Scramble", "🔄 Reverse", "🔡 Letter-sounds", "🧩 Sentence-builder"].map((mode, i) => (
+                    <motion.div
+                      key={mode}
+                      initial={{ opacity: 0, x: 50 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                      className="px-4 py-2 bg-surface-container-lowest rounded-full font-black text-sm shadow-sm text-center"
+                    >
+                      {mode}
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Live Classroom Challenges */}
-            <div className="md:col-span-4 bg-secondary-container rounded-[3rem] p-10 flex flex-col items-center text-center">
+            {/* Live Classroom Challenges - Animates from UP */}
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="md:col-span-4 bg-secondary-container rounded-[3rem] p-10 flex flex-col items-center text-center"
+            >
               <div className="bg-surface-container-lowest text-secondary w-20 h-20 rounded-full flex items-center justify-center mb-8 shadow-xl">
                 <Users size={40} />
               </div>
@@ -201,10 +261,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
               <p className="text-lg font-bold text-on-secondary-container/80">
                 Battle your classmates in real-time. Who will top the weekly leaderboard?
               </p>
-            </div>
+            </motion.div>
 
-            {/* XP-Based Shop */}
-            <div className="md:col-span-6 bg-tertiary-container rounded-[3rem] p-10 flex flex-row items-center gap-8 overflow-hidden">
+            {/* XP-Based Shop - Animates from DOWN */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+              className="md:col-span-6 bg-tertiary-container rounded-[3rem] p-10 flex flex-row items-center gap-8 overflow-hidden"
+            >
               <div className="flex-1">
                 <h3 className="text-3xl font-black font-headline mb-4 text-on-tertiary-container">
                   XP-Based Shop
@@ -218,39 +284,135 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                   <Coins size={64} className="text-tertiary-fixed-dim" />
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Avatar Preview Section */}
-            <div className="md:col-span-6 bg-surface-container-high rounded-[3rem] p-10 flex flex-col">
-              <h3 className="text-3xl font-black font-headline mb-8">
-                Unlock Your Identity
-              </h3>
-              <div className="flex justify-between items-center">
-                <div className="flex gap-4">
-                  <div className="w-20 h-20 bg-surface-container-lowest rounded-full border-4 border-primary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-3xl">
-                    🐉
-                  </div>
-                  <div className="w-20 h-20 bg-surface-container-lowest rounded-full border-4 border-secondary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-3xl">
-                    🦅
-                  </div>
-                  <div className="w-20 h-20 bg-surface-container-lowest rounded-full border-4 border-tertiary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-3xl">
-                    🐺
-                  </div>
+            {/* Avatar Preview Section - Unlock Animation */}
+            <div className="md:col-span-6 bg-surface-container-high rounded-[3rem] p-6 md:p-10 flex flex-col overflow-hidden">
+              {/* Title with chain unlocking effect */}
+              <div className="flex items-center gap-3 mb-6 md:mb-8">
+                <motion.div
+                  initial={{ rotate: 0, x: 0 }}
+                  whileInView={{ rotate: -15, x: -5 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-3xl md:text-4xl"
+                >
+                  <Link2 size={32} className="text-on-surface-variant" />
+                </motion.div>
+                <motion.h3
+                  initial={{ opacity: 0, x: 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="text-2xl md:text-3xl font-black font-headline"
+                >
+                  Unlock Your Identity
+                </motion.h3>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex gap-3 md:gap-4">
+                  {/* Icon 1 - Breaks free from chain */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5, rotate: -180 }}
+                    whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
+                    className="w-16 h-16 md:w-20 md:h-20 bg-surface-container-lowest rounded-full border-4 border-primary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-2xl md:text-3xl relative"
+                  >
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      whileInView={{ scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.5, duration: 0.3 }}
+                    >
+                      🐉
+                    </motion.span>
+                    {/* Chain breaking effect */}
+                    <motion.div
+                      initial={{ opacity: 1, scale: 1 }}
+                      whileInView={{ opacity: 0, scale: 2, x: 30, y: -30 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: 0.8 }}
+                      className="absolute -top-2 -right-2 text-xl"
+                    >
+                      🔗
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Icon 2 */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5, rotate: 180 }}
+                    whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.5 }}
+                    className="w-16 h-16 md:w-20 md:h-20 bg-surface-container-lowest rounded-full border-4 border-secondary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-2xl md:text-3xl relative"
+                  >
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      whileInView={{ scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.7, duration: 0.3 }}
+                    >
+                      🦅
+                    </motion.span>
+                    <motion.div
+                      initial={{ opacity: 1, scale: 1 }}
+                      whileInView={{ opacity: 0, scale: 2, x: -30, y: -30 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: 1 }}
+                      className="absolute -top-2 -left-2 text-xl"
+                    >
+                      🔗
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Icon 3 */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5, rotate: -180 }}
+                    whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.7 }}
+                    className="w-16 h-16 md:w-20 md:h-20 bg-surface-container-lowest rounded-full border-4 border-tertiary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-2xl md:text-3xl relative"
+                  >
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      whileInView={{ scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.9, duration: 0.3 }}
+                    >
+                      🐺
+                    </motion.span>
+                    <motion.div
+                      initial={{ opacity: 1, scale: 1 }}
+                      whileInView={{ opacity: 0, scale: 2, x: 30, y: 30 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: 1.2 }}
+                      className="absolute -bottom-2 -right-2 text-xl"
+                    >
+                      🔗
+                    </motion.div>
+                  </motion.div>
                 </div>
-                <button
+
+                <motion.button
+                  initial={{ opacity: 0, scale: 0 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1], delay: 1.4 }}
                   onClick={onGetStarted}
-                  className="bg-on-surface text-surface px-6 py-3 rounded-full font-black flex items-center gap-2 hover:scale-105 transition-all"
+                  className="bg-on-surface text-surface px-5 py-2.5 md:px-6 md:py-3 rounded-full font-black text-sm md:text-base flex items-center gap-2 hover:scale-105 transition-all"
                 >
                   View All
-                  <ArrowRight size={18} />
-                </button>
+                  <ArrowRight size={16} className="md:w-[18px] md:h-[18px]" />
+                </motion.button>
               </div>
             </div>
           </div>
         </section>
 
         {/* Progress Visualization ( The Pulse) */}
-        <section className="py-20 bg-surface-container-lowest px-6 overflow-hidden">
+        <section className="py-20 pb-40 md:pb-20 bg-surface-container-lowest px-6 overflow-hidden">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-4xl md:text-6xl font-black font-headline tracking-tighter mb-4">
               Master Your Band Levels
@@ -261,34 +423,102 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
           </div>
           <div className="max-w-5xl mx-auto space-y-12">
             {/* Band I */}
-            <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, amount: 0.3 }}
+              className="space-y-4"
+            >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band I (Foundation)</span>
                 <span className="text-primary">85% Complete</span>
               </div>
               <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
-                <div className="h-full bg-primary rounded-full w-[85%] relative">
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-primary">
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: "85%" }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className="h-full bg-primary rounded-full relative"
+                >
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ delay: 1.5, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-primary"
+                  >
                     <span className="text-xl">⭐</span>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Band II */}
-            <div className="space-y-4 opacity-70">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-4"
+            >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band II (Intermediate)</span>
-                <span className="text-on-surface-variant">42% In Progress</span>
+                <span className="text-secondary">60% In Progress</span>
               </div>
               <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
-                <div className="h-full bg-secondary rounded-full w-[42%] relative">
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-secondary">
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: "60%" }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                  className="h-full bg-secondary rounded-full relative"
+                >
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ delay: 1.7, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-secondary"
+                  >
                     <span className="text-xl">⚡</span>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
+
+            {/* Band III */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-4"
+            >
+              <div className="flex justify-between items-end font-black">
+                <span className="text-2xl">Band III (Academic)</span>
+                <span className="text-tertiary">25% Started</span>
+              </div>
+              <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: "25%" }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
+                  className="h-full bg-tertiary rounded-full relative"
+                >
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 1.9, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-tertiary"
+                  >
+                    <span className="text-xl">🎓</span>
+                  </motion.div>
+                </motion.div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
@@ -303,79 +533,65 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                 backgroundSize: "20px 20px",
               }}
             />
-            <h2 className="text-4xl md:text-7xl font-black font-headline text-on-primary mb-8 relative z-10 tracking-tighter">
+
+            {/* Heading - Pop in */}
+            <motion.h2
+              initial={{ opacity: 0, scale: 0.5 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
+              className="text-4xl md:text-7xl font-black font-headline text-on-primary mb-8 relative z-10 tracking-tighter"
+            >
               Ready to become a Vocab Legend?
-            </h2>
+            </motion.h2>
+
             <div className="flex flex-col md:flex-row gap-6 justify-center relative z-10">
-              <button
+              {/* Start Learning Button - Pop in */}
+              <motion.button
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.1 }}
                 onClick={onGetStarted}
                 className="bg-tertiary-container text-on-tertiary-container px-12 py-5 rounded-xl text-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
                 Start Learning
                 <Rocket size={24} />
-              </button>
-              <button
+              </motion.button>
+
+              {/* Teacher Login Button - Pop in */}
+              <motion.button
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.2 }}
                 onClick={onGetStarted}
                 className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
               >
                 Teacher Login
-              </button>
+              </motion.button>
             </div>
           </div>
         </section>
-
-        {/* Footer - Compact, same height as header */}
-        <footer className="bg-stone-100 dark:bg-stone-900 w-full py-2 sticky bottom-0">
-          <div className="flex flex-col md:flex-row justify-between items-center px-4 md:px-6 max-w-7xl mx-auto gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md signature-gradient flex items-center justify-center shadow-md shadow-primary/20">
-                <span className="text-white text-sm font-black font-headline italic">V</span>
-              </div>
-              <span className="text-xs font-black text-stone-700 font-headline tracking-tight">
-                Vocaband
-              </span>
-            </div>
-            <div className="flex gap-6">
-              <button
-                onClick={() => onNavigate("playground")}
-                className="text-stone-500 dark:text-stone-400 text-xs font-bold hover:text-primary transition-colors"
-              >
-                Games
-              </button>
-              <button
-                onClick={() => onNavigate("terms")}
-                className="text-stone-500 dark:text-stone-400 text-xs font-bold hover:text-primary transition-colors"
-              >
-                Terms
-              </button>
-              <button
-                onClick={() => onNavigate("privacy")}
-                className="text-stone-500 dark:text-stone-400 text-xs font-bold hover:text-primary transition-colors"
-              >
-                Privacy
-              </button>
-            </div>
-          </div>
-        </footer>
       </main>
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
 
       {/* Mobile Share Widget - Vertical on mobile, no horizontal scroll */}
-      <div className="md:hidden fixed left-3 bottom-28 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-2 md:gap-3">
+      <div ref={shareRef} className="md:hidden fixed left-3 bottom-28 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-2 md:gap-3">
         <button
           onClick={() => setShareOpen(!shareOpen)}
-          className={`w-10 h-10 md:w-12 md:h-12 backdrop-blur-sm rounded-full flex items-center justify-center transition-all hover:scale-110 ${
-            shareOpen ? "bg-primary text-white" : "bg-stone-800/60 dark:bg-stone-200/60"
+          className={`w-12 h-12 backdrop-blur-sm rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg ${
+            shareOpen ? "bg-primary text-white" : "bg-stone-800 dark:bg-stone-200"
           }`}
           title="Share"
         >
-          <Share2 size={18} className={shareOpen ? "text-white" : "text-white dark:text-stone-800"} />
+          <Share2 size={22} className="text-white dark:text-stone-800" />
         </button>
 
         {/* Expanded options - Vertical on mobile */}
         {shareOpen && (
-          <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-2 bg-stone-800/90 dark:bg-stone-100/90 backdrop-blur-md rounded-2xl p-2 shadow-xl">
+          <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-2 bg-white dark:bg-stone-800 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-stone-200 dark:border-stone-700">
             {shareOptions.map((option) => {
               const Icon = option.icon;
               return (
@@ -385,10 +601,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                     option.action();
                     if (option.name !== "Copy Link") setShareOpen(false);
                   }}
-                  className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all text-white dark:text-stone-800 ${option.color} hover:scale-110`}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-md ${option.color} text-white`}
                   title={option.name}
                 >
-                  <Icon size={18} />
+                  <Icon size={22} strokeWidth={2.5} />
                 </button>
               );
             })}
@@ -399,10 +615,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
         {showBackToTop && (
           <button
             onClick={scrollToTop}
-            className="w-10 h-10 md:w-12 md:h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-primary/80 transition-all hover:scale-110"
+            className="w-12 h-12 bg-stone-800 dark:bg-stone-200 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-primary transition-all hover:scale-110 shadow-lg"
             title="Back to top"
           >
-            <ArrowUp size={18} className="text-white dark:text-stone-800 md:size-5" />
+            <ArrowUp size={22} strokeWidth={2.5} className="text-white dark:text-stone-800" />
           </button>
         )}
       </div>

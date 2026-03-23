@@ -52,7 +52,6 @@ import ClassCard from "./components/ClassCard";
 import LandingPage from "./components/LandingPage";
 import TermsPage from "./components/TermsPage";
 import PublicPrivacyPage from "./components/PublicPrivacyPage";
-import PlaygroundPage from "./components/PlaygroundPage";
 import CookieBanner from "./components/CookieBanner";
 
 // --- TYPES ---
@@ -247,7 +246,6 @@ export default function App() {
     | "public-landing"
     | "public-terms"
     | "public-privacy"
-    | "public-playground"
     | "landing"
     | "game"
     | "teacher-dashboard"
@@ -279,12 +277,11 @@ export default function App() {
     setShowCookieBanner(false);
   };
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "playground") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
-      playground: "public-playground",
     } as const;
     setView(viewMap[page]);
   };
@@ -2138,23 +2135,6 @@ export default function App() {
     return (
       <>
         <PublicPrivacyPage
-          onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("landing")}
-        />
-        {showCookieBanner && (
-          <CookieBanner
-            onAccept={handleCookieAccept}
-            onCustomize={handleCookieAccept}
-          />
-        )}
-      </>
-    );
-  }
-
-  if (view === "public-playground") {
-    return (
-      <>
-        <PlaygroundPage
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("landing")}
         />
