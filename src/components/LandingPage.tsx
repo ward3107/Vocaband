@@ -158,16 +158,61 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
               </div>
             </div>
 
-            {/* Live Classroom Challenges - Animates from UP */}
+            {/* Live Classroom Challenges - Animates from RIGHT */}
             <motion.div
-              initial={{ opacity: 0, y: -50 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: 100 }}
+              whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 1, ease: "easeOut" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
               className="md:col-span-4 bg-secondary-container rounded-[3rem] p-10 flex flex-col items-center text-center"
             >
-              <div className="bg-surface-container-lowest text-secondary w-20 h-20 rounded-full flex items-center justify-center mb-8 shadow-xl">
-                <Users size={40} />
+              <div className="relative w-20 h-20 mb-8">
+                {/* Pulsing ring behind icon */}
+                <motion.div
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                  className="absolute inset-0 rounded-full border-2 border-secondary"
+                />
+                {/* Main icon */}
+                <div className="absolute inset-0 bg-surface-container-lowest text-secondary rounded-full flex items-center justify-center shadow-xl z-10">
+                  <Users size={40} />
+                </div>
+                {/* Orbiting dot 1 - clockwise */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0"
+                  style={{ transformOrigin: "center center" }}
+                >
+                  <div
+                    className="absolute w-3 h-3 bg-primary rounded-full shadow-lg"
+                    style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%) translateY(-48px)" }}
+                  />
+                </motion.div>
+                {/* Orbiting dot 2 - counter-clockwise */}
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0"
+                  style={{ transformOrigin: "center center" }}
+                >
+                  <div
+                    className="absolute w-2.5 h-2.5 bg-tertiary rounded-full shadow-lg"
+                    style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%) translateY(48px)" }}
+                  />
+                </motion.div>
+                {/* Orbiting dot 3 - faster */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0"
+                  style={{ transformOrigin: "center center" }}
+                >
+                  <div
+                    className="absolute w-2 h-2 bg-blue-400 rounded-full shadow-lg"
+                    style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%) translateX(48px)" }}
+                  />
+                </motion.div>
               </div>
               <h3 className="text-3xl font-black font-headline mb-4 text-on-secondary-container">
                 Live Classroom Challenges
@@ -327,14 +372,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
 
         {/* Progress Visualization ( The Pulse) */}
         <section className="py-20 pb-40 md:pb-20 bg-surface-container-lowest px-6 overflow-hidden">
-          <div className="max-w-4xl mx-auto text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, x: 100 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="max-w-4xl mx-auto text-center mb-16"
+          >
             <h2 className="text-4xl md:text-6xl font-black font-headline tracking-tighter mb-4">
               Master Your Band Levels
             </h2>
             <p className="text-xl font-bold text-on-surface-variant">
               We align perfectly with the Israeli EFL curriculum for Bands I, II, and III.
             </p>
-          </div>
+          </motion.div>
           <div className="max-w-5xl mx-auto space-y-12">
             {/* Band I */}
             <motion.div
