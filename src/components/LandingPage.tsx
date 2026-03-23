@@ -581,17 +581,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
       <div ref={shareRef} className="fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-2 md:gap-3">
         <button
           onClick={() => setShareOpen(!shareOpen)}
-          className={`w-12 h-12 backdrop-blur-sm rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg ${
-            shareOpen ? "bg-primary text-white" : "bg-stone-800 dark:bg-stone-200"
+          className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg border ${
+            shareOpen
+              ? "bg-primary text-white border-primary"
+              : "bg-stone-900/80 dark:bg-white/80 text-white dark:text-stone-900 border-white/20 dark:border-stone-900/20"
           }`}
           title="Share"
         >
-          <Share2 size={22} className="text-white dark:text-stone-800" />
+          <Share2 size={22} className={shareOpen ? "text-white" : "text-white dark:text-stone-900"} />
         </button>
 
         {/* Expanded options - Vertical on mobile */}
         {shareOpen && (
-          <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-2 bg-white dark:bg-stone-800 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-stone-200 dark:border-stone-700">
+          <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-2 bg-white/90 dark:bg-stone-900/90 backdrop-blur-xl rounded-2xl p-3 shadow-2xl border border-stone-200 dark:border-stone-700">
             {shareOptions.map((option) => {
               const Icon = option.icon;
               return (
@@ -615,10 +617,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
         {showBackToTop && (
           <button
             onClick={scrollToTop}
-            className="w-12 h-12 bg-stone-800 dark:bg-stone-200 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-primary transition-all hover:scale-110 shadow-lg"
+            className="w-12 h-12 bg-stone-900/80 dark:bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-primary hover:dark:bg-primary transition-all hover:scale-110 shadow-lg border border-white/20 dark:border-stone-900/20 hover:border-primary"
             title="Back to top"
           >
-            <ArrowUp size={22} strokeWidth={2.5} className="text-white dark:text-stone-800" />
+            <ArrowUp size={22} strokeWidth={2.5} className="text-white dark:text-stone-900 hover:text-white" />
           </button>
         )}
       </div>
