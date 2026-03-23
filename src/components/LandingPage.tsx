@@ -577,8 +577,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
 
-      {/* Mobile Share Widget - Vertical on mobile, no horizontal scroll */}
-      <div ref={shareRef} className="md:hidden fixed left-3 bottom-28 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-2 md:gap-3">
+      {/* Share Widget - Visible on all devices */}
+      <div ref={shareRef} className="fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-2 md:gap-3">
         <button
           onClick={() => setShareOpen(!shareOpen)}
           className={`w-12 h-12 backdrop-blur-sm rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg ${
