@@ -49,7 +49,9 @@
       "mcp__plugin_playwright_playwright__browser_wait_for",
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
       "Bash(cd \"C:/Users/Waseem/Downloads/Vocaband/Vocaband/src/components\" && rm LandingPage.tsx && mv LandingPage_New.tsx LandingPage.tsx)",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && powershell -Command \"Get-Content \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\\\\src\\\\components\\\\LandingPage.tsx -TotalCount 220 | Select-Object -First 1 | Format-Table -HideTableHeaders)",
+      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && rm -rf node_modules/.vite 2>&1 | echo \"Vite cache cleared\")"
     ]
   }
 }
