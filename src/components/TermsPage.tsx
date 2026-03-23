@@ -2,11 +2,7 @@ import React from "react";
 import { ArrowLeft, Printer, FileText, Scale, Users, Shield, AlertTriangle, Gavel, Mail } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
-
-interface TermsPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy") => void;
-  onGetStarted: () => void;
-}
+import FloatingButtons from "./FloatingButtons";
 
 const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
   const handlePrint = () => {
@@ -269,6 +265,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
       </main>
 
       <MobileNav currentPage="terms" onNavigate={onNavigate} />
+      <FloatingButtons />
     </div>
   );
 };
