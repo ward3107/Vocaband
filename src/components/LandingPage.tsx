@@ -7,6 +7,12 @@ import {
   ArrowRight,
   ArrowUp,
   MessageCircle,
+  Share2,
+  X,
+  Linkedin,
+  Mail,
+  Link2,
+  Check,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
@@ -18,6 +24,8 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) => {
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,11 +39,53 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const shareOnWhatsApp = () => {
-    const text = encodeURIComponent("Check out Vocaband - the fun way to master English vocabulary for Israeli EFL students!");
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://wa.me/?text=${text}%20${url}`, "_blank");
-  };
+  const shareUrl = window.location.href;
+  const shareText = "Check out Vocaband - the fun way to master English vocabulary for Israeli EFL students!";
+
+  const shareOptions = [
+    {
+      name: "WhatsApp",
+      icon: MessageCircle,
+      color: "bg-green-500",
+      action: () => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(shareUrl)}`, "_blank");
+      },
+    },
+    {
+      name: "X",
+      icon: X,
+      color: "bg-black",
+      action: () => {
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
+      },
+    },
+    {
+      name: "LinkedIn",
+      icon: Linkedin,
+      color: "bg-blue-600",
+      action: () => {
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, "_blank");
+      },
+    },
+    {
+      name: "Email",
+      icon: Mail,
+      color: "bg-red-500",
+      action: () => {
+        window.open(`mailto:?subject=${encodeURIComponent("Vocaband - Learn English Vocabulary")}&body=${encodeURIComponent(shareText + "\n\n" + shareUrl)}`, "_blank");
+      },
+    },
+    {
+      name: "Copy Link",
+      icon: copied ? Check : Link2,
+      color: copied ? "bg-green-500" : "bg-stone-600",
+      action: async () => {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-surface">
@@ -305,16 +355,45 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
 
-      {/* Floating Social Sidebar */}
-      <div className="fixed left-3 bottom-28 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-2 md:gap-3">
-        {/* WhatsApp */}
-        <button
-          onClick={shareOnWhatsApp}
-          className="w-10 h-10 md:w-12 md:h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-500/80 transition-all hover:scale-110"
-          title="Share on WhatsApp"
-        >
-          <MessageCircle size={18} className="text-white dark:text-stone-800 md:size-5" />
-        </button>
+      {/* Floating Share Widget */}
+      <div className="fixed left-3 bottom-28 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-2 md:gap-3 items-center">
+        {/* Share Button - expands on click */}
+        <div className="relative">
+          {/* Expanded options */}
+          {shareOpen && (
+            <div className="absolute bottom-full mb-2 flex flex-col gap-2 bg-stone-800/90 dark:bg-stone-100/90 backdrop-blur-md rounded-2xl p-2 shadow-xl">
+              {shareOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.name}
+                    onClick={() => {
+                      option.action();
+                      if (option.name !== "Copy Link") setShareOpen(false);
+                    }}
+                    className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all text-white dark:text-stone-800 ${option.color} hover:scale-110`}
+                    title={option.name}
+                  >
+                    <Icon size={18} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Main share button */}
+          <button
+            onClick={() => setShareOpen(!shareOpen)}
+            className={`w-10 h-10 md:w-12 md:h-12 backdrop-blur-sm rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+              shareOpen
+                ? "bg-primary text-white"
+                : "bg-stone-800/60 dark:bg-stone-200/60"
+            }`}
+            title="Share"
+          >
+            <Share2 size={18} className={`md:size-5 ${!shareOpen && "text-white dark:text-stone-800"}`} />
+          </button>
+        </div>
 
         {/* Back to Top - only shows when scrolled down */}
         {showBackToTop && (
