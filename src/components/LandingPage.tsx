@@ -305,25 +305,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
 
-      {/* Floating Social Sidebar - Desktop only */}
-      <div className="hidden md:flex fixed left-4 top-1/2 -translate-y-1/2 z-40 flex-col gap-3">
+      {/* Floating Social Sidebar */}
+      <div className="fixed left-3 bottom-28 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-2 md:gap-3">
         {/* WhatsApp */}
         <button
           onClick={shareOnWhatsApp}
-          className="w-12 h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-500/80 transition-all hover:scale-110"
+          className="w-10 h-10 md:w-12 md:h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-500/80 transition-all hover:scale-110"
           title="Share on WhatsApp"
         >
-          <MessageCircle size={22} className="text-white dark:text-stone-800" />
+          <MessageCircle size={18} className="text-white dark:text-stone-800 md:size-5" />
         </button>
 
         {/* Back to Top - only shows when scrolled down */}
         {showBackToTop && (
           <button
             onClick={scrollToTop}
-            className="w-12 h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-primary/80 transition-all hover:scale-110"
+            className="w-10 h-10 md:w-12 md:h-12 bg-stone-800/60 dark:bg-stone-200/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-primary/80 transition-all hover:scale-110"
             title="Back to top"
           >
-            <ArrowUp size={22} className="text-white dark:text-stone-800" />
+            <ArrowUp size={18} className="text-white dark:text-stone-800 md:size-5" />
           </button>
         )}
       </div>
