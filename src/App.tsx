@@ -52,7 +52,7 @@ import ClassCard from "./components/ClassCard";
 import LandingPage from "./components/LandingPage";
 import TermsPage from "./components/TermsPage";
 import PublicPrivacyPage from "./components/PublicPrivacyPage";
-import CookieBanner from "./components/CookieBanner";
+import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -270,11 +270,18 @@ export default function App() {
     }
   });
 
-  const handleCookieAccept = () => {
+  const handleCookieAccept = (preferences?: CookiePreferences) => {
     try {
-      localStorage.setItem("vocaband_cookie_consent", "true");
+      const consentData = preferences
+        ? JSON.stringify(preferences)
+        : JSON.stringify({ essential: true, analytics: true, functional: true });
+      localStorage.setItem("vocaband_cookie_consent", consentData);
     } catch {}
     setShowCookieBanner(false);
+  };
+
+  const handleCookieCustomize = (preferences: CookiePreferences) => {
+    handleCookieAccept(preferences);
   };
 
   const handlePublicNavigate = (page: "home" | "terms" | "privacy") => {
@@ -2107,7 +2114,7 @@ export default function App() {
         {showCookieBanner && (
           <CookieBanner
             onAccept={handleCookieAccept}
-            onCustomize={handleCookieAccept}
+            onCustomize={handleCookieCustomize}
           />
         )}
       </>
@@ -2124,7 +2131,7 @@ export default function App() {
         {showCookieBanner && (
           <CookieBanner
             onAccept={handleCookieAccept}
-            onCustomize={handleCookieAccept}
+            onCustomize={handleCookieCustomize}
           />
         )}
       </>
@@ -2141,7 +2148,7 @@ export default function App() {
         {showCookieBanner && (
           <CookieBanner
             onAccept={handleCookieAccept}
-            onCustomize={handleCookieAccept}
+            onCustomize={handleCookieCustomize}
           />
         )}
       </>
