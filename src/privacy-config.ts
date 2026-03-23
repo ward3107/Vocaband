@@ -12,17 +12,18 @@
 // ---------------------------------------------------------------------------
 
 export const DATA_CONTROLLER = {
-  name: "Vocaband",                           // TODO: replace with legal entity name
+  name: "Vocaband Educational Technologies",  // Legal entity name
   country: "Israel",
   contactEmail: "privacy@vocaband.com",       // Amendment 13 accountability contact
+  legalEmail: "legal@vocaband.com",           // Legal inquiries
 } as const;
 
 // ---------------------------------------------------------------------------
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-export const PRIVACY_POLICY_VERSION = "2026-03-21";
-export const TERMS_VERSION = "2026-03-21";
+export const PRIVACY_POLICY_VERSION = "2024-03-01";  // Version 2.0 - Amendment 13 compliant
+export const TERMS_VERSION = "2024-03-01";            // Version 2.0 - Amendment 13 compliant
 
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
