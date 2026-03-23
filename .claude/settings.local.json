@@ -36,7 +36,15 @@
       "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && npx tsc --noEmit 2>&1 | head -30)",
       "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && npx tsc --noEmit 2>&1 | head -10)",
       "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && npm test 2>&1 | tail -20)",
-      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && npx tsc --noEmit 2>&1 | head -5)"
+      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && npx tsc --noEmit 2>&1 | head -5)",
+      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && npx tsc --noEmit 2>&1 | head -20)",
+      "Bash(npm list:*)",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(ls -la src/components/*.tsx)",
+      "Bash(ls -la docs/ 2>/dev/null; ls -la public/*.md 2>/dev/null; ls -la *.md 2>/dev/null)",
+      "Bash(openspec status:*)",
+      "Bash(python3 -m py_compile /home/atafa/code/seaship_list/backend/utils.py 2>&1)",
+      "Skill(commit-commands:commit)"
     ]
   }
 }

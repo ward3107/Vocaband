@@ -1,5 +1,4 @@
 import React from "react";
-import { ArrowUp } from "lucide-react";
 
 interface PublicNavProps {
   currentPage: "home" | "terms" | "privacy" | "playground";
@@ -10,10 +9,6 @@ interface PublicNavProps {
   onNavigate,
   onGetStarted,
 }) => {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-stone-100/80 backdrop-blur-md flex justify-between items-center px-6 py-4 border-b border-stone-200/50">
       <button
@@ -73,13 +68,6 @@ interface PublicNavProps {
           className="signature-gradient text-white font-black px-6 py-3 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg shadow-blue-500/20"
         >
           Get Started
-        </button>
-        <button
-          onClick={scrollToTop}
-          className="w-10 h-10 bg-stone-200 dark:bg-stone-700 rounded-full flex items-center justify-center hover:bg-primary-container transition-colors"
-          title="Back to top"
-        >
-          <ArrowUp size={18} className="text-stone-600 dark:text-stone-300" />
         </button>
       </div>
     </nav>

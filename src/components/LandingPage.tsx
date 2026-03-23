@@ -8,7 +8,6 @@ import {
   ArrowUp,
   Share2,
   Mail,
-  BookOpen,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
@@ -19,6 +18,10 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) => {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="min-h-screen bg-surface">
       <PublicNav
@@ -258,17 +261,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
         {/* Footer */}
         <footer className="bg-stone-100 dark:bg-stone-900 w-full py-12">
           <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-8">
-            <div className="flex flex-col items-center md:items-start gap-2">
-              <div className="flex items-center gap-2">
-                <BookOpen className="text-blue-600" size={24} />
-                <span className="text-lg font-black text-stone-800 dark:text-stone-200 font-headline">
-                  The Energetic Scholar
-                </span>
-              </div>
-              <p className="text-stone-500 dark:text-stone-400 font-bold text-sm text-center md:text-left">
+            <p className="text-stone-500 dark:text-stone-400 font-bold text-sm text-center md:text-left">
                 © 2026 Vocaband • All rights reserved.
-              </p>
-            </div>
+            </p>
             <div className="flex gap-8">
               <button
                 onClick={() => onNavigate("playground")}
@@ -296,6 +291,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
               <div className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors">
                 <Mail size={18} className="text-stone-600 dark:text-stone-300" />
               </div>
+              <button
+                onClick={scrollToTop}
+                className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors"
+                title="Back to top"
+              >
+                <ArrowUp size={18} className="text-stone-600 dark:text-stone-300" />
+              </button>
             </div>
           </div>
         </footer>
