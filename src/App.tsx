@@ -35,7 +35,8 @@ import {
   ChevronDown,
   Plus,
   X,
-  TrendingUp
+  TrendingUp,
+  GraduationCap
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
@@ -5008,7 +5009,7 @@ export default function App() {
           })()}
             </>
           )}
-        </div>
+        </main>
       </div>
     );
   }
@@ -5068,36 +5069,57 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-slate-600 font-bold flex items-center gap-2 hover:text-slate-900 bg-white px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all text-sm">
-            <span>←</span> Back to Dashboard
-          </button>
+      <div className="min-h-screen bg-background pb-8">
+        <TopAppBar
+          title="Gradebook"
+          subtitle="STUDENT SCORES & PROGRESS"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
 
-          {/* Header */}
-          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Student Gradebook
-                </h2>
-                <p className="text-slate-500 mt-2">Click on a student to see their detailed scores</p>
+        <main className="pt-24 px-6 max-w-4xl mx-auto">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-xl border-2 border-tertiary-container/30">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-tertiary-container flex items-center justify-center">
+                  <Users className="text-tertiary" size={20} />
+                </div>
               </div>
-              <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
-                <span className="text-2xl">📚</span>
-                <span className="font-bold text-blue-700">{studentEntries.length} Students</span>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Students</p>
+              <p className="text-3xl font-black text-on-surface">{studentEntries.length}</p>
+            </div>
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-xl border-2 border-emerald-100">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <Trophy className="text-emerald-600" size={20} />
+                </div>
               </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Total Attempts</p>
+              <p className="text-3xl font-black text-on-surface">{allScores.length}</p>
+            </div>
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-xl border-2 border-secondary-container/30">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center">
+                  <GraduationCap className="text-secondary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Classes</p>
+              <p className="text-3xl font-black text-on-surface">{classes.length}</p>
             </div>
           </div>
 
           {studentEntries.length === 0 ? (
-            <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
-              <div className="text-6xl mb-4">📭</div>
-              <p className="text-slate-400 italic text-lg">No scores recorded yet.</p>
-              <p className="text-slate-300 text-sm mt-2">Student results will appear here once they complete assignments.</p>
+            <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-tertiary-container/30">
+              <GraduationCap className="mx-auto text-on-surface-variant mb-4" size={48} />
+              <p className="text-on-surface-variant font-medium">No scores recorded yet.</p>
+              <p className="text-on-surface-variant/60 text-sm mt-2">Student results will appear here once they complete assignments.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {studentEntries
                 .sort((a, b) => new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime())
                 .map((entry, idx) => {
@@ -5111,36 +5133,36 @@ export default function App() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.03 }}
-                      className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all overflow-hidden"
+                      className="bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden border-2 border-surface-container"
                     >
                       {/* Summary Row - Always Visible */}
                       <div
                         onClick={() => setExpandedStudent(isExpanded ? null : entryKey)}
-                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-container-low transition-colors"
                       >
                         <div className="flex items-center gap-4 flex-1">
                           {/* Expand/Collapse Icon */}
                           <motion.div
                             animate={{ rotate: isExpanded ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
-                            className="text-slate-400"
+                            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant"
                           >
                             <ChevronDown size={20} />
                           </motion.div>
 
                           {/* Avatar */}
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-sm sm:text-lg shadow-lg">
+                          <div className="w-12 h-12 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-black text-lg shadow-md">
                             {entry.studentName.charAt(0)}
                           </div>
 
                           {/* Name and Class */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-slate-800 text-base sm:text-lg truncate">{entry.studentName}</h3>
+                            <h3 className="font-black text-on-surface text-lg truncate">{entry.studentName}</h3>
                             <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">
+                              <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold">
                                 {entry.classCode}
                               </span>
-                              <span className="text-slate-400 text-xs">
+                              <span className="text-on-surface-variant text-xs font-medium">
                                 {entry.scores.length} {entry.scores.length === 1 ? 'attempt' : 'attempts'}
                               </span>
                             </div>
@@ -5150,25 +5172,25 @@ export default function App() {
                         {/* Quick Stats */}
                         <div className="flex items-center gap-3 sm:gap-6">
                           <div className="text-center">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Avg</div>
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Avg</div>
                             <div className={`text-lg sm:text-xl font-black ${
-                              avgScore >= 90 ? 'text-green-600' :
-                              avgScore >= 70 ? 'text-blue-600' :
-                              avgScore >= 50 ? 'text-yellow-600' :
-                              'text-red-600'
+                              avgScore >= 90 ? 'text-emerald-600' :
+                              avgScore >= 70 ? 'text-primary' :
+                              avgScore >= 50 ? 'text-amber-600' :
+                              'text-rose-600'
                             }`}>{avgScore}%</div>
                           </div>
                           <div className="text-center hidden sm:block">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Best</div>
-                            <div className="text-lg sm:text-xl font-black text-yellow-600">{entry.bestScore}%</div>
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Best</div>
+                            <div className="text-lg sm:text-xl font-black text-tertiary">{entry.bestScore}%</div>
                           </div>
                           <div className="text-center hidden sm:block">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Total</div>
-                            <div className="text-lg sm:text-xl font-black text-purple-600">{entry.totalScore}</div>
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Total</div>
+                            <div className="text-lg sm:text-xl font-black text-secondary">{entry.totalScore}</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Last</div>
-                            <div className="text-xs sm:text-sm font-bold text-green-600">
+                            <div className="text-[10px] text-on-surface-variant font-bold uppercase">Last</div>
+                            <div className="text-xs sm:text-sm font-bold text-primary">
                               {new Date(entry.lastDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </div>
                           </div>
@@ -5185,12 +5207,12 @@ export default function App() {
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="px-4 pb-4 border-t border-slate-100">
+                            <div className="px-4 pb-4 border-t border-surface-container">
                               {/* Detailed Stats Header */}
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                                 <HelpTooltip content={`Average Score: ${avgScore}% - Mean performance across all attempts`}>
-                                  <div className="text-center p-3 bg-slate-50 rounded-xl cursor-help hover:bg-slate-100 transition-colors">
-                                    <div className="text-xs text-slate-500 font-bold uppercase">Average</div>
+                                  <div className="text-center p-3 bg-surface-container rounded-xl cursor-help hover:bg-surface-container-high transition-colors">
+                                    <div className="text-xs text-on-surface-variant font-bold uppercase">Average</div>
                                     <div className={`text-2xl font-black ${getScoreColor(avgScore)}`}>
                                       {avgScore}%
                                     </div>
@@ -5198,19 +5220,19 @@ export default function App() {
                                 </HelpTooltip>
 
                                 <HelpTooltip content={`Best Score: ${entry.bestScore}% - Highest score achieved`}>
-                                  <div className="text-center p-3 bg-yellow-50 rounded-xl cursor-help hover:bg-yellow-100 transition-colors">
+                                  <div className="text-center p-3 bg-tertiary-container/30 rounded-xl cursor-help hover:bg-tertiary-container/50 transition-colors">
                                     <div className="flex items-center gap-1 justify-center">
-                                      <span className="text-xs text-yellow-600 font-bold uppercase">Best</span>
+                                      <span className="text-xs text-tertiary font-bold uppercase">Best</span>
                                       <span>⭐</span>
                                     </div>
-                                    <div className="text-2xl font-black text-yellow-600">{entry.bestScore}%</div>
+                                    <div className="text-2xl font-black text-tertiary">{entry.bestScore}%</div>
                                   </div>
                                 </HelpTooltip>
 
                                 <HelpTooltip content={`Total Points: ${entry.totalScore} - Sum of all scores earned`}>
-                                  <div className="text-center p-3 bg-purple-50 rounded-xl cursor-help hover:bg-purple-100 transition-colors">
-                                    <div className="text-xs text-purple-600 font-bold uppercase">Total</div>
-                                    <div className="text-2xl font-black text-purple-600">{entry.totalScore}</div>
+                                  <div className="text-center p-3 bg-secondary-container/30 rounded-xl cursor-help hover:bg-secondary-container/50 transition-colors">
+                                    <div className="text-xs text-secondary font-bold uppercase">Total</div>
+                                    <div className="text-2xl font-black text-secondary">{entry.totalScore}</div>
                                   </div>
                                 </HelpTooltip>
 
@@ -5231,7 +5253,7 @@ export default function App() {
                               <div className="mt-4">
                                 <div className="flex items-center gap-2 mb-3">
                                   <HelpTooltip content="Individual scores for each attempt with detailed information">
-                                    <span className="text-xs text-slate-400 font-bold uppercase cursor-help">All Attempts</span>
+                                    <span className="text-xs text-on-surface-variant font-bold uppercase cursor-help">All Attempts</span>
                                   </HelpTooltip>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -5242,19 +5264,19 @@ export default function App() {
                                         key={i}
                                         content={`${modeInfo.name} Mode • ${s.score}% • ${new Date(s.completedAt).toLocaleString()} • ${s.mistakes?.length || 0} mistake${(s.mistakes?.length || 0) !== 1 ? 's' : ''}`}
                                       >
-                                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-xl border-2 border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all cursor-help">
+                                        <div className="flex items-center justify-between p-3 bg-surface-container rounded-xl border-2 border-surface-container-high hover:border-primary/30 hover:shadow-sm transition-all cursor-help">
                                           <div className="flex items-center gap-2">
                                             <span className="text-lg">{modeInfo.icon}</span>
                                             <div>
-                                              <div className="font-bold text-slate-700 text-sm">{modeInfo.name}</div>
-                                              <div className="text-[10px] text-slate-400">{modeInfo.label}</div>
+                                              <div className="font-bold text-on-surface text-sm">{modeInfo.name}</div>
+                                              <div className="text-[10px] text-on-surface-variant">{modeInfo.label}</div>
                                             </div>
                                           </div>
                                           <div className="flex items-center gap-3">
                                             <div className={`px-3 py-1 rounded-lg font-bold text-sm ${getScoreColor(s.score)}`}>
                                               {s.score}%
                                             </div>
-                                            <div className="text-[10px] text-slate-400">
+                                            <div className="text-[10px] text-on-surface-variant">
                                               {new Date(s.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                             </div>
                                           </div>
@@ -5280,30 +5302,32 @@ export default function App() {
             const noScoreStudents = classStudents.filter(s => !scoredNames.has(s.name));
             if (noScoreStudents.length === 0) return null;
             return (
-              <div className="bg-white rounded-3xl shadow-md p-6 mt-6">
-                <h3 className="text-lg font-black text-slate-700 mb-1 flex items-center gap-2">
-                  <UserCircle size={20} className="text-orange-500" />
+              <div className="bg-surface-container-lowest rounded-xl shadow-xl p-6 mt-6 border-2 border-surface-container">
+                <h3 className="text-lg font-black text-on-surface mb-1 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-tertiary-container flex items-center justify-center">
+                    <UserCircle size={20} className="text-tertiary" />
+                  </div>
                   Enrolled Students ({noScoreStudents.length})
                 </h3>
-                <p className="text-slate-400 text-xs mb-4">Students who joined but haven't completed any assignments yet.</p>
+                <p className="text-on-surface-variant text-xs mb-4 font-medium">Students who joined but haven't completed any assignments yet.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {noScoreStudents.map((s, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm">
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-surface-container rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold text-sm">
                         {s.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-700 text-sm truncate">{s.name}</p>
-                        <p className="text-slate-400 text-xs">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</p>
+                        <p className="font-bold text-on-surface text-sm truncate">{s.name}</p>
+                        <p className="text-on-surface-variant text-xs font-medium">{classes.find(c => c.code === s.classCode)?.name || s.classCode}</p>
                       </div>
-                      <span className="text-xs text-slate-400">Last: {new Date(s.lastActive).toLocaleDateString()}</span>
+                      <span className="text-xs text-on-surface-variant font-medium">Last: {new Date(s.lastActive).toLocaleDateString()}</span>
                     </div>
                   ))}
                 </div>
               </div>
             );
           })()}
-        </div>
+        </main>
       </div>
     );
   }
