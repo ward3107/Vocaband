@@ -852,39 +852,6 @@ export default function App() {
   const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
   const MAX_IMPORT_WORDS = 500;
 
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n");
-      const words: Word[] = lines.slice(1).map((line, idx) => {
-        const [english, hebrew, arabic] = line.split(",");
-        return {
-          id: 5000 + idx,
-          english: english?.trim(),
-          hebrew: hebrew?.trim() || "",
-          arabic: arabic?.trim() || "",
-          level: "Custom" as const
-        };
-      }).filter(w => w.english);
-
-      if (words.length === 0) {
-        showToast("No valid words found in CSV. Make sure the first column is English.", "error");
-        return;
-      }
-      const limited = words.slice(0, MAX_IMPORT_WORDS);
-      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
-      setCustomWords(prev => [...prev, ...limited]);
-      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
-      setSelectedLevel("Custom");
-    };
-    reader.readAsText(file);
-  };
-
   /**
    * handleOcrUpload
    * This function takes an image file (e.g., a photo of a book page),
@@ -1033,37 +1000,6 @@ export default function App() {
     setSelectedWords(prev => [...prev, word.id]);
     setSelectedLevel("Custom");
     setTagInput("");
-  };
-
-  // CSV upload handler (also used for the Excel button — teachers export as CSV)
-  const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
-      showToast("Please save your Excel file as CSV first (File > Save As > CSV).", "info");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length <= 1) { showToast("No valid words found in CSV file.", "error"); return; }
-      const words: Word[] = lines.slice(1).map((line, idx) => {
-        const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
-        return { id: 6000 + idx, english: cols[0] ?? "", hebrew: cols[1] ?? "", arabic: cols[2] ?? "", level: "Custom" as const };
-      }).filter(w => w.english);
-      if (words.length === 0) { showToast("No valid words found in CSV file.", "error"); return; }
-      const limited = words.slice(0, MAX_IMPORT_WORDS);
-      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
-      setCustomWords(prev => [...prev, ...limited]);
-      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
-      setSelectedLevel("Custom");
-      showToast(`Imported ${limited.length} words from CSV.`, "success");
-    };
-    reader.readAsText(file);
-    e.target.value = "";
   };
 
   // Word (.docx) upload — extract text then use smart paste logic
@@ -3705,14 +3641,6 @@ export default function App() {
             <div className="bg-stone-50 rounded-2xl p-3 mb-3 border-2 border-stone-200 space-y-2">
               <p className="text-sm font-black text-blue-700 uppercase tracking-wide bg-blue-50 inline-block px-3 py-1 rounded-lg">Import from file or URL</p>
               <div className="flex flex-wrap gap-2">
-                <label className="flex items-center gap-1.5 px-3 py-2 bg-stone-800 text-white rounded-xl font-bold cursor-pointer hover:bg-black text-xs whitespace-nowrap">
-                  <Upload size={14} /> .csv / .txt
-                  <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} className="hidden" />
-                </label>
-                <label className="flex items-center gap-1.5 px-3 py-2 bg-green-700 text-white rounded-xl font-bold cursor-pointer hover:bg-green-800 text-xs whitespace-nowrap">
-                  <Upload size={14} /> Excel (.csv)
-                  <input type="file" accept=".csv,.xlsx" onChange={handleXlsxUpload} className="hidden" />
-                </label>
                 <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
                   <Upload size={14} /> Word (.docx)
                   <input type="file" accept=".docx" onChange={handleDocxUpload} className="hidden" />
@@ -4027,7 +3955,7 @@ export default function App() {
                     <span className="text-2xl">📋</span>
                     <div>
                       <p className="font-bold text-stone-800">Import Words</p>
-                      <p className="text-sm text-stone-600">Paste, upload CSV/Excel/Word, scan with OCR, or Google Sheets</p>
+                      <p className="text-sm text-stone-600">Paste, upload Word docs, scan with OCR, or import from Google Sheets</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
