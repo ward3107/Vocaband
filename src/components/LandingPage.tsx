@@ -53,16 +53,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
               The digital playground for Israeli EFL students. Master your bands vocabulary through play.
             </p>
 
-            {/* Student/Teacher Toggle */}
-            <div className="bg-surface-container-lowest/20 p-2 rounded-full mb-12 flex items-center backdrop-blur-md">
-              <button className="bg-surface-container-lowest text-primary px-8 py-3 rounded-full font-black text-lg shadow-lg">
-                Student
-              </button>
-              <button className="text-on-primary px-8 py-3 rounded-full font-black text-lg opacity-70 hover:opacity-100 transition-opacity">
-                Teacher
-              </button>
-            </div>
-
             {/* CTA Buttons */}
             <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
               <button
