@@ -1,5 +1,14 @@
 import React from "react";
-import { ArrowRight, Sparkles, Zap, Flame, Play, ExternalLink } from "lucide-react";
+import {
+  Rocket,
+  Gamepad2,
+  Users,
+  Coins,
+  ArrowRight,
+  Share2,
+  Mail,
+  BookOpen,
+} from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 
@@ -17,183 +26,287 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
         onGetStarted={onGetStarted}
       />
 
-      <main className="pt-24 pb-32">
+      <main>
         {/* Hero Section */}
-        <section className="container mx-auto px-6 py-12 lg:py-24 flex flex-col lg:flex-row items-center gap-16">
-          <div className="lg:w-1/2 space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-container-high rounded-full">
-              <Sparkles className="text-primary" size={16} />
-              <span className="text-sm font-black text-on-surface-variant uppercase tracking-tighter">
-                New Game Mode: Lyric Master
-              </span>
+        <section className="pt-24 pb-20 px-6 signature-gradient text-on-primary relative overflow-hidden">
+          {/* Background Decorations */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary-container/20 rounded-full blur-3xl -mr-48 -mt-48" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-container/10 rounded-full blur-3xl -ml-32 -mb-32" />
+
+          <div className="max-w-7xl mx-auto flex flex-col items-center text-center relative z-10">
+            {/* Logo and Badge */}
+            <div className="mb-6 flex flex-col items-center">
+              <div className="w-24 h-24 bg-surface-container-lowest rounded-xl shadow-xl flex items-center justify-center mb-4 rotate-3 hover:rotate-0 transition-transform duration-300">
+                <span className="text-6xl font-black text-primary font-headline">V</span>
+              </div>
+              <p className="text-sm font-black tracking-widest uppercase opacity-90">
+                Israeli English Curriculum • Bands Vocabulary
+              </p>
             </div>
 
-            <h1 className="text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] text-on-surface font-headline">
-              Turn Vocab Into{" "}
-              <span className="text-primary italic">Your Rhythm.</span>
+            {/* Headline */}
+            <h1 className="text-5xl md:text-8xl font-black font-headline leading-none tracking-tighter mb-6 max-w-4xl">
+              Level Up Your Vocabulary
             </h1>
 
-            <p className="text-xl text-on-surface-variant font-medium leading-relaxed max-w-xl">
-              Master the Israeli Ministry of Education English curriculum through interactive music-based learning. Built for students who find textbooks boring and music essential.
+            <p className="text-xl md:text-2xl font-bold opacity-90 mb-12 max-w-2xl leading-relaxed">
+              The digital playground for Israeli EFL students. Master your bands vocabulary through play.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            {/* Student/Teacher Toggle */}
+            <div className="bg-surface-container-lowest/20 p-2 rounded-full mb-12 flex items-center backdrop-blur-md">
+              <button className="bg-surface-container-lowest text-primary px-8 py-3 rounded-full font-black text-lg shadow-lg">
+                Student
+              </button>
+              <button className="text-on-primary px-8 py-3 rounded-full font-black text-lg opacity-70 hover:opacity-100 transition-opacity">
+                Teacher
+              </button>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
               <button
-                onClick={() => onNavigate("playground")}
-                className="signature-gradient text-white font-black text-lg px-8 py-5 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2"
+                onClick={onGetStarted}
+                className="bg-tertiary-container text-on-tertiary-container px-12 py-5 rounded-xl text-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
-                Start Learning Free
-                <ArrowRight size={20} />
+                Start Learning
+                <Rocket size={24} />
               </button>
               <button
                 onClick={onGetStarted}
-                className="bg-surface-container-lowest border-2 border-outline-variant/20 text-on-surface font-black text-lg px-8 py-5 rounded-xl hover:bg-surface-container-low transition-all"
+                className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
               >
-                View Curriculum
+                Teacher Login
               </button>
             </div>
-          </div>
 
-          {/* Hero Visual */}
-          <div className="lg:w-1/2 relative">
-            <div className="relative w-full aspect-square max-w-md mx-auto">
-              {/* Main card */}
-              <div className="absolute inset-0 bg-primary-container rounded-[3rem] rotate-3 shadow-2xl overflow-hidden">
-                <div className="w-full h-full bg-gradient-to-br from-primary-container via-secondary-container/50 to-tertiary-container/30" />
-              </div>
-
-              {/* XP Reward floating card */}
-              <div className="absolute -top-4 -right-4 bg-surface-container-lowest p-6 rounded-3xl shadow-xl shadow-stone-900/10 -rotate-3 border border-surface-container-high animate-pulse-subtle">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-tertiary-container rounded-full flex items-center justify-center">
-                    <Zap className="text-on-tertiary-container" size={24} />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-black uppercase text-stone-400">
-                      Streak Reward
-                    </div>
-                    <div className="text-xl font-black text-on-surface">
-                      +450 XP
-                    </div>
-                  </div>
+            {/* Social Proof */}
+            <div className="mt-16 flex flex-col items-center gap-4">
+              <div className="flex -space-x-4">
+                <div className="w-12 h-12 rounded-full border-4 border-surface bg-primary/20 flex items-center justify-center text-lg font-bold">
+                  🦊
+                </div>
+                <div className="w-12 h-12 rounded-full border-4 border-surface bg-secondary/20 flex items-center justify-center text-lg font-bold">
+                  🦁
+                </div>
+                <div className="w-12 h-12 rounded-full border-4 border-surface bg-tertiary/20 flex items-center justify-center text-lg font-bold">
+                  🐯
+                </div>
+                <div className="w-12 h-12 rounded-full border-4 border-surface bg-primary text-on-primary flex items-center justify-center font-bold text-xs">
+                  +10k
                 </div>
               </div>
-
-              {/* Progress floating card */}
-              <div className="absolute -bottom-8 -left-8 bg-surface-container-lowest p-6 rounded-3xl shadow-xl shadow-stone-900/10 rotate-2 border border-surface-container-high w-64">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="font-black text-sm">Lyric Progress</span>
-                  <span className="text-primary font-black">82%</span>
-                </div>
-                <div className="w-full h-4 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full signature-gradient w-[82%] relative">
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 bg-surface-container-lowest rounded-full shadow-md flex items-center justify-center">
-                      <Flame className="text-orange-500" size={12} />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <p className="font-bold text-lg">Join 10,000+ students across Israel</p>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="container mx-auto px-6 py-24">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Ministry Approved - Large card */}
-            <div className="md:col-span-8 bg-surface-container-low rounded-[3rem] p-12 flex flex-col justify-between min-h-[400px]">
-              <div className="max-w-md">
-                <h3 className="text-3xl font-black mb-4 font-headline">
-                  Ministry Approved <br /> Content Library
+        {/* Features Bento Grid */}
+        <section className="py-24 px-6 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+            {/* 10 Fun Game Modes - Large Card */}
+            <div className="md:col-span-8 bg-surface-container-low rounded-xl p-10 flex flex-col justify-between relative overflow-hidden group">
+              <div className="relative z-10">
+                <div className="bg-primary-container text-on-primary-container w-16 h-16 rounded-2xl flex items-center justify-center mb-8 shadow-lg">
+                  <Gamepad2 size={32} />
+                </div>
+                <h3 className="text-4xl font-black font-headline mb-4">
+                  10 Fun Game Modes
                 </h3>
-                <p className="text-on-surface-variant font-medium text-lg leading-relaxed">
-                  Every song, activity, and assessment is meticulously aligned with the Israeli Band 1, 2, and 3 vocabulary requirements.
+                <p className="text-xl font-bold text-on-surface-variant max-w-md">
+                  From "Word War" to "Grammar Galaxy," we turn every vocabulary list into an epic quest.
                 </p>
               </div>
-              <div className="flex gap-4 mt-8 flex-wrap">
-                <span className="px-6 py-3 bg-surface-container-lowest rounded-full font-black text-primary shadow-sm">
-                  Band 1 Beginner
-                </span>
-                <span className="px-6 py-3 bg-surface-container-lowest rounded-full font-black text-secondary shadow-sm">
-                  Band 2 Intermediate
-                </span>
-                <span className="px-6 py-3 bg-surface-container-lowest rounded-full font-black text-tertiary shadow-sm">
-                  Band 3 Academic
-                </span>
+              <div className="mt-12 flex gap-4 overflow-hidden flex-wrap">
+                <div className="px-6 py-3 bg-surface-container-lowest rounded-full font-black shadow-sm group-hover:-translate-y-2 transition-transform duration-300">
+                  Flashcards
+                </div>
+                <div className="px-6 py-3 bg-surface-container-lowest rounded-full font-black shadow-sm group-hover:-translate-y-4 transition-transform duration-500 delay-75">
+                  Speed Match
+                </div>
+                <div className="px-6 py-3 bg-surface-container-lowest rounded-full font-black shadow-sm group-hover:-translate-y-1 transition-transform duration-400 delay-150">
+                  Vocab Tower
+                </div>
               </div>
             </div>
 
-            {/* Auditory Focus */}
-            <div className="md:col-span-4 bg-secondary-container rounded-[3rem] p-10 flex flex-col items-center text-center justify-center gap-6">
-              <div className="w-20 h-20 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-lg">
-                <span className="material-symbols-outlined text-4xl text-secondary">
-                  hearing
-                </span>
+            {/* Live Classroom Challenges */}
+            <div className="md:col-span-4 bg-secondary-container rounded-xl p-10 flex flex-col items-center text-center">
+              <div className="bg-surface-container-lowest text-secondary w-20 h-20 rounded-full flex items-center justify-center mb-8 shadow-xl">
+                <Users size={40} />
               </div>
-              <h3 className="text-2xl font-black text-on-secondary-container font-headline">
-                Auditory Focus
+              <h3 className="text-3xl font-black font-headline mb-4 text-on-secondary-container">
+                Live Classroom Challenges
               </h3>
-              <p className="text-on-secondary-container/80 font-bold">
-                Listen, record, and perfect your pronunciation with AI-driven feedback.
+              <p className="text-lg font-bold text-on-secondary-container/80">
+                Battle your classmates in real-time. Who will top the weekly leaderboard?
               </p>
             </div>
 
-            {/* Smart Spacing */}
-            <div className="md:col-span-4 bg-surface-container-high rounded-[3rem] p-10 flex flex-col justify-between">
-              <span className="material-symbols-outlined text-4xl text-on-surface opacity-20">
-                auto_awesome
-              </span>
-              <div>
-                <h3 className="text-2xl font-black mb-2 font-headline">Smart Spacing</h3>
-                <p className="text-on-surface-variant font-bold">
-                  Scientifically proven intervals for long-term memory retention.
+            {/* XP-Based Shop */}
+            <div className="md:col-span-6 bg-tertiary-container rounded-xl p-10 flex flex-row items-center gap-8 overflow-hidden">
+              <div className="flex-1">
+                <h3 className="text-3xl font-black font-headline mb-4 text-on-tertiary-container">
+                  XP-Based Shop
+                </h3>
+                <p className="text-lg font-bold text-on-tertiary-container/80">
+                  Earn XP for every word you learn. Spend it on legendary gear and exclusive power-ups.
                 </p>
+              </div>
+              <div className="relative">
+                <div className="w-32 h-32 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-2xl animate-bounce">
+                  <Coins size={64} className="text-tertiary-fixed-dim" />
+                </div>
               </div>
             </div>
 
-            {/* Teacher Dashboard */}
-            <div className="md:col-span-8 bg-surface-container-lowest border-2 border-surface-container rounded-[3rem] p-10 flex flex-col md:flex-row gap-8 items-center">
-              <div className="w-full md:w-1/3 aspect-video bg-surface-container-high rounded-2xl overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-primary shadow-lg">
-                    <Play size={24} />
+            {/* Avatar Preview Section */}
+            <div className="md:col-span-6 bg-surface-container-high rounded-xl p-10 flex flex-col">
+              <h3 className="text-3xl font-black font-headline mb-8">
+                Unlock Your Identity
+              </h3>
+              <div className="flex justify-between items-center">
+                <div className="flex gap-4">
+                  <div className="w-20 h-20 bg-surface-container-lowest rounded-full border-4 border-primary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-3xl">
+                    🐉
+                  </div>
+                  <div className="w-20 h-20 bg-surface-container-lowest rounded-full border-4 border-secondary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-3xl">
+                    🦅
+                  </div>
+                  <div className="w-20 h-20 bg-surface-container-lowest rounded-full border-4 border-tertiary p-1 shadow-xl hover:scale-110 transition-transform cursor-pointer flex items-center justify-center text-3xl">
+                    🐺
                   </div>
                 </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-black mb-3 font-headline">Teacher Dashboards</h3>
-                <p className="text-on-surface-variant font-medium">
-                  Real-time tracking of student progress, common struggles, and curriculum coverage.
-                </p>
-                <button className="inline-flex items-center gap-2 text-primary font-black mt-4 hover:underline">
-                  Explore LMS Features{" "}
-                  <ExternalLink size={16} />
+                <button
+                  onClick={onGetStarted}
+                  className="bg-on-surface text-surface px-6 py-3 rounded-full font-black flex items-center gap-2 hover:scale-105 transition-all"
+                >
+                  View All
+                  <ArrowRight size={18} />
                 </button>
               </div>
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="container mx-auto px-6 py-12">
-          <div className="signature-gradient rounded-[3.5rem] p-12 lg:p-24 text-center relative overflow-hidden">
-            <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 relative z-10 font-headline">
-              Ready to break the silence?
+        {/* Progress Visualization (The Pulse) */}
+        <section className="py-20 bg-surface-container-lowest px-6 overflow-hidden">
+          <div className="max-w-4xl mx-auto text-center mb-16">
+            <h2 className="text-4xl md:text-6xl font-black font-headline tracking-tighter mb-4">
+              Master Your Band Levels
             </h2>
-            <p className="text-on-primary font-bold text-xl mb-12 max-w-2xl mx-auto relative z-10">
-              Join over 50,000 Israeli students learning English through the power of music and kinetic play.
+            <p className="text-xl font-bold text-on-surface-variant">
+              We align perfectly with the Israeli EFL curriculum for Bands I, II, and III.
             </p>
-            <div className="flex justify-center gap-6 relative z-10">
+          </div>
+          <div className="max-w-5xl mx-auto space-y-12">
+            {/* Band I */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-end font-black">
+                <span className="text-2xl">Band I (Foundation)</span>
+                <span className="text-primary">85% Complete</span>
+              </div>
+              <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
+                <div className="h-full bg-primary rounded-full w-[85%] relative">
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-primary">
+                    <span className="text-xl">⭐</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Band II */}
+            <div className="space-y-4 opacity-70">
+              <div className="flex justify-between items-end font-black">
+                <span className="text-2xl">Band II (Intermediate)</span>
+                <span className="text-on-surface-variant">42% In Progress</span>
+              </div>
+              <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
+                <div className="h-full bg-secondary rounded-full w-[42%] relative">
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-secondary">
+                    <span className="text-xl">⚡</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-24 px-6">
+          <div className="max-w-6xl mx-auto bg-primary rounded-xl p-12 md:p-20 text-center relative overflow-hidden">
+            {/* Dot pattern background */}
+            <div
+              className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none"
+              style={{
+                backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+                backgroundSize: "20px 20px",
+              }}
+            />
+            <h2 className="text-4xl md:text-7xl font-black font-headline text-on-primary mb-8 relative z-10 tracking-tighter">
+              Ready to become a Vocab Legend?
+            </h2>
+            <div className="flex flex-col md:flex-row gap-6 justify-center relative z-10">
               <button
                 onClick={onGetStarted}
-                className="bg-white text-primary font-black text-xl px-12 py-6 rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-2xl"
+                className="bg-surface-container-lowest text-primary px-12 py-5 rounded-xl text-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all"
               >
-                Create Free Account
+                Create Free Student Account
+              </button>
+              <button
+                onClick={onGetStarted}
+                className="bg-primary-container text-on-primary-container px-12 py-5 rounded-xl text-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all"
+              >
+                School Pilot Program
               </button>
             </div>
           </div>
         </section>
+
+        {/* Footer */}
+        <footer className="bg-stone-100 dark:bg-stone-900 w-full py-12">
+          <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-8">
+            <div className="flex flex-col items-center md:items-start gap-2">
+              <div className="flex items-center gap-2">
+                <BookOpen className="text-blue-600" size={24} />
+                <span className="text-lg font-black text-stone-800 dark:text-stone-200 font-headline">
+                  The Energetic Scholar
+                </span>
+              </div>
+              <p className="text-stone-500 dark:text-stone-400 font-bold text-sm text-center md:text-left">
+                © 2024 The Digital Playground. All rights reserved.
+              </p>
+            </div>
+            <div className="flex gap-8">
+              <button
+                onClick={() => onNavigate("playground")}
+                className="text-stone-500 dark:text-stone-400 font-bold hover:text-blue-500 transition-colors"
+              >
+                Features
+              </button>
+              <button className="text-stone-500 dark:text-stone-400 font-bold hover:text-blue-500 transition-colors">
+                Methodology
+              </button>
+              <button className="text-stone-500 dark:text-stone-400 font-bold hover:text-blue-500 transition-colors">
+                Support
+              </button>
+              <button
+                onClick={() => onNavigate("privacy")}
+                className="text-stone-500 dark:text-stone-400 font-bold hover:text-blue-500 transition-colors"
+              >
+                Privacy
+              </button>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors">
+                <Share2 size={18} className="text-stone-600 dark:text-stone-300" />
+              </div>
+              <div className="w-10 h-10 bg-stone-200 dark:bg-stone-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-container transition-colors">
+                <Mail size={18} className="text-stone-600 dark:text-stone-300" />
+              </div>
+            </div>
+          </div>
+        </footer>
       </main>
 
       <MobileNav currentPage="home" onNavigate={onNavigate} />
