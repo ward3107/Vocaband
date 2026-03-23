@@ -44,7 +44,12 @@
       "Bash(ls -la docs/ 2>/dev/null; ls -la public/*.md 2>/dev/null; ls -la *.md 2>/dev/null)",
       "Bash(openspec status:*)",
       "Bash(python3 -m py_compile /home/atafa/code/seaship_list/backend/utils.py 2>&1)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "Bash(cd \"C:/Users/Waseem/Downloads/Vocaband/Vocaband/src/components\" && rm LandingPage.tsx && mv LandingPage_New.tsx LandingPage.tsx)",
+      "mcp__chrome-devtools__list_pages"
     ]
   }
 }
