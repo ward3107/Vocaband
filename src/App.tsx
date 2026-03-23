@@ -4435,19 +4435,28 @@ export default function App() {
 
   if (view === "analytics") {
     return (
-      <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <button onClick={() => setView("teacher-dashboard")} className="text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
-            <h1 className="text-xl sm:text-3xl font-black text-stone-900">Classroom Analytics</h1>
-          </div>
+      <div className="min-h-screen bg-background pb-8">
+        <TopAppBar
+          title="Analytics"
+          subtitle="CLASSROOM INSIGHTS & PERFORMANCE"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
 
+        <main className="pt-24 px-6 max-w-7xl mx-auto">
           {/* Class Filter Tabs */}
           {classes.length > 1 && (
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-8">
               <button
                 onClick={() => setAnalyticsClassFilter("all")}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsClassFilter === "all" ? "bg-purple-600 text-white shadow-md" : "bg-white text-stone-600 hover:bg-purple-50 border border-stone-200"}`}
+                className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
+                  analyticsClassFilter === "all"
+                    ? "bg-secondary text-white shadow-lg shadow-purple-500/20"
+                    : "bg-surface-container-lowest text-on-surface hover:bg-surface-container border-2 border-surface-container"
+                }`}
               >
                 All Classes
               </button>
@@ -4455,7 +4464,11 @@ export default function App() {
                 <button
                   key={c.code}
                   onClick={() => setAnalyticsClassFilter(c.code)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsClassFilter === c.code ? "bg-purple-600 text-white shadow-md" : "bg-white text-stone-600 hover:bg-purple-50 border border-stone-200"}`}
+                  className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
+                    analyticsClassFilter === c.code
+                      ? "bg-secondary text-white shadow-lg shadow-purple-500/20"
+                      : "bg-surface-container-lowest text-on-surface hover:bg-surface-container border-2 border-surface-container"
+                  }`}
                 >
                   {c.name}
                 </button>
@@ -4464,38 +4477,61 @@ export default function App() {
           )}
 
           {allScores.length === 0 ? (
-            <div className="bg-white p-8 rounded-[32px] sm:rounded-[40px] shadow-xl text-center">
-              <p className="text-stone-400 italic mb-4 text-base sm:text-sm">No student data yet. Analytics will appear once students complete assignments.</p>
+            <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-blue-50">
+              <BarChart3 className="mx-auto text-on-surface-variant mb-4" size={48} />
+              <p className="text-on-surface-variant font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
             </div>
           ) : (
             <>
               {/* Summary Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Students</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{classAnalytics?.uniqueStudents ?? 0}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Users className="text-secondary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Students</p>
+              <p className="text-3xl font-black text-on-surface">{classAnalytics?.uniqueStudents ?? 0}</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Attempts</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{classAnalytics?.totalAttempts ?? 0}</p>
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-blue-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <RefreshCw className="text-primary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Attempts</p>
+              <p className="text-3xl font-black text-on-surface">{classAnalytics?.totalAttempts ?? 0}</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Avg Score</p>
-              <p className="text-2xl sm:text-3xl font-black text-blue-700">{classAnalytics?.avgScore ?? 0}%</p>
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-emerald-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <TrendingUp className="text-emerald-600" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Avg Score</p>
+              <p className="text-3xl font-black text-primary">{classAnalytics?.avgScore ?? 0}%</p>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] shadow-lg">
-              <p className="text-stone-400 text-xs sm:text-sm font-bold uppercase">Assignments</p>
-              <p className="text-2xl sm:text-3xl font-black text-stone-900">{matrixData.assignments.length}</p>
+            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-amber-50">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <BookOpen className="text-tertiary" size={20} />
+                </div>
+              </div>
+              <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Assignments</p>
+              <p className="text-3xl font-black text-on-surface">{matrixData.assignments.length}</p>
             </div>
           </div>
 
           {/* Charts Row */}
           {classAnalytics && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               {/* Score Distribution Chart */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <BarChart3 className="text-purple-600" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center">
+                    <BarChart3 className="text-secondary" size={16} />
+                  </div>
                   Score Distribution
                 </h3>
                 <div className="space-y-3">
@@ -4509,10 +4545,10 @@ export default function App() {
                     return (
                       <div key={label}>
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-stone-600 font-bold">{label}</span>
+                          <span className="text-on-surface-variant font-bold">{label}</span>
                           <span className={`font-black ${textColor}`}>{count} ({pct}%)</span>
                         </div>
-                        <div className="h-4 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-4 bg-surface-container rounded-full overflow-hidden">
                           <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -4522,9 +4558,11 @@ export default function App() {
               </div>
 
               {/* Game Mode Usage */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <Layers className="text-purple-600" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center">
+                    <Layers className="text-secondary" size={16} />
+                  </div>
                   Game Mode Usage
                 </h3>
                 <div className="space-y-2">
@@ -4532,11 +4570,11 @@ export default function App() {
                     const pct = Math.round((count / classAnalytics.maxModeCount) * 100);
                     return (
                       <div key={mode} className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-stone-600 w-24 truncate capitalize">{mode.replace(/-/g, ' ')}</span>
-                        <div className="flex-1 h-5 bg-stone-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        <span className="text-xs font-bold text-on-surface-variant w-24 truncate capitalize">{mode.replace(/-/g, ' ')}</span>
+                        <div className="flex-1 h-5 bg-surface-container rounded-full overflow-hidden">
+                          <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs font-black text-stone-700 w-8 text-right">{count}</span>
+                        <span className="text-xs font-black text-on-surface w-8 text-right">{count}</span>
                       </div>
                     );
                   })}
@@ -4544,9 +4582,11 @@ export default function App() {
               </div>
 
               {/* Weekly Activity Chart */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <TrendingUp className="text-purple-600" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <TrendingUp className="text-emerald-600" size={16} />
+                  </div>
                   Weekly Activity
                 </h3>
                 {classAnalytics.weeklyActivity.length > 0 ? (
@@ -4557,27 +4597,29 @@ export default function App() {
                       return (
                         <div key={week} className="flex-1 flex flex-col items-center gap-1 group relative">
                           <div
-                            className={`w-full rounded-t-md transition-all ${avgPct >= 90 ? "bg-emerald-400" : avgPct >= 70 ? "bg-blue-400" : "bg-rose-300"}`}
+                            className={`w-full rounded-t-md transition-all ${avgPct >= 90 ? "bg-emerald-400" : avgPct >= 70 ? "bg-primary" : "bg-rose-400"}`}
                             style={{ height: `${Math.max(heightPct, 8)}%` }}
                           />
-                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                             {data.count} attempts, avg {avgPct}%
                           </div>
-                          <span className="text-[9px] text-stone-400 truncate w-full text-center">{week.slice(5)}</span>
+                          <span className="text-[9px] text-on-surface-variant truncate w-full text-center">{week.slice(5)}</span>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-stone-400 text-sm italic">No activity data yet</p>
+                  <p className="text-on-surface-variant text-sm italic">No activity data yet</p>
                 )}
-                <p className="text-[10px] text-stone-400 mt-2 text-center">Bar color = average score quality. Hover for details.</p>
+                <p className="text-[10px] text-on-surface-variant mt-2 text-center">Bar color = average score quality</p>
               </div>
 
               {/* Most Missed Words */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2">
-                  <AlertTriangle className="text-rose-500" size={18} />
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-rose-100">
+                <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-error-container/20 flex items-center justify-center">
+                    <AlertTriangle className="text-error" size={16} />
+                  </div>
                   Most Missed Words
                 </h3>
                 {classAnalytics.topMistakes.length > 0 ? (
@@ -4589,20 +4631,20 @@ export default function App() {
                         <div key={wordId} className="flex items-center gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between text-xs mb-0.5">
-                              <span className="font-bold text-stone-700 truncate">{word?.english || `#${wordId}`}</span>
-                              <span className="text-rose-600 font-bold ml-2">{count}x</span>
+                              <span className="font-bold text-on-surface truncate">{word?.english || `#${wordId}`}</span>
+                              <span className="text-error font-bold ml-2">{count}x</span>
                             </div>
-                            <div className="h-3 bg-stone-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-rose-300 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                            <div className="h-3 bg-surface-container rounded-full overflow-hidden">
+                              <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
-                          {word?.hebrew && <span className="text-xs text-stone-400 w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
+                          {word?.hebrew && <span className="text-xs text-on-surface-variant w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-stone-400 text-sm italic">No mistake data yet</p>
+                  <p className="text-on-surface-variant text-sm italic">No mistake data yet</p>
                 )}
               </div>
             </div>
