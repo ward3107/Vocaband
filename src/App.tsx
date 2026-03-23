@@ -3473,7 +3473,9 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-3xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-on-surface-variant font-bold flex items-center gap-1 hover:text-on-surface bg-surface-container-lowest px-4 py-2 rounded-full shadow-sm border-2 border-surface-container transition-all">← Back to Dashboard</button>
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-on-surface-variant font-bold flex items-center gap-2 hover:text-primary bg-surface-container-lowest px-5 py-2.5 rounded-full shadow-sm border-2 border-primary-container/30 hover:border-primary transition-all group">
+              <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Dashboard
+            </button>
           <div className="bg-surface-container-lowest rounded-[40px] shadow-xl border-2 border-surface-container p-10">
             <h2 className="text-3xl font-black mb-2 text-on-surface">Assign to {selectedClass.name}</h2>
 
@@ -3487,7 +3489,7 @@ export default function App() {
                   onChange={(e) => {
                     setAssignmentTitle(e.target.value);
                   }}
-                  className="w-full p-3 sm:p-4 text-sm sm:text-base rounded-2xl border-2 border-blue-100 focus:border-blue-300 outline-none"
+                  className="w-full p-3 sm:p-4 text-sm sm:text-base rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                 />
                 <datalist id="assignment-titles">
                   {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
@@ -3501,17 +3503,19 @@ export default function App() {
                     onChange={(e) => setAssignmentDeadline(e.target.value)}
                     aria-label="Assignment deadline"
                     title="Assignment deadline"
-                    className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-red-500' : 'border-blue-100'} focus:border-blue-300 outline-none`}
+                    className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 bg-surface-container-lowest text-on-surface outline-none transition-all ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20' : 'border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/20'}`}
                   />
                   {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
-                    <p className="text-red-500 text-sm font-bold ml-2">Warning: Deadline is in the past!</p>
+                    <p className="text-error text-sm font-bold ml-2 flex items-center gap-1">
+                      <span>⚠️</span> Warning: Deadline is in the past!
+                    </p>
                   )}
                 </div>
               </div>
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="font-bold text-stone-700">Choose Game Modes:</p>
-                  <button 
+                <div className="flex justify-between items-center mb-3">
+                  <p className="font-bold text-on-surface">Choose Game Modes:</p>
+                  <button
                     onClick={() => {
                       const toggleable = ["classic", "listening", "spelling", "matching", "true-false", "scramble", "reverse", "letter-sounds", "sentence-builder"];
                       if (assignmentModes.length >= toggleable.length + 1) {
@@ -3520,7 +3524,7 @@ export default function App() {
                         setAssignmentModes(["flashcards", ...toggleable]);
                       }
                     }}
-                    className="text-xs font-bold text-blue-700 hover:text-blue-800"
+                    className="text-xs font-bold text-primary hover:text-primary-dim transition-colors"
                   >
                     {assignmentModes.length >= 10 ? "Deselect All" : "Select All"}
                   </button>
@@ -3528,10 +3532,10 @@ export default function App() {
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
                   {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"] as const).map(mode => {
                     const modeConfig: Record<string, { emoji: string; activeColor: string; activeBg: string }> = {
-                      classic: { emoji: '📝', activeColor: 'text-white', activeBg: 'bg-blue-500' },
-                      listening: { emoji: '🎧', activeColor: 'text-white', activeBg: 'bg-purple-500' },
+                      classic: { emoji: '📝', activeColor: 'text-white', activeBg: 'bg-primary' },
+                      listening: { emoji: '🎧', activeColor: 'text-white', activeBg: 'bg-secondary' },
                       spelling: { emoji: '✍️', activeColor: 'text-white', activeBg: 'bg-green-600' },
-                      matching: { emoji: '🔗', activeColor: 'text-white', activeBg: 'bg-orange-500' },
+                      matching: { emoji: '🔗', activeColor: 'text-white', activeBg: 'bg-tertiary' },
                       'true-false': { emoji: '✓', activeColor: 'text-white', activeBg: 'bg-rose-500' },
                       flashcards: { emoji: '🎴', activeColor: 'text-white', activeBg: 'bg-teal-500' },
                       scramble: { emoji: '🔤', activeColor: 'text-white', activeBg: 'bg-amber-500' },
@@ -3545,7 +3549,7 @@ export default function App() {
                       <button
                         key={mode}
                         onClick={() => !isFlashcards && setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-md` : "bg-white text-stone-500 hover:bg-stone-50 border-2 border-stone-200 hover:border-stone-300"}`}
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-lg` : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20 hover:border-outline-variant/40"}`}
                       >
                         {cfg.emoji} {mode.charAt(0).toUpperCase() + mode.slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
                       </button>
@@ -3555,53 +3559,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sentences for Sentence Builder mode */}
-            {assignmentModes.includes("sentence-builder") && (
-              <div className="bg-teal-50 border-2 border-teal-100 rounded-2xl p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">🧩</span>
-                  <h3 className="font-bold text-teal-900 text-sm">Sentences for Sentence Builder</h3>
-                  <span className="text-xs text-teal-600 ml-auto">One sentence per line</span>
-                </div>
-                {sentencesAutoGenerated && assignmentSentences.filter(s => s.trim()).length > 0 && (
-                  <div className="flex items-center gap-2 mb-2 bg-teal-100 rounded-lg px-3 py-1.5">
-                    <Zap size={14} className="text-teal-700" />
-                    <span className="text-xs text-teal-800 font-medium">
-                      Auto-generated {assignmentSentences.filter(s => s.trim()).length} sentences from word bank
-                    </span>
-                    <button
-                      onClick={() => {
-                        const allPossibleWords = [...ALL_WORDS, ...customWords];
-                        const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-                        const words = uniqueWords.filter(w => selectedWordsSet.has(w.id));
-                        setAssignmentSentences(generateSentencesForAssignment(words));
-                        setSentencesAutoGenerated(true);
-                      }}
-                      className="ml-auto text-xs text-teal-700 underline hover:text-teal-900 font-medium"
-                    >
-                      Regenerate
-                    </button>
-                  </div>
-                )}
-                <textarea
-                  value={assignmentSentences.join("\n")}
-                  onChange={(e) => {
-                    setAssignmentSentences(e.target.value.split("\n"));
-                    setSentencesAutoGenerated(false);
-                  }}
-                  placeholder={"Sentences auto-generate when you select words.\nYou can also edit or type your own sentences here.\n\nExamples:\nThe dog runs fast\nShe likes going to school"}
-                  className="w-full p-2.5 rounded-xl border border-teal-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  rows={5}
-                />
-                <p className="text-xs text-teal-600 mt-1">{assignmentSentences.filter(s => s.trim()).length} sentence(s) added</p>
-              </div>
-            )}
-
             {/* ── Add Words ──────────────────────────────────────── */}
-            <div className="bg-blue-50 rounded-2xl p-3 mb-3 border-2 border-blue-100 space-y-3">
-              <div className="flex items-center gap-1">
-                <span className="text-lg">✏️</span>
-                <h3 className="font-bold text-blue-900 text-sm">Add Words</h3>
+            <div className="bg-primary-container/10 rounded-2xl p-4 mb-3 border-2 border-primary-container/30 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center">
+                  <span className="text-base">✏️</span>
+                </div>
+                <h3 className="font-black text-on-surface text-sm">Add Words</h3>
               </div>
 
               {/* Tag-style single word entry */}
@@ -3612,40 +3576,42 @@ export default function App() {
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleTagInputKeyDown}
                   placeholder="Type a word and press Enter"
-                  className="flex-1 p-2.5 rounded-xl border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="flex-1 p-2.5 rounded-xl border-2 border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                 />
                 <button
                   onClick={() => { if (!tagInput.trim()) return; const w: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" }; setCustomWords(prev => [...prev, w]); setSelectedWords(prev => [...prev, w.id]); setSelectedLevel("Custom"); setTagInput(""); }}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all"
+                  className="px-4 py-2 signature-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all active:scale-95"
                 >+ Add</button>
               </div>
 
               {/* Smart Paste textarea */}
               <div>
-                <p className="text-xs text-blue-700 font-bold mb-1">📋 Paste a list (comma, newline, tab separated)</p>
+                <p className="text-xs text-on-surface-variant font-bold mb-1.5 flex items-center gap-1">
+                  <span>📋</span> Paste a list (comma, newline, tab separated)
+                </p>
                 <textarea
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}
                   placeholder={"Paste words here…\nExamples: apple, banana\nOr one per line\nWorks with Excel copy-paste too"}
-                  className="w-full p-2.5 rounded-xl border border-blue-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full p-2.5 rounded-xl border-2 border-outline-variant/30 text-sm resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                   rows={4}
                 />
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-xs text-blue-600">{pastedText.trim() && `${pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words detected`}</span>
-                  <button onClick={handlePasteSubmit} disabled={!pastedText.trim()} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 disabled:opacity-50 transition-all">Import Words</button>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-primary font-medium">{pastedText.trim() && `${pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words detected`}</span>
+                  <button onClick={handlePasteSubmit} disabled={!pastedText.trim()} className="px-4 py-1.5 signature-gradient text-white rounded-lg font-bold text-xs shadow-md shadow-blue-500/20 hover:shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">Import Words</button>
                 </div>
               </div>
             </div>
 
             {/* ── Import from file or URL ─────────────────────── */}
-            <div className="bg-stone-50 rounded-2xl p-3 mb-3 border-2 border-stone-200 space-y-2">
-              <p className="text-sm font-black text-blue-700 uppercase tracking-wide bg-blue-50 inline-block px-3 py-1 rounded-lg">Import from file or URL</p>
+            <div className="bg-surface-container rounded-2xl p-4 mb-3 border-2 border-outline-variant/20 space-y-3">
+              <p className="text-sm font-black text-on-surface uppercase tracking-wide bg-secondary-container/30 inline-block px-3 py-1.5 rounded-lg">Import from file or URL</p>
               <div className="flex flex-wrap gap-2">
-                <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
+                <label className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-xl font-bold cursor-pointer hover:bg-primary-dim text-xs whitespace-nowrap shadow-md shadow-primary/20 transition-all active:scale-95">
                   <Upload size={14} /> Word (.docx)
                   <input type="file" accept=".docx" onChange={handleDocxUpload} className="hidden" />
                 </label>
-                <label className={`flex items-center gap-1.5 px-3 py-2 text-white rounded-xl font-bold cursor-pointer text-xs whitespace-nowrap relative overflow-hidden ${isOcrProcessing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                <label className={`flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl font-bold cursor-pointer text-xs whitespace-nowrap relative overflow-hidden transition-all active:scale-95 ${isOcrProcessing ? 'bg-primary/50 cursor-not-allowed' : 'bg-secondary hover:bg-secondary-dim shadow-md shadow-secondary/20'}`}>
                   <Camera size={14} /> {isOcrProcessing ? `Scanning… ${ocrProgress}%` : "Scan (OCR)"}
                   <input type="file" accept="image/*" capture="environment" onChange={handleOcrUpload} className="hidden" disabled={isOcrProcessing} />
                   {isOcrProcessing && <progress className="absolute bottom-0 left-0 h-1 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white/50 [&::-moz-progress-bar]:bg-white/50" max={100} value={toProgressValue(ocrProgress)} />}
@@ -3658,9 +3624,9 @@ export default function App() {
                   value={gSheetsUrl}
                   onChange={(e) => setGSheetsUrl(e.target.value)}
                   placeholder="Paste public Google Sheets URL…"
-                  className="flex-1 p-2 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                  className="flex-1 p-2.5 rounded-xl border-2 border-outline-variant/30 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                 />
-                <button onClick={handleGSheetsImport} disabled={gSheetsLoading || !gSheetsUrl.trim()} className="px-3 py-2 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap">
+                <button onClick={handleGSheetsImport} disabled={gSheetsLoading || !gSheetsUrl.trim()} className="px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap shadow-md shadow-green-600/20 active:scale-95">
                   {gSheetsLoading ? "Importing…" : "🔗 Import"}
                 </button>
               </div>
@@ -3670,11 +3636,11 @@ export default function App() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               {(["Band 1", "Band 2", "Custom"] as const).map(level => (
                 <button key={level} onClick={() => setSelectedLevel(level)}
-                  className={`px-4 py-2 rounded-xl font-bold transition-all text-xs ${selectedLevel === level ? "bg-blue-700 text-white shadow-lg" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
+                  className={`px-4 py-2.5 rounded-xl font-bold transition-all text-xs active:scale-95 ${selectedLevel === level ? "signature-gradient text-white shadow-lg shadow-blue-500/20" : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container border-2 border-outline-variant/20 hover:border-primary-container/50"}`}>
                   {level} {level === "Custom" && customWords.length > 0 && `(${customWords.length})`}
                 </button>
               ))}
-              <button onClick={() => setShowTopicPacks(true)} className="flex items-center justify-center gap-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold text-xs hover:bg-amber-600 transition-all">
+              <button onClick={() => setShowTopicPacks(true)} className="flex items-center justify-center gap-1 px-4 py-2.5 bg-tertiary-container text-on-tertiary-fixed rounded-xl font-bold text-xs hover:bg-tertiary-fixed-dim transition-all shadow-md shadow-tertiary-container/20 active:scale-95">
                 📦 Topic Packs
               </button>
             </div>
@@ -3682,30 +3648,33 @@ export default function App() {
             {/* Browse Word Bank Toggle */}
             <button
               onClick={() => setShowWordBank(!showWordBank)}
-              className="w-full mb-4 px-4 py-3 bg-stone-100 hover:bg-stone-200 rounded-xl border-2 border-stone-200 transition-all flex items-center justify-between"
+              className="w-full mb-4 px-4 py-3.5 bg-surface-container-high hover:bg-surface-container-highest rounded-xl border-2 border-outline-variant/20 hover:border-primary-container/50 transition-all flex items-center justify-between group"
             >
-              <span className="font-bold text-stone-700">📚 Browse Word Bank</span>
-              <span className="text-stone-500">{showWordBank ? "▲" : "▼"}</span>
+              <span className="font-bold text-on-surface flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center">📚</span>
+                Browse Word Bank
+              </span>
+              <span className={`text-on-surface-variant transition-transform ${showWordBank ? "rotate-180" : ""}`}>▼</span>
             </button>
 
             {/* Search Options */}
             <div className="flex flex-wrap gap-2 mb-3">
               <button
                 onClick={() => setEnableFuzzyMatch(!enableFuzzyMatch)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                   enableFuzzyMatch
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
                 }`}
               >
                 🔤 Fuzzy Match: {enableFuzzyMatch ? 'ON' : 'OFF'}
               </button>
               <button
                 onClick={() => setEnableWordFamilies(!enableWordFamilies)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                   enableWordFamilies
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
                 }`}
               >
                 🌳 Word Families: {enableWordFamilies ? 'ON' : 'OFF'}
@@ -3722,7 +3691,7 @@ export default function App() {
                     placeholder="🔍 Search words..."
                     value={wordSearchQuery}
                     onChange={(e) => setWordSearchQuery(e.target.value)}
-                    className="w-full p-3 rounded-xl border-2 border-blue-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full p-3 rounded-xl border-2 border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
                   />
                 </div>
 
@@ -3736,7 +3705,7 @@ export default function App() {
                         onChange={(e) => setSelectedCore(e.target.value as "Core I" | "Core II" | "")}
                         aria-label="Filter by core"
                         title="Filter by core"
-                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       >
                         <option value="">All Core</option>
                         <option value="Core I">Core I</option>
@@ -3749,7 +3718,7 @@ export default function App() {
                         onChange={(e) => setSelectedPos(e.target.value)}
                         aria-label="Filter by part of speech"
                         title="Filter by part of speech"
-                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       >
                         <option value="">All POS</option>
                         <option value="n">Nouns</option>
@@ -3766,7 +3735,7 @@ export default function App() {
                         onChange={(e) => setSelectedRecProd(e.target.value as "Rec" | "Prod" | "")}
                         aria-label="Filter by receptive or productive type"
                         title="Filter by receptive or productive type"
-                        className="px-3 py-1.5 rounded-lg bg-white border-2 border-blue-100 text-sm font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-300"
+                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       >
                         <option value="">All Types</option>
                         <option value="Rec">Receptive</option>
@@ -3782,7 +3751,7 @@ export default function App() {
                             setSelectedRecProd("");
                             setWordSearchQuery("");
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition-all border-2 border-red-200"
+                          className="px-3 py-2 rounded-xl bg-error-container/10 text-error text-sm font-bold hover:bg-error-container/20 transition-all border-2 border-error/30 active:scale-95"
                         >
                           ✕ Clear
                         </button>
@@ -3790,7 +3759,7 @@ export default function App() {
                     </div>
 
                     {/* Active Filter Summary */}
-                    <div className="text-xs text-stone-500 mb-2">
+                    <div className="text-xs text-on-surface-variant mb-2 px-1">
                       {wordSearchQuery && `Search: "${wordSearchQuery}" `}
                       {selectedCore && `| Core: ${selectedCore} `}
                       {selectedPos && `| POS: ${selectedPos} `}
@@ -3800,27 +3769,27 @@ export default function App() {
                 )}
 
                 {/* Compact Word List with Tap-to-Add */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-blue-50/50 rounded-2xl border-2 border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-primary-container/5 rounded-2xl border-2 border-primary-container/20 hide-scrollbar">
                   {currentLevelWords.map(word => {
                     const isSelected = selectedWordsSet.has(word.id);
                     return (
                       <button
                         key={`word-select-${word.id}`}
                         onClick={() => toggleWordSelection(word.id)}
-                        className={`p-3 rounded-xl text-left flex justify-between items-center transition-all ${isSelected ? "bg-blue-600 text-white shadow-md" : "bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300"}`}
+                        className={`p-3 rounded-xl text-left flex justify-between items-center transition-all active:scale-[0.98] ${isSelected ? "signature-gradient text-white shadow-lg shadow-blue-500/20" : "bg-surface-container-lowest hover:bg-surface-container border-2 border-outline-variant/20 hover:border-primary-container/50"}`}
                       >
                         <div>
-                          <p className={`font-bold ${isSelected ? "text-white" : "text-stone-900"}`}>{word.english}</p>
-                          <p className={`text-xs truncate ${isSelected ? "text-blue-100" : "text-stone-400"}`}>{word.hebrew} | {word.arabic}</p>
+                          <p className={`font-bold ${isSelected ? "text-white" : "text-on-surface"}`}>{word.english}</p>
+                          <p className={`text-xs truncate ${isSelected ? "text-white/70" : "text-on-surface-variant"}`}>{word.hebrew} | {word.arabic}</p>
                         </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-white/20" : "bg-stone-100"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold ${isSelected ? "bg-white/20 text-white" : "bg-surface-container text-on-surface-variant"}`}>
                           {isSelected ? "✓" : "+"}
                         </div>
                       </button>
                     );
                   })}
                   {currentLevelWords.length === 0 && (
-                    <p className="col-span-full text-center py-8 text-stone-400 italic">
+                    <p className="col-span-full text-center py-8 text-on-surface-variant italic">
                       No words found. Try a different search.
                     </p>
                   )}
@@ -3829,32 +3798,35 @@ export default function App() {
             )}
 
             {/* Selection Summary */}
-            <div className="flex items-center justify-between p-3 bg-white rounded-xl border-2 border-blue-100">
-              <span className="font-bold text-stone-700">
-                {selectedWords.length} words selected
+            <div className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border-2 border-primary-container/30 mb-4">
+              <span className="font-bold text-on-surface flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg signature-gradient flex items-center justify-center text-white text-sm font-black">
+                  {selectedWords.length}
+                </span>
+                words selected
               </span>
               {selectedWords.length > 0 && (
                 <button
                   onClick={() => setSelectedWords([])}
-                  className="text-sm font-bold text-red-600 hover:text-red-700"
+                  className="text-sm font-bold text-error hover:text-error-dim transition-colors px-3 py-1.5 rounded-lg bg-error-container/10 hover:bg-error-container/20"
                 >
                   Clear All
                 </button>
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 disabled={selectedWords.length === 0}
                 onClick={handlePreviewAssignment}
-                className="flex-1 py-2 bg-stone-200 text-stone-700 rounded-2xl font-black text-sm hover:bg-stone-300 transition-all active:scale-95 disabled:opacity-50"
+                className="flex-1 py-3.5 bg-surface-container text-on-surface rounded-2xl font-black text-sm hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 👁️ Preview
               </button>
               <button
                 disabled={selectedWords.length === 0 || !assignmentTitle}
                 onClick={handleSaveAssignment}
-                className="flex-1 py-2 bg-blue-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none hover:bg-blue-800 transition-all active:scale-95"
+                className="flex-1 py-3.5 signature-gradient text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none hover:shadow-2xl hover:shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 Create Assignment ({selectedWords.length} Words)
               </button>
@@ -3863,37 +3835,37 @@ export default function App() {
 
           {/* Paste Match Confirmation Dialog - NEW */}
           {showPasteDialog && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
-                <h3 className="text-xl font-black text-stone-900 mb-4">Word Import Results</h3>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-surface-container-lowest rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-outline-variant/20">
+                <h3 className="text-xl font-black text-on-surface mb-4">Word Import Results</h3>
 
                 <div className="space-y-3 mb-6">
                   {/* Matched Words */}
-                  <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
+                  <div className="p-4 bg-primary-container/20 rounded-2xl border-2 border-primary-container/30">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-green-600 text-lg">✓</span>
-                      <p className="font-bold text-green-700">Matched Band 2 Words</p>
+                      <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary text-sm">✓</span>
+                      <p className="font-bold text-on-surface">Matched Band 2 Words</p>
                     </div>
-                    <p className="text-2xl font-black text-green-600">{pasteMatchedCount}</p>
-                    <p className="text-sm text-green-600">Added to your assignment automatically</p>
+                    <p className="text-2xl font-black text-primary">{pasteMatchedCount}</p>
+                    <p className="text-sm text-on-surface-variant">Added to your assignment automatically</p>
                   </div>
 
                   {/* Unmatched Words */}
                   {pasteUnmatched.length > 0 && (
-                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                    <div className="p-4 bg-tertiary-container/20 rounded-2xl border-2 border-tertiary-container/30">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-amber-600 text-lg">⚠</span>
-                        <p className="font-bold text-amber-700">Not Found in Band 2</p>
+                        <span className="w-6 h-6 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-sm">⚠</span>
+                        <p className="font-bold text-on-surface">Not Found in Band 2</p>
                       </div>
-                      <p className="text-sm text-amber-600 mb-2">These words weren't found:</p>
+                      <p className="text-sm text-on-surface-variant mb-2">These words weren't found:</p>
                       <div className="flex flex-wrap gap-1 mb-3">
                         {pasteUnmatched.map(w => (
-                          <span key={w} className="px-2 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold">
+                          <span key={w} className="px-2.5 py-1 bg-tertiary-container/30 text-on-tertiary-container rounded-lg text-xs font-bold">
                             {w}
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-amber-600">Add them as custom words instead?</p>
+                      <p className="text-xs text-on-surface-variant">Add them as custom words instead?</p>
                     </div>
                   )}
                 </div>
@@ -3904,13 +3876,13 @@ export default function App() {
                     <>
                       <button
                         onClick={handleAddUnmatchedAsCustom}
-                        className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                        className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all active:scale-95"
                       >
                         Add {pasteUnmatched.length} as Custom
                       </button>
                       <button
                         onClick={handleSkipUnmatched}
-                        className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
+                        className="flex-1 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all active:scale-95"
                       >
                         Skip
                       </button>
@@ -3918,7 +3890,7 @@ export default function App() {
                   ) : (
                     <button
                       onClick={() => setShowPasteDialog(false)}
-                      className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                      className="w-full py-3 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all active:scale-95"
                     >
                       Done
                     </button>
@@ -3942,48 +3914,48 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+                className="bg-surface-container-lowest rounded-3xl p-8 max-w-md w-full shadow-2xl text-center border-2 border-outline-variant/20"
               >
-                <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <BookOpen size={40} />
+                <div className="w-20 h-20 signature-gradient rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/20">
+                  <BookOpen size={40} className="text-white" />
                 </div>
-                <h3 className="text-2xl font-black mb-4 text-stone-900">Welcome to Vocaband!</h3>
-                <p className="text-stone-600 mb-6 text-lg">Create engaging vocabulary assignments with 10 game modes.</p>
+                <h3 className="text-2xl font-black mb-4 text-on-surface signature-gradient-text">Welcome to Vocaband!</h3>
+                <p className="text-on-surface-variant mb-6 text-lg">Create engaging vocabulary assignments with 10 game modes.</p>
 
                 <div className="space-y-3 mb-6 text-left">
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+                  <div className="flex items-start gap-3 p-4 bg-primary-container/10 rounded-2xl border-2 border-primary-container/20">
                     <span className="text-2xl">📋</span>
                     <div>
-                      <p className="font-bold text-stone-800">Import Words</p>
-                      <p className="text-sm text-stone-600">Paste, upload Word docs, scan with OCR, or import from Google Sheets</p>
+                      <p className="font-bold text-on-surface">Import Words</p>
+                      <p className="text-sm text-on-surface-variant">Paste, upload Word docs, scan with OCR, or import from Google Sheets</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
+                  <div className="flex items-start gap-3 p-4 bg-secondary-container/10 rounded-2xl border-2 border-secondary-container/20">
                     <span className="text-2xl">🎮</span>
                     <div>
-                      <p className="font-bold text-stone-800">10 Game Modes</p>
-                      <p className="text-sm text-stone-600">Classic, Listening, Spelling, Matching, Scramble, Letter Sounds & more</p>
+                      <p className="font-bold text-on-surface">10 Game Modes</p>
+                      <p className="text-sm text-on-surface-variant">Classic, Listening, Spelling, Matching, Scramble, Letter Sounds & more</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
+                  <div className="flex items-start gap-3 p-4 bg-tertiary-container/10 rounded-2xl border-2 border-tertiary-container/20">
                     <span className="text-2xl">⭐</span>
                     <div>
-                      <p className="font-bold text-stone-800">XP & Rewards</p>
-                      <p className="text-sm text-stone-600">Students earn XP to unlock avatars, themes, name titles & more</p>
+                      <p className="font-bold text-on-surface">XP & Rewards</p>
+                      <p className="text-sm text-on-surface-variant">Students earn XP to unlock avatars, themes, name titles & more</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl">
+                  <div className="flex items-start gap-3 p-4 bg-surface-container rounded-2xl border-2 border-outline-variant/20">
                     <span className="text-2xl">📊</span>
                     <div>
-                      <p className="font-bold text-stone-800">Track Progress</p>
-                      <p className="text-sm text-stone-600">Gradebook with detailed analytics per student and assignment</p>
+                      <p className="font-bold text-on-surface">Track Progress</p>
+                      <p className="text-sm text-on-surface-variant">Gradebook with detailed analytics per student and assignment</p>
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => { setShowAssignmentWelcome(false); try { localStorage.setItem('vocaband_welcome_seen', '1'); } catch {} }}
-                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  className="w-full py-4 signature-gradient text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-500/25 hover:shadow-2xl hover:shadow-blue-500/30 transition-all active:scale-[0.98]"
                 >
                   Got it, let's start! →
                 </button>
@@ -4006,16 +3978,19 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+                className="bg-surface-container-lowest rounded-3xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto border-2 border-outline-variant/20"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-xl font-black text-stone-900">📦 Topic Packs</h3>
-                  <button onClick={() => setShowTopicPacks(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 transition-all">
+                  <h3 className="text-xl font-black text-on-surface flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-lg bg-tertiary-container/30 flex items-center justify-center">📦</span>
+                    Topic Packs
+                  </h3>
+                  <button onClick={() => setShowTopicPacks(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all">
                     <X size={16} />
                   </button>
                 </div>
-                <p className="text-sm text-stone-500 mb-5">Click a topic to add its words to your assignment.</p>
+                <p className="text-sm text-on-surface-variant mb-5">Click a topic to add its words to your assignment.</p>
                 <div className="grid grid-cols-2 gap-3">
                   {TOPIC_PACKS.map(pack => {
                     const alreadyAdded = pack.ids.every(id => selectedWords.includes(id));
@@ -4029,12 +4004,12 @@ export default function App() {
                           setShowTopicPacks(false);
                         }}
                         disabled={alreadyAdded}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${alreadyAdded ? "border-green-200 bg-green-50 opacity-70 cursor-default" : "border-amber-100 bg-amber-50 hover:bg-amber-100 hover:border-amber-300"}`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center active:scale-95 ${alreadyAdded ? "border-primary-container/30 bg-primary-container/10 opacity-70 cursor-default" : "border-tertiary-container/30 bg-tertiary-container/10 hover:bg-tertiary-container/20 hover:border-tertiary-container/50"}`}
                       >
                         <span className="text-3xl">{pack.icon}</span>
-                        <span className="font-bold text-stone-800 text-sm">{pack.name}</span>
-                        <span className="text-xs text-stone-500">{pack.ids.length} words</span>
-                        {alreadyAdded && <span className="text-xs text-green-600 font-bold">✓ Added</span>}
+                        <span className="font-bold text-on-surface text-sm">{pack.name}</span>
+                        <span className="text-xs text-on-surface-variant">{pack.ids.length} words</span>
+                        {alreadyAdded && <span className="text-xs text-primary font-bold">✓ Added</span>}
                       </button>
                     );
                   })}
