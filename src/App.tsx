@@ -3535,11 +3535,11 @@ export default function App() {
 
   if (view === "create-assignment" && selectedClass) {
     return (
-      <div className="min-h-screen bg-stone-100 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-3xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
-          <div className="bg-white rounded-[40px] shadow-xl p-10">
-            <h2 className="text-3xl font-black mb-2 text-stone-900">Assign to {selectedClass.name}</h2>
+          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-on-surface-variant font-bold flex items-center gap-1 hover:text-on-surface bg-surface-container-lowest px-4 py-2 rounded-full shadow-sm border-2 border-surface-container transition-all">← Back to Dashboard</button>
+          <div className="bg-surface-container-lowest rounded-[40px] shadow-xl border-2 border-surface-container p-10">
+            <h2 className="text-3xl font-black mb-2 text-on-surface">Assign to {selectedClass.name}</h2>
 
             <div className="space-y-4 mb-8">
               <div className="space-y-4">
