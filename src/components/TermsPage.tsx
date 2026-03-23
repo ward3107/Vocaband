@@ -1,5 +1,6 @@
 import React from "react";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, FileText, Scale, Users, Shield, AlertTriangle, Gavel, Mail } from "lucide-react";
+import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 
 interface TermsPageProps {
@@ -14,120 +15,253 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Header */}
-      <header className="bg-stone-100/80 backdrop-blur-md flex justify-between items-center w-full px-4 md:px-6 py-2 fixed top-0 z-50 border-b border-stone-200/50">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigate("home")}
-            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-stone-200 transition-colors"
-          >
-            <ArrowLeft className="text-primary" size={18} />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg signature-gradient flex items-center justify-center shadow-md shadow-primary/20">
-              <span className="text-white text-base font-black font-headline italic">V</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-black text-primary font-headline tracking-tight">
-                Vocaband
-              </span>
-              <span className="text-[9px] font-bold tracking-[0.15em] text-on-surface-variant uppercase">
-                TERMS OF USE
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNav
+        currentPage="terms"
+        onNavigate={onNavigate}
+        onGetStarted={onGetStarted}
+      />
 
-      <main className="pt-32 pb-20 px-4 md:px-8 max-w-4xl mx-auto mb-20 md:mb-0">
-        <div className="relative mb-12">
-          <h1 className="text-4xl md:text-6xl font-black text-on-surface mb-4 tracking-tighter leading-none font-headline">
-            Terms of <span className="text-primary italic">Use</span>
+      <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
+        {/* Header */}
+        <section className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
+            Terms of <span className="text-primary italic">Service</span>
           </h1>
-          <p className="text-lg text-on-surface-variant max-w-2xl font-medium">
-            Last updated: March 2024
+          <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium">
+            <span className="flex items-center gap-2">
+              <FileText size={16} className="text-primary" />
+              Effective: March 2024
+            </span>
+            <span className="flex items-center gap-2">
+              <Scale size={16} className="text-primary" />
+              Version 2.0
+            </span>
+          </div>
+          <p className="mt-4 text-lg text-on-surface-variant max-w-2xl">
+            Vocaband is an educational vocabulary platform for Israeli schools. Students use anonymous accounts; teachers sign in with Google.
           </p>
-        </div>
+        </section>
 
-        <div className="space-y-8 text-on-surface-variant leading-relaxed">
+        {/* Sections */}
+        <div className="space-y-8">
+          {/* Section 1: Acceptance */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">1. Acceptance of Terms</h2>
-            <p>
-              By accessing or using Vocaband, you acknowledge that you have read, understood, and agree to be bound by these Terms of Use and our Privacy Policy.
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">1</span>
+              Acceptance of Terms
+            </h2>
+            <p className="text-on-surface-variant leading-relaxed">
+              By accessing or using Vocaband ("the Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These Terms constitute a legally binding agreement between you and Vocaband Educational Technologies.
             </p>
-            <p className="mt-4">
-              We reserve the right to modify these terms at any time. Your continued use of the platform following the posting of changes constitutes your acceptance of such changes.
+            <p className="text-on-surface-variant leading-relaxed mt-4">
+              We may modify these Terms at any time. Material changes will be communicated through the Service, and your continued use after such changes constitutes acceptance. As required by Israeli Privacy Protection Law (Amendment 13), significant changes will require your explicit consent.
             </p>
           </section>
 
+          {/* Section 2: Description */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">2. User Accounts</h2>
-            <p>
-              To access certain features, you must register. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">2</span>
+              Description of Service
+            </h2>
+            <p className="text-on-surface-variant leading-relaxed mb-4">
+              Vocaband is an educational technology platform that helps students practice English vocabulary through interactive games. The Service is:
             </p>
-            <ul className="mt-4 space-y-2">
-              <li>• You must provide accurate and complete information during registration</li>
-              <li>• You may not create more than one account per user</li>
-              <li>• You must notify us immediately of any unauthorized use of your account</li>
+            <ul className="space-y-2 text-on-surface-variant">
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-1">•</span>
+                <span>Designed for use in Israeli schools under teacher supervision</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-1">•</span>
+                <span>Aligned with the Israeli Ministry of Education English curriculum (Band 1, 2, 3)</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-1">•</span>
+                <span>Built to support anonymous student accounts</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-1">•</span>
+                <span>Intended for educational purposes only</span>
+              </li>
             </ul>
           </section>
 
+          {/* Section 3: User Accounts */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">3. Code of Conduct</h2>
-            <p>
-              Vocaband is a space for growth. We maintain a high standard of academic integrity and mutual respect. By using our platform, you agree to:
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">3</span>
+              <Users size={20} className="text-primary" />
+              User Accounts
+            </h2>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-surface-container-low p-5 rounded-xl">
+                <h3 className="font-bold text-on-surface mb-3">Teacher Accounts</h3>
+                <ul className="space-y-2 text-sm text-on-surface-variant">
+                  <li>• Sign in with pre-approved Google account</li>
+                  <li>• Use official educational email address</li>
+                  <li>• Responsible for account security</li>
+                  <li>• Responsible for class management</li>
+                </ul>
+              </div>
+              <div className="bg-surface-container-low p-5 rounded-xl">
+                <h3 className="font-bold text-on-surface mb-3">Student Accounts</h3>
+                <ul className="space-y-2 text-sm text-on-surface-variant">
+                  <li>• Anonymous account with display name only</li>
+                  <li>• Access via 6-digit class code</li>
+                  <li>• No email or personal info required</li>
+                  <li>• Should not use real full name</li>
+                </ul>
+              </div>
+            </div>
+
+            <p className="text-on-surface-variant leading-relaxed mt-4">
+              <strong>School Authorization:</strong> By providing class codes to students, teachers represent that they have authorization from their educational institution to use Vocaband for educational purposes.
             </p>
-            <ul className="mt-4 space-y-2">
-              <li>• Not use automated scripts, bots, or external aids to cheat</li>
-              <li>• Keep interactions constructive and kind</li>
-              <li>• Complete your own work without impersonating others</li>
-              <li>• Respect the privacy of other users</li>
+          </section>
+
+          {/* Section 4: Acceptable Use */}
+          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">4</span>
+              <Shield size={20} className="text-primary" />
+              Code of Conduct
+            </h2>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-bold text-green-600 mb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs">✓</span>
+                  You Agree To:
+                </h3>
+                <ul className="space-y-2 text-sm text-on-surface-variant">
+                  <li>• Use for educational purposes only</li>
+                  <li>• Maintain academic integrity</li>
+                  <li>• Keep interactions respectful</li>
+                  <li>• Report bugs and issues</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-bold text-red-500 mb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center text-xs">✕</span>
+                  You Must NOT:
+                </h3>
+                <ul className="space-y-2 text-sm text-on-surface-variant">
+                  <li>• Use bots or automated scripts</li>
+                  <li>• Access others' accounts or data</li>
+                  <li>• Use offensive or impersonating names</li>
+                  <li>• Harass or bully other users</li>
+                  <li>• Share class codes inappropriately</li>
+                  <li>• Reverse-engineer the Service</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: Teacher Responsibilities */}
+          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">5</span>
+              Teacher Responsibilities
+            </h2>
+            <ul className="space-y-3 text-on-surface-variant">
+              <li className="flex items-start gap-3">
+                <span className="text-primary font-bold">•</span>
+                <span><strong>Class Code Management:</strong> Keep codes confidential, share only with intended students</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary font-bold">•</span>
+                <span><strong>Supervision:</strong> Appropriately supervise student use</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary font-bold">•</span>
+                <span><strong>Data Management:</strong> Delete classes when no longer needed</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary font-bold">•</span>
+                <span><strong>School Policies:</strong> Comply with institutional data protection policies</span>
+              </li>
             </ul>
           </section>
 
+          {/* Section 6: Intellectual Property */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">4. Intellectual Property</h2>
-            <p>
-              All content on Vocaband, including songs, lyrics, educational materials, and the platform itself, is either original or properly licensed for educational use within the Israeli school system.
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">6</span>
+              Intellectual Property
+            </h2>
+            <p className="text-on-surface-variant leading-relaxed">
+              All content on Vocaband—vocabulary lists, game designs, user interface, and software—is the property of Vocaband or its licensors and protected by intellectual property laws.
             </p>
-            <p className="mt-4">
-              You may not reproduce, distribute, or create derivative works from our content without explicit permission.
+            <p className="text-on-surface-variant leading-relaxed mt-4">
+              You receive a limited, non-exclusive, non-transferable license to use the Service for educational purposes. You may not copy, reproduce, distribute, or create derivative works without permission.
             </p>
           </section>
 
+          {/* Section 7: Data and Privacy */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">5. Limitation of Liability</h2>
-            <p>
-              Vocaband is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, or consequential damages arising from your use of the service.
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">7</span>
+              Data Protection
+            </h2>
+            <p className="text-on-surface-variant leading-relaxed">
+              Your use of the Service is governed by our <button onClick={() => onNavigate("privacy")} className="text-primary font-bold hover:underline">Privacy Policy</button>, which describes what data we collect, how we use it, your rights under Israeli Privacy Protection Law (Amendment 13), and how to access, correct, or delete your data.
             </p>
           </section>
 
+          {/* Section 8: Limitation of Liability */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">6. Termination</h2>
-            <p>
-              We reserve the right to suspend or terminate accounts that violate these terms or engage in harmful behavior toward other users or the platform.
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">8</span>
+              <AlertTriangle size={20} className="text-amber-500" />
+              Limitation of Liability
+            </h2>
+            <p className="text-on-surface-variant leading-relaxed">
+              The Service is provided "AS IS" without warranties. We are not liable for indirect, incidental, or consequential damages. Our total liability shall not exceed any amount paid for the Service in the preceding 12 months.
             </p>
           </section>
 
+          {/* Section 9: Governing Law */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline">7. Contact</h2>
-            <p>
-              Questions about these Terms? Contact us at{" "}
-              <span className="text-primary font-bold">hello@vocaband.edu</span>
+            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">9</span>
+              <Gavel size={20} className="text-primary" />
+              Governing Law
+            </h2>
+            <p className="text-on-surface-variant leading-relaxed">
+              These Terms are governed by the laws of the <strong>State of Israel</strong>, including the Privacy Protection Law 5741-1981 (Amendment 13). Disputes shall be resolved in the competent courts of Tel Aviv, Israel.
             </p>
+          </section>
+
+          {/* Section 10: Contact */}
+          <section className="bg-surface-container-high/50 p-8 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h3 className="text-xl font-black font-headline mb-2">Questions?</h3>
+              <p className="text-on-surface-variant">Contact us about these Terms.</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <a
+                href="mailto:legal@vocaband.com"
+                className="inline-flex items-center gap-2 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all"
+              >
+                <Mail size={18} /> legal@vocaband.com
+              </a>
+            </div>
           </section>
         </div>
 
-        <footer className="mt-20 border-t-2 border-surface-container-high pt-12 flex flex-col md:flex-row justify-between items-center gap-8">
+        {/* Footer */}
+        <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <button
             onClick={handlePrint}
-            className="px-8 py-4 bg-surface-container-high text-on-surface font-black rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
+            className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
           >
             <Printer size={18} /> Print
           </button>
           <button
             onClick={onGetStarted}
-            className="signature-gradient px-8 py-4 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
+            className="signature-gradient px-8 py-3 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
           >
             Accept & Continue
           </button>

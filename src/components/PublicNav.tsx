@@ -28,29 +28,6 @@ const PublicNav: React.FC<PublicNavProps> = ({
         </span>
       </button>
 
-      <div className="hidden md:flex items-center gap-6">
-        <button
-          onClick={() => onNavigate("terms")}
-          className={`text-sm font-bold transition-colors ${
-            currentPage === "terms"
-              ? "text-primary"
-              : "text-stone-500 hover:text-primary"
-          }`}
-        >
-          Terms
-        </button>
-        <button
-          onClick={() => onNavigate("privacy")}
-          className={`text-sm font-bold transition-colors ${
-            currentPage === "privacy"
-              ? "text-primary"
-              : "text-stone-500 hover:text-primary"
-          }`}
-        >
-          Privacy
-        </button>
-      </div>
-
       <div className="flex items-center gap-2 md:gap-3">
         <button
           onClick={onGetStarted}
