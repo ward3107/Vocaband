@@ -2117,7 +2117,7 @@ export default function App() {
               <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl font-black text-primary tracking-tight font-headline">Vocaband</span>
+              <span className="text-xl sm:text-2xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
               <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Israeli English Curriculum • Bands Vocabulary</span>
             </div>
           </div>

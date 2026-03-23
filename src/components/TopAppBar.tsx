@@ -59,7 +59,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           </button>
         )}
         <div className="flex flex-col">
-          <span className="text-2xl font-black text-primary font-headline tracking-tight">
+          <span className="text-2xl font-black font-headline tracking-tight signature-gradient-text">
             {title}
           </span>
           {subtitle && (
@@ -84,11 +84,11 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             Logout
           </button>
         )}
-        <div className="w-10 h-10 rounded-full bg-primary-container border-2 border-surface-container-highest overflow-hidden shadow-sm">
+        <div className="w-10 h-10 rounded-full signature-gradient border-2 border-white overflow-hidden shadow-sm">
           {userAvatar ? (
             <img alt="Profile" src={userAvatar} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-on-primary-container font-bold">
+            <div className="w-full h-full flex items-center justify-center text-white font-bold">
               {userName ? userName.charAt(0).toUpperCase() : title.charAt(0).toUpperCase()}
             </div>
           )}
