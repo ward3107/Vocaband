@@ -74,6 +74,13 @@ interface PublicNavProps {
         >
           Get Started
         </button>
+        <button
+          onClick={scrollToTop}
+          className="w-10 h-10 bg-stone-200 dark:bg-stone-700 rounded-full flex items-center justify-center hover:bg-primary-container transition-colors"
+          title="Back to top"
+        >
+          <ArrowUp size={18} className="text-stone-600 dark:text-stone-300" />
+        </button>
       </div>
     </nav>
   );
