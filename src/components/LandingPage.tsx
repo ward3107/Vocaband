@@ -306,7 +306,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
       <MobileNav currentPage="home" onNavigate={onNavigate} />
 
       {/* Floating Social Sidebar */}
-      <div className="fixed left-4 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3">
+      <div className="fixed left-4 bottom-24 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col gap-3">
         {/* WhatsApp */}
         <button
           onClick={shareOnWhatsApp}
