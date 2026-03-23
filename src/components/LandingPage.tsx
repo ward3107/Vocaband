@@ -5,6 +5,7 @@ import {
   Users,
   Coins,
   ArrowRight,
+  ArrowUp,
   Share2,
   Mail,
   BookOpen,
@@ -239,15 +240,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
             <div className="flex flex-col md:flex-row gap-6 justify-center relative z-10">
               <button
                 onClick={onGetStarted}
-                className="bg-surface-container-lowest text-primary px-12 py-5 rounded-xl text-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                className="bg-tertiary-container text-on-tertiary-container px-12 py-5 rounded-xl text-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
-                Create Free Student Account
+                Start Learning
+                <Rocket size={24} />
               </button>
               <button
                 onClick={onGetStarted}
-                className="bg-primary-container text-on-primary-container px-12 py-5 rounded-xl text-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
               >
-                School Pilot Program
+                Teacher Login
               </button>
             </div>
           </div>
@@ -264,7 +266,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                 </span>
               </div>
               <p className="text-stone-500 dark:text-stone-400 font-bold text-sm text-center md:text-left">
-                © 2024 The Digital Playground. All rights reserved.
+                © 2026 Vocaband • All rights reserved.
               </p>
             </div>
             <div className="flex gap-8">

@@ -1,16 +1,19 @@
 import React from "react";
+import { ArrowUp } from "lucide-react";
 
 interface PublicNavProps {
   currentPage: "home" | "terms" | "privacy" | "playground";
   onNavigate: (page: "home" | "terms" | "privacy" | "playground") => void;
   onGetStarted: () => void;
-}
-
-const PublicNav: React.FC<PublicNavProps> = ({
+}const PublicNav: React.FC<PublicNavProps> = ({
   currentPage,
   onNavigate,
   onGetStarted,
 }) => {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-stone-100/80 backdrop-blur-md flex justify-between items-center px-6 py-4 border-b border-stone-200/50">
       <button
