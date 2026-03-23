@@ -1,1 +1,123 @@
 @import "tailwindcss";
+
+/* =============================================================================
+   Material Design 3 Theme Configuration for Vocaband
+   ============================================================================= */
+
+@theme {
+  /* --- Semantic Colors (Material Design 3) --- */
+  --color-surface-dim: #ded2ca;
+  --color-on-secondary-container: #3424cc;
+  --color-surface-container: #f1e6df;
+  --color-on-tertiary: #fff0e3;
+  --color-on-surface: #332e2a;
+  --color-secondary-container: #cfcdff;
+  --color-background: #fff5ee;
+  --color-secondary-dim: #3d30d4;
+  --color-surface-container-high: #ece0d9;
+  --color-primary-dim: #0046bb;
+  --color-tertiary-container: #f8a010;
+  --color-on-primary-fixed-variant: #00266e;
+  --color-tertiary-fixed-dim: #e79400;
+  --color-primary: #0050d4;
+  --color-on-error-container: #570008;
+  --color-secondary-fixed-dim: #c0bdff;
+  --color-primary-fixed-dim: #658eff;
+  --color-on-tertiary-fixed-variant: #563400;
+  --color-inverse-primary: #618bff;
+  --color-outline-variant: #b4aba6;
+  --color-on-secondary-fixed: #2000b0;
+  --color-on-secondary-fixed-variant: #3e32d5;
+  --color-outline: #7d7570;
+  --color-surface-variant: #e6dbd3;
+  --color-on-background: #332e2a;
+  --color-on-primary: #f1f2ff;
+  --color-surface-bright: #fff5ee;
+  --color-surface-container-low: #f9efe8;
+  --color-primary-fixed: #7b9cff;
+  --color-inverse-on-surface: #a39b96;
+  --color-surface: #fff5ee;
+  --color-on-error: #ffefee;
+  --color-error-container: #fb5151;
+  --color-surface-container-lowest: #ffffff;
+  --color-error: #b31b25;
+  --color-tertiary: #815100;
+  --color-inverse-surface: #110d0a;
+  --color-surface-tint: #0050d4;
+  --color-secondary-fixed: #cfcdff;
+  --color-on-primary-container: #001e5a;
+  --color-tertiary-dim: #714600;
+  --color-error-dim: #9f0519;
+  --color-on-tertiary-fixed: #2a1700;
+  --color-on-secondary: #f4f1ff;
+  --color-primary-container: #7b9cff;
+  --color-secondary: #4a40e0;
+  --color-surface-container-highest: #e6dbd3;
+  --color-on-surface-variant: #615a56;
+  --color-tertiary-fixed: #f8a010;
+  --color-on-tertiary-container: #4a2c00;
+  --color-on-primary-fixed: #000000;
+
+  /* --- Font Families --- */
+  --font-headline: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-label: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* --- Border Radius --- */
+  --radius-DEFAULT: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+  --radius-full: 9999px;
+}
+
+/* =============================================================================
+   Base Styles
+   ============================================================================= */
+
+/* Material Symbols configuration */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Base body font */
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+}
+
+/* Headline font for headings */
+h1, h2, h3, h4, h5, h6, .font-headline {
+  font-family: var(--font-headline);
+}
+
+/* =============================================================================
+   Utility Classes
+   ============================================================================= */
+
+/* Signature gradient for primary actions */
+.signature-gradient {
+  background: linear-gradient(135deg, #2563eb 0%, #9333ea 50%, #ec4899 100%);
+}
+
+/* Hide scrollbar utility */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* =============================================================================
+   Animations
+   ============================================================================= */
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
