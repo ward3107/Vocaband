@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink } from "lucide-react";
+import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink, ArrowLeft } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
@@ -7,11 +7,13 @@ import FloatingButtons from "./FloatingButtons";
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  onBack?: () => void;
 }
 
 const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
   onNavigate,
   onGetStarted,
+  onBack,
 }) => {
   return (
     <div className="min-h-screen bg-surface">
@@ -22,6 +24,17 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
       />
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
+        {/* Back Button - Top */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-primary font-bold mb-6 hover:underline transition-all group"
+          >
+            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <span>Back</span>
+          </button>
+        )}
+
         {/* Header */}
         <section className="mb-12">
           <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
@@ -356,12 +369,23 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
         {/* Footer */}
         <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-sm text-on-surface-variant">
-            <strong>Related:</strong>{" "}
-            <button onClick={() => onNavigate("terms")} className="text-primary hover:underline">
-              Terms of Service
-            </button>
-          </p>
+          <div className="flex items-center gap-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+              >
+                <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                <span>Back</span>
+              </button>
+            )}
+            <p className="text-sm text-on-surface-variant">
+              <strong>Related:</strong>{" "}
+              <button onClick={() => onNavigate("terms")} className="text-primary hover:underline">
+                Terms of Service
+              </button>
+            </p>
+          </div>
           <button
             onClick={onGetStarted}
             className="signature-gradient px-8 py-3 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"

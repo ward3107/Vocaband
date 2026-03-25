@@ -51,7 +51,18 @@
       "Bash(cd \"C:/Users/Waseem/Downloads/Vocaband/Vocaband/src/components\" && rm LandingPage.tsx && mv LandingPage_New.tsx LandingPage.tsx)",
       "mcp__chrome-devtools__list_pages",
       "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && powershell -Command \"Get-Content \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\\\\src\\\\components\\\\LandingPage.tsx -TotalCount 220 | Select-Object -First 1 | Format-Table -HideTableHeaders)",
-      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && rm -rf node_modules/.vite 2>&1 | echo \"Vite cache cleared\")"
+      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && rm -rf node_modules/.vite 2>&1 | echo \"Vite cache cleared\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3000)",
+      "Bash(findstr : :3000)",
+      "Bash(powershell -Command \" \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -Property OwningProcess)",
+      "Bash(ForEach-Object { Stop-Process -Id $_ } -Force)",
+      "Bash(xargs kill:*)",
+      "Bash(PORT=3001 npm run dev)",
+      "Bash(npx tsc:*)",
+      "Bash(taskkill:*)",
+      "mcp__chrome-devtools__evaluate_script"
     ]
   }
 }

@@ -7,9 +7,10 @@ import FloatingButtons from "./FloatingButtons";
 interface TermsPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  onBack?: () => void;
 }
 
-const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
+const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack }) => {
   const handlePrint = () => {
     window.print();
   };
@@ -23,6 +24,17 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
       />
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
+        {/* Back Button - Top */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-primary font-bold mb-6 hover:underline transition-all group"
+          >
+            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <span>Back</span>
+          </button>
+        )}
+
         {/* Header */}
         <section className="mb-12">
           <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
@@ -254,12 +266,23 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
 
         {/* Footer */}
         <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <button
-            onClick={handlePrint}
-            className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
-          >
-            <Printer size={18} /> Print
-          </button>
+          <div className="flex items-center gap-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+              >
+                <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                <span>Back</span>
+              </button>
+            )}
+            <button
+              onClick={handlePrint}
+              className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
+            >
+              <Printer size={18} /> Print
+            </button>
+          </div>
           <button
             onClick={onGetStarted}
             className="signature-gradient px-8 py-3 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
