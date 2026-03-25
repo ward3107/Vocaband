@@ -2,9 +2,25 @@
 
 > **Vocabulary learning that actually sticks** — a gamified classroom platform for EFL students and their teachers.
 
-Vocaband turns vocabulary drills into a competitive, engaging experience. Students join with a simple 6-digit class code and choose from **8 interactive game modes**. Teachers get real-time analytics, an OCR-powered assignment builder, and a live leaderboard competition tool — all aligned to the **Israeli English curriculum (Band 1 & Band 2, 2,067 words)** in **English, Hebrew, and Arabic**.
+Vocaband turns vocabulary drills into a competitive, engaging experience. Students join with a simple 6-digit class code and choose from **10 interactive game modes**. Teachers get real-time analytics, an OCR-powered assignment builder, and a live leaderboard competition tool — all aligned to the **Israeli English curriculum (Band I, II & III)** in **English, Hebrew, and Arabic**.
 
 No app store. No personal data required. Works offline.
+
+---
+
+## Screenshots
+
+### Landing Page
+![Landing Page](docs/screenshots/screen.png)
+
+### Student Login
+![Student Login](docs/screenshots/screen1.png)
+
+### Game Modes
+![Game Modes](docs/screenshots/screen2.png)
+
+### Live Challenge
+![Live Challenge](docs/screenshots/scree3n.png)
 
 ---
 
@@ -15,17 +31,17 @@ No app store. No personal data required. Works offline.
 | Trilingual (English / Hebrew / Arabic) | ✅ Built-in | ❌ Rarely |
 | OCR — scan a textbook photo | ✅ Yes | ❌ No |
 | Live classroom competition | ✅ Real-time leaderboard | ❌ No |
-| Israeli curriculum aligned (Band 1 & 2) | ✅ 2,067 words | ❌ No |
+| Israeli curriculum aligned (Band I, II & III) | ✅ Full coverage | ❌ No |
 | No student account needed | ✅ Join by code + name | ❌ Registration required |
 | Works offline (PWA) | ✅ Offline-first | ❌ Rarely |
-| 8 game modes | ✅ All built-in | ❌ 1–2 modes max |
+| 10 game modes | ✅ All built-in | ❌ 1–2 modes max |
 | Teacher analytics & mistake tracking | ✅ Deep | ❌ Basic |
 
 ---
 
 ## Features
 
-### 🎮 8 Game Modes — Something for Every Learner
+### 🎮 10 Game Modes — Something for Every Learner
 
 | Mode | Description |
 |---|---|
@@ -37,6 +53,8 @@ No app store. No personal data required. Works offline.
 | **Flashcards** | Self-paced review — flip cards to see answers, no scoring pressure |
 | **Word Scramble** | Unscramble mixed-up letters to form the English word |
 | **Reverse** | See the Hebrew/Arabic word, pick the English translation |
+| **Letter Sounds** | Learn phonics by matching letters to their sounds |
+| **Sentence Builder** | Construct sentences using vocabulary words in context |
 
 ---
 
@@ -49,7 +67,7 @@ No app store. No personal data required. Works offline.
 - **CSV Upload** — Import a custom word list (English, Hebrew, Arabic columns)
 - **Fuzzy Matching** — Catches typos automatically (e.g. "helo" → "hello")
 - **Word Families** — Toggle to include related forms (happy → happier, happiness)
-- **Mode Control** — Choose which of the 8 game modes each assignment includes
+- **Mode Control** — Choose which of the 10 game modes each assignment includes
 - **Deadlines** — Set a due date per assignment
 - **Assignment Preview** — Play the assignment yourself before assigning to students
 - **Live Challenge** — Run a real-time vocabulary competition; watch a live leaderboard with animated podium
@@ -68,7 +86,7 @@ No app store. No personal data required. Works offline.
 ### 🎓 For Students
 
 - **Join instantly** — Class code + name + emoji avatar. No email, no password
-- **8 game modes** — Each assignment can have up to 8 modes to complete
+- **10 game modes** — Each assignment can have up to 10 modes to complete
 - **XP & Streaks** — Earn XP per answer; maintain streaks across high-scoring sessions (🔥)
 - **Badges** — "Streak Master" (5+ streak), "XP Hunter" (500+ XP)
 - **Live leaderboard** — Compete with classmates in real time during teacher-run challenges
