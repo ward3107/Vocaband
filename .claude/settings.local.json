@@ -62,7 +62,8 @@
       "Bash(PORT=3001 npm run dev)",
       "Bash(npx tsc:*)",
       "Bash(taskkill:*)",
-      "mcp__chrome-devtools__evaluate_script"
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(start:*)"
     ]
   }
 }
