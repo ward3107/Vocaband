@@ -130,6 +130,13 @@ const POWER_UP_DEFS = [
   { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
 ];
 
+// Boosters — high-demand items for 2026 students
+const BOOSTERS_DEFS = [
+  { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 200 },
+  { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
+  { id: 'xp_booster', name: '2x XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 300 },
+];
+
 // Name frames — decorative borders around student avatar on dashboard & leaderboard
 const NAME_FRAMES = [
   { id: 'gold', name: 'Gold Frame', preview: '🥇', border: 'ring-4 ring-yellow-400', cost: 200 },
@@ -307,7 +314,7 @@ export default function App() {
     } as const;
     setView(viewMap[page]);
   };
-  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames">("avatars");
+  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
@@ -2459,14 +2466,12 @@ export default function App() {
         <div className="max-w-4xl mx-auto">
           {/* Top bar with logout */}
           <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
-              <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
-                🛍️ Shop
-              </button>
-              <button onClick={() => setView("privacy-settings")} className="px-3 py-2 text-stone-400 hover:text-stone-600 hover:bg-stone-200 rounded-xl text-xs font-bold transition-all" title="Privacy Settings">
-                Privacy
-              </button>
-            </div>
+            <button onClick={() => setView("privacy-settings")} className="px-3 py-2 text-stone-400 hover:text-stone-600 hover:bg-stone-200 rounded-xl text-xs font-bold transition-all" title="Privacy Settings">
+              Privacy
+            </button>
+            <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-6 py-2.5 bg-gradient-to-r from-pink-400 to-rose-500 text-white font-bold rounded-xl hover:from-pink-500 hover:to-rose-600 transition-all text-base flex items-center gap-2 shadow-lg shadow-pink-500/30 animate-pulse">
+              🛍️ Shop
+            </button>
             <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 text-stone-500 font-bold hover:text-red-500 hover:bg-red-50 rounded-xl text-sm transition-all">Logout</button>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -2840,6 +2845,13 @@ export default function App() {
       setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
       showToast(`Got ${powerUp.name}!`, "success");
     };
+    const purchaseBooster = async (booster: typeof BOOSTERS_DEFS[0]) => {
+      if (xp < booster.cost) { showToast("Not enough XP!", "error"); return; }
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'booster', item_id: booster.id, item_cost: booster.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      showToast(`Got ${booster.name}! 🎉`, "success");
+    };
 
     const activeThemeConfig = THEMES.find(t => t.id === (user.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -2862,10 +2874,10 @@ export default function App() {
 
           {/* Tabs */}
           <div className="flex flex-wrap gap-2 mb-6">
-            {(["avatars", "themes", "titles", "frames", "powerups"] as const).map(tab => (
+            {(["avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => (
               <button key={tab} onClick={() => setShopTab(tab)}
                 className={`px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all ${shopTab === tab ? "bg-blue-600 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
-                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : tab === "titles" ? "🏷️ Titles" : tab === "frames" ? "🖼️ Frames" : "⚡ Power-ups"}
+                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : tab === "titles" ? "🏷️ Titles" : tab === "frames" ? "🖼️ Frames" : tab === "boosters" ? "🔥 Boosters" : "⚡ Power-ups"}
               </button>
             ))}
           </div>
@@ -3074,6 +3086,32 @@ export default function App() {
                           {frame.cost} XP
                         </button>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Boosters Shop — High-demand items */}
+          {shopTab === "boosters" && (
+            <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-3xl p-6 shadow-md border-2 border-pink-200">
+              <h2 className="text-xl font-black mb-2 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">🔥 Hot Boosters</h2>
+              <p className="text-stone-500 text-sm mb-4">The most wanted items in 2026!</p>
+              <div className="space-y-3">
+                {BOOSTERS_DEFS.map(booster => {
+                  const canAfford = xp >= booster.cost;
+                  return (
+                    <div key={booster.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 border-pink-100 shadow-sm hover:shadow-md transition-all">
+                      <span className="text-4xl">{booster.emoji}</span>
+                      <div className="flex-1">
+                        <p className="font-bold text-stone-800">{booster.name}</p>
+                        <p className="text-xs text-stone-500">{booster.desc}</p>
+                      </div>
+                      <button onClick={() => purchaseBooster(booster)} disabled={!canAfford}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${canAfford ? "bg-gradient-to-r from-pink-400 to-orange-400 text-white hover:from-pink-500 hover:to-orange-500 shadow-md" : "bg-stone-100 text-stone-400 cursor-not-allowed"}`}>
+                        {booster.cost} XP
+                      </button>
                     </div>
                   );
                 })}
