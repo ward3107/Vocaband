@@ -1,8 +1,9 @@
 import React from "react";
-import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink, ArrowLeft } from "lucide-react";
+import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
+import BackButton from "./BackButton";
 
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
@@ -25,15 +26,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
         {/* Back Button - Top */}
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-primary font-bold mb-6 hover:underline transition-all group"
-          >
-            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-            <span>Back</span>
-          </button>
-        )}
+        {onBack && <BackButton onClick={onBack} className="mb-6" />}
 
         {/* Header */}
         <section className="mb-12">

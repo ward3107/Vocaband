@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
+import { useAudio } from "./hooks/useAudio";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./privacy-config";
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
@@ -470,6 +471,8 @@ export default function App() {
     const themeId = user?.activeTheme ?? 'default';
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
+
+  const { speak: speakWord, preloadMany } = useAudio();
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -1579,7 +1582,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro) {
-      speak(currentWord.english);
+      speakWord(currentWord.id);
     }
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro]);
 
@@ -1822,7 +1825,7 @@ export default function App() {
         // Pronounce the matched English word
         const englishCard = selectedMatch.type === 'english' ? selectedMatch : item;
         const matchedPair = matchingPairs.find(p => p.id === englishCard.id && p.type === 'english');
-        if (matchedPair) speak(matchedPair.text);
+        if (matchedPair) speakWord(item.id);
 
         if (socket && user?.classCode) {
           socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
@@ -5724,7 +5727,7 @@ export default function App() {
                 </div>
                 <div className="flex justify-center gap-2 mt-1 sm:mt-0">
                   <button
-                    onClick={() => speak(currentWord?.english)}
+                    onClick={() => speakWord(currentWord?.id)}
                     className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"
