@@ -2,6 +2,20 @@
 
 > **Vocabulary learning that actually sticks** — a gamified classroom platform for EFL students and their teachers.
 
+---
+
+> ⚠️ **Copyright Notice**
+>
+> This project is protected under the **MIT License with Commons Clause**.
+>
+> - ✅ You may view and learn from this code
+> - ❌ You may **NOT** use this code for commercial purposes or sell products based on it
+> - ❌ You may **NOT** copy, redistribute, or claim this code as your own
+>
+> For commercial licensing inquiries, contact: **vocaband.app@gmail.com**
+
+---
+
 Vocaband turns vocabulary drills into a competitive, engaging experience. Students join with a simple 6-digit class code and choose from **10 interactive game modes**. Teachers get real-time analytics, an OCR-powered assignment builder, and a live leaderboard competition tool — all aligned to the **Israeli English curriculum (Band I, II & III)** in **English, Hebrew, and Arabic**.
 
 No app store. No personal data required. Works offline.
