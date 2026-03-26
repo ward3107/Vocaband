@@ -2435,7 +2435,7 @@ export default function App() {
         </footer>
 
         {/* Mobile Bottom Navigation - Same as Landing Page */}
-        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem] lg:hidden">
+        <nav dir="ltr" className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem] lg:hidden">
           <button
             onClick={() => setView("public-landing")}
             className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"

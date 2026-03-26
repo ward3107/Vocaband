@@ -4,17 +4,17 @@ export type Language = 'en' | 'he' | 'ar';
 
 export const LANGUAGE_KEY = 'vocaband_legal_language';
 
-// Global state singleton
-let globalLanguage: Language = 'en';
+// Global state singleton - default to Arabic
+let globalLanguage: Language = 'ar';
 const listeners: Set<(lang: Language) => void> = new Set();
 
 const getInitialLanguage = (): Language => {
-  if (typeof window === 'undefined') return 'en';
+  if (typeof window === 'undefined') return 'ar';
   const saved = localStorage.getItem(LANGUAGE_KEY);
   if (saved && ['en', 'he', 'ar'].includes(saved)) {
     return saved as Language;
   }
-  return 'en';
+  return 'ar';
 };
 
 // Initialize global state and set initial RTL
@@ -38,7 +38,7 @@ export const useLanguage = () => {
     if (typeof window !== 'undefined') {
       return getInitialLanguage();
     }
-    return 'en';
+    return 'ar';
   });
 
   useEffect(() => {
