@@ -14,7 +14,7 @@ interface TermsPageProps {
 }
 
 const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack }) => {
-  const { language, dir, isRTL } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const t = termsTranslations[language];
   const ui = uiTranslations[language];
 
@@ -23,7 +23,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
   };
 
   return (
-    <div className="min-h-screen bg-surface" dir={dir}>
+    <div className="min-h-screen bg-surface">
       <PublicNav
         currentPage="terms"
         onNavigate={onNavigate}
@@ -32,13 +32,13 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
         {/* Back Button & Language Switcher */}
-        <div className={`flex items-center gap-4 mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className="flex items-center gap-4 mb-6">
           {onBack && (
             <button
               onClick={onBack}
-              className={`flex items-center gap-2 text-primary font-bold hover:underline transition-all group ${isRTL ? 'flex-row-reverse' : ''}`}
+              className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
             >
-              <ArrowLeft size={20} className={`transition-transform ${isRTL ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`} />
+              <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
               <span>{t.footer.backButton}</span>
             </button>
           )}
@@ -47,10 +47,10 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
         {/* Header */}
         <section className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
+          <h1 className={`text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline ${isRTL ? 'text-right' : ''}`}>
             {t.title} <span className="text-primary italic">{t.titleHighlight}</span>
           </h1>
-          <div className={`flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium">
             <span className="flex items-center gap-2">
               <FileText size={16} className="text-primary" />
               {t.effective}
@@ -69,7 +69,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
         <div className="space-y-8">
           {/* Section 1: Acceptance */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">1</span>
               {language === 'en' ? 'Acceptance of Terms' : language === 'he' ? 'קבלת התנאים' : 'قبول الشروط'}
             </h2>
@@ -89,7 +89,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 2: Description */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">2</span>
               {language === 'en' ? 'Description of Service' : language === 'he' ? 'תיאור השירות' : 'وصف الخدمة'}
             </h2>
@@ -100,7 +100,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
             </p>
             <ul className={`space-y-2 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
               {ui.serviceDescription.map((item, i) => (
-                <li key={i} className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <li key={i} className="flex items-start gap-3">
                   <span className="text-primary mt-1">•</span>
                   <span>{item}</span>
                 </li>
@@ -110,13 +110,13 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 3: User Accounts */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">3</span>
               <Users size={20} className="text-primary" />
               {language === 'en' ? 'User Accounts' : language === 'he' ? 'חשבונות משתמש' : 'حسابات المستخدمين'}
             </h2>
 
-            <div className={`grid md:grid-cols-2 gap-6 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-surface-container-low p-5 rounded-xl">
                 <h3 className={`font-bold text-on-surface mb-3 ${isRTL ? 'text-right' : ''}`}>
                   {language === 'en' ? 'Teacher Accounts' : language === 'he' ? 'חשבונות מורים' : 'حسابات المعلمين'}
@@ -146,15 +146,15 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 4: Code of Conduct */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">4</span>
               <Shield size={20} className="text-primary" />
               {language === 'en' ? 'Code of Conduct' : language === 'he' ? 'קוד התנהגות' : 'قواعد السلوك'}
             </h2>
 
-            <div className={`grid md:grid-cols-2 gap-6 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <h3 className={`font-bold text-green-600 mb-3 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <h3 className="font-bold text-green-600 mb-3 flex items-center gap-2">
                   <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs">✓</span>
                   {ui.youAgreeTo}
                 </h3>
@@ -165,7 +165,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
                 </ul>
               </div>
               <div>
-                <h3 className={`font-bold text-red-500 mb-3 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <h3 className="font-bold text-red-500 mb-3 flex items-center gap-2">
                   <span className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center text-xs">✕</span>
                   {ui.youMustNot}
                 </h3>
@@ -180,13 +180,13 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 5: Teacher Responsibilities */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">5</span>
               {language === 'en' ? 'Teacher Responsibilities' : language === 'he' ? 'אחריות מורים' : 'مسؤوليات المعلم'}
             </h2>
             <ul className={`space-y-3 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
               {ui.teacherDuties.map((duty, i) => (
-                <li key={i} className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <li key={i} className="flex items-start gap-3">
                   <span className="text-primary font-bold">•</span>
                   <span><strong>{duty.title}</strong> {duty.desc}</span>
                 </li>
@@ -196,7 +196,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 6: Intellectual Property */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">6</span>
               {language === 'en' ? 'Intellectual Property' : language === 'he' ? 'קניין רוחני' : 'الملكية الفكرية'}
             </h2>
@@ -216,7 +216,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 7: Data Protection */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">7</span>
               {language === 'en' ? 'Data Protection' : language === 'he' ? 'הגנת נתונים' : 'حماية البيانات'}
             </h2>
@@ -235,7 +235,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 8: Limitation of Liability */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">8</span>
               <AlertTriangle size={20} className="text-amber-500" />
               {language === 'en' ? 'Limitation of Liability' : language === 'he' ? 'הגבלת אחריות' : 'تحديد المسؤولية'}
@@ -249,7 +249,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
           {/* Section 9: Governing Law */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">9</span>
               <Gavel size={20} className="text-primary" />
               {language === 'en' ? 'Governing Law' : language === 'he' ? 'דין חל' : 'القانون الحاكم'}
@@ -270,7 +270,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
             <div className="flex items-center gap-4">
               <a
                 href="mailto:legal@vocaband.com"
-                className={`inline-flex items-center gap-2 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
+                className="inline-flex items-center gap-2 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all"
               >
                 <Mail size={18} /> legal@vocaband.com
               </a>
@@ -280,19 +280,19 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
 
         {/* Footer */}
         <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div className="flex items-center gap-4">
             {onBack && (
               <button
                 onClick={onBack}
-                className={`flex items-center gap-2 text-primary font-bold hover:underline transition-all group ${isRTL ? 'flex-row-reverse' : ''}`}
+                className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
               >
-                <ArrowLeft size={18} className={`transition-transform ${isRTL ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`} />
+                <ArrowLeft size={18} className="transition-transform group-hover:-translate-x-1" />
                 <span>{t.footer.backButton}</span>
               </button>
             )}
             <button
               onClick={handlePrint}
-              className={`px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
+              className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
             >
               <Printer size={18} /> {t.footer.print}
             </button>

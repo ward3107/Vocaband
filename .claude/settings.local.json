@@ -63,7 +63,8 @@
       "Bash(npx tsc:*)",
       "Bash(taskkill:*)",
       "mcp__chrome-devtools__evaluate_script",
-      "Bash(start:*)"
+      "Bash(start:*)",
+      "Bash(ls -la .env*)"
     ]
   }
 }

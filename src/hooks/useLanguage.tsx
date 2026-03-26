@@ -26,8 +26,7 @@ const setGlobalLanguage = (lang: Language) => {
   globalLanguage = lang;
   if (typeof window !== 'undefined') {
     localStorage.setItem(LANGUAGE_KEY, lang);
-    const isRTL = lang === 'he' || lang === 'ar';
-    document.documentElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+    // Note: dir is NOT set globally - only individual components (Privacy/Terms) use RTL
     document.documentElement.setAttribute('lang', lang);
   }
   // Notify all listeners
