@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ArrowLeft } from "lucide-react";
+import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink, ArrowLeft } from "lucide-react";
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
@@ -19,12 +19,12 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
   onGetStarted,
   onBack,
 }) => {
-  const { language, isRTL } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = privacyTranslations[language];
   const ui = uiTranslations[language];
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface" dir={dir}>
       <PublicNav
         currentPage="privacy"
         onNavigate={onNavigate}
@@ -33,17 +33,17 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
         {/* Back Button & Language Switcher */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className={`flex items-center gap-4 mb-6`}>
           {onBack && <BackButton onClick={onBack} />}
           <LanguageSwitcher />
         </div>
 
         {/* Header */}
         <section className="mb-12">
-          <h1 className={`text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline ${isRTL ? 'text-right' : ''}`}>
+          <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
             {t.title} <span className="text-primary italic">{t.titleHighlight}</span>
           </h1>
-          <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium">
+          <div className={`flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium`}>
             <span className="flex items-center gap-2">
               <FileText size={16} className="text-primary" />
               {t.effective}
@@ -53,7 +53,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               {t.version}
             </span>
           </div>
-          <p className={`mt-4 text-lg text-on-surface-variant max-w-2xl ${isRTL ? 'text-right' : ''}`}>
+          <p className={`mt-4 text-lg text-on-surface-variant max-w-2xl`}>
             <strong>{language === 'en' ? 'Legal Basis:' : language === 'he' ? 'בסיס חוקי:' : 'الأساس القانوني:'}</strong> {t.legalBasis}
           </p>
         </section>
@@ -61,11 +61,11 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         {/* Summary Card */}
         <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-900 rounded-2xl p-8 text-white mb-8 relative overflow-hidden">
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4">
+            <div className={`inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4`}>
               <Shield size={14} />
               <span className="text-xs font-black uppercase tracking-wider">{t.summary.badge}</span>
             </div>
-            <p className={`text-lg text-blue-100 font-medium leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-lg text-blue-100 font-medium leading-relaxed`}>
               {t.summary.text}
             </p>
           </div>
@@ -76,17 +76,17 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         <div className="space-y-8">
           {/* Section 1: Data Controller */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">1</span>
               {language === 'en' ? 'Data Controller (בעל המאגר)' : language === 'he' ? 'בעל המאגר' : 'مراقب البيانات (בעל המאגר)'}
             </h2>
-            <div className={`text-on-surface-variant leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
+            <div className={`text-on-surface-variant leading-relaxed space-y-4`}>
               <p>
                 {language === 'en' ? 'Under the Israeli Privacy Protection Law (Amendment 13), the data controller for Vocaband is:' :
                  language === 'he' ? 'לפי חוק הגנת הפרטיות (תיקון 13), בעל מאגר הנתונים של Vocaband הוא:' :
                  'بموجب قانون حماية الخصوصية الإسرائيلي (التعديل 13)، مراقب بيانات Vocaband هو:'}
               </p>
-              <ul className={`space-y-2 ${isRTL ? 'text-right' : ''}`}>
+              <ul className={`space-y-2`}>
                 <li><strong>{language === 'en' ? 'Entity:' : language === 'he' ? 'גוף:' : 'الكيان:'}</strong> Vocaband Educational Technologies</li>
                 <li><strong>{language === 'en' ? 'Address:' : language === 'he' ? 'כתובת:' : 'العنوان:'}</strong> {language === 'en' ? 'Israel' : language === 'he' ? 'ישראל' : 'إسرائيل'}</li>
                 <li><strong>{language === 'en' ? 'Privacy Contact:' : language === 'he' ? 'יצירת קשר לפרטיות:' : 'جهة اتصال الخصوصية:'}</strong> <span className="text-primary">privacy@vocaband.com</span></li>
@@ -101,20 +101,20 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 2: What We Collect */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">2</span>
               <Database size={20} className="text-primary" />
               {ui.forStudents === 'For Students' ? 'Data We Collect' : language === 'he' ? 'נתונים שאנו אוספים' : 'البيانات التي نجمعها'}
             </h2>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className={`grid md:grid-cols-2 gap-6 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
               <div className="bg-surface-container-low p-5 rounded-xl">
-                <div className="flex items-center gap-2 mb-3">
+                <div className={`flex items-center gap-2 mb-3`}>
                   <Users size={18} className="text-primary" />
                   <h3 className="font-bold text-on-surface">{ui.forStudents}</h3>
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">{ui.anonymous}</span>
                 </div>
-                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                <ul className={`space-y-2 text-sm text-on-surface-variant`}>
                   {language === 'en' ? (
                     <>
                       <li>• <strong>Display name</strong> — chosen by student</li>
@@ -141,7 +141,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                     </>
                   )}
                 </ul>
-                <p className={`text-xs text-red-500 mt-3 font-medium ${isRTL ? 'text-right' : ''}`}>
+                <p className={`text-xs text-red-500 mt-3 font-medium`}>
                   {language === 'en' ? 'We do NOT collect: email, phone, address, photos, IDs' :
                    language === 'he' ? 'איננו אוספים: דוא"ל, טלפון, כתובת, תמונות, תעודות זהות' :
                    'لا نجمع: البريد الإلكتروني، الهاتف، العنوان، الصور، الهويات'}
@@ -149,12 +149,12 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               </div>
 
               <div className="bg-surface-container-low p-5 rounded-xl">
-                <div className="flex items-center gap-2 mb-3">
+                <div className={`flex items-center gap-2 mb-3`}>
                   <School size={18} className="text-primary" />
                   <h3 className="font-bold text-on-surface">{ui.forTeachers}</h3>
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{ui.googleOAuth}</span>
                 </div>
-                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                <ul className={`space-y-2 text-sm text-on-surface-variant`}>
                   {language === 'en' ? (
                     <>
                       <li>• <strong>Email</strong> — for verification</li>
@@ -184,7 +184,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 3: How We Use Data */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">3</span>
               {language === 'en' ? 'How We Use Your Data' : language === 'he' ? 'כיצד אנו משתמשים בנתונים שלך' : 'كيف نستخدم بياناتك'}
             </h2>
@@ -259,7 +259,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               </table>
             </div>
             <div className="mt-4 p-4 bg-red-50 rounded-xl">
-              <p className={`text-sm text-red-700 font-medium ${isRTL ? 'text-right' : ''}`}>
+              <p className={`text-sm text-red-700 font-medium`}>
                 {language === 'en' ? 'We do NOT: Sell data • Show ads • Create profiles • Share with brokers • Use tracking cookies' :
                  language === 'he' ? 'איננו: מוכרים נתונים • מציגים פרסומות • יוצרים פרופילים • משתפים עם מתווכים • משתמשים בעוגיות מעקב' :
                  'نحن لا: نبيع البيانات • نعرض الإعلانات • ننشئ ملفات تعريف • نشارك مع الوسطاء • نستخدم ملفات تعريف الارتباط للتتبع'}
@@ -269,7 +269,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 4: Third Parties */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">4</span>
               <Globe size={20} className="text-primary" />
               {language === 'en' ? 'Third-Party Processors' : language === 'he' ? 'מעבדי צד שלישי' : 'معالجات الطرف الثالث'}
@@ -306,25 +306,25 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 5: Retention */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">5</span>
               <Clock size={20} className="text-primary" />
               {language === 'en' ? 'Data Retention' : language === 'he' ? 'שמירת נתונים' : 'الاحتفاظ بالبيانات'}
             </h2>
-            <ul className={`space-y-3 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
-              <li className="flex items-center justify-between py-2 border-b border-surface-container/50">
+            <ul className="space-y-3 text-on-surface-variant">
+              <li className={`flex items-center justify-between py-2 border-b border-surface-container/50`}>
                 <span>{ui.dataRetention.studentProgress}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? '365 days' : language === 'he' ? '365 יום' : '365 يوم'}</span>
               </li>
-              <li className="flex items-center justify-between py-2 border-b border-surface-container/50">
+              <li className={`flex items-center justify-between py-2 border-b border-surface-container/50`}>
                 <span>{ui.dataRetention.orphanedAccounts}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? '90 days' : language === 'he' ? '90 יום' : '90 يوم'}</span>
               </li>
-              <li className="flex items-center justify-between py-2 border-b border-surface-container/50">
+              <li className={`flex items-center justify-between py-2 border-b border-surface-container/50`}>
                 <span>{ui.dataRetention.teacherAccounts}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? 'Active + 2 years' : language === 'he' ? 'פעיל + 2 שנים' : 'نشط + 2 سنة'}</span>
               </li>
-              <li className="flex items-center justify-between py-2">
+              <li className={`flex items-center justify-between py-2`}>
                 <span>{ui.dataRetention.auditLogs}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? '2 years' : language === 'he' ? '2 שנים' : '2 سنة'}</span>
               </li>
@@ -333,12 +333,12 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 6: Your Rights */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">6</span>
               <Gavel size={20} className="text-primary" />
               {language === 'en' ? 'Your Rights (Data Subject Rights)' : language === 'he' ? 'הזכויות שלך (זכויות נושא הנתונים)' : 'حقوقك (حقوق موضوع البيانات)'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4 ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-on-surface-variant leading-relaxed mb-4`}>
               {language === 'en' ? 'Under Israeli Privacy Protection Law (Amendment 13), you have the right to:' :
                language === 'he' ? 'לפי חוק הגנת הפרטיות (תיקון 13), יש לך את הזכות:' :
                'بموجب قانون حماية الخصوصية الإسرائيلي (التعديل 13)، لديك الحق في:'}
@@ -349,39 +349,39 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                   <Database size={18} className="text-primary" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.access}</h4>
-                <p className={`text-xs text-on-surface-variant mt-1 ${isRTL ? 'text-right' : ''}`}>{ui.rights.accessDesc}</p>
+                <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.accessDesc}</p>
               </div>
               <div className="bg-surface-container-low p-4 rounded-xl text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Lock size={18} className="text-primary" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.deletion}</h4>
-                <p className={`text-xs text-on-surface-variant mt-1 ${isRTL ? 'text-right' : ''}`}>{ui.rights.deletionDesc}</p>
+                <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.deletionDesc}</p>
               </div>
               <div className="bg-surface-container-low p-4 rounded-xl text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
                   <FileText size={18} className="text-primary" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.portability}</h4>
-                <p className={`text-xs text-on-surface-variant mt-1 ${isRTL ? 'text-right' : ''}`}>{ui.rights.portabilityDesc}</p>
+                <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.portabilityDesc}</p>
               </div>
             </div>
           </section>
 
           {/* Section 7: Children's Privacy */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">7</span>
               <Users size={20} className="text-primary" />
               {language === 'en' ? "Children's Privacy" : language === 'he' ? 'פרטיות ילדים' : 'خصوصية الأطفال'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4 ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-on-surface-variant leading-relaxed mb-4`}>
               {language === 'en' ? 'Vocaband is designed for students in Israeli schools. The educational institution (school) authorizes student use. By providing a class code, the teacher (on behalf of the school) authorizes student access.' :
                language === 'he' ? 'Vocaband מיועד לתלמידים בבתי ספר בישראל. המוסד החינוכי (בית הספר) מאשר שימוש תלמידים. על ידי מתן קוד כיתה, המורה (מטעם בית הספר) מאשר גישת תלמידים.' :
                'Vocaband مصمم للطلاب في المدارس الإسرائيلية. المؤسسة التعليمية (المدرسة) تصرح باستخدام الطلاب. من خلال تقديم رمز الفصل، يصرح المعلم (نيابة عن المدرسة) بوصول الطلاب.'}
             </p>
             <div className="bg-green-50 p-4 rounded-xl">
-              <p className={`text-sm text-green-800 font-medium ${isRTL ? 'text-right' : ''}`}>
+              <p className={`text-sm text-green-800 font-medium`}>
                 {language === 'en' ? 'We minimize data collection from students: No email required • No real name required • No location tracking • No behavioral advertising' :
                  language === 'he' ? 'אנו ממזערים איסוף נתונים מתלמידים: ללא דוא"ל • ללא שם אמיתי • ללא מעקב מיקום • ללא פרסום התנהגותית' :
                  'نحن نقلل من جمع البيانات من الطلاب: لا بريد إلكتروني • لا اسم حقيقي • لا تتبع للموقع • لا إعلانات سلوكية'}
@@ -391,14 +391,14 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 8: Security */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">8</span>
               <Lock size={20} className="text-primary" />
               {language === 'en' ? 'Security Measures' : language === 'he' ? 'אמצעי אבטחה' : 'تدابير الأمان'}
             </h2>
-            <ul className={`grid md:grid-cols-2 gap-3 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+            <ul className={`grid md:grid-cols-2 gap-3 text-on-surface-variant`}>
               {ui.securityMeasures.map((item, i) => (
-                <li key={i} className="flex items-center gap-2">
+                <li key={i} className={`flex items-center gap-2`}>
                   <span className="text-primary">✓</span> {item}
                 </li>
               ))}
@@ -407,17 +407,17 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
           {/* Section 9: Complaints */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">9</span>
               <AlertTriangle size={20} className="text-amber-500" />
               {language === 'en' ? 'Complaints' : language === 'he' ? 'תלונות' : 'الشكاوى'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4 ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-on-surface-variant leading-relaxed mb-4`}>
               {language === 'en' ? 'If you believe your privacy rights have been violated, you may:' :
                language === 'he' ? 'אם אתה סבור שזכויות הפרטיות שלך הופרו, אתה רשאי:' :
                'إذا كنت تعتقد أن حقوق خصوصيتك قد انتهكت، يمكنك:'}
             </p>
-            <ol className={`list-decimal list-inside space-y-2 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+            <ol className={`list-decimal list-inside space-y-2 text-on-surface-variant`}>
               <li>
                 {language === 'en' ? 'Contact us at ' : language === 'he' ? 'לפנות אלינו בכתובת ' : 'الاتصال بنا على '}
                 <span className="text-primary font-medium">privacy@vocaband.com</span>
@@ -438,7 +438,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
             </div>
             <a
               href="mailto:privacy@vocaband.com"
-              className="inline-flex items-center gap-3 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all"
+              className={`inline-flex items-center gap-3 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all`}
             >
               <Mail size={18} /> privacy@vocaband.com
             </a>
@@ -447,17 +447,17 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
         {/* Footer */}
         <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4">
+          <div className={`flex items-center gap-4`}>
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+                className={`flex items-center gap-2 text-primary font-bold hover:underline transition-all group`}
               >
-                <ArrowLeft size={18} className="transition-transform group-hover:-translate-x-1" />
+                <ArrowLeft size={18} className={`transition-transform ${isRTL ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`} />
                 <span>{t.footer.backButton}</span>
               </button>
             )}
-            <p className={`text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-sm text-on-surface-variant`}>
               <strong>{t.footer.related}</strong>{" "}
               <button onClick={() => onNavigate("terms")} className="text-primary hover:underline">
                 {t.footer.termsLink}

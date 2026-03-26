@@ -54,6 +54,7 @@ import LandingPage from "./components/LandingPage";
 import TermsPage from "./components/TermsPage";
 import PublicPrivacyPage from "./components/PublicPrivacyPage";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
+import DemoMode from "./components/DemoMode";
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -315,6 +316,7 @@ export default function App() {
     setView(viewMap[page]);
   };
   const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
+  const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
@@ -2139,8 +2141,18 @@ export default function App() {
             provider: 'google',
             options: { redirectTo: window.location.origin },
           })}
+          onTryDemo={() => setShowDemo(true)}
           isAuthenticated={!!user}
         />
+        {showDemo && (
+          <DemoMode
+            onClose={() => setShowDemo(false)}
+            onSignUp={() => {
+              setShowDemo(false);
+              setView("landing");
+            }}
+          />
+        )}
         {showCookieBanner && (
           <CookieBanner
             onAccept={handleCookieAccept}

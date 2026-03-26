@@ -17,7 +17,7 @@ const getInitialLanguage = (): Language => {
   return 'en';
 };
 
-// Initialize global state
+// Initialize global state and set initial RTL
 if (typeof window !== 'undefined') {
   globalLanguage = getInitialLanguage();
 }
@@ -26,7 +26,7 @@ const setGlobalLanguage = (lang: Language) => {
   globalLanguage = lang;
   if (typeof window !== 'undefined') {
     localStorage.setItem(LANGUAGE_KEY, lang);
-    // Note: dir is NOT set globally - only individual components (Privacy/Terms) use RTL
+    // Don't set global dir - let individual pages control their own RTL
     document.documentElement.setAttribute('lang', lang);
   }
   // Notify all listeners
