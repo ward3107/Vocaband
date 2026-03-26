@@ -2283,13 +2283,44 @@ export default function App() {
                 </div>
 
                 {/* Right Column: Avatar Picker */}
-                <div className="bg-surface-container-low rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-6 relative overflow-hidden flex flex-col border border-surface-container-high">
+                <div
+                  className="bg-surface-container-low rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-6 relative overflow-hidden flex flex-col border border-surface-container-high select-none"
+                  onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
+                  }}
+                  onTouchEnd={(e) => {
+                    const touch = e.changedTouches[0];
+                    const startX = parseFloat((e.currentTarget as HTMLElement).dataset.touchStartX || '0');
+                    const deltaX = touch.clientX - startX;
+                    const minSwipeDistance = 50;
+
+                    const availableCategories = (Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
+                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0);
+                    const currentIndex = availableCategories.indexOf(selectedAvatarCategory);
+
+                    if (deltaX < -minSwipeDistance && currentIndex < availableCategories.length - 1) {
+                      // Swipe left - go to next category
+                      setSelectedAvatarCategory(availableCategories[currentIndex + 1]);
+                    } else if (deltaX > minSwipeDistance && currentIndex > 0) {
+                      // Swipe right - go to previous category
+                      setSelectedAvatarCategory(availableCategories[currentIndex - 1]);
+                    }
+                  }}
+                >
                   <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h2 className="text-lg sm:text-xl font-black text-on-surface font-headline">Pick Your Avatar</h2>
                     <div className="bg-surface-container-lowest px-2 sm:px-3 py-1 rounded-full border border-surface-container-high flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
                       <span className="text-[9px] sm:text-[10px] font-black text-on-surface-variant font-headline uppercase">Required</span>
                     </div>
+                  </div>
+
+                  {/* Swipe hint for mobile */}
+                  <div className="sm:hidden text-center text-[10px] text-on-surface-variant mb-2 flex items-center justify-center gap-1">
+                    <span>←</span>
+                    <span className="font-medium">Swipe to change category</span>
+                    <span>→</span>
                   </div>
 
                   {/* Avatar Categories Navigation */}
