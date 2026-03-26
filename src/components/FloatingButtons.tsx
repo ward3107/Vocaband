@@ -7,63 +7,63 @@ interface FloatingButtonsProps {
   className?: string;
 }
 
-// Detect background color at a specific position
-function getBackgroundColorAtPoint(x: number, y: number): { r: number; g: number; b: number } | null {
+// Get the visible background color at a point by traversing the DOM
+function getVisibleBackgroundColor(x: number, y: number): { r: number; g: number; b: number } | null {
   const elements = document.elementsFromPoint(x, y);
+
   for (const el of elements) {
-    if (el instanceof HTMLElement || el instanceof SVGElement) {
-      const style = window.getComputedStyle(el);
-      const bg = style.backgroundColor;
-      if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
-        const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (match) {
-          return {
-            r: parseInt(match[1]),
-            g: parseInt(match[2]),
-            b: parseInt(match[3]),
-          };
+    if (!(el instanceof HTMLElement)) continue;
+    if (el.closest('[data-floating-buttons]')) continue;
+
+    const style = window.getComputedStyle(el);
+    const bg = style.backgroundColor;
+
+    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+      const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        if (r > 5 || g > 5 || b > 5) {
+          return { r, g, b };
         }
       }
     }
   }
+
+  const bodyStyle = window.getComputedStyle(document.body);
+  const bodyBg = bodyStyle.backgroundColor;
+  if (bodyBg && bodyBg !== "rgba(0, 0, 0, 0)" && bodyBg !== "transparent") {
+    const match = bodyBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
+    }
+  }
+
   return null;
 }
 
-// Analyze color and return button style info
-function analyzeColor(rgb: { r: number; g: number; b: number } | null): {
-  isDark: boolean;
-  hue: 'warm' | 'cool' | 'neutral';
-  saturation: 'vibrant' | 'muted' | 'neutral';
-} {
-  if (!rgb) {
-    return { isDark: false, hue: 'neutral', saturation: 'neutral' };
-  }
-
-  const { r, g, b } = rgb;
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const sat = max === 0 ? 0 : (max - min) / max;
-
-  // Determine hue category
-  let hue: 'warm' | 'cool' | 'neutral' = 'neutral';
-  if (sat > 0.2) {
-    if (r > g && r > b) hue = 'warm'; // Reds, oranges
-    else if (b > r || (g > r && g > b)) hue = 'cool'; // Blues, purples
-    else if (g > b && g > r * 0.8) hue = 'warm'; // Greens, yellows
-  }
-
-  // Determine saturation
-  let saturation: 'vibrant' | 'muted' | 'neutral' = 'neutral';
-  if (sat > 0.5) saturation = 'vibrant';
-  else if (sat > 0.2) saturation = 'muted';
-
-  return {
-    isDark: luminance < 0.5,
-    hue,
-    saturation,
-  };
+function getLuminance(rgb: { r: number; g: number; b: number }): number {
+  return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
 }
+
+function getSaturation(rgb: { r: number; g: number; b: number }): number {
+  const max = Math.max(rgb.r, rgb.g, rgb.b);
+  const min = Math.min(rgb.r, rgb.g, rgb.b);
+  return max === 0 ? 0 : (max - min) / max;
+}
+
+function getColorTemperature(rgb: { r: number; g: number; b: number }): 'warm' | 'cool' | 'neutral' {
+  const sat = getSaturation(rgb);
+  if (sat < 0.15) return 'neutral';
+  const { r, g, b } = rgb;
+  if (r > b && (r > g || g > b)) return 'warm';
+  if (b > r || (b > g * 0.8)) return 'cool';
+  return 'neutral';
+}
+
+// Convert RGBA to rgba() string
+const rgba = (r: number, g: number, b: number, a: number) => `rgba(${r}, ${g}, ${b}, ${a})`;
 
 const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   showBackToTop = true,
@@ -72,63 +72,82 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showBackToTopBtn, setShowBackToTopBtn] = useState(false);
-  const [colorInfo, setColorInfo] = useState<{ isDark: boolean; hue: 'warm' | 'cool' | 'neutral'; saturation: 'vibrant' | 'muted' | 'neutral' }>({
-    isDark: false,
-    hue: 'neutral',
-    saturation: 'neutral',
-  });
+  const [buttonColor, setButtonColor] = useState({ r: 245, g: 245, b: 244 });
   const shareRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Detect background color
-  const detectBackground = useCallback(() => {
+  const detectBackgroundColor = useCallback(() => {
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
+    const samplePoints = [
+      { x: rect.left - 20, y: rect.top + rect.height / 2 },
+      { x: rect.right + 20, y: rect.top + rect.height / 2 },
+      { x: rect.left + rect.width / 2, y: rect.top - 20 },
+      { x: rect.left + rect.width / 2, y: rect.bottom + 60 },
+    ];
 
-    const rgb = getBackgroundColorAtPoint(x, y);
-    const info = analyzeColor(rgb);
-    setColorInfo(info);
+    const colors: { r: number; g: number; b: number }[] = [];
+
+    for (const point of samplePoints) {
+      const color = getVisibleBackgroundColor(point.x, point.y);
+      if (color) colors.push(color);
+    }
+
+    if (colors.length === 0) return;
+
+    const avgColor = colors.reduce(
+      (acc, c) => ({ r: acc.r + c.r, g: acc.g + c.g, b: acc.b + c.b }),
+      { r: 0, g: 0, b: 0 }
+    );
+
+    setButtonColor({
+      r: Math.round(avgColor.r / colors.length),
+      g: Math.round(avgColor.g / colors.length),
+      b: Math.round(avgColor.b / colors.length),
+    });
   }, []);
 
-  // Scroll listener with detection
   useEffect(() => {
     let ticking = false;
+    let lastScrollY = 0;
 
     const handleScroll = () => {
-      setShowBackToTopBtn(window.scrollY > 300);
+      const currentScrollY = window.scrollY;
+      setShowBackToTopBtn(currentScrollY > 300);
 
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          detectBackground();
-          ticking = false;
-        });
-        ticking = true;
+      if (Math.abs(currentScrollY - lastScrollY) > 50) {
+        lastScrollY = currentScrollY;
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            detectBackgroundColor();
+            ticking = false;
+          });
+          ticking = true;
+        }
       }
     };
 
-    detectBackground(); // Initial check
+    detectBackgroundColor();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", detectBackground);
+    window.addEventListener("resize", detectBackgroundColor);
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", detectBackground);
-  };
-  }, [detectBackground]);
+      window.removeEventListener("resize", detectBackgroundColor);
+    };
+  }, [detectBackgroundColor]);
 
-  // Close share when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-    if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
-      setShareOpen(false);
+      if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
+        setShareOpen(false);
+      }
+    };
+    if (shareOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
     }
-  };
-  if (shareOpen) {
-    document.addEventListener("mousedown", handleClickOutside);
-  }
-  return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [shareOpen]);
 
   const scrollToTop = () => {
@@ -169,93 +188,123 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         setTimeout(() => setCopied(false), 2000);
       },
     },
-  ], [shareUrl, shareText, copied]);
+  ], [shareUrl, copied]);
 
-  // Dynamic button styles based on detected background
-  const buttonStyles = useMemo(() => {
-    const { isDark, hue, saturation } = colorInfo;
+  // Calculate dynamic button styles - use ONLY backgroundColor, never 'background'
+  const styles = useMemo(() => {
+    const luminance = getLuminance(buttonColor);
+    const saturation = getSaturation(buttonColor);
+    const temperature = getColorTemperature(buttonColor);
 
-    // Base styles for different background types
-    if (saturation === 'vibrant') {
-      // Vibrant colored background - use contrasting solid color
-      if (hue === 'warm') {
-        // Warm background (orange, pink) -> Cool button (blue/purple)
+    const isDark = luminance < 0.5;
+    const isVibrant = saturation > 0.4;
+    const isMuted = saturation > 0.15 && saturation <= 0.4;
+
+    // Shared glass effect properties
+    const glassBase = {
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+    };
+
+    if (isVibrant) {
+      if (temperature === 'warm') {
         return {
-          button: "bg-blue-600 text-white shadow-lg shadow-blue-500/40",
-          hover: "hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-500/50",
-          popup: "bg-blue-600 border-blue-500",
+          button: { ...glassBase, backgroundColor: rgba(8, 145, 145, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(8, 145, 145, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+          hover: { backgroundColor: rgba(13, 148, 136, 0.7), boxShadow: '0 12px 40px rgba(8, 145, 145, 0.35)' },
+          popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(8, 145, 145, 0.25) },
+          popupItem: { backgroundColor: rgba(8, 145, 145, 0.85), color: 'white' },
         };
-      } else if (hue === 'cool') {
-        // Cool background (blue, purple) -> Warm button (orange/pink)
+      } else {
         return {
-          button: "bg-orange-500 text-white shadow-lg shadow-orange-500/40",
-          hover: "hover:bg-orange-600 hover:shadow-xl hover:shadow-orange-500/50",
-          popup: "bg-orange-500 border-orange-400",
+          button: { ...glassBase, backgroundColor: rgba(249, 115, 22, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(249, 115, 22, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+          hover: { backgroundColor: rgba(234, 88, 12, 0.7), boxShadow: '0 12px 40px rgba(249, 115, 22, 0.35)' },
+          popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(249, 115, 22, 0.25) },
+          popupItem: { backgroundColor: rgba(249, 115, 22, 0.85), color: 'white' },
         };
       }
     }
 
-    // Muted colored background
-    if (saturation === 'muted') {
+    if (isMuted) {
       return {
-        button: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/40",
-        hover: "hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-xl",
-        popup: "bg-gradient-to-br from-violet-600 to-fuchsia-600 border-violet-500",
+        button: { ...glassBase, backgroundColor: rgba(139, 92, 246, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(139, 92, 246, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+        hover: { backgroundColor: rgba(124, 58, 237, 0.7), boxShadow: '0 12px 40px rgba(139, 92, 246, 0.35)' },
+        popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(139, 92, 246, 0.25) },
+        popupItem: { backgroundColor: rgba(139, 92, 246, 0.85), color: 'white' },
       };
     }
 
-    // Neutral/grayscale background
+    // Neutral background
     if (isDark) {
-      // Dark background -> Light button
       return {
-        button: "bg-white text-stone-900 shadow-lg shadow-white/30",
-        hover: "hover:bg-stone-100 hover:shadow-xl",
-        popup: "bg-white border-stone-200",
+        button: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.12), color: 'white', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+        hover: { backgroundColor: rgba(255, 255, 255, 0.22), boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)' },
+        popup: { ...glassBase, backgroundColor: rgba(0, 0, 0, 0.55), borderColor: rgba(255, 255, 255, 0.1) },
+        popupItem: { backgroundColor: rgba(255, 255, 255, 0.9), color: 'rgb(28, 25, 23)' },
       };
     } else {
-      // Light background -> Dark button
       return {
-        button: "bg-stone-900 text-white shadow-lg shadow-stone-900/30",
-        hover: "hover:bg-stone-800 hover:shadow-xl",
-        popup: "bg-stone-900 border-stone-700",
+        button: { ...glassBase, backgroundColor: rgba(28, 25, 23, 0.35), color: 'white', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)', border: '1px solid rgba(255, 255, 255, 0.08)' },
+        hover: { backgroundColor: rgba(28, 25, 23, 0.5), boxShadow: '0 12px 40px rgba(0, 0, 0, 0.18)' },
+        popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(28, 25, 23, 0.08) },
+        popupItem: { backgroundColor: rgba(28, 25, 23, 0.75), color: 'white' },
       };
     }
-  }, [colorInfo]);
+  }, [buttonColor]);
+
+  const [isHovered, setIsHovered] = useState<string | null>(null);
+
+  // Get button style based on state
+  const getButtonStyle = (type: 'share' | 'backToTop') => {
+    const base = styles.button;
+    const hover = isHovered === type ? styles.hover : {};
+    return { ...base, ...hover };
+  };
 
   return (
     <div
       ref={shareRef}
-      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-2 md:gap-3 ${className}`}
+      data-floating-buttons
+      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-3 ${className}`}
     >
-      {/* Invisible detector element */}
-      <div ref={containerRef} className="absolute inset-0 pointer-events-none" />
+      <div
+        ref={containerRef}
+        className="absolute pointer-events-none"
+        style={{ width: 60, height: 60 }}
+      />
 
       {/* Share Button */}
       <motion.button
         onClick={() => setShareOpen(!shareOpen)}
-        whileHover={{ scale: 1.1 }}
+        onMouseEnter={() => setIsHovered('share')}
+        onMouseLeave={() => setIsHovered(null)}
+        whileHover={{ scale: shareOpen ? 1 : 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border-2 ${
-          shareOpen
-            ? "bg-white text-stone-900 border-white shadow-xl"
-            : `${buttonStyles.button} ${buttonStyles.hover} border-transparent`
-        }`}
+        className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
+        style={shareOpen ? {
+          backgroundColor: 'white',
+          color: 'rgb(28, 25, 23)',
+          transform: 'rotate(45deg)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+        } : getButtonStyle('share')}
         title="Share"
       >
         <Share2 size={22} strokeWidth={2.5} />
       </motion.button>
 
-      {/* Expanded options */}
+      {/* Share Options - Horizontal popup */}
       <AnimatePresence>
         {shareOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className={`absolute bottom-full left-0 mb-2 flex flex-col gap-2 backdrop-blur-xl rounded-2xl p-3 shadow-2xl border-2 transition-colors duration-300 ${buttonStyles.popup}`}
+            initial={{ opacity: 0, x: -20, scale: 0.9 }}
+            animate={{ opacity: 1, x: 52, y: -52, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.9 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute flex items-center gap-2 px-3 py-2 rounded-2xl shadow-2xl border-2"
+            style={styles.popup}
           >
-            {shareOptions.map((option) => {
+            {shareOptions.map((option, index) => {
               const Icon = option.icon;
+              const isThisHovered = isHovered === option.name;
               return (
                 <motion.button
                   key={option.name}
@@ -263,16 +312,22 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
                     option.action();
                     if (option.name !== "Copy Link") setShareOpen(false);
                   }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
+                  onMouseEnter={() => setIsHovered(option.name)}
+                  onMouseLeave={() => setIsHovered(null)}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-all duration-200"
+                  style={
                     copied && option.name === "Copy Link"
-                      ? "bg-green-500 text-white"
-                      : "bg-white/90 text-stone-900 hover:bg-white"
-                  }`}
+                      ? { backgroundColor: 'rgb(34, 197, 94)', color: 'white' }
+                      : { ...styles.popupItem, transform: isThisHovered ? 'scale(1.15)' : undefined }
+                  }
                   title={option.name}
                 >
-                  <Icon size={22} strokeWidth={2.5} />
+                  <Icon size={20} strokeWidth={2.5} />
                 </motion.button>
               );
             })}
@@ -284,9 +339,15 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       {showBackToTop && showBackToTopBtn && (
         <motion.button
           onClick={scrollToTop}
+          onMouseEnter={() => setIsHovered('backToTop')}
+          onMouseLeave={() => setIsHovered(null)}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border-2 border-transparent ${buttonStyles.button} ${buttonStyles.hover}`}
+          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
+          style={getButtonStyle('backToTop')}
           title="Back to top"
         >
           <ArrowUp size={22} strokeWidth={2.5} />

@@ -546,7 +546,7 @@ export default function App() {
   useEffect(() => {
     if (motivationalMessage) {
       const textOnly = motivationalMessage.replace(/[\u{1F600}-\u{1F9FF}\u{2600}-\u{2B55}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
-      playMotivational("any");
+      playMotivational();
     }
   }, [motivationalMessage]);
 
