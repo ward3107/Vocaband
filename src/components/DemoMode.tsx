@@ -775,52 +775,60 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
               {/* Classic Mode */}
               {selectedMode === "classic" && (
-                <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
-                    <div className="text-4xl font-black text-stone-900 mb-4">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-4 border-blue-600" : isCorrect === false ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+                >
+                  {/* Progress Bar */}
+                  <progress
+                    className="absolute top-0 left-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
+                    max={100}
+                    value={((currentWordIndex + 1) / DEMO_WORDS.length) * 100}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-2 sm:mb-4">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  <div className="flex flex-col items-center justify-center gap-4 mb-8">
+                    <h2 className="text-2xl sm:text-5xl font-black text-stone-900 break-words w-full text-center" dir="ltr">
                       {currentWord.english}
-                    </div>
+                    </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto hover:bg-blue-700 transition-colors"
+                      className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      aria-label="Play pronunciation"
                     >
-                      <Volume2 size={24} />
+                      <Volume2 size={24} className="text-stone-600" />
                     </button>
-                    <p className="text-sm text-stone-500 mt-2">{t.tapToHear}</p>
                   </div>
 
-                  <p className="text-stone-600 mb-4 text-center">{t.whatDoesMean}</p>
-
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
                     {options.map((option, i) => {
                       const isSelected = selectedAnswer === option;
                       const correctMeaning = getMeaning(currentWord, language);
                       const isCorrectAnswer = option === correctMeaning;
                       const showResult = selectedAnswer !== null;
 
-                      let bgClass = "bg-white border-stone-200";
-                      if (showResult && isCorrectAnswer) bgClass = "bg-green-100 border-green-500";
-                      if (showResult && isSelected && !isCorrect) bgClass = "bg-red-100 border-red-500";
+                      let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200";
+                      if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white scale-105 shadow-xl";
+                      if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
 
                       return (
                         <button
                           key={i}
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
-                          className={`w-full p-4 rounded-2xl border-2 ${bgClass} transition-all ${isRTL ? 'text-right' : 'text-left'} ${!showResult ? "hover:border-blue-300" : ""}`}
+                          className={`py-3 px-4 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${btnClass}`}
+                          dir={isRTL ? 'rtl' : 'ltr'}
                         >
-                          <span className="font-bold text-stone-800">{option}</span>
-                          {showResult && isCorrectAnswer && (
-                            <span className={`text-green-600 ${isRTL ? 'float-left' : 'float-right'}`}><Check size={20} /></span>
-                          )}
-                          {showResult && isSelected && !isCorrect && (
-                            <span className={`text-red-600 ${isRTL ? 'float-left' : 'float-right'}`}><XCircle size={20} /></span>
-                          )}
+                          {option}
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Listening Mode */}
