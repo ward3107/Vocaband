@@ -8,6 +8,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/types.js";
+import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils.js";
 
 // Validate required environment variables before starting
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -21,34 +22,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
-
-// Validation constants
-const VALIDATION = {
-  CLASS_CODE_MIN: 1,
-  CLASS_CODE_MAX: 64,
-  NAME_MIN: 1,
-  NAME_MAX: 100,
-  UID_MIN: 1,
-  UID_MAX: 128,
-} as const;
-
-// Reusable validation functions
-function isValidClassCode(code: unknown): code is string {
-  return typeof code === "string" && code.length >= VALIDATION.CLASS_CODE_MIN && code.length <= VALIDATION.CLASS_CODE_MAX;
-}
-
-function isValidName(value: unknown): value is string {
-  return typeof value === "string" && value.length >= VALIDATION.NAME_MIN && value.length <= VALIDATION.NAME_MAX
-    && !/[\x00-\x1f]/.test(value); // Reject control characters
-}
-
-function isValidUid(value: unknown): value is string {
-  return typeof value === "string" && value.length >= VALIDATION.UID_MIN && value.length <= VALIDATION.UID_MAX;
-}
-
-function isValidToken(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0;
-}
 
 async function verifyToken(token: string): Promise<string | null> {
   try {
@@ -91,57 +64,6 @@ async function isTeacherForClass(uid: string, classCode: string): Promise<boolea
   } catch {
     return false;
   }
-}
-
-// Rate limiter utility for socket connections with automatic cleanup
-function createSocketRateLimiter(windowMs: number, maxAttempts: number, cleanupIntervalMs: number) {
-  const records: Record<string, { count: number; resetAt: number }> = {};
-
-  // Lazy cleanup function - removes expired entries
-  const cleanup = () => {
-    const now = Date.now();
-    let cleaned = 0;
-    for (const [ip, record] of Object.entries(records)) {
-      if (now >= record.resetAt) {
-        delete records[ip];
-        cleaned++;
-      }
-    }
-    return cleaned;
-  };
-
-  // Periodic cleanup to prevent unbounded memory growth
-  const intervalId = setInterval(cleanup, cleanupIntervalMs);
-
-  // Check if IP can proceed (returns true if allowed, false if rate limited)
-  const checkLimit = (ip: string): boolean => {
-    const now = Date.now();
-    const record = records[ip];
-
-    if (record && now < record.resetAt) {
-      // Within window - check count
-      if (record.count >= maxAttempts) {
-        return false; // Rate limited
-      }
-      record.count++;
-      return true;
-    }
-
-    // New window or expired - create new record
-    records[ip] = { count: 1, resetAt: now + windowMs };
-    return true;
-  };
-
-  // Shutdown cleanup
-  const shutdown = () => {
-    clearInterval(intervalId);
-    // Clear all records
-    for (const ip of Object.keys(records)) {
-      delete records[ip];
-    }
-  };
-
-  return { checkLimit, cleanup, shutdown, records };
 }
 
 async function startServer() {
