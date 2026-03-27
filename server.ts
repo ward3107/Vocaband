@@ -167,8 +167,8 @@ async function startServer() {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],  // unsafe-inline needed for motion library animation styles
-          fontSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],  // unsafe-inline needed for motion library animation styles; fonts.googleapis.com for Google Fonts CSS
+          fontSrc: ["'self'", "fonts.gstatic.com"],  // gstatic.com serves the actual font files
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", allowedOrigin],
           frameSrc: ["https://accounts.google.com"],

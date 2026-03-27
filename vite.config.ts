@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-
 export default defineConfig(() => {
   return {
     plugins: [
@@ -30,14 +29,9 @@ export default defineConfig(() => {
         },
         workbox: {
           cleanupOutdatedCaches: true,
-          // Block the default NavigationRoute that always serves cached HTML.
-          // Our NetworkFirst runtimeCaching handler below will handle navigation
-          // requests instead, ensuring the user always gets fresh HTML on refresh.
           navigateFallbackDenylist: [/./],
           runtimeCaching: [
             {
-              // Navigation requests — always try network first so the user
-              // gets the latest HTML.  Falls back to cache only when offline.
               urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
               handler: 'NetworkFirst',
               options: {
@@ -46,10 +40,6 @@ export default defineConfig(() => {
               },
             },
             {
-              // Same-origin static assets only — serve from cache while revalidating.
-              // Restricting to same-origin prevents the SW from trying to fetch
-              // external images (e.g. google.com/favicon.ico) which would be
-              // blocked by the connect-src CSP and produce console errors.
               urlPattern: ({ request, url }: { request: Request, url: URL }) =>
                 ['script', 'style', 'image', 'font'].includes(request.destination) &&
                 url.origin === location.origin,
@@ -68,11 +58,18 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            lucide: ['lucide-react'],
+          },
+        },
+      },
+    },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      host: true, // Allow network access for testing on mobile devices
+      host: true,
     },
   };
 });

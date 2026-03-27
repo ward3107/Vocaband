@@ -51,7 +51,26 @@
       "Bash(cd \"C:/Users/Waseem/Downloads/Vocaband/Vocaband/src/components\" && rm LandingPage.tsx && mv LandingPage_New.tsx LandingPage.tsx)",
       "mcp__chrome-devtools__list_pages",
       "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && powershell -Command \"Get-Content \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\\\\src\\\\components\\\\LandingPage.tsx -TotalCount 220 | Select-Object -First 1 | Format-Table -HideTableHeaders)",
-      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && rm -rf node_modules/.vite 2>&1 | echo \"Vite cache cleared\")"
+      "Bash(cd \"C:\\\\Users\\\\Waseem\\\\Downloads\\\\Vocaband\\\\Vocaband\" && rm -rf node_modules/.vite 2>&1 | echo \"Vite cache cleared\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3000)",
+      "Bash(findstr : :3000)",
+      "Bash(powershell -Command \" \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -Property OwningProcess)",
+      "Bash(ForEach-Object { Stop-Process -Id $_ } -Force)",
+      "Bash(xargs kill:*)",
+      "Bash(PORT=3001 npm run dev)",
+      "Bash(npx tsc:*)",
+      "Bash(taskkill:*)",
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(start:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
+      "Bash(git checkout:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/api/tours/demo-tour-001/viewer-config)",
+      "Bash(python3 -c \":*)",
+      "WebSearch",
+      "mcp__chrome-devtools__fill"
     ]
   }
 }

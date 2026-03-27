@@ -14,7 +14,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
+    <nav dir="ltr" className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = currentPage === item.id;

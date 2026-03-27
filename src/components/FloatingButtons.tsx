@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Share2, MessageCircle, Link2, Check, ArrowUp, Twitter, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -7,17 +7,63 @@ interface FloatingButtonsProps {
   className?: string;
 }
 
-// Throttle utility for scroll handlers
-function throttle<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
-  let lastCall = 0;
-  return ((...args: unknown[]) => {
-    const now = Date.now();
-    if (now - lastCall >= delay) {
-      lastCall = now;
-      fn(...args);
+// Get the visible background color at a point by traversing the DOM
+function getVisibleBackgroundColor(x: number, y: number): { r: number; g: number; b: number } | null {
+  const elements = document.elementsFromPoint(x, y);
+
+  for (const el of elements) {
+    if (!(el instanceof HTMLElement)) continue;
+    if (el.closest('[data-floating-buttons]')) continue;
+
+    const style = window.getComputedStyle(el);
+    const bg = style.backgroundColor;
+
+    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+      const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        if (r > 5 || g > 5 || b > 5) {
+          return { r, g, b };
+        }
+      }
     }
-  }) as T;
+  }
+
+  const bodyStyle = window.getComputedStyle(document.body);
+  const bodyBg = bodyStyle.backgroundColor;
+  if (bodyBg && bodyBg !== "rgba(0, 0, 0, 0)" && bodyBg !== "transparent") {
+    const match = bodyBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
+    }
+  }
+
+  return null;
 }
+
+function getLuminance(rgb: { r: number; g: number; b: number }): number {
+  return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+}
+
+function getSaturation(rgb: { r: number; g: number; b: number }): number {
+  const max = Math.max(rgb.r, rgb.g, rgb.b);
+  const min = Math.min(rgb.r, rgb.g, rgb.b);
+  return max === 0 ? 0 : (max - min) / max;
+}
+
+function getColorTemperature(rgb: { r: number; g: number; b: number }): 'warm' | 'cool' | 'neutral' {
+  const sat = getSaturation(rgb);
+  if (sat < 0.15) return 'neutral';
+  const { r, g, b } = rgb;
+  if (r > b && (r > g || g > b)) return 'warm';
+  if (b > r || (b > g * 0.8)) return 'cool';
+  return 'neutral';
+}
+
+// Convert RGBA to rgba() string
+const rgba = (r: number, g: number, b: number, a: number) => `rgba(${r}, ${g}, ${b}, ${a})`;
 
 const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   showBackToTop = true,
@@ -26,58 +72,72 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showBackToTopBtn, setShowBackToTopBtn] = useState(false);
-  const [isDarkBackground, setIsDarkBackground] = useState(false);
+  const [buttonColor, setButtonColor] = useState({ r: 245, g: 245, b: 244 });
   const shareRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const checkBackgroundBrightness = useCallback(() => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const elementsAtPoint = document.elementsFromPoint(centerX, centerY);
-    const backgroundElement = elementsAtPoint.find(
-      (el) => !buttonRef.current?.contains(el) && el !== buttonRef.current
-    );
-    if (backgroundElement) {
-      const style = window.getComputedStyle(backgroundElement);
-      const bgColor = style.backgroundColor;
-      if (bgColor && bgColor !== "rgba(0, 0, 0, 0)" && bgColor !== "transparent") {
-        const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (match) {
-          const r = parseInt(match[1]);
-          const g = parseInt(match[2]);
-          const b = parseInt(match[3]);
-          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          setIsDarkBackground(luminance < 0.5);
-          return;
-        }
-      }
+  const detectBackgroundColor = useCallback(() => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const samplePoints = [
+      { x: rect.left - 20, y: rect.top + rect.height / 2 },
+      { x: rect.right + 20, y: rect.top + rect.height / 2 },
+      { x: rect.left + rect.width / 2, y: rect.top - 20 },
+      { x: rect.left + rect.width / 2, y: rect.bottom + 60 },
+    ];
+
+    const colors: { r: number; g: number; b: number }[] = [];
+
+    for (const point of samplePoints) {
+      const color = getVisibleBackgroundColor(point.x, point.y);
+      if (color) colors.push(color);
     }
-    const isDarkMode = document.documentElement.classList.contains("dark") ||
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setIsDarkBackground(isDarkMode);
+
+    if (colors.length === 0) return;
+
+    const avgColor = colors.reduce(
+      (acc, c) => ({ r: acc.r + c.r, g: acc.g + c.g, b: acc.b + c.b }),
+      { r: 0, g: 0, b: 0 }
+    );
+
+    setButtonColor({
+      r: Math.round(avgColor.r / colors.length),
+      g: Math.round(avgColor.g / colors.length),
+      b: Math.round(avgColor.b / colors.length),
+    });
   }, []);
 
-  // Combined scroll listener with throttling for performance
   useEffect(() => {
-    const throttledCheck = throttle(checkBackgroundBrightness, 100);
+    let ticking = false;
+    let lastScrollY = 0;
 
     const handleScroll = () => {
-      setShowBackToTopBtn(window.scrollY > 300);
-      throttledCheck();
+      const currentScrollY = window.scrollY;
+      setShowBackToTopBtn(currentScrollY > 300);
+
+      if (Math.abs(currentScrollY - lastScrollY) > 50) {
+        lastScrollY = currentScrollY;
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            detectBackgroundColor();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }
     };
 
-    checkBackgroundBrightness(); // Initial check
+    detectBackgroundColor();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", throttledCheck);
+    window.addEventListener("resize", detectBackgroundColor);
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", throttledCheck);
+      window.removeEventListener("resize", detectBackgroundColor);
     };
-  }, [checkBackgroundBrightness]);
+  }, [detectBackgroundColor]);
 
-  // Close share when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
@@ -87,9 +147,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     if (shareOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [shareOpen]);
 
   const scrollToTop = () => {
@@ -99,12 +157,10 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
   const shareText = "Check out Vocaband - the fun way to master English vocabulary for Israeli EFL students!";
 
-  // Memoize shareOptions to prevent recreation on every render
   const shareOptions = useMemo(() => [
     {
       name: "WhatsApp",
       icon: MessageCircle,
-      color: "bg-green-500",
       action: () => {
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(shareUrl)}`, "_blank");
       },
@@ -112,7 +168,6 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "Twitter",
       icon: Twitter,
-      color: "bg-sky-500",
       action: () => {
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
       },
@@ -120,7 +175,6 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "Email",
       icon: Mail,
-      color: "bg-stone-600",
       action: () => {
         window.open(`mailto:?subject=${encodeURIComponent("Check out Vocaband!")}&body=${encodeURIComponent(shareText + "\n\n" + shareUrl)}`, "_blank");
       },
@@ -128,58 +182,129 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "Copy Link",
       icon: copied ? Check : Link2,
-      color: copied ? "bg-green-500" : "bg-stone-500",
       action: () => {
         navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       },
     },
-  ], [shareUrl, shareText, copied]);
+  ], [shareUrl, copied]);
 
-  const buttonBaseClass = isDarkBackground
-    ? "bg-white/95 text-stone-900 border-white/30"
-    : "bg-stone-900/95 text-white border-stone-700/30";
-  const hoverClass = isDarkBackground
-    ? "hover:bg-white hover:text-primary"
-    : "hover:bg-primary hover:text-white";
+  // Calculate dynamic button styles - use ONLY backgroundColor, never 'background'
+  const styles = useMemo(() => {
+    const luminance = getLuminance(buttonColor);
+    const saturation = getSaturation(buttonColor);
+    const temperature = getColorTemperature(buttonColor);
+
+    const isDark = luminance < 0.5;
+    const isVibrant = saturation > 0.4;
+    const isMuted = saturation > 0.15 && saturation <= 0.4;
+
+    // Shared glass effect properties
+    const glassBase = {
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+    };
+
+    if (isVibrant) {
+      if (temperature === 'warm') {
+        return {
+          button: { ...glassBase, backgroundColor: rgba(8, 145, 145, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(8, 145, 145, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+          hover: { backgroundColor: rgba(13, 148, 136, 0.7), boxShadow: '0 12px 40px rgba(8, 145, 145, 0.35)' },
+          popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(8, 145, 145, 0.25) },
+          popupItem: { backgroundColor: rgba(8, 145, 145, 0.85), color: 'white' },
+        };
+      } else {
+        return {
+          button: { ...glassBase, backgroundColor: rgba(249, 115, 22, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(249, 115, 22, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+          hover: { backgroundColor: rgba(234, 88, 12, 0.7), boxShadow: '0 12px 40px rgba(249, 115, 22, 0.35)' },
+          popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(249, 115, 22, 0.25) },
+          popupItem: { backgroundColor: rgba(249, 115, 22, 0.85), color: 'white' },
+        };
+      }
+    }
+
+    if (isMuted) {
+      return {
+        button: { ...glassBase, backgroundColor: rgba(139, 92, 246, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(139, 92, 246, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+        hover: { backgroundColor: rgba(124, 58, 237, 0.7), boxShadow: '0 12px 40px rgba(139, 92, 246, 0.35)' },
+        popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(139, 92, 246, 0.25) },
+        popupItem: { backgroundColor: rgba(139, 92, 246, 0.85), color: 'white' },
+      };
+    }
+
+    // Neutral background
+    if (isDark) {
+      return {
+        button: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.12), color: 'white', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
+        hover: { backgroundColor: rgba(255, 255, 255, 0.22), boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)' },
+        popup: { ...glassBase, backgroundColor: rgba(0, 0, 0, 0.55), borderColor: rgba(255, 255, 255, 0.1) },
+        popupItem: { backgroundColor: rgba(255, 255, 255, 0.9), color: 'rgb(28, 25, 23)' },
+      };
+    } else {
+      return {
+        button: { ...glassBase, backgroundColor: rgba(28, 25, 23, 0.35), color: 'white', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)', border: '1px solid rgba(255, 255, 255, 0.08)' },
+        hover: { backgroundColor: rgba(28, 25, 23, 0.5), boxShadow: '0 12px 40px rgba(0, 0, 0, 0.18)' },
+        popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(28, 25, 23, 0.08) },
+        popupItem: { backgroundColor: rgba(28, 25, 23, 0.75), color: 'white' },
+      };
+    }
+  }, [buttonColor]);
+
+  const [isHovered, setIsHovered] = useState<string | null>(null);
+
+  // Get button style based on state
+  const getButtonStyle = (type: 'share' | 'backToTop') => {
+    const base = styles.button;
+    const hover = isHovered === type ? styles.hover : {};
+    return { ...base, ...hover };
+  };
 
   return (
     <div
       ref={shareRef}
-      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-2 md:gap-3 ${className}`}
+      data-floating-buttons
+      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-3 ${className}`}
     >
+      <div
+        ref={containerRef}
+        className="absolute pointer-events-none"
+        style={{ width: 60, height: 60 }}
+      />
+
       {/* Share Button */}
       <motion.button
-        ref={buttonRef}
         onClick={() => setShareOpen(!shareOpen)}
-        whileHover={{ scale: 1.1 }}
+        onMouseEnter={() => setIsHovered('share')}
+        onMouseLeave={() => setIsHovered(null)}
+        whileHover={{ scale: shareOpen ? 1 : 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all shadow-lg border transition-colors duration-200 ${
-          shareOpen
-            ? "bg-primary text-white border-primary"
-            : `${buttonBaseClass} ${hoverClass}`
-        }`}
+        className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
+        style={shareOpen ? {
+          backgroundColor: 'white',
+          color: 'rgb(28, 25, 23)',
+          transform: 'rotate(45deg)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+        } : getButtonStyle('share')}
         title="Share"
       >
-        <Share2 size={22} />
+        <Share2 size={22} strokeWidth={2.5} />
       </motion.button>
 
-      {/* Expanded options - only rendered when open */}
+      {/* Share Options - Horizontal popup */}
       <AnimatePresence>
         {shareOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className={`absolute bottom-full left-0 mb-2 flex flex-col gap-2 backdrop-blur-xl rounded-2xl p-3 shadow-2xl border transition-colors duration-200 ${
-              isDarkBackground
-                ? "bg-stone-900/95 border-stone-700"
-                : "bg-white/95 border-stone-200"
-            }`}
+            initial={{ opacity: 0, x: -20, scale: 0.9 }}
+            animate={{ opacity: 1, x: 52, y: -52, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.9 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute flex items-center gap-2 px-3 py-2 rounded-2xl shadow-2xl border-2"
+            style={styles.popup}
           >
-            {shareOptions.map((option) => {
+            {shareOptions.map((option, index) => {
               const Icon = option.icon;
+              const isThisHovered = isHovered === option.name;
               return (
                 <motion.button
                   key={option.name}
@@ -187,12 +312,22 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
                     option.action();
                     if (option.name !== "Copy Link") setShareOpen(false);
                   }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md ${option.color} text-white`}
+                  onMouseEnter={() => setIsHovered(option.name)}
+                  onMouseLeave={() => setIsHovered(null)}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-all duration-200"
+                  style={
+                    copied && option.name === "Copy Link"
+                      ? { backgroundColor: 'rgb(34, 197, 94)', color: 'white' }
+                      : { ...styles.popupItem, transform: isThisHovered ? 'scale(1.15)' : undefined }
+                  }
                   title={option.name}
                 >
-                  <Icon size={22} strokeWidth={2.5} />
+                  <Icon size={20} strokeWidth={2.5} />
                 </motion.button>
               );
             })}
@@ -204,9 +339,15 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       {showBackToTop && showBackToTopBtn && (
         <motion.button
           onClick={scrollToTop}
+          onMouseEnter={() => setIsHovered('backToTop')}
+          onMouseLeave={() => setIsHovered(null)}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all shadow-lg border transition-colors duration-200 ${buttonBaseClass} ${hoverClass}`}
+          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
+          style={getButtonStyle('backToTop')}
           title="Back to top"
         >
           <ArrowUp size={22} strokeWidth={2.5} />

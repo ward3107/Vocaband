@@ -15,9 +15,12 @@ import FloatingButtons from "./FloatingButtons";
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  onTeacherLogin: () => void;
+  onTryDemo?: () => void;
+  isAuthenticated?: boolean;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   return (
     <div className="min-h-screen bg-surface overflow-x-hidden">
       <PublicNav
@@ -64,7 +67,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
             </motion.p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
+            <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
               <motion.button
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -75,15 +78,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
                 Start Learning
                 <Rocket size={24} />
               </motion.button>
-              <motion.button
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.4 }}
-                onClick={onGetStarted}
-                className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
-              >
-                Teacher Login
-              </motion.button>
+              {onTryDemo && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.35 }}
+                  onClick={onTryDemo}
+                  className="bg-surface-container-lowest/20 border-2 border-surface-container-lowest/40 backdrop-blur-sm text-on-primary px-8 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <Gamepad2 size={20} />
+                  Try Demo
+                </motion.button>
+              )}
+              {!isAuthenticated && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.4 }}
+                  onClick={onTeacherLogin}
+                  className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
+                >
+                  Teacher Login
+                </motion.button>
+              )}
             </div>
 
             {/* Social Proof */}
@@ -525,16 +542,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted }) =
               </motion.button>
 
               {/* Teacher Login Button - Pop in */}
-              <motion.button
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.2 }}
-                onClick={onGetStarted}
-                className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
-              >
-                Teacher Login
-              </motion.button>
+              {!isAuthenticated && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.2 }}
+                  onClick={onTeacherLogin}
+                  className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
+                >
+                  Teacher Login
+                </motion.button>
+              )}
             </div>
           </div>
         </section>

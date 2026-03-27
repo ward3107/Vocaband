@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
+import { useAudio } from "./hooks/useAudio";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./privacy-config";
 import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
@@ -53,6 +54,7 @@ import LandingPage from "./components/LandingPage";
 import TermsPage from "./components/TermsPage";
 import PublicPrivacyPage from "./components/PublicPrivacyPage";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
+import DemoMode from "./components/DemoMode";
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -127,6 +129,13 @@ const POWER_UP_DEFS = [
   { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 30 },
   { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 40 },
   { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
+];
+
+// Boosters — high-demand items for 2026 students
+const BOOSTERS_DEFS = [
+  { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 200 },
+  { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
+  { id: 'xp_booster', name: '2x XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 300 },
 ];
 
 // Name frames — decorative borders around student avatar on dashboard & leaderboard
@@ -260,6 +269,20 @@ export default function App() {
     | "shop"
     | "privacy-settings"
   >("public-landing");
+  const previousViewRef = useRef<string>("public-landing");
+
+  // Custom setView that tracks previous view for back navigation
+  const handleSetView = (newView: typeof view) => {
+    // Only track previous view when navigating TO privacy/terms pages
+    if (newView === "public-privacy" || newView === "public-terms") {
+      previousViewRef.current = view;
+    }
+    setView(newView);
+  };
+
+  const goBack = () => {
+    setView(previousViewRef.current as any);
+  };
 
   // Cookie consent state
   const [showCookieBanner, setShowCookieBanner] = useState(() => {
@@ -292,7 +315,8 @@ export default function App() {
     } as const;
     setView(viewMap[page]);
   };
-  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames">("avatars");
+  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
+  const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
@@ -457,6 +481,8 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
+  const { speak: speakWord, preloadMany, preloadMotivational, playMotivational } = useAudio();
+
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
@@ -522,7 +548,7 @@ export default function App() {
   useEffect(() => {
     if (motivationalMessage) {
       const textOnly = motivationalMessage.replace(/[\u{1F600}-\u{1F9FF}\u{2600}-\u{2B55}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
-      if (textOnly) speak(textOnly);
+      playMotivational();
     }
   }, [motivationalMessage]);
 
@@ -1565,7 +1591,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro) {
-      speak(currentWord.english);
+      speakWord(currentWord.id);
     }
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro]);
 
@@ -1808,7 +1834,7 @@ export default function App() {
         // Pronounce the matched English word
         const englishCard = selectedMatch.type === 'english' ? selectedMatch : item;
         const matchedPair = matchingPairs.find(p => p.id === englishCard.id && p.type === 'english');
-        if (matchedPair) speak(matchedPair.text);
+        if (matchedPair) speakWord(item.id);
 
         if (socket && user?.classCode) {
           socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
@@ -2111,7 +2137,22 @@ export default function App() {
         <LandingPage
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("landing")}
+          onTeacherLogin={() => supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin },
+          })}
+          onTryDemo={() => setShowDemo(true)}
+          isAuthenticated={!!user}
         />
+        {showDemo && (
+          <DemoMode
+            onClose={() => setShowDemo(false)}
+            onSignUp={() => {
+              setShowDemo(false);
+              setView("landing");
+            }}
+          />
+        )}
         {showCookieBanner && (
           <CookieBanner
             onAccept={handleCookieAccept}
@@ -2128,6 +2169,7 @@ export default function App() {
         <TermsPage
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("landing")}
+          onBack={goBack}
         />
         {showCookieBanner && (
           <CookieBanner
@@ -2145,6 +2187,7 @@ export default function App() {
         <PublicPrivacyPage
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("landing")}
+          onBack={goBack}
         />
         {showCookieBanner && (
           <CookieBanner
@@ -2179,34 +2222,15 @@ export default function App() {
           </button>
         </header>
 
-        <main className="flex-grow flex flex-col items-center px-4 py-6 sm:py-8 max-w-4xl mx-auto w-full space-y-6 sm:space-y-8 pb-24 lg:pb-8">
-          {/* Tabs Section */}
-          <div className="w-full flex justify-center">
-            <div className="bg-surface-container-low p-1.5 rounded-full flex items-center gap-1 shadow-inner border border-surface-container-high">
-              <button
-                onClick={() => setLandingTab("student")}
-                className={`px-6 sm:px-8 py-2 sm:py-2.5 rounded-full font-black text-sm transition-all font-headline ${landingTab === "student" ? "bg-white shadow-md text-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
-              >
-                Student
-              </button>
-              <button
-                onClick={() => setLandingTab("teacher")}
-                className={`px-6 sm:px-8 py-2 sm:py-2.5 rounded-full font-bold text-sm transition-all font-headline ${landingTab === "teacher" ? "bg-white shadow-md text-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
-              >
-                Teacher
-              </button>
-            </div>
-          </div>
-
+        <main className="flex-grow flex flex-col items-center px-4 py-4 sm:py-6 max-w-4xl mx-auto w-full space-y-4 sm:space-y-6 pb-20 lg:pb-4">
           <AnimatePresence mode="wait">
-            {landingTab === "student" ? (
-              <motion.div
-                key="student"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch"
-              >
+            <motion.div
+              key="student"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch"
+            >
                 {/* Left Column: Form Section */}
                 <div className="flex flex-col space-y-6 sm:space-y-8">
                   <div className="space-y-2 text-center lg:text-left">
@@ -2271,13 +2295,44 @@ export default function App() {
                 </div>
 
                 {/* Right Column: Avatar Picker */}
-                <div className="bg-surface-container-low rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-6 relative overflow-hidden flex flex-col border border-surface-container-high">
+                <div
+                  className="bg-surface-container-low rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-6 relative overflow-hidden flex flex-col border border-surface-container-high select-none"
+                  onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
+                  }}
+                  onTouchEnd={(e) => {
+                    const touch = e.changedTouches[0];
+                    const startX = parseFloat((e.currentTarget as HTMLElement).dataset.touchStartX || '0');
+                    const deltaX = touch.clientX - startX;
+                    const minSwipeDistance = 50;
+
+                    const availableCategories = (Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
+                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0);
+                    const currentIndex = availableCategories.indexOf(selectedAvatarCategory);
+
+                    if (deltaX < -minSwipeDistance && currentIndex < availableCategories.length - 1) {
+                      // Swipe left - go to next category
+                      setSelectedAvatarCategory(availableCategories[currentIndex + 1]);
+                    } else if (deltaX > minSwipeDistance && currentIndex > 0) {
+                      // Swipe right - go to previous category
+                      setSelectedAvatarCategory(availableCategories[currentIndex - 1]);
+                    }
+                  }}
+                >
                   <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h2 className="text-lg sm:text-xl font-black text-on-surface font-headline">Pick Your Avatar</h2>
                     <div className="bg-surface-container-lowest px-2 sm:px-3 py-1 rounded-full border border-surface-container-high flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
                       <span className="text-[9px] sm:text-[10px] font-black text-on-surface-variant font-headline uppercase">Required</span>
                     </div>
+                  </div>
+
+                  {/* Swipe hint for mobile */}
+                  <div className="sm:hidden text-center text-[10px] text-on-surface-variant mb-2 flex items-center justify-center gap-1">
+                    <span>←</span>
+                    <span className="font-medium">Swipe to change category</span>
+                    <span>→</span>
                   </div>
 
                   {/* Avatar Categories Navigation */}
@@ -2335,68 +2390,11 @@ export default function App() {
                   <div className="absolute -top-10 -left-10 w-28 sm:w-32 h-28 sm:h-32 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
                 </div>
               </motion.div>
-            ) : (
-              <motion.div
-                key="teacher"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="w-full max-w-xl mx-auto"
-              >
-                <div className="bg-surface-container-lowest rounded-3xl shadow-2xl shadow-on-surface/5 p-6 sm:p-8 md:p-12 text-center relative border border-surface-variant/20">
-                  {/* Icon/Badge for Teachers */}
-                  <div className="inline-flex items-center justify-center w-16 sm:w-20 h-16 sm:h-20 bg-primary-container/20 rounded-full mb-6 sm:mb-8 border-4 border-primary/10">
-                    <span className="material-symbols-outlined text-primary text-3xl sm:text-4xl" style={{fontVariationSettings: "'FILL' 1"}}>supervisor_account</span>
-                  </div>
-
-                  <h1 className="font-headline font-black text-3xl sm:text-4xl md:text-5xl text-on-surface tracking-tight mb-3 sm:mb-4">
-                    Welcome, Teacher!
-                  </h1>
-                  <p className="text-on-surface-variant text-base sm:text-lg md:text-xl font-medium mb-8 sm:mb-12 max-w-sm mx-auto">
-                    Manage your classes and track student progress.
-                  </p>
-
-                  {error && <p className="text-error text-xs sm:text-sm font-bold text-center mb-4">{error}</p>}
-
-                  {/* Google Sign-In Button */}
-                  <button
-                    onClick={() => supabase.auth.signInWithOAuth({
-                      provider: 'google',
-                      options: { redirectTo: window.location.origin },
-                    }).then(({ error: err }) => {
-                      if (err) setError(`Google sign-in failed: ${err.message}. Please try again.`);
-                    }).catch(() => {
-                      setError("Could not connect to Google. Please try again.");
-                    })}
-                    className="w-full bg-white border-2 border-surface-variant flex items-center justify-center gap-3 sm:gap-4 py-3.5 sm:py-4 px-6 sm:px-8 rounded-full shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all group"
-                  >
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
-                    </svg>
-                    <span className="font-headline font-bold text-base sm:text-lg text-on-surface">Sign in with Google</span>
-                  </button>
-
-                  <div className="flex items-center gap-4 py-4 sm:py-6">
-                    <div className="h-[1px] flex-grow bg-surface-variant/50"></div>
-                    <span className="text-[9px] sm:text-[10px] font-bold text-outline uppercase tracking-widest">Educator Portal</span>
-                    <div className="h-[1px] flex-grow bg-surface-variant/50"></div>
-                  </div>
-
-                  <p className="text-on-surface-variant/80 text-xs sm:text-sm font-medium flex items-start justify-center gap-2 sm:gap-3 text-center leading-relaxed">
-                    <span className="material-symbols-outlined text-sm sm:text-base mt-0.5">lock</span>
-                    By signing in, you authorize Vocaband to access your educator credentials for class management.
-                  </p>
-                </div>
-              </motion.div>
-            )}
           </AnimatePresence>
 
           {/* Leaderboard Access Link */}
-          {landingTab === "student" && (
-            <div className="w-full flex justify-center pt-2 sm:pt-4">
+          {(
+            <div className="w-full flex justify-center pt-1 sm:pt-2">
               <button
                 onClick={() => { fetchGlobalLeaderboard(); setView("global-leaderboard"); }}
                 className="flex items-center gap-2 group"
@@ -2411,84 +2409,54 @@ export default function App() {
         </main>
 
         {/* Footer with Privacy Links */}
-        <footer className="text-center py-6 sm:py-8 text-on-surface-variant font-bold text-xs sm:text-sm border-t border-surface-variant/30">
-          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+        <footer className="text-center py-3 sm:py-4 text-on-surface-variant font-bold text-xs sm:text-sm border-t border-surface-variant/30">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <button
-              onClick={() => setView("public-privacy")}
+              onClick={() => setView("public-landing")}
               className="text-on-surface-variant hover:text-primary transition-colors"
             >
-              Privacy Policy
+              Home
             </button>
             <span className="text-surface-dim">•</span>
             <button
-              onClick={() => setView("public-terms")}
+              onClick={() => handleSetView("public-privacy")}
               className="text-on-surface-variant hover:text-primary transition-colors"
             >
-              Terms of Service
+              Privacy
+            </button>
+            <span className="text-surface-dim">•</span>
+            <button
+              onClick={() => handleSetView("public-terms")}
+              className="text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Terms
             </button>
           </div>
-          <p className="text-on-surface-variant/70">Vocaband © 2024 • Powered by Vocabulary Mastery</p>
         </footer>
 
-        {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 w-full z-50 flex flex-col items-center gap-2 px-4 pb-4 sm:pb-6 pt-2 bg-surface/90 backdrop-blur-xl border-t border-surface-variant/20 lg:hidden">
-          {/* Top row: Student / Teacher tabs */}
-          <div className="flex justify-center items-center w-full max-w-sm bg-white rounded-full p-1 sm:p-1.5 shadow-lg shadow-on-surface/5">
-            <button
-              onClick={() => setLandingTab("student")}
-              className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 transition-all ${
-                landingTab === "student"
-                  ? "bg-primary-container text-primary rounded-full"
-                  : "text-on-surface-variant/60 hover:text-on-surface"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xl sm:text-2xl">school</span>
-              <span className="font-bold text-[10px] sm:text-xs font-label">Student</span>
-            </button>
-            <button
-              onClick={() => setLandingTab("teacher")}
-              className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 transition-all ${
-                landingTab === "teacher"
-                  ? "bg-primary-container text-primary rounded-full"
-                  : "text-on-surface-variant/60 hover:text-on-surface"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xl sm:text-2xl">supervisor_account</span>
-              <span className="font-bold text-[10px] sm:text-xs font-label">Teacher</span>
-            </button>
-          </div>
-          {/* Bottom row: Contact buttons */}
-          <div className="flex justify-center items-center gap-3 sm:gap-4">
-            <a
-              href="https://wa.me/972501234567"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 sm:gap-2 text-on-surface-variant/60 hover:text-green-600 transition-all"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              <span className="font-bold text-[10px] sm:text-xs">WhatsApp</span>
-            </a>
-            <span className="text-surface-dim">•</span>
-            <a
-              href="mailto:support@vocaband.com"
-              className="flex items-center gap-1.5 sm:gap-2 text-on-surface-variant/60 hover:text-primary transition-all"
-            >
-              <span className="material-symbols-outlined text-base sm:text-lg">mail</span>
-              <span className="font-bold text-[10px] sm:text-xs">Email</span>
-            </a>
-            <span className="text-surface-dim">•</span>
-            <a
-              href="/privacy.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 sm:gap-2 text-on-surface-variant/60 hover:text-on-surface transition-all"
-            >
-              <span className="material-symbols-outlined text-base sm:text-lg">policy</span>
-              <span className="font-bold text-[10px] sm:text-xs">Privacy</span>
-            </a>
-          </div>
+        {/* Mobile Bottom Navigation - Same as Landing Page */}
+        <nav dir="ltr" className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem] lg:hidden">
+          <button
+            onClick={() => setView("public-landing")}
+            className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"
+          >
+            <span className="material-symbols-outlined text-xl">home</span>
+            <span className="text-[9px] font-black font-headline mt-0.5">Home</span>
+          </button>
+          <button
+            onClick={() => handleSetView("public-privacy")}
+            className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"
+          >
+            <span className="material-symbols-outlined text-xl">shield</span>
+            <span className="text-[9px] font-black font-headline mt-0.5">Privacy</span>
+          </button>
+          <button
+            onClick={() => handleSetView("public-terms")}
+            className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"
+          >
+            <span className="material-symbols-outlined text-xl">gavel</span>
+            <span className="text-[9px] font-black font-headline mt-0.5">Terms</span>
+          </button>
         </nav>
       </div>
     );
@@ -2541,14 +2509,12 @@ export default function App() {
         <div className="max-w-4xl mx-auto">
           {/* Top bar with logout */}
           <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
-              <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm flex items-center gap-1.5 shadow-md">
-                🛍️ Shop
-              </button>
-              <button onClick={() => setView("privacy-settings")} className="px-3 py-2 text-stone-400 hover:text-stone-600 hover:bg-stone-200 rounded-xl text-xs font-bold transition-all" title="Privacy Settings">
-                Privacy
-              </button>
-            </div>
+            <button onClick={() => setView("privacy-settings")} className="px-3 py-2 text-stone-400 hover:text-stone-600 hover:bg-stone-200 rounded-xl text-xs font-bold transition-all" title="Privacy Settings">
+              Privacy
+            </button>
+            <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-6 py-2.5 bg-gradient-to-r from-pink-400 to-rose-500 text-white font-bold rounded-xl hover:from-pink-500 hover:to-rose-600 transition-all text-base flex items-center gap-2 shadow-lg shadow-pink-500/30 animate-pulse">
+              🛍️ Shop
+            </button>
             <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 text-stone-500 font-bold hover:text-red-500 hover:bg-red-50 rounded-xl text-sm transition-all">Logout</button>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -2922,6 +2888,13 @@ export default function App() {
       setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
       showToast(`Got ${powerUp.name}!`, "success");
     };
+    const purchaseBooster = async (booster: typeof BOOSTERS_DEFS[0]) => {
+      if (xp < booster.cost) { showToast("Not enough XP!", "error"); return; }
+      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'booster', item_id: booster.id, item_cost: booster.cost });
+      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      setXp(data.new_xp);
+      showToast(`Got ${booster.name}! 🎉`, "success");
+    };
 
     const activeThemeConfig = THEMES.find(t => t.id === (user.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -2944,10 +2917,10 @@ export default function App() {
 
           {/* Tabs */}
           <div className="flex flex-wrap gap-2 mb-6">
-            {(["avatars", "themes", "titles", "frames", "powerups"] as const).map(tab => (
+            {(["avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => (
               <button key={tab} onClick={() => setShopTab(tab)}
                 className={`px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all ${shopTab === tab ? "bg-blue-600 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
-                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : tab === "titles" ? "🏷️ Titles" : tab === "frames" ? "🖼️ Frames" : "⚡ Power-ups"}
+                {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : tab === "titles" ? "🏷️ Titles" : tab === "frames" ? "🖼️ Frames" : tab === "boosters" ? "🔥 Boosters" : "⚡ Power-ups"}
               </button>
             ))}
           </div>
@@ -3156,6 +3129,32 @@ export default function App() {
                           {frame.cost} XP
                         </button>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Boosters Shop — High-demand items */}
+          {shopTab === "boosters" && (
+            <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-3xl p-6 shadow-md border-2 border-pink-200">
+              <h2 className="text-xl font-black mb-2 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">🔥 Hot Boosters</h2>
+              <p className="text-stone-500 text-sm mb-4">The most wanted items in 2026!</p>
+              <div className="space-y-3">
+                {BOOSTERS_DEFS.map(booster => {
+                  const canAfford = xp >= booster.cost;
+                  return (
+                    <div key={booster.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 border-pink-100 shadow-sm hover:shadow-md transition-all">
+                      <span className="text-4xl">{booster.emoji}</span>
+                      <div className="flex-1">
+                        <p className="font-bold text-stone-800">{booster.name}</p>
+                        <p className="text-xs text-stone-500">{booster.desc}</p>
+                      </div>
+                      <button onClick={() => purchaseBooster(booster)} disabled={!canAfford}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${canAfford ? "bg-gradient-to-r from-pink-400 to-orange-400 text-white hover:from-pink-500 hover:to-orange-500 shadow-md" : "bg-stone-100 text-stone-400 cursor-not-allowed"}`}>
+                        {booster.cost} XP
+                      </button>
                     </div>
                   );
                 })}
@@ -5809,7 +5808,7 @@ export default function App() {
                 </div>
                 <div className="flex justify-center gap-2 mt-1 sm:mt-0">
                   <button
-                    onClick={() => speak(currentWord?.english)}
+                    onClick={() => speakWord(currentWord?.id)}
                     className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"

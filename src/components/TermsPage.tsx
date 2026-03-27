@@ -3,13 +3,21 @@ import { ArrowLeft, Printer, FileText, Scale, Users, Shield, AlertTriangle, Gave
 import PublicNav from "./PublicNav";
 import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useLanguage } from "../hooks/useLanguage";
+import { termsTranslations, uiTranslations } from "../translations/legalTranslations";
 
 interface TermsPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  onBack?: () => void;
 }
 
-const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
+const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack }) => {
+  const { language, isRTL } = useLanguage();
+  const t = termsTranslations[language];
+  const ui = uiTranslations[language];
+
   const handlePrint = () => {
     window.print();
   };
@@ -23,23 +31,37 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
       />
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
+        {/* Back Button & Language Switcher */}
+        <div className="flex items-center gap-4 mb-6">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+            >
+              <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
+              <span>{t.footer.backButton}</span>
+            </button>
+          )}
+          <LanguageSwitcher />
+        </div>
+
         {/* Header */}
         <section className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
-            Terms of <span className="text-primary italic">Service</span>
+          <h1 className={`text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline ${isRTL ? 'text-right' : ''}`}>
+            {t.title} <span className="text-primary italic">{t.titleHighlight}</span>
           </h1>
           <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium">
             <span className="flex items-center gap-2">
               <FileText size={16} className="text-primary" />
-              Effective: March 2024
+              {t.effective}
             </span>
             <span className="flex items-center gap-2">
               <Scale size={16} className="text-primary" />
-              Version 2.0
+              {t.version}
             </span>
           </div>
-          <p className="mt-4 text-lg text-on-surface-variant max-w-2xl">
-            Vocaband is an educational vocabulary platform for Israeli schools. Students use anonymous accounts; teachers sign in with Google.
+          <p className={`mt-4 text-lg text-on-surface-variant max-w-2xl ${isRTL ? 'text-right' : ''}`}>
+            {t.intro}
           </p>
         </section>
 
@@ -47,114 +69,110 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
         <div className="space-y-8">
           {/* Section 1: Acceptance */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">1</span>
-              Acceptance of Terms
+              {language === 'en' ? 'Acceptance of Terms' : language === 'he' ? 'קבלת התנאים' : 'قبول الشروط'}
             </h2>
-            <p className="text-on-surface-variant leading-relaxed">
-              By accessing or using Vocaband ("the Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These Terms constitute a legally binding agreement between you and Vocaband Educational Technologies.
-            </p>
-            <p className="text-on-surface-variant leading-relaxed mt-4">
-              We may modify these Terms at any time. Material changes will be communicated through the Service, and your continued use after such changes constitutes acceptance. As required by Israeli Privacy Protection Law (Amendment 13), significant changes will require your explicit consent.
-            </p>
+            <div className={`text-on-surface-variant leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
+              <p>
+                {language === 'en' ? 'By accessing or using Vocaband ("the Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These Terms constitute a legally binding agreement between you and Vocaband Educational Technologies.' :
+                 language === 'he' ? 'על ידי גישה או שימוש ב-Vocaband ("השירות"), אתה מאשר שקראת, הבנת ומסכים להיות מחויב על פי תנאי שירות אלה ומדיניות הפרטיות שלנו. תנאים אלה מהווים הסכם מחייב מבחינה משפטית בינך לבין Vocaband טכנולוגיות חינוכיות.' :
+                 'بالدخول أو استخدام Vocaband ("الخدمة")، فإنك تقر بأنك قد قرأت وفهمت ووافقت على الالتزام بشروط الخدمة هذه وسياسة الخصوصية الخاصة بنا. تشكل هذه الشروط اتفاقية ملزمة قانونًا بينك وبين Vocaband للتقنيات التعليمية.'}
+              </p>
+              <p>
+                {language === 'en' ? 'We may modify these Terms at any time. Material changes will be communicated through the Service, and your continued use after such changes constitutes acceptance. As required by Israeli Privacy Protection Law (Amendment 13), significant changes will require your explicit consent.' :
+                 language === 'he' ? 'אנו רשאים לשנות תנאים אלה בכל עת. שינויים מהותיים יתקשרו דרך השירות, והמשך השימוש שלך לאחר שינויים כאלה מהווה הסכמה. כנדרש על פי חוק הגנת הפרטיות (תיקון 13), שינויים משמעותיים ידרשו את הסכמתך המפורשת.' :
+                 'يجوز لنا تعديل هذه الشروط في أي وقت. سيتم إبلاغ التغييرات الجوهرية عبر الخدمة، واستمرارك في الاستخدام بعد هذه التغييرات يشكل قبولاً. كما يقتضي قانون حماية الخصوصية الإسرائيلي (التعديل 13)، ستتطلب التغييرات المهمة موافقتك الصريحة.'}
+              </p>
+            </div>
           </section>
 
           {/* Section 2: Description */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">2</span>
-              Description of Service
+              {language === 'en' ? 'Description of Service' : language === 'he' ? 'תיאור השירות' : 'وصف الخدمة'}
             </h2>
-            <p className="text-on-surface-variant leading-relaxed mb-4">
-              Vocaband is an educational technology platform that helps students practice English vocabulary through interactive games. The Service is:
+            <p className={`text-on-surface-variant leading-relaxed mb-4 ${isRTL ? 'text-right' : ''}`}>
+              {language === 'en' ? 'Vocaband is an educational technology platform that helps students practice English vocabulary through interactive games. The Service is:' :
+               language === 'he' ? 'Vocaband היא פלטפורמה טכנולוגית חינוכית שעוזרת לתלמידים לתרגל אוצר מילים באנגלית דרך משחקים אינטראקטיביים. השירות הוא:' :
+               'Vocaband هي منصة تكنولوجيا تعليمية تساعد الطلاب على ممارسة المفردات الإنجليزية من خلال ألعاب تفاعلية. الخدمة هي:'}
             </p>
-            <ul className="space-y-2 text-on-surface-variant">
-              <li className="flex items-start gap-3">
-                <span className="text-primary mt-1">•</span>
-                <span>Designed for use in Israeli schools under teacher supervision</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-primary mt-1">•</span>
-                <span>Aligned with the Israeli Ministry of Education English curriculum (Band 1, 2, 3)</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-primary mt-1">•</span>
-                <span>Built to support anonymous student accounts</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-primary mt-1">•</span>
-                <span>Intended for educational purposes only</span>
-              </li>
+            <ul className={`space-y-2 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+              {ui.serviceDescription.map((item, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="text-primary mt-1">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </section>
 
           {/* Section 3: User Accounts */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">3</span>
               <Users size={20} className="text-primary" />
-              User Accounts
+              {language === 'en' ? 'User Accounts' : language === 'he' ? 'חשבונות משתמש' : 'حسابات المستخدمين'}
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-surface-container-low p-5 rounded-xl">
-                <h3 className="font-bold text-on-surface mb-3">Teacher Accounts</h3>
-                <ul className="space-y-2 text-sm text-on-surface-variant">
-                  <li>• Sign in with pre-approved Google account</li>
-                  <li>• Use official educational email address</li>
-                  <li>• Responsible for account security</li>
-                  <li>• Responsible for class management</li>
+                <h3 className={`font-bold text-on-surface mb-3 ${isRTL ? 'text-right' : ''}`}>
+                  {language === 'en' ? 'Teacher Accounts' : language === 'he' ? 'חשבונות מורים' : 'حسابات المعلمين'}
+                </h3>
+                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                  {ui.teacherAccountRules.map((rule, i) => (
+                    <li key={i}>• {rule}</li>
+                  ))}
                 </ul>
               </div>
               <div className="bg-surface-container-low p-5 rounded-xl">
-                <h3 className="font-bold text-on-surface mb-3">Student Accounts</h3>
-                <ul className="space-y-2 text-sm text-on-surface-variant">
-                  <li>• Anonymous account with display name only</li>
-                  <li>• Access via 6-digit class code</li>
-                  <li>• No email or personal info required</li>
-                  <li>• Should not use real full name</li>
+                <h3 className={`font-bold text-on-surface mb-3 ${isRTL ? 'text-right' : ''}`}>
+                  {language === 'en' ? 'Student Accounts' : language === 'he' ? 'חשבונות תלמידים' : 'حسابات الطلاب'}
+                </h3>
+                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                  {ui.studentAccountRules.map((rule, i) => (
+                    <li key={i}>• {rule}</li>
+                  ))}
                 </ul>
               </div>
             </div>
 
-            <p className="text-on-surface-variant leading-relaxed mt-4">
-              <strong>School Authorization:</strong> By providing class codes to students, teachers represent that they have authorization from their educational institution to use Vocaband for educational purposes.
+            <p className={`text-on-surface-variant leading-relaxed mt-4 ${isRTL ? 'text-right' : ''}`}>
+              <strong>{language === 'en' ? 'School Authorization:' : language === 'he' ? 'אישור בית ספר:' : 'تفويض المدرسة:'}</strong> {ui.schoolAuthorization}
             </p>
           </section>
 
-          {/* Section 4: Acceptable Use */}
+          {/* Section 4: Code of Conduct */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">4</span>
               <Shield size={20} className="text-primary" />
-              Code of Conduct
+              {language === 'en' ? 'Code of Conduct' : language === 'he' ? 'קוד התנהגות' : 'قواعد السلوك'}
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h3 className="font-bold text-green-600 mb-3 flex items-center gap-2">
                   <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs">✓</span>
-                  You Agree To:
+                  {ui.youAgreeTo}
                 </h3>
-                <ul className="space-y-2 text-sm text-on-surface-variant">
-                  <li>• Use for educational purposes only</li>
-                  <li>• Maintain academic integrity</li>
-                  <li>• Keep interactions respectful</li>
-                  <li>• Report bugs and issues</li>
+                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                  {ui.acceptableUse.map((item, i) => (
+                    <li key={i}>• {item}</li>
+                  ))}
                 </ul>
               </div>
               <div>
                 <h3 className="font-bold text-red-500 mb-3 flex items-center gap-2">
                   <span className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center text-xs">✕</span>
-                  You Must NOT:
+                  {ui.youMustNot}
                 </h3>
-                <ul className="space-y-2 text-sm text-on-surface-variant">
-                  <li>• Use bots or automated scripts</li>
-                  <li>• Access others' accounts or data</li>
-                  <li>• Use offensive or impersonating names</li>
-                  <li>• Harass or bully other users</li>
-                  <li>• Share class codes inappropriately</li>
-                  <li>• Reverse-engineer the Service</li>
+                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                  {ui.prohibitedUse.map((item, i) => (
+                    <li key={i}>• {item}</li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -162,84 +180,92 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
 
           {/* Section 5: Teacher Responsibilities */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">5</span>
-              Teacher Responsibilities
+              {language === 'en' ? 'Teacher Responsibilities' : language === 'he' ? 'אחריות מורים' : 'مسؤوليات المعلم'}
             </h2>
-            <ul className="space-y-3 text-on-surface-variant">
-              <li className="flex items-start gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span><strong>Class Code Management:</strong> Keep codes confidential, share only with intended students</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span><strong>Supervision:</strong> Appropriately supervise student use</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span><strong>Data Management:</strong> Delete classes when no longer needed</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span><strong>School Policies:</strong> Comply with institutional data protection policies</span>
-              </li>
+            <ul className={`space-y-3 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+              {ui.teacherDuties.map((duty, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="text-primary font-bold">•</span>
+                  <span><strong>{duty.title}</strong> {duty.desc}</span>
+                </li>
+              ))}
             </ul>
           </section>
 
           {/* Section 6: Intellectual Property */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">6</span>
-              Intellectual Property
+              {language === 'en' ? 'Intellectual Property' : language === 'he' ? 'קניין רוחני' : 'الملكية الفكرية'}
             </h2>
-            <p className="text-on-surface-variant leading-relaxed">
-              All content on Vocaband—vocabulary lists, game designs, user interface, and software—is the property of Vocaband or its licensors and protected by intellectual property laws.
-            </p>
-            <p className="text-on-surface-variant leading-relaxed mt-4">
-              You receive a limited, non-exclusive, non-transferable license to use the Service for educational purposes. You may not copy, reproduce, distribute, or create derivative works without permission.
-            </p>
+            <div className={`text-on-surface-variant leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
+              <p>
+                {language === 'en' ? 'All content on Vocaband—vocabulary lists, game designs, user interface, and software—is the property of Vocaband or its licensors and protected by intellectual property laws.' :
+                 language === 'he' ? 'כל התוכן ב-Vocaband - רשימות אוצר מילים, עיצובי משחקים, ממשק משתמש ותוכנה - הוא רכושו של Vocaband או מעניקי הרישיון שלו ומוגן בחוקי קניין רוחני.' :
+                 'جميع المحتويات على Vocaband - قوائم المفردات وتصميمات الألعاب وواجهة المستخدم والبرمجيات - هي ملك لـ Vocaband أو المرخصين لها ومحمية بموجب قوانين الملكية الفكرية.'}
+              </p>
+              <p>
+                {language === 'en' ? 'You receive a limited, non-exclusive, non-transferable license to use the Service for educational purposes. You may not copy, reproduce, distribute, or create derivative works without permission.' :
+                 language === 'he' ? 'אתה מקבל רישיון מוגבל, בלעדי, בלתי ניתן להעברה לשימוש בשירות למטרות חינוכיות. אינך רשאי להעתיק, לשכפל, להפיץ או ליצור יצירות נגזרות ללא רשות.' :
+                 'تحصل على ترخيص محدود وغير حصري وغير قابل للتحويل لاستخدام الخدمة لأغراض تعليمية. لا يجوز لك النسخ أو إعادة الإنتاج أو التوزيع أو إنشاء أعمال مشتقة بدون إذن.'}
+              </p>
+            </div>
           </section>
 
-          {/* Section 7: Data and Privacy */}
+          {/* Section 7: Data Protection */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">7</span>
-              Data Protection
+              {language === 'en' ? 'Data Protection' : language === 'he' ? 'הגנת נתונים' : 'حماية البيانات'}
             </h2>
-            <p className="text-on-surface-variant leading-relaxed">
-              Your use of the Service is governed by our <button onClick={() => onNavigate("privacy")} className="text-primary font-bold hover:underline">Privacy Policy</button>, which describes what data we collect, how we use it, your rights under Israeli Privacy Protection Law (Amendment 13), and how to access, correct, or delete your data.
+            <p className={`text-on-surface-variant leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+              {language === 'en' ? 'Your use of the Service is governed by our ' :
+               language === 'he' ? 'השימוש שלך בשירות כפוף ל-' :
+               'يخضع استخدامك للخدمة لـ '}
+              <button onClick={() => onNavigate("privacy")} className="text-primary font-bold hover:underline">
+                {t.footer.privacyLink}
+              </button>
+              {language === 'en' ? ', which describes what data we collect, how we use it, your rights under Israeli Privacy Protection Law (Amendment 13), and how to access, correct, or delete your data.' :
+               language === 'he' ? ', המתארת אילו נתונים אנו אוספים, כיצד אנו משתמשים בהם, הזכויות שלך על פי חוק הגנת הפרטיות (תיקון 13), וכיצד לגשת, לתקן או למחוק את הנתונים שלך.' :
+               '، التي تصف البيانات التي نجمعها، وكيف نستخدمها، حقوقك بموجب قانون حماية الخصوصية الإسرائيلي (التعديل 13)، وكيفية الوصول إلى بياناتك أو تصحيحها أو حذفها.'}
             </p>
           </section>
 
           {/* Section 8: Limitation of Liability */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">8</span>
               <AlertTriangle size={20} className="text-amber-500" />
-              Limitation of Liability
+              {language === 'en' ? 'Limitation of Liability' : language === 'he' ? 'הגבלת אחריות' : 'تحديد المسؤولية'}
             </h2>
-            <p className="text-on-surface-variant leading-relaxed">
-              The Service is provided "AS IS" without warranties. We are not liable for indirect, incidental, or consequential damages. Our total liability shall not exceed any amount paid for the Service in the preceding 12 months.
+            <p className={`text-on-surface-variant leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+              {language === 'en' ? 'The Service is provided "AS IS" without warranties. We are not liable for indirect, incidental, or consequential damages. Our total liability shall not exceed any amount paid for the Service in the preceding 12 months.' :
+               language === 'he' ? 'השירות מסופק "כפי שהוא" ללא אחריות. איננו אחראים לנזקים עקיפים, מקריים או תוצאתיים. סך האחריות שלנו לא יעלה על כל סכום ששולם עבור השירות ב-12 החודשים הקודמים.' :
+               'يتم توفير الخدمة "كما هي" بدون ضمانات. نحن غير مسؤولين عن الأضرار غير المباشرة أو العرضية أو الناتجة. مجموع مسؤوليتنا لن يتجاوز أي مبلغ مدفوع مقابل الخدمة في الـ 12 شهرًا السابقة.'}
             </p>
           </section>
 
           {/* Section 9: Governing Law */}
           <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3">
+            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">9</span>
               <Gavel size={20} className="text-primary" />
-              Governing Law
+              {language === 'en' ? 'Governing Law' : language === 'he' ? 'דין חל' : 'القانون الحاكم'}
             </h2>
-            <p className="text-on-surface-variant leading-relaxed">
-              These Terms are governed by the laws of the <strong>State of Israel</strong>, including the Privacy Protection Law 5741-1981 (Amendment 13). Disputes shall be resolved in the competent courts of Tel Aviv, Israel.
+            <p className={`text-on-surface-variant leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+              {language === 'en' ? 'These Terms are governed by the laws of the State of Israel, including the Privacy Protection Law 5741-1981 (Amendment 13). Disputes shall be resolved in the competent courts of Tel Aviv, Israel.' :
+               language === 'he' ? 'תנאים אלה כפופים לחוקי מדינת ישראל, לרבות חוק הגנת הפרטיות התשמ"א-1981 (תיקון 13). סכסוכים יפתרו בבתי המשפט המוסמכים בתל אביב, ישראל.' :
+               'تخضع هذه الشروط لقوانين دولة إسرائيل، بما في ذلك قانون حماية الخصوصية 5741-1981 (التعديل 13). يتم حل النزاعات في المحاكم المختصة في تل أبيب، إسرائيل.'}
             </p>
           </section>
 
           {/* Section 10: Contact */}
           <section className="bg-surface-container-high/50 p-8 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h3 className="text-xl font-black font-headline mb-2">Questions?</h3>
-              <p className="text-on-surface-variant">Contact us about these Terms.</p>
+            <div className={isRTL ? 'text-right' : ''}>
+              <h3 className="text-xl font-black font-headline mb-2">{t.footer.questions}</h3>
+              <p className="text-on-surface-variant">{t.footer.contact}</p>
             </div>
             <div className="flex items-center gap-4">
               <a
@@ -254,17 +280,28 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted }) => {
 
         {/* Footer */}
         <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <button
-            onClick={handlePrint}
-            className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
-          >
-            <Printer size={18} /> Print
-          </button>
+          <div className="flex items-center gap-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+              >
+                <ArrowLeft size={18} className="transition-transform group-hover:-translate-x-1" />
+                <span>{t.footer.backButton}</span>
+              </button>
+            )}
+            <button
+              onClick={handlePrint}
+              className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
+            >
+              <Printer size={18} /> {t.footer.print}
+            </button>
+          </div>
           <button
             onClick={onGetStarted}
             className="signature-gradient px-8 py-3 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
           >
-            Accept & Continue
+            {t.footer.acceptButton}
           </button>
         </footer>
       </main>
