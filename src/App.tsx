@@ -42,7 +42,8 @@ import {
   GraduationCap,
   Loader2,
   QrCode,
-  Search
+  Search,
+  Wifi
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
@@ -338,6 +339,7 @@ export default function App() {
   // listener before handleStudentLogin finishes its DB queries).
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
+  const quickPlayNameInputRef = useRef<HTMLInputElement>(null);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [guestName, setGuestName] = useState("");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
@@ -350,6 +352,10 @@ export default function App() {
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [publicUrl, setPublicUrl] = useState(() => {
+    const saved = localStorage.getItem('vocaband_public_url');
+    return saved || window.location.origin;
+  });
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
@@ -411,6 +417,7 @@ export default function App() {
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string}[]>([]);
+  const [quickPlayStarting, setQuickPlayStarting] = useState(false);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
@@ -569,7 +576,21 @@ export default function App() {
     const sessionCode = params.get('session');
 
     if (sessionCode) {
-      // Load Quick Play session
+      // Check if session is already in localStorage
+      const cachedSession = localStorage.getItem(`quickplay_session_${sessionCode}`);
+      if (cachedSession) {
+        try {
+          const session = JSON.parse(cachedSession);
+          setQuickPlayActiveSession(session);
+          setView("quick-play-student");
+          return;
+        } catch (e) {
+          console.error('Failed to parse cached session:', e);
+          localStorage.removeItem(`quickplay_session_${sessionCode}`);
+        }
+      }
+
+      // Load Quick Play session from Supabase
       const loadQuickPlaySession = async () => {
         const { data, error } = await supabase
           .from('quick_play_sessions')
@@ -615,11 +636,17 @@ export default function App() {
         // Combine database and custom words
         const allWords = [...dbWords, ...customWords];
 
-        setQuickPlayActiveSession({
+        const session = {
           sessionCode: data.session_code,
           wordIds: data.word_ids,
           words: allWords
-        });
+        };
+
+        setQuickPlayActiveSession(session);
+
+        // Cache to localStorage for persistence
+        localStorage.setItem(`quickplay_session_${sessionCode}`, JSON.stringify(session));
+
         setView("quick-play-student");
       };
 
@@ -677,6 +704,82 @@ export default function App() {
     classCode: null,
     createdAt: new Date().toISOString()
   });
+
+  // --- HELPER: Handle Quick Play Start ---
+  const handleQuickPlayStart = async () => {
+    console.log('Quick Play Start clicked');
+
+    const input = quickPlayNameInputRef.current;
+    if (!input) {
+      console.error('No input ref found');
+      return;
+    }
+
+    const trimmedName = input.value.trim();
+    console.log('Student name:', trimmedName);
+
+    if (!trimmedName) {
+      showToast("Please enter your name", "error");
+      return;
+    }
+
+    if (!quickPlayActiveSession) {
+      console.error('No active session');
+      showToast("Session expired. Please scan QR code again.", "error");
+      return;
+    }
+
+    console.log('Session words:', quickPlayActiveSession.words.length);
+
+    // Show loading state
+    setQuickPlayStarting(true);
+
+    // Notify teacher that student joined (using Supabase)
+    try {
+      await supabase.from('quick_play_joins').insert({
+        session_code: quickPlayActiveSession.sessionCode,
+        student_name: trimmedName,
+        joined_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Failed to record student join:', err);
+      // Don't block the game if this fails
+    }
+
+    // Update state for consistency
+    setQuickPlayStudentName(trimmedName);
+
+    // Create guest user for Quick Play using helper
+    const guestUser = createGuestUser(trimmedName, "quickplay");
+    console.log('Created guest user:', guestUser);
+
+    setUser(guestUser);
+
+    // Set up game with Quick Play words
+    const gameWords = shuffle(quickPlayActiveSession.words).map(w => ({
+      ...w,
+      hebrew: w.hebrew || "",
+      arabic: w.arabic || ""
+    }));
+    console.log('Game words prepared:', gameWords.length);
+
+    setGameWords(gameWords);
+    setCurrentIndex(0);
+    setScore(0);
+    setFeedback(null);
+
+    console.log('Setting view to game');
+
+    // For Quick Play: Skip mode selection and intro, go straight to game
+    setShowModeSelection(false);
+    setShowModeIntro(false);
+    setGameMode("classic");
+
+    setView("game");
+
+    // Reset loading state after a short delay
+    setTimeout(() => setQuickPlayStarting(false), 500);
+  };
 
   // --- AI TRANSLATION FOR QUICK PLAY ---
   // Cache for translated words to avoid redundant API calls
@@ -739,6 +842,7 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  const [gameWords, setGameWords] = useState<Word[]>([]);
 
   // --- THEME ---
   const activeThemeConfig = useMemo(() => {
@@ -1177,6 +1281,67 @@ export default function App() {
       loadPendingStudents();
     }
   }, [user?.role, view]);
+
+  // Real-time tracking for Quick Play student joins
+  useEffect(() => {
+    if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession) return;
+
+    const channelName = `quick-play-joins-${quickPlayActiveSession.sessionCode}`;
+
+    // Load existing students first
+    const loadExistingStudents = async () => {
+      const { data } = await supabase
+        .from('quick_play_joins')
+        .select('*')
+        .eq('session_code', quickPlayActiveSession.sessionCode);
+
+      if (data) {
+        const students = data.map(row => ({
+          name: row.student_name,
+          score: 0,
+          avatar: '🦊'
+        }));
+        setQuickPlayJoinedStudents(students);
+      }
+    };
+
+    loadExistingStudents();
+
+    // Then listen for new joins
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'quick_play_joins',
+          filter: `session_code=eq.${quickPlayActiveSession.sessionCode}`
+        },
+        (payload) => {
+          const newStudent = payload.new;
+          console.log('Student joined:', newStudent);
+
+          // Add to joined students list if not already there
+          setQuickPlayJoinedStudents(prev => {
+            const exists = prev.some(s => s.name === newStudent.student_name);
+            if (!exists) {
+              return [...prev, {
+                name: newStudent.student_name,
+                score: 0,
+                avatar: '🦊'
+              }];
+            }
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [view, quickPlayActiveSession?.sessionCode]);
 
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
@@ -2025,26 +2190,27 @@ export default function App() {
   };
 
   // --- GAME LOGIC ---
-  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
-  const currentWord = gameWords[currentIndex];
+  // Use gameWords state for Quick Play, otherwise assignmentWords or default
+  const activeGameWords = gameWords.length > 0 ? gameWords : (assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS);
+  const currentWord = activeGameWords[currentIndex];
 
   const options = useMemo(() => {
     if (!currentWord) return [];
     const correct = currentWord;
-    
-    // Try to use ONLY the assigned gameWords for distractors so students only see what they are learning
-    let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
+
+    // Try to use ONLY the assigned activeGameWords for distractors so students only see what they are learning
+    let possibleDistractors = activeGameWords.filter(w => w.id !== correct.id);
     
     // If the teacher assigned fewer than 4 words, we have to borrow from ALL_WORDS to fill the 4 buttons
     if (possibleDistractors.length < 3) {
-      const allPossibleWords = [...ALL_WORDS, ...gameWords];
+      const allPossibleWords = [...ALL_WORDS, ...activeGameWords];
       const uniqueOthers = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== correct.id);
       possibleDistractors = uniqueOthers;
     }
     
     const shuffledOthers = shuffle(possibleDistractors).slice(0, 3);
     return shuffle([...shuffledOthers, correct]);
-  }, [currentWord, gameWords]);
+  }, [currentWord, activeGameWords]);
 
   useEffect(() => {
     if (currentWord) {
@@ -2052,16 +2218,16 @@ export default function App() {
       if (Math.random() > 0.5) {
         setTfOption(currentWord);
       } else {
-        let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
+        let possibleDistractors = activeGameWords.filter(w => w.id !== currentWord.id);
         if (possibleDistractors.length === 0) {
-          const allPossibleWords = [...ALL_WORDS, ...gameWords];
+          const allPossibleWords = [...ALL_WORDS, ...activeGameWords];
           possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
         }
         setTfOption(possibleDistractors[Math.floor(Math.random() * possibleDistractors.length)]);
       }
       setIsFlipped(false);
     }
-  }, [currentIndex, currentWord, gameWords]);
+  }, [currentIndex, currentWord, activeGameWords]);
 
   const scrambledWord = useMemo(() => {
     if (!currentWord) return "";
@@ -2112,7 +2278,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !showModeSelection && gameMode === "matching") {
-      const shuffled = shuffle(gameWords).slice(0, 6);
+      const shuffled = shuffle(activeGameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
         ...shuffled.map(w => ({ id: w.id, text: w.arabic || w.hebrew, type: 'arabic' as const }))
@@ -2121,7 +2287,7 @@ export default function App() {
       setMatchedIds([]);
       setSelectedMatch(null);
     }
-  }, [view, showModeSelection, gameMode, gameWords]);
+  }, [view, showModeSelection, gameMode, activeGameWords]);
 
   // Letter Sounds: reveal one letter at a time, speak each letter
   // Uses sequential timeouts so each letter's sound plays AFTER the letter
@@ -2240,6 +2406,10 @@ export default function App() {
       } else {
         setShowModeSelection(true);
       }
+    } else if (user?.isGuest) {
+      // Quick Play guest users go back to landing
+      setUser(null);
+      setView("public-landing");
     } else {
       setUser(null);
       setView("landing");
@@ -2252,7 +2422,7 @@ export default function App() {
     setSaveError(null);
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = gameWords.length * 10;
+    const maxPossible = activeGameWords.length * 10;
     const cappedScore = Math.min(Math.max(0, score), maxPossible);
 
     const xpEarned = cappedScore;
@@ -2387,7 +2557,7 @@ export default function App() {
       }
 
       setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
+        if (currentIndex < activeGameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
           setHiddenOptions([]);
@@ -2420,7 +2590,7 @@ export default function App() {
       }
 
       setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
+        if (currentIndex < activeGameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
         } else {
@@ -2452,7 +2622,7 @@ export default function App() {
       }
     }
     
-    if (currentIndex < gameWords.length - 1) {
+    if (currentIndex < activeGameWords.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     } else {
@@ -2476,7 +2646,7 @@ export default function App() {
       }
 
       setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
+        if (currentIndex < activeGameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
           setSpellingInput("");
@@ -3132,49 +3302,35 @@ export default function App() {
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
                     <input
+                      ref={quickPlayNameInputRef}
                       type="text"
-                      value={quickPlayStudentName}
-                      onChange={(e) => setQuickPlayStudentName(e.target.value.slice(0, 20))}
+                      defaultValue={quickPlayStudentName}
                       placeholder="Enter your nickname..."
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter' && quickPlayStudentName.trim()) {
-                          // Proceed to game
+                        if (e.key === 'Enter' && quickPlayNameInputRef.current?.value.trim()) {
+                          handleQuickPlayStart();
                         }
                       }}
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCapitalize="words"
                       className="w-full px-4 py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      autoFocus
                     />
                   </div>
 
                   <button
-                    onClick={() => {
-                      const trimmedName = quickPlayStudentName.trim();
-                      if (!trimmedName) {
-                        showToast("Please enter your name", "error");
-                        return;
-                      }
-
-                      // Create guest user for Quick Play using helper
-                      const guestUser = createGuestUser(trimmedName, "quickplay");
-
-                      setUser(guestUser);
-
-                      // Set up game with Quick Play words
-                      const gameWords = shuffle(quickPlayActiveSession.words).map(w => ({
-                        ...w,
-                        hebrew: w.hebrew || "",
-                        arabic: w.arabic || ""
-                      }));
-                      setGameWords(gameWords);
-                      setCurrentIndex(0);
-                      setScore(0);
-                      setFeedback(null);
-                      setView("game");
-                    }}
-                    disabled={!quickPlayStudentName.trim()}
-                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
+                    onClick={handleQuickPlayStart}
+                    disabled={quickPlayStarting}
+                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Start Playing →
+                    {quickPlayStarting ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />
+                        Starting...
+                      </>
+                    ) : (
+                      <>Start Playing →</>
+                    )}
                   </button>
                 </div>
 
@@ -6209,7 +6365,7 @@ export default function App() {
   }
 
   if (view === "quick-play-teacher-monitor" && quickPlayActiveSession) {
-    const qrUrl = `${window.location.origin}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
+    const qrUrl = `${publicUrl}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
@@ -6280,6 +6436,41 @@ export default function App() {
                 <QrCode size={24} />
                 QR Code
               </h2>
+
+              {/* Public URL Configuration */}
+              <div className="mb-4">
+                <label className="block text-sm font-bold mb-2">Your App URL (for phone scanning):</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={publicUrl}
+                    onChange={(e) => {
+                      const newUrl = e.target.value.replace(/\/$/, ''); // Remove trailing slash
+                      setPublicUrl(newUrl);
+                      localStorage.setItem('vocaband_public_url', newUrl);
+                    }}
+                    placeholder="http://192.168.1.100:3000"
+                    className="flex-1 px-3 py-2 bg-white/20 border-2 border-white/30 rounded-lg text-white placeholder-white/50 font-bold text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      const localIp = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                        ? 'http://192.168.1.100:3000' // User needs to replace this
+                        : window.location.origin;
+                      setPublicUrl(localIp);
+                      localStorage.setItem('vocaband_public_url', localIp);
+                      showToast("URL updated! Replace 192.168.1.100 with your computer's IP", "info");
+                    }}
+                    className="px-3 py-2 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-lg font-bold text-sm"
+                    title="Set to local IP (you'll need to update the IP)"
+                  >
+                    <Wifi size={16} />
+                  </button>
+                </div>
+                <p className="text-xs text-white/60 mt-1">
+                  💡 Find your IP: Windows → `ipconfig` | Mac → `ipconfig getifaddr en0`
+                </p>
+              </div>
 
               {/* QR Code Display */}
               <div className="bg-white rounded-xl p-4 mb-4">
@@ -7434,7 +7625,21 @@ export default function App() {
             className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >Choose Another Mode</button>
           <button
-            onClick={() => { setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true); setView("student-dashboard"); }}
+            onClick={() => {
+              setIsFinished(false);
+              setScore(0);
+              setCurrentIndex(0);
+              setMistakes([]);
+              setFeedback(null);
+              setShowModeSelection(true);
+              if (user?.isGuest) {
+                // Quick Play guest users go back to landing
+                setUser(null);
+                setView("public-landing");
+              } else {
+                setView("student-dashboard");
+              }
+            }}
             disabled={isSaving}
             className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
           >Back to Dashboard</button>
@@ -7687,7 +7892,7 @@ export default function App() {
               <progress
                 className="absolute top-0 left-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
                 max={100}
-                value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
+                value={toProgressValue(((currentIndex + 1) / activeGameWords.length) * 100)}
               />
 
               {/* Motivational message - positioned at top to not block answers */}
@@ -7700,7 +7905,7 @@ export default function App() {
               )}
 
               <div className="mb-3 sm:mb-12">
-                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {gameWords.length}</span>
+                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {activeGameWords.length}</span>
                 <div className="flex flex-col items-center justify-center gap-2 sm:gap-6 mb-3 sm:mb-12">
                   {currentWord?.imageUrl && (
                     <motion.img
@@ -7749,7 +7954,7 @@ export default function App() {
                   )}
                   {((user.powerUps ?? {})['skip'] ?? 0) > 0 && !feedback && (
                     <button onClick={() => {
-                      setCurrentIndex(prev => Math.min(prev + 1, gameWords.length - 1));
+                      setCurrentIndex(prev => Math.min(prev + 1, activeGameWords.length - 1));
                       setHiddenOptions([]);
                       const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
@@ -7996,9 +8201,9 @@ export default function App() {
           <progress
             className="h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
             max={100}
-            value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
+            value={toProgressValue(((currentIndex + 1) / activeGameWords.length) * 100)}
           />
-          <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {gameWords.length}</p>
+          <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {activeGameWords.length}</p>
         </div>
       </div>
     )}
