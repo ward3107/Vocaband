@@ -7,7 +7,7 @@ interface ActionCardProps {
   title: string;
   description: string;
   buttonText: string;
-  buttonVariant: "primary" | "secondary";
+  buttonVariant: "primary" | "secondary" | "rose";
   onClick: () => void;
 }
 
@@ -36,6 +36,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
           className={`mt-6 font-black py-3 rounded-full text-sm text-center uppercase tracking-wider active:scale-95 transition-all ${
             buttonVariant === "primary"
               ? "signature-gradient text-white shadow-lg shadow-blue-500/20"
+              : buttonVariant === "rose"
+              ? "bg-gradient-to-r from-yellow-300 to-amber-400 text-black shadow-lg shadow-yellow-300/30 hover:from-yellow-400 hover:to-amber-500"
               : "border-2 border-outline-variant/20 text-on-surface hover:bg-surface-container-low"
           }`}
         >

@@ -413,12 +413,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band I (Foundation)</span>
-                <span className="text-primary">85% Complete</span>
+                <span className="text-primary">Not Started</span>
               </div>
               <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: "85%" }}
+                  whileInView={{ width: "0%" }}
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 1.5, ease: "easeOut" }}
                   className="h-full bg-primary rounded-full relative"
@@ -446,12 +446,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band II (Intermediate)</span>
-                <span className="text-secondary">60% In Progress</span>
+                <span className="text-secondary">Not Started</span>
               </div>
               <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: "60%" }}
+                  whileInView={{ width: "0%" }}
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
                   className="h-full bg-secondary rounded-full relative"
@@ -479,12 +479,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band III (Academic)</span>
-                <span className="text-tertiary">25% Started</span>
+                <span className="text-tertiary">Not Started</span>
               </div>
               <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: "25%" }}
+                  whileInView={{ width: "0%" }}
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
                   className="h-full bg-tertiary rounded-full relative"

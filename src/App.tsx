@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import mammoth from "mammoth";
+import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./vocabulary";
 import { generateSentencesForAssignment } from "./sentence-bank";
@@ -18,8 +17,12 @@ import {
   BookOpen,
   BarChart3,
   ChevronRight,
+  ArrowRight,
+  ArrowLeft,
   Upload,
   AlertTriangle,
+  Lightbulb,
+  Sparkles,
   Camera,
   Trash2,
   PenTool,
@@ -36,25 +39,31 @@ import {
   Plus,
   X,
   TrendingUp,
-  GraduationCap
+  GraduationCap,
+  Loader2,
+  QrCode,
+  Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import confetti from "canvas-confetti";
-import { io, Socket } from "socket.io-client";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
 import { useAudio } from "./hooks/useAudio";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./privacy-config";
-import Tesseract from 'tesseract.js';
 import { shuffle, chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
-import LandingPage from "./components/LandingPage";
-import TermsPage from "./components/TermsPage";
-import PublicPrivacyPage from "./components/PublicPrivacyPage";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import DemoMode from "./components/DemoMode";
+import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
+import { SuspenseWrapper } from "./components/SuspenseWrapper";
+import { loadMammoth, loadTesseract, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
+
+// Types for lazy-loaded modules
+type MammothModule = typeof import('mammoth');
+type ConfettiModule = typeof import('canvas-confetti');
+type SocketIOModule = typeof import('socket.io-client');
+type TesseractModule = typeof import('tesseract.js');
+type Socket = SocketIOModule['Socket'];
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -255,9 +264,12 @@ export default function App() {
     | "public-landing"
     | "public-terms"
     | "public-privacy"
+    | "guest-login"
+    | "student-account-login"
     | "landing"
     | "game"
     | "teacher-dashboard"
+    | "teacher-approvals"
     | "student-dashboard"
     | "create-assignment"
     | "gradebook"
@@ -268,6 +280,9 @@ export default function App() {
     | "students"
     | "shop"
     | "privacy-settings"
+    | "quick-play-setup"
+    | "quick-play-teacher-monitor"
+    | "quick-play-student"
   >("public-landing");
   const previousViewRef = useRef<string>("public-landing");
 
@@ -324,6 +339,12 @@ export default function App() {
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
+  const [guestName, setGuestName] = useState("");
+  const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
+  const [studentLoginName, setStudentLoginName] = useState("");
+  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string }>>([]);
+  const [showNewStudentForm, setShowNewStudentForm] = useState(false);
+  const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
@@ -382,6 +403,19 @@ export default function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
+
+  // --- QUICK PLAY STATE ---
+  const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
+  const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
+  const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
+  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
+  const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
+  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string}[]>([]);
+  const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
+  const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
+  const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
+  const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
+  const [draggedWord, setDraggedWord] = useState<string | null>(null);
 
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -443,6 +477,74 @@ export default function App() {
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
 
+  // --- QUICK PLAY SEARCH PARSING ---
+  // Memoize expensive parsing and search operations for Quick Play word search
+  const parseSearchTerms = useCallback((query: string): string[] => {
+    if (!query.trim()) return [];
+
+    const terms: string[] = [];
+    let remainingText = query;
+
+    // Extract quote-wrapped phrases first (e.g., "ice cream", 'washing machine')
+    const quoteRegex = /(["'])(?:(?=(\\1?))\2.)*?\1/g;
+    const quotes: string[] = [];
+    let match;
+    while ((match = quoteRegex.exec(query)) !== null) {
+      quotes.push(match[0].replace(/['"]/g, '').trim().toLowerCase());
+    }
+
+    // Remove quoted phrases from remaining text
+    remainingText = query.replace(/(["'])(?:(?=(\\1?))\2.)*?\1/g, '');
+
+    // Split by comma or newline ONLY - spaces are part of the word
+    const splitTerms = remainingText.split(/[,\n]+/)
+      .map(term => term.trim().toLowerCase())
+      .filter(term => term.length > 0);
+
+    // Combine: quoted phrases + split terms
+    terms.push(...quotes, ...splitTerms);
+
+    return terms;
+  }, []);
+
+  const searchTerms = useMemo(() => {
+    return parseSearchTerms(quickPlaySearchQuery);
+  }, [quickPlaySearchQuery, parseSearchTerms]);
+
+  const searchResults = useMemo(() => {
+    const results: Map<string, Word[]> = new Map();
+    const matchedWordIds = new Set<number>();
+
+    searchTerms.forEach(term => {
+      // Priority 1: Exact match
+      let matches = ALL_WORDS.filter(w =>
+        w.english.toLowerCase() === term
+      );
+
+      // Priority 2: Starts with match (e.g., "app" matches "apple" but not "snap")
+      if (matches.length < 20) {
+        const startsWithMatches = ALL_WORDS.filter(w =>
+          w.english.toLowerCase().startsWith(term) &&
+          !matches.some(m => m.id === w.id)
+        );
+        matches.push(...startsWithMatches.slice(0, 20 - matches.length));
+      }
+
+      // Limit results to max 20 per search term to prevent overwhelming results
+      matches = matches.slice(0, 20);
+
+      // Deduplicate words (same word might match multiple search terms)
+      const uniqueMatches = matches.filter(w => !matchedWordIds.has(w.id));
+      uniqueMatches.forEach(w => matchedWordIds.add(w.id));
+
+      if (uniqueMatches.length > 0) {
+        results.set(term, uniqueMatches);
+      }
+    });
+
+    return results;
+  }, [searchTerms]);
+
   // Auto-generate sentences for Sentence Builder when words are selected
   useEffect(() => {
     if (!assignmentModes.includes("sentence-builder")) return;
@@ -461,12 +563,175 @@ export default function App() {
     setSentencesAutoGenerated(true);
   }, [selectedWords, assignmentModes]);
 
+  // Handle Quick Play session from URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionCode = params.get('session');
+
+    if (sessionCode) {
+      // Load Quick Play session
+      const loadQuickPlaySession = async () => {
+        const { data, error } = await supabase
+          .from('quick_play_sessions')
+          .select('*')
+          .eq('session_code', sessionCode)
+          .eq('is_active', true)
+          .single();
+
+        if (error || !data) {
+          console.error('Failed to load Quick Play session:', error);
+          showToast("Invalid or expired Quick Play session", "error");
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+
+        // Fetch database words from vocabulary
+        const dbWords = ALL_WORDS.filter(w => data.word_ids.includes(w.id));
+
+        // Parse custom words from JSON
+        let customWords: Word[] = [];
+        if (data.custom_words) {
+          try {
+            const customWordsData = typeof data.custom_words === 'string'
+              ? JSON.parse(data.custom_words)
+              : data.custom_words;
+
+            customWords = customWordsData.map((w: any, index: number) => ({
+              id: -(Date.now() + index), // Negative IDs for custom words
+              english: w.english,
+              hebrew: w.hebrew,
+              arabic: w.arabic,
+              sentence: w.sentence || "",
+              example: w.example || "",
+              band: "I" as Band,
+              level: 1,
+              frequency: 0
+            }));
+          } catch (e) {
+            console.error('Failed to parse custom words:', e);
+          }
+        }
+
+        // Combine database and custom words
+        const allWords = [...dbWords, ...customWords];
+
+        setQuickPlayActiveSession({
+          sessionCode: data.session_code,
+          wordIds: data.word_ids,
+          words: allWords
+        });
+        setView("quick-play-student");
+      };
+
+      loadQuickPlaySession();
+    }
+  }, []);
+
+  // Auto-add EXACT matches found in database to Quick Play selection
+  // Only words that match exactly what the teacher typed are auto-added
+  // Partial matches (starts-with) are shown but NOT auto-added
+  useEffect(() => {
+    // Only run this in Quick Play setup view
+    if (view !== "quick-play-setup") return;
+
+    // Get ONLY exact matches - not partial matches
+    const exactMatches: Word[] = [];
+    searchTerms.forEach(term => {
+      const exactMatchesForTerm = ALL_WORDS.filter(w =>
+        w.english.toLowerCase() === term
+      );
+      exactMatches.push(...exactMatchesForTerm);
+    });
+
+    // Remove duplicates
+    const uniqueExactMatches = Array.from(new Map(exactMatches.map(w => [w.id, w])).values());
+
+    // Add exact matches to selection if not already added
+    if (uniqueExactMatches.length > 0) {
+      setQuickPlaySelectedWords(prev => {
+        const existingIds = new Set(prev.map(w => w.id));
+        const newWords = uniqueExactMatches.filter(w => !existingIds.has(w.id));
+        return [...prev, ...newWords];
+      });
+    }
+  }, [searchTerms, view]);
+
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   const toScoreHeightClass = (score: number) => {
     if (score < 25) return "h-1/4";
     if (score < 50) return "h-2/4";
     if (score < 75) return "h-3/4";
     return "h-full";
+  };
+
+  // --- HELPER: Create Guest User ---
+  // Centralized function to create guest user objects with consistent structure
+  const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => ({
+    uid: `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    displayName: name.trim().slice(0, 30),
+    email: null,
+    role: "guest",
+    isGuest: true,
+    avatar: "🦊",
+    xp: 0,
+    classCode: null,
+    createdAt: new Date().toISOString()
+  });
+
+  // --- AI TRANSLATION FOR QUICK PLAY ---
+  // Cache for translated words to avoid redundant API calls
+  const translationCache = useRef<Map<string, {hebrew: string, arabic: string}>>(new Map());
+
+  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string} | null> => {
+    // Check cache first
+    const cached = translationCache.current.get(englishWord.toLowerCase());
+    if (cached) return cached;
+
+    try {
+      // Using MyMemory Translation API (free, no API key required)
+      const [hebrewRes, arabicRes] = await Promise.all([
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|he`),
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|ar`)
+      ]);
+
+      const hebrewData = await hebrewRes.json();
+      const arabicData = await arabicRes.json();
+
+      if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
+        const result = {
+          hebrew: hebrewData.responseData.translatedText,
+          arabic: arabicData.responseData.translatedText
+        };
+        // Cache the result
+        translationCache.current.set(englishWord.toLowerCase(), result);
+        return result;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Translation error:', error);
+      return null;
+    }
+  };
+
+  const handleAutoTranslate = async (term: string) => {
+    const newTranslating = new Set(quickPlayTranslating);
+    newTranslating.add(term);
+    setQuickPlayTranslating(newTranslating);
+
+    const translations = await translateWord(term);
+
+    if (translations) {
+      const newMap = new Map(quickPlayCustomWords);
+      newMap.set(term, translations);
+      setQuickPlayCustomWords(newMap);
+    } else {
+      showToast("Translation failed. Please try entering translations manually.", "error");
+    }
+
+    const newTranslatingDone = new Set(quickPlayTranslating);
+    newTranslatingDone.delete(term);
+    setQuickPlayTranslating(newTranslatingDone);
   };
 
   // --- STUDENT DATA STATE ---
@@ -611,6 +876,10 @@ export default function App() {
         return;
       }
 
+      // Lazy load socket.io-client
+      const socketIO = await loadSocketIO();
+      const io = socketIO.default || socketIO;
+
       s = io({
         reconnection: true,
         reconnectionAttempts: 10,
@@ -624,10 +893,15 @@ export default function App() {
       s.on("reconnect", () => {
         setSocketConnected(true);
         const currentUser = userRef.current;
-        if (currentUser?.role === "student" && currentUser.classCode && isLiveChallengeRef.current) {
-          getToken().then(t => {
-            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token: t });
-          });
+        // Allow both students and guests to rejoin live challenge
+        if (currentUser?.classCode && isLiveChallengeRef.current) {
+          if (currentUser.role === "student") {
+            getToken().then(t => {
+              s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token: t, isGuest: false });
+            });
+          } else if (currentUser.isGuest) {
+            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, isGuest: true });
+          }
         }
       });
       s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
@@ -751,7 +1025,7 @@ export default function App() {
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
-        setView("landing");
+        setView("public-landing");
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
@@ -897,6 +1171,13 @@ export default function App() {
     return () => clearInterval(id);
   }, [user?.role, user?.classCode, view]);
 
+  // Load pending students for teachers
+  useEffect(() => {
+    if (user?.role === "teacher" && view === "teacher-dashboard") {
+      loadPendingStudents();
+    }
+  }, [user?.role, view]);
+
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
     if (!error && data) setClasses(data.map(mapClass));
@@ -950,7 +1231,10 @@ export default function App() {
     setOcrProgress(0);
 
     try {
-      // 1. Run Tesseract OCR on the image
+      // 1. Lazy load Tesseract and run OCR on the image
+      const tesseractModule = await loadTesseract();
+      const Tesseract = tesseractModule.default || tesseractModule;
+
       const result = await Tesseract.recognize(file, 'eng', {
         logger: m => {
           if (m.status === 'recognizing text') {
@@ -1089,6 +1373,9 @@ export default function App() {
     if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
     try {
       const arrayBuffer = await file.arrayBuffer();
+      // Lazy load mammoth
+      const mammothModule = await loadMammoth();
+      const mammoth = mammothModule.default || mammothModule;
       const result = await mammoth.extractRawText({ arrayBuffer });
       setPastedText(result.value);
       showToast("Word document text extracted — click Import Words to continue.", "info");
@@ -1299,6 +1586,230 @@ export default function App() {
   };
 
   const loginAttemptsRef = useRef<number[]>([]);
+
+  const handleGuestPlay = () => {
+    const trimmedName = guestName.trim().slice(0, 30);
+    if (!trimmedName) {
+      setError("Please enter your nickname");
+      return;
+    }
+
+    // Create temporary guest user using helper
+    const guestUser = createGuestUser(trimmedName, "guest");
+
+    setUser(guestUser);
+    setView("landing");
+    setLoading(false);
+  };
+
+  // Student Account Login System
+  const loadStudentsInClass = async (classCode: string) => {
+    const trimmedCode = classCode.trim().toUpperCase();
+    if (!trimmedCode) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('student_profiles')
+        .select('id, display_name, xp, status')
+        .eq('class_code', trimmedCode)
+        .eq('status', 'approved')
+        .order('display_name', { ascending: true });
+
+      if (error) {
+        // If table doesn't exist yet (migration not run), show empty list
+        if (error.code === '42P01') {
+          setExistingStudents([]);
+          return;
+        }
+        throw error;
+      }
+
+      setExistingStudents((data || []).map(s => ({
+        id: s.id,
+        displayName: s.display_name,
+        xp: s.xp || 0,
+        status: s.status
+      })));
+    } catch (error) {
+      console.error('Error loading students:', error);
+      setError("Could not load students. Please check the class code.");
+      setExistingStudents([]);
+    }
+  };
+
+  const handleLoginAsStudent = async (studentId: string) => {
+    const student = existingStudents.find(s => s.id === studentId);
+    if (!student) return;
+
+    // Look up the student's full profile including auth_uid
+    try {
+      const { data: profile, error } = await supabase
+        .from('student_profiles')
+        .select('*')
+        .eq('id', studentId)
+        .single();
+
+      if (error || !profile?.auth_uid) {
+        setError("Student account not fully set up. Please ask your teacher to approve your account.");
+        return;
+      }
+
+      // Sign in as the student using their auth account
+      // For now, we'll set the user directly without auth since we have their profile
+      const userData: AppUser = {
+        uid: profile.auth_uid,
+        displayName: profile.display_name,
+        email: profile.email,
+        role: 'student',
+        classCode: profile.class_code,
+        avatar: profile.avatar || '🦊',
+        badges: profile.badges || [],
+        xp: profile.xp || 0,
+        isGuest: false
+      };
+
+      setUser(userData);
+      setView("student-dashboard");
+    } catch (error) {
+      console.error('Login error:', error);
+      setError("Could not log in. Please try again.");
+    }
+  };
+
+  const handleNewStudentSignup = async () => {
+    const trimmedName = studentLoginName.trim().slice(0, 30);
+    const trimmedCode = studentLoginClassCode.trim().toUpperCase();
+
+    if (!trimmedName || !trimmedCode) {
+      setError("Please enter both class code and your name.");
+      return;
+    }
+
+    try {
+      // Check if student already exists
+      const uniqueId = `${trimmedCode}${trimmedName.toLowerCase()}`;
+
+      const { data: existing, error: checkError } = await supabase
+        .from('student_profiles')
+        .select('id, status')
+        .eq('unique_id', uniqueId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
+        if (existing.status === 'approved') {
+          // Already approved, just log them in
+          handleLoginAsStudent(existing.id);
+          return;
+        } else if (existing.status === 'pending_approval') {
+          setError("Your account is pending approval. Please ask your teacher to approve it!");
+          return;
+        }
+      }
+
+      // Create new pending student profile
+      const { data: newProfile, error: createError } = await supabase
+        .from('student_profiles')
+        .insert({
+          unique_id: uniqueId,
+          display_name: trimmedName,
+          class_code: trimmedCode,
+          email: `${uniqueId}@internal.app`,
+          status: 'pending_approval'
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // Show success message
+      setStudentLoginName("");
+      setStudentLoginClassCode("");
+      setExistingStudents([]);
+      setShowNewStudentForm(false);
+
+      // Show success message
+      showToast(`Account created! Tell your teacher to approve "${trimmedName}" in class ${trimmedCode}. Once approved, you can log in and start earning XP!`, "success");
+    } catch (error) {
+      console.error('Signup error:', error);
+      setError("Could not create account. Please try again.");
+    }
+  };
+
+  // Teacher Approval System
+  const loadPendingStudents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('student_profiles')
+        .select(`
+          id,
+          display_name,
+          class_code,
+          joined_at
+        `)
+        .eq('status', 'pending_approval')
+        .order('joined_at', { ascending: false });
+
+      if (error) throw error;
+
+      setPendingStudents((data || []).map(s => {
+        // Find class name from local classes state
+        const classObj = classes.find(c => c.code === s.class_code);
+        return {
+          id: s.id,
+          displayName: s.display_name,
+          classCode: s.class_code,
+          className: classObj?.name || s.class_code,
+          joinedAt: s.joined_at
+        };
+      }));
+    } catch (error) {
+      console.error('Error loading pending students:', error);
+    }
+  };
+
+  const handleApproveStudent = async (studentId: string, displayName: string) => {
+    try {
+      // Call the approve_student function
+      const { data, error } = await supabase.rpc('approve_student', {
+        p_profile_id: studentId
+      });
+
+      if (error) throw error;
+
+      // Refresh the list
+      await loadPendingStudents();
+
+      // Show success
+      showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
+    } catch (error) {
+      console.error('Error approving student:', error);
+      showToast(`Could not approve student: ${error}`, "error");
+    }
+  };
+
+  const handleRejectStudent = async (studentId: string, displayName: string) => {
+    if (!confirm(`Reject ${displayName}? They'll need to sign up again.`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_profiles')
+        .update({ status: 'rejected' })
+        .eq('id', studentId);
+
+      if (error) throw error;
+
+      // Refresh the list
+      await loadPendingStudents();
+    } catch (error) {
+      console.error('Error rejecting student:', error);
+      showToast(`Could not reject student: ${error}`, "error");
+    }
+  };
+
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
     const trimmedName = name.trim().slice(0, 30);
@@ -1407,13 +1918,17 @@ export default function App() {
 
   const awardBadge = async (badge: string) => {
     if (!user || badges.includes(badge)) return;
-    
+
     const newBadges = [...badges, badge];
     setBadges(newBadges);
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.3 }
+    // Lazy load and use confetti
+    loadConfetti().then(confettiModule => {
+      const confetti = confettiModule.default || confettiModule;
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.3 }
+      });
     });
 
     try {
@@ -1582,7 +2097,7 @@ export default function App() {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 0.85;
+    utterance.rate = 0.95;
     utterance.pitch = 1.05;
     const voice = getVoice();
     if (voice) utterance.voice = voice;
@@ -1804,7 +2319,11 @@ export default function App() {
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
 
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      // Lazy load and use confetti
+      loadConfetti().then(confettiModule => {
+        const confetti = confettiModule.default || confettiModule;
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      });
     } catch (error) {
       console.error("Error saving score:", error);
       // Log detailed error for debugging
@@ -2134,18 +2653,19 @@ export default function App() {
   if (view === "public-landing") {
     return (
       <>
-        <LandingPage
+        <LandingPageWrapper
           onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("landing")}
+          onGetStarted={() => setView("student-account-login")}
           onTeacherLogin={() => supabase.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: window.location.origin },
           })}
           onTryDemo={() => setShowDemo(true)}
+          onGuestPlay={() => setView("guest-login")}
           isAuthenticated={!!user}
         />
         {showDemo && (
-          <DemoMode
+          <DemoModeWrapper
             onClose={() => setShowDemo(false)}
             onSignUp={() => {
               setShowDemo(false);
@@ -2166,7 +2686,7 @@ export default function App() {
   if (view === "public-terms") {
     return (
       <>
-        <TermsPage
+        <TermsPageWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("landing")}
           onBack={goBack}
@@ -2184,7 +2704,7 @@ export default function App() {
   if (view === "public-privacy") {
     return (
       <>
-        <PublicPrivacyPage
+        <PrivacyPageWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("landing")}
           onBack={goBack}
@@ -2196,6 +2716,478 @@ export default function App() {
           />
         )}
       </>
+    );
+  }
+
+  if (view === "guest-login") {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-secondary/10 to-tertiary/10">
+        {/* Header */}
+        <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-4 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setView("public-landing")}
+              className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-lg">arrow_back</span>
+              Back
+            </button>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg">
+              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
+            </div>
+            <span className="text-lg sm:text-xl font-black signature-gradient-text hidden sm:block">Vocaband</span>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md"
+          >
+            {/* Guest Login Card */}
+            <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-secondary-container text-on-secondary-container rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <span className="text-4xl">⚡</span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-black font-headline mb-2">
+                  Quick Play
+                </h1>
+                <p className="text-lg font-bold text-on-surface-variant">
+                  Enter a nickname to start playing!
+                </p>
+              </div>
+
+              {/* Name Input */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                    Your Nickname
+                  </label>
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleGuestPlay()}
+                    placeholder="Cool Dude 3000"
+                    maxLength={30}
+                    autoFocus
+                    className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
+                  />
+                </div>
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                  >
+                    <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Play Button */}
+              <button
+                onClick={handleGuestPlay}
+                className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+              >
+                Start Playing
+                <ArrowRight size={24} />
+              </button>
+
+              {/* Info Notice */}
+              <div className="mt-6 p-4 bg-surface-container-highest rounded-xl">
+                <p className="text-sm font-bold text-on-surface-variant text-center">
+                  ⚠️ <strong>Progress won't be saved.</strong> <br />
+                  <a
+                    onClick={() => setView("landing")}
+                    className="text-primary cursor-pointer hover:underline"
+                  >
+                    Create a free student account
+                  </a>{" "}
+                  to save your XP and progress!
+                </p>
+              </div>
+
+              {/* Demo Link */}
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowDemo(true)}
+                  className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  🎯 Or try our Demo Mode with 10 free words
+                </button>
+              </div>
+            </div>
+
+            {/* Feature Pills */}
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {["✅ All Game Modes", "✅ Live Challenge", "✅ No Account Needed"].map((feature, i) => (
+                <span
+                  key={i}
+                  className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-xs font-bold text-on-surface-variant shadow-sm"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "student-account-login") {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-tertiary/10 to-secondary/10">
+        {/* Header */}
+        <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-4 shadow-sm">
+          <button
+            onClick={() => {
+              setView("public-landing");
+              setStudentLoginClassCode("");
+              setStudentLoginName("");
+              setExistingStudents([]);
+              setShowNewStudentForm(false);
+            }}
+            className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Back
+          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg">
+              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
+            </div>
+            <span className="text-lg sm:text-xl font-black signature-gradient-text hidden sm:block">Vocaband</span>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-lg"
+          >
+            {/* Student Login Card */}
+            <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <span className="text-4xl">👤</span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-black font-headline mb-2">
+                  Student Login
+                </h1>
+                <p className="text-lg font-bold text-on-surface-variant">
+                  Join your class and save your progress!
+                </p>
+              </div>
+
+              {!showNewStudentForm ? (
+                <>
+                  {/* Class Code Input */}
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                        Class Code
+                      </label>
+                      <input
+                        type="text"
+                        value={studentLoginClassCode}
+                        onChange={(e) => {
+                          setStudentLoginClassCode(e.target.value.toUpperCase());
+                          if (e.target.value.length >= 3) {
+                            loadStudentsInClass(e.target.value);
+                          }
+                        }}
+                        placeholder="MATH101"
+                        maxLength={20}
+                        autoFocus
+                        className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
+                      />
+                    </div>
+
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                      >
+                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                        <span>{error}</span>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Existing Students List */}
+                  {studentLoginClassCode && existingStudents.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-sm font-bold mb-3 text-on-surface-variant uppercase tracking-wide">
+                        Select your name:
+                      </p>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {existingStudents.map((student) => (
+                          <button
+                            key={student.id}
+                            onClick={() => handleLoginAsStudent(student.id)}
+                            className="w-full px-6 py-4 bg-surface-container-lowest hover:bg-primary-container hover:text-on-primary-container rounded-xl text-left font-bold transition-all flex items-center justify-between group border-2 border-surface-container-highest hover:border-primary"
+                          >
+                            <span className="flex items-center gap-3">
+                              <span className="text-2xl">{student.avatar || '🦊'}</span>
+                              <span className="text-lg">{student.displayName}</span>
+                            </span>
+                            <span className="text-sm font-bold text-on-surface-variant group-hover:text-on-primary-container">
+                              {student.xp} XP
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Students Found */}
+                  {studentLoginClassCode && existingStudents.length === 0 && (
+                    <div className="mb-6 p-4 bg-surface-container-highest rounded-xl text-center">
+                      <p className="text-sm font-bold text-on-surface-variant">
+                        No students found in this class yet.
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        Be the first to join! 👇
+                      </p>
+                    </div>
+                  )}
+
+                  {/* New Student Button */}
+                  <button
+                    onClick={() => setShowNewStudentForm(true)}
+                    className="w-full bg-secondary-container text-on-secondary-container py-4 rounded-xl text-lg font-bold hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Plus size={20} />
+                    I'm a New Student
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* New Student Form */}
+                  <div className="space-y-4 mb-6">
+                    <div className="p-4 bg-surface-container-highest rounded-xl">
+                      <p className="text-sm font-bold text-on-surface-variant mb-1">
+                        Class: <span className="text-primary font-black">{studentLoginClassCode}</span>
+                      </p>
+                      <button
+                        onClick={() => {
+                          setShowNewStudentForm(false);
+                          setStudentLoginClassCode("");
+                        }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Change class code
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                        Your Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={studentLoginName}
+                        onChange={(e) => setStudentLoginName(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleNewStudentSignup()}
+                        placeholder="Sarah Johnson"
+                        maxLength={30}
+                        className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
+                      />
+                    </div>
+
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                      >
+                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                        <span>{error}</span>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    onClick={handleNewStudentSignup}
+                    className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 mb-4"
+                  >
+                    Request Account
+                    <Check size={24} />
+                  </button>
+
+                  {/* Info Notice */}
+                  <div className="p-4 bg-tertiary-container text-on-tertiary-container rounded-xl">
+                    <p className="text-sm font-bold text-center">
+                      ⏳ <strong>Teacher Approval Required</strong>
+                    </p>
+                    <p className="text-xs text-center mt-1">
+                      Tell your teacher to approve your account. Once approved, you can log in and start earning XP!
+                    </p>
+                  </div>
+
+                  {/* Back Button */}
+                  <button
+                    onClick={() => setShowNewStudentForm(false)}
+                    className="w-full mt-4 py-3 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+                  >
+                    ← Back to student list
+                  </button>
+                </>
+              )}
+
+              {/* Guest Play Link */}
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setView("guest-login")}
+                  className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  ⚡ Just want to play? Try Quick Play (Guest)
+                </button>
+              </div>
+            </div>
+
+            {/* Feature Pills */}
+            {!showNewStudentForm && (
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {["✅ Save Progress", "✅ Earn XP", "✅ Assignments", "✅ Live Challenge"].map((feature, i) => (
+                  <span
+                    key={i}
+                    className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-xs font-bold text-on-surface-variant shadow-sm"
+                  >
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "quick-play-student") {
+    return (
+      <div className="min-h-screen flex flex-col bg-surface">
+        <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-4 sm:px-6 py-4 z-50">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl sm:text-2xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Quick Play</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setView("public-landing")}
+            className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
+          >
+            ← Back
+          </button>
+        </header>
+
+        <main className="flex-grow flex flex-col items-center px-4 py-4 sm:py-6 max-w-4xl mx-auto w-full">
+          <AnimatePresence mode="wait">
+            {!quickPlayActiveSession ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-center py-20"
+              >
+                <Loader2 className="mx-auto animate-spin text-primary mb-4" size={48} />
+                <p className="text-on-surface-variant font-bold">Loading Quick Play session...</p>
+              </motion.div>
+            ) : !quickPlayStudentName ? (
+              <motion.div
+                key="name-input"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="w-full max-w-md"
+              >
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                    <QrCode className="text-white" size={40} />
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
+                  <p className="text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="relative">
+                    <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
+                    <input
+                      type="text"
+                      value={quickPlayStudentName}
+                      onChange={(e) => setQuickPlayStudentName(e.target.value.slice(0, 20))}
+                      placeholder="Enter your nickname..."
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && quickPlayStudentName.trim()) {
+                          // Proceed to game
+                        }
+                      }}
+                      className="w-full px-4 py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      autoFocus
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const trimmedName = quickPlayStudentName.trim();
+                      if (!trimmedName) {
+                        showToast("Please enter your name", "error");
+                        return;
+                      }
+
+                      // Create guest user for Quick Play using helper
+                      const guestUser = createGuestUser(trimmedName, "quickplay");
+
+                      setUser(guestUser);
+
+                      // Set up game with Quick Play words
+                      const gameWords = shuffle(quickPlayActiveSession.words).map(w => ({
+                        ...w,
+                        hebrew: w.hebrew || "",
+                        arabic: w.arabic || ""
+                      }));
+                      setGameWords(gameWords);
+                      setCurrentIndex(0);
+                      setScore(0);
+                      setFeedback(null);
+                      setView("game");
+                    }}
+                    disabled={!quickPlayStudentName.trim()}
+                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
+                  >
+                    Start Playing →
+                  </button>
+                </div>
+
+                <div className="mt-8 p-4 bg-surface-container-low rounded-2xl border-2 border-surface-container-highest">
+                  <p className="text-sm text-on-surface-variant text-center">
+                    ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!
+                  </p>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </main>
+      </div>
     );
   }
 
@@ -3241,7 +4233,23 @@ export default function App() {
 
         <div className="max-w-6xl mx-auto">
           {/* Quick Action Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {/* Quick Play */}
+            <HelpTooltip className="h-full" content="Create a QR code for students to scan and play selected words - no login required!">
+              <div className="h-full">
+                <ActionCard
+                  icon={<QrCode size={24} />}
+                  iconBg="bg-indigo-100"
+                  iconColor="text-indigo-600"
+                  title="Quick Online Challenge"
+                  description="Generate QR code for instant play"
+                  buttonText="Create"
+                  buttonVariant="secondary"
+                  onClick={() => setView("quick-play-setup")}
+                />
+              </div>
+            </HelpTooltip>
+
             {/* Live Challenge */}
             <HelpTooltip className="h-full" content="Start a real-time vocabulary competition - students race to answer correctly!">
               <div className="h-full">
@@ -3249,7 +4257,7 @@ export default function App() {
                   icon={<RefreshCw size={24} />}
                   iconBg="bg-blue-100"
                   iconColor="text-blue-600"
-                  title="Live Challenge"
+                  title="Live Mode for Classes"
                   description="Start a real-time vocabulary competition"
                   buttonText="Start"
                   buttonVariant="primary"
@@ -3304,6 +4312,23 @@ export default function App() {
                 />
               </div>
             </HelpTooltip>
+
+            {/* Student Approvals */}
+            <HelpTooltip className="h-full" content="Approve students who signed up for your classes">
+              <div className="h-full">
+                <ActionCard
+                  icon={<UserCircle size={24} />}
+                  iconBg="bg-rose-100"
+                  iconColor="text-rose-600"
+                  title="Student Approvals"
+                  description={pendingStudents.length > 0 ? `${pendingStudents.length} waiting` : "No pending approvals"}
+                  buttonText={pendingStudents.length > 0 ? `Review (${pendingStudents.length})` : "Check"}
+                  buttonVariant={pendingStudents.length > 0 ? "secondary" : "rose"}
+                  onClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
+                  badge={pendingStudents.length > 0 ? pendingStudents.length : undefined}
+                />
+              </div>
+            </HelpTooltip>
           </div>
 
           {/* My Classes Section */}
@@ -3314,7 +4339,7 @@ export default function App() {
               </h2>
               <button
                 onClick={() => setShowCreateClassModal(true)}
-                className="px-4 py-2 signature-gradient text-white rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-black text-base flex items-center gap-2 active:scale-95 transition-all"
                 aria-label="Create new class"
               >
                 <Plus size={16} /> New Class
@@ -4251,7 +5276,12 @@ export default function App() {
   if (view === "live-challenge" && selectedClass) {
     // Calculate total scores (baseScore + currentGameScore) for each student
     const sortedLeaderboard = (Object.entries(leaderboard) as [string, LeaderboardEntry][])
-      .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore }))
+      .map(([uid, entry]) => ({
+        uid,
+        name: entry.name,
+        totalScore: entry.baseScore + entry.currentGameScore,
+        isGuest: entry.isGuest || false
+      }))
       .sort((a, b) => b.totalScore - a.totalScore);
 
     const top3 = sortedLeaderboard.slice(0, 3);
@@ -4301,7 +5331,7 @@ export default function App() {
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">2ND</div>
                     </div>
                     <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36">
-                      <p className="font-bold text-sm sm:text-base truncate">{top3[1].name}</p>
+                      <p className="font-bold text-sm sm:text-base truncate">{top3[1].name}{top3[1].isGuest && <span className="ml-1">🎭</span>}</p>
                       <p className="text-2xl sm:text-3xl font-black">{top3[1].totalScore}</p>
                       <p className="text-[10px] text-white/70 font-bold">POINTS</p>
                     </div>
@@ -4335,7 +5365,7 @@ export default function App() {
                       <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
                     </div>
                     <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 shadow-2xl shadow-yellow-400/20">
-                      <p className="font-bold text-base sm:text-lg truncate">{top3[0].name}</p>
+                      <p className="font-bold text-base sm:text-lg truncate">{top3[0].name}{top3[0].isGuest && <span className="ml-1">🎭</span>}</p>
                       <p className="text-3xl sm:text-4xl font-black">{top3[0].totalScore}</p>
                       <p className="text-[10px] text-white/80 font-bold">POINTS</p>
                     </div>
@@ -4358,7 +5388,7 @@ export default function App() {
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">3RD</div>
                     </div>
                     <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36">
-                      <p className="font-bold text-sm sm:text-base truncate">{top3[2].name}</p>
+                      <p className="font-bold text-sm sm:text-base truncate">{top3[2].name}{top3[2].isGuest && <span className="ml-1">🎭</span>}</p>
                       <p className="text-2xl sm:text-3xl font-black">{top3[2].totalScore}</p>
                       <p className="text-[10px] text-white/70 font-bold">POINTS</p>
                     </div>
@@ -4390,7 +5420,7 @@ export default function App() {
                 >
                   <div className="flex items-center gap-3 sm:gap-4">
                     <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base">{idx + 4}</span>
-                    <span className="font-bold text-base sm:text-lg">{entry.name}</span>
+                    <span className="font-bold text-base sm:text-lg">{entry.name}{entry.isGuest && <span className="ml-1">🎭</span>}</span>
                   </div>
                   <span className="text-xl sm:text-2xl font-black">{entry.totalScore}</span>
                 </motion.div>
@@ -4465,6 +5495,890 @@ export default function App() {
   if (view === "students") {
     // Return a loading state while the effect below redirects
     return <div className="min-h-screen flex items-center justify-center bg-stone-100"><RefreshCw className="animate-spin text-blue-700" size={48} /></div>;
+  }
+
+  if (view === "teacher-approvals") {
+    return (
+      <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
+        {consentModal}
+
+        {/* Top App Bar */}
+        <TopAppBar
+          title="Student Approvals"
+          subtitle={`Review and approve student signups`}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+          showBackButton
+          onBack={() => setView("teacher-dashboard")}
+        />
+
+        <div className="max-w-4xl mx-auto mt-8">
+          {pendingStudents.length === 0 ? (
+            <div className="bg-surface-container-low rounded-3xl p-12 text-center border-2 border-surface-container-high shadow-lg">
+              <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-2">All Caught Up!</h2>
+              <p className="text-on-surface-variant font-medium mb-6">
+                No students waiting for approval
+              </p>
+              <button
+                onClick={() => setView("teacher-dashboard")}
+                className="px-6 py-3 signature-gradient text-white rounded-xl font-bold hover:scale-105 transition-all"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-black mb-1">
+                    Pending Approvals
+                  </h1>
+                  <p className="text-on-surface-variant font-medium">
+                    {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting
+                  </p>
+                </div>
+                <button
+                  onClick={loadPendingStudents}
+                  className="px-4 py-2 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
+                  title="Refresh list"
+                >
+                  <RefreshCw size={18} />
+                  Refresh
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {pendingStudents.map((student) => (
+                  <motion.div
+                    key={student.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-surface-container-low rounded-2xl p-6 border-2 border-surface-container-high shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      {/* Student Info */}
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-14 h-14 bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center text-2xl font-bold">
+                          🎓
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black">{student.displayName}</h3>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <span className="px-3 py-1 bg-surface-container-highest rounded-full text-xs font-bold">
+                              {student.classCode}
+                            </span>
+                            <span className="text-xs text-on-surface-variant">
+                              {student.className}
+                            </span>
+                            <span className="text-xs text-on-surface-variant">
+                              Joined {new Date(student.joinedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          onClick={() => handleApproveStudent(student.id, student.displayName)}
+                          className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg hover:scale-105"
+                          title="Approve this student - they can then log in and start learning"
+                        >
+                          <Check size={20} />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectStudent(student.id, student.displayName)}
+                          className="px-6 py-3 bg-error-container hover:bg-error text-on-error-container rounded-xl font-bold transition-all flex items-center gap-2"
+                          title="Reject this student - they'll need to sign up again"
+                        >
+                          <X size={20} />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="mt-4 p-3 bg-surface-container-highest rounded-xl">
+                      <p className="text-xs text-on-surface-variant">
+                        ℹ️ <strong>After approval:</strong> {student.displayName} can log in with class code <code>{student.classCode}</code> and their full name. Their progress will be saved automatically.
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "quick-play-setup") {
+
+    // Get all found words (flat array) and unmatched terms
+    const allFoundWords: Word[] = [];
+    searchResults.forEach(matches => allFoundWords.push(...matches));
+    // Remove duplicates
+    const uniqueFoundWords = Array.from(new Map(allFoundWords.map(w => [w.id, w])).values());
+
+    // Count exact matches (these are auto-added)
+    const exactMatchesCount = searchTerms.filter(term =>
+      ALL_WORDS.some(w => w.english.toLowerCase() === term)
+    ).length;
+
+    const unmatchedTerms = searchTerms.filter(term => !searchResults.has(term));
+
+    return (
+      <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
+        <TopAppBar
+          title="Quick Play Setup"
+          subtitle="SELECT WORDS • GENERATE QR CODE"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
+
+        <div className="max-w-4xl mx-auto">
+          {/* Word Search Section */}
+          <div className="bg-surface-container-lowest rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-highest">
+            <h2 className="text-xl font-black text-on-surface mb-4 flex items-center gap-2">
+              <Search className="text-primary" size={20} />
+              Add Words to Search
+            </h2>
+
+            {/* Word Chips Display */}
+            {searchTerms.length > 0 ? (
+              <div className="mb-4 p-4 bg-surface-container rounded-xl border-2 border-surface-container-highest">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-bold text-on-surface">
+                    {searchTerms.length} word{searchTerms.length !== 1 ? 's' : ''} added
+                  </p>
+                  <button
+                    onClick={() => setQuickPlaySearchQuery("")}
+                    className="text-xs text-rose-600 font-bold hover:text-rose-700 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                  {searchTerms.map(term => (
+                    <div
+                      key={term}
+                      className="group flex items-center gap-2 px-3 py-2 bg-white rounded-full border-2 border-primary/30 hover:border-primary transition-all"
+                    >
+                      <span className="text-sm font-bold text-on-surface">{term}</span>
+                      <button
+                        onClick={() => {
+                          // Remove this term from search
+                          const terms = quickPlaySearchQuery.split(/[,\s\n\t]+/).filter(t => t.trim().toLowerCase() !== term);
+                          setQuickPlaySearchQuery(terms.join(", "));
+                        }}
+                        className="text-rose-500 hover:text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => setQuickPlayWordEditorOpen(true)}
+                className="mb-4 p-8 bg-surface-container rounded-xl border-2 border-dashed border-surface-container-highest text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+              >
+                <Search className="mx-auto text-on-surface-variant mb-2" size={32} />
+                <p className="text-sm font-bold text-on-surface-variant mb-1">Click to add words</p>
+                <p className="text-xs text-on-surface-variant">Paste: apple, "ice cream", house</p>
+              </div>
+            )}
+
+            {/* Add More Words Button */}
+            {searchTerms.length > 0 && (
+              <button
+                onClick={() => setQuickPlayWordEditorOpen(true)}
+                className="w-full py-3 bg-white border-2 border-dashed border-surface-container-highest rounded-xl text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 mb-4"
+              >
+                <Plus size={16} />
+                Add More Words
+              </button>
+            )}
+
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-on-surface-variant">
+                {quickPlaySearchQuery ? (
+                  <>
+                    {searchTerms.length} search term{searchTerms.length !== 1 ? 's' : ''} •
+                    <span className="font-bold text-green-600 ml-1">{exactMatchesCount} exact match{exactMatchesCount !== 1 ? 'es' : ''} auto-added ✓</span>
+                    {uniqueFoundWords.length > exactMatchesCount && (
+                      <span className="font-bold text-blue-600 ml-2">• {uniqueFoundWords.length - exactMatchesCount} more found</span>
+                    )}
+                    {unmatchedTerms.length > 0 && (
+                      <span className="font-bold text-amber-600 ml-2">• {unmatchedTerms.length} need AI translation</span>
+                    )}
+                  </>
+                ) : (
+                  <>Paste or type words to search from {ALL_WORDS.length}+ words</>
+                )}
+              </p>
+              <div className="flex gap-2">
+                {quickPlaySearchQuery && (
+                  <button
+                    onClick={() => setQuickPlaySearchQuery("")}
+                    className="text-sm text-rose-600 font-bold hover:text-rose-700 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+                {unmatchedTerms.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      // Auto-translate and add all unmatched terms
+                      let customWordsToAdd: Word[] = [];
+
+                      if (unmatchedTerms.length > 0) {
+                        for (const term of unmatchedTerms) {
+                          if (!quickPlayCustomWords.has(term)) {
+                            const translation = await translateWord(term);
+                            if (translation) {
+                              const newMap = new Map(quickPlayCustomWords);
+                              newMap.set(term, translation);
+                              setQuickPlayCustomWords(newMap);
+                            }
+                          }
+                        }
+
+                        // Add all translated custom words
+                        quickPlayCustomWords.forEach((data, term) => {
+                          if (data.hebrew || data.arabic) {
+                            customWordsToAdd.push({
+                              id: -Date.now() - Math.floor(Math.random() * 1000) - customWordsToAdd.length,
+                              english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
+                              hebrew: data.hebrew || "",
+                              arabic: data.arabic || "",
+                              level: "Custom"
+                            });
+                          }
+                        });
+                      }
+
+                      // Add only custom translated words (found words are already auto-added)
+                      setQuickPlaySelectedWords(prev => [...prev, ...customWordsToAdd]);
+
+                      // Clear custom words state
+                      setQuickPlayCustomWords(new Map());
+                      setQuickPlayAddingCustom(new Set());
+
+                      // Clear search
+                      setQuickPlaySearchQuery("");
+
+                      showToast(`Added ${customWordsToAdd.length} translated word${customWordsToAdd.length !== 1 ? 's' : ''}!`, "success");
+                    }}
+                    disabled={quickPlayTranslating.size > 0}
+                    className="text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1 shadow-lg disabled:opacity-50"
+                  >
+                    <Sparkles size={14} />
+                    Add Translated Words ({unmatchedTerms.length})
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Add Remaining Words Button */}
+          {((uniqueFoundWords.length > exactMatchesCount) || unmatchedTerms.length > 0) && (
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 mb-6 shadow-xl text-white">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black mb-1">Add Remaining Words</h3>
+                  <p className="text-white/80 text-sm">
+                    {uniqueFoundWords.length > exactMatchesCount && `${uniqueFoundWords.length - exactMatchesCount} more found`}
+                    {uniqueFoundWords.length > exactMatchesCount && unmatchedTerms.length > 0 && ` + `}
+                    {unmatchedTerms.length > 0 && `${unmatchedTerms.length} custom word${unmatchedTerms.length > 1 ? 's' : ''} to translate`}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    // Add remaining database words (partial matches)
+                    const remainingDbWords = uniqueFoundWords.filter(w =>
+                      !quickPlaySelectedWords.some(sw => sw.id === w.id)
+                    );
+                    setQuickPlaySelectedWords(prev => [...prev, ...remainingDbWords]);
+
+                    // Translate and add custom words
+                    if (unmatchedTerms.length > 0) {
+                      showToast("Translating custom words...", "info");
+
+                      const customWordsToAdd: Word[] = [];
+                      for (const term of unmatchedTerms) {
+                        const translation = await translateWord(term);
+                        if (translation) {
+                          customWordsToAdd.push({
+                            id: -Date.now() - Math.floor(Math.random() * 1000) - customWordsToAdd.length,
+                            english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
+                            hebrew: translation.hebrew,
+                            arabic: translation.arabic,
+                            sentence: "",
+                            example: "",
+                            band: "I" as Band,
+                            level: 1,
+                            frequency: 0
+                          });
+                        }
+                      }
+
+                      setQuickPlaySelectedWords(prev => [...prev, ...customWordsToAdd]);
+                      setQuickPlaySearchQuery("");
+                      showToast(`Added ${remainingDbWords.length + customWordsToAdd.length} more words!`, "success");
+                    }
+                  }}
+                  className="px-6 py-3 bg-white text-green-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
+                >
+                  <Sparkles size={20} />
+                  Add Remaining Words
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Unmatched Terms - Add as Custom Words */}
+          {unmatchedTerms.length > 0 && (
+            <div className="bg-gradient-to-br from-amber-50 to-purple-50 rounded-2xl p-4 mb-6 border-2 border-amber-200">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <h3 className="font-black text-amber-900 mb-1">Custom Words Found</h3>
+                    <p className="text-sm text-amber-700">AI will translate these automatically! Click the green "Add All & Generate QR" button above to add everything at once.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {unmatchedTerms.map(term => (
+                  <div
+                    key={term}
+                    className="px-3 py-1.5 bg-white rounded-full text-sm font-bold text-on-surface border-2 border-amber-300 flex items-center gap-2"
+                  >
+                    <span>"{term}"</span>
+                    <span className="text-xs text-purple-600">🪄 AI</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Word Selection Grid */}
+          {allFoundWords.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-highest">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
+                  <CheckCircle2 className="text-green-600" size={20} />
+                  Select Words ({quickPlaySelectedWords.length} selected)
+                </h2>
+                <div className="flex gap-2">
+                  {allFoundWords.length > 0 && quickPlaySelectedWords.length < allFoundWords.length && (
+                    <button
+                      onClick={() => setQuickPlaySelectedWords(allFoundWords)}
+                      className="text-sm text-primary font-bold hover:text-primary/80 transition-colors"
+                    >
+                      Select All
+                    </button>
+                  )}
+                  {quickPlaySelectedWords.length > 0 && (
+                    <button
+                      onClick={() => setQuickPlaySelectedWords([])}
+                      className="text-sm text-rose-600 font-bold hover:text-rose-700 transition-colors"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Group results by search term */}
+              {searchTerms.length > 0 && (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {searchTerms
+                    .filter(term => searchResults.has(term))
+                    .map(term => {
+                      const matches = searchResults.get(term)!;
+                      const allSelected = matches.every(w => quickPlaySelectedWords.some(sw => sw.id === w.id));
+                      const someSelected = matches.some(w => quickPlaySelectedWords.some(sw => sw.id === w.id));
+
+                      return (
+                        <div key={term} className="bg-surface-container rounded-xl p-4 border-2 border-surface-container-highest">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-black text-on-surface">
+                              "{term}" • {matches.length} word{matches.length !== 1 ? 's' : ''}
+                            </h3>
+                            <button
+                              onClick={() => {
+                                if (allSelected) {
+                                  // Deselect all in this group
+                                  const wordIds = new Set(matches.map(w => w.id));
+                                  setQuickPlaySelectedWords(prev => prev.filter(w => !wordIds.has(w.id)));
+                                } else {
+                                  // Select all in this group
+                                  const newWords = matches.filter(w => !quickPlaySelectedWords.some(sw => sw.id === w.id));
+                                  setQuickPlaySelectedWords(prev => [...prev, ...newWords]);
+                                }
+                              }}
+                              className={`text-sm px-3 py-1 rounded-lg font-bold transition-colors ${
+                                allSelected
+                                  ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                                  : "bg-green-100 text-green-700 hover:bg-green-200"
+                              }`}
+                            >
+                              {allSelected ? "Deselect All" : someSelected ? "Select Remaining" : "Select All"}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {matches.map(word => {
+                              const isSelected = quickPlaySelectedWords.some(w => w.id === word.id);
+                              return (
+                                <button
+                                  key={word.id}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setQuickPlaySelectedWords(prev => prev.filter(w => w.id !== word.id));
+                                    } else {
+                                      setQuickPlaySelectedWords(prev => [...prev, word]);
+                                    }
+                                  }}
+                                  className={`p-3 rounded-lg border transition-all text-left ${
+                                    isSelected
+                                      ? "bg-primary-container border-primary text-on-primary-container"
+                                      : "bg-surface border-surface-container-highest hover:border-primary/50"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`font-black text-sm ${isSelected ? "text-on-primary-container" : "text-on-surface"}`}>
+                                        {word.english}
+                                      </p>
+                                      <p className={`text-xs truncate ${isSelected ? "text-on-primary-container/80" : "text-on-surface-variant"}`}>
+                                        {word.hebrew} / {word.arabic}
+                                      </p>
+                                    </div>
+                                    {isSelected && (
+                                      <Check className="text-primary flex-shrink-0" size={16} />
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Custom Words Section */}
+          {quickPlaySelectedWords.filter(w => w.id < 0).length > 0 && (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 shadow-lg border-2 border-amber-200">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-black text-amber-900 flex items-center gap-2">
+                  <Sparkles className="text-amber-600" size={20} />
+                  Custom Words ({quickPlaySelectedWords.filter(w => w.id < 0).length})
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {quickPlaySelectedWords.filter(w => w.id < 0).map(word => {
+                  const isSelected = quickPlaySelectedWords.some(w => w.id === word.id);
+                  return (
+                    <div
+                      key={word.id}
+                      className={`p-3 rounded-lg border transition-all ${
+                        isSelected
+                          ? "bg-amber-100 border-amber-400 text-amber-900"
+                          : "bg-white border-amber-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-sm">{word.english}</p>
+                          <p className="text-xs truncate opacity-80">
+                            {word.hebrew || "No Hebrew"} / {word.arabic || "No Arabic"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setQuickPlaySelectedWords(prev => prev.filter(w => w.id !== word.id));
+                          }}
+                          className="flex-shrink-0 text-rose-600 hover:text-rose-800"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Generate QR Code Button */}
+          {quickPlaySelectedWords.length > 0 && (
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-xl text-white">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black mb-1">Ready to Start!</h3>
+                  <p className="text-white/80 text-sm">
+                    {quickPlaySelectedWords.length} word{quickPlaySelectedWords.length > 1 ? 's' : ''} selected
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    // Separate custom words (negative IDs) from database words
+                    const dbWords = quickPlaySelectedWords.filter(w => w.id >= 0);
+                    const customWords = quickPlaySelectedWords.filter(w => w.id < 0);
+                    const wordIds = dbWords.map(w => w.id);
+
+                    // Only create session if we have database words OR we have custom words
+                    if (dbWords.length === 0 && customWords.length === 0) {
+                      showToast("Please select at least one word", "error");
+                      return;
+                    }
+
+                    // Prepare custom words for database (convert to JSON)
+                    const customWordsJson = customWords.length > 0 ? JSON.stringify(customWords.map(w => ({
+                      english: w.english,
+                      hebrew: w.hebrew,
+                      arabic: w.arabic,
+                      sentence: w.sentence || "",
+                      example: w.example || ""
+                    }))) : null;
+
+                    // Create session with database words AND custom words
+                    const { data, error } = await supabase.rpc('create_quick_play_session', {
+                      p_word_ids: wordIds.length > 0 ? wordIds : null,
+                      p_custom_words: customWordsJson
+                    });
+
+                    if (error) {
+                      showToast("Failed to create session: " + error.message, "error");
+                      return;
+                    }
+
+                    const session = data as { session_code: string };
+                    setQuickPlaySessionCode(session.session_code);
+                    setQuickPlayActiveSession({
+                      sessionCode: session.session_code,
+                      wordIds: wordIds,
+                      words: quickPlaySelectedWords // Include all words (db + custom)
+                    });
+                    setView("quick-play-teacher-monitor");
+                  }}
+                  className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
+                >
+                  <QrCode size={20} />
+                  Generate QR Code
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Word Editor Modal */}
+        {quickPlayWordEditorOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+              {/* Header */}
+              <div className="p-6 border-b border-surface-container-highest">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
+                    <Search className="text-primary" size={20} />
+                    Add Your Words
+                  </h2>
+                  <button
+                    onClick={() => setQuickPlayWordEditorOpen(false)}
+                    className="text-on-surface-variant hover:text-on-surface transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                <p className="text-sm text-on-surface-variant mt-2">
+                  Type or paste words below. Use <span className="font-bold">commas</span> to separate words, or put each word on a <span className="font-bold">new line</span>.
+                </p>
+              </div>
+
+              {/* Textarea */}
+              <div className="p-6 flex-grow overflow-y-auto">
+                <textarea
+                  placeholder='Examples:&#10;apple, ice cream, house, book&#10;&#10;Or each word on a new line:&#10;apple&#10;ice cream&#10;house&#10;book&#10;&#10;Use commas or newlines to separate!'
+                  value={quickPlaySearchQuery}
+                  onChange={(e) => setQuickPlaySearchQuery(e.target.value)}
+                  className="w-full h-24 px-4 py-3 bg-surface-container border-2 border-surface-container-highest text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none"
+                  autoFocus
+                />
+
+                {/* Word Preview */}
+                {searchTerms.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-bold text-on-surface">
+                        {searchTerms.length} word{searchTerms.length !== 1 ? 's' : ''} detected
+                      </p>
+                      <button
+                        onClick={() => setQuickPlaySearchQuery("")}
+                        className="text-xs text-rose-600 font-bold hover:text-rose-700 transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                      {searchTerms.map(term => (
+                        <div
+                          key={term}
+                          draggable
+                          onDragStart={() => setDraggedWord(term)}
+                          onDragEnd={() => setDraggedWord(null)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            if (draggedWord && draggedWord !== term) {
+                              // Merge words: draggedWord + " " + term
+                              const mergedPhrase = `${draggedWord} ${term}`;
+                              const terms = quickPlaySearchQuery.split(/[,\n]+/).map(t => t.trim().toLowerCase()).filter(t => t.length > 0 && t !== draggedWord && t !== term);
+                              terms.push(mergedPhrase);
+                              setQuickPlaySearchQuery(terms.join(", "));
+                              setDraggedWord(null);
+                            }
+                          }}
+                          className={`group flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border transition-all cursor-move
+                            ${draggedWord === term ? 'opacity-50' : ''}
+                            ${draggedWord && draggedWord !== term ? 'border-primary bg-primary/10 ring-2 ring-primary/30' : 'border-surface-container-highest hover:border-rose-300'}
+                          `}
+                          title={draggedWord && draggedWord !== term ? `Drop "${draggedWord}" here to make "${draggedWord} ${term}"` : term}
+                        >
+                          <span className="text-sm font-bold text-on-surface">{term}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Remove this term by splitting and filtering
+                              const terms = quickPlaySearchQuery.split(/[,\n]+/).map(t => t.trim().toLowerCase()).filter(t => t.length > 0 && t !== term);
+                              setQuickPlaySearchQuery(terms.join(", "));
+                            }}
+                            className="text-rose-400 hover:text-rose-600 transition-opacity"
+                            aria-label={`Remove ${term}`}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {searchTerms.length > 1 && (
+                      <p className="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
+                        <Info size={12} />
+                        Tip: Drag one word onto another to combine them into a phrase!
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-surface-container-highest flex items-center justify-between">
+                <button
+                  onClick={() => setQuickPlayWordEditorOpen(false)}
+                  className="px-6 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setQuickPlayWordEditorOpen(false)}
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg"
+                >
+                  <CheckCircle2 size={18} />
+                  Done - Added {searchTerms.length} Words
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (view === "quick-play-teacher-monitor" && quickPlayActiveSession) {
+    const qrUrl = `${window.location.origin}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <button
+              onClick={() => {
+                setView("teacher-dashboard");
+                setQuickPlayActiveSession(null);
+                setQuickPlaySelectedWords([]);
+                setQuickPlaySessionCode(null);
+                setQuickPlayJoinedStudents([]);
+                setQuickPlayCustomWords(new Map());
+                setQuickPlayAddingCustom(new Set());
+                setQuickPlayTranslating(new Set());
+              }}
+              className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
+            >
+              ← Back to Dashboard
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirm("End this Quick Play session? Students will no longer be able to join.")) return;
+
+                const { error } = await supabase.rpc('end_quick_play_session', {
+                  p_session_code: quickPlayActiveSession.sessionCode
+                });
+
+                if (error) {
+                  showToast("Failed to end session: " + error.message, "error");
+                  return;
+                }
+
+                setView("teacher-dashboard");
+                setQuickPlayActiveSession(null);
+                setQuickPlaySelectedWords([]);
+                setQuickPlaySessionCode(null);
+                setQuickPlayJoinedStudents([]);
+                setQuickPlayCustomWords(new Map());
+                setQuickPlayAddingCustom(new Set());
+                setQuickPlayTranslating(new Set());
+                showToast("Quick Play session ended", "success");
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
+            >
+              End Session
+            </button>
+          </div>
+
+          <div className="text-center mb-8">
+            <motion.h1
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
+            >
+              🎮 Quick Play
+            </motion.h1>
+            <p className="text-white/90 font-bold text-sm sm:text-base">
+              Scan QR code to play • {quickPlayActiveSession.words.length} words • No login required
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* QR Code Section */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                <QrCode size={24} />
+                QR Code
+              </h2>
+
+              {/* QR Code Display */}
+              <div className="bg-white rounded-xl p-4 mb-4">
+                <div className="aspect-square max-w-[250px] mx-auto">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`}
+                    alt="Quick Play QR Code"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </div>
+
+              <p className="text-sm text-white/80 text-center mb-4">
+                Session Code: <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-black ml-1">
+                  {quickPlayActiveSession.sessionCode}
+                </span>
+              </p>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(qrUrl);
+                  showToast("Link copied to clipboard!", "success");
+                }}
+                className="w-full px-4 py-3 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <Copy size={18} />
+                Copy Link
+              </button>
+            </div>
+
+            {/* Live Stats Section */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                <Users size={24} />
+                Live Stats
+              </h2>
+
+              <div className="space-y-4">
+                {/* Students Joined */}
+                <div className="bg-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold">Students Joined</span>
+                    <span className="text-2xl font-black">{quickPlayJoinedStudents.length}</span>
+                  </div>
+                </div>
+
+                {/* Live Leaderboard */}
+                {quickPlayJoinedStudents.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-black text-white/80">LIVE LEADERBOARD</h3>
+                    {quickPlayJoinedStudents
+                      .sort((a, b) => b.score - a.score)
+                      .slice(0, 5)
+                      .map((student, idx) => (
+                        <div
+                          key={student.name}
+                          className="bg-white/10 rounded-xl p-3 flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-black">#{idx + 1}</span>
+                            <span className="text-2xl">{student.avatar}</span>
+                            <span className="font-bold">{student.name}</span>
+                          </div>
+                          <span className="text-xl font-black">{student.score}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {quickPlayJoinedStudents.length === 0 && (
+                  <div className="text-center py-8 text-white/60">
+                    <Users size={48} className="mx-auto mb-2 opacity-50" />
+                    <p className="font-bold">Waiting for students to join...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Selected Words Preview */}
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 mt-6">
+            <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+              <BookOpen size={24} />
+              Words ({quickPlayActiveSession.words.length})
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {quickPlayActiveSession.words.map(word => (
+                <span
+                  key={word.id}
+                  className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold"
+                >
+                  {word.english}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (view === "analytics") {
@@ -5369,7 +7283,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background pb-8">
         <TopAppBar
-          title="Live Challenge"
+          title="Live Mode for Classes"
           subtitle="SELECT A CLASS TO START"
           showBack
           onBack={() => setView("teacher-dashboard")}
@@ -6022,7 +7936,7 @@ export default function App() {
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
           <div className="space-y-2">
             {(Object.entries(leaderboard) as [string, LeaderboardEntry][])
-              .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore }))
+              .map(([uid, entry]) => ({ uid, name: entry.name, totalScore: entry.baseScore + entry.currentGameScore, isGuest: entry.isGuest || false }))
               .sort((a, b) => b.totalScore - a.totalScore)
               .slice(0, 5)
               .map((entry, idx) => {
@@ -6043,7 +7957,7 @@ export default function App() {
                         {rankIcon}
                       </span>
                       <span className={`text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-[100px] ${isUser ? "text-white" : "text-white/90"}`}>
-                        {entry.name}
+                        {entry.name}{entry.isGuest && <span className="ml-0.5">🎭</span>}
                       </span>
                       {idx === 0 && (
                         <motion.span
