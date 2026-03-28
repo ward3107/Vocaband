@@ -24,17 +24,7 @@ No app store. No personal data required. Works offline.
 
 ## Screenshots
 
-### Landing Page
-![Landing Page](docs/screenshots/screen.png)
 
-### Student Login
-![Student Login](docs/screenshots/screen1.png)
-
-### Game Modes
-![Game Modes](docs/screenshots/screen2.png)
-
-### Live Challenge
-![Live Challenge](docs/screenshots/scree3n.png)
 
 ---
 
@@ -139,49 +129,4 @@ Teachers launch a class-wide competition from their dashboard. All students in t
 ---
 
 ## Getting Started
-
-**Prerequisites:** Node.js 18+
-
-1. Install dependencies:
-   ```
-   npm install
-   ```
-
-2. Set up environment variables — copy `.env.example` to `.env` and fill in your Supabase credentials:
-   ```
-   cp .env.example .env
-   ```
-
-3. Run the dev server:
-   ```
-   npm run dev
-   ```
-
-## Project Structure
-
-```
-├── server.ts                  # Express + Socket.IO server
-├── src/
-│   ├── App.tsx                # Main application (all views + game logic)
-│   ├── ErrorBoundary.tsx      # Error boundary
-│   ├── supabase.ts            # Supabase client, data models, mappers
-│   ├── vocabulary.ts          # Band 1 & 2 vocabulary word bank (2,067 words)
-│   ├── vocabulary-matching.ts # Fuzzy matching, word family detection, search
-│   ├── types.ts               # Socket events, leaderboard types
-│   ├── utils.ts               # Shared utilities
-│   ├── main.tsx               # React entry point
-│   └── index.css              # Tailwind CSS entry
-├── vite.config.ts             # Vite + Tailwind + PWA config
-└── package.json
-```
-
----
-
-## Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start dev server with HMR |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm run lint` | TypeScript type checking |
+visit t vocaband.com 
