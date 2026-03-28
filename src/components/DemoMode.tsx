@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import {
@@ -396,10 +396,21 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "incorrect" | null>(null);
 
-  const { speak, playMotivational } = useAudio();
+  const { speak, preloadMany, playMotivational } = useAudio();
+
+  // Track response timing for adaptive transitions
+  const responseStartTime = useRef(Date.now());
+  const averageResponseMs = useRef(3000); // start at moderate pace
 
   // Get current word
   const currentWord = DEMO_WORDS[currentWordIndex];
+
+  // Preload next word's audio for seamless transitions
+  useEffect(() => {
+    if (view === "game" && currentWordIndex < DEMO_WORDS.length - 1) {
+      preloadMany([DEMO_WORDS[currentWordIndex + 1].id]);
+    }
+  }, [view, currentWordIndex]);
 
   // Initialize game
   useEffect(() => {
@@ -441,6 +452,23 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
       }
     }
   }, [view, selectedMode, currentWordIndex]);
+
+  // Auto-speak: play word audio when a new word loads in game view
+  // All modes except flashcards & lettersounds: see + hear simultaneously on word load
+  useEffect(() => {
+    if (view !== "game" || !currentWord) return;
+    if (selectedMode === "flashcards") return; // speak when flipped, not on load
+    if (selectedMode === "lettersounds") return; // has its own letter-by-letter speech
+
+    responseStartTime.current = Date.now();
+    speak(currentWord.id);
+  }, [view, selectedMode, currentWordIndex]);
+
+  // Flashcards: speak when card is flipped to reveal meaning
+  useEffect(() => {
+    if (view !== "game" || selectedMode !== "flashcards" || !isFlipped || !currentWord) return;
+    speak(currentWord.id);
+  }, [view, selectedMode, currentWordIndex, isFlipped]);
 
   // Letter Sounds: reveal letters one by one with colors and sounds
   useEffect(() => {
@@ -669,19 +697,36 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
     }
   };
 
+  const getAdaptiveDelay = () => {
+    const responseMs = Date.now() - responseStartTime.current;
+
+    // Update running average with smoothing factor
+    averageResponseMs.current = averageResponseMs.current * 0.6 + responseMs * 0.4;
+
+    // Map response time to transition delay (exponential curve)
+    if (averageResponseMs.current < 1500) return 300;       // fast answers → quick transition
+    if (averageResponseMs.current < 3000) return 500;
+    if (averageResponseMs.current < 5000) return 800;
+    return 1200;                                                  // slow answers → longer pause
+  };
+
   const moveToNext = () => {
     if (currentWordIndex < DEMO_WORDS.length - 1) {
-      setCurrentWordIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setIsCorrect(null);
-      setHiddenOptions([]);
-      setSpellingInput("");
-      setIsFlipped(false);
-      setScrambledWord("");
-      setRevealedLetters(0);
-      setAvailableWords([]);
-      setBuiltSentence([]);
-      setSentenceFeedback(null);
+      const delay = getAdaptiveDelay();
+      setTimeout(() => {
+        setCurrentWordIndex(prev => prev + 1);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+        setHiddenOptions([]);
+        setSpellingInput("");
+        setIsFlipped(false);
+        setScrambledWord("");
+        setRevealedLetters(0);
+        setAvailableWords([]);
+        setBuiltSentence([]);
+        setSentenceFeedback(null);
+        responseStartTime.current = Date.now(); // reset timer for next word
+      }, delay);
     } else {
       setView("results");
     }

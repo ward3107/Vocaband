@@ -852,6 +852,10 @@ export default function App() {
 
   const { speak: speakWord, preloadMany, preloadMotivational, playMotivational } = useAudio();
 
+  // Adaptive timing for smooth word transitions
+  const responseStartTime = useRef(Date.now());
+  const averageResponseMs = useRef(3000);
+
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
@@ -2194,6 +2198,23 @@ export default function App() {
   const activeGameWords = gameWords.length > 0 ? gameWords : (assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS);
   const currentWord = activeGameWords[currentIndex];
 
+  // Adaptive delay: smooths response-time tracking for natural-feeling transitions
+  const getAdaptiveDelay = () => {
+    const responseMs = Date.now() - responseStartTime.current;
+    averageResponseMs.current = averageResponseMs.current * 0.6 + responseMs * 0.4;
+    if (averageResponseMs.current < 1500) return 300;
+    if (averageResponseMs.current < 3000) return 500;
+    if (averageResponseMs.current < 5000) return 800;
+    return 1200;
+  };
+
+  // Preload next word's audio for seamless transitions
+  useEffect(() => {
+    if (currentIndex < activeGameWords.length - 1 && activeGameWords[currentIndex + 1]) {
+      preloadMany([activeGameWords[currentIndex + 1].id]);
+    }
+  }, [currentIndex, activeGameWords]);
+
   const options = useMemo(() => {
     if (!currentWord) return [];
     const correct = currentWord;
@@ -2272,6 +2293,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro) {
+      responseStartTime.current = Date.now();
       speakWord(currentWord.id);
     }
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro]);
@@ -2565,13 +2587,13 @@ export default function App() {
           setIsFinished(true);
           saveScore();
         }
-      }, 1000);
+      }, getAdaptiveDelay());
     } else {
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), 1000);
+      setTimeout(() => setFeedback(null), getAdaptiveDelay());
     }
   };
 
@@ -2597,13 +2619,13 @@ export default function App() {
           setIsFinished(true);
           saveScore();
         }
-      }, 1000);
+      }, getAdaptiveDelay());
     } else {
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), 1000);
+      setTimeout(() => setFeedback(null), getAdaptiveDelay());
     }
   };
 
@@ -2654,13 +2676,13 @@ export default function App() {
           setIsFinished(true);
           saveScore();
         }
-      }, 1000);
+      }, getAdaptiveDelay());
     } else {
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), 1000);
+      setTimeout(() => setFeedback(null), getAdaptiveDelay());
     }
   };
 
