@@ -101,20 +101,14 @@ describe('isValidUid', () => {
     expect(isValidUid('550e8400-e29b-41d4-a716-446655440000')).toBe(true);
   });
 
-  it('accepts single character', () => {
-    expect(isValidUid('a')).toBe(true);
-  });
-
-  it('accepts uid at max length (128 chars)', () => {
-    expect(isValidUid('x'.repeat(128))).toBe(true);
+  it('rejects non-UUID strings', () => {
+    expect(isValidUid('a')).toBe(false);
+    expect(isValidUid('x'.repeat(128))).toBe(false);
+    expect(isValidUid('not-a-uuid')).toBe(false);
   });
 
   it('rejects empty string', () => {
     expect(isValidUid('')).toBe(false);
-  });
-
-  it('rejects uid exceeding max length', () => {
-    expect(isValidUid('x'.repeat(129))).toBe(false);
   });
 
   it('rejects non-string types', () => {
@@ -127,12 +121,14 @@ describe('isValidUid', () => {
 // ─── isValidToken ───────────────────────────────────────────────────────────
 
 describe('isValidToken', () => {
-  it('accepts a normal token string', () => {
-    expect(isValidToken('eyJhbGciOiJIUzI1NiJ9.token')).toBe(true);
+  it('accepts a valid JWT-format token', () => {
+    expect(isValidToken('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123def456')).toBe(true);
   });
 
-  it('accepts single character', () => {
-    expect(isValidToken('x')).toBe(true);
+  it('rejects non-JWT strings', () => {
+    expect(isValidToken('x')).toBe(false);
+    expect(isValidToken('not.a.jwt!')).toBe(false); // contains invalid char
+    expect(isValidToken('onlytwoparts.here')).toBe(false);
   });
 
   it('rejects empty string', () => {

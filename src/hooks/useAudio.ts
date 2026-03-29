@@ -1,6 +1,8 @@
 import { Howl } from 'howler'
 
+const MAX_WORD_CACHE_SIZE = 100
 const wordCache: Record<number, Howl> = {}
+const wordCacheOrder: number[] = [] // LRU tracking
 const motivationalCache: Record<string, Howl> = {}
 
 const getAudioUrl = (wordId: number): string => {
@@ -124,11 +126,18 @@ export const useAudio = () => {
 
   const preload = (wordId: number) => {
     if (!wordCache[wordId]) {
+      // Evict oldest entry if cache is full
+      if (wordCacheOrder.length >= MAX_WORD_CACHE_SIZE) {
+        const evictId = wordCacheOrder.shift()!
+        wordCache[evictId]?.unload()
+        delete wordCache[evictId]
+      }
       wordCache[wordId] = new Howl({
         src: [getAudioUrl(wordId)],
         preload: true,
-        onloaderror: () => {}
+        onloaderror: () => { console.warn(`Audio load failed for wordId ${wordId}`) }
       })
+      wordCacheOrder.push(wordId)
     }
   }
 
@@ -166,7 +175,7 @@ export const useAudio = () => {
           src: [getMotivationalUrl(key)],
           preload: true,
           volume: 0.8,
-          onloaderror: () => {}
+          onloaderror: () => { console.warn('Motivational audio load failed') }
         })
       }
     })
@@ -184,7 +193,7 @@ export const useAudio = () => {
         src: [getMotivationalUrl(key)],
         preload: true,
         volume: 0.8,
-        onloaderror: () => {}
+        onloaderror: () => { console.warn('Motivational audio load failed') }
       })
     }
 

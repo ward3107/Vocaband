@@ -10,3 +10,13 @@ coverage/
 # Firebase rules (deploy via firebase CLI, not git)
 firestore.rules
 # firebase-applet-config.json is tracked — client config is not a secret
+
+# Dev tool artifacts
+.playwright-mcp/
+.superpowers/
+
+# Backup files
+*.backup
+*.backup_*
+*.bak
+*.orig
