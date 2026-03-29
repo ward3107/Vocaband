@@ -1,9 +1,10 @@
- services:
+services:
   - type: web
     name: vocaband
     runtime: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci --legacy-peer-deps && npm run clean && npm run build
     startCommand: npm run start
+    healthCheckPath: /api/health
     envVars:
       - key: ALLOWED_ORIGIN
         value: https://www.vocaband.com
@@ -11,3 +12,4 @@
         value: 3000
       - key: NODE_ENV
         value: production
+      # NOTE: Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY via Render dashboard secrets

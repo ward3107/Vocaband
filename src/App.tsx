@@ -465,18 +465,9 @@ export default function App() {
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
-    console.log('🔔 showToast called:', { id, message, type, currentToastCount: toasts.length });
-    setToasts(prev => {
-      const newToasts = [...prev, { id, message, type }];
-      console.log('🔔 Toasts array after adding:', newToasts);
-      return newToasts;
-    });
+    setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
-      setToasts(prev => {
-        const filtered = prev.filter(t => t.id !== id);
-        console.log('🔔 Toast removed:', id, 'remaining:', filtered.length);
-        return filtered;
-      });
+      setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
   };
 
@@ -1758,7 +1749,6 @@ export default function App() {
     const trimmedCode = classCode.trim().toUpperCase();
     if (!trimmedCode) return;
 
-    console.log('📚 Loading students for class code:', trimmedCode);
 
     try {
       // Use the new RPC function that bypasses RLS
@@ -1767,12 +1757,10 @@ export default function App() {
           p_class_code: trimmedCode
         });
 
-      console.log('📚 RPC result for list_students_in_class:', { data, error, count: data?.length });
 
       if (error) {
         console.error('❌ RPC error:', error);
         // Fallback to direct query if RPC doesn't exist yet
-        console.log('📚 RPC not available, falling back to direct query...');
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('student_profiles')
           .select('id, display_name, xp, status, avatar')
@@ -1780,11 +1768,9 @@ export default function App() {
           .eq('status', 'approved')
           .order('display_name', { ascending: true });
 
-        console.log('📚 Fallback query result:', { fallbackData, fallbackError });
 
         if (fallbackError) {
           if (fallbackError.code === '42P01') {
-            console.log('📚 student_profiles table does not exist yet');
             setExistingStudents([]);
             return;
           }
@@ -1798,7 +1784,6 @@ export default function App() {
           status: s.status
         }));
 
-        console.log('📚 Mapped students for UI:', mappedStudents);
         setExistingStudents(mappedStudents);
         return;
       }
@@ -1811,7 +1796,6 @@ export default function App() {
         status: s.status
       }));
 
-      console.log('📚 Mapped students for UI:', mappedStudents);
       setExistingStudents(mappedStudents);
     } catch (error) {
       console.error('❌ Error loading students:', error);
@@ -1824,7 +1808,6 @@ export default function App() {
     const student = existingStudents.find(s => s.id === studentId);
     if (!student) return;
 
-    console.log('Logging in as student:', student);
 
     // Look up the student's full profile including auth_uid
     try {
@@ -1834,18 +1817,15 @@ export default function App() {
           p_student_id: studentId
         });
 
-      console.log('Student profile RPC result:', { rpcResult, rpcError });
 
       // Handle RPC error (function might not exist yet)
       if (rpcError) {
-        console.log('RPC not available, falling back to direct query...');
         const { data: profile, error } = await supabase
           .from('student_profiles')
           .select('*')
           .eq('id', studentId)
           .single();
 
-        console.log('Student profile result:', { profile, error });
 
         if (error) {
           setError("Could not load student profile. Please try again.");
@@ -1880,7 +1860,6 @@ export default function App() {
 
   // Helper function to process student profile and log them in
   const processStudentProfile = async (profile: any) => {
-    console.log('Processing student profile:', { profile });
 
     // Check approval status
     if (profile.status === 'pending_approval') {
@@ -1915,7 +1894,6 @@ export default function App() {
       isGuest: false
     };
 
-    console.log('✅ Student logged in with auth_uid:', studentUid);
 
     setUser(userData);
 
@@ -1947,7 +1925,6 @@ export default function App() {
       if (insertError) {
         console.error('❌ Error creating user record:', insertError);
       } else {
-        console.log('✅ Created user record for student:', studentUid);
       }
     } else {
       // Update existing user record with latest profile data
@@ -1967,7 +1944,6 @@ export default function App() {
 
     // Fetch class data and assignments using RPC to bypass RLS
     const code = profile.class_code;
-    console.log('📚 Fetching class data for code:', code);
 
     // Use RPC to get class data (bypasses RLS)
     const { data: classResult, error: classError } = await supabase
@@ -1975,14 +1951,12 @@ export default function App() {
         p_class_code: code
       });
 
-    console.log('📚 Class RPC result:', { classResult, classError });
 
     if (classError) {
       console.error('❌ Class RPC error:', classError);
       // Fallback: try direct query (might fail due to RLS, but worth trying)
       const { data: fallbackClassRows } = await supabase
         .from('classes').select('*').eq('code', code);
-      console.log('📚 Fallback class query:', { fallbackClassRows });
 
       if (fallbackClassRows && fallbackClassRows.length > 0) {
         await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
@@ -1992,7 +1966,6 @@ export default function App() {
       }
     } else if (classResult && classResult.length > 0) {
       const classData = mapClass(classResult[0]);
-      console.log('📚 Class data:', classData);
       await loadAssignmentsForClass(classData, code, profile.auth_uid);
     } else {
       console.warn('📚 No class found for code:', code);
@@ -2008,7 +1981,6 @@ export default function App() {
 
   // Helper to load assignments for a class
   const loadAssignmentsForClass = async (classData: any, code: string, studentUid: string) => {
-    console.log('📚 Loading assignments for class:', classData.id, 'student:', studentUid);
 
     // Use RPC to bypass RLS for assignments
     const { data: assignResult, error: assignError } = await supabase
@@ -2020,36 +1992,24 @@ export default function App() {
     const { data: progressResult, error: progressError } = await supabase
       .from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid);
 
-    console.log('📚 Assignments result:', {
-      assignData: assignResult,
-      assignError,
-      assignCount: assignResult?.length,
-      progressData: progressResult,
-      progressError,
-      progressCount: progressResult?.length
-    });
 
     if (assignError) {
       console.error('❌ Assignments RPC error:', assignError);
       // Fallback to direct query
-      console.log('📚 Trying fallback direct query for assignments...');
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('assignments').select('*').eq('class_id', classData.id);
-      console.log('📚 Fallback assignments:', { fallbackData, fallbackError });
       setStudentAssignments((fallbackData ?? []).map(mapAssignment));
     } else {
       setStudentAssignments((assignResult ?? []).map(mapAssignment));
     }
 
     setStudentProgress((progressResult ?? []).map(mapProgress));
-    console.log('📚 Set student assignments:', (assignResult ?? []).map(mapAssignment));
   };
 
   const handleNewStudentSignup = async () => {
     const trimmedName = studentLoginName.trim().slice(0, 30);
     const trimmedCode = studentLoginClassCode.trim().toUpperCase();
 
-    console.log('🆕 New student signup:', { trimmedName, trimmedCode });
 
     if (!trimmedName || !trimmedCode) {
       setError("Please enter both class code and your name.");
@@ -2064,7 +2024,6 @@ export default function App() {
           p_display_name: trimmedName
         });
 
-      console.log('🆕 RPC result:', { result, rpcError });
 
       if (rpcError) throw rpcError;
 
@@ -2075,11 +2034,9 @@ export default function App() {
       const profile = result[0].profile;
       const isNew = result[0].is_new;
 
-      console.log('🆕 Student profile:', { profile, isNew });
 
       if (profile.status === 'approved') {
         // Already approved, just log them in
-        console.log('🆕 Student already approved, logging in...');
         handleLoginAsStudent(profile.id);
         return;
       } else if (profile.status === 'pending_approval') {
@@ -2087,7 +2044,6 @@ export default function App() {
           ? `Account created! Tell your teacher to approve "${trimmedName}" in class ${trimmedCode}. Once approved, you can log in and start earning XP!`
           : `Your account is pending approval. Please ask your teacher to approve it!`;
 
-        console.log('🆕 Student pending approval, showing toast:', message);
 
         // Clear form if new account
         if (isNew) {
@@ -2138,14 +2094,12 @@ export default function App() {
   };
 
   const handleApproveStudent = async (studentId: string, displayName: string) => {
-    console.log('✅ Approve button clicked for student:', studentId, displayName);
     try {
       // Call the approve_student function
       const { data, error } = await supabase.rpc('approve_student', {
         p_profile_id: studentId
       });
 
-      console.log('✅ RPC result:', { data, error });
 
       if (error) {
         console.error('❌ RPC error:', error);
@@ -2159,20 +2113,11 @@ export default function App() {
         .eq('id', studentId)
         .single();
 
-      console.log('✅ Verification query after approval:', { verifyProfile, verifyError });
-      console.log('✅ Student details:', {
-        id: verifyProfile?.id,
-        display_name: verifyProfile?.display_name,
-        class_code: verifyProfile?.class_code,
-        status: verifyProfile?.status,
-        auth_uid: verifyProfile?.auth_uid
-      });
 
       // Refresh the list
       await loadPendingStudents();
 
       // Show success
-      console.log('✅ Student approved successfully, showing toast...');
       showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
     } catch (error) {
       console.error('❌ Error approving student:', error);
@@ -2253,7 +2198,6 @@ export default function App() {
 
       // Step 2.5: Check if student is approved (for student_profiles workflow)
       const studentUniqueId = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
-      console.log('Student login - checking approval for unique_id:', studentUniqueId);
 
       const { data: studentProfile, error: profileError } = await supabase
         .from('student_profiles')
@@ -2261,12 +2205,10 @@ export default function App() {
         .eq('unique_id', studentUniqueId)
         .maybeSingle();
 
-      console.log('Student profile check result:', { studentProfile, profileError });
 
       if (profileError) {
         console.error('Error checking student approval:', profileError);
       } else if (studentProfile) {
-        console.log('Student profile found with status:', studentProfile.status);
         if (studentProfile.status === 'pending_approval') {
           setError("Your account is pending approval from your teacher. Please check back later!");
           return;
@@ -2276,7 +2218,6 @@ export default function App() {
           return;
         }
       } else {
-        console.log('No student_profile found - allowing login (not using approval workflow)');
       }
 
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
@@ -2456,7 +2397,6 @@ export default function App() {
   const currentWord = gameWords[currentIndex];
   // Debug: verify word count in game
   if (view === "game" && activeAssignment) {
-    console.log('🎮 gameWords:', gameWords.length, 'assignmentWords:', assignmentWords.length, 'activeAssignment.wordIds:', activeAssignment.wordIds?.length);
   }
 
   const options = useMemo(() => {
@@ -4119,13 +4059,6 @@ export default function App() {
                         <button
                           onClick={() => {
                             const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
-                            console.log('🎮 Starting assignment:', {
-                              title: assignment.title,
-                              wordIds: assignment.wordIds,
-                              wordsFromDB: assignment.words?.length ?? 'none',
-                              filteredWords: filteredWords.length,
-                              totalWordIds: assignment.wordIds?.length ?? 0,
-                            });
                             setAssignmentWords(filteredWords);
                             setActiveAssignment(assignment);
                             setView("game");

@@ -15,8 +15,12 @@ export const VALIDATION = {
 
 // ─── Validation functions ───────────────────────────────────────────────────
 
+/** Class codes: 1-64 alphanumeric characters (hyphens/underscores allowed). */
 export function isValidClassCode(code: unknown): code is string {
-  return typeof code === "string" && code.length >= VALIDATION.CLASS_CODE_MIN && code.length <= VALIDATION.CLASS_CODE_MAX;
+  return typeof code === "string"
+    && code.length >= VALIDATION.CLASS_CODE_MIN
+    && code.length <= VALIDATION.CLASS_CODE_MAX
+    && /^[A-Za-z0-9_-]+$/.test(code);
 }
 
 export function isValidName(value: unknown): value is string {
@@ -24,12 +28,17 @@ export function isValidName(value: unknown): value is string {
     && !/[\x00-\x1f]/.test(value); // Reject control characters
 }
 
+/** UIDs must be valid UUID v4 format (36 hex chars + hyphens). */
 export function isValidUid(value: unknown): value is string {
-  return typeof value === "string" && value.length >= VALIDATION.UID_MIN && value.length <= VALIDATION.UID_MAX;
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+/** Tokens must look like a JWT (three base64url segments separated by dots). */
 export function isValidToken(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0;
+  return typeof value === "string"
+    && value.length >= 20
+    && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
 // ─── Rate limiter ───────────────────────────────────────────────────────────

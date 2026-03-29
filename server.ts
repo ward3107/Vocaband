@@ -26,9 +26,17 @@ const supabaseAdmin = createClient(
 async function verifyToken(token: string): Promise<string | null> {
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return null;
+    if (error) {
+      console.warn("Token verification failed:", error.message);
+      return null;
+    }
+    if (!user) {
+      console.warn("Token verification: no user returned");
+      return null;
+    }
     return user.id;
-  } catch {
+  } catch (err) {
+    console.error("Token verification exception:", err);
     return null;
   }
 }
@@ -138,6 +146,13 @@ async function startServer() {
     30 * 1000  // cleanup every 30s
   );
 
+  // Per-user rate limiter for observe events (max 5 per minute per user)
+  const observeLimiter = createSocketRateLimiter(
+    60 * 1000, // 1 minute window
+    5,         // max 5 observe attempts per minute
+    60 * 1000  // cleanup every minute
+  );
+
   // Constants for score fetching
   const PROGRESS_RECORD_LIMIT = 1000; // Safety limit for student progress records
 
@@ -180,9 +195,13 @@ async function startServer() {
   function getSocketIp(socket: import("socket.io").Socket): string {
     if (process.env.NODE_ENV === "production") {
       const fwd = socket.handshake.headers["x-forwarded-for"];
-      if (typeof fwd === "string") return fwd.split(",")[0].trim() || "unknown";
+      if (typeof fwd === "string") {
+        const firstIp = fwd.split(",")[0].trim();
+        // Basic IPv4/IPv6 format validation
+        if (/^[\d.:a-fA-F]+$/.test(firstIp)) return firstIp;
+      }
     }
-    return socket.handshake.address || "unknown";
+    return socket.handshake.address || "0.0.0.0";
   }
 
   // Socket.IO connection-level auth middleware — reject unauthenticated connections early
@@ -202,7 +221,6 @@ async function startServer() {
 
   io.on("connection", (socket) => {
     const clientIp = getSocketIp(socket);
-    console.log("User connected:", socket.id);
 
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid) || !isValidToken(token)) return;
@@ -225,14 +243,14 @@ async function startServer() {
       const canJoinAsTeacher = userData.role === "teacher" && await isTeacherForClass(uid, classCode);
       if (!canJoinAsStudent && !canJoinAsTeacher) return;
 
-      // Fetch student's TOTAL score using database aggregation
-      // Uses a single aggregated query instead of fetching all records
+      // Fetch student's score for THIS class only (not cross-class)
       let totalScore = 0;
       try {
         const { data, error } = await supabaseAdmin
           .from("progress")
           .select("score")
           .eq("student_uid", uid)
+          .eq("class_code", classCode)
           .limit(PROGRESS_RECORD_LIMIT);
         if (!error && data) {
           // Aggregate in JavaScript (consider using SQL RPC for very large datasets)
@@ -257,8 +275,14 @@ async function startServer() {
     socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, async ({ classCode, token }: ObserveChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidToken(token)) return;
 
+      // Pre-auth IP limiter
+      if (!preAuthIpLimiter.checkLimit(clientIp)) return;
+
       const verifiedUid = await verifyToken(token);
       if (!verifiedUid) return;
+
+      // Per-user rate limiter for observe
+      if (!observeLimiter.checkLimit(verifiedUid)) return;
 
       const userData = await getUserRoleAndClass(verifiedUid);
       if (!userData || userData.role !== "teacher") return;
@@ -297,7 +321,6 @@ async function startServer() {
     });
 
     socket.on("disconnect", () => {
-      console.log("User disconnected");
       const session = socketSessions[socket.id];
       if (session) {
         const { classCode, uid } = session;
@@ -344,6 +367,11 @@ async function startServer() {
     // don't mistake it for an HTML page (the catch-all below returns HTML).
     app.get("/sitemap.xml", (_req, res) => {
       res.type("application/xml").sendFile(path.join(distPath, "sitemap.xml"));
+    });
+
+    // Serve security.txt for vulnerability disclosure
+    app.get("/.well-known/security.txt", (_req, res) => {
+      res.type("text/plain").sendFile(path.join(distPath, ".well-known", "security.txt"));
     });
 
     app.get("*", (req, res) => {
