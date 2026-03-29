@@ -166,7 +166,11 @@ BEGIN
   END IF;
 
   -- Create Supabase auth user
+  -- Must explicitly provide id - auth.users doesn't auto-generate
+  v_auth_user_id := gen_random_uuid();
+
   INSERT INTO auth.users (
+    id,
     email,
     encrypted_password,
     email_confirmed_at,
@@ -174,6 +178,7 @@ BEGIN
     created_at,
     updated_at
   ) VALUES (
+    v_auth_user_id,
     v_profile.email,
     crypt(gen_random_bytes(32)::text, gen_salt('bf')),
     NOW(),
@@ -184,8 +189,7 @@ BEGIN
     ),
     NOW(),
     NOW()
-  )
-  RETURNING id INTO v_auth_user_id;
+  );
 
   -- Update profile with auth UID and approval
   UPDATE public.student_profiles

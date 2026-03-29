@@ -17,17 +17,25 @@ const getInitialLanguage = (): Language => {
   return 'ar';
 };
 
-// Initialize global state and set initial RTL
+// Initialize global state and set initial lang attribute
 if (typeof window !== 'undefined') {
   globalLanguage = getInitialLanguage();
+  // Set initial lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
+  document.documentElement.setAttribute('lang', globalLanguage);
+  // Set initial dir attribute for RTL languages
+  const initialDir = globalLanguage === 'he' || globalLanguage === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.setAttribute('dir', initialDir);
 }
 
 const setGlobalLanguage = (lang: Language) => {
   globalLanguage = lang;
   if (typeof window !== 'undefined') {
     localStorage.setItem(LANGUAGE_KEY, lang);
-    // Don't set global dir - let individual pages control their own RTL
+    // Set lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
     document.documentElement.setAttribute('lang', lang);
+    // Set dir attribute for RTL languages (WCAG 2.0 AA 1.3.4)
+    const dir = lang === 'he' || lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.setAttribute('dir', dir);
   }
   // Notify all listeners
   listeners.forEach(listener => listener(lang));

@@ -62,8 +62,8 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         {/* Header Row */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 mb-3 md:mb-4 flex-shrink-0">
           <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 bg-primary/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary">
-            <Cookie size={24} className="md:hidden" />
-            <Cookie size={28} className="hidden md:block" />
+            <Cookie size={24} className="md:hidden" aria-hidden="true" />
+            <Cookie size={28} className="hidden md:block" aria-hidden="true" />
           </div>
 
           <div className="flex-1 text-center md:text-left">
@@ -113,8 +113,8 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1 flex-wrap">
-                        <Icon size={14} className="text-on-surface-variant md:hidden" />
-                        <Icon size={16} className="text-on-surface-variant hidden md:block" />
+                        <Icon size={14} className="text-on-surface-variant md:hidden" aria-hidden="true" />
+                        <Icon size={16} className="text-on-surface-variant hidden md:block" aria-hidden="true" />
                         <span className="font-black text-on-surface text-sm md:text-base">
                           {category.name}
                         </span>
@@ -143,14 +143,14 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
           >
             {isExpanded ? (
               <>
-                <ChevronUp size={16} className="md:hidden" />
-                <ChevronUp size={18} className="hidden md:block" />
+                <ChevronUp size={16} className="md:hidden" aria-hidden="true" />
+                <ChevronUp size={18} className="hidden md:block" aria-hidden="true" />
                 Less
               </>
             ) : (
               <>
-                <ChevronDown size={16} className="md:hidden" />
-                <ChevronDown size={18} className="hidden md:block" />
+                <ChevronDown size={16} className="md:hidden" aria-hidden="true" />
+                <ChevronDown size={18} className="hidden md:block" aria-hidden="true" />
                 Customize
               </>
             )}

@@ -692,20 +692,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
     handleFeedback(correct);
   };
 
-  const handleFeedback = (correct: boolean) => {
-    if (correct) {
-      const xpEarned = 10 + streak * 2;
-      const newXp = xp + xpEarned;
-      setXp(newXp);
-      setScore(prev => prev + 1);
-      setStreak(prev => prev + 1);
-      checkAndAwardBadges(true, newXp);
-      playMotivational();
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-    } else {
-      setStreak(0);
-    }
-  };
 
   const getAdaptiveDelay = () => {
     const responseMs = Date.now() - responseStartTime.current;
@@ -740,6 +726,41 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
     } else {
       setView("results");
     }
+  };
+
+  // Guard against double-advance: store auto-advance timeout so the manual
+  // "Next" button can cancel it before triggering its own advance.
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleFeedback = (correct: boolean) => {
+    if (correct) {
+      const xpEarned = 10 + streak * 2;
+      const newXp = xp + xpEarned;
+      setXp(newXp);
+      setScore(prev => prev + 1);
+      setStreak(prev => prev + 1);
+      checkAndAwardBadges(true, newXp);
+      playMotivational();
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+    } else {
+      setStreak(0);
+    }
+
+    // Auto-advance so the user doesn't have to click "Next" manually
+    const delay = correct ? 1200 : 1800;
+    autoAdvanceRef.current = setTimeout(() => {
+      autoAdvanceRef.current = null;
+      moveToNext();
+    }, delay);
+  };
+
+  const handleManualNext = () => {
+    // Cancel pending auto-advance and move immediately
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current);
+      autoAdvanceRef.current = null;
+    }
+    moveToNext();
   };
 
   // Power-up handlers
@@ -1628,7 +1649,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                         if (built.toLowerCase() === target.toLowerCase()) {
                           setSentenceFeedback("correct");
                           handleFeedback(true);
-                          setTimeout(moveToNext, 2000);
                         } else {
                           setSentenceFeedback("incorrect");
                           setTimeout(() => setSentenceFeedback(null), 1500);
@@ -1684,7 +1704,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                     </div>
                   )}
                   <button
-                    onClick={moveToNext}
+                    onClick={handleManualNext}
                     className={`w-full mt-4 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
                   >
                     {t.next}

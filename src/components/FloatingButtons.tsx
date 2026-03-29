@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Share2, MessageCircle, Link2, Check, ArrowUp, Twitter, Mail } from "lucide-react";
+import { Share2, MessageCircle, Link2, Check, ArrowUp, Mail, Facebook } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface FloatingButtonsProps {
@@ -69,12 +69,38 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   showBackToTop = true,
   className = "",
 }) => {
+  console.log('FloatingButtons component rendering');
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showBackToTopBtn, setShowBackToTopBtn] = useState(false);
   const [buttonColor, setButtonColor] = useState({ r: 245, g: 245, b: 244 });
   const shareRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Debug logging for share state
+  useEffect(() => {
+    console.log('🔘 FloatingButtons mounted!');
+    console.log('🔘 shareRef.current:', shareRef.current);
+    console.log('🔘 Share state changed:', { shareOpen, copied });
+
+    // Add global click listener for debugging
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      console.log('🖱️ Global click detected:', {
+        target: target?.tagName,
+        className: target?.className,
+        textContent: target?.textContent?.slice(0, 30),
+        shareButtonRef: shareRef.current?.contains(e.target as Node),
+        floatingButtonsContainer: target?.closest('[data-floating-buttons]') !== null
+      });
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
+    return () => {
+      console.log('🔘 FloatingButtons unmounting');
+      document.removeEventListener('click', handleGlobalClick, true);
+    };
+  }, [shareOpen, copied]);
 
   const detectBackgroundColor = useCallback(() => {
     if (!containerRef.current) return;
@@ -140,11 +166,19 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      console.log('🖱️ handleClickOutside called:', {
+        shareRefCurrent: !!shareRef.current,
+        target: event.target,
+        contains: shareRef.current?.contains(event.target as Node),
+        shareOpen
+      });
       if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
+        console.log('🖱️ Click detected outside, closing share menu');
         setShareOpen(false);
       }
     };
     if (shareOpen) {
+      console.log('🖱️ Adding handleClickOutside listener');
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -159,24 +193,17 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
 
   const shareOptions = useMemo(() => [
     {
+      name: "Facebook",
+      icon: Facebook,
+      action: () => {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank");
+      },
+    },
+    {
       name: "WhatsApp",
       icon: MessageCircle,
       action: () => {
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(shareUrl)}`, "_blank");
-      },
-    },
-    {
-      name: "Twitter",
-      icon: Twitter,
-      action: () => {
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
-      },
-    },
-    {
-      name: "Email",
-      icon: Mail,
-      action: () => {
-        window.open(`mailto:?subject=${encodeURIComponent("Check out Vocaband!")}&body=${encodeURIComponent(shareText + "\n\n" + shareUrl)}`, "_blank");
       },
     },
     {
@@ -200,6 +227,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     const isVibrant = saturation > 0.4;
     const isMuted = saturation > 0.15 && saturation <= 0.4;
 
+    console.log('🎨 Calculating styles:', { buttonColor, luminance, saturation, temperature, isDark, isVibrant, isMuted });
+
     // Shared glass effect properties
     const glassBase = {
       backdropFilter: 'blur(12px)',
@@ -208,46 +237,56 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
 
     if (isVibrant) {
       if (temperature === 'warm') {
-        return {
+        const result = {
           button: { ...glassBase, backgroundColor: rgba(8, 145, 145, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(8, 145, 145, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
           hover: { backgroundColor: rgba(13, 148, 136, 0.7), boxShadow: '0 12px 40px rgba(8, 145, 145, 0.35)' },
-          popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(8, 145, 145, 0.25) },
+          popup: {},
           popupItem: { backgroundColor: rgba(8, 145, 145, 0.85), color: 'white' },
         };
+        console.log('🎨 Applied warm vibrant styles:', result);
+        return result;
       } else {
-        return {
+        const result = {
           button: { ...glassBase, backgroundColor: rgba(249, 115, 22, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(249, 115, 22, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
           hover: { backgroundColor: rgba(234, 88, 12, 0.7), boxShadow: '0 12px 40px rgba(249, 115, 22, 0.35)' },
-          popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(249, 115, 22, 0.25) },
+          popup: {},
           popupItem: { backgroundColor: rgba(249, 115, 22, 0.85), color: 'white' },
         };
+        console.log('🎨 Applied cool vibrant styles:', result);
+        return result;
       }
     }
 
     if (isMuted) {
-      return {
+      const result = {
         button: { ...glassBase, backgroundColor: rgba(139, 92, 246, 0.55), color: 'white', boxShadow: '0 8px 32px rgba(139, 92, 246, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
         hover: { backgroundColor: rgba(124, 58, 237, 0.7), boxShadow: '0 12px 40px rgba(139, 92, 246, 0.35)' },
-        popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(139, 92, 246, 0.25) },
+        popup: {},
         popupItem: { backgroundColor: rgba(139, 92, 246, 0.85), color: 'white' },
       };
+      console.log('🎨 Applied muted styles:', result);
+      return result;
     }
 
     // Neutral background
     if (isDark) {
-      return {
+      const result = {
         button: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.12), color: 'white', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' },
         hover: { backgroundColor: rgba(255, 255, 255, 0.22), boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)' },
-        popup: { ...glassBase, backgroundColor: rgba(0, 0, 0, 0.55), borderColor: rgba(255, 255, 255, 0.1) },
+        popup: {},
         popupItem: { backgroundColor: rgba(255, 255, 255, 0.9), color: 'rgb(28, 25, 23)' },
       };
+      console.log('🎨 Applied dark neutral styles:', result);
+      return result;
     } else {
-      return {
+      const result = {
         button: { ...glassBase, backgroundColor: rgba(28, 25, 23, 0.35), color: 'white', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)', border: '1px solid rgba(255, 255, 255, 0.08)' },
         hover: { backgroundColor: rgba(28, 25, 23, 0.5), boxShadow: '0 12px 40px rgba(0, 0, 0, 0.18)' },
-        popup: { ...glassBase, backgroundColor: rgba(255, 255, 255, 0.75), borderColor: rgba(28, 25, 23, 0.08) },
+        popup: {},
         popupItem: { backgroundColor: rgba(28, 25, 23, 0.75), color: 'white' },
       };
+      console.log('🎨 Applied light neutral styles:', result);
+      return result;
     }
   }, [buttonColor]);
 
@@ -264,7 +303,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     <div
       ref={shareRef}
       data-floating-buttons
-      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-40 flex flex-col gap-3 ${className}`}
+      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-[80] flex flex-col gap-3 ${className}`}
     >
       <div
         ref={containerRef}
@@ -274,34 +313,74 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
 
       {/* Share Button */}
       <motion.button
-        onClick={() => setShareOpen(!shareOpen)}
+        onClick={(e) => {
+          console.log('🔘 Share button CLICKED!', { event: e, currentShareOpen: shareOpen });
+          e.preventDefault();
+          e.stopPropagation();
+          setShareOpen(!shareOpen);
+          console.log('🔘 After setShareOpen, shareOpen should be:', !shareOpen);
+        }}
+        onMouseDown={(e) => {
+          console.log('🔘 Share button mouse down');
+        }}
+        onMouseUp={(e) => {
+          console.log('🔘 Share button mouse up');
+        }}
         onMouseEnter={() => setIsHovered('share')}
         onMouseLeave={() => setIsHovered(null)}
         whileHover={{ scale: shareOpen ? 1 : 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
-        style={shareOpen ? {
-          backgroundColor: 'white',
-          color: 'rgb(28, 25, 23)',
-          transform: 'rotate(45deg)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-        } : getButtonStyle('share')}
+        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+        style={getButtonStyle('share')}
+        aria-label="Share options"
+        aria-expanded={shareOpen}
+        aria-haspopup="menu"
         title="Share"
+        ref={(el) => {
+          if (el) {
+            console.log('🎯 Share button mounted:', {
+              tagName: el.tagName,
+              className: el.className,
+              offsetWidth: el.offsetWidth,
+              offsetHeight: el.offsetHeight,
+              position: el.style.position,
+              left: el.style.left,
+              bottom: el.style.bottom,
+              zIndex: el.style.zIndex
+            });
+          }
+        }}
       >
-        <Share2 size={22} strokeWidth={2.5} />
+        <Share2 size={18} strokeWidth={2.5} aria-hidden="true" />
       </motion.button>
 
       {/* Share Options - Horizontal popup */}
-      <AnimatePresence>
-        {shareOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: -20, scale: 0.9 }}
-            animate={{ opacity: 1, x: 52, y: -52, scale: 1 }}
-            exit={{ opacity: 0, x: -20, scale: 0.9 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute flex items-center gap-2 px-3 py-2 rounded-2xl shadow-2xl border-2"
-            style={styles.popup}
-          >
+      {console.log('🎯 Rendering check: shareOpen =', shareOpen)}
+      {shareOpen && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="absolute top-[-12px] left-[44px] flex items-center gap-2 p-2 z-50 min-w-fit"
+          style={styles.popup}
+          role="menu"
+          aria-label="Share options"
+          ref={(el) => {
+            if (el) {
+              console.log('🎯 Share popup rendered:', {
+                offsetWidth: el.offsetWidth,
+                offsetHeight: el.offsetHeight,
+                offsetLeft: el.offsetLeft,
+                offsetTop: el.offsetTop,
+                style: window.getComputedStyle(el),
+                parent: el.parentElement?.className
+              });
+            } else {
+              console.log('🎯 Share popup ref is NULL!');
+            }
+          }}
+        >
             {shareOptions.map((option, index) => {
               const Icon = option.icon;
               const isThisHovered = isHovered === option.name;
@@ -319,21 +398,23 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.15 }}
                   whileTap={{ scale: 0.9 }}
-                  className="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-all duration-200"
+                  className="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all duration-200"
                   style={
                     copied && option.name === "Copy Link"
                       ? { backgroundColor: 'rgb(34, 197, 94)', color: 'white' }
                       : { ...styles.popupItem, transform: isThisHovered ? 'scale(1.15)' : undefined }
                   }
                   title={option.name}
+                  role="menuitem"
+                  aria-label={`Share via ${option.name}`}
                 >
-                  <Icon size={20} strokeWidth={2.5} />
+                  <Icon size={18} strokeWidth={2.5} aria-hidden="true" />
                 </motion.button>
               );
             })}
           </motion.div>
         )}
-      </AnimatePresence>
+      {/* AnimatePresence removed for debugging */}
 
       {/* Back to Top */}
       {showBackToTop && showBackToTopBtn && (
@@ -350,7 +431,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
           style={getButtonStyle('backToTop')}
           title="Back to top"
         >
-          <ArrowUp size={22} strokeWidth={2.5} />
+          <ArrowUp size={22} strokeWidth={2.5} aria-hidden="true" />
         </motion.button>
       )}
     </div>
