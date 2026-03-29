@@ -47,6 +47,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
+import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
 import { shuffle, chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -464,9 +465,18 @@ export default function App() {
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
+    console.log('🔔 showToast called:', { id, message, type, currentToastCount: toasts.length });
+    setToasts(prev => {
+      const newToasts = [...prev, { id, message, type }];
+      console.log('🔔 Toasts array after adding:', newToasts);
+      return newToasts;
+    });
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
+      setToasts(prev => {
+        const filtered = prev.filter(t => t.id !== id);
+        console.log('🔔 Toast removed:', id, 'remaining:', filtered.length);
+        return filtered;
+      });
     }, 3000);
   };
 
@@ -1681,31 +1691,63 @@ export default function App() {
     const trimmedCode = classCode.trim().toUpperCase();
     if (!trimmedCode) return;
 
+    console.log('📚 Loading students for class code:', trimmedCode);
+
     try {
+      // Use the new RPC function that bypasses RLS
       const { data, error } = await supabase
-        .from('student_profiles')
-        .select('id, display_name, xp, status')
-        .eq('class_code', trimmedCode)
-        .eq('status', 'approved')
-        .order('display_name', { ascending: true });
+        .rpc('list_students_in_class', {
+          p_class_code: trimmedCode
+        });
+
+      console.log('📚 RPC result for list_students_in_class:', { data, error, count: data?.length });
 
       if (error) {
-        // If table doesn't exist yet (migration not run), show empty list
-        if (error.code === '42P01') {
-          setExistingStudents([]);
-          return;
+        console.error('❌ RPC error:', error);
+        // Fallback to direct query if RPC doesn't exist yet
+        console.log('📚 RPC not available, falling back to direct query...');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('student_profiles')
+          .select('id, display_name, xp, status, avatar')
+          .eq('class_code', trimmedCode)
+          .eq('status', 'approved')
+          .order('display_name', { ascending: true });
+
+        console.log('📚 Fallback query result:', { fallbackData, fallbackError });
+
+        if (fallbackError) {
+          if (fallbackError.code === '42P01') {
+            console.log('📚 student_profiles table does not exist yet');
+            setExistingStudents([]);
+            return;
+          }
+          throw fallbackError;
         }
-        throw error;
+
+        const mappedStudents = (fallbackData || []).map(s => ({
+          id: s.id,
+          displayName: s.display_name,
+          xp: s.xp || 0,
+          status: s.status
+        }));
+
+        console.log('📚 Mapped students for UI:', mappedStudents);
+        setExistingStudents(mappedStudents);
+        return;
       }
 
-      setExistingStudents((data || []).map(s => ({
+      // Map RPC results
+      const mappedStudents = (data || []).map((s: any) => ({
         id: s.id,
         displayName: s.display_name,
         xp: s.xp || 0,
         status: s.status
-      })));
+      }));
+
+      console.log('📚 Mapped students for UI:', mappedStudents);
+      setExistingStudents(mappedStudents);
     } catch (error) {
-      console.error('Error loading students:', error);
+      console.error('❌ Error loading students:', error);
       setError("Could not load students. Please check the class code.");
       setExistingStudents([]);
     }
@@ -1715,44 +1757,233 @@ export default function App() {
     const student = existingStudents.find(s => s.id === studentId);
     if (!student) return;
 
+    console.log('Logging in as student:', student);
+
     // Look up the student's full profile including auth_uid
     try {
-      const { data: profile, error } = await supabase
-        .from('student_profiles')
-        .select('*')
-        .eq('id', studentId)
-        .single();
+      // Use RPC to bypass RLS for login
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('get_student_profile_for_login', {
+          p_student_id: studentId
+        });
 
-      if (error || !profile?.auth_uid) {
-        setError("Student account not fully set up. Please ask your teacher to approve your account.");
+      console.log('Student profile RPC result:', { rpcResult, rpcError });
+
+      // Handle RPC error (function might not exist yet)
+      if (rpcError) {
+        console.log('RPC not available, falling back to direct query...');
+        const { data: profile, error } = await supabase
+          .from('student_profiles')
+          .select('*')
+          .eq('id', studentId)
+          .single();
+
+        console.log('Student profile result:', { profile, error });
+
+        if (error) {
+          setError("Could not load student profile. Please try again.");
+          return;
+        }
+
+        if (!profile) {
+          setError("Student profile not found. Please ask your teacher to approve your account.");
+          return;
+        }
+
+        // Process profile from fallback
+        await processStudentProfile(profile);
         return;
       }
 
-      // Sign in as the student using their auth account
-      // For now, we'll set the user directly without auth since we have their profile
-      const userData: AppUser = {
-        uid: profile.auth_uid,
-        displayName: profile.display_name,
-        email: profile.email,
-        role: 'student',
-        classCode: profile.class_code,
-        avatar: profile.avatar || '🦊',
-        badges: profile.badges || [],
-        xp: profile.xp || 0,
-        isGuest: false
-      };
+      // Get first result from RPC
+      const profile = rpcResult && rpcResult.length > 0 ? rpcResult[0] : null;
 
-      setUser(userData);
-      setView("student-dashboard");
+      if (!profile) {
+        setError("Student profile not found. Please ask your teacher to approve your account.");
+        return;
+      }
+
+      // Process profile from RPC
+      await processStudentProfile(profile);
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Error logging in as student:', error);
       setError("Could not log in. Please try again.");
     }
+  };
+
+  // Helper function to process student profile and log them in
+  const processStudentProfile = async (profile: any) => {
+    console.log('Processing student profile:', { profile });
+
+    // Check approval status
+    if (profile.status === 'pending_approval') {
+      setError("Your account is pending approval from your teacher. Please check back later!");
+      return;
+    }
+    if (profile.status === 'rejected') {
+      setError("Your account was not approved. Please contact your teacher.");
+      return;
+    }
+
+    if (!profile.auth_uid) {
+      setError("Student account not fully set up. Please ask your teacher to approve your account.");
+      return;
+    }
+
+    // For students with approved accounts (from teacher approval workflow):
+    // We use their profile.auth_uid directly without creating a Supabase auth session.
+    // The save_student_progress RPC bypasses RLS, so we don't need a valid session.
+    const studentUid = profile.auth_uid;
+
+    // Create user data with the profile's auth_uid
+    const userData: AppUser = {
+      uid: studentUid, // Use profile auth_uid directly
+      displayName: profile.display_name,
+      email: profile.email,
+      role: 'student',
+      classCode: profile.class_code,
+      avatar: profile.avatar || '🦊',
+      badges: profile.badges || [],
+      xp: profile.xp || 0,
+      isGuest: false
+    };
+
+    console.log('✅ Student logged in with auth_uid:', studentUid);
+
+    setUser(userData);
+
+    // Ensure user record exists in users table (for XP/streak tracking)
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('uid', studentUid)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('❌ Error checking user:', checkError);
+    } else if (!existingUser) {
+      // Create user record if it doesn't exist
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          uid: studentUid,
+          email: profile.email,
+          display_name: profile.display_name,
+          role: 'student',
+          class_code: profile.class_code,
+          avatar: profile.avatar || '🦊',
+          badges: profile.badges || [],
+          xp: profile.xp || 0,
+          streak: 0,
+          created_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        console.error('❌ Error creating user record:', insertError);
+      } else {
+        console.log('✅ Created user record for student:', studentUid);
+      }
+    } else {
+      // Update existing user record with latest profile data
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          avatar: profile.avatar || '🦊',
+          badges: profile.badges || [],
+          xp: profile.xp || existingUser.xp
+        })
+        .eq('uid', studentUid);
+
+      if (updateError) {
+        console.error('❌ Error updating user record:', updateError);
+      }
+    }
+
+    // Fetch class data and assignments using RPC to bypass RLS
+    const code = profile.class_code;
+    console.log('📚 Fetching class data for code:', code);
+
+    // Use RPC to get class data (bypasses RLS)
+    const { data: classResult, error: classError } = await supabase
+      .rpc('get_class_by_code', {
+        p_class_code: code
+      });
+
+    console.log('📚 Class RPC result:', { classResult, classError });
+
+    if (classError) {
+      console.error('❌ Class RPC error:', classError);
+      // Fallback: try direct query (might fail due to RLS, but worth trying)
+      const { data: fallbackClassRows } = await supabase
+        .from('classes').select('*').eq('code', code);
+      console.log('📚 Fallback class query:', { fallbackClassRows });
+
+      if (fallbackClassRows && fallbackClassRows.length > 0) {
+        await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
+      } else {
+        setStudentAssignments([]);
+        setStudentProgress([]);
+      }
+    } else if (classResult && classResult.length > 0) {
+      const classData = mapClass(classResult[0]);
+      console.log('📚 Class data:', classData);
+      await loadAssignmentsForClass(classData, code, profile.auth_uid);
+    } else {
+      console.warn('📚 No class found for code:', code);
+      setStudentAssignments([]);
+      setStudentProgress([]);
+    }
+
+    setBadges(profile.badges || []);
+    setXp(profile.xp || 0);
+    setStreak(0); // Will fetch from DB later
+    setView("student-dashboard");
+  };
+
+  // Helper to load assignments for a class
+  const loadAssignmentsForClass = async (classData: any, code: string, studentUid: string) => {
+    console.log('📚 Loading assignments for class:', classData.id, 'student:', studentUid);
+
+    // Use RPC to bypass RLS for assignments
+    const { data: assignResult, error: assignError } = await supabase
+      .rpc('get_assignments_for_class', {
+        p_class_id: classData.id
+      });
+
+    // Progress still uses direct query (should work for student's own progress)
+    const { data: progressResult, error: progressError } = await supabase
+      .from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid);
+
+    console.log('📚 Assignments result:', {
+      assignData: assignResult,
+      assignError,
+      assignCount: assignResult?.length,
+      progressData: progressResult,
+      progressError,
+      progressCount: progressResult?.length
+    });
+
+    if (assignError) {
+      console.error('❌ Assignments RPC error:', assignError);
+      // Fallback to direct query
+      console.log('📚 Trying fallback direct query for assignments...');
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('assignments').select('*').eq('class_id', classData.id);
+      console.log('📚 Fallback assignments:', { fallbackData, fallbackError });
+      setStudentAssignments((fallbackData ?? []).map(mapAssignment));
+    } else {
+      setStudentAssignments((assignResult ?? []).map(mapAssignment));
+    }
+
+    setStudentProgress((progressResult ?? []).map(mapProgress));
+    console.log('📚 Set student assignments:', (assignResult ?? []).map(mapAssignment));
   };
 
   const handleNewStudentSignup = async () => {
     const trimmedName = studentLoginName.trim().slice(0, 30);
     const trimmedCode = studentLoginClassCode.trim().toUpperCase();
+
+    console.log('🆕 New student signup:', { trimmedName, trimmedCode });
 
     if (!trimmedName || !trimmedCode) {
       setError("Please enter both class code and your name.");
@@ -1760,55 +1991,50 @@ export default function App() {
     }
 
     try {
-      // Check if student already exists
-      const uniqueId = `${trimmedCode}${trimmedName.toLowerCase()}`;
+      // Use the RPC function which has SECURITY DEFINER to bypass RLS
+      const { data: result, error: rpcError } = await supabase
+        .rpc('get_or_create_student_profile', {
+          p_class_code: trimmedCode,
+          p_display_name: trimmedName
+        });
 
-      const { data: existing, error: checkError } = await supabase
-        .from('student_profiles')
-        .select('id, status')
-        .eq('unique_id', uniqueId)
-        .maybeSingle();
+      console.log('🆕 RPC result:', { result, rpcError });
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
+      if (rpcError) throw rpcError;
+
+      if (!result || result.length === 0) {
+        throw new Error('Failed to create student profile');
       }
 
-      if (existing) {
-        if (existing.status === 'approved') {
-          // Already approved, just log them in
-          handleLoginAsStudent(existing.id);
-          return;
-        } else if (existing.status === 'pending_approval') {
-          setError("Your account is pending approval. Please ask your teacher to approve it!");
-          return;
+      const profile = result[0].profile;
+      const isNew = result[0].is_new;
+
+      console.log('🆕 Student profile:', { profile, isNew });
+
+      if (profile.status === 'approved') {
+        // Already approved, just log them in
+        console.log('🆕 Student already approved, logging in...');
+        handleLoginAsStudent(profile.id);
+        return;
+      } else if (profile.status === 'pending_approval') {
+        const message = isNew
+          ? `Account created! Tell your teacher to approve "${trimmedName}" in class ${trimmedCode}. Once approved, you can log in and start earning XP!`
+          : `Your account is pending approval. Please ask your teacher to approve it!`;
+
+        console.log('🆕 Student pending approval, showing toast:', message);
+
+        // Clear form if new account
+        if (isNew) {
+          setStudentLoginName("");
+          setStudentLoginClassCode("");
+          setExistingStudents([]);
+          setShowNewStudentForm(false);
         }
+
+        showToast(message, "success");
       }
-
-      // Create new pending student profile
-      const { data: newProfile, error: createError } = await supabase
-        .from('student_profiles')
-        .insert({
-          unique_id: uniqueId,
-          display_name: trimmedName,
-          class_code: trimmedCode,
-          email: `${uniqueId}@internal.app`,
-          status: 'pending_approval'
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-
-      // Show success message
-      setStudentLoginName("");
-      setStudentLoginClassCode("");
-      setExistingStudents([]);
-      setShowNewStudentForm(false);
-
-      // Show success message
-      showToast(`Account created! Tell your teacher to approve "${trimmedName}" in class ${trimmedCode}. Once approved, you can log in and start earning XP!`, "success");
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('❌ Signup error:', error);
       setError("Could not create account. Please try again.");
     }
   };
@@ -1846,21 +2072,44 @@ export default function App() {
   };
 
   const handleApproveStudent = async (studentId: string, displayName: string) => {
+    console.log('✅ Approve button clicked for student:', studentId, displayName);
     try {
       // Call the approve_student function
       const { data, error } = await supabase.rpc('approve_student', {
         p_profile_id: studentId
       });
 
-      if (error) throw error;
+      console.log('✅ RPC result:', { data, error });
+
+      if (error) {
+        console.error('❌ RPC error:', error);
+        throw error;
+      }
+
+      // DEBUG: Query the student profile to verify the update
+      const { data: verifyProfile, error: verifyError } = await supabase
+        .from('student_profiles')
+        .select('*')
+        .eq('id', studentId)
+        .single();
+
+      console.log('✅ Verification query after approval:', { verifyProfile, verifyError });
+      console.log('✅ Student details:', {
+        id: verifyProfile?.id,
+        display_name: verifyProfile?.display_name,
+        class_code: verifyProfile?.class_code,
+        status: verifyProfile?.status,
+        auth_uid: verifyProfile?.auth_uid
+      });
 
       // Refresh the list
       await loadPendingStudents();
 
       // Show success
+      console.log('✅ Student approved successfully, showing toast...');
       showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
     } catch (error) {
-      console.error('Error approving student:', error);
+      console.error('❌ Error approving student:', error);
       showToast(`Could not approve student: ${error}`, "error");
     }
   };
@@ -1935,6 +2184,34 @@ export default function App() {
         return;
       }
       const classData = mapClass(classResult.data[0]);
+
+      // Step 2.5: Check if student is approved (for student_profiles workflow)
+      const studentUniqueId = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
+      console.log('Student login - checking approval for unique_id:', studentUniqueId);
+
+      const { data: studentProfile, error: profileError } = await supabase
+        .from('student_profiles')
+        .select('status')
+        .eq('unique_id', studentUniqueId)
+        .maybeSingle();
+
+      console.log('Student profile check result:', { studentProfile, profileError });
+
+      if (profileError) {
+        console.error('Error checking student approval:', profileError);
+      } else if (studentProfile) {
+        console.log('Student profile found with status:', studentProfile.status);
+        if (studentProfile.status === 'pending_approval') {
+          setError("Your account is pending approval from your teacher. Please check back later!");
+          return;
+        }
+        if (studentProfile.status === 'rejected') {
+          setError("Your account was not approved. Please contact your teacher.");
+          return;
+        }
+      } else {
+        console.log('No student_profile found - allowing login (not using approval workflow)');
+      }
 
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
       let userData: AppUser;
@@ -2342,16 +2619,25 @@ export default function App() {
     // Persist XP and streak to database
     await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
 
-    // Get current auth session UID to ensure RLS policy compatibility
+    // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
+    // For regular students, we try to get the session UID
     const { data: { session } } = await supabase.auth.getSession();
-    const currentAuthUid = session?.user?.id;
-    if (!currentAuthUid) {
-      throw new Error("Not authenticated - please log in again");
+    const sessionUid = session?.user?.id;
+
+    // Determine the student UID to use for progress tracking
+    // If we have a session, check for a mapped profile UID (for anonymous sessions)
+    // Otherwise, use user.uid directly (which is profile.auth_uid for approved students)
+    let studentUid: string;
+    if (sessionUid) {
+      const mappedUid = localStorage.getItem(`vocaband_student_${sessionUid}`);
+      studentUid = mappedUid || sessionUid;
+    } else {
+      studentUid = user.uid;
     }
 
     const progress: Omit<ProgressData, "id"> = {
       studentName: user.displayName,
-      studentUid: currentAuthUid, // Use current auth session UID
+      studentUid: studentUid,
       assignmentId: activeAssignment.id,
       classCode: user.classCode || "",
       score: cappedScore,
@@ -2362,32 +2648,44 @@ export default function App() {
     };
 
     try {
-      // Upsert: insert or update if higher score. The unique constraint
-      // (assignment_id, student_uid, mode, class_code) prevents duplicates.
-      // Check for existing record first so we only update when score is higher.
-      const { data: existingRows } = await supabase
-        .from('progress').select('id, score')
-        .eq('assignment_id', activeAssignment.id)
-        .eq('mode', gameMode)
-        .eq('student_uid', currentAuthUid)
-        .eq('class_code', user.classCode || "");
+      // Use RPC to save progress (bypasses RLS for students)
+      const { data: progressId, error: rpcError } = await supabase
+        .rpc('save_student_progress', {
+          p_student_name: user.displayName,
+          p_student_uid: studentUid,
+          p_assignment_id: activeAssignment.id,
+          p_class_code: user.classCode || "",
+          p_score: cappedScore,
+          p_mode: gameMode,
+          p_mistakes: mistakes,
+          p_avatar: user.avatar || "🦊"
+        });
 
-      if (existingRows && existingRows.length > 0) {
-        const existing = existingRows[0];
-        if (score > existing.score) {
-          const { error } = await supabase
-            .from('progress').update(mapProgressToDb(progress)).eq('id', existing.id);
-          if (error) throw error;
-          setStudentProgress(prev =>
-            prev.map(p => p.id === existing.id ? { id: existing.id, ...progress } : p)
-          );
+      if (rpcError) throw rpcError;
+
+      // Update local state with the saved progress
+      const newProgress = {
+        id: progressId,
+        ...progress
+      };
+
+      setStudentProgress(prev => {
+        const existingIndex = prev.findIndex(
+          p => p.assignmentId === activeAssignment.id
+            && p.mode === gameMode
+            && p.studentUid === currentAuthUid
+        );
+
+        if (existingIndex >= 0) {
+          // Update existing if found
+          const updated = [...prev];
+          updated[existingIndex] = newProgress;
+          return updated;
+        } else {
+          // Add new progress
+          return [...prev, newProgress];
         }
-      } else {
-        const { data: inserted, error } = await supabase
-          .from('progress').insert(mapProgressToDb(progress)).select().single();
-        if (error) throw error;
-        setStudentProgress(prev => [...prev, { id: inserted.id, ...progress }]);
-      }
+      });
 
       // Clear any queued retry for this assignment+mode
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
@@ -2455,7 +2753,11 @@ export default function App() {
       setScore(newScore);
 
       // Clear attempts for this word since they got it right
-      setWordAttempts(prev => removeKey(prev, currentWord.id));
+      setWordAttempts(prev => {
+        const newState = { ...prev };
+        delete newState[currentWord.id];
+        return newState;
+      });
 
       if (socket && user?.classCode) {
         socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
@@ -2783,6 +3085,7 @@ export default function App() {
             onCustomize={handleCookieCustomize}
           />
         )}
+        <FloatingButtons showBackToTop={true} />
       </>
     );
   }
@@ -2869,10 +3172,14 @@ export default function App() {
               {/* Name Input */}
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                  <label
+                    htmlFor="guest-nickname-input"
+                    className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
+                  >
                     Your Nickname
                   </label>
                   <input
+                    id="guest-nickname-input"
                     type="text"
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
@@ -2999,10 +3306,14 @@ export default function App() {
                   {/* Class Code Input */}
                   <div className="space-y-4 mb-6">
                     <div>
-                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                      <label
+                        htmlFor="student-class-code-input"
+                        className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
+                      >
                         Class Code
                       </label>
                       <input
+                        id="student-class-code-input"
                         type="text"
                         value={studentLoginClassCode}
                         onChange={(e) => {
@@ -3014,17 +3325,20 @@ export default function App() {
                         placeholder="MATH101"
                         maxLength={20}
                         autoFocus
+                        aria-describedby={error ? "student-login-error" : undefined}
                         className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
                       />
                     </div>
 
                     {error && (
                       <motion.div
+                        id="student-login-error"
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                        role="alert"
                       >
-                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
                         <span>{error}</span>
                       </motion.div>
                     )}
@@ -3097,27 +3411,34 @@ export default function App() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                      <label
+                        htmlFor="new-student-name-input"
+                        className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
+                      >
                         Your Full Name
                       </label>
                       <input
+                        id="new-student-name-input"
                         type="text"
                         value={studentLoginName}
                         onChange={(e) => setStudentLoginName(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && handleNewStudentSignup()}
                         placeholder="Sarah Johnson"
                         maxLength={30}
+                        aria-describedby={error ? "new-student-error" : undefined}
                         className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
                       />
                     </div>
 
                     {error && (
                       <motion.div
+                        id="new-student-error"
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                        role="alert"
                       >
-                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
                         <span>{error}</span>
                       </motion.div>
                     )}
@@ -3339,21 +3660,21 @@ export default function App() {
                   <div className="space-y-5 sm:space-y-6">
                     <div className="space-y-3 sm:space-y-4">
                       <div className="relative group">
-                        <label className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">CLASS CODE</label>
+                        <label htmlFor="join-class-code-input" className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">CLASS CODE</label>
                         <input
                           type="text"
                           placeholder="e.g. BAND-2024"
-                          id="class-code"
+                          id="join-class-code-input"
                           maxLength={20}
                           className="w-full bg-surface-container-lowest border-2 border-surface-container-high focus:border-primary rounded-xl px-5 sm:px-6 py-4 sm:py-5 font-bold text-base sm:text-lg text-on-surface outline-none transition-all placeholder:text-surface-dim"
                         />
                       </div>
                       <div className="relative group">
-                        <label className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">YOUR NAME</label>
+                        <label htmlFor="join-student-name-input" className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">YOUR NAME</label>
                         <input
                           type="text"
                           placeholder="What should we call you?"
-                          id="student-name"
+                          id="join-student-name-input"
                           maxLength={30}
                           className="w-full bg-surface-container-lowest border-2 border-surface-container-high focus:border-primary rounded-xl px-5 sm:px-6 py-4 sm:py-5 font-bold text-base sm:text-lg text-on-surface outline-none transition-all placeholder:text-surface-dim"
                         />
@@ -3363,8 +3684,8 @@ export default function App() {
                     <button
                       disabled={loading}
                       onClick={() => {
-                        const code = (document.getElementById("class-code") as HTMLInputElement).value;
-                        const name = (document.getElementById("student-name") as HTMLInputElement).value;
+                        const code = (document.getElementById("join-class-code-input") as HTMLInputElement).value;
+                        const name = (document.getElementById("join-student-name-input") as HTMLInputElement).value;
                         if (code && name) handleStudentLogin(code, name);
                         else showToast("Please enter both code and name!", "error");
                       }}
@@ -3554,6 +3875,7 @@ export default function App() {
             <span className="text-[9px] font-black font-headline mt-0.5">Terms</span>
           </button>
         </nav>
+        <FloatingButtons showBackToTop={true} />
       </div>
     );
   }
@@ -3748,6 +4070,7 @@ export default function App() {
             )}
           </div>
         </div>
+        <FloatingButtons showBackToTop={true} />
       </div>
     );
   }
@@ -4317,6 +4640,7 @@ export default function App() {
             </div>
           </div>
         </div>
+        <FloatingButtons showBackToTop={true} />
       </div>
     );
   }
@@ -5231,6 +5555,30 @@ export default function App() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Toast Notifications */}
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
+          <AnimatePresence>
+            {toasts.map(toast => (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                className={`px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
+                  toast.type === 'success' ? 'bg-green-600 text-white' :
+                  toast.type === 'error' ? 'bg-red-600 text-white' :
+                  'bg-blue-600 text-white'
+                }`}
+              >
+                {toast.type === 'success' && <CheckCircle2 size={20} />}
+                {toast.type === 'error' && <AlertCircle size={20} />}
+                {toast.type === 'info' && <Info size={20} />}
+                <span>{toast.message}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
     );
@@ -7796,6 +8144,7 @@ export default function App() {
         </div>
       </div>
     )}
+    <FloatingButtons showBackToTop={true} />
   </div>
 );
 }
