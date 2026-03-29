@@ -41,6 +41,85 @@ let preloadedMotivational = false
 
 const pick = () => PHRASES[Math.floor(Math.random() * PHRASES.length)]
 
+// Human-readable label for each phrase key (used for on-screen text)
+const PHRASE_LABELS: Record<string, string> = {
+  "great-job": "Great Job! 🎉",
+  "well-done": "Well Done! 👏",
+  "awesome": "Awesome! 🌟",
+  "keep-it-up": "Keep It Up! 💪",
+  "nailed-it": "Nailed It! 🎯",
+  "brilliant": "Brilliant! ✨",
+  "youre-on-fire": "You're On Fire! 🔥",
+  "fantastic": "Fantastic! 🎊",
+  "way-to-go": "Way To Go! 🚀",
+  "superstar": "Superstar! ⭐",
+  "amazing": "Amazing! 💫",
+  "perfect": "Perfect! 💯",
+  "excellent": "Excellent! 🏆",
+  "outstanding": "Outstanding! 🌈",
+  "incredible": "Incredible! 🎭",
+  "wonderful": "Wonderful! 🦋",
+  "spectacular": "Spectacular! 🎪",
+  "terrific": "Terrific! 🎨",
+  "superb": "Superb! 🎵",
+  "magnificent": "Magnificent! 👑",
+  "you-got-it": "You Got It! ✅",
+  "thats-right": "That's Right! 🎯",
+  "correct": "Correct! ✔️",
+  "spot-on": "Spot On! 📍",
+  "exactly-right": "Exactly Right! 💎",
+  "you-rock": "You Rock! 🎸",
+  "keep-going": "Keep Going! 🏃",
+  "dont-stop": "Don't Stop! 🚀",
+  "youre-amazing": "You're Amazing! 💖",
+  "good-thinking": "Good Thinking! 🧠",
+  "nice-work": "Nice Work! 👍",
+  "good-work": "Good Work! 🙌",
+  "you-did-it": "You Did It! 🎊",
+  "first-try": "First Try! 🥇",
+  "like-a-pro": "Like A Pro! 🎓",
+  "you-are-a-champion": "Champion! 🏅",
+  "unstoppable": "Unstoppable! ⚡",
+  "on-point": "On Point! 🎯",
+  "crushing-it": "Crushing It! 💥",
+  "legend": "Legend! 🦸",
+  "genius": "Genius! 🧪",
+  "word-master": "Word Master! 📚",
+  "vocab-hero": "Vocab Hero! 🦸‍♂️",
+  "language-champion": "Language Champion! 🏆",
+  "english-star": "English Star! ⭐",
+  "you-smashed-it": "You Smashed It! 💥",
+  "top-of-the-class": "Top of the Class! 📖",
+  "gold-star": "Gold Star! ⭐",
+  "level-up": "Level Up! 🎮",
+  "new-high-score": "New High Score! 🏆",
+  "on-a-roll": "On A Roll! 🎲",
+  "nothing-can-stop-you": "Nothing Can Stop You! 🚀",
+  "brain-power": "Brain Power! 🧠",
+  "quick-learner": "Quick Learner! ⚡",
+  "smart-cookie": "Smart Cookie! 🍪",
+  "proud-of-you": "Proud Of You! 💖",
+  "hard-work-pays-off": "Hard Work Pays Off! 💪",
+  "knowledge-is-power": "Knowledge Is Power! 📚",
+  "english-unlocked": "English Unlocked! 🔓",
+  "new-word-learned": "New Word Learned! 📝",
+  "one-step-closer": "One Step Closer! 🎯",
+  "making-progress": "Making Progress! 📈",
+  "never-give-up": "Never Give Up! 💪",
+  "you-can-do-it": "You Can Do It! 🌟",
+  "full-marks": "Full Marks! 💯",
+  "ten-out-of-ten": "10/10! 🔟",
+  "flawless": "Flawless! 💎",
+  "exceptional": "Exceptional! 🌟",
+  "elite": "Elite! 👑",
+  "top-tier": "Top Tier! 🏆",
+  "first-class": "First Class! 🥇",
+  "wow": "Wow! 😮",
+  "unbelievable": "Unbelievable! 🤯",
+  "mic-drop": "Mic Drop! 🎤",
+  "pure-talent": "Pure Talent! 🎨",
+};
+
 export const useAudio = () => {
 
   const preload = (wordId: number) => {
@@ -93,7 +172,7 @@ export const useAudio = () => {
     })
   }
 
-  const playMotivational = () => {
+  const playMotivational = (): string => {
     // Stop any currently playing motivational audio
     Object.values(motivationalCache).forEach(h => h.stop())
 
@@ -118,6 +197,12 @@ export const useAudio = () => {
       sound.once('load', () => sound.play())
       sound.load()
     }
+
+    return key
+  }
+
+  const getMotivationalLabel = (key: string): string => {
+    return PHRASE_LABELS[key] || key.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')
   }
 
   const stopAll = () => {
@@ -126,5 +211,5 @@ export const useAudio = () => {
     window.speechSynthesis?.cancel()
   }
 
-  return { speak, preloadMany, preloadMotivational, playMotivational, stopAll }
+  return { speak, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, stopAll }
 }

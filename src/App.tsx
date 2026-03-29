@@ -764,7 +764,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWord, preloadMany, preloadMotivational, playMotivational } = useAudio();
+  const { speak: speakWord, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel } = useAudio();
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -842,10 +842,9 @@ export default function App() {
     }
   }, [view]);
 
-  // Speak motivational message during gameplay — strip emojis so TTS reads the actual text
+  // Speak motivational message during gameplay — audio and text use the SAME phrase
   useEffect(() => {
     if (motivationalMessage) {
-      const textOnly = motivationalMessage.replace(/[\u{1F600}-\u{1F9FF}\u{2600}-\u{2B55}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
       playMotivational();
     }
   }, [motivationalMessage]);
@@ -1009,6 +1008,59 @@ export default function App() {
             setView("student-dashboard");
           }
         } else {
+          // No user row found for this anonymous UID.  Before giving up,
+          // check if a student login was persisted to localStorage — the
+          // anonymous UID may have changed on refresh (mobile/PWA).
+          try {
+            const savedRaw = localStorage.getItem('vocaband_student_login');
+            if (savedRaw) {
+              const { classCode: savedCode, displayName: savedName, uid: savedUid } = JSON.parse(savedRaw);
+              if (savedCode && savedName && savedUid) {
+                // Look up the users row by the OLD uid
+                const { data: existingUser } = await supabase
+                  .from('users').select('*').eq('uid', savedUid).maybeSingle();
+                if (existingUser) {
+                  // Migrate the row to the new anonymous UID
+                  await supabase.from('users')
+                    .update({ uid: supabaseUser.id })
+                    .eq('uid', savedUid);
+                  // Re-fetch with new UID
+                  const restored = await fetchUserProfile(supabaseUser.id);
+                  if (restored) {
+                    setUser(restored);
+                    checkConsent(restored);
+                    if (restored.role === "student" && restored.classCode) {
+                      const { data: classRows } = await supabase
+                        .from('classes').select('*').eq('code', restored.classCode);
+                      if (classRows && classRows.length > 0) {
+                        const c = mapClass(classRows[0]);
+                        const [a, p] = await Promise.all([
+                          supabase.from('assignments').select('*').eq('class_id', c.id),
+                          supabase.from('progress').select('*').eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
+                        ]);
+                        setStudentAssignments((a.data ?? []).map(mapAssignment));
+                        setStudentProgress((p.data ?? []).map(mapProgress));
+                      }
+                    }
+                    setBadges(restored.badges || []);
+                    setXp(restored.xp ?? 0);
+                    setStreak(restored.streak ?? 0);
+                    setView(restored.role === "teacher" ? "teacher-dashboard" : "student-dashboard");
+                    // Update saved UID for next refresh
+                    localStorage.setItem('vocaband_student_login', JSON.stringify({
+                      classCode: restored.classCode || savedCode,
+                      displayName: restored.displayName || savedName,
+                      uid: supabaseUser.id,
+                    }));
+                    return; // restored successfully
+                  }
+                }
+                // No existing user row — clear stale saved login
+                localStorage.removeItem('vocaband_student_login');
+              }
+            }
+          } catch { /* localStorage unavailable — non-critical */ }
+
           // Auto-create teacher account for Google sign-ins only (not anonymous)
           const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
@@ -1058,6 +1110,7 @@ export default function App() {
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        try { localStorage.removeItem('vocaband_student_login'); } catch {}
         setView("public-landing");
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
@@ -1082,7 +1135,21 @@ export default function App() {
           setLandingTab("teacher");
           setLoading(false);
         } else if (!isOAuthCallback) {
-          setLoading(false);
+          // Before showing the landing page, check if a student session was
+          // persisted — if so, silently re-authenticate.
+          // signInAnonymously() will trigger onAuthStateChange → SIGNED_IN,
+          // which calls restoreSession → handles the UID migration.
+          // NOTE: fire-and-forget to avoid blocking the auth lock.
+          const savedRaw = localStorage.getItem('vocaband_student_login');
+          if (savedRaw) {
+            // signInAnonymously triggers SIGNED_IN → restoreSession handles the rest
+            supabase.auth.signInAnonymously().catch(() => {
+              localStorage.removeItem('vocaband_student_login');
+              setLoading(false);
+            });
+          } else {
+            setLoading(false);
+          }
         }
       }
     });
@@ -1875,7 +1942,6 @@ export default function App() {
           badges: profile.badges || [],
           xp: profile.xp || 0,
           streak: 0,
-          created_at: new Date().toISOString()
         });
 
       if (insertError) {
@@ -2257,6 +2323,16 @@ export default function App() {
       }
 
       setView("student-dashboard");
+
+      // Persist student credentials so we can auto-restore on page refresh
+      // (anonymous Supabase sessions don't reliably survive mobile/PWA restarts)
+      try {
+        localStorage.setItem('vocaband_student_login', JSON.stringify({
+          classCode: trimmedCode,
+          displayName: trimmedName,
+          uid: studentUid,
+        }));
+      } catch { /* localStorage unavailable — non-critical */ }
     } catch (error) {
       console.error("Login error:", error);
       setError("Something went wrong during login.");
@@ -2378,6 +2454,10 @@ export default function App() {
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
   const currentWord = gameWords[currentIndex];
+  // Debug: verify word count in game
+  if (view === "game" && activeAssignment) {
+    console.log('🎮 gameWords:', gameWords.length, 'assignmentWords:', assignmentWords.length, 'activeAssignment.wordIds:', activeAssignment.wordIds?.length);
+  }
 
   const options = useMemo(() => {
     if (!currentWord) return [];
@@ -2657,7 +2737,7 @@ export default function App() {
           p_class_code: user.classCode || "",
           p_score: cappedScore,
           p_mode: gameMode,
-          p_mistakes: mistakes,
+          p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
           p_avatar: user.avatar || "🦊"
         });
 
@@ -2748,7 +2828,8 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
-      setMotivationalMessage(randomMotivation());
+      const mKey = playMotivational();
+      setMotivationalMessage(getMotivationalLabel(mKey));
       const newScore = score + 10;
       setScore(newScore);
 
@@ -2817,7 +2898,7 @@ export default function App() {
     
     if (isTrue === isActuallyTrue) {
       setFeedback("correct");
-      setMotivationalMessage(randomMotivation());
+      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
       setScore(newScore);
       
@@ -2845,7 +2926,7 @@ export default function App() {
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
     if (knewIt) {
-      setMotivationalMessage(randomMotivation());
+      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       setTimeout(() => setMotivationalMessage(null), 1000);
       const newScore = score + 5;
       setScore(newScore);
@@ -2873,7 +2954,7 @@ export default function App() {
 
     if (spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase()) {
       setFeedback("correct");
-      setMotivationalMessage(randomMotivation());
+      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
       setScore(newScore);
       
@@ -4038,6 +4119,13 @@ export default function App() {
                         <button
                           onClick={() => {
                             const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
+                            console.log('🎮 Starting assignment:', {
+                              title: assignment.title,
+                              wordIds: assignment.wordIds,
+                              wordsFromDB: assignment.words?.length ?? 'none',
+                              filteredWords: filteredWords.length,
+                              totalWordIds: assignment.wordIds?.length ?? 0,
+                            });
                             setAssignmentWords(filteredWords);
                             setActiveAssignment(assignment);
                             setView("game");
