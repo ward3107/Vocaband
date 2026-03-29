@@ -70,7 +70,28 @@
       "Bash(curl -s http://localhost:3000/api/tours/demo-tour-001/viewer-config)",
       "Bash(python3 -c \":*)",
       "WebSearch",
-      "mcp__chrome-devtools__fill"
+      "mcp__chrome-devtools__fill",
+      "Bash(git reset:*)",
+      "Bash(curl:*)",
+      "Bash(ls -la scripts/*.js)",
+      "Bash(node:*)",
+      "Bash(findstr SUPABASE)",
+      "Bash(cd:*)",
+      "Bash(npx vite:*)",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_network_requests",
+      "mcp__plugin_playwright_playwright__browser_evaluate",
+      "Bash(description_utf Check devite server for compile)",
+      "Bash(description:Run development:*)",
+      "Bash(description=Verify app is running properly - check browser console for errors)",
+      "Bash(findstr LISTENING)",
+      "Bash(findstr :24678)",
+      "Read(//tmp/**)",
+      "Bash(\"C:/Users/Waseem/Downloads/Vocaband/Vocaband-1/src/App.tsx.new\")",
+      "Bash(npm test:*)"
     ]
   }
 }

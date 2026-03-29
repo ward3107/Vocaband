@@ -21,7 +21,7 @@ import {
   Crown,
   Target
 } from "lucide-react";
-import { Word } from "../vocabulary";
+import { Word } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
 

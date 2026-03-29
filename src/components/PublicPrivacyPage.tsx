@@ -6,7 +6,7 @@ import FloatingButtons from "./FloatingButtons";
 import BackButton from "./BackButton";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
-import { privacyTranslations, uiTranslations } from "../translations/legalTranslations";
+import { privacyTranslations, uiTranslations } from "../config/translations/legalTranslations";
 
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
@@ -89,7 +89,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               <ul className={`space-y-2`}>
                 <li><strong>{language === 'en' ? 'Entity:' : language === 'he' ? 'גוף:' : 'الكيان:'}</strong> Vocaband Educational Technologies</li>
                 <li><strong>{language === 'en' ? 'Address:' : language === 'he' ? 'כתובת:' : 'العنوان:'}</strong> {language === 'en' ? 'Israel' : language === 'he' ? 'ישראל' : 'إسرائيل'}</li>
-                <li><strong>{language === 'en' ? 'Privacy Contact:' : language === 'he' ? 'יצירת קשר לפרטיות:' : 'جهة اتصال الخصوصية:'}</strong> <span className="text-primary">privacy@vocaband.com</span></li>
+                <li><strong>{language === 'en' ? 'Privacy Contact:' : language === 'he' ? 'יצירת קשר לפרטיות:' : 'جهة اتصال الخصوصية:'}</strong> <span className="text-primary">contact@vocaband.com</span></li>
               </ul>
               <p>
                 {language === 'en' ? 'For privacy inquiries, data access requests, or complaints, contact us at the email above. We will respond within 30 days as required by law.' :
@@ -420,7 +420,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
             <ol className={`list-decimal list-inside space-y-2 text-on-surface-variant`}>
               <li>
                 {language === 'en' ? 'Contact us at ' : language === 'he' ? 'לפנות אלינו בכתובת ' : 'الاتصال بنا على '}
-                <span className="text-primary font-medium">privacy@vocaband.com</span>
+                <span className="text-primary font-medium">contact@vocaband.com</span>
               </li>
               <li>
                 {language === 'en' ? 'File a complaint with the Israeli Privacy Protection Authority (הרשות להגנת הפרטיות)' :
@@ -437,10 +437,10 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               <p className="text-on-surface-variant">{t.footer.responseTime}</p>
             </div>
             <a
-              href="mailto:privacy@vocaband.com"
+              href="mailto:contact@vocaband.com"
               className={`inline-flex items-center gap-3 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all`}
             >
-              <Mail size={18} /> privacy@vocaband.com
+              <Mail size={18} /> contact@vocaband.com
             </a>
           </section>
         </div>

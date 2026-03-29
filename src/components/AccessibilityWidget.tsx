@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Type,
@@ -35,7 +36,7 @@ interface A11ySettings {
 }
 
 const DEFAULT_SETTINGS: A11ySettings = {
-  fontSize: 0,
+  fontSize: 1,
   highContrast: false,
   textSpacing: 0,
   dyslexiaFont: false,
@@ -49,9 +50,10 @@ const DEFAULT_SETTINGS: A11ySettings = {
 const STORAGE_KEY = 'a11y_settings';
 const DISMISS_KEY = 'a11y_dismissed';
 
-const FONT_SIZES = [14, 16, 18, 20, 22, 24, 28, 32];
+const FONT_SIZE_PCTS = [88, 100, 112, 125, 138, 150, 175, 200]; // percentages of 16px base
 const LINE_HEIGHTS = [1.5, 1.6, 1.7, 1.8, 2.0];
 const LETTER_SPACINGS = [0, 0.02, 0.05, 0.1, 0.15];
+const SPACING_LABELS = ['Normal', 'Slight', 'Medium', 'Wide', 'Extra Wide'];
 
 function loadSettings(): A11ySettings {
   try {
@@ -65,8 +67,21 @@ function saveSettings(s: A11ySettings) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
-export const AccessibilityWidget: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface AccessibilityWidgetProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: controlledOpen, onOpenChange }) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = (val: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(val);
+    } else {
+      setInternalOpen(val);
+    }
+  };
   const [dismissed, setDismissed] = useState(() => {
     try { return sessionStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
   });
@@ -79,7 +94,8 @@ export const AccessibilityWidget: React.FC = () => {
     const root = document.documentElement;
     const s = settings;
 
-    root.style.setProperty('--a11y-font-size', `${FONT_SIZES[s.fontSize]}px`);
+    const baseFontSize = 16;
+    root.style.setProperty('--a11y-font-size', `${baseFontSize * FONT_SIZE_PCTS[s.fontSize] / 100}px`);
     root.style.setProperty('--a11y-line-height', `${LINE_HEIGHTS[s.lineHeight]}`);
     root.style.setProperty('--a11y-letter-spacing', `${LETTER_SPACINGS[s.textSpacing]}em`);
 
@@ -174,10 +190,12 @@ export const AccessibilityWidget: React.FC = () => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const cycle = useCallback((key: keyof A11ySettings, max: number) => {
+  const step = useCallback((key: keyof A11ySettings, direction: -1 | 1, max: number) => {
     setSettings(prev => {
-      const val = (prev[key] as number) + 1;
-      return { ...prev, [key]: val > max ? 0 : val };
+      const val = (prev[key] as number) + direction;
+      if (val < 0) return prev;
+      if (val > max) return prev;
+      return { ...prev, [key]: val };
     });
   }, []);
 
@@ -191,7 +209,18 @@ export const AccessibilityWidget: React.FC = () => {
     setIsOpen(false);
   }, []);
 
-  if (dismissed) return null;
+  // Expose open function for external trigger (from nav bar)
+  // Set this up BEFORE the dismissed check so nav button can re-open the panel
+  useEffect(() => {
+    const handleOpenA11y = () => {
+      setDismissed(false);  // Un-dismiss if it was hidden
+      setIsOpen(true);
+    };
+    window.addEventListener('open-a11y-panel', handleOpenA11y);
+    return () => window.removeEventListener('open-a11y-panel', handleOpenA11y);
+  }, []);
+
+  if (dismissed && !isOpen) return null;
 
   // Feature definitions
   const toggleFeatures: { key: keyof A11ySettings; icon: React.ReactNode; label: string }[] = [
@@ -204,35 +233,14 @@ export const AccessibilityWidget: React.FC = () => {
   ];
 
   const sliderFeatures: { key: keyof A11ySettings; icon: React.ReactNode; label: string; max: number; formatValue: (v: number) => string }[] = [
-    { key: 'fontSize', icon: <Type size={18} />, label: 'Font Size', max: 7, formatValue: (v) => `${FONT_SIZES[v]}px` },
+    { key: 'fontSize', icon: <Type size={18} />, label: 'Font Size', max: 7, formatValue: (v) => `${FONT_SIZE_PCTS[v]}%` },
     { key: 'lineHeight', icon: <Maximize2 size={18} />, label: 'Line Height', max: 4, formatValue: (v) => `${LINE_HEIGHTS[v]}` },
-    { key: 'textSpacing', icon: <AlignLeft size={18} />, label: 'Text Spacing', max: 4, formatValue: (v) => `${LETTER_SPACINGS[v]}em` },
+    { key: 'textSpacing', icon: <AlignLeft size={18} />, label: 'Text Spacing', max: 4, formatValue: (v) => SPACING_LABELS[v] },
   ];
 
-  return (
+  return createPortal(
     <>
-      {/* ARIA live region */}
-      <div role="status" aria-live="polite" className="sr-only" />
-
-      {/* Trigger button */}
-      <button
-        ref={triggerRef}
-        onClick={() => setIsOpen(o => !o)}
-        aria-label="Accessibility options"
-        aria-expanded={isOpen}
-        aria-haspopup="dialog"
-        data-a11y-widget
-        className="fixed bottom-6 right-6 z-50 w-[52px] h-[52px] rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-        style={{ backgroundColor: '#0050d4', minWidth: 44, minHeight: 44 }}
-      >
-        {/* Official accessibility icon */}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="28" height="28" aria-hidden="true" focusable="false">
-          <circle cx="12" cy="3" r="2" />
-          <path d="M19 13h-4l-2-5H9a2 2 0 0 0-2 2v1h2v-1h2.5l2 5H17l1 4h2l-1-5zM9 17.5A3.5 3.5 0 1 1 5.5 14H7v-2H5.5A5.5 5.5 0 1 0 11 17.5H9z" />
-        </svg>
-      </button>
-
-      {/* Panel */}
+      {/* Panel - only, triggered by nav bar */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -245,7 +253,7 @@ export const AccessibilityWidget: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-20 right-6 z-50 w-[320px] max-h-[75vh] bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+            className="fixed bottom-24 right-6 z-[70] w-[320px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-stone-200 shrink-0">
@@ -270,13 +278,13 @@ export const AccessibilityWidget: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => cycle(f.key, f.max)}
+                      onClick={() => step(f.key, -1, f.max)}
                       aria-label={`Decrease ${f.label}`}
                       className="w-8 h-8 rounded-lg bg-stone-200 text-stone-600 hover:bg-stone-300 text-sm font-bold flex items-center justify-center transition-colors"
                     >-</button>
                     <span className="text-xs text-stone-500 w-12 text-center font-medium">{f.formatValue(settings[f.key] as number)}</span>
                     <button
-                      onClick={() => cycle(f.key, f.max)}
+                      onClick={() => step(f.key, 1, f.max)}
                       aria-label={`Increase ${f.label}`}
                       className="w-8 h-8 rounded-lg bg-stone-200 text-stone-600 hover:bg-stone-300 text-sm font-bold flex items-center justify-center transition-colors"
                     >+</button>
@@ -326,12 +334,13 @@ export const AccessibilityWidget: React.FC = () => {
                 onClick={handleDismiss}
                 className="text-xs text-stone-400 hover:text-stone-600 hover:underline"
               >
-                Hide widget
+                Hide
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </>,
+    document.body
   );
 };

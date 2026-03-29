@@ -59,8 +59,9 @@ export const useLanguage = () => {
 
   const isRTL = language === 'he' || language === 'ar';
   const dir: 'ltr' | 'rtl' = isRTL ? 'rtl' : 'ltr';
+  const textAlign = isRTL ? 'text-right' : 'text-left';
 
-  return { language, setLanguage, dir, isRTL };
+  return { language, setLanguage, dir, isRTL, textAlign };
 };
 
 // Context for optional provider wrapping
@@ -69,15 +70,16 @@ interface LanguageContextType {
   setLanguage: (lang: Language) => void;
   dir: 'ltr' | 'rtl';
   isRTL: boolean;
+  textAlign: string;
 }
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const { language, setLanguage, dir, isRTL } = useLanguage();
+  const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, dir, isRTL }}>
+    <LanguageContext.Provider value={{ language, setLanguage, dir, isRTL, textAlign }}>
       {children}
     </LanguageContext.Provider>
   );

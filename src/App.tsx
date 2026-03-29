@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
-import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./vocabulary";
-import { generateSentencesForAssignment } from "./sentence-bank";
+import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
+import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
   searchWords
-} from "./vocabulary-matching";
+} from "./data/vocabulary-matching";
 import {
   Volume2,
   Languages,
@@ -45,11 +45,11 @@ import {
   Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
+import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
-import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./privacy-config";
+import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
 import { shuffle, chunkArray } from './utils';
-import { LeaderboardEntry, SOCKET_EVENTS } from './types';
+import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
@@ -57,6 +57,7 @@ import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
 import { SuspenseWrapper } from "./components/SuspenseWrapper";
+import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadTesseract, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 
 // Types for lazy-loaded modules
@@ -69,6 +70,11 @@ type Socket = SocketIOModule['Socket'];
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
+// --- GAME SETTINGS ---
+const MAX_ATTEMPTS_PER_WORD = 3;
+const AUTO_SKIP_DELAY_MS = 500;
+const SHOW_ANSWER_DELAY_MS = 3000;
+const WRONG_FEEDBACK_DELAY_MS = 1500;
 
 const MOTIVATIONAL_MESSAGES = [
   "Great job! 🎉", "Well done! 👏", "Awesome! 🌟", "Keep it up! 💪",
@@ -758,10 +764,11 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [mistakes, setMistakes] = useState<number[]>([]);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
   const [isFinished, setIsFinished] = useState(false);
+  const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
   // --- NEW MODES STATE ---
   const [tfOption, setTfOption] = useState<Word | null>(null);
@@ -801,8 +808,21 @@ export default function App() {
   // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
+
+  // Timeout ref for cleanup (prevents memory leaks on unmount)
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout>();
+
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Redirect legacy "students" view to gradebook
   useEffect(() => {
@@ -2159,10 +2179,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro) {
+    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder") {
       speakWord(currentWord.id);
     }
-  }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro]);
+  }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
 
   useEffect(() => {
     if (view === "game" && !showModeSelection && gameMode === "matching") {
@@ -2433,12 +2453,17 @@ export default function App() {
       setMotivationalMessage(randomMotivation());
       const newScore = score + 10;
       setScore(newScore);
-      
+
+      // Clear attempts for this word since they got it right
+      setWordAttempts(prev => removeKey(prev, currentWord.id));
+
       if (socket && user?.classCode) {
         socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
       }
 
-      setTimeout(() => {
+      // Auto-skip quickly after correct answer (clear any pending timeout first)
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
@@ -2447,13 +2472,40 @@ export default function App() {
           setIsFinished(true);
           saveScore();
         }
-      }, 1000);
+      }, AUTO_SKIP_DELAY_MS);
     } else {
-      setFeedback("wrong");
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
+      // Track attempts for this word
+      const currentAttempts = (wordAttempts[currentWord.id] || 0) + 1;
+      setWordAttempts(prev => ({ ...prev, [currentWord.id]: currentAttempts }));
+
+      if (currentAttempts >= MAX_ATTEMPTS_PER_WORD) {
+        // Show the right answer after max attempts
+        setFeedback("show-answer");
+        setMistakes(prev => addUnique(prev, currentWord.id));
+
+        // Clear any pending timeout first
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        feedbackTimeoutRef.current = setTimeout(() => {
+          if (currentIndex < gameWords.length - 1) {
+            setCurrentIndex(currentIndex + 1);
+            setFeedback(null);
+            setHiddenOptions([]);
+            // Clear attempts for next word
+            setWordAttempts(prev => removeKey(prev, currentWord.id));
+          } else {
+            setIsFinished(true);
+            saveScore();
+          }
+        }, SHOW_ANSWER_DELAY_MS);
+      } else {
+        // Show try again with attempt count
+        setFeedback("wrong");
+        setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
+
+        // Clear any pending timeout first
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
       }
-      setTimeout(() => setFeedback(null), 1000);
     }
   };
 
@@ -7398,7 +7450,7 @@ export default function App() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-3 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-3 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-4 border-amber-500" : "border-4 border-transparent"}`}
             >
               {/* Progress Bar */}
               <progress
@@ -7413,6 +7465,16 @@ export default function App() {
                   <span className="text-lg sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
                     {motivationalMessage}
                   </span>
+                </div>
+              )}
+
+              {/* Show correct answer after 3 failed attempts */}
+              {feedback === "show-answer" && (
+                <div className="absolute top-12 sm:top-16 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <ShowAnswerFeedback
+                    answer={gameMode === "reverse" ? currentWord?.english : currentWord?.[targetLanguage]}
+                    dir="auto"
+                  />
                 </div>
               )}
 
@@ -7494,11 +7556,16 @@ export default function App() {
                     <button
                       key={option.id}
                       onClick={() => handleAnswer(option)}
+                      disabled={feedback === "show-answer" || feedback === "correct"}
                       className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
                         feedback === "correct" && option.id === currentWord.id
                           ? "bg-blue-600 text-white scale-105 shadow-xl"
                           : feedback === "wrong" && option.id !== currentWord.id
                           ? "bg-rose-100 text-rose-500 opacity-50"
+                          : feedback === "show-answer" && option.id === currentWord.id
+                          ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
+                          : feedback === "show-answer"
+                          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
                           : "bg-stone-100 text-stone-800 hover:bg-stone-200"
                       }`}
                     >
@@ -7561,13 +7628,18 @@ export default function App() {
                         type="text"
                         value={spellingInput}
                         onChange={(e) => setSpellingInput(e.target.value)}
+                        disabled={feedback === "show-answer" || feedback === "correct"}
                         placeholder="Type the word..."
                         className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
                           feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                           feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
+                          feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
                           "border-stone-100 focus:border-stone-900 outline-none"
                         }`}
                       />
+                      {feedback === "show-answer" && (
+                        <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-3" />
+                      )}
                       <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors">Check Answer</button>
                     </form>
                   )}
@@ -7628,15 +7700,20 @@ export default function App() {
                     type="text"
                     value={spellingInput}
                     onChange={(e) => setSpellingInput(e.target.value)}
+                    disabled={feedback === "show-answer" || feedback === "correct"}
                     placeholder="Type in English..."
                     className={`w-full p-3 sm:p-6 text-lg sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
+                      feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
                       "border-stone-100 focus:border-stone-900 outline-none"
                     }`}
                   />
                   {gameMode === "spelling" && (
                     <p className="text-stone-400 font-bold mb-4 sm:mb-8 text-sm sm:text-base">Translation: <span className="text-stone-900">{currentWord?.[targetLanguage]}</span></p>
+                  )}
+                  {feedback === "show-answer" && (
+                    <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
                   )}
                   <button type="submit" className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors">Check Answer</button>
                 </form>

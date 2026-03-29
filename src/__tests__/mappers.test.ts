@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapUser, mapClass, mapAssignment, mapProgress, mapUserToDb, mapProgressToDb } from '../supabase';
+import { mapUser, mapClass, mapAssignment, mapProgress, mapUserToDb, mapProgressToDb } from '../core/supabase';
 
 // ─── mapUser ─────────────────────────────────────────────────────────────────
 

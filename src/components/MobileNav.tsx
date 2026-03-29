@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Shield, Scale } from "lucide-react";
+import { Home, Shield, Scale, Accessibility } from "lucide-react";
 
 interface MobileNavProps {
   currentPage: "home" | "terms" | "privacy";
@@ -36,6 +36,14 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
           </button>
         );
       })}
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
+        aria-label="Open accessibility options"
+        className="flex flex-col items-center justify-center p-2 bg-primary text-white rounded-full shadow-md shadow-blue-500/30 transition-all"
+      >
+        <Accessibility size={20} />
+        <span className="text-[9px] font-black font-headline mt-0.5">A11y</span>
+      </button>
     </nav>
   );
 };

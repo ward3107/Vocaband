@@ -5,7 +5,7 @@ import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
-import { termsTranslations, uiTranslations } from "../translations/legalTranslations";
+import { termsTranslations, uiTranslations } from "../config/translations/legalTranslations";
 
 interface TermsPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
@@ -269,10 +269,10 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
             </div>
             <div className="flex items-center gap-4">
               <a
-                href="mailto:legal@vocaband.com"
+                href="mailto:contact@vocaband.com"
                 className="inline-flex items-center gap-2 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all"
               >
-                <Mail size={18} /> legal@vocaband.com
+                <Mail size={18} /> contact@vocaband.com
               </a>
             </div>
           </section>

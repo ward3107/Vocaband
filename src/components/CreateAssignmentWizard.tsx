@@ -6,7 +6,7 @@ import {
   Zap, Target, Headphones, PenTool, CheckCircle, RotateCcw,
   Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle
 } from 'lucide-react';
-import { Word } from '../types';
+import { Word } from '../data/vocabulary';
 
 interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number };

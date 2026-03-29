@@ -1,10 +1,11 @@
 import {StrictMode} from 'react';
+import { AccessibilityWidget } from './components/AccessibilityWidget';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
-import { supabase } from './supabase.ts';
+import { supabase } from './core/supabase';
 
 registerSW();
 
@@ -51,7 +52,10 @@ async function boot() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary>
-        <App />
+        <>
+          <App />
+          <AccessibilityWidget />
+        </>
       </ErrorBoundary>
     </StrictMode>,
   );
