@@ -464,6 +464,16 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
     speak(currentWord.id);
   }, [view, selectedMode, currentWordIndex]);
 
+  // Sentence Builder: speak the full sentence so the learner hears it
+  useEffect(() => {
+    if (view !== "game" || selectedMode !== "sentence" || !currentWord) return;
+    responseStartTime.current = Date.now();
+    window.speechSynthesis?.cancel();
+    const utter = new SpeechSynthesisUtterance(`${currentWord.english} is great!`);
+    utter.rate = 0.9;
+    window.speechSynthesis?.speak(utter);
+  }, [view, selectedMode, currentWordIndex]);
+
   // Flashcards: speak when card is flipped to reveal meaning
   useEffect(() => {
     if (view !== "game" || selectedMode !== "flashcards" || !isFlipped || !currentWord) return;
@@ -987,24 +997,15 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                 </div>
               )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setView("game-select")}
-                  disabled={!displayName.trim()}
-                  className="flex-1 bg-stone-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {t.continue}
-                  {!isRTL && <ArrowRight size={20} />}
-                  {isRTL && <ArrowLeft size={20} />}
-                </button>
-                <button
-                  onClick={() => setView("shop")}
-                  className="flex-1 bg-pink-100 text-pink-700 py-4 rounded-2xl font-bold text-lg hover:bg-pink-200 transition-colors flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag size={20} />
-                  {t.shop}
-                </button>
-              </div>
+              <button
+                onClick={() => setView("game-select")}
+                disabled={!displayName.trim()}
+                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {t.continue}
+                {!isRTL && <ArrowRight size={20} />}
+                {isRTL && <ArrowLeft size={20} />}
+              </button>
             </motion.div>
           )}
 

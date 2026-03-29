@@ -42,8 +42,7 @@ import {
   GraduationCap,
   Loader2,
   QrCode,
-  Search,
-  Wifi
+  Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./supabase";
@@ -54,6 +53,7 @@ import { LeaderboardEntry, SOCKET_EVENTS } from './types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
+import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
 import { SuspenseWrapper } from "./components/SuspenseWrapper";
@@ -339,7 +339,6 @@ export default function App() {
   // listener before handleStudentLogin finishes its DB queries).
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
-  const quickPlayNameInputRef = useRef<HTMLInputElement>(null);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [guestName, setGuestName] = useState("");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
@@ -352,10 +351,6 @@ export default function App() {
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [publicUrl, setPublicUrl] = useState(() => {
-    const saved = localStorage.getItem('vocaband_public_url');
-    return saved || window.location.origin;
-  });
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
@@ -417,7 +412,6 @@ export default function App() {
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string}[]>([]);
-  const [quickPlayStarting, setQuickPlayStarting] = useState(false);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
@@ -439,6 +433,7 @@ export default function App() {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
   const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
+  const [assignmentStep, setAssignmentStep] = useState(1);
 
   // --- SMART PASTE STATE ---
   const [pastedText, setPastedText] = useState("");
@@ -576,21 +571,7 @@ export default function App() {
     const sessionCode = params.get('session');
 
     if (sessionCode) {
-      // Check if session is already in localStorage
-      const cachedSession = localStorage.getItem(`quickplay_session_${sessionCode}`);
-      if (cachedSession) {
-        try {
-          const session = JSON.parse(cachedSession);
-          setQuickPlayActiveSession(session);
-          setView("quick-play-student");
-          return;
-        } catch (e) {
-          console.error('Failed to parse cached session:', e);
-          localStorage.removeItem(`quickplay_session_${sessionCode}`);
-        }
-      }
-
-      // Load Quick Play session from Supabase
+      // Load Quick Play session
       const loadQuickPlaySession = async () => {
         const { data, error } = await supabase
           .from('quick_play_sessions')
@@ -636,17 +617,11 @@ export default function App() {
         // Combine database and custom words
         const allWords = [...dbWords, ...customWords];
 
-        const session = {
+        setQuickPlayActiveSession({
           sessionCode: data.session_code,
           wordIds: data.word_ids,
           words: allWords
-        };
-
-        setQuickPlayActiveSession(session);
-
-        // Cache to localStorage for persistence
-        localStorage.setItem(`quickplay_session_${sessionCode}`, JSON.stringify(session));
-
+        });
         setView("quick-play-student");
       };
 
@@ -704,82 +679,6 @@ export default function App() {
     classCode: null,
     createdAt: new Date().toISOString()
   });
-
-  // --- HELPER: Handle Quick Play Start ---
-  const handleQuickPlayStart = async () => {
-    console.log('Quick Play Start clicked');
-
-    const input = quickPlayNameInputRef.current;
-    if (!input) {
-      console.error('No input ref found');
-      return;
-    }
-
-    const trimmedName = input.value.trim();
-    console.log('Student name:', trimmedName);
-
-    if (!trimmedName) {
-      showToast("Please enter your name", "error");
-      return;
-    }
-
-    if (!quickPlayActiveSession) {
-      console.error('No active session');
-      showToast("Session expired. Please scan QR code again.", "error");
-      return;
-    }
-
-    console.log('Session words:', quickPlayActiveSession.words.length);
-
-    // Show loading state
-    setQuickPlayStarting(true);
-
-    // Notify teacher that student joined (using Supabase)
-    try {
-      await supabase.from('quick_play_joins').insert({
-        session_code: quickPlayActiveSession.sessionCode,
-        student_name: trimmedName,
-        joined_at: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error('Failed to record student join:', err);
-      // Don't block the game if this fails
-    }
-
-    // Update state for consistency
-    setQuickPlayStudentName(trimmedName);
-
-    // Create guest user for Quick Play using helper
-    const guestUser = createGuestUser(trimmedName, "quickplay");
-    console.log('Created guest user:', guestUser);
-
-    setUser(guestUser);
-
-    // Set up game with Quick Play words
-    const gameWords = shuffle(quickPlayActiveSession.words).map(w => ({
-      ...w,
-      hebrew: w.hebrew || "",
-      arabic: w.arabic || ""
-    }));
-    console.log('Game words prepared:', gameWords.length);
-
-    setGameWords(gameWords);
-    setCurrentIndex(0);
-    setScore(0);
-    setFeedback(null);
-
-    console.log('Setting view to game');
-
-    // For Quick Play: Skip mode selection and intro, go straight to game
-    setShowModeSelection(false);
-    setShowModeIntro(false);
-    setGameMode("classic");
-
-    setView("game");
-
-    // Reset loading state after a short delay
-    setTimeout(() => setQuickPlayStarting(false), 500);
-  };
 
   // --- AI TRANSLATION FOR QUICK PLAY ---
   // Cache for translated words to avoid redundant API calls
@@ -842,7 +741,6 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
-  const [gameWords, setGameWords] = useState<Word[]>([]);
 
   // --- THEME ---
   const activeThemeConfig = useMemo(() => {
@@ -851,10 +749,6 @@ export default function App() {
   }, [user?.activeTheme]);
 
   const { speak: speakWord, preloadMany, preloadMotivational, playMotivational } = useAudio();
-
-  // Adaptive timing for smooth word transitions
-  const responseStartTime = useRef(Date.now());
-  const averageResponseMs = useRef(3000);
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -893,6 +787,7 @@ export default function App() {
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
   const [showTeacherAssignments, setShowTeacherAssignments] = useState(false);
   const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
 
   // --- RELIABILITY STATE ---
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1286,67 +1181,6 @@ export default function App() {
     }
   }, [user?.role, view]);
 
-  // Real-time tracking for Quick Play student joins
-  useEffect(() => {
-    if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession) return;
-
-    const channelName = `quick-play-joins-${quickPlayActiveSession.sessionCode}`;
-
-    // Load existing students first
-    const loadExistingStudents = async () => {
-      const { data } = await supabase
-        .from('quick_play_joins')
-        .select('*')
-        .eq('session_code', quickPlayActiveSession.sessionCode);
-
-      if (data) {
-        const students = data.map(row => ({
-          name: row.student_name,
-          score: 0,
-          avatar: '🦊'
-        }));
-        setQuickPlayJoinedStudents(students);
-      }
-    };
-
-    loadExistingStudents();
-
-    // Then listen for new joins
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'quick_play_joins',
-          filter: `session_code=eq.${quickPlayActiveSession.sessionCode}`
-        },
-        (payload) => {
-          const newStudent = payload.new;
-          console.log('Student joined:', newStudent);
-
-          // Add to joined students list if not already there
-          setQuickPlayJoinedStudents(prev => {
-            const exists = prev.some(s => s.name === newStudent.student_name);
-            if (!exists) {
-              return [...prev, {
-                name: newStudent.student_name,
-                score: 0,
-                avatar: '🦊'
-              }];
-            }
-            return prev;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [view, quickPlayActiveSession?.sessionCode]);
-
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
     if (!error && data) setClasses(data.map(mapClass));
@@ -1647,45 +1481,96 @@ export default function App() {
       return;
     }
 
+    // Check if there's at least one database word (not custom/session-only)
+    const hasDbWords = selectedWords.some(id => id > 0);
+    if (!hasDbWords) {
+      showToast("Please select at least one word from the vocabulary database to create an assignment.", "error");
+      return;
+    }
+
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToSave = uniqueWords.filter(w => selectedWordsSet.has(w.id));
-    
-    const newAssignment = {
+
+    const assignmentData = {
       classId: selectedClass.id,
-      wordIds: selectedWords,
+      wordIds: selectedWords.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
       words: wordsToSave,
       title: assignmentTitle,
       deadline: assignmentDeadline || null,
-      createdAt: new Date().toISOString(),
       allowedModes: assignmentModes,
       sentences: assignmentSentences.filter(s => s.trim()),
     };
 
     try {
-      const insertPayload: Record<string, unknown> = {
-        class_id: newAssignment.classId,
-        word_ids: newAssignment.wordIds,
-        words: newAssignment.words,
-        title: newAssignment.title,
-        deadline: newAssignment.deadline,
-        created_at: newAssignment.createdAt,
-        allowed_modes: newAssignment.allowedModes,
-      };
-      if (newAssignment.sentences.length > 0) {
-        insertPayload.sentences = newAssignment.sentences;
+      if (editingAssignment) {
+        // UPDATE existing assignment
+        const updatePayload: Record<string, unknown> = {
+          class_id: assignmentData.classId,
+          word_ids: assignmentData.wordIds,
+          words: assignmentData.words,
+          title: assignmentData.title,
+          deadline: assignmentData.deadline,
+          allowed_modes: assignmentData.allowedModes,
+        };
+        if (assignmentData.sentences.length > 0) {
+          updatePayload.sentences = assignmentData.sentences;
+        }
+
+        const { error } = await supabase
+          .from('assignments')
+          .update(updatePayload)
+          .eq('id', editingAssignment.id);
+
+        if (error) throw error;
+        showToast("Assignment updated successfully!", "success");
+
+        // Update the assignment in the list
+        setTeacherAssignments(prev =>
+          prev.map(a => a.id === editingAssignment.id
+            ? { ...a, ...assignmentData }
+            : a
+          )
+        );
+
+        setEditingAssignment(null);
+      } else {
+        // CREATE new assignment
+        const newAssignment = {
+          ...assignmentData,
+          createdAt: new Date().toISOString(),
+        };
+
+        const insertPayload: Record<string, unknown> = {
+          class_id: newAssignment.classId,
+          word_ids: newAssignment.wordIds,
+          words: newAssignment.words,
+          title: newAssignment.title,
+          deadline: newAssignment.deadline,
+          created_at: newAssignment.createdAt,
+          allowed_modes: newAssignment.allowedModes,
+        };
+        if (newAssignment.sentences.length > 0) {
+          insertPayload.sentences = newAssignment.sentences;
+        }
+
+        const { error } = await supabase.from('assignments').insert(insertPayload);
+        if (error) throw error;
+        showToast("Assignment created successfully!", "success");
+
+        // Refresh assignments list
+        fetchTeacherAssignments();
       }
-      const { error } = await supabase.from('assignments').insert(insertPayload);
-      if (error) throw error;
-      showToast("Assignment created successfully!", "success");
+
       setView("teacher-dashboard");
       setSelectedWords([]);
       setAssignmentTitle("");
       setAssignmentDeadline("");
       setAssignmentModes(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
+      setAssignmentStep(1);
       setAssignmentSentences([]);
     } catch (error) {
-      handleDbError(error, OperationType.CREATE, "assignments");
+      handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
     }
   };
 
@@ -1705,7 +1590,7 @@ export default function App() {
     const previewAssignment: AssignmentData = {
       id: "preview",
       classId: selectedClass?.id || "",
-      wordIds: selectedWords,
+      wordIds: selectedWords.filter(id => id > 0), // Filter out custom words for consistency
       words: wordsToPreview,
       title: assignmentTitle || "Preview Assignment",
       deadline: null,
@@ -2194,44 +2079,26 @@ export default function App() {
   };
 
   // --- GAME LOGIC ---
-  // Use gameWords state for Quick Play, otherwise assignmentWords or default
-  const activeGameWords = gameWords.length > 0 ? gameWords : (assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS);
-  const currentWord = activeGameWords[currentIndex];
-
-  // Adaptive delay: smooths response-time tracking for natural-feeling transitions
-  const getAdaptiveDelay = () => {
-    const responseMs = Date.now() - responseStartTime.current;
-    averageResponseMs.current = averageResponseMs.current * 0.6 + responseMs * 0.4;
-    if (averageResponseMs.current < 1500) return 300;
-    if (averageResponseMs.current < 3000) return 500;
-    if (averageResponseMs.current < 5000) return 800;
-    return 1200;
-  };
-
-  // Preload next word's audio for seamless transitions
-  useEffect(() => {
-    if (currentIndex < activeGameWords.length - 1 && activeGameWords[currentIndex + 1]) {
-      preloadMany([activeGameWords[currentIndex + 1].id]);
-    }
-  }, [currentIndex, activeGameWords]);
+  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
+  const currentWord = gameWords[currentIndex];
 
   const options = useMemo(() => {
     if (!currentWord) return [];
     const correct = currentWord;
-
-    // Try to use ONLY the assigned activeGameWords for distractors so students only see what they are learning
-    let possibleDistractors = activeGameWords.filter(w => w.id !== correct.id);
+    
+    // Try to use ONLY the assigned gameWords for distractors so students only see what they are learning
+    let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
     
     // If the teacher assigned fewer than 4 words, we have to borrow from ALL_WORDS to fill the 4 buttons
     if (possibleDistractors.length < 3) {
-      const allPossibleWords = [...ALL_WORDS, ...activeGameWords];
+      const allPossibleWords = [...ALL_WORDS, ...gameWords];
       const uniqueOthers = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== correct.id);
       possibleDistractors = uniqueOthers;
     }
     
     const shuffledOthers = shuffle(possibleDistractors).slice(0, 3);
     return shuffle([...shuffledOthers, correct]);
-  }, [currentWord, activeGameWords]);
+  }, [currentWord, gameWords]);
 
   useEffect(() => {
     if (currentWord) {
@@ -2239,16 +2106,16 @@ export default function App() {
       if (Math.random() > 0.5) {
         setTfOption(currentWord);
       } else {
-        let possibleDistractors = activeGameWords.filter(w => w.id !== currentWord.id);
+        let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
         if (possibleDistractors.length === 0) {
-          const allPossibleWords = [...ALL_WORDS, ...activeGameWords];
+          const allPossibleWords = [...ALL_WORDS, ...gameWords];
           possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
         }
         setTfOption(possibleDistractors[Math.floor(Math.random() * possibleDistractors.length)]);
       }
       setIsFlipped(false);
     }
-  }, [currentIndex, currentWord, activeGameWords]);
+  }, [currentIndex, currentWord, gameWords]);
 
   const scrambledWord = useMemo(() => {
     if (!currentWord) return "";
@@ -2293,14 +2160,13 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro) {
-      responseStartTime.current = Date.now();
       speakWord(currentWord.id);
     }
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro]);
 
   useEffect(() => {
     if (view === "game" && !showModeSelection && gameMode === "matching") {
-      const shuffled = shuffle(activeGameWords).slice(0, 6);
+      const shuffled = shuffle(gameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
         ...shuffled.map(w => ({ id: w.id, text: w.arabic || w.hebrew, type: 'arabic' as const }))
@@ -2309,7 +2175,7 @@ export default function App() {
       setMatchedIds([]);
       setSelectedMatch(null);
     }
-  }, [view, showModeSelection, gameMode, activeGameWords]);
+  }, [view, showModeSelection, gameMode, gameWords]);
 
   // Letter Sounds: reveal one letter at a time, speak each letter
   // Uses sequential timeouts so each letter's sound plays AFTER the letter
@@ -2428,10 +2294,6 @@ export default function App() {
       } else {
         setShowModeSelection(true);
       }
-    } else if (user?.isGuest) {
-      // Quick Play guest users go back to landing
-      setUser(null);
-      setView("public-landing");
     } else {
       setUser(null);
       setView("landing");
@@ -2444,7 +2306,7 @@ export default function App() {
     setSaveError(null);
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = activeGameWords.length * 10;
+    const maxPossible = gameWords.length * 10;
     const cappedScore = Math.min(Math.max(0, score), maxPossible);
 
     const xpEarned = cappedScore;
@@ -2579,7 +2441,7 @@ export default function App() {
       }
 
       setTimeout(() => {
-        if (currentIndex < activeGameWords.length - 1) {
+        if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
           setHiddenOptions([]);
@@ -2587,13 +2449,13 @@ export default function App() {
           setIsFinished(true);
           saveScore();
         }
-      }, getAdaptiveDelay());
+      }, 1000);
     } else {
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), getAdaptiveDelay());
+      setTimeout(() => setFeedback(null), 1000);
     }
   };
 
@@ -2612,20 +2474,20 @@ export default function App() {
       }
 
       setTimeout(() => {
-        if (currentIndex < activeGameWords.length - 1) {
+        if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
         } else {
           setIsFinished(true);
           saveScore();
         }
-      }, getAdaptiveDelay());
+      }, 1000);
     } else {
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), getAdaptiveDelay());
+      setTimeout(() => setFeedback(null), 1000);
     }
   };
 
@@ -2644,7 +2506,7 @@ export default function App() {
       }
     }
     
-    if (currentIndex < activeGameWords.length - 1) {
+    if (currentIndex < gameWords.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     } else {
@@ -2668,7 +2530,7 @@ export default function App() {
       }
 
       setTimeout(() => {
-        if (currentIndex < activeGameWords.length - 1) {
+        if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
           setSpellingInput("");
@@ -2676,13 +2538,13 @@ export default function App() {
           setIsFinished(true);
           saveScore();
         }
-      }, getAdaptiveDelay());
+      }, 1000);
     } else {
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), getAdaptiveDelay());
+      setTimeout(() => setFeedback(null), 1000);
     }
   };
 
@@ -3324,35 +3186,49 @@ export default function App() {
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
                     <input
-                      ref={quickPlayNameInputRef}
                       type="text"
-                      defaultValue={quickPlayStudentName}
+                      value={quickPlayStudentName}
+                      onChange={(e) => setQuickPlayStudentName(e.target.value.slice(0, 20))}
                       placeholder="Enter your nickname..."
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter' && quickPlayNameInputRef.current?.value.trim()) {
-                          handleQuickPlayStart();
+                        if (e.key === 'Enter' && quickPlayStudentName.trim()) {
+                          // Proceed to game
                         }
                       }}
-                      inputMode="text"
-                      autoComplete="off"
-                      autoCapitalize="words"
                       className="w-full px-4 py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      autoFocus
                     />
                   </div>
 
                   <button
-                    onClick={handleQuickPlayStart}
-                    disabled={quickPlayStarting}
-                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    onClick={() => {
+                      const trimmedName = quickPlayStudentName.trim();
+                      if (!trimmedName) {
+                        showToast("Please enter your name", "error");
+                        return;
+                      }
+
+                      // Create guest user for Quick Play using helper
+                      const guestUser = createGuestUser(trimmedName, "quickplay");
+
+                      setUser(guestUser);
+
+                      // Set up game with Quick Play words
+                      const gameWords = shuffle(quickPlayActiveSession.words).map(w => ({
+                        ...w,
+                        hebrew: w.hebrew || "",
+                        arabic: w.arabic || ""
+                      }));
+                      setGameWords(gameWords);
+                      setCurrentIndex(0);
+                      setScore(0);
+                      setFeedback(null);
+                      setView("game");
+                    }}
+                    disabled={!quickPlayStudentName.trim()}
+                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
                   >
-                    {quickPlayStarting ? (
-                      <>
-                        <Loader2 className="animate-spin" size={20} />
-                        Starting...
-                      </>
-                    ) : (
-                      <>Start Playing →</>
-                    )}
+                    Start Playing →
                   </button>
                 </div>
 
@@ -4539,7 +4415,7 @@ export default function App() {
                     name={c.name}
                     code={c.code}
                     copiedCode={copiedCode}
-                    onAssign={() => { setSelectedClass(c); setView("create-assignment"); }}
+                    onAssign={() => { setSelectedClass(c); setView("create-assignment"); setAssignmentStep(1); }}
                     onCopyCode={() => {
                       navigator.clipboard.writeText(c.code);
                       setCopiedCode(c.code);
@@ -4587,9 +4463,30 @@ export default function App() {
                         <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-surface-container rounded-xl border-2 border-surface-container-highest">
                           <div className="min-w-0">
                             <p className="font-bold text-on-surface text-sm truncate">{a.title}</p>
-                            <p className="text-xs text-on-surface-variant">{cls?.name || "Unknown class"} · {a.wordIds.length} words</p>
+                            <p className="text-xs text-on-surface-variant">{cls?.name || "Unknown class"} · {a.wordIds.length} words · {a.deadline ? new Date(a.deadline).toLocaleDateString() : 'No deadline'}</p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => {
+                                setEditingAssignment(a);
+                                const knownIds = a.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
+                                const unknownWords: Word[] = (a.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
+                                setSelectedWords(a.wordIds);
+                                setCustomWords(unknownWords);
+                                setAssignmentTitle(a.title);
+                                setAssignmentDeadline(a.deadline || '');
+                                setAssignmentModes(a.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+                                setAssignmentSentences(a.sentences ?? []);
+                                if (knownIds.some(id => BAND_1_WORDS.some(w => w.id === id))) setSelectedLevel("Band 1");
+                                else if (unknownWords.length > 0) setSelectedLevel("Custom");
+                                else setSelectedLevel("Band 2");
+                                setSelectedClass(cls ?? selectedClass);
+                                setView("create-assignment");
+                              }}
+                              className="px-3 py-2 bg-blue-100 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-200 border-2 border-blue-200 transition-all"
+                            >
+                              Edit
+                            </button>
                             <button
                               onClick={() => {
                                 const knownIds = a.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
@@ -4796,557 +4693,50 @@ export default function App() {
 
   if (view === "create-assignment" && selectedClass) {
     return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-3xl mx-auto">
-          <button onClick={() => setView("teacher-dashboard")} className="mb-6 text-on-surface-variant font-bold flex items-center gap-2 hover:text-primary bg-surface-container-lowest px-5 py-2.5 rounded-full shadow-sm border-2 border-primary-container/30 hover:border-primary transition-all group">
-              <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Dashboard
-            </button>
-          <div className="bg-surface-container-lowest rounded-[40px] shadow-xl border-2 border-surface-container p-10">
-            <h2 className="text-3xl font-black mb-2 text-on-surface">Assign to {selectedClass.name}</h2>
-
-            <div className="space-y-4 mb-8">
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Assignment Title"
-                  list="assignment-titles"
-                  value={assignmentTitle}
-                  onChange={(e) => {
-                    setAssignmentTitle(e.target.value);
-                  }}
-                  className="w-full p-3 sm:p-4 text-sm sm:text-base rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
-                />
-                <datalist id="assignment-titles">
-                  {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
-                    <option key={title} value={title} />
-                  ))}
-                </datalist>
-                <div className="space-y-1">
-                  <input
-                    type="date"
-                    value={assignmentDeadline}
-                    onChange={(e) => setAssignmentDeadline(e.target.value)}
-                    aria-label="Assignment deadline"
-                    title="Assignment deadline"
-                    className={`w-auto min-w-[200px] p-4 rounded-2xl border-2 bg-surface-container-lowest text-on-surface outline-none transition-all ${assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20' : 'border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/20'}`}
-                  />
-                  {assignmentDeadline && assignmentDeadline < new Date().toISOString().split('T')[0] && (
-                    <p className="text-error text-sm font-bold ml-2 flex items-center gap-1">
-                      <span>⚠️</span> Warning: Deadline is in the past!
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <p className="font-bold text-on-surface">Choose Game Modes:</p>
-                  <button
-                    onClick={() => {
-                      const toggleable = ["classic", "listening", "spelling", "matching", "true-false", "scramble", "reverse", "letter-sounds", "sentence-builder"];
-                      if (assignmentModes.length >= toggleable.length + 1) {
-                        setAssignmentModes(["flashcards"]);
-                      } else {
-                        setAssignmentModes(["flashcards", ...toggleable]);
-                      }
-                    }}
-                    className="text-xs font-bold text-primary hover:text-primary-dim transition-colors"
-                  >
-                    {assignmentModes.length >= 10 ? "Deselect All" : "Select All"}
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
-                  {(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"] as const).map(mode => {
-                    const modeConfig: Record<string, { emoji: string; activeColor: string; activeBg: string }> = {
-                      classic: { emoji: '📝', activeColor: 'text-white', activeBg: 'bg-primary' },
-                      listening: { emoji: '🎧', activeColor: 'text-white', activeBg: 'bg-secondary' },
-                      spelling: { emoji: '✍️', activeColor: 'text-white', activeBg: 'bg-green-600' },
-                      matching: { emoji: '🔗', activeColor: 'text-white', activeBg: 'bg-tertiary' },
-                      'true-false': { emoji: '✓', activeColor: 'text-white', activeBg: 'bg-rose-500' },
-                      flashcards: { emoji: '🎴', activeColor: 'text-white', activeBg: 'bg-teal-500' },
-                      scramble: { emoji: '🔤', activeColor: 'text-white', activeBg: 'bg-amber-500' },
-                      reverse: { emoji: '🔄', activeColor: 'text-white', activeBg: 'bg-indigo-500' },
-                      'letter-sounds': { emoji: '🔡', activeColor: 'text-white', activeBg: 'bg-pink-500' },
-                      'sentence-builder': { emoji: '🧩', activeColor: 'text-white', activeBg: 'bg-cyan-600' },
-                    };
-                    const cfg = modeConfig[mode];
-                    const isFlashcards = mode === "flashcards";
-                    return (
-                      <button
-                        key={mode}
-                        onClick={() => !isFlashcards && setAssignmentModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold transition-all active:scale-95 text-xs sm:text-sm ${isFlashcards ? `${cfg.activeBg} ${cfg.activeColor} shadow-md opacity-80 cursor-default` : assignmentModes.includes(mode) ? `${cfg.activeBg} ${cfg.activeColor} shadow-lg` : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20 hover:border-outline-variant/40"}`}
-                      >
-                        {cfg.emoji} {(mode ?? "").charAt(0).toUpperCase() + (mode ?? "").slice(1)} {isFlashcards && <span className="text-[10px] opacity-70">(Always on)</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Add Words ──────────────────────────────────────── */}
-            <div className="bg-primary-container/10 rounded-2xl p-4 mb-3 border-2 border-primary-container/30 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center">
-                  <span className="text-base">✏️</span>
-                </div>
-                <h3 className="font-black text-on-surface text-sm">Add Words</h3>
-              </div>
-
-              {/* Tag-style single word entry */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleTagInputKeyDown}
-                  placeholder="Type a word and press Enter"
-                  className="flex-1 p-2.5 rounded-xl border-2 border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
-                />
-                <button
-                  onClick={() => { if (!tagInput.trim()) return; const w: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" }; setCustomWords(prev => [...prev, w]); setSelectedWords(prev => [...prev, w.id]); setSelectedLevel("Custom"); setTagInput(""); }}
-                  className="px-4 py-2 signature-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all active:scale-95"
-                >+ Add</button>
-              </div>
-
-              {/* Smart Paste textarea */}
-              <div>
-                <p className="text-xs text-on-surface-variant font-bold mb-1.5 flex items-center gap-1">
-                  <span>📋</span> Paste a list (comma, newline, tab separated)
-                </p>
-                <textarea
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  placeholder={"Paste words here…\nExamples: apple, banana\nOr one per line\nWorks with Excel copy-paste too"}
-                  className="w-full p-2.5 rounded-xl border-2 border-outline-variant/30 text-sm resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
-                  rows={4}
-                />
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-primary font-medium">{pastedText.trim() && `${pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words detected`}</span>
-                  <button onClick={handlePasteSubmit} disabled={!pastedText.trim()} className="px-4 py-1.5 signature-gradient text-white rounded-lg font-bold text-xs shadow-md shadow-blue-500/20 hover:shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">Import Words</button>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Import from file or URL ─────────────────────── */}
-            <div className="bg-surface-container rounded-2xl p-4 mb-3 border-2 border-outline-variant/20 space-y-3">
-              <p className="text-sm font-black text-on-surface uppercase tracking-wide bg-secondary-container/30 inline-block px-3 py-1.5 rounded-lg">Import from file or URL</p>
-              <div className="flex flex-wrap gap-2">
-                <label className="flex items-center gap-1.5 px-3 py-2 bg-blue-700 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-800 text-xs whitespace-nowrap">
-                  <Upload size={14} /> Word (.docx)
-                  <input type="file" accept=".docx" onChange={handleDocxUpload} className="hidden" />
-                </label>
-                <label className={`flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl font-bold cursor-pointer text-xs whitespace-nowrap relative overflow-hidden transition-all active:scale-95 ${isOcrProcessing ? 'bg-primary/50 cursor-not-allowed' : 'bg-secondary hover:bg-secondary-dim shadow-md shadow-secondary/20'}`}>
-                  <Camera size={14} /> {isOcrProcessing ? `Scanning… ${ocrProgress}%` : "Scan (OCR)"}
-                  <input type="file" accept="image/*" capture="environment" onChange={handleOcrUpload} className="hidden" disabled={isOcrProcessing} />
-                  {isOcrProcessing && <progress className="absolute bottom-0 left-0 h-1 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white/50 [&::-moz-progress-bar]:bg-white/50" max={100} value={toProgressValue(ocrProgress)} />}
-                </label>
-              </div>
-              {/* Google Sheets URL */}
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={gSheetsUrl}
-                  onChange={(e) => setGSheetsUrl(e.target.value)}
-                  placeholder="Paste public Google Sheets URL…"
-                  className="flex-1 p-2.5 rounded-xl border-2 border-outline-variant/30 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
-                />
-                <button onClick={handleGSheetsImport} disabled={gSheetsLoading || !gSheetsUrl.trim()} className="px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap shadow-md shadow-green-600/20 active:scale-95">
-                  {gSheetsLoading ? "Importing…" : "🔗 Import"}
-                </button>
-              </div>
-            </div>
-
-            {/* ── Browse & Pick ──────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              {(["Band 1", "Band 2", "Custom"] as const).map(level => (
-                <button key={level} onClick={() => setSelectedLevel(level)}
-                  className={`px-4 py-2.5 rounded-xl font-bold transition-all text-xs active:scale-95 ${selectedLevel === level ? "signature-gradient text-white shadow-lg shadow-blue-500/20" : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container border-2 border-outline-variant/20 hover:border-primary-container/50"}`}>
-                  {level} {level === "Custom" && customWords.length > 0 && `(${customWords.length})`}
-                </button>
-              ))}
-              <button onClick={() => setShowTopicPacks(true)} className="flex items-center justify-center gap-1 px-4 py-2.5 bg-tertiary-container text-on-tertiary-fixed rounded-xl font-bold text-xs hover:bg-tertiary-fixed-dim transition-all shadow-md shadow-tertiary-container/20 active:scale-95">
-                📦 Topic Packs
-              </button>
-            </div>
-
-            {/* Browse Word Bank Toggle */}
-            <button
-              onClick={() => setShowWordBank(!showWordBank)}
-              className="w-full mb-4 px-4 py-3.5 bg-surface-container-high hover:bg-surface-container-highest rounded-xl border-2 border-outline-variant/20 hover:border-primary-container/50 transition-all flex items-center justify-between group"
-            >
-              <span className="font-bold text-on-surface flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center">📚</span>
-                Browse Word Bank
-              </span>
-              <span className={`text-on-surface-variant transition-transform ${showWordBank ? "rotate-180" : ""}`}>▼</span>
-            </button>
-
-            {/* Search Options */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              <button
-                onClick={() => setEnableFuzzyMatch(!enableFuzzyMatch)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  enableFuzzyMatch
-                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
-                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
-                }`}
-              >
-                🔤 Fuzzy Match: {enableFuzzyMatch ? 'ON' : 'OFF'}
-              </button>
-              <button
-                onClick={() => setEnableWordFamilies(!enableWordFamilies)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  enableWordFamilies
-                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
-                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
-                }`}
-              >
-                🌳 Word Families: {enableWordFamilies ? 'ON' : 'OFF'}
-              </button>
-            </div>
-
-            {/* Collapsible Word Bank */}
-            {showWordBank && (
-              <>
-                {/* Quick Search */}
-                <div className="mb-3">
-                  <input
-                    type="text"
-                    placeholder="🔍 Search words..."
-                    value={wordSearchQuery}
-                    onChange={(e) => setWordSearchQuery(e.target.value)}
-                    className="w-full p-3 rounded-xl border-2 border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant transition-all"
-                  />
-                </div>
-
-                {/* Quick Category Filters - Only show when search or filters active */}
-                {(wordSearchQuery || selectedCore || selectedPos || selectedRecProd) && (
-                  <>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {/* Core Filter */}
-                      <select
-                        value={selectedCore}
-                        onChange={(e) => setSelectedCore(e.target.value as "Core I" | "Core II" | "")}
-                        aria-label="Filter by core"
-                        title="Filter by core"
-                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                      >
-                        <option value="">All Core</option>
-                        <option value="Core I">Core I</option>
-                        <option value="Core II">Core II</option>
-                      </select>
-
-                      {/* Part of Speech Filter */}
-                      <select
-                        value={selectedPos}
-                        onChange={(e) => setSelectedPos(e.target.value)}
-                        aria-label="Filter by part of speech"
-                        title="Filter by part of speech"
-                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                      >
-                        <option value="">All POS</option>
-                        <option value="n">Nouns</option>
-                        <option value="v">Verbs</option>
-                        <option value="adj">Adjectives</option>
-                        <option value="adv">Adverbs</option>
-                        <option value="prep">Prepositions</option>
-                        <option value="conj">Conjunctions</option>
-                      </select>
-
-                      {/* Rec/Prod Filter */}
-                      <select
-                        value={selectedRecProd}
-                        onChange={(e) => setSelectedRecProd(e.target.value as "Rec" | "Prod" | "")}
-                        aria-label="Filter by receptive or productive type"
-                        title="Filter by receptive or productive type"
-                        className="px-3 py-2 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/30 text-sm font-bold text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                      >
-                        <option value="">All Types</option>
-                        <option value="Rec">Receptive</option>
-                        <option value="Prod">Productive</option>
-                      </select>
-
-                      {/* Clear Filters Button */}
-                      {(selectedCore || selectedPos || selectedRecProd || wordSearchQuery) && (
-                        <button
-                          onClick={() => {
-                            setSelectedCore("");
-                            setSelectedPos("");
-                            setSelectedRecProd("");
-                            setWordSearchQuery("");
-                          }}
-                          className="px-3 py-2 rounded-xl bg-error-container/10 text-error text-sm font-bold hover:bg-error-container/20 transition-all border-2 border-error/30 active:scale-95"
-                        >
-                          ✕ Clear
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Active Filter Summary */}
-                    <div className="text-xs text-on-surface-variant mb-2 px-1">
-                      {wordSearchQuery && `Search: "${wordSearchQuery}" `}
-                      {selectedCore && `| Core: ${selectedCore} `}
-                      {selectedPos && `| POS: ${selectedPos} `}
-                      {selectedRecProd && `| Type: ${selectedRecProd}`}
-                    </div>
-                  </>
-                )}
-
-                {/* Compact Word List with Tap-to-Add */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-[300px] overflow-y-auto p-3 bg-primary-container/5 rounded-2xl border-2 border-primary-container/20 hide-scrollbar">
-                  {currentLevelWords.map(word => {
-                    const isSelected = selectedWordsSet.has(word.id);
-                    return (
-                      <button
-                        key={`word-select-${word.id}`}
-                        onClick={() => toggleWordSelection(word.id)}
-                        className={`p-3 rounded-xl text-left flex justify-between items-center transition-all active:scale-[0.98] ${isSelected ? "signature-gradient text-white shadow-lg shadow-blue-500/20" : "bg-surface-container-lowest hover:bg-surface-container border-2 border-outline-variant/20 hover:border-primary-container/50"}`}
-                      >
-                        <div>
-                          <p className={`font-bold ${isSelected ? "text-white" : "text-on-surface"}`}>{word.english}</p>
-                          <p className={`text-xs truncate ${isSelected ? "text-white/70" : "text-on-surface-variant"}`}>{word.hebrew} | {word.arabic}</p>
-                        </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold ${isSelected ? "bg-white/20 text-white" : "bg-surface-container text-on-surface-variant"}`}>
-                          {isSelected ? "✓" : "+"}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {currentLevelWords.length === 0 && (
-                    <p className="col-span-full text-center py-8 text-on-surface-variant italic">
-                      No words found. Try a different search.
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Selection Summary */}
-            <div className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border-2 border-primary-container/30 mb-4">
-              <span className="font-bold text-on-surface flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg signature-gradient flex items-center justify-center text-white text-sm font-black">
-                  {selectedWords.length}
-                </span>
-                words selected
-              </span>
-              {selectedWords.length > 0 && (
-                <button
-                  onClick={() => setSelectedWords([])}
-                  className="text-sm font-bold text-error hover:text-error-dim transition-colors px-3 py-1.5 rounded-lg bg-error-container/10 hover:bg-error-container/20"
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                disabled={selectedWords.length === 0}
-                onClick={handlePreviewAssignment}
-                className="flex-1 py-3.5 bg-surface-container text-on-surface rounded-2xl font-black text-sm hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                👁️ Preview
-              </button>
-              <button
-                disabled={selectedWords.length === 0 || !assignmentTitle}
-                onClick={handleSaveAssignment}
-                className="flex-1 py-3.5 signature-gradient text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none hover:shadow-2xl hover:shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                Create Assignment ({selectedWords.length} Words)
-              </button>
-            </div>
-          </div>
-
-          {/* Paste Match Confirmation Dialog - NEW */}
-          {showPasteDialog && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-surface-container-lowest rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-outline-variant/20">
-                <h3 className="text-xl font-black text-on-surface mb-4">Word Import Results</h3>
-
-                <div className="space-y-3 mb-6">
-                  {/* Matched Words */}
-                  <div className="p-4 bg-primary-container/20 rounded-2xl border-2 border-primary-container/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary text-sm">✓</span>
-                      <p className="font-bold text-on-surface">Matched Band 2 Words</p>
-                    </div>
-                    <p className="text-2xl font-black text-primary">{pasteMatchedCount}</p>
-                    <p className="text-sm text-on-surface-variant">Added to your assignment automatically</p>
-                  </div>
-
-                  {/* Unmatched Words */}
-                  {pasteUnmatched.length > 0 && (
-                    <div className="p-4 bg-tertiary-container/20 rounded-2xl border-2 border-tertiary-container/30">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-6 h-6 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-sm">⚠</span>
-                        <p className="font-bold text-on-surface">Not Found in Band 2</p>
-                      </div>
-                      <p className="text-sm text-on-surface-variant mb-2">These words weren't found:</p>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {pasteUnmatched.map(w => (
-                          <span key={w} className="px-2.5 py-1 bg-tertiary-container/30 text-on-tertiary-container rounded-lg text-xs font-bold">
-                            {w}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-on-surface-variant">Add them as custom words instead?</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  {pasteUnmatched.length > 0 ? (
-                    <>
-                      <button
-                        onClick={handleAddUnmatchedAsCustom}
-                        className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all active:scale-95"
-                      >
-                        Add {pasteUnmatched.length} as Custom
-                      </button>
-                      <button
-                        onClick={handleSkipUnmatched}
-                        className="flex-1 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all active:scale-95"
-                      >
-                        Skip
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setShowPasteDialog(false)}
-                      className="w-full py-3 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition-all active:scale-95"
-                    >
-                      Done
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Assignment Creation Welcome Popup */}
-        <AnimatePresence>
-          {showAssignmentWelcome && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50"
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-3xl p-4 sm:p-8 max-w-md w-full shadow-2xl text-center max-h-[90vh] overflow-y-auto"
-              >
-                <div className="w-14 h-14 sm:w-20 sm:h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-6">
-                  <BookOpen size={28} className="sm:hidden" />
-                  <BookOpen size={40} className="hidden sm:block" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black mb-2 sm:mb-4 text-stone-900">Welcome to Vocaband!</h3>
-                <p className="text-stone-600 mb-4 sm:mb-6 text-sm sm:text-lg">Create engaging vocabulary assignments with 10 game modes.</p>
-
-                <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 text-left">
-                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 rounded-xl">
-                    <span className="text-lg sm:text-2xl">📋</span>
-                    <div>
-                      <p className="font-bold text-stone-800 text-sm sm:text-base">Import Words</p>
-                      <p className="text-xs sm:text-sm text-stone-600">Paste, upload Word docs, scan with OCR, or Google Sheets</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-purple-50 rounded-xl">
-                    <span className="text-lg sm:text-2xl">🎮</span>
-                    <div>
-                      <p className="font-bold text-stone-800 text-sm sm:text-base">10 Game Modes</p>
-                      <p className="text-xs sm:text-sm text-stone-600">Classic, Listening, Spelling, Matching, Scramble & more</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-green-50 rounded-xl">
-                    <span className="text-lg sm:text-2xl">⭐</span>
-                    <div>
-                      <p className="font-bold text-stone-800 text-sm sm:text-base">XP & Rewards</p>
-                      <p className="text-xs sm:text-sm text-stone-600">Students earn XP to unlock avatars, themes & more</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-amber-50 rounded-xl">
-                    <span className="text-lg sm:text-2xl">📊</span>
-                    <div>
-                      <p className="font-bold text-stone-800 text-sm sm:text-base">Track Progress</p>
-                      <p className="text-xs sm:text-sm text-stone-600">Gradebook with detailed analytics per student</p>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => { setShowAssignmentWelcome(false); try { localStorage.setItem('vocaband_welcome_seen', '1'); } catch {} }}
-                  className="w-full py-3 sm:py-4 bg-blue-600 text-white rounded-2xl font-black text-base sm:text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                >
-                  Got it, let's start! →
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Topic Packs Modal ─────────────────────────────── */}
-        <AnimatePresence>
-          {showTopicPacks && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-              onClick={() => setShowTopicPacks(false)}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-surface-container-lowest rounded-3xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto border-2 border-outline-variant/20"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-xl font-black text-on-surface flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-lg bg-tertiary-container/30 flex items-center justify-center">📦</span>
-                    Topic Packs
-                  </h3>
-                  <button onClick={() => setShowTopicPacks(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all">
-                    <X size={16} />
-                  </button>
-                </div>
-                <p className="text-sm text-on-surface-variant mb-5">Click a topic to add its words to your assignment.</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {TOPIC_PACKS.map(pack => {
-                    const alreadyAdded = pack.ids.every(id => selectedWords.includes(id));
-                    return (
-                      <button
-                        key={pack.name}
-                        onClick={() => {
-                          const newIds = pack.ids.filter(id => !selectedWords.includes(id));
-                          setSelectedWords(prev => [...prev, ...newIds]);
-                          setSelectedLevel("Band 1");
-                          setShowTopicPacks(false);
-                        }}
-                        disabled={alreadyAdded}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center active:scale-95 ${alreadyAdded ? "border-primary-container/30 bg-primary-container/10 opacity-70 cursor-default" : "border-tertiary-container/30 bg-tertiary-container/10 hover:bg-tertiary-container/20 hover:border-tertiary-container/50"}`}
-                      >
-                        <span className="text-3xl">{pack.icon}</span>
-                        <span className="font-bold text-on-surface text-sm">{pack.name}</span>
-                        <span className="text-xs text-on-surface-variant">{pack.ids.length} words</span>
-                        {alreadyAdded && <span className="text-xs text-primary font-bold">✓ Added</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <CreateAssignmentWizard
+        selectedClass={selectedClass}
+        allWords={ALL_WORDS}
+        band1Words={BAND_1_WORDS}
+        band2Words={BAND_2_WORDS}
+        customWords={customWords}
+        assignmentTitle={assignmentTitle}
+        setCustomWords={setCustomWords}
+        setAssignmentTitle={setAssignmentTitle}
+        assignmentDeadline={assignmentDeadline}
+        setAssignmentDeadline={setAssignmentDeadline}
+        assignmentModes={assignmentModes}
+        setAssignmentModes={setAssignmentModes}
+        selectedWords={selectedWords}
+        setSelectedWords={setSelectedWords}
+        selectedLevel={selectedLevel}
+        setSelectedLevel={setSelectedLevel}
+        tagInput={tagInput}
+        setTagInput={setTagInput}
+        pastedText={pastedText}
+        setPastedText={setPastedText}
+        showPasteDialog={showPasteDialog}
+        setShowPasteDialog={setShowPasteDialog}
+        pasteMatchedCount={pasteMatchedCount}
+        pasteUnmatched={pasteUnmatched}
+        handlePasteSubmit={handlePasteSubmit}
+        handleAddUnmatchedAsCustom={handleAddUnmatchedAsCustom}
+        handleSkipUnmatched={handleSkipUnmatched}
+        handleTagInputKeyDown={handleTagInputKeyDown}
+        handleDocxUpload={handleDocxUpload}
+        handleSaveAssignment={handleSaveAssignment}
+        showTopicPacks={showTopicPacks}
+        setShowTopicPacks={setShowTopicPacks}
+        showAssignmentWelcome={showAssignmentWelcome}
+        setShowAssignmentWelcome={setShowAssignmentWelcome}
+        TOPIC_PACKS={TOPIC_PACKS}
+        ASSIGNMENT_TITLE_SUGGESTIONS={ASSIGNMENT_TITLE_SUGGESTIONS}
+        onBack={() => setView("teacher-dashboard")}
+        editingAssignment={editingAssignment}
+        setEditingAssignment={setEditingAssignment}
+      />
     );
   }
+
 
   if (view === "game" && showModeSelection) {
     const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
@@ -5969,31 +5359,30 @@ export default function App() {
             </div>
           </div>
 
-          {/* Add Remaining Words Button */}
-          {((uniqueFoundWords.length > exactMatchesCount) || unmatchedTerms.length > 0) && (
+          {/* Quick Add All & Generate QR Button */}
+          {(uniqueFoundWords.length > 0 || unmatchedTerms.length > 0) && quickPlaySelectedWords.length === 0 && (
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 mb-6 shadow-xl text-white">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-black mb-1">Add Remaining Words</h3>
+                  <h3 className="text-lg font-black mb-1">Quick Start!</h3>
                   <p className="text-white/80 text-sm">
-                    {uniqueFoundWords.length > exactMatchesCount && `${uniqueFoundWords.length - exactMatchesCount} more found`}
-                    {uniqueFoundWords.length > exactMatchesCount && unmatchedTerms.length > 0 && ` + `}
-                    {unmatchedTerms.length > 0 && `${unmatchedTerms.length} custom word${unmatchedTerms.length > 1 ? 's' : ''} to translate`}
+                    {exactMatchesCount > 0 && `${exactMatchesCount} exact match${exactMatchesCount > 1 ? 'es' : ''} ready`}
+                    {exactMatchesCount > 0 && uniqueFoundWords.length > exactMatchesCount && ` + ${uniqueFoundWords.length - exactMatchesCount} more found`}
+                    {unmatchedTerms.length > 0 && ` + ${unmatchedTerms.length} custom word${unmatchedTerms.length > 1 ? 's' : ''} to translate`}
                   </p>
                 </div>
                 <button
                   onClick={async () => {
-                    // Add remaining database words (partial matches)
-                    const remainingDbWords = uniqueFoundWords.filter(w =>
-                      !quickPlaySelectedWords.some(sw => sw.id === w.id)
-                    );
-                    setQuickPlaySelectedWords(prev => [...prev, ...remainingDbWords]);
+                    // Add all found database words
+                    const allDbWordsToAdd = uniqueFoundWords.filter(w => !quickPlaySelectedWords.some(sw => sw.id === w.id));
+                    setQuickPlaySelectedWords(prev => [...prev, ...allDbWordsToAdd]);
 
-                    // Translate and add custom words
+                    // Translate and add all unmatched terms
+                    let customWordsToAdd: Word[] = [];
+
                     if (unmatchedTerms.length > 0) {
                       showToast("Translating custom words...", "info");
 
-                      const customWordsToAdd: Word[] = [];
                       for (const term of unmatchedTerms) {
                         const translation = await translateWord(term);
                         if (translation) {
@@ -6012,14 +5401,48 @@ export default function App() {
                       }
 
                       setQuickPlaySelectedWords(prev => [...prev, ...customWordsToAdd]);
-                      setQuickPlaySearchQuery("");
-                      showToast(`Added ${remainingDbWords.length + customWordsToAdd.length} more words!`, "success");
                     }
+
+                    // Wait for state to update, then generate QR
+                    setTimeout(async () => {
+                      const updatedSelection = [...allDbWordsToAdd, ...customWordsToAdd];
+                      const dbWords = updatedSelection.filter(w => w.id >= 0);
+                      const customWords = updatedSelection.filter(w => w.id < 0);
+                      const wordIds = dbWords.map(w => w.id);
+
+                      const customWordsJson = customWords.length > 0 ? JSON.stringify(customWords.map(w => ({
+                        english: w.english,
+                        hebrew: w.hebrew,
+                        arabic: w.arabic,
+                        sentence: w.sentence || "",
+                        example: w.example || ""
+                      }))) : null;
+
+                      const { data, error } = await supabase.rpc('create_quick_play_session', {
+                        p_word_ids: wordIds.length > 0 ? wordIds : null,
+                        p_custom_words: customWordsJson
+                      });
+
+                      if (error) {
+                        showToast("Failed to create session: " + error.message, "error");
+                        return;
+                      }
+
+                      const session = data as { session_code: string };
+                      setQuickPlaySessionCode(session.session_code);
+                      setQuickPlayActiveSession({
+                        sessionCode: session.session_code,
+                        wordIds: wordIds,
+                        words: updatedSelection
+                      });
+                      setQuickPlaySearchQuery("");
+                      setView("quick-play-teacher-monitor");
+                    }, 500);
                   }}
                   className="px-6 py-3 bg-white text-green-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
                 >
-                  <Sparkles size={20} />
-                  Add Remaining Words
+                  <QrCode size={20} />
+                  Add All & Generate QR
                 </button>
               </div>
             </div>
@@ -6038,15 +5461,133 @@ export default function App() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
-                {unmatchedTerms.map(term => (
-                  <div
-                    key={term}
-                    className="px-3 py-1.5 bg-white rounded-full text-sm font-bold text-on-surface border-2 border-amber-300 flex items-center gap-2"
-                  >
-                    <span>"{term}"</span>
-                    <span className="text-xs text-purple-600">🪄 AI</span>
-                  </div>
-                ))}
+                {unmatchedTerms.map(term => {
+                  const isAdding = quickPlayAddingCustom.has(term);
+                  const customData = quickPlayCustomWords.get(term);
+
+                  if (isAdding) {
+                    return (
+                      <div key={term} className="bg-white rounded-xl p-3 border-2 border-amber-300">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-on-surface">"{term}"</span>
+                            <span className="text-xs text-on-surface-variant">Add translations:</span>
+                          </div>
+                          {!quickPlayTranslating.has(term) && (
+                            <button
+                              onClick={() => handleAutoTranslate(term)}
+                              className="text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-1"
+                            >
+                              <Sparkles size={12} />
+                              Auto-translate with AI
+                            </button>
+                          )}
+                        </div>
+                        {quickPlayTranslating.has(term) && (
+                          <div className="flex items-center gap-2 mb-2 text-purple-600">
+                            <Loader2 className="animate-spin" size={16} />
+                            <span className="text-xs font-bold">AI is translating...</span>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Hebrew translation..."
+                            value={customData?.hebrew || ""}
+                            onChange={(e) => {
+                              const newMap = new Map(quickPlayCustomWords);
+                              newMap.set(term, { hebrew: e.target.value, arabic: customData?.arabic || "" });
+                              setQuickPlayCustomWords(newMap);
+                            }}
+                            className="flex-1 px-3 py-2 bg-surface-container border-2 border-surface-container-highest rounded-lg text-sm font-bold focus:border-primary focus:outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Arabic translation..."
+                            value={customData?.arabic || ""}
+                            onChange={(e) => {
+                              const newMap = new Map(quickPlayCustomWords);
+                              newMap.set(term, { hebrew: customData?.hebrew || "", arabic: e.target.value });
+                              setQuickPlayCustomWords(newMap);
+                            }}
+                            className="flex-1 px-3 py-2 bg-surface-container border-2 border-surface-container-highest rounded-lg text-sm font-bold focus:border-primary focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              const data = quickPlayCustomWords.get(term);
+                              if (!data) return;
+
+                              // Create custom word with negative ID
+                              const customWord: Word = {
+                                id: -Date.now() - Math.floor(Math.random() * 1000),
+                                english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
+                                hebrew: data.hebrew || "",
+                                arabic: data.arabic || "",
+                                level: "Custom"
+                              };
+
+                              setQuickPlaySelectedWords(prev => [...prev, customWord]);
+
+                              // Clear and close
+                              const newMap = new Map(quickPlayCustomWords);
+                              newMap.delete(term);
+                              setQuickPlayCustomWords(newMap);
+
+                              const newAdding = new Set(quickPlayAddingCustom);
+                              newAdding.delete(term);
+                              setQuickPlayAddingCustom(newAdding);
+                            }}
+                            disabled={!customData?.hebrew && !customData?.arabic}
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ✓ Add
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newMap = new Map(quickPlayCustomWords);
+                              newMap.delete(term);
+                              setQuickPlayCustomWords(newMap);
+
+                              const newAdding = new Set(quickPlayAddingCustom);
+                              newAdding.delete(term);
+                              setQuickPlayAddingCustom(newAdding);
+                            }}
+                            className="px-4 py-2 bg-surface-container text-on-surface rounded-lg font-bold text-sm hover:bg-surface-container-highest transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const isAdded = quickPlaySelectedWords.some(w => w.english.toLowerCase() === term.toLowerCase());
+
+                  return (
+                    <div key={term} className={`flex items-center gap-2 ${isAdded ? 'opacity-50' : ''}`}>
+                      <span className="px-3 py-1 bg-white rounded-full text-sm font-bold text-on-surface border-2 border-amber-300">
+                        "{term}"
+                      </span>
+                      {isAdded ? (
+                        <span className="text-xs text-green-600 font-bold">✓ Added</span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const newAdding = new Set(quickPlayAddingCustom);
+                            newAdding.add(term);
+                            setQuickPlayAddingCustom(newAdding);
+                            // Auto-translate on open
+                            handleAutoTranslate(term);
+                          }}
+                          className="text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-1"
+                        >
+                          <Sparkles size={10} />
+                          Translate & Add
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -6387,7 +5928,7 @@ export default function App() {
   }
 
   if (view === "quick-play-teacher-monitor" && quickPlayActiveSession) {
-    const qrUrl = `${publicUrl}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
+    const qrUrl = `${window.location.origin}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
@@ -6458,41 +5999,6 @@ export default function App() {
                 <QrCode size={24} />
                 QR Code
               </h2>
-
-              {/* Public URL Configuration */}
-              <div className="mb-4">
-                <label className="block text-sm font-bold mb-2">Your App URL (for phone scanning):</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={publicUrl}
-                    onChange={(e) => {
-                      const newUrl = e.target.value.replace(/\/$/, ''); // Remove trailing slash
-                      setPublicUrl(newUrl);
-                      localStorage.setItem('vocaband_public_url', newUrl);
-                    }}
-                    placeholder="http://192.168.1.100:3000"
-                    className="flex-1 px-3 py-2 bg-white/20 border-2 border-white/30 rounded-lg text-white placeholder-white/50 font-bold text-sm"
-                  />
-                  <button
-                    onClick={() => {
-                      const localIp = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                        ? 'http://192.168.1.100:3000' // User needs to replace this
-                        : window.location.origin;
-                      setPublicUrl(localIp);
-                      localStorage.setItem('vocaband_public_url', localIp);
-                      showToast("URL updated! Replace 192.168.1.100 with your computer's IP", "info");
-                    }}
-                    className="px-3 py-2 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-lg font-bold text-sm"
-                    title="Set to local IP (you'll need to update the IP)"
-                  >
-                    <Wifi size={16} />
-                  </button>
-                </div>
-                <p className="text-xs text-white/60 mt-1">
-                  💡 Find your IP: Windows → `ipconfig` | Mac → `ipconfig getifaddr en0`
-                </p>
-              </div>
 
               {/* QR Code Display */}
               <div className="bg-white rounded-xl p-4 mb-4">
@@ -7647,21 +7153,7 @@ export default function App() {
             className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >Choose Another Mode</button>
           <button
-            onClick={() => {
-              setIsFinished(false);
-              setScore(0);
-              setCurrentIndex(0);
-              setMistakes([]);
-              setFeedback(null);
-              setShowModeSelection(true);
-              if (user?.isGuest) {
-                // Quick Play guest users go back to landing
-                setUser(null);
-                setView("public-landing");
-              } else {
-                setView("student-dashboard");
-              }
-            }}
+            onClick={() => { setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true); setView("student-dashboard"); }}
             disabled={isSaving}
             className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
           >Back to Dashboard</button>
@@ -7914,7 +7406,7 @@ export default function App() {
               <progress
                 className="absolute top-0 left-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
                 max={100}
-                value={toProgressValue(((currentIndex + 1) / activeGameWords.length) * 100)}
+                value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
               />
 
               {/* Motivational message - positioned at top to not block answers */}
@@ -7927,7 +7419,7 @@ export default function App() {
               )}
 
               <div className="mb-3 sm:mb-12">
-                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {activeGameWords.length}</span>
+                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {gameWords.length}</span>
                 <div className="flex flex-col items-center justify-center gap-2 sm:gap-6 mb-3 sm:mb-12">
                   {currentWord?.imageUrl && (
                     <motion.img
@@ -7976,7 +7468,7 @@ export default function App() {
                   )}
                   {((user.powerUps ?? {})['skip'] ?? 0) > 0 && !feedback && (
                     <button onClick={() => {
-                      setCurrentIndex(prev => Math.min(prev + 1, activeGameWords.length - 1));
+                      setCurrentIndex(prev => Math.min(prev + 1, gameWords.length - 1));
                       setHiddenOptions([]);
                       const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
@@ -8223,9 +7715,9 @@ export default function App() {
           <progress
             className="h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
             max={100}
-            value={toProgressValue(((currentIndex + 1) / activeGameWords.length) * 100)}
+            value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
           />
-          <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {activeGameWords.length}</p>
+          <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {gameWords.length}</p>
         </div>
       </div>
     )}
