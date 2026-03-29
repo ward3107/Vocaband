@@ -91,7 +91,12 @@
       "Bash(findstr :24678)",
       "Read(//tmp/**)",
       "Bash(\"C:/Users/Waseem/Downloads/Vocaband/Vocaband-1/src/App.tsx.new\")",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(where supabase:*)",
+      "Bash(grep -n \"^    </div>$\" src/App.tsx)",
+      "Bash(grep -n \"^      </div>$\")",
+      "Bash(npx supabase:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

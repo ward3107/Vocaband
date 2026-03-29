@@ -14,22 +14,32 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
   ];
 
   return (
-    <nav dir="ltr" className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
+    <nav
+      dir="ltr"
+      role="navigation"
+      aria-label="Main navigation"
+      className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem]"
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = currentPage === item.id;
+        const isLegalPage = item.id === "privacy" || item.id === "terms";
 
         return (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
+            aria-label={`Navigate to ${item.label}`}
+            aria-current={isActive ? "page" : undefined}
             className={`flex flex-col items-center justify-center p-2 transition-all ${
               isActive
                 ? "bg-primary text-white rounded-full scale-105 shadow-md shadow-blue-500/30"
+                : isLegalPage
+                ? "text-primary"
                 : "text-stone-400"
             }`}
           >
-            <Icon size={20} />
+            <Icon size={20} aria-hidden="true" />
             <span className="text-[9px] font-black font-headline mt-0.5">
               {item.label}
             </span>
@@ -39,9 +49,11 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
         aria-label="Open accessibility options"
+        aria-expanded="false"
+        aria-controls="a11y-panel"
         className="flex flex-col items-center justify-center p-2 bg-primary text-white rounded-full shadow-md shadow-blue-500/30 transition-all"
       >
-        <Accessibility size={20} />
+        <Accessibility size={20} aria-hidden="true" />
         <span className="text-[9px] font-black font-headline mt-0.5">A11y</span>
       </button>
     </nav>

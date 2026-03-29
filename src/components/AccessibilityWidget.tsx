@@ -245,8 +245,9 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
         {isOpen && (
           <motion.div
             ref={panelRef}
+            id="a11y-panel"
             role="dialog"
-            aria-label="Accessibility settings"
+            aria-labelledby="a11y-title"
             aria-modal="true"
             data-a11y-widget
             initial={{ opacity: 0, y: 20, scale: 0.95 }}

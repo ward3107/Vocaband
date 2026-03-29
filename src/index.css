@@ -182,3 +182,103 @@ h1, h2, h3, h4, h5, h6, .font-headline {
 .animate-pulse-subtle-float {
   animation: pulse-subtle-float 3s ease-in-out infinite;
 }
+
+/* =============================================================================
+   Accessibility Utilities (WCAG 2.0 AA / IS 5568)
+   ============================================================================= */
+
+/* Screen reader only content - visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Make content visible when focused */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Focus visible indicator for keyboard navigation (2.4.7) */
+*:focus-visible {
+  outline: 3px solid #0050d4 !important;
+  outline-offset: 3px !important;
+}
+
+/* Remove default outline only when mouse is used */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+/* Ensure high contrast focus indicators */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[role="link"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #0050d4 !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px rgba(0, 80, 212, 0.3) !important;
+}
+
+/* Skip navigation link styles (2.4.1) */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 12px 24px;
+  z-index: 9999;
+  text-decoration: none;
+  font-weight: bold;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Ensure text can be resized without breaking layout (1.4.4) */
+body, p, li, td, th, input, select, textarea, button {
+  min-height: 1em;
+}
+
+/* Prevent text from being clipped when resized */
+* {
+  max-width: 100%;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  * {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reduced motion support (prefers-reduced-motion) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
