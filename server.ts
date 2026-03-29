@@ -7,7 +7,7 @@ import path from "path";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
-import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/types.js";
+import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types.js";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils.js";
 
 // Validate required environment variables before starting
