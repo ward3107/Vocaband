@@ -413,25 +413,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band I (Foundation)</span>
-                <span className="text-primary">85% Complete</span>
+                <span className="text-primary">75% Complete</span>
               </div>
-              <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
+              <div className="relative h-8">
+                <div className="absolute inset-0 bg-surface-container-high rounded-full"></div>
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: "85%" }}
+                  whileInView={{ width: "75%" }}
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 1.5, ease: "easeOut" }}
-                  className="h-full bg-primary rounded-full relative"
+                  className="absolute left-0 top-0 h-full bg-primary rounded-full"
                 >
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ delay: 1.5, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-primary"
-                  >
-                    <span className="text-xl">⭐</span>
-                  </motion.div>
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ delay: 1.2, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                  style={{ left: 'calc(75% - 1.25rem)' }}
+                  className="absolute top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center border-2 border-primary z-10"
+                >
+                  <span className="text-xl">⭐</span>
                 </motion.div>
               </div>
             </motion.div>
@@ -446,25 +448,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band II (Intermediate)</span>
-                <span className="text-secondary">60% In Progress</span>
+                <span className="text-secondary">45% Complete</span>
               </div>
-              <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
+              <div className="relative h-8">
+                <div className="absolute inset-0 bg-surface-container-high rounded-full"></div>
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: "60%" }}
+                  whileInView={{ width: "45%" }}
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
-                  className="h-full bg-secondary rounded-full relative"
+                  className="absolute left-0 top-0 h-full bg-secondary rounded-full"
                 >
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ delay: 1.7, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-secondary"
-                  >
-                    <span className="text-xl">⚡</span>
-                  </motion.div>
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ delay: 1.4, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                  style={{ left: 'calc(45% - 1.25rem)' }}
+                  className="absolute top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center border-2 border-secondary z-10"
+                >
+                  <span className="text-xl">⚡</span>
                 </motion.div>
               </div>
             </motion.div>
@@ -479,25 +483,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="flex justify-between items-end font-black">
                 <span className="text-2xl">Band III (Academic)</span>
-                <span className="text-tertiary">25% Started</span>
+                <span className="text-tertiary">20% Complete</span>
               </div>
-              <div className="h-8 bg-surface-container-high rounded-full overflow-hidden relative border-4 border-surface-container-high">
+              <div className="relative h-8">
+                <div className="absolute inset-0 bg-surface-container-high rounded-full"></div>
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: "25%" }}
+                  whileInView={{ width: "20%" }}
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
-                  className="h-full bg-tertiary rounded-full relative"
+                  className="absolute left-0 top-0 h-full bg-tertiary rounded-full"
                 >
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 1.9, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center -mr-5 border-2 border-tertiary"
-                  >
-                    <span className="text-xl">🎓</span>
-                  </motion.div>
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 1.6, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                  style={{ left: 'calc(20% - 1.25rem)' }}
+                  className="absolute top-1/2 -translate-y-1/2 w-10 h-10 bg-surface-container-lowest rounded-full shadow-lg flex items-center justify-center border-2 border-tertiary z-10"
+                >
+                  <span className="text-xl">🎓</span>
                 </motion.div>
               </div>
             </motion.div>

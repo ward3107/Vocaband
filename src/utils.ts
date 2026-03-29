@@ -16,3 +16,14 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
   }
   return chunks;
 }
+
+/** Remove a key from an object immutably (more efficient than spread + delete) */
+export function removeKey<T extends Record<string, unknown>>(obj: T, key: keyof T | string): T {
+  const { [key]: removed, ...rest } = obj as any;
+  return rest;
+}
+
+/** Add item to array if not already present (for tracking unique items like mistakes) */
+export function addUnique<T>(array: T[], item: T): T[] {
+  return array.includes(item) ? array : [...array, item];
+}

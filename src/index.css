@@ -1,6 +1,16 @@
 @import "tailwindcss";
 
 /* =============================================================================
+   Accessibility: root font size custom property
+   Applied by the11y features (font size, high contrast, etc.)
+   ============================================================================= */
+:root {
+  --a11y-font-size: 16px;
+  --a11y-line-height: 1.5;
+  --a11y-letter-spacing: 0em;
+}
+
+/* =============================================================================
    Material Design 3 Theme Configuration for Vocaband
    ============================================================================= */
 

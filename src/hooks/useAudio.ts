@@ -9,6 +9,12 @@ const getAudioUrl = (wordId: number): string => {
 }
 
 const getMotivationalUrl = (key: string): string => {
+  // Use Cloudflare CDN for motivational audio (better caching)
+  const cloudflareUrl = import.meta.env.VITE_CLOUDFRONT_URL || import.meta.env.VITE_CLOUDFLARE_URL
+  if (cloudflareUrl) {
+    return `${cloudflareUrl}/motivational/${key}.mp3`
+  }
+  // Fallback to Supabase if Cloudflare URL not configured
   const base = import.meta.env.VITE_SUPABASE_URL
   return `${base}/storage/v1/object/public/motivational/${key}.mp3`
 }
@@ -42,7 +48,6 @@ export const useAudio = () => {
       wordCache[wordId] = new Howl({
         src: [getAudioUrl(wordId)],
         preload: true,
-        html5: true,
         onloaderror: () => {}
       })
     }
@@ -69,17 +74,18 @@ export const useAudio = () => {
     wordIds.forEach(preload)
   }
 
-  // Preload all motivational phrases at app start
+  // Preload a small batch of motivational phrases (avoids Audio pool exhaustion)
   const preloadMotivational = () => {
     if (preloadedMotivational) return
     preloadedMotivational = true
 
-    PHRASES.forEach(key => {
+    // Preload only a random subset to avoid creating 72 Howl instances at once
+    const batch = [...PHRASES].sort(() => Math.random() - 0.5).slice(0, 8)
+    batch.forEach(key => {
       if (!motivationalCache[key]) {
         motivationalCache[key] = new Howl({
           src: [getMotivationalUrl(key)],
           preload: true,
-          html5: true,
           volume: 0.8,
           onloaderror: () => {}
         })
@@ -98,7 +104,6 @@ export const useAudio = () => {
       motivationalCache[key] = new Howl({
         src: [getMotivationalUrl(key)],
         preload: true,
-        html5: true,
         volume: 0.8,
         onloaderror: () => {}
       })

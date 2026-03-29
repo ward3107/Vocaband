@@ -3,8 +3,8 @@ import {
   ALL_WORDS,
   BAND_1_WORDS,
   BAND_2_WORDS,
-} from '../vocabulary';
-import { searchWords, filterWords } from '../vocabulary-matching';
+} from '../data/vocabulary';
+import { searchWords, filterWords } from '../data/vocabulary-matching';
 
 // ─── Data integrity ───────────────────────────────────────────────────────────
 
