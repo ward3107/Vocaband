@@ -2395,7 +2395,10 @@ export default function App() {
 
   const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
     if (matchedIds.includes(item.id)) return;
-    
+
+    // Pronounce the word when clicking any card
+    speakWord(item.id);
+
     if (!selectedMatch) {
       setSelectedMatch(item);
     } else {
@@ -2403,11 +2406,6 @@ export default function App() {
         setMatchedIds([...matchedIds, item.id]);
         const newScore = score + 15;
         setScore(newScore);
-
-        // Pronounce the matched English word
-        const englishCard = selectedMatch.type === 'english' ? selectedMatch : item;
-        const matchedPair = matchingPairs.find(p => p.id === englishCard.id && p.type === 'english');
-        if (matchedPair) speakWord(item.id);
 
         if (socket && user?.classCode) {
           socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
@@ -4298,7 +4296,7 @@ export default function App() {
                   title="Quick Online Challenge"
                   description="Generate QR code for instant play"
                   buttonText="Create"
-                  buttonVariant="secondary"
+                  buttonVariant="orange-green"
                   onClick={() => setView("quick-play-setup")}
                 />
               </div>
