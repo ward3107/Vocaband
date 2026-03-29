@@ -129,4 +129,4 @@ Teachers launch a class-wide competition from their dashboard. All students in t
 ---
 
 ## Getting Started
-visit t vocaband.com 
+visit at (https://www.vocaband.com/)
