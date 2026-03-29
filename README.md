@@ -12,7 +12,7 @@
 > - ❌ You may **NOT** use this code for commercial purposes or sell products based on it
 > - ❌ You may **NOT** copy, redistribute, or claim this code as your own
 >
-> For commercial licensing inquiries, contact: **vocaband.app@gmail.com**
+> For commercial licensing inquiries, contact: **contact@vocaband.com**
 
 ---
 
