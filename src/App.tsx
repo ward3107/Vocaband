@@ -676,7 +676,7 @@ export default function App() {
   // --- HELPER: Create Guest User ---
   // Centralized function to create guest user objects with consistent structure
   const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => ({
-    uid: `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    uid: `${prefix}-${crypto.randomUUID()}`,
     displayName: name.trim().slice(0, 30),
     email: null,
     role: "guest",
@@ -916,14 +916,13 @@ export default function App() {
       s.on("reconnect", () => {
         setSocketConnected(true);
         const currentUser = userRef.current;
-        // Allow both students and guests to rejoin live challenge
+        // Allow students to rejoin live challenge on reconnect.
+        // Token is provided via the socket auth callback (line above), not in the payload.
         if (currentUser?.classCode && isLiveChallengeRef.current) {
           if (currentUser.role === "student") {
             getToken().then(t => {
-              s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token: t, isGuest: false });
+              s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token: t });
             });
-          } else if (currentUser.isGuest) {
-            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, isGuest: true });
           }
         }
       });
@@ -1721,8 +1720,23 @@ export default function App() {
   };
 
   const recordConsent = async () => {
-    // Persist acceptance in localStorage (works without DB migration)
+    // Persist acceptance in localStorage for quick checks on page load
     localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION);
+    // Also persist to the consent_log DB table for compliance/audit trail
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase.from('consent_log').insert({
+          uid: session.user.id,
+          policy_version: PRIVACY_POLICY_VERSION,
+          terms_version: PRIVACY_POLICY_VERSION,
+          action: 'accept',
+        });
+      }
+    } catch {
+      // Non-blocking — localStorage is the primary check, DB is the audit trail
+      console.warn('Could not persist consent to database');
+    }
     setNeedsConsent(false);
     setConsentChecked(false);
   };
@@ -2121,7 +2135,7 @@ export default function App() {
       showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
     } catch (error) {
       console.error('❌ Error approving student:', error);
-      showToast(`Could not approve student: ${error}`, "error");
+      showToast("Could not approve student. Please try again.", "error");
     }
   };
 
@@ -2140,7 +2154,7 @@ export default function App() {
       await loadPendingStudents();
     } catch (error) {
       console.error('Error rejecting student:', error);
-      showToast(`Could not reject student: ${error}`, "error");
+      showToast("Could not reject student. Please try again.", "error");
     }
   };
 
@@ -2197,7 +2211,8 @@ export default function App() {
       const classData = mapClass(classResult.data[0]);
 
       // Step 2.5: Check if student is approved (for student_profiles workflow)
-      const studentUniqueId = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
+      // Include the anonymous UID to prevent name collisions (two students with the same name)
+      const studentUniqueId = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
 
       const { data: studentProfile, error: profileError } = await supabase
         .from('student_profiles')
