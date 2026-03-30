@@ -7,7 +7,7 @@ import {
   findWordFamily,
   searchWords,
   findMatchesEnhanced,
-} from '../vocabulary-matching';
+} from '../data/vocabulary-matching';
 import type { Word } from '../vocabulary';
 
 // Helper to create minimal Word objects for testing

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { handleDbError, OperationType } from '../supabase';
+import { handleDbError, OperationType } from '../core/supabase';
 
 describe('handleDbError', () => {
   // Suppress console.error output during tests
