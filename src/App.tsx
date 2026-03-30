@@ -7776,7 +7776,7 @@ export default function App() {
           </button>
         </div>
       )}
-      <div className="w-full max-w-5xl flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-8">
+      <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-8">
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="bg-white px-3 sm:px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
             <Trophy className="text-amber-500" size={18} />
@@ -7803,7 +7803,7 @@ export default function App() {
         </div>
       </div>
 
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
+      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
         <div className="lg:col-span-3">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
