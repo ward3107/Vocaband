@@ -16,15 +16,14 @@ DROP POLICY IF EXISTS "users_update" ON public.users;
 CREATE POLICY "users_update" ON public.users
   FOR UPDATE USING (auth.uid()::text = uid OR public.is_admin())
   WITH CHECK (
-    -- Admins can change anything
     public.is_admin()
     OR (
-      -- Everyone else must keep their existing role (no self-promotion)
-      role = (SELECT u.role FROM public.users u WHERE u.uid = auth.uid()::text)
-      AND (
-        -- class_code must stay the same, OR be set for the first time (NULL -> value)
-        class_code = (SELECT u.class_code FROM public.users u WHERE u.uid = auth.uid()::text)
-        OR (SELECT u.class_code FROM public.users u WHERE u.uid = auth.uid()::text) IS NULL
+      -- Single subquery: freeze both role and class_code for non-admins
+      EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.uid = auth.uid()::text
+          AND u.role = role
+          AND (u.class_code IS NULL OR u.class_code = class_code)
       )
     )
   );

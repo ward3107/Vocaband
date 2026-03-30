@@ -1720,22 +1720,19 @@ export default function App() {
   };
 
   const recordConsent = async () => {
-    // Persist acceptance in localStorage for quick checks on page load
     localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION);
     // Also persist to the consent_log DB table for compliance/audit trail
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+    if (user?.uid) {
+      try {
         await supabase.from('consent_log').insert({
-          uid: session.user.id,
+          uid: user.uid,
           policy_version: PRIVACY_POLICY_VERSION,
           terms_version: PRIVACY_POLICY_VERSION,
           action: 'accept',
         });
+      } catch {
+        console.warn('Could not persist consent to database');
       }
-    } catch {
-      // Non-blocking — localStorage is the primary check, DB is the audit trail
-      console.warn('Could not persist consent to database');
     }
     setNeedsConsent(false);
     setConsentChecked(false);
@@ -2120,14 +2117,6 @@ export default function App() {
         throw error;
       }
 
-      // DEBUG: Query the student profile to verify the update
-      const { data: verifyProfile, error: verifyError } = await supabase
-        .from('student_profiles')
-        .select('*')
-        .eq('id', studentId)
-        .single();
-
-
       // Refresh the list
       await loadPendingStudents();
 
@@ -2211,15 +2200,30 @@ export default function App() {
       const classData = mapClass(classResult.data[0]);
 
       // Step 2.5: Check if student is approved (for student_profiles workflow)
-      // New format includes UID to prevent name collisions; also check legacy format for existing students
       const studentUniqueIdNew = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
       const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
 
-      const { data: studentProfile, error: profileError } = await supabase
-        .from('student_profiles')
-        .select('status, unique_id')
-        .or(`unique_id.eq.${studentUniqueIdNew},unique_id.eq.${studentUniqueIdLegacy}`)
-        .maybeSingle();
+      // Check new format first, fall back to legacy
+      let studentProfile: { status: string } | null = null;
+      let profileError: unknown = null;
+      {
+        const result = await supabase
+          .from('student_profiles')
+          .select('status')
+          .eq('unique_id', studentUniqueIdNew)
+          .maybeSingle();
+        studentProfile = result.data;
+        profileError = result.error;
+      }
+      if (!studentProfile && !profileError) {
+        const result = await supabase
+          .from('student_profiles')
+          .select('status')
+          .eq('unique_id', studentUniqueIdLegacy)
+          .maybeSingle();
+        studentProfile = result.data;
+        profileError = result.error;
+      }
 
 
       if (profileError) {
@@ -2233,7 +2237,6 @@ export default function App() {
           setError("Your account was not approved. Please contact your teacher.");
           return;
         }
-      } else {
       }
 
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
