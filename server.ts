@@ -96,11 +96,11 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com"],  // unsafe-inline required by Cloudflare Rocket Loader (injects inline bootstrap); cloudflareinsights.com for Web Analytics
           styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],  // unsafe-inline needed for motion library animation styles; fonts.googleapis.com for Google Fonts CSS
           fontSrc: ["'self'", "fonts.gstatic.com"],  // gstatic.com serves the actual font files
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", allowedOrigin],
+          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", allowedOrigin],
           frameSrc: ["https://accounts.google.com"],
           workerSrc: ["'self'", "blob:"],
         },

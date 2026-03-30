@@ -370,7 +370,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
   // Power-ups state (FREE in demo!)
-  const [powerUps] = useState({ skip: 3, fifty_fifty: 3, reveal_letter: 3 });
+  const [powerUps, setPowerUps] = useState({ skip: 3, fifty_fifty: 3, reveal_letter: 3 });
 
   // Matching game state
   const [matchingCards, setMatchingCards] = useState<{ id: string; content: string; type: 'word' | 'meaning'; matched: boolean; selected: boolean }[]>([]);
