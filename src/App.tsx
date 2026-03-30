@@ -2620,7 +2620,7 @@ export default function App() {
       }
     } else {
       setUser(null);
-      setView("landing");
+      setView("public-landing");
     }
   };
 
@@ -3122,7 +3122,7 @@ export default function App() {
       <>
         <TermsPageWrapper
           onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("landing")}
+          onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
         {showCookieBanner && (
@@ -3140,7 +3140,7 @@ export default function App() {
       <>
         <PrivacyPageWrapper
           onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("landing")}
+          onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
         {showCookieBanner && (
@@ -3507,267 +3507,9 @@ export default function App() {
   }
 
   if (view === "landing" && !user) {
-    return (
-      <div className="min-h-screen flex flex-col bg-surface">
-        {/* Header */}
-        <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-4 sm:px-6 py-4 z-50">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Israeli English Curriculum • Bands Vocabulary</span>
-            </div>
-          </div>
-          <button
-            onClick={() => setView("public-landing")}
-            className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-lg">arrow_back</span>
-            Learn More
-          </button>
-        </header>
-
-        <main className="flex-grow flex flex-col items-center px-4 py-4 sm:py-6 max-w-4xl mx-auto w-full space-y-4 sm:space-y-6 pb-20 lg:pb-4">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="student"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch"
-            >
-                {/* Left Column: Form Section */}
-                <div className="flex flex-col space-y-6 sm:space-y-8">
-                  <div className="space-y-2 text-center lg:text-left">
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-on-surface tracking-tighter font-headline leading-none">
-                      Ready to <br/><span className="text-primary">Learn?</span>
-                    </h1>
-                    <p className="text-on-surface-variant font-bold text-base sm:text-lg">Enter your class code and pick your avatar to start your journey.</p>
-                  </div>
-
-                  <div className="space-y-5 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="relative group">
-                        <label htmlFor="join-class-code-input" className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">CLASS CODE</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. BAND-2024"
-                          id="join-class-code-input"
-                          maxLength={20}
-                          className="w-full bg-surface-container-lowest border-2 border-surface-container-high focus:border-primary rounded-xl px-5 sm:px-6 py-4 sm:py-5 font-bold text-base sm:text-lg text-on-surface outline-none transition-all placeholder:text-surface-dim"
-                        />
-                      </div>
-                      <div className="relative group">
-                        <label htmlFor="join-student-name-input" className="absolute -top-2.5 left-5 px-2 bg-surface text-primary font-black text-[10px] sm:text-xs z-10 font-headline">YOUR NAME</label>
-                        <input
-                          type="text"
-                          placeholder="What should we call you?"
-                          id="join-student-name-input"
-                          maxLength={30}
-                          className="w-full bg-surface-container-lowest border-2 border-surface-container-high focus:border-primary rounded-xl px-5 sm:px-6 py-4 sm:py-5 font-bold text-base sm:text-lg text-on-surface outline-none transition-all placeholder:text-surface-dim"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      disabled={loading}
-                      onClick={() => {
-                        const code = (document.getElementById("join-class-code-input") as HTMLInputElement).value;
-                        const name = (document.getElementById("join-student-name-input") as HTMLInputElement).value;
-                        if (code && name) handleStudentLogin(code, name);
-                        else showToast("Please enter both code and name!", "error");
-                      }}
-                      className={`signature-gradient w-full py-5 sm:py-6 rounded-full flex items-center justify-center gap-3 sm:gap-4 text-white font-black text-xl sm:text-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all group font-headline ${loading ? "opacity-70" : ""}`}
-                    >
-                      {loading && <RefreshCw className="animate-spin w-5 h-5 sm:w-6 sm:h-6" />}
-                      {loading ? "Joining..." : "Join Class"}
-                      {!loading && <span className="material-symbols-outlined text-2xl sm:text-3xl group-hover:translate-x-1 transition-transform">arrow_forward</span>}
-                    </button>
-
-                    {error && <p className="text-error text-xs sm:text-sm font-bold text-center">{error}</p>}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4">
-                    <div className="bg-surface-container-low px-3 sm:px-4 py-1.5 sm:py-2 rounded-full flex items-center gap-2">
-                      <span className="material-symbols-outlined text-tertiary text-lg sm:text-xl" style={{fontVariationSettings: "'FILL' 1"}}>workspace_premium</span>
-                      <span className="font-bold text-[10px] sm:text-xs text-on-surface">Curriculum Approved</span>
-                    </div>
-                    <div className="bg-surface-container-low px-3 sm:px-4 py-1.5 sm:py-2 rounded-full flex items-center gap-2">
-                      <span className="material-symbols-outlined text-secondary text-lg sm:text-xl" style={{fontVariationSettings: "'FILL' 1"}}>trending_up</span>
-                      <span className="font-bold text-[10px] sm:text-xs text-on-surface">Earn XP & Level Up</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Avatar Picker */}
-                <div
-                  className="bg-surface-container-low rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-6 relative overflow-hidden flex flex-col border border-surface-container-high select-none"
-                  onTouchStart={(e) => {
-                    const touch = e.touches[0];
-                    (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
-                  }}
-                  onTouchEnd={(e) => {
-                    const touch = e.changedTouches[0];
-                    const startX = parseFloat((e.currentTarget as HTMLElement).dataset.touchStartX || '0');
-                    const deltaX = touch.clientX - startX;
-                    const minSwipeDistance = 50;
-
-                    const availableCategories = (Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
-                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0);
-                    const currentIndex = availableCategories.indexOf(selectedAvatarCategory);
-
-                    if (deltaX < -minSwipeDistance && currentIndex < availableCategories.length - 1) {
-                      // Swipe left - go to next category
-                      setSelectedAvatarCategory(availableCategories[currentIndex + 1]);
-                    } else if (deltaX > minSwipeDistance && currentIndex > 0) {
-                      // Swipe right - go to previous category
-                      setSelectedAvatarCategory(availableCategories[currentIndex - 1]);
-                    }
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-4 sm:mb-6">
-                    <h2 className="text-lg sm:text-xl font-black text-on-surface font-headline">Pick Your Avatar</h2>
-                    <div className="bg-surface-container-lowest px-2 sm:px-3 py-1 rounded-full border border-surface-container-high flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                      <span className="text-[9px] sm:text-[10px] font-black text-on-surface-variant font-headline uppercase">Required</span>
-                    </div>
-                  </div>
-
-                  {/* Swipe hint for mobile */}
-                  <div className="sm:hidden text-center text-[10px] text-on-surface-variant mb-2 flex items-center justify-center gap-1">
-                    <span>←</span>
-                    <span className="font-medium">Swipe to change category</span>
-                    <span>→</span>
-                  </div>
-
-                  {/* Avatar Categories Navigation */}
-                  <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 hide-scrollbar">
-                    {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
-                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0)
-                      .map(category => (
-                        <button
-                          key={category}
-                          onClick={() => setSelectedAvatarCategory(category)}
-                          className={`whitespace-nowrap px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold font-headline transition-all ${
-                            selectedAvatarCategory === category
-                              ? "bg-primary text-white"
-                              : "bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high"
-                          }`}
-                        >
-                          {category}
-                        </button>
-                      ))}
-                  </div>
-
-                  {/* Avatar Grid */}
-                  <div className="grid grid-cols-6 sm:grid-cols-5 gap-2 sm:gap-3 overflow-y-auto max-h-[240px] sm:max-h-[320px] pr-1 sm:pr-2 hide-scrollbar">
-                    {AVATAR_CATEGORIES[selectedAvatarCategory].slice(0, 20).map(a => (
-                      <button
-                        key={a}
-                        onClick={() => setStudentAvatar(a)}
-                        className={`aspect-square rounded-xl sm:rounded-2xl p-1 transition-all cursor-pointer transform hover:scale-110 border-3 sm:border-4 ${
-                          studentAvatar === a
-                            ? "bg-primary-container border-primary shadow-lg scale-105"
-                            : "bg-surface-container-lowest border-transparent hover:border-secondary hover:shadow-md"
-                        }`}
-                      >
-                        <span className="text-2xl sm:text-3xl">{a}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Bottom category indicator */}
-                  <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5">
-                    {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>)
-                      .filter(cat => AVATAR_CATEGORY_UNLOCKS[cat]?.xpRequired === 0)
-                      .map((cat) => (
-                        <div
-                          key={cat}
-                          className={`rounded-full transition-all ${
-                            selectedAvatarCategory === cat ? 'w-2 h-2 bg-primary' : 'w-1.5 h-1.5 bg-surface-dim'
-                          }`}
-                        />
-                      ))}
-                  </div>
-
-                  {/* Glassmorphism Accent Elements */}
-                  <div className="absolute -bottom-10 -right-10 w-28 sm:w-32 h-28 sm:h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-                  <div className="absolute -top-10 -left-10 w-28 sm:w-32 h-28 sm:h-32 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
-                </div>
-              </motion.div>
-          </AnimatePresence>
-
-          {/* Leaderboard Access Link */}
-          {(
-            <div className="w-full flex justify-center pt-1 sm:pt-2">
-              <button
-                onClick={() => { fetchGlobalLeaderboard(); setView("global-leaderboard"); }}
-                className="flex items-center gap-2 group"
-              >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-surface-container-low flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                  <span className="material-symbols-outlined text-xl sm:text-2xl">leaderboard</span>
-                </div>
-                <span className="font-black text-on-surface-variant group-hover:text-primary transition-colors font-headline text-sm sm:text-base">View Global Leaderboard</span>
-              </button>
-            </div>
-          )}
-        </main>
-
-        {/* Footer with Privacy Links */}
-        <footer className="text-center py-3 sm:py-4 text-on-surface-variant font-bold text-xs sm:text-sm border-t border-surface-variant/30">
-          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-            <button
-              onClick={() => setView("public-landing")}
-              className="text-on-surface-variant hover:text-primary transition-colors"
-            >
-              Home
-            </button>
-            <span className="text-surface-dim">•</span>
-            <button
-              onClick={() => handleSetView("public-privacy")}
-              className="text-on-surface-variant hover:text-primary transition-colors"
-            >
-              Privacy
-            </button>
-            <span className="text-surface-dim">•</span>
-            <button
-              onClick={() => handleSetView("public-terms")}
-              className="text-on-surface-variant hover:text-primary transition-colors"
-            >
-              Terms
-            </button>
-          </div>
-        </footer>
-
-        {/* Mobile Bottom Navigation - Same as Landing Page */}
-        <nav dir="ltr" className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem] lg:hidden">
-          <button
-            onClick={() => setView("public-landing")}
-            className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">home</span>
-            <span className="text-[9px] font-black font-headline mt-0.5">Home</span>
-          </button>
-          <button
-            onClick={() => handleSetView("public-privacy")}
-            className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">shield</span>
-            <span className="text-[9px] font-black font-headline mt-0.5">Privacy</span>
-          </button>
-          <button
-            onClick={() => handleSetView("public-terms")}
-            className="flex flex-col items-center justify-center p-2 text-stone-400 hover:text-primary transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">gavel</span>
-            <span className="text-[9px] font-black font-headline mt-0.5">Terms</span>
-          </button>
-        </nav>
-        <FloatingButtons showBackToTop={true} />
-      </div>
-    );
+    // Unauthenticated users go through the proper login flow
+    setView("student-account-login");
+    return null;
   }
 
   // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
