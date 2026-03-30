@@ -272,7 +272,6 @@ export default function App() {
     | "public-landing"
     | "public-terms"
     | "public-privacy"
-    | "guest-login"
     | "student-account-login"
     | "landing"
     | "game"
@@ -347,7 +346,6 @@ export default function App() {
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
-  const [guestName, setGuestName] = useState("");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
   const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string }>>([]);
@@ -1745,21 +1743,6 @@ export default function App() {
 
   const loginAttemptsRef = useRef<number[]>([]);
 
-  const handleGuestPlay = () => {
-    const trimmedName = guestName.trim().slice(0, 30);
-    if (!trimmedName) {
-      setError("Please enter your nickname");
-      return;
-    }
-
-    // Create temporary guest user using helper
-    const guestUser = createGuestUser(trimmedName, "guest");
-
-    setUser(guestUser);
-    setView("landing");
-    setLoading(false);
-  };
-
   // Student Account Login System
   const loadStudentsInClass = async (classCode: string) => {
     const trimmedCode = classCode.trim().toUpperCase();
@@ -3112,7 +3095,6 @@ export default function App() {
             options: { redirectTo: window.location.origin },
           })}
           onTryDemo={() => setShowDemo(true)}
-          onGuestPlay={() => setView("guest-login")}
           isAuthenticated={!!user}
         />
         {showDemo && (
@@ -3168,134 +3150,6 @@ export default function App() {
           />
         )}
       </>
-    );
-  }
-
-  if (view === "guest-login") {
-    return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-secondary/10 to-tertiary/10">
-        {/* Header */}
-        <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-4 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => setView("public-landing")}
-              className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-lg">arrow_back</span>
-              Back
-            </button>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg">
-              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
-            </div>
-            <span className="text-lg sm:text-xl font-black signature-gradient-text hidden sm:block">Vocaband</span>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md"
-          >
-            {/* Guest Login Card */}
-            <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-secondary-container text-on-secondary-container rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <span className="text-4xl">⚡</span>
-                </div>
-                <h1 className="text-3xl sm:text-4xl font-black font-headline mb-2">
-                  Quick Play
-                </h1>
-                <p className="text-lg font-bold text-on-surface-variant">
-                  Enter a nickname to start playing!
-                </p>
-              </div>
-
-              {/* Name Input */}
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label
-                    htmlFor="guest-nickname-input"
-                    className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
-                  >
-                    Your Nickname
-                  </label>
-                  <input
-                    id="guest-nickname-input"
-                    type="text"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleGuestPlay()}
-                    placeholder="Cool Dude 3000"
-                    maxLength={30}
-                    autoFocus
-                    className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
-                  />
-                </div>
-
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
-                  >
-                    <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
-                    <span>{error}</span>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Play Button */}
-              <button
-                onClick={handleGuestPlay}
-                className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
-              >
-                Start Playing
-                <ArrowRight size={24} />
-              </button>
-
-              {/* Info Notice */}
-              <div className="mt-6 p-4 bg-surface-container-highest rounded-xl">
-                <p className="text-sm font-bold text-on-surface-variant text-center">
-                  ⚠️ <strong>Progress won't be saved.</strong> <br />
-                  <a
-                    onClick={() => setView("landing")}
-                    className="text-primary cursor-pointer hover:underline"
-                  >
-                    Create a free student account
-                  </a>{" "}
-                  to save your XP and progress!
-                </p>
-              </div>
-
-              {/* Demo Link */}
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => setShowDemo(true)}
-                  className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
-                >
-                  🎯 Or try our Demo Mode with 10 free words
-                </button>
-              </div>
-            </div>
-
-            {/* Feature Pills */}
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              {["✅ All Game Modes", "✅ Live Challenge", "✅ No Account Needed"].map((feature, i) => (
-                <span
-                  key={i}
-                  className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-xs font-bold text-on-surface-variant shadow-sm"
-                >
-                  {feature}
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </div>
     );
   }
 
@@ -3518,15 +3372,6 @@ export default function App() {
                 </>
               )}
 
-              {/* Guest Play Link */}
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => setView("guest-login")}
-                  className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
-                >
-                  ⚡ Just want to play? Try Quick Play (Guest)
-                </button>
-              </div>
             </div>
 
             {/* Feature Pills */}
