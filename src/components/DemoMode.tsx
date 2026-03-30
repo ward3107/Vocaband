@@ -339,8 +339,10 @@ const GAME_MODES: Record<Language, { id: string; name: string; emoji: string; de
   ],
 };
 
-const getMeaning = (word: Word, lang: Language): string => {
-  return lang === 'ar' ? word.arabic : word.hebrew;
+type TargetLang = 'hebrew' | 'arabic';
+
+const getMeaning = (word: Word, targetLang: TargetLang): string => {
+  return targetLang === 'arabic' ? word.arabic : word.hebrew;
 };
 
 const getXPTitle = (xpAmount: number) => {
@@ -385,6 +387,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
   // Flashcard state
   const [isFlipped, setIsFlipped] = useState(false);
+
+  // Translation language toggle (independent of UI language)
+  const [targetLanguage, setTargetLanguage] = useState<TargetLang>(language === 'ar' ? 'arabic' : 'arabic');
 
   // Letter sounds state
   const [letterOptions, setLetterOptions] = useState<string[]>([]);
@@ -511,9 +516,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
   const generateOptions = () => {
     if (!currentWord) return;
-    const correctMeaning = getMeaning(currentWord, language);
+    const correctMeaning = getMeaning(currentWord, targetLanguage);
     const wrongOptions = DEMO_WORDS.filter(w => w.id !== currentWord.id)
-      .map(w => getMeaning(w, language))
+      .map(w => getMeaning(w, targetLanguage))
       .sort(() => Math.random() - 0.5)
       .slice(0, 3);
     const allOptions = [...wrongOptions, correctMeaning].sort(() => Math.random() - 0.5);
@@ -525,7 +530,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
     const cards: { id: string; content: string; type: 'word' | 'meaning'; matched: boolean; selected: boolean }[] = [];
     words.forEach((word, i) => {
       cards.push({ id: `w${i}`, content: word.english, type: 'word', matched: false, selected: false });
-      cards.push({ id: `m${i}`, content: getMeaning(word, language), type: 'meaning', matched: false, selected: false });
+      cards.push({ id: `m${i}`, content: getMeaning(word, targetLanguage), type: 'meaning', matched: false, selected: false });
     });
     setMatchingCards(cards.sort(() => Math.random() - 0.5));
     setMatchedPairs(0);
@@ -545,7 +550,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
     const randomWord = useCorrect ? currentWord : DEMO_WORDS.filter(w => w.id !== currentWord.id)[Math.floor(Math.random() * (DEMO_WORDS.length - 1))];
     setTfStatement({
       word: currentWord,
-      shownMeaning: getMeaning(randomWord!, language),
+      shownMeaning: getMeaning(randomWord!, targetLanguage),
       isCorrect: useCorrect
     });
   };
@@ -591,7 +596,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
   const handleClassicAnswer = (answer: string) => {
     if (selectedAnswer) return;
-    const correctMeaning = getMeaning(currentWord, language);
+    const correctMeaning = getMeaning(currentWord, targetLanguage);
     const correct = answer === correctMeaning;
     setSelectedAnswer(answer);
     setIsCorrect(correct);
@@ -1128,6 +1133,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                       <span className="font-bold text-orange-600">{streak}</span>
                     </div>
                   )}
+                  <button
+                    onClick={() => setTargetLanguage(targetLanguage === 'hebrew' ? 'arabic' : 'hebrew')}
+                    className="flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    {targetLanguage === 'arabic' ? 'عربي' : 'עברית'}
+                  </button>
                 </div>
               </div>
 
@@ -1189,10 +1200,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
                   <div className="grid grid-cols-2 gap-2 sm:gap-4">
                     {options.map((option, i) => {
-                      const optionWord = DEMO_WORDS.find(w => getMeaning(w, language) === option);
+                      const optionWord = DEMO_WORDS.find(w => getMeaning(w, targetLanguage) === option);
                       const isSelected = selectedAnswer === option;
                       const isHidden = hiddenOptions.includes(optionWord?.id ?? -1);
-                      const isCorrectAnswer = option === getMeaning(currentWord, language);
+                      const isCorrectAnswer = option === getMeaning(currentWord, targetLanguage);
                       const showResult = selectedAnswer !== null;
 
                       if (isHidden) return null;
@@ -1234,12 +1245,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
                   <div className="space-y-2">
                     {options.map((option, i) => {
-                      const optionWord = DEMO_WORDS.find(w => getMeaning(w, language) === option);
+                      const optionWord = DEMO_WORDS.find(w => getMeaning(w, targetLanguage) === option);
                       const isHidden = hiddenOptions.includes(optionWord?.id ?? -1);
                       if (isHidden) return null;
 
                       const isSelected = selectedAnswer === option;
-                      const isCorrectAnswer = option === getMeaning(currentWord, language);
+                      const isCorrectAnswer = option === getMeaning(currentWord, targetLanguage);
                       const showResult = selectedAnswer !== null;
 
                       let bgClass = "bg-white border-stone-200";
@@ -1299,7 +1310,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                 <div className={isRTL ? 'text-right' : 'text-left'}>
                   <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
                     <div className="text-4xl font-black text-stone-900 mb-4">
-                      {getMeaning(currentWord, language)}
+                      {getMeaning(currentWord, targetLanguage)}
                     </div>
                     <button
                       onClick={() => speakWord(currentWord.id)}
@@ -1352,7 +1363,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                     </div>
                     <p className="text-stone-500 text-sm">{t.unscramble}</p>
                     <div className="mt-4 text-xl text-stone-700 font-bold">
-                      {t.translation} {getMeaning(currentWord, language)}
+                      {t.translation} {getMeaning(currentWord, targetLanguage)}
                     </div>
                   </div>
 
@@ -1459,7 +1470,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                       <>
                         <p className="text-stone-500 text-sm mb-2">{t.flashcardMeaning}</p>
                         <div className="text-3xl font-black text-stone-900">
-                          {getMeaning(currentWord, language)}
+                          {getMeaning(currentWord, targetLanguage)}
                         </div>
                       </>
                     )}
@@ -1490,7 +1501,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                   <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
                     <p className="text-stone-500 text-sm mb-2">{t.reverseTitle}</p>
                     <div className="text-4xl font-black text-stone-900 mb-4">
-                      {getMeaning(currentWord, language)}
+                      {getMeaning(currentWord, targetLanguage)}
                     </div>
                     <button
                       onClick={() => speakWord(currentWord.id)}
@@ -1699,7 +1710,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                     <div className={isRTL ? 'text-right' : 'text-left'}>
                       <span className="font-bold text-red-700">{t.notQuite}</span>
                       <p className="text-sm mt-1 text-red-600">
-                        {t.theAnswerIs} <strong dir="ltr">{currentWord.english}</strong> = {getMeaning(currentWord, language)}
+                        {t.theAnswerIs} <strong dir="ltr">{currentWord.english}</strong> = {getMeaning(currentWord, targetLanguage)}
                       </p>
                     </div>
                   )}

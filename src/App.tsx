@@ -1068,8 +1068,13 @@ export default function App() {
               role: "teacher",
               displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
             };
-            await supabase.from('users').insert(mapUserToDb(newUser));
+            // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
+            const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
+            if (insertErr) {
+              console.error("Teacher profile upsert failed:", insertErr);
+            }
             setUser(newUser);
+            await fetchTeacherData(supabaseUser.id).catch(() => {});
             setView("teacher-dashboard");
           }
         }
