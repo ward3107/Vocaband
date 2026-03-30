@@ -1773,7 +1773,7 @@ export default function App() {
 
 
       if (error) {
-        console.error('❌ RPC error:', error);
+        console.error('RPC error:', error);
         // Fallback to direct query if RPC doesn't exist yet
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('student_profiles')
@@ -1812,7 +1812,7 @@ export default function App() {
 
       setExistingStudents(mappedStudents);
     } catch (error) {
-      console.error('❌ Error loading students:', error);
+      console.error('Error loading students:', error);
       setError("Could not load students. Please check the class code.");
       setExistingStudents([]);
     }
@@ -1919,7 +1919,7 @@ export default function App() {
       .maybeSingle();
 
     if (checkError) {
-      console.error('❌ Error checking user:', checkError);
+      console.error('Error checking user:', checkError);
     } else if (!existingUser) {
       // Create user record if it doesn't exist
       const { error: insertError } = await supabase
@@ -1937,7 +1937,7 @@ export default function App() {
         });
 
       if (insertError) {
-        console.error('❌ Error creating user record:', insertError);
+        console.error('Error creating user record:', insertError);
       } else {
       }
     } else {
@@ -1952,7 +1952,7 @@ export default function App() {
         .eq('uid', studentUid);
 
       if (updateError) {
-        console.error('❌ Error updating user record:', updateError);
+        console.error('Error updating user record:', updateError);
       }
     }
 
@@ -1967,7 +1967,7 @@ export default function App() {
 
 
     if (classError) {
-      console.error('❌ Class RPC error:', classError);
+      console.error('Class RPC error:', classError);
       // Fallback: try direct query (might fail due to RLS, but worth trying)
       const { data: fallbackClassRows } = await supabase
         .from('classes').select('*').eq('code', code);
@@ -1982,7 +1982,7 @@ export default function App() {
       const classData = mapClass(classResult[0]);
       await loadAssignmentsForClass(classData, code, profile.auth_uid);
     } else {
-      console.warn('📚 No class found for code:', code);
+      console.warn('No class found for code:', code);
       setStudentAssignments([]);
       setStudentProgress([]);
     }
@@ -2008,7 +2008,7 @@ export default function App() {
 
 
     if (assignError) {
-      console.error('❌ Assignments RPC error:', assignError);
+      console.error('Assignments RPC error:', assignError);
       // Fallback to direct query
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('assignments').select('*').eq('class_id', classData.id);
@@ -2070,7 +2070,7 @@ export default function App() {
         showToast(message, "success");
       }
     } catch (error) {
-      console.error('❌ Signup error:', error);
+      console.error('Signup error:', error);
       setError("Could not create account. Please try again.");
     }
   };
@@ -2116,7 +2116,7 @@ export default function App() {
 
 
       if (error) {
-        console.error('❌ RPC error:', error);
+        console.error('RPC error:', error);
         throw error;
       }
 
@@ -2134,7 +2134,7 @@ export default function App() {
       // Show success
       showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
     } catch (error) {
-      console.error('❌ Error approving student:', error);
+      console.error('Error approving student:', error);
       showToast("Could not approve student. Please try again.", "error");
     }
   };
@@ -2211,13 +2211,14 @@ export default function App() {
       const classData = mapClass(classResult.data[0]);
 
       // Step 2.5: Check if student is approved (for student_profiles workflow)
-      // Include the anonymous UID to prevent name collisions (two students with the same name)
-      const studentUniqueId = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
+      // New format includes UID to prevent name collisions; also check legacy format for existing students
+      const studentUniqueIdNew = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
+      const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
 
       const { data: studentProfile, error: profileError } = await supabase
         .from('student_profiles')
-        .select('status')
-        .eq('unique_id', studentUniqueId)
+        .select('status, unique_id')
+        .or(`unique_id.eq.${studentUniqueIdNew},unique_id.eq.${studentUniqueIdLegacy}`)
         .maybeSingle();
 
 

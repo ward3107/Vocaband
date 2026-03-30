@@ -75,8 +75,8 @@ export const LiveRegion: React.FC<{
   role?: 'status' | 'alert';
   'aria-live'?: 'polite' | 'assertive';
   'aria-atomic'?: boolean;
-}> = ({ children, role = 'status', 'aria-live' = 'polite', 'aria-atomic' = true }) => (
-  <div role={role} aria-live={aria-live} aria-atomic={aria-atomic} className="sr-only">
+}> = ({ children, role = 'status', ...rest }) => (
+  <div role={role} aria-live={rest['aria-live'] ?? 'polite'} aria-atomic={rest['aria-atomic'] ?? true} className="sr-only">
     {children}
   </div>
 );
