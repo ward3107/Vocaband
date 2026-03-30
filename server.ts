@@ -82,6 +82,11 @@ async function startServer() {
     cors: {
       origin: allowedOrigin,
     },
+    // Performance tuning for 200+ concurrent users (classroom scenario)
+    transports: ["websocket", "polling"], // prefer WebSocket, fallback to polling
+    pingInterval: 15000,   // check connection every 15s (default 25s)
+    pingTimeout: 10000,    // allow 10s for pong response (mobile networks)
+    maxHttpBufferSize: 64 * 1024, // 64KB max message size (leaderboard data)
   });
 
   const PORT = process.env.PORT || 3000;
@@ -152,9 +157,6 @@ async function startServer() {
     5,         // max 5 observe attempts per minute
     60 * 1000  // cleanup every minute
   );
-
-  // Constants for score fetching
-  const PROGRESS_RECORD_LIMIT = 1000; // Safety limit for student progress records
 
   // Live Challenge State
   // { classCode: { studentUid: { name, baseScore, currentGameScore } } }
@@ -243,18 +245,18 @@ async function startServer() {
       const canJoinAsTeacher = userData.role === "teacher" && await isTeacherForClass(uid, classCode);
       if (!canJoinAsStudent && !canJoinAsTeacher) return;
 
-      // Fetch student's score for THIS class only (not cross-class)
+      // Fetch student's total score for THIS class via SQL SUM (single row result,
+      // much faster than fetching 1000 rows and summing in JS — critical for 200+ users)
       let totalScore = 0;
       try {
         const { data, error } = await supabaseAdmin
           .from("progress")
-          .select("score")
+          .select("score.sum()")
           .eq("student_uid", uid)
           .eq("class_code", classCode)
-          .limit(PROGRESS_RECORD_LIMIT);
+          .single();
         if (!error && data) {
-          // Aggregate in JavaScript (consider using SQL RPC for very large datasets)
-          totalScore = data.reduce((sum, record) => sum + (record.score || 0), 0);
+          totalScore = (data as { sum: number | null }).sum ?? 0;
         }
       } catch (err) {
         console.error("Error fetching student score:", err);
