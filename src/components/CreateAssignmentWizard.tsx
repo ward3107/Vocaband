@@ -992,30 +992,30 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             </div>
 
             {/* Word list */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2">
               <AnimatePresence mode="popLayout">
-                {filteredWords.slice(0, 50).map((word) => (
+                {filteredWords.slice(0, 80).map((word) => (
                   <motion.button
                     key={word.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     onClick={() => toggleWordSelection(word.id)}
-                    className={`w-full flex items-center gap-3 p-3 sm:p-4 rounded-2xl border-2 text-left transition-all ${
+                    className={`w-full flex items-center gap-2 p-2 rounded-xl border-2 text-left transition-all ${
                       selectedWordIds.includes(word.id)
                         ? 'border-primary bg-primary-container/10'
                         : 'border-outline-variant/20 bg-surface-container-lowest hover:border-primary/30'
                     }`}
                   >
-                    <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                    <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-all ${
                       selectedWordIds.includes(word.id)
                         ? 'border-primary bg-primary'
                         : 'border-outline-variant/40'
                     }`}>
-                      {selectedWordIds.includes(word.id) && <Check size={14} className="text-white" />}
+                      {selectedWordIds.includes(word.id) && <Check size={12} className="text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-on-surface truncate">{word.english}</div>
-                      <div className="text-xs sm:text-sm text-on-surface-variant truncate">
+                      <div className="font-bold text-sm text-on-surface truncate">{word.english}</div>
+                      <div className="text-xs text-on-surface-variant truncate">
                         {word.hebrew && <span>{word.hebrew}</span>}
                         {word.hebrew && word.arabic && <span className="mx-1">•</span>}
                         {word.arabic && <span>{word.arabic}</span>}

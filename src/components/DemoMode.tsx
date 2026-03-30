@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import {
@@ -12,12 +12,8 @@ import {
   Gift,
   Sparkles,
   Check,
-  XCircle,
-  Shuffle,
-  Lightbulb,
   ShoppingBag,
   Trophy,
-  TrendingUp,
   Crown,
   Target
 } from "lucide-react";
@@ -373,7 +369,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
   const [powerUps, setPowerUps] = useState({ skip: 3, fifty_fifty: 3, reveal_letter: 3 });
 
   // Matching game state
-  const [matchingCards, setMatchingCards] = useState<{ id: string; content: string; type: 'word' | 'meaning'; matched: boolean; selected: boolean }[]>([]);
+  const [matchingCards, setMatchingCards] = useState<{ id: string; content: string; type: 'word' | 'meaning'; matched: boolean; selected: boolean; wordId: number }[]>([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
 
   // Spelling game state
@@ -459,11 +455,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
   }, [view, selectedMode, currentWordIndex]);
 
   // Auto-speak: play word audio when a new word loads in game view
-  // All modes except flashcards & lettersounds: see + hear simultaneously on word load
+  // All modes except flashcards, lettersounds, sentence, and matching: see + hear simultaneously on word load
+  // Sentence builder and matching have their own audio handling (explicit user interaction)
   useEffect(() => {
     if (view !== "game" || !currentWord) return;
     if (selectedMode === "flashcards") return; // speak when flipped, not on load
     if (selectedMode === "lettersounds") return; // has its own letter-by-letter speech
+    if (selectedMode === "sentence") return; // sentence mode has separate audio handling
+    if (selectedMode === "matching") return; // matching mode: user clicks speaker icon to hear
 
     responseStartTime.current = Date.now();
     speak(currentWord.id);
@@ -527,13 +526,17 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
   const initMatchingGame = () => {
     const words = DEMO_WORDS.slice(0, 4);
-    const cards: { id: string; content: string; type: 'word' | 'meaning'; matched: boolean; selected: boolean }[] = [];
+    const cards: { id: string; content: string; type: 'word' | 'meaning'; matched: boolean; selected: boolean; wordId: number }[] = [];
     words.forEach((word, i) => {
-      cards.push({ id: `w${i}`, content: word.english, type: 'word', matched: false, selected: false });
-      cards.push({ id: `m${i}`, content: getMeaning(word, targetLanguage), type: 'meaning', matched: false, selected: false });
+      cards.push({ id: `w${i}`, content: word.english, type: 'word', matched: false, selected: false, wordId: word.id });
+      cards.push({ id: `m${i}`, content: getMeaning(word, targetLanguage), type: 'meaning', matched: false, selected: false, wordId: word.id });
     });
     setMatchingCards(cards.sort(() => Math.random() - 0.5));
     setMatchedPairs(0);
+
+    // Preload audio for all words in the matching game
+    const wordIds = words.map(w => w.id);
+    preloadMany(wordIds);
   };
 
   const shuffleWord = (word: string): string => {
@@ -613,6 +616,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
       setMatchingCards(prev => prev.map(c =>
         c.id === cardId ? { ...c, selected: true } : c
       ));
+      // Play audio when selecting a card
+      speak(card.wordId);
     } else if (selectedCards.length === 1) {
       const firstCard = selectedCards[0];
       if (firstCard.type === card.type) {
@@ -620,6 +625,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
           c.id === firstCard.id ? { ...c, selected: false } :
           c.id === cardId ? { ...c, selected: true } : c
         ));
+        // No auto-speak - user can click speaker icon to hear the word
       } else {
         const firstIndex = parseInt(firstCard.id.slice(1));
         const secondIndex = parseInt(card.id.slice(1));
@@ -757,15 +763,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
       autoAdvanceRef.current = null;
       moveToNext();
     }, delay);
-  };
-
-  const handleManualNext = () => {
-    // Cancel pending auto-advance and move immediately
-    if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current);
-      autoAdvanceRef.current = null;
-    }
-    moveToNext();
   };
 
   // Power-up handlers
@@ -1083,21 +1080,21 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {modes.map((mode) => (
                   <button
                     key={mode.id}
                     onClick={() => startGame(mode.id)}
-                    className={`w-full bg-white p-4 rounded-2xl flex items-center gap-4 hover:bg-stone-50 transition-colors border border-stone-200 group ${isRTL ? 'flex-row-reverse' : ''}`}
+                    className={`bg-white p-5 rounded-2xl flex flex-col items-center gap-3 hover:bg-stone-50 hover:shadow-lg hover:-translate-y-1 transition-all border border-stone-200 group min-h-[160px] ${isRTL ? 'rtl' : ''}`}
                   >
-                    <span className="text-2xl">{mode.emoji}</span>
-                    <div className={`flex-1 ${textAlign}`}>
-                      <h3 className="font-bold text-stone-800">{mode.name}</h3>
-                      <p className="text-sm text-stone-500">{mode.desc}</p>
+                    <span className="text-4xl">{mode.emoji}</span>
+                    <div className={`flex-1 text-center w-full ${textAlign}`}>
+                      <h3 className="font-bold text-stone-800 text-lg mb-1">{mode.name}</h3>
+                      <p className="text-sm text-stone-500 line-clamp-2">{mode.desc}</p>
                     </div>
                     {isRTL ?
-                      <ArrowLeft className="text-stone-400 group-hover:text-blue-600 group-hover:-translate-x-1 transition-all" size={20} /> :
-                      <ArrowRight className="text-stone-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" size={20} />
+                      <ArrowLeft className="text-stone-400 group-hover:text-blue-600 group-hover:-translate-x-1 transition-all mt-auto" size={20} /> :
+                      <ArrowRight className="text-stone-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all mt-auto" size={20} />
                     }
                   </button>
                 ))}
@@ -1280,23 +1277,24 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {matchingCards.map((card) => (
-                      <button
-                        key={card.id}
-                        onClick={() => handleMatchingSelect(card.id)}
-                        disabled={card.matched}
-                        className={`p-4 rounded-2xl text-center transition-all border-2 ${
-                          card.matched
-                            ? "bg-green-100 border-green-300 opacity-60"
-                            : card.selected
-                            ? "bg-blue-100 border-blue-500 ring-2 ring-blue-300"
-                            : "bg-white border-stone-200 hover:border-blue-300"
-                        }`}
-                      >
-                        <div className={`text-lg font-bold ${card.type === 'meaning' ? textAlign : ''}`} dir={card.type === 'word' ? 'ltr' : undefined}>
-                          {card.content}
-                        </div>
-                        {card.matched && <span className="text-green-600">✓</span>}
-                      </button>
+                      <div key={card.id} className="relative">
+                        <button
+                          onClick={() => handleMatchingSelect(card.id)}
+                          disabled={card.matched}
+                          className={`w-full p-4 rounded-2xl text-center transition-all border-2 ${
+                            card.matched
+                              ? "bg-green-100 border-green-300 opacity-60"
+                              : card.selected
+                              ? "bg-blue-100 border-blue-500 ring-2 ring-blue-300"
+                              : "bg-white border-stone-200 hover:border-blue-300"
+                          }`}
+                        >
+                          <div className={`text-lg font-bold ${card.type === 'meaning' ? textAlign : ''}`} dir={card.type === 'word' ? 'ltr' : undefined}>
+                            {card.content}
+                          </div>
+                          {card.matched && <span className="text-green-600">✓</span>}
+                        </button>
+                      </div>
                     ))}
                   </div>
                   <div className={`mt-4 text-center text-stone-500 ${isRTL ? 'flex items-center justify-center gap-1' : ''}`}>
@@ -1614,6 +1612,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                       "{currentWord.english} is great!"
                     </p>
 
+                    {/* Sound toggle button to replay sentence */}
+                    <button
+                      onClick={() => {
+                        window.speechSynthesis?.cancel();
+                        const utter = new SpeechSynthesisUtterance(`${currentWord.english} is great!`);
+                        utter.rate = 0.9;
+                        window.speechSynthesis.speak(utter);
+                      }}
+                      className="mb-4 px-4 py-2 bg-purple-100 text-purple-700 rounded-xl font-bold hover:bg-purple-200 transition-colors inline-flex items-center gap-2"
+                    >
+                      🔊 Replay Sentence
+                    </button>
+
                     {/* Built sentence area */}
                     <div className="min-h-[80px] bg-blue-50 rounded-2xl p-4 mb-4 flex flex-wrap gap-2 justify-center items-center" dir="ltr">
                       {builtSentence.length === 0 ? (
@@ -1714,13 +1725,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                       </p>
                     </div>
                   )}
-                  <button
-                    onClick={handleManualNext}
-                    className={`w-full mt-4 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
-                  >
-                    {t.next}
-                    {isRTL ? <ArrowLeft size={18} /> : <ArrowRight size={18} />}
-                  </button>
                 </motion.div>
               )}
             </motion.div>
@@ -2008,7 +2012,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                         </div>
                         <div className="text-center">
                           <span className="bg-green-100 text-green-700 px-3 py-1 rounded-xl text-xs font-bold">
-                            ×{powerUps.freeInDemo || 3}
+                            ×{powerUp.freeInDemo || 3}
                           </span>
                         </div>
                       </div>

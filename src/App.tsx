@@ -1445,31 +1445,83 @@ export default function App() {
 
   // --- SMART PASTE FUNCTIONS ---
 
-  // Extract words from pasted text - handles commas, newlines, semicolons, pipes
+  // Extract words from pasted text - handles commas, newlines, semicolons, pipes, tabs
   const extractWordsFromPaste = (text: string): string[] => {
-    const words = text
-      .split(/[,\n;|]+/)
+    // Strip zero-width characters from PDFs/Word documents
+    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+    // Split by common delimiters (added tab support for Excel/Google Sheets)
+    const words = cleaned
+      .split(/[,\n;\t\|]+/)
       .map(w => w.trim().toLowerCase())
-      .filter(w => w.length > 1 && w.length < 50); // Filter invalid
-    return [...new Set(words)]; // Remove duplicates
+      .filter(w => w.length >= 2 && w.length <= 100); // Filter invalid
+
+    const unique = [...new Set(words)];
+
+    // Soft limit for very large pastes
+    if (unique.length > 500) {
+      console.warn(`Large paste: ${unique.length} words (processing first 500)`);
+    }
+
+    return unique.slice(0, 500);
   };
 
   // Find matching Band 2 words (EXACT OR PARTIAL MATCH)
+  // Combines duplicates and merges translations (Hebrew+Hebrew, Arabic+Arabic)
+  // Also combines words with/without "(n)" suffix
   const findMatchesInBand2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
-    const matched: Word[] = [];
+    const allMatches: Word[] = [];
     const unmatched: string[] = [];
 
+    // Find ALL matches for each input word
     for (const word of words) {
-      const found = BAND_2_WORDS.find(w =>
+      const matches = BAND_2_WORDS.filter(w =>
         w.english.toLowerCase() === word ||
         w.english.toLowerCase().startsWith(word) ||
         w.english.toLowerCase().endsWith(word)
       );
-      if (found) {
-        matched.push(found);
+      if (matches.length > 0) {
+        allMatches.push(...matches);
       } else {
         unmatched.push(word);
       }
+    }
+
+    // Group matches by base English word (remove "(n)" suffix for grouping)
+    const groupedMatches = new Map<string, Word[]>();
+    for (const match of allMatches) {
+      const baseWord = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
+      if (!groupedMatches.has(baseWord)) {
+        groupedMatches.set(baseWord, []);
+      }
+      groupedMatches.get(baseWord)!.push(match);
+    }
+
+    // Combine each group into a single word with merged translations
+    const matched: Word[] = [];
+    for (const [baseWord, group] of groupedMatches) {
+      // Merge Hebrew translations (combine non-empty ones, unique)
+      const hebrewParts = group
+        .map(w => w.hebrew.trim())
+        .filter(h => h.length > 0);
+      const uniqueHebrew = [...new Set(hebrewParts)];
+      const combinedHebrew = uniqueHebrew.join(' | ');
+
+      // Merge Arabic translations (combine non-empty ones, unique)
+      const arabicParts = group
+        .map(w => w.arabic.trim())
+        .filter(a => a.length > 0);
+      const uniqueArabic = [...new Set(arabicParts)];
+      const combinedArabic = uniqueArabic.join(' | ');
+
+      // Use the base word (without "(n)") as the English word
+      const combinedWord: Word = {
+        ...group[0],
+        english: group[0].english.replace(/\(n\)$/, '').trim(),
+        hebrew: combinedHebrew,
+        arabic: combinedArabic
+      };
+      matched.push(combinedWord);
     }
 
     return { matched, unmatched };

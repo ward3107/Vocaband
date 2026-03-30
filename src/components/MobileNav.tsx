@@ -18,7 +18,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentPage, onNavigate }) => {
       dir="ltr"
       role="navigation"
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem]"
+      className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-stone-100/95 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[2rem] md:left-1/2 md:-translate-x-1/2 md:max-w-6xl md:justify-between md:px-16"
     >
       {navItems.map((item) => {
         const Icon = item.icon;
