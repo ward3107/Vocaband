@@ -3090,6 +3090,11 @@ export default function App() {
     };
   }, [allScores, analyticsClassFilter]);
 
+  // Global cookie banner — renders on top of ANY view until accepted
+  const cookieBannerOverlay = showCookieBanner && !user ? (
+    <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
+  ) : null;
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <RefreshCw className="animate-spin text-blue-700" size={48} />
@@ -3119,12 +3124,7 @@ export default function App() {
             }}
           />
         )}
-        {showCookieBanner && (
-          <CookieBanner
-            onAccept={handleCookieAccept}
-            onCustomize={handleCookieCustomize}
-          />
-        )}
+        {cookieBannerOverlay}
         <FloatingButtons showBackToTop={true} />
       </>
     );
@@ -3138,12 +3138,7 @@ export default function App() {
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
-        {showCookieBanner && (
-          <CookieBanner
-            onAccept={handleCookieAccept}
-            onCustomize={handleCookieCustomize}
-          />
-        )}
+        {cookieBannerOverlay}
       </>
     );
   }
@@ -3156,12 +3151,7 @@ export default function App() {
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
-        {showCookieBanner && (
-          <CookieBanner
-            onAccept={handleCookieAccept}
-            onCustomize={handleCookieCustomize}
-          />
-        )}
+        {cookieBannerOverlay}
       </>
     );
   }
@@ -3402,6 +3392,7 @@ export default function App() {
             )}
           </motion.div>
         </div>
+        {cookieBannerOverlay}
       </div>
     );
   }
