@@ -1211,6 +1211,19 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Redirect orphaned "landing" view — logged-out users go to student login,
+  // logged-in users go to their dashboard (teacher or student).
+  useEffect(() => {
+    if (view !== "landing" || loading) return;
+    if (!user) {
+      setView("student-account-login");
+    } else if (user.role === "teacher") {
+      setView("teacher-dashboard");
+    } else {
+      setView("student-dashboard");
+    }
+  }, [view, user, loading]);
+
   // Warn before leaving while a score save is in flight
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -3102,7 +3115,7 @@ export default function App() {
             onClose={() => setShowDemo(false)}
             onSignUp={() => {
               setShowDemo(false);
-              setView("landing");
+              setView("student-account-login");
             }}
           />
         )}
@@ -3506,11 +3519,6 @@ export default function App() {
     );
   }
 
-  if (view === "landing" && !user) {
-    // Unauthenticated users go through the proper login flow
-    setView("student-account-login");
-    return null;
-  }
 
   // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
   const consentModal = needsConsent && user ? (
@@ -5023,7 +5031,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-2xl mx-auto">
-          <button onClick={() => setView("landing")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
+          <button onClick={() => setView(user?.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
           <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-4 bg-yellow-100 rounded-3xl">
