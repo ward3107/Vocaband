@@ -60,6 +60,8 @@ import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapp
 import { SuspenseWrapper } from "./components/SuspenseWrapper";
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadTesseract, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
+import { trackError, trackAutoError } from "./errorTracking";
+import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 
 // Types for lazy-loaded modules
 type MammothModule = typeof import('mammoth');
@@ -716,7 +718,7 @@ export default function App() {
 
       return null;
     } catch (error) {
-      console.error('Translation error:', error);
+      trackAutoError(error, 'Translation service error');
       return null;
     }
   };
@@ -1337,11 +1339,12 @@ export default function App() {
     setOcrProgress(0);
 
     try {
-      // 1. Lazy load Tesseract and run OCR on the image
+      // 1. Lazy load Tesseract and run OCR on the image with multi-language support
       const tesseractModule = await loadTesseract();
       const Tesseract = tesseractModule.default || tesseractModule;
 
-      const result = await Tesseract.recognize(file, 'eng', {
+      // Create worker from CDN - required for Tesseract.js to work
+      const worker = await Tesseract.createWorker('eng+heb+ara', 1, {
         logger: m => {
           if (m.status === 'recognizing text') {
             setOcrProgress(Math.round(m.progress * 100));
@@ -1349,25 +1352,88 @@ export default function App() {
         }
       });
 
-      // 2. Clean up the extracted text
-      const text = result.data.text;
-      // Convert to lowercase, remove punctuation, and split into an array of words
-      const wordsInText = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
-      
-      // 3. Match against our vocabulary bank (ALL_WORDS)
-      const matchedWords = ALL_WORDS.filter(w => wordsInText.includes(w.english.toLowerCase()));
-      
+      // Recognize text using the worker
+      const result = await worker.recognize(file);
+
+      // Terminate the worker to free up resources
+      await worker.terminate();
+
+      // 2. Extract and normalize text
+
+      // 2. Extract and normalize text
+      const rawText = result.data.text.trim();
+
+      // Normalize: remove extra whitespace, newlines, and special punctuation
+      const normalizedText = rawText
+        .replace(/\s+/g, ' ')  // Collapse multiple spaces to one
+        .replace(/[\u2000-\u200F\uFEFF\u0300-\u036F\u0591-\u05BD\u05C1-\u05C2\u0610-\u061F\u0621-\u064A\u064B\u064E\u0656\u0670]+/g, '')  // Remove diacritics/combining marks
+        .trim();
+
+      // Debug: log what was recognized
+      console.log('OCR recognized text:', rawText);
+      console.log('Normalized text:', normalizedText);
+      console.log('Text length:', rawText.length, 'chars');
+
+      // Match against all language fields with flexible matching
+      const matchedWords = ALL_WORDS.filter(word => {
+        const { english, hebrew, arabic } = word;
+        const lowerText = normalizedText.toLowerCase();
+
+        // Try English
+        if (english) {
+          const engLower = english.toLowerCase().trim();
+          // Check for exact word or as part of a larger word (e.g., "play" in "playing")
+          if (lowerText.includes(' ' + engLower + ' ') || lowerText.startsWith(engLower + ' ') || lowerText.endsWith(' ' + engLower)) {
+            console.log('Matched English word:', english);
+            return true;
+          }
+        }
+
+        // Try Hebrew - remove niqqud for comparison
+        if (hebrew) {
+          const hebNormalized = hebrew.replace(/[\u05B0-\u05BD\u05C1\u05C2]/g, '').toLowerCase().trim();
+          const hebInText = lowerText.replace(/[\u05B0-\u05BD\u05C1\u05C2]/g, '');
+          if (hebInText.includes(' ' + hebNormalized + ' ') || hebInText.startsWith(hebNormalized + ' ') || hebInText.endsWith(' ' + hebNormalized)) {
+            console.log('Matched Hebrew word:', hebrew);
+            return true;
+          }
+        }
+
+        // Try Arabic
+        if (arabic) {
+          const arbLower = arabic.toLowerCase().trim();
+          if (lowerText.includes(' ' + arbLower + ' ') || lowerText.startsWith(arbLower + ' ') || lowerText.endsWith(' ' + arbLower)) {
+            console.log('Matched Arabic word:', arabic);
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      console.log('Matched words count:', matchedWords.length);
+      if (matchedWords.length > 0) {
+        console.log('Matched words:', matchedWords.map(w => w.english));
+      }
+
       if (matchedWords.length === 0) {
-        showToast("No words from our vocabulary bank were found in this image.", "info");
+        showToast(`No words found. OCR recognized: "${normalizedText.substring(0, 100)}${normalizedText.length > 100 ? '...' : ''}"`, "info");
       } else {
-        // 4. Add the matched words to the Custom tab and select them
+        // 3. Add the matched words to the Custom tab and select them
         setCustomWords(matchedWords);
         setSelectedLevel("Custom");
         setSelectedWords(matchedWords.map(w => w.id));
+
+        // Navigate to create-assignment view so user can see the matched words
+        if (classes.length > 0) {
+          setSelectedClass(classes[0]);
+          setView("create-assignment");
+        }
+
         showToast(`Found ${matchedWords.length} words from the vocabulary bank!`, "success");
       }
     } catch (err) {
-      console.error("OCR Error:", err);
+      trackAutoError(err, 'OCR processing failed');
       showToast("Error processing image. Please try again.", "error");
     } finally {
       setIsOcrProcessing(false);
@@ -1746,8 +1812,8 @@ export default function App() {
           terms_version: PRIVACY_POLICY_VERSION,
           action: 'accept',
         });
-      } catch {
-        console.warn('Could not persist consent to database');
+      } catch (error) {
+        trackError('Could not persist consent to database', 'database', 'low', { uid: user?.uid });
       }
     }
     setNeedsConsent(false);
@@ -1917,7 +1983,7 @@ export default function App() {
       .maybeSingle();
 
     if (checkError) {
-      console.error('Error checking user:', checkError);
+      trackAutoError(checkError, 'Student user record check failed during signup');
     } else if (!existingUser) {
       // Create user record if it doesn't exist
       const { error: insertError } = await supabase
@@ -1935,7 +2001,7 @@ export default function App() {
         });
 
       if (insertError) {
-        console.error('Error creating user record:', insertError);
+        trackAutoError(insertError, 'Failed to create student user record during signup');
       } else {
       }
     } else {
@@ -1950,7 +2016,7 @@ export default function App() {
         .eq('uid', studentUid);
 
       if (updateError) {
-        console.error('Error updating user record:', updateError);
+        trackAutoError(updateError, 'Failed to update student user record during login');
       }
     }
 
@@ -2101,7 +2167,7 @@ export default function App() {
         };
       }));
     } catch (error) {
-      console.error('Error loading pending students:', error);
+      trackAutoError(error, 'Failed to load pending students list');
     }
   };
 
@@ -2295,8 +2361,13 @@ export default function App() {
         }));
       } catch { /* localStorage unavailable — non-critical */ }
     } catch (error) {
-      console.error("Login error:", error);
-      setError("Something went wrong during login.");
+      trackAutoError(error, 'Student login failed');
+      const errorMsg = error && typeof error === 'object' && 'message' in error
+        ? (error.message.includes('fetch') || error.message.includes('network')
+          ? "Network error. Please check your connection."
+          : "Could not log in. Please try again.")
+        : "Could not log in. Please try again.";
+      setError(errorMsg);
     } finally {
       clearTimeout(loginTimeout);
       manualLoginInProgress.current = false;
@@ -4278,8 +4349,9 @@ export default function App() {
 
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
-      <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
-        {consentModal}
+      <>
+      <div className="min-h-screen bg-surface pt-24 pb-8" style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', paddingLeft: '1rem', paddingRight: '1rem' }}>
+          {consentModal}
 
         {/* Top App Bar */}
         <TopAppBar
@@ -4290,7 +4362,7 @@ export default function App() {
           onLogout={() => supabase.auth.signOut()}
         />
 
-        <div className="max-w-6xl mx-auto">
+        <div className="" style={{ maxWidth: '72rem', marginLeft: 'auto', marginRight: 'auto' }}>
           {/* Quick Action Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {/* Quick Play */}
@@ -4303,7 +4375,7 @@ export default function App() {
                   title="Quick Online Challenge"
                   description="Generate QR code for instant play"
                   buttonText="Create"
-                  buttonVariant="orange-green"
+                  buttonVariant="qr-purple"
                   onClick={() => setView("quick-play-setup")}
                 />
               </div>
@@ -4319,7 +4391,7 @@ export default function App() {
                   title="Live Mode for Classes"
                   description="Start a real-time vocabulary competition"
                   buttonText="Start"
-                  buttonVariant="primary"
+                  buttonVariant="live-green"
                   onClick={() => {
                     if (classes.length === 0) showToast("Create a class first!", "error");
                     else if (classes.length === 1) {
@@ -4350,7 +4422,7 @@ export default function App() {
                   title="Classroom Analytics"
                   description="Scores, trends & weak words"
                   buttonText="View Insights"
-                  buttonVariant="primary"
+                  buttonVariant="analytics-blue"
                   onClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
                 />
               </div>
@@ -4366,7 +4438,7 @@ export default function App() {
                   title="Students & Grades"
                   description="All students & scores"
                   buttonText="Open Gradebook"
-                  buttonVariant="primary"
+                  buttonVariant="gradebook-amber"
                   onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
                 />
               </div>
@@ -4533,7 +4605,9 @@ export default function App() {
             )}
           </div>
         </div>
+        </div>
 
+        {/* Overlay Components - Modals, Toasts, and Panels */}
         {/* Create Class Modal */}
         <AnimatePresence>
           {showCreateClassModal && (
@@ -4654,6 +4728,9 @@ export default function App() {
           </AnimatePresence>
         </div>
 
+        {/* Error Tracking Panel (Debug Mode) */}
+        <ErrorTrackingPanel />
+
         {/* Confirmation Dialog */}
         <AnimatePresence>
           {confirmDialog.show && (
@@ -4692,7 +4769,7 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+        </>
     );
   }
 
@@ -4728,7 +4805,10 @@ export default function App() {
         handleSkipUnmatched={handleSkipUnmatched}
         handleTagInputKeyDown={handleTagInputKeyDown}
         handleDocxUpload={handleDocxUpload}
+        handleOcrUpload={handleOcrUpload}
         handleSaveAssignment={handleSaveAssignment}
+        isOcrProcessing={isOcrProcessing}
+        ocrProgress={ocrProgress}
         showTopicPacks={showTopicPacks}
         setShowTopicPacks={setShowTopicPacks}
         showAssignmentWelcome={showAssignmentWelcome}
@@ -5306,6 +5386,36 @@ export default function App() {
                 Add More Words
               </button>
             )}
+
+            {/* OCR Upload Button */}
+            <div className="mb-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleOcrUpload}
+                disabled={isOcrProcessing}
+                className="hidden"
+                id="quick-play-ocr-upload"
+              />
+              <button
+                onClick={() => document.getElementById('quick-play-ocr-upload')?.click()}
+                disabled={isOcrProcessing}
+                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-bold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
+              >
+                {isOcrProcessing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Processing image... {ocrProgress}%
+                  </>
+                ) : (
+                  <>
+                    <Camera size={16} />
+                    Upload Image to Extract Words
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-center text-on-surface-variant">Take a photo of a worksheet or text to extract vocabulary words</p>
+            </div>
 
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-on-surface-variant">
@@ -7212,6 +7322,9 @@ export default function App() {
           </AnimatePresence>
         </div>
 
+        {/* Error Tracking Panel (Debug Mode) */}
+        <ErrorTrackingPanel />
+
         {/* Confirmation Dialog */}
         <AnimatePresence>
           {confirmDialog.show && (
@@ -7347,7 +7460,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans`}>
+    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans max-w-7xl mx-auto`}>
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />

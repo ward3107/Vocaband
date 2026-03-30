@@ -259,8 +259,8 @@ body, p, li, td, th, input, select, textarea, button {
   min-height: 1em;
 }
 
-/* Prevent text from being clipped when resized */
-* {
+/* Prevent text from being clipped when resized - only apply to text elements */
+h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, label, input, textarea, button {
   max-width: 100%;
 }
 

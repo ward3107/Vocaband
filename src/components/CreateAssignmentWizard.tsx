@@ -4,7 +4,7 @@ import {
   X, Check, ChevronRight, Search, Filter, Plus, Trash2, Edit2,
   Clipboard, BookOpen, FolderOpen, Copy, Share2,
   Zap, Target, Headphones, PenTool, CheckCircle, RotateCcw,
-  Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle
+  Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle, Camera
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
 
@@ -38,7 +38,10 @@ interface CreateAssignmentWizardProps {
   handleSkipUnmatched: () => void;
   handleTagInputKeyDown: (e: React.KeyboardEvent) => void;
   handleDocxUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleOcrUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveAssignment: () => void;
+  isOcrProcessing?: boolean;
+  ocrProgress?: number;
   showTopicPacks: boolean;
   setShowTopicPacks: (show: boolean) => void;
   showAssignmentWelcome: boolean;
@@ -150,7 +153,10 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   handleSkipUnmatched,
   handleTagInputKeyDown,
   handleDocxUpload,
+  handleOcrUpload,
   handleSaveAssignment,
+  isOcrProcessing = false,
+  ocrProgress = 0,
   showTopicPacks,
   setShowTopicPacks,
   showAssignmentWelcome,
@@ -559,6 +565,43 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                       )}
                       <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
                         <span className="text-white text-xs sm:text-sm font-bold">{savedGroups.length} saved groups available</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors" size={24} />
+                  </div>
+                </div>
+              </motion.button>
+
+              {/* OCR Upload - New Option */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => document.getElementById('ocr-upload-input')?.click()}
+                disabled={isOcrProcessing}
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl p-6 sm:p-8 shadow-xl shadow-pink-500/20 hover:shadow-2xl hover:shadow-pink-500/30 transition-all text-left"
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleOcrUpload}
+                  disabled={isOcrProcessing}
+                  className="hidden"
+                  id="ocr-upload-input"
+                />
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="text-4xl mb-3">📷</div>
+                      <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+                        {isOcrProcessing ? 'Processing...' : 'Upload image'}
+                      </h3>
+                      <p className="text-pink-100 text-sm sm:text-base mb-4">
+                        Take a photo of a worksheet to extract words
+                      </p>
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
+                        <span className="text-white text-xs sm:text-sm font-bold">
+                          {isOcrProcessing ? `${ocrProgress}%` : 'Auto-detect vocabulary'}
+                        </span>
                       </div>
                     </div>
                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors" size={24} />

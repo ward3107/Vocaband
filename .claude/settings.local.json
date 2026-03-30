@@ -96,7 +96,16 @@
       "Bash(grep -n \"^    </div>$\" src/App.tsx)",
       "Bash(grep -n \"^      </div>$\")",
       "Bash(npx supabase:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(findstr \":3000\\\\|:24678\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Where-Object { \\(Get-NetTCPConnection -OwningProcess $_.Id -LocalPort 3000,24678 -ErrorAction SilentlyContinue\\) } | Stop-Process -Force\")",
+      "Bash(timeout 3)",
+      "Bash(powershell -Command \"$p = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess; Stop-Process -Id $p -Force\")",
+      "Bash(findstr \":3000 \")",
+      "Bash(findstr \":24678 \")",
+      "Bash(find public:*)",
+      "Bash(grep -E \"\\\\.html$\")"
     ]
   }
 }

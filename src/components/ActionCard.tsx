@@ -7,7 +7,7 @@ interface ActionCardProps {
   title: string;
   description: string;
   buttonText: string;
-  buttonVariant: "primary" | "rose" | "orange-green";
+  buttonVariant: "primary" | "rose" | "orange-green" | "qr-purple" | "live-green" | "analytics-blue" | "gradebook-amber";
   onClick: () => void;
 }
 
@@ -40,6 +40,14 @@ const ActionCard: React.FC<ActionCardProps> = ({
               ? "signature-gradient text-white shadow-lg shadow-blue-500/20"
               : buttonVariant === "rose"
               ? "bg-gradient-to-r from-yellow-300 to-amber-400 text-black shadow-lg shadow-yellow-300/30 hover:from-yellow-400 hover:to-amber-500"
+              : buttonVariant === "qr-purple"
+              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30 hover:bg-purple-700"
+              : buttonVariant === "live-green"
+              ? "bg-green-600 text-white shadow-lg shadow-green-500/30 hover:bg-green-700"
+              : buttonVariant === "analytics-blue"
+              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700"
+              : buttonVariant === "gradebook-amber"
+              ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30 hover:bg-amber-700"
               : "bg-gradient-to-r from-orange-400 to-green-500 text-white shadow-lg shadow-orange-500/20 hover:from-orange-500 hover:to-green-600"
           }`}
         >
