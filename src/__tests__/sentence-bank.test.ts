@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getSentencesForWord, generateSentencesForAssignment } from '../sentence-bank';
-import type { Word } from '../vocabulary';
+import { getSentencesForWord, generateSentencesForAssignment } from '../data/sentence-bank';
+import type { Word } from '../data/vocabulary';
 
 function makeWord(overrides: Partial<Word> & { id: number; english: string }): Word {
   return {

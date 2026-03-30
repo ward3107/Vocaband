@@ -43,4 +43,4 @@ if (issues.slashes.length > 0) {
   }
 }
 
-console.log('='.repeat(80);
+console.log('='.repeat(80));

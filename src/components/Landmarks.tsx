@@ -5,10 +5,10 @@ import React from 'react';
  * Wraps the main content of each page with proper semantic HTML
  *
  * Usage:
- * <Main landmark="student-dashboard">
- *   <h1>Page Title</h1>
- *   {/* page content */}
- * </Main>
+ *   <Main landmark="student-dashboard">
+ *     <h1>Page Title</h1>
+ *     ...page content...
+ *   </Main>
  */
 interface MainProps {
   children: React.ReactNode;
