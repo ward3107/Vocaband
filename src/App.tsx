@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
-import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
+import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
@@ -62,6 +62,13 @@ import { SuspenseWrapper } from "./components/SuspenseWrapper";
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
+import {
+  MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
+  MOTIVATIONAL_MESSAGES, SPEAKABLE_MOTIVATIONS, randomMotivation,
+  XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
+  THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES, LETTER_COLORS,
+  type GameMode,
+} from "./constants/game";
 import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 
 // Types for lazy-loaded modules
@@ -96,200 +103,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   </button>
 ));
 
-// --- GAME SETTINGS ---
-const MAX_ATTEMPTS_PER_WORD = 3;
-const AUTO_SKIP_DELAY_MS = 500;
-const SHOW_ANSWER_DELAY_MS = 3000;
-const WRONG_FEEDBACK_DELAY_MS = 1500;
-
-const MOTIVATIONAL_MESSAGES = [
-  "Great job! 🎉", "Well done! 👏", "Awesome! 🌟", "Keep it up! 💪",
-  "Nailed it! 🎯", "Brilliant! ✨", "You're on fire! 🔥", "Fantastic! 🚀",
-  "Way to go! 🏆", "Superstar! ⭐",
-];
-const SPEAKABLE_MOTIVATIONS = [
-  "Great job!", "Well done!", "Awesome!", "Keep it up!",
-  "Nailed it!", "Brilliant!", "You're on fire!", "Fantastic!",
-  "Way to go!", "Superstar!", "Amazing!", "Perfect!",
-];
-const randomMotivation = () =>
-  MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
-
-// --- XP REWARD SYSTEM CONSTANTS ---
-const XP_TITLES = [
-  { min: 0, title: 'Beginner', emoji: '🌱' },
-  { min: 100, title: 'Learner', emoji: '📚' },
-  { min: 300, title: 'Scholar', emoji: '🎓' },
-  { min: 700, title: 'Expert', emoji: '🏅' },
-  { min: 1500, title: 'Master', emoji: '👑' },
-  { min: 3000, title: 'Legend', emoji: '🌟' },
-];
-const getXpTitle = (xpAmount: number) => XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
-
-const PREMIUM_AVATARS = [
-  { emoji: '🐉', name: 'Dragon', cost: 50 },
-  { emoji: '🦅', name: 'Eagle', cost: 50 },
-  { emoji: '🐺', name: 'Wolf', cost: 75 },
-  { emoji: '🦖', name: 'Dinosaur', cost: 100 },
-  { emoji: '🧙‍♂️', name: 'Wizard', cost: 150 },
-  { emoji: '🦸', name: 'Superhero', cost: 200 },
-  { emoji: '👾', name: 'Alien', cost: 250 },
-  { emoji: '🤴', name: 'Prince', cost: 300 },
-  { emoji: '👸', name: 'Princess', cost: 300 },
-  { emoji: '🦄', name: 'Unicorn', cost: 150 },
-  { emoji: '🐲', name: 'Dragon Face', cost: 100 },
-  { emoji: '🧛', name: 'Vampire', cost: 200 },
-  { emoji: '🧜', name: 'Merperson', cost: 175 },
-  { emoji: '🥷', name: 'Ninja', cost: 250 },
-  { emoji: '🤖', name: 'Robot', cost: 125 },
-];
-
-// Avatar categories unlock at XP milestones — students see locked categories and feel motivated to earn XP
-const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label: string }> = {
-  Animals: { xpRequired: 0, label: 'Free' },
-  Faces: { xpRequired: 0, label: 'Free' },
-  Food: { xpRequired: 50, label: '50 XP' },
-  Nature: { xpRequired: 100, label: '100 XP' },
-  Sports: { xpRequired: 200, label: '200 XP' },
-  Objects: { xpRequired: 400, label: '400 XP' },
-  Vehicles: { xpRequired: 600, label: '600 XP' },
-  Fantasy: { xpRequired: 1000, label: '1000 XP' },
-  Space: { xpRequired: 1500, label: '1500 XP' },
-};
-
-const THEMES = [
-  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0 },
-  { id: 'dark', name: 'Dark Mode', preview: '⬛', colors: { bg: 'bg-gray-900', card: 'bg-gray-800', text: 'text-white', accent: 'blue' }, cost: 100 },
-  { id: 'ocean', name: 'Ocean', preview: '🌊', colors: { bg: 'bg-cyan-50', card: 'bg-white', text: 'text-stone-900', accent: 'cyan' }, cost: 150 },
-  { id: 'sunset', name: 'Sunset', preview: '🌅', colors: { bg: 'bg-orange-50', card: 'bg-white', text: 'text-stone-900', accent: 'orange' }, cost: 150 },
-  { id: 'neon', name: 'Neon', preview: '💚', colors: { bg: 'bg-gray-950', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 200 },
-  { id: 'forest', name: 'Forest', preview: '🌲', colors: { bg: 'bg-green-50', card: 'bg-white', text: 'text-stone-900', accent: 'green' }, cost: 150 },
-  { id: 'royal', name: 'Royal', preview: '👑', colors: { bg: 'bg-purple-50', card: 'bg-white', text: 'text-stone-900', accent: 'purple' }, cost: 200 },
-];
-
-const POWER_UP_DEFS = [
-  { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 30 },
-  { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 40 },
-  { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
-];
-
-// Boosters — high-demand items for 2026 students
-const BOOSTERS_DEFS = [
-  { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 200 },
-  { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
-  { id: 'xp_booster', name: '2x XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 300 },
-];
-
-// Name frames — decorative borders around student avatar on dashboard & leaderboard
-const NAME_FRAMES = [
-  { id: 'gold', name: 'Gold Frame', preview: '🥇', border: 'ring-4 ring-yellow-400', cost: 200 },
-  { id: 'fire', name: 'Fire Frame', preview: '🔥', border: 'ring-4 ring-orange-500', cost: 300 },
-  { id: 'diamond', name: 'Diamond Frame', preview: '💎', border: 'ring-4 ring-cyan-400', cost: 500 },
-  { id: 'rainbow', name: 'Rainbow Frame', preview: '🌈', border: 'ring-4 ring-purple-400 ring-offset-2 ring-offset-pink-200', cost: 400 },
-  { id: 'lightning', name: 'Lightning Frame', preview: '⚡', border: 'ring-4 ring-amber-300 shadow-lg shadow-amber-200', cost: 350 },
-  { id: 'crown', name: 'Crown Frame', preview: '👑', border: 'ring-4 ring-yellow-500 shadow-lg shadow-yellow-200', cost: 750 },
-];
-
-// Custom name titles — shown below student name
-const NAME_TITLES = [
-  { id: 'champion', name: 'Champion', display: 'Champion', cost: 150 },
-  { id: 'genius', name: 'Genius', display: 'Genius', cost: 200 },
-  { id: 'word_wizard', name: 'Word Wizard', display: 'Word Wizard', cost: 300 },
-  { id: 'vocab_king', name: 'Vocab King', display: 'Vocab King', cost: 250 },
-  { id: 'vocab_queen', name: 'Vocab Queen', display: 'Vocab Queen', cost: 250 },
-  { id: 'speed_demon', name: 'Speed Demon', display: 'Speed Demon', cost: 400 },
-  { id: 'legend', name: 'Living Legend', display: 'Living Legend', cost: 500 },
-  { id: 'brain', name: 'Big Brain', display: 'Big Brain', cost: 350 },
-];
-
-// --- REUSABLE HELP TOOLTIP COMPONENT ---
-// Powered by @floating-ui/react - modern positioning engine
-// Desktop only - shows on hover, hidden on mobile devices
-const HelpTooltip = ({ children, content, position = "bottom", className = "" }: {
-  children: React.ReactNode;
-  content: string | string[];
-  position?: "top" | "bottom" | "left" | "right";
-  className?: string;
-}) => {
-  const [arrowEl, setArrowEl] = useState<HTMLDivElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const isMobile = useMemo(() => 'ontouchstart' in window, []);
-  const contentArray = Array.isArray(content) ? content : [content];
-
-  const { refs, floatingStyles, middlewareData } = useFloating({
-    open: isVisible && !isMobile,
-    onOpenChange: setIsVisible,
-    placement: position,
-    middleware: [
-      offset(8),
-      flip(),
-      shift({ padding: 8 }),
-      arrow({ element: arrowEl }),
-    ],
-  });
-  const { setReference, setFloating } = refs;
-
-  // Handle hover events
-  const handleMouseEnter = () => {
-    if (!isMobile) setIsVisible(true);
-  };
-
-  const staticSide = {
-    top: "bottom",
-    bottom: "top",
-    left: "right",
-    right: "left",
-  }[position];
-
-  return (
-    <>
-      <span
-        ref={setReference}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setIsVisible(false)}
-        className={className || "inline"}
-      >
-        {children}
-      </span>
-      {isVisible && !isMobile && (
-        <div
-          ref={setFloating}
-          style={floatingStyles}
-          className="z-50"
-        >
-          <div className="w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl">
-            {contentArray.map((line, i) => (
-              <p key={i} className={i > 0 ? "mt-1 text-slate-300" : ""}>{line}</p>
-            ))}
-          </div>
-          {middlewareData.arrow?.x != null && (
-            <div
-              ref={setArrowEl}
-              className="absolute w-2 h-2 bg-slate-900 rotate-45"
-              style={{
-                left: middlewareData.arrow.x ?? undefined,
-                top: middlewareData.arrow.y ?? undefined,
-                [staticSide]: '-4px',
-              }}
-            />
-          )}
-        </div>
-      )}
-    </>
-  );
-};
-
-// Question mark icon for help hints
-const HelpIcon = ({ tooltip, position = "bottom" }: { tooltip: string | string[]; position?: "top" | "bottom" | "left" | "right" }) => (
-  <HelpTooltip content={tooltip} position={position}>
-    <span className="inline-flex items-center justify-center w-5 h-5 ml-1.5 text-slate-400 bg-slate-100 rounded-full cursor-help hover:bg-slate-200 hover:text-slate-600 transition-all">
-      <span className="text-[10px] font-bold">?</span>
-    </span>
-  </HelpTooltip>
-);
-
 export default function App() {
-  type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder";
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -785,8 +599,6 @@ export default function App() {
 
   // --- LETTER SOUNDS MODE STATE ---
   const [revealedLetters, setRevealedLetters] = useState(0);
-  const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
-
   // --- SENTENCE BUILDER MODE STATE ---
   const [sentenceIndex, setSentenceIndex] = useState(0);
   const [availableWords, setAvailableWords] = useState<string[]>([]);
