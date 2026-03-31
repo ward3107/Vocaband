@@ -73,6 +73,29 @@ type Socket = SocketIOModule['Socket'];
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
+// --- Memoized game UI components (avoid re-rendering all buttons on single feedback change) ---
+const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer }: {
+  option: Word; currentWordId: number; feedback: string | null; gameMode: string; targetLanguage: "hebrew" | "arabic"; onAnswer: (w: Word) => void;
+}) => (
+  <button
+    onClick={() => onAnswer(option)}
+    disabled={feedback === "show-answer" || feedback === "correct"}
+    className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
+      feedback === "correct" && option.id === currentWordId
+        ? "bg-blue-600 text-white scale-105 shadow-xl"
+        : feedback === "wrong" && option.id !== currentWordId
+        ? "bg-rose-100 text-rose-500 opacity-50"
+        : feedback === "show-answer" && option.id === currentWordId
+        ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
+        : feedback === "show-answer"
+        ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
+        : "bg-stone-100 text-stone-800 hover:bg-stone-200"
+    }`}
+  >
+    {gameMode === "reverse" ? option.english : option[targetLanguage]}
+  </button>
+));
+
 // --- GAME SETTINGS ---
 const MAX_ATTEMPTS_PER_WORD = 3;
 const AUTO_SKIP_DELAY_MS = 500;
@@ -7786,24 +7809,7 @@ export default function App() {
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
                 <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4">
                   {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => handleAnswer(option)}
-                      disabled={feedback === "show-answer" || feedback === "correct"}
-                      className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
-                        feedback === "correct" && option.id === currentWord.id
-                          ? "bg-blue-600 text-white scale-105 shadow-xl"
-                          : feedback === "wrong" && option.id !== currentWord.id
-                          ? "bg-rose-100 text-rose-500 opacity-50"
-                          : feedback === "show-answer" && option.id === currentWord.id
-                          ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
-                          : feedback === "show-answer"
-                          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
-                          : "bg-stone-100 text-stone-800 hover:bg-stone-200"
-                      }`}
-                    >
-                      {gameMode === "reverse" ? option.english : option[targetLanguage]}
-                    </button>
+                    <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={handleAnswer} />
                   ))}
                 </div>
               ) : gameMode === "true-false" ? (
@@ -7832,22 +7838,22 @@ export default function App() {
                   <p className="text-stone-600 text-lg sm:text-xl font-bold mb-4 text-center" dir="auto">{currentWord?.[targetLanguage]}</p>
                   <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
                     {currentWord?.english.split(" ").map((word, wordIdx, allWords) => {
-                      const charOffset = allWords.slice(0, wordIdx).reduce((acc, w) => acc + w.length + 1, 0);
+                      let charOffset = 0;
+                      for (let j = 0; j < wordIdx; j++) charOffset += allWords[j].length + 1;
                       return (
                         <div key={wordIdx} className="flex justify-center gap-1 sm:gap-2">
                           {word.split("").map((letter, i) => {
                             const globalIdx = charOffset + i;
+                            const revealed = globalIdx < revealedLetters;
+                            const color = LETTER_COLORS[globalIdx % LETTER_COLORS.length];
                             return (
-                              <motion.div
+                              <div
                                 key={globalIdx}
-                                initial={{ scale: 0.5, opacity: 0 }}
-                                animate={globalIdx < revealedLetters ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0.15 }}
-                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
-                                style={{ color: LETTER_COLORS[globalIdx % LETTER_COLORS.length], borderColor: LETTER_COLORS[globalIdx % LETTER_COLORS.length], background: LETTER_COLORS[globalIdx % LETTER_COLORS.length] + "18" }}
+                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
+                                style={{ color: revealed ? color : color + "40", borderColor: revealed ? color : color + "40", background: color + "18", opacity: revealed ? 1 : 0.15, transform: revealed ? "scale(1)" : "scale(0.5)" }}
                               >
-                                {globalIdx < revealedLetters ? (letter ?? "").toUpperCase() : "?"}
-                              </motion.div>
+                                {revealed ? (letter ?? "").toUpperCase() : "?"}
+                              </div>
                             );
                           })}
                         </div>
@@ -7900,23 +7906,21 @@ export default function App() {
                       }`}>
                         {builtSentence.length === 0 && <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>}
                         {builtSentence.map((word, i) => (
-                          <motion.button
+                          <button
                             key={i}
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: 1 }}
                             onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, false)}
                             className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
-                          >{word}</motion.button>
+                          >{word}</button>
                         ))}
                       </div>
                       {/* Available words */}
                       <div className="flex flex-wrap gap-2 mb-4 justify-center">
                         {availableWords.map((word, i) => (
-                          <motion.button
+                          <button
                             key={i}
                             onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, true)}
                             className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
-                          >{word}</motion.button>
+                          >{word}</button>
                         ))}
                       </div>
                       <div className="flex gap-2">
