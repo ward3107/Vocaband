@@ -152,7 +152,12 @@
       "Bash(findstr \"3000\\\\|5173\\\\|3001\")",
       "Bash(findstr -i node)",
       "Bash(timeout 5)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(while read:*)",
+      "Bash(do git:*)",
+      "Bash(echo \"Found in .env.example at commit $commit\")",
+      "Bash(done)",
+      "Bash(git rm:*)"
     ]
   }
 }

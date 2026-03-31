@@ -12,8 +12,8 @@ import { Blob } from 'buffer';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SUPABASE_URL = 'https://niknruuooktjotwydlqa.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pa25ydXVvb2t0am90d3lkbHFhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzc2MjcyNiwiZXhwIjoyMDg5MzM4NzI2fQ._SP3hmcFjI2Kn2KMjj98-_EaBLo0K9x6hqAmb7D6n3o';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://niknruuooktjotwydlqa.supabase.co';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const OCR_SERVICE_URL = 'http://localhost:8001';
 const API_URL = 'http://localhost:3000';
 

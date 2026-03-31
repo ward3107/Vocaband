@@ -20,3 +20,5 @@ firestore.rules
 *.backup_*
 *.bak
 *.orig
+test-ocr-flow.js
+venv_ocr/
