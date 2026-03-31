@@ -157,7 +157,8 @@
       "Bash(do git:*)",
       "Bash(echo \"Found in .env.example at commit $commit\")",
       "Bash(done)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "mcp__9e877a58-62c8-403b-a83a-d373ba08281a__execute_sql"
     ]
   }
 }

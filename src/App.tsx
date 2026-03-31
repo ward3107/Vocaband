@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
-import { useFloating, offset, flip, shift, arrow } from "@floating-ui/react";
+import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
@@ -50,7 +50,7 @@ import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass,
 import { useAudio } from "./hooks/useAudio";
 import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
-import { shuffle, chunkArray } from './utils';
+import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
@@ -62,6 +62,13 @@ import { SuspenseWrapper } from "./components/SuspenseWrapper";
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
+import {
+  MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
+  MOTIVATIONAL_MESSAGES, SPEAKABLE_MOTIVATIONS, randomMotivation,
+  XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
+  THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES, LETTER_COLORS,
+  type GameMode,
+} from "./constants/game";
 import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 
 // Types for lazy-loaded modules
@@ -73,200 +80,30 @@ type Socket = SocketIOModule['Socket'];
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
-// --- GAME SETTINGS ---
-const MAX_ATTEMPTS_PER_WORD = 3;
-const AUTO_SKIP_DELAY_MS = 500;
-const SHOW_ANSWER_DELAY_MS = 3000;
-const WRONG_FEEDBACK_DELAY_MS = 1500;
-
-const MOTIVATIONAL_MESSAGES = [
-  "Great job! 🎉", "Well done! 👏", "Awesome! 🌟", "Keep it up! 💪",
-  "Nailed it! 🎯", "Brilliant! ✨", "You're on fire! 🔥", "Fantastic! 🚀",
-  "Way to go! 🏆", "Superstar! ⭐",
-];
-const SPEAKABLE_MOTIVATIONS = [
-  "Great job!", "Well done!", "Awesome!", "Keep it up!",
-  "Nailed it!", "Brilliant!", "You're on fire!", "Fantastic!",
-  "Way to go!", "Superstar!", "Amazing!", "Perfect!",
-];
-const randomMotivation = () =>
-  MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
-
-// --- XP REWARD SYSTEM CONSTANTS ---
-const XP_TITLES = [
-  { min: 0, title: 'Beginner', emoji: '🌱' },
-  { min: 100, title: 'Learner', emoji: '📚' },
-  { min: 300, title: 'Scholar', emoji: '🎓' },
-  { min: 700, title: 'Expert', emoji: '🏅' },
-  { min: 1500, title: 'Master', emoji: '👑' },
-  { min: 3000, title: 'Legend', emoji: '🌟' },
-];
-const getXpTitle = (xpAmount: number) => XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
-
-const PREMIUM_AVATARS = [
-  { emoji: '🐉', name: 'Dragon', cost: 50 },
-  { emoji: '🦅', name: 'Eagle', cost: 50 },
-  { emoji: '🐺', name: 'Wolf', cost: 75 },
-  { emoji: '🦖', name: 'Dinosaur', cost: 100 },
-  { emoji: '🧙‍♂️', name: 'Wizard', cost: 150 },
-  { emoji: '🦸', name: 'Superhero', cost: 200 },
-  { emoji: '👾', name: 'Alien', cost: 250 },
-  { emoji: '🤴', name: 'Prince', cost: 300 },
-  { emoji: '👸', name: 'Princess', cost: 300 },
-  { emoji: '🦄', name: 'Unicorn', cost: 150 },
-  { emoji: '🐲', name: 'Dragon Face', cost: 100 },
-  { emoji: '🧛', name: 'Vampire', cost: 200 },
-  { emoji: '🧜', name: 'Merperson', cost: 175 },
-  { emoji: '🥷', name: 'Ninja', cost: 250 },
-  { emoji: '🤖', name: 'Robot', cost: 125 },
-];
-
-// Avatar categories unlock at XP milestones — students see locked categories and feel motivated to earn XP
-const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label: string }> = {
-  Animals: { xpRequired: 0, label: 'Free' },
-  Faces: { xpRequired: 0, label: 'Free' },
-  Food: { xpRequired: 50, label: '50 XP' },
-  Nature: { xpRequired: 100, label: '100 XP' },
-  Sports: { xpRequired: 200, label: '200 XP' },
-  Objects: { xpRequired: 400, label: '400 XP' },
-  Vehicles: { xpRequired: 600, label: '600 XP' },
-  Fantasy: { xpRequired: 1000, label: '1000 XP' },
-  Space: { xpRequired: 1500, label: '1500 XP' },
-};
-
-const THEMES = [
-  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0 },
-  { id: 'dark', name: 'Dark Mode', preview: '⬛', colors: { bg: 'bg-gray-900', card: 'bg-gray-800', text: 'text-white', accent: 'blue' }, cost: 100 },
-  { id: 'ocean', name: 'Ocean', preview: '🌊', colors: { bg: 'bg-cyan-50', card: 'bg-white', text: 'text-stone-900', accent: 'cyan' }, cost: 150 },
-  { id: 'sunset', name: 'Sunset', preview: '🌅', colors: { bg: 'bg-orange-50', card: 'bg-white', text: 'text-stone-900', accent: 'orange' }, cost: 150 },
-  { id: 'neon', name: 'Neon', preview: '💚', colors: { bg: 'bg-gray-950', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 200 },
-  { id: 'forest', name: 'Forest', preview: '🌲', colors: { bg: 'bg-green-50', card: 'bg-white', text: 'text-stone-900', accent: 'green' }, cost: 150 },
-  { id: 'royal', name: 'Royal', preview: '👑', colors: { bg: 'bg-purple-50', card: 'bg-white', text: 'text-stone-900', accent: 'purple' }, cost: 200 },
-];
-
-const POWER_UP_DEFS = [
-  { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 30 },
-  { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 40 },
-  { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
-];
-
-// Boosters — high-demand items for 2026 students
-const BOOSTERS_DEFS = [
-  { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 200 },
-  { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
-  { id: 'xp_booster', name: '2x XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 300 },
-];
-
-// Name frames — decorative borders around student avatar on dashboard & leaderboard
-const NAME_FRAMES = [
-  { id: 'gold', name: 'Gold Frame', preview: '🥇', border: 'ring-4 ring-yellow-400', cost: 200 },
-  { id: 'fire', name: 'Fire Frame', preview: '🔥', border: 'ring-4 ring-orange-500', cost: 300 },
-  { id: 'diamond', name: 'Diamond Frame', preview: '💎', border: 'ring-4 ring-cyan-400', cost: 500 },
-  { id: 'rainbow', name: 'Rainbow Frame', preview: '🌈', border: 'ring-4 ring-purple-400 ring-offset-2 ring-offset-pink-200', cost: 400 },
-  { id: 'lightning', name: 'Lightning Frame', preview: '⚡', border: 'ring-4 ring-amber-300 shadow-lg shadow-amber-200', cost: 350 },
-  { id: 'crown', name: 'Crown Frame', preview: '👑', border: 'ring-4 ring-yellow-500 shadow-lg shadow-yellow-200', cost: 750 },
-];
-
-// Custom name titles — shown below student name
-const NAME_TITLES = [
-  { id: 'champion', name: 'Champion', display: 'Champion', cost: 150 },
-  { id: 'genius', name: 'Genius', display: 'Genius', cost: 200 },
-  { id: 'word_wizard', name: 'Word Wizard', display: 'Word Wizard', cost: 300 },
-  { id: 'vocab_king', name: 'Vocab King', display: 'Vocab King', cost: 250 },
-  { id: 'vocab_queen', name: 'Vocab Queen', display: 'Vocab Queen', cost: 250 },
-  { id: 'speed_demon', name: 'Speed Demon', display: 'Speed Demon', cost: 400 },
-  { id: 'legend', name: 'Living Legend', display: 'Living Legend', cost: 500 },
-  { id: 'brain', name: 'Big Brain', display: 'Big Brain', cost: 350 },
-];
-
-// --- REUSABLE HELP TOOLTIP COMPONENT ---
-// Powered by @floating-ui/react - modern positioning engine
-// Desktop only - shows on hover, hidden on mobile devices
-const HelpTooltip = ({ children, content, position = "bottom", className = "" }: {
-  children: React.ReactNode;
-  content: string | string[];
-  position?: "top" | "bottom" | "left" | "right";
-  className?: string;
-}) => {
-  const [arrowEl, setArrowEl] = useState<HTMLDivElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const isMobile = useMemo(() => 'ontouchstart' in window, []);
-  const contentArray = Array.isArray(content) ? content : [content];
-
-  const { refs, floatingStyles, middlewareData } = useFloating({
-    open: isVisible && !isMobile,
-    onOpenChange: setIsVisible,
-    placement: position,
-    middleware: [
-      offset(8),
-      flip(),
-      shift({ padding: 8 }),
-      arrow({ element: arrowEl }),
-    ],
-  });
-  const { setReference, setFloating } = refs;
-
-  // Handle hover events
-  const handleMouseEnter = () => {
-    if (!isMobile) setIsVisible(true);
-  };
-
-  const staticSide = {
-    top: "bottom",
-    bottom: "top",
-    left: "right",
-    right: "left",
-  }[position];
-
-  return (
-    <>
-      <span
-        ref={setReference}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setIsVisible(false)}
-        className={className || "inline"}
-      >
-        {children}
-      </span>
-      {isVisible && !isMobile && (
-        <div
-          ref={setFloating}
-          style={floatingStyles}
-          className="z-50"
-        >
-          <div className="w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl">
-            {contentArray.map((line, i) => (
-              <p key={i} className={i > 0 ? "mt-1 text-slate-300" : ""}>{line}</p>
-            ))}
-          </div>
-          {middlewareData.arrow?.x != null && (
-            <div
-              ref={setArrowEl}
-              className="absolute w-2 h-2 bg-slate-900 rotate-45"
-              style={{
-                left: middlewareData.arrow.x ?? undefined,
-                top: middlewareData.arrow.y ?? undefined,
-                [staticSide]: '-4px',
-              }}
-            />
-          )}
-        </div>
-      )}
-    </>
-  );
-};
-
-// Question mark icon for help hints
-const HelpIcon = ({ tooltip, position = "bottom" }: { tooltip: string | string[]; position?: "top" | "bottom" | "left" | "right" }) => (
-  <HelpTooltip content={tooltip} position={position}>
-    <span className="inline-flex items-center justify-center w-5 h-5 ml-1.5 text-slate-400 bg-slate-100 rounded-full cursor-help hover:bg-slate-200 hover:text-slate-600 transition-all">
-      <span className="text-[10px] font-bold">?</span>
-    </span>
-  </HelpTooltip>
-);
+// --- Memoized game UI components (avoid re-rendering all buttons on single feedback change) ---
+const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer }: {
+  option: Word; currentWordId: number; feedback: string | null; gameMode: string; targetLanguage: "hebrew" | "arabic"; onAnswer: (w: Word) => void;
+}) => (
+  <button
+    onClick={() => onAnswer(option)}
+    disabled={feedback === "show-answer" || feedback === "correct"}
+    className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
+      feedback === "correct" && option.id === currentWordId
+        ? "bg-blue-600 text-white scale-105 shadow-xl"
+        : feedback === "wrong" && option.id !== currentWordId
+        ? "bg-rose-100 text-rose-500 opacity-50"
+        : feedback === "show-answer" && option.id === currentWordId
+        ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
+        : feedback === "show-answer"
+        ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
+        : "bg-stone-100 text-stone-800 hover:bg-stone-200"
+    }`}
+  >
+    {gameMode === "reverse" ? option.english : option[targetLanguage]}
+  </button>
+));
 
 export default function App() {
-  type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder";
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -762,8 +599,6 @@ export default function App() {
 
   // --- LETTER SOUNDS MODE STATE ---
   const [revealedLetters, setRevealedLetters] = useState(0);
-  const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
-
   // --- SENTENCE BUILDER MODE STATE ---
   const [sentenceIndex, setSentenceIndex] = useState(0);
   const [availableWords, setAvailableWords] = useState<string[]>([]);
@@ -1334,6 +1169,11 @@ export default function App() {
     setOcrProgress(10); // Initial progress
 
     try {
+      // Get auth token for teacher authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { showToast("Please sign in again.", "error"); return; }
+
       // Create FormData with the image file
       const formData = new FormData();
       formData.append('file', file);
@@ -2691,7 +2531,7 @@ export default function App() {
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
       setScore(newScore);
-      if (socket && user?.classCode) socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+      if (socket && user?.classCode) setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       setTimeout(() => {
         const next = sentenceIndex + 1;
         if (next >= validSentences.length) {
@@ -2861,8 +2701,8 @@ export default function App() {
   const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
     if (matchedIds.includes(item.id)) return;
 
-    // Pronounce the word when clicking any card
-    speakWord(item.id);
+    // Pronounce the word when clicking any card (deferred to not block paint)
+    setTimeout(() => { speakWord(item.id); }, 0);
 
     if (!selectedMatch) {
       setSelectedMatch(item);
@@ -2873,7 +2713,7 @@ export default function App() {
         setScore(newScore);
 
         if (socket && user?.classCode) {
-          socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+          setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
         }
 
         setSelectedMatch(null);
@@ -2908,7 +2748,7 @@ export default function App() {
       });
 
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
 
       // Auto-skip quickly after correct answer (clear any pending timeout first)
@@ -2968,9 +2808,9 @@ export default function App() {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
       setScore(newScore);
-      
+
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
 
       setTimeout(() => {
@@ -2998,7 +2838,7 @@ export default function App() {
       const newScore = score + 5;
       setScore(newScore);
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
     } else {
       if (!mistakes.includes(currentWord.id)) {
@@ -3024,9 +2864,9 @@ export default function App() {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
       setScore(newScore);
-      
+
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
 
       setTimeout(() => {
@@ -3776,10 +3616,13 @@ export default function App() {
                         <button
                           onClick={() => {
                             const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
-                            setAssignmentWords(filteredWords);
                             setActiveAssignment(assignment);
-                            setView("game");
-                            setShowModeSelection(true);
+                            setAssignmentWords(filteredWords);
+                            // Use startTransition for non-urgent view change so React can paint immediately
+                            React.startTransition(() => {
+                              setView("game");
+                              setShowModeSelection(true);
+                            });
                           }}
                           className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
                         >
@@ -7743,31 +7586,31 @@ export default function App() {
                     <button onClick={() => {
                       const wrong = options.filter(o => o.id !== currentWord.id);
                       const toHide = shuffle(wrong).slice(0, 2).map(o => o.id);
-                      setHiddenOptions(toHide);
                       const newPowerUps = { ...(user.powerUps ?? {}), fifty_fifty: ((user.powerUps ?? {})['fifty_fifty'] ?? 1) - 1 };
+                      setHiddenOptions(toHide);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
                     }} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
                       ✂️ 50/50 <span className="bg-amber-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['fifty_fifty']}</span>
                     </button>
                   )}
                   {((user.powerUps ?? {})['skip'] ?? 0) > 0 && !feedback && (
                     <button onClick={() => {
+                      const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
                       setCurrentIndex(prev => Math.min(prev + 1, gameWords.length - 1));
                       setHiddenOptions([]);
-                      const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
                     }} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
                       ⏭️ Skip <span className="bg-blue-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['skip']}</span>
                     </button>
                   )}
                   {(gameMode === "spelling" || gameMode === "letter-sounds") && ((user.powerUps ?? {})['reveal_letter'] ?? 0) > 0 && !feedback && spellingInput.length === 0 && (
                     <button onClick={() => {
-                      if (currentWord) setSpellingInput(currentWord.english[0]);
                       const newPowerUps = { ...(user.powerUps ?? {}), reveal_letter: ((user.powerUps ?? {})['reveal_letter'] ?? 1) - 1 };
+                      if (currentWord) setSpellingInput(currentWord.english[0]);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
                     }} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
                       💡 Hint <span className="bg-green-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['reveal_letter']}</span>
                     </button>
@@ -7778,24 +7621,7 @@ export default function App() {
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
                 <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4">
                   {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => handleAnswer(option)}
-                      disabled={feedback === "show-answer" || feedback === "correct"}
-                      className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
-                        feedback === "correct" && option.id === currentWord.id
-                          ? "bg-blue-600 text-white scale-105 shadow-xl"
-                          : feedback === "wrong" && option.id !== currentWord.id
-                          ? "bg-rose-100 text-rose-500 opacity-50"
-                          : feedback === "show-answer" && option.id === currentWord.id
-                          ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
-                          : feedback === "show-answer"
-                          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
-                          : "bg-stone-100 text-stone-800 hover:bg-stone-200"
-                      }`}
-                    >
-                      {gameMode === "reverse" ? option.english : option[targetLanguage]}
-                    </button>
+                    <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={handleAnswer} />
                   ))}
                 </div>
               ) : gameMode === "true-false" ? (
@@ -7824,22 +7650,22 @@ export default function App() {
                   <p className="text-stone-600 text-lg sm:text-xl font-bold mb-4 text-center" dir="auto">{currentWord?.[targetLanguage]}</p>
                   <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
                     {currentWord?.english.split(" ").map((word, wordIdx, allWords) => {
-                      const charOffset = allWords.slice(0, wordIdx).reduce((acc, w) => acc + w.length + 1, 0);
+                      let charOffset = 0;
+                      for (let j = 0; j < wordIdx; j++) charOffset += allWords[j].length + 1;
                       return (
                         <div key={wordIdx} className="flex justify-center gap-1 sm:gap-2">
                           {word.split("").map((letter, i) => {
                             const globalIdx = charOffset + i;
+                            const revealed = globalIdx < revealedLetters;
+                            const color = LETTER_COLORS[globalIdx % LETTER_COLORS.length];
                             return (
-                              <motion.div
+                              <div
                                 key={globalIdx}
-                                initial={{ scale: 0.5, opacity: 0 }}
-                                animate={globalIdx < revealedLetters ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0.15 }}
-                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
-                                style={{ color: LETTER_COLORS[globalIdx % LETTER_COLORS.length], borderColor: LETTER_COLORS[globalIdx % LETTER_COLORS.length], background: LETTER_COLORS[globalIdx % LETTER_COLORS.length] + "18" }}
+                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
+                                style={{ color: revealed ? color : color + "40", borderColor: revealed ? color : color + "40", background: color + "18", opacity: revealed ? 1 : 0.15, transform: revealed ? "scale(1)" : "scale(0.5)" }}
                               >
-                                {globalIdx < revealedLetters ? (letter ?? "").toUpperCase() : "?"}
-                              </motion.div>
+                                {revealed ? (letter ?? "").toUpperCase() : "?"}
+                              </div>
                             );
                           })}
                         </div>
@@ -7892,23 +7718,21 @@ export default function App() {
                       }`}>
                         {builtSentence.length === 0 && <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>}
                         {builtSentence.map((word, i) => (
-                          <motion.button
+                          <button
                             key={i}
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: 1 }}
                             onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, false)}
                             className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
-                          >{word}</motion.button>
+                          >{word}</button>
                         ))}
                       </div>
                       {/* Available words */}
                       <div className="flex flex-wrap gap-2 mb-4 justify-center">
                         {availableWords.map((word, i) => (
-                          <motion.button
+                          <button
                             key={i}
                             onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, true)}
                             className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
-                          >{word}</motion.button>
+                          >{word}</button>
                         ))}
                       </div>
                       <div className="flex gap-2">

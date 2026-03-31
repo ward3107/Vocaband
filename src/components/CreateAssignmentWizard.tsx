@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Check, ChevronRight, Search, Filter, Plus, Trash2, Edit2,
@@ -606,16 +606,23 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     }, 4000);
   };
 
-  // Filter words for browse
-  const filteredWords = allWords.filter(word => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
+  // Debounced search query for filtering
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Filter words for browse (memoized + debounced)
+  const filteredWords = useMemo(() => allWords.filter(word => {
+    if (!debouncedSearch) return true;
+    const query = debouncedSearch.toLowerCase();
     return (
       word.english.toLowerCase().includes(query) ||
       word.hebrew?.includes(query) ||
       word.arabic?.includes(query)
     );
-  });
+  }), [allWords, debouncedSearch]);
 
   // Render Step 1 sub-steps
   const renderStep1 = () => {
