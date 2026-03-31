@@ -22,3 +22,4 @@ firestore.rules
 *.orig
 test-ocr-flow.js
 venv_ocr/
+__pycache__/
