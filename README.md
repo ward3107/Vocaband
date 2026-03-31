@@ -67,7 +67,7 @@ No app store. No personal data required. Works offline.
 - **Class Management** — Create classes with shareable 6-digit codes (WhatsApp-friendly)
 - **Assignment Builder** — Search 2,067 curriculum words by English, Hebrew, or Arabic
 - **Smart Paste** — Paste a comma/newline list of words; auto-matches to curriculum vocabulary in seconds
-- **OCR Word Detection** — Upload a textbook photo → PaddleOCR (Python microservice) extracts English text → auto-detects curriculum words
+- **OCR Word Detection** — Upload a textbook photo → Tesseract.js extracts English text → auto-detects curriculum words
 - **CSV Upload** — Import a custom word list (English, Hebrew, Arabic columns)
 - **Fuzzy Matching** — Catches typos automatically (e.g. "helo" → "hello")
 - **Word Families** — Toggle to include related forms (happy → happier, happiness)
@@ -124,7 +124,7 @@ Teachers launch a class-wide competition from their dashboard. All students in t
 - **Database**: Supabase (PostgreSQL) with Row-Level Security
 - **Auth**: Supabase Auth — Google OAuth for teachers, anonymous PKCE for students
 - **PWA**: Installable via vite-plugin-pwa (add to home screen, offline caching)
-- **OCR**: PaddleOCR (Python microservice) — state-of-the-art server-side text recognition with preprocessing
+- **OCR**: Tesseract.js — server-side text recognition (no external service needed)
 
 ---
 
