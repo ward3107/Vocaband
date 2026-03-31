@@ -2691,7 +2691,7 @@ export default function App() {
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
       setScore(newScore);
-      if (socket && user?.classCode) socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+      if (socket && user?.classCode) setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       setTimeout(() => {
         const next = sentenceIndex + 1;
         if (next >= validSentences.length) {
@@ -2861,8 +2861,8 @@ export default function App() {
   const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
     if (matchedIds.includes(item.id)) return;
 
-    // Pronounce the word when clicking any card
-    speakWord(item.id);
+    // Pronounce the word when clicking any card (deferred to not block paint)
+    setTimeout(() => { speakWord(item.id); }, 0);
 
     if (!selectedMatch) {
       setSelectedMatch(item);
@@ -2873,7 +2873,7 @@ export default function App() {
         setScore(newScore);
 
         if (socket && user?.classCode) {
-          socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+          setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
         }
 
         setSelectedMatch(null);
@@ -2908,7 +2908,7 @@ export default function App() {
       });
 
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
 
       // Auto-skip quickly after correct answer (clear any pending timeout first)
@@ -2968,9 +2968,9 @@ export default function App() {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
       setScore(newScore);
-      
+
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
 
       setTimeout(() => {
@@ -2998,7 +2998,7 @@ export default function App() {
       const newScore = score + 5;
       setScore(newScore);
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
     } else {
       if (!mistakes.includes(currentWord.id)) {
@@ -3024,9 +3024,9 @@ export default function App() {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
       setScore(newScore);
-      
+
       if (socket && user?.classCode) {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
       }
 
       setTimeout(() => {
@@ -3776,10 +3776,13 @@ export default function App() {
                         <button
                           onClick={() => {
                             const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
-                            setAssignmentWords(filteredWords);
                             setActiveAssignment(assignment);
-                            setView("game");
-                            setShowModeSelection(true);
+                            setAssignmentWords(filteredWords);
+                            // Use startTransition for non-urgent view change so React can paint immediately
+                            React.startTransition(() => {
+                              setView("game");
+                              setShowModeSelection(true);
+                            });
                           }}
                           className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
                         >
@@ -7743,31 +7746,31 @@ export default function App() {
                     <button onClick={() => {
                       const wrong = options.filter(o => o.id !== currentWord.id);
                       const toHide = shuffle(wrong).slice(0, 2).map(o => o.id);
-                      setHiddenOptions(toHide);
                       const newPowerUps = { ...(user.powerUps ?? {}), fifty_fifty: ((user.powerUps ?? {})['fifty_fifty'] ?? 1) - 1 };
+                      setHiddenOptions(toHide);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
                     }} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
                       ✂️ 50/50 <span className="bg-amber-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['fifty_fifty']}</span>
                     </button>
                   )}
                   {((user.powerUps ?? {})['skip'] ?? 0) > 0 && !feedback && (
                     <button onClick={() => {
+                      const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
                       setCurrentIndex(prev => Math.min(prev + 1, gameWords.length - 1));
                       setHiddenOptions([]);
-                      const newPowerUps = { ...(user.powerUps ?? {}), skip: ((user.powerUps ?? {})['skip'] ?? 1) - 1 };
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
                     }} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
                       ⏭️ Skip <span className="bg-blue-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['skip']}</span>
                     </button>
                   )}
                   {(gameMode === "spelling" || gameMode === "letter-sounds") && ((user.powerUps ?? {})['reveal_letter'] ?? 0) > 0 && !feedback && spellingInput.length === 0 && (
                     <button onClick={() => {
-                      if (currentWord) setSpellingInput(currentWord.english[0]);
                       const newPowerUps = { ...(user.powerUps ?? {}), reveal_letter: ((user.powerUps ?? {})['reveal_letter'] ?? 1) - 1 };
+                      if (currentWord) setSpellingInput(currentWord.english[0]);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid);
+                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
                     }} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
                       💡 Hint <span className="bg-green-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['reveal_letter']}</span>
                     </button>
