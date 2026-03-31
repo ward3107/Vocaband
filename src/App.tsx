@@ -50,7 +50,7 @@ import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass,
 import { useAudio } from "./hooks/useAudio";
 import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
-import { shuffle, chunkArray } from './utils';
+import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
