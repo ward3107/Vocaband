@@ -130,6 +130,9 @@ async function startServer() {
     }));
   }
 
+  // Parse JSON request bodies (required for /api/translate endpoint)
+  app.use(express.json());
+
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).
   // This way 100+ students behind the same school WiFi aren't blocked.
   // A lightweight IP-based pre-auth limiter still stops unauthenticated flooding.
@@ -209,20 +212,28 @@ async function startServer() {
   // Socket.IO connection-level auth middleware — reject unauthenticated connections early
   io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
+    console.log("[Socket] Connection attempt from", socket.handshake.address, "with token:", token ? "✓" : "✗");
+
     if (typeof token !== "string" || token.length === 0) {
+      console.warn("[Socket] Rejected: No token provided");
       return next(new Error("Authentication required"));
     }
     const uid = await verifyToken(token);
     if (!uid) {
+      console.warn("[Socket] Rejected: Invalid token");
       return next(new Error("Invalid token"));
     }
+
+    console.log("[Socket] Authenticated successfully for uid:", uid);
     // Attach verified uid to socket data for use in event handlers
     (socket.data as { uid: string }).uid = uid;
     next();
   });
 
   io.on("connection", (socket) => {
+    const uid = (socket.data as { uid: string }).uid;
     const clientIp = getSocketIp(socket);
+    console.log(`[Socket] Client connected: uid=${uid}, ip=${clientIp}, socket=${socket.id}`);
 
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid) || !isValidToken(token)) return;
@@ -353,6 +364,183 @@ async function startServer() {
       status: "ok",
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Translation endpoint — server-side proxy to protect Google API key
+  // Only authenticated teachers can access this
+  app.post("/api/translate", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // Verify user is a teacher
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can translate" });
+    }
+
+    const { words } = req.body;
+    if (!Array.isArray(words) || words.length === 0) {
+      return res.status(400).json({ error: "words array required" });
+    }
+
+    // Validate words
+    const validWords = words.filter((w: string) => typeof w === "string" && w.trim().length > 0);
+    if (validWords.length === 0) {
+      return res.status(400).json({ error: "No valid words provided" });
+    }
+
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      return res.status(503).json({
+        error: "Google Translate API key not configured",
+        message: "Please add GOOGLE_TRANSLATE_API_KEY to your .env file to enable translation."
+      });
+    }
+
+    try {
+      // Translate to Hebrew
+      const [hebrewResponse, arabicResponse] = await Promise.all([
+        fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            q: validWords,
+            source: "en",
+            target: "iw",
+            format: "text",
+          }),
+        }),
+        fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            q: validWords,
+            source: "en",
+            target: "ar",
+            format: "text",
+          }),
+        }),
+      ]);
+
+      if (!hebrewResponse.ok || !arabicResponse.ok) {
+        throw new Error("Translation API error");
+      }
+
+      const hebrewData = await hebrewResponse.json();
+      const arabicData = await arabicResponse.json();
+
+      res.json({
+        hebrew: hebrewData.data?.translations?.map((t: any) => t.translatedText) || [],
+        arabic: arabicData.data?.translations?.map((t: any) => t.translatedText) || [],
+      });
+    } catch (error) {
+      console.error("Translation error:", error);
+      res.status(500).json({ error: "Translation failed" });
+    }
+  });
+
+  // OCR endpoint — server-side proxy to Python PaddleOCR microservice
+  // Only authenticated teachers can access this
+  app.post("/api/ocr", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // Verify user is a teacher
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can use OCR" });
+    }
+
+    // Check if OCR service is configured
+    const ocrServiceUrl = process.env.OCR_SERVICE_URL;
+    if (!ocrServiceUrl) {
+      return res.status(503).json({
+        error: "OCR service not configured",
+        message: "Please add OCR_SERVICE_URL to your .env file pointing to the Python PaddleOCR service."
+      });
+    }
+
+    try {
+      // Use formidable to parse multipart/form-data
+      const FormData = await import("formidable");
+      const form = FormData.default;
+      const formParse = form();
+
+      // Parse the incoming form data
+      formParse.parse(req, async (err, fields, files) => {
+        if (err) {
+          console.error("Form parse error:", err);
+          return res.status(400).json({ error: "Invalid form data" });
+        }
+
+        // Get the uploaded file
+        const file = files.file?.[0];
+        if (!file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        // Validate file type
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+        if (!allowedTypes.includes(file.mimetype)) {
+          return res.status(400).json({ error: "Invalid file type. Please upload a JPEG or PNG image." });
+        }
+
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+          return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
+        }
+
+        try {
+          // Forward the request to the Python OCR service
+          const ocrResponse = await fetch(`${ocrServiceUrl}/ocr`, {
+            method: "POST",
+            headers: {
+              "Content-Type": file.mimetype,
+            },
+            body: file.buffer, // Send raw buffer
+          });
+
+          if (!ocrResponse.ok) {
+            const errorText = await ocrResponse.text();
+            console.error("OCR service error:", errorText);
+            return res.status(502).json({
+              error: "OCR service error",
+              message: "The OCR service is unavailable. Please try again."
+            });
+          }
+
+          const ocrData = await ocrResponse.json();
+          res.json(ocrData);
+
+        } catch (fetchError) {
+          console.error("OCR fetch error:", fetchError);
+          res.status(502).json({
+            error: "Failed to connect to OCR service",
+            message: "Make sure the Python OCR service is running on the configured URL."
+          });
+        }
+      });
+    } catch (importError) {
+      console.error("Module import error:", importError);
+      res.status(500).json({ error: "Server configuration error" });
+    }
   });
 
   if (process.env.NODE_ENV !== "production") {

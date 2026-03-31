@@ -4,9 +4,11 @@ import {
   X, Check, ChevronRight, Search, Filter, Plus, Trash2, Edit2,
   Clipboard, BookOpen, FolderOpen, Copy, Share2,
   Zap, Target, Headphones, PenTool, CheckCircle, RotateCcw,
-  Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle, Camera
+  Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle, Camera,
+  Languages, Loader2
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
+import { supabase } from '../core/supabase';
 
 interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number };
@@ -47,10 +49,10 @@ interface CreateAssignmentWizardProps {
   showAssignmentWelcome: boolean;
   setShowAssignmentWelcome: (show: boolean) => void;
   TOPIC_PACKS: Array<{ name: string; icon: string; ids: number[] }>;
-  ASSIGNMENT_TITLE_SUGGESTIONS: string[];
   onBack: () => void;
   editingAssignment: AssignmentData | null;
   setEditingAssignment: (assignment: AssignmentData | null) => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 interface AssignmentData {
@@ -95,6 +97,57 @@ const GAME_MODE_LEVELS = {
     { id: 'sentence-builder', name: 'Sentence Builder', emoji: '📝', color: 'from-rose-400 to-rose-500' },
   ],
 };
+
+// Combined assignment templates - title + instructions pairs
+const ASSIGNMENT_TEMPLATES = [
+  { title: 'Classic Mode Practice', instructions: 'Practice mode - review vocabulary with flashcards and matching activities' },
+  { title: 'Listening Challenge', instructions: 'Listening practice - audio focus' },
+  { title: 'Spelling Bee', instructions: 'Spelling focus - writing practice' },
+  { title: 'Matching Pairs', instructions: 'Matching game - word connection' },
+  { title: 'True or False', instructions: 'True/false focus - comprehension' },
+  { title: 'Flashcard Review', instructions: 'Flashcards focus - self-paced' },
+  { title: 'Word Scramble', instructions: 'Scramble practice - letter unscramble' },
+  { title: 'Reverse Mode', instructions: 'Reverse mode - output practice' },
+  { title: 'Letter Sounds Practice', instructions: 'Letter sounds - phonics practice' },
+  { title: 'Sentence Builder Challenge', instructions: 'Mixed modes - variety' },
+  { title: 'Mixed Modes Practice', instructions: 'Mixed modes - play multiple game types for varied and engaging practice' },
+  { title: 'Unit 5 Vocabulary', instructions: 'Practice mode - flashcards & matching' },
+  { title: 'Midterm Review', instructions: 'Study session - learn then test' },
+  { title: 'Final Exam Practice', instructions: 'Challenge mode - all 9 modes' },
+  { title: 'Word Building Exercise', instructions: 'Spelling focus - writing practice' },
+  { title: 'Listening Comprehension', instructions: 'Listening practice - audio focus' },
+  { title: 'Reading Vocabulary', instructions: 'Flashcards focus - self-paced' },
+  { title: 'Grammar & Vocabulary', instructions: 'Teacher-led - guided' },
+  { title: 'Advanced Vocabulary Test', instructions: 'Test mode - no hints' },
+  { title: 'XP Challenge', instructions: 'Class competition - leaderboard' },
+  { title: 'Speed Round', instructions: 'Timed challenge - speed test' },
+];
+
+const INSTRUCTION_TEMPLATES = [
+  'Practice mode - review vocabulary with flashcards and matching activities',
+  'Test mode - complete all activities independently with no hints available',
+  'Flashcards focus - learn new words at your own pace with visual cards',
+  'Matching game - connect Hebrew/Arabic words to English translations',
+  'Listening practice - use audio-based activities to build comprehension',
+  'Spelling focus - practice writing words with letter sounds and spelling modes',
+  'Challenge mode - try all 9 game modes for comprehensive vocabulary review',
+  'Beginner level - flashcards, matching, and classic modes for foundational learning',
+  'Intermediate level - listening, true/false, and letter sounds for skill building',
+  'Advanced level - spelling, reverse, and scramble for mastery practice',
+  'Quick review - 15-minute practice session with your preferred game modes',
+  'Homework assignment - complete all activities by the deadline for full credit',
+  'Class competition - earn points for the live leaderboard with correct answers',
+  'Study session - use flashcards first, then test yourself with other modes',
+  'No time limit - take your time to learn each word thoroughly',
+  'Timed challenge - race against the clock to test your knowledge',
+  'True/false focus - build comprehension by listening and answering questions',
+  'Reverse mode - translate from English to Hebrew/Arabic for output practice',
+  'Scramble practice - unscramble letters to spell vocabulary words correctly',
+  'Letter sounds - strengthen phonics and pronunciation skills',
+  'Mixed modes - play multiple game types for varied and engaging practice',
+  'Teacher-led - complete activities during class for guided practice',
+  'Independent work - complete assignment at home for self-directed learning',
+];
 
 const PRESETS = [
   {
@@ -162,7 +215,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   showAssignmentWelcome,
   setShowAssignmentWelcome,
   TOPIC_PACKS,
-  ASSIGNMENT_TITLE_SUGGESTIONS,
   onBack,
   editingAssignment,
   setEditingAssignment,
@@ -173,6 +225,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [selectedWordIds, setSelectedWordIds] = useState<number[]>([]);
   const [editingWord, setEditingWord] = useState<WordWithStatus | null>(null);
   const [editTranslations, setEditTranslations] = useState({ hebrew: '', arabic: '' });
+  const [isTranslating, setIsTranslating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -183,6 +236,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [joinedWords, setJoinedWords] = useState<number[]>([]);
   const pasteAreaRef = useRef<HTMLTextAreaRef>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Load saved groups from localStorage
   useEffect(() => {
@@ -193,6 +247,30 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       }
     } catch {}
   }, []);
+
+  // Debug logging for editingAssignment
+  useEffect(() => {
+    console.log('[CREATE WIZARD] editingAssignment changed:', editingAssignment);
+    console.log('[CREATE WIZARD] assignmentTitle prop:', assignmentTitle);
+    console.log('[CREATE WIZARD] selectedWords prop:', selectedWords);
+  }, [editingAssignment, assignmentTitle, selectedWords]);
+
+  // Initialize editedWords from selectedWords prop (e.g., after OCR upload)
+  useEffect(() => {
+    if (selectedWords.length > 0 && editedWords.length === 0) {
+      console.log('[CREATE WIZARD] Initializing editedWords from selectedWords:', selectedWords.length);
+      setEditedWords(getWordsWithStatus());
+      setSubStep('editor');
+    }
+  }, [selectedWords]);
+
+  // Auto-navigate to step 2 when editing an assignment
+  useEffect(() => {
+    if (editingAssignment) {
+      console.log('[CREATE WIZARD] Editing assignment - navigating to step 2');
+      setStep(2);
+    }
+  }, [editingAssignment]);
 
   // Save groups to localStorage
   const saveGroupsToStorage = (groups: typeof savedGroups) => {
@@ -210,7 +288,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 
   // Analyze pasted words
   const analyzePastedWords = (text: string): { matched: Word[]; unmatched: string[] } => {
-    const words = text.split(/[\n,;\t]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+    const words = text.split(/[\s,;]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
     const matched: Word[] = [];
     const unmatched: string[] = [];
 
@@ -329,6 +407,85 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     }
 
     setEditingWord(null);
+  };
+
+  // Auto-translate all missing words using server endpoint (secured)
+  const handleAutoTranslate = async () => {
+    const wordsWithoutTranslation = editedWords.filter(w => !w.hasTranslation);
+
+    if (wordsWithoutTranslation.length === 0) {
+      showToast?.('All words already have translations!', 'info');
+      return;
+    }
+
+    setIsTranslating(true);
+
+    try {
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showToast?.('Please log in to use auto-translation', 'error');
+        return;
+      }
+
+      // Extract English words
+      const englishWords = wordsWithoutTranslation.map(w => w.english);
+
+      // Call server endpoint (authenticated, teacher-only)
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ words: englishWords })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Translation failed' }));
+        throw new Error(errorData.error || 'Translation failed');
+      }
+
+      const { hebrew, arabic } = await response.json();
+
+      // Update words with translations
+      setEditedWords(prev => prev.map(w => {
+        if (!w.hasTranslation) {
+          const index = englishWords.indexOf(w.english);
+          if (index !== -1 && hebrew[index] && arabic[index]) {
+            return {
+              ...w,
+              hebrew: hebrew[index],
+              arabic: arabic[index],
+              hasTranslation: true
+            };
+          }
+        }
+        return w;
+      }));
+
+      // Also update in customWords
+      const translatedCustomWords = wordsWithoutTranslation.filter(w => w.id < 0);
+      if (translatedCustomWords.length > 0) {
+        setCustomWords(prev => prev.map(w => {
+          const index = translatedCustomWords.findIndex(tw => tw.id === w.id);
+          if (index !== -1 && hebrew[index] && arabic[index]) {
+            return {
+              ...w,
+              hebrew: hebrew[index],
+              arabic: arabic[index]
+            };
+          }
+          return w;
+        }));
+      }
+
+    } catch (error) {
+      console.error('Translation error:', error);
+      // Silent failure - don't show alert to user
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   // Delete word
@@ -483,29 +640,31 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             </div>
 
             {/* Three main options */}
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               {/* Paste Word List - RECOMMENDED */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSubStep('paste')}
-                className="w-full group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-6 sm:p-8 shadow-xl shadow-blue-500/20 hover:shadow-2xl hover:shadow-blue-500/30 transition-all text-left"
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-indigo-500/20 hover:shadow-2xl hover:shadow-indigo-500/30 transition-all text-left"
               >
                 <div className="relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="text-4xl mb-3">📋</div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
                         Paste from anywhere
                       </h3>
-                      <p className="text-blue-100 text-sm sm:text-base mb-4">
+                      <p className="text-white/90 text-xs sm:text-sm mb-2">
                         Copy words from PDF, book, or document
                       </p>
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
-                        <span className="text-white text-xs sm:text-sm font-bold">⚡ Fastest • Most Flexible</span>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
+                        <span className="text-white text-xs font-bold">⚡ Fastest • Most Flexible</span>
                       </div>
                     </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors" size={24} />
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl sm:text-4xl">📋</span>
+                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
+                    </div>
                   </div>
                 </div>
               </motion.button>
@@ -515,23 +674,25 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSubStep('browse')}
-                className="w-full group relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 rounded-3xl p-6 sm:p-8 shadow-xl shadow-purple-500/20 hover:shadow-2xl hover:shadow-purple-500/30 transition-all text-left"
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-violet-500 to-violet-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-violet-500/20 hover:shadow-2xl hover:shadow-violet-500/30 transition-all text-left"
               >
                 <div className="relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="text-4xl mb-3">🔍</div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
                         Browse vocabulary
                       </h3>
-                      <p className="text-purple-100 text-sm sm:text-base mb-4">
+                      <p className="text-white/90 text-xs sm:text-sm mb-2">
                         Search and select from our word database
                       </p>
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
-                        <span className="text-white text-xs sm:text-sm font-bold">📚 {allWords.length}+ words • Curated</span>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
+                        <span className="text-white text-xs font-bold">📚 {allWords.length}+ words • Curated</span>
                       </div>
                     </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors" size={24} />
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl sm:text-4xl">🔍</span>
+                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
+                    </div>
                   </div>
                 </div>
               </motion.button>
@@ -541,33 +702,35 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSubStep('saved-groups')}
-                className="w-full group relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl p-6 sm:p-8 shadow-xl shadow-emerald-500/20 hover:shadow-2xl hover:shadow-emerald-500/30 transition-all text-left"
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-emerald-500/20 hover:shadow-2xl hover:shadow-emerald-500/30 transition-all text-left"
               >
                 <div className="relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="text-4xl mb-3">💾</div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
                         Use saved group
                       </h3>
-                      <p className="text-emerald-100 text-sm sm:text-base mb-4">
+                      <p className="text-white/90 text-xs sm:text-sm mb-2">
                         Quick access to your previous word lists
                       </p>
                       {savedGroups.length > 0 && (
-                        <div className="space-y-2 mb-3">
+                        <div className="space-y-1 mb-2">
                           {savedGroups.slice(0, 3).map(group => (
-                            <div key={group.id} className="text-white/90 text-sm bg-white/10 rounded-lg px-3 py-2 flex items-center justify-between">
+                            <div key={group.id} className="text-white/90 text-xs bg-white/10 rounded-lg px-2 py-1 flex items-center justify-between">
                               <span>📁 {group.name}</span>
-                              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">{group.words.length} words</span>
+                              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{group.words.length} words</span>
                             </div>
                           ))}
                         </div>
                       )}
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
-                        <span className="text-white text-xs sm:text-sm font-bold">{savedGroups.length} saved groups available</span>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
+                        <span className="text-white text-xs font-bold">{savedGroups.length} saved groups available</span>
                       </div>
                     </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors" size={24} />
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl sm:text-4xl">💾</span>
+                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
+                    </div>
                   </div>
                 </div>
               </motion.button>
@@ -578,7 +741,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => document.getElementById('ocr-upload-input')?.click()}
                 disabled={isOcrProcessing}
-                className="w-full group relative overflow-hidden bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl p-6 sm:p-8 shadow-xl shadow-pink-500/20 hover:shadow-2xl hover:shadow-pink-500/30 transition-all text-left"
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-rose-500 to-rose-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-rose-500/20 hover:shadow-2xl hover:shadow-rose-500/30 transition-all text-left"
               >
                 <input
                   type="file"
@@ -591,20 +754,22 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 <div className="relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="text-4xl mb-3">📷</div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
                         {isOcrProcessing ? 'Processing...' : 'Upload image'}
                       </h3>
-                      <p className="text-pink-100 text-sm sm:text-base mb-4">
+                      <p className="text-white/90 text-xs sm:text-sm mb-2">
                         Take a photo of a worksheet to extract words
                       </p>
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
-                        <span className="text-white text-xs sm:text-sm font-bold">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
+                        <span className="text-white text-xs font-bold">
                           {isOcrProcessing ? `${ocrProgress}%` : 'Auto-detect vocabulary'}
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors" size={24} />
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl sm:text-4xl">📷</span>
+                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
+                    </div>
                   </div>
                 </div>
               </motion.button>
@@ -664,7 +829,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 />
                 {pastedText && (
                   <div className="absolute bottom-3 right-3 text-xs text-primary font-medium bg-primary-container/20 px-2 py-1 rounded-full">
-                    {pastedText.split(/[\n,;\t]+/).filter(w => w.trim()).length} words
+                    {pastedText.split(/[\s,;]+/).filter(w => w.trim()).length} words
                   </div>
                 )}
               </div>
@@ -725,7 +890,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between">
               <button
-                onClick={() => setSubStep('landing')}
+                onClick={onBack}
                 className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold transition-colors"
               >
                 <ArrowLeft size={20} />
@@ -776,6 +941,27 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               </div>
             )}
 
+            {/* Translate all button */}
+            {missingTranslations > 0 && (
+              <button
+                onClick={handleAutoTranslate}
+                disabled={isTranslating}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-secondary-container text-on-secondary-container rounded-2xl font-bold hover:bg-secondary-container/80 border-2 border-outline-variant/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isTranslating ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    Translating with Google Cloud...
+                  </>
+                ) : (
+                  <>
+                    <Languages size={18} />
+                    Translate all with Google Cloud ✨
+                  </>
+                )}
+              </button>
+            )}
+
             {/* Word list */}
             {editedWords.length === 0 ? (
               <div className="text-center py-12">
@@ -793,7 +979,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 <AnimatePresence mode="popLayout">
                   {editedWords.map((word) => (
                     <motion.div
-                      key={word.id}
+                      key={`paste-${word.id}`}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
@@ -996,7 +1182,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               <AnimatePresence mode="popLayout">
                 {filteredWords.slice(0, 80).map((word) => (
                   <motion.button
-                    key={word.id}
+                    key={`browse-${word.id}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     onClick={() => toggleWordSelection(word.id)}
@@ -1171,62 +1357,91 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 
       {/* Assignment Details */}
       <div className="space-y-4">
-        {/* Title */}
+        {/* Combined Template Selector */}
         <div>
           <label className="block text-sm font-bold text-on-surface mb-2">
-            Assignment name <span className="text-error">*</span>
+            Quick template
           </label>
-          <input
-            type="text"
-            value={assignmentTitle}
-            onChange={(e) => setAssignmentTitle(e.target.value)}
-            list="assignment-titles"
-            placeholder="e.g., Fruits Vocabulary - Unit 5"
-            className="w-full p-4 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all"
-          />
-          <datalist id="assignment-titles">
-            {ASSIGNMENT_TITLE_SUGGESTIONS.map((title) => (
-              <option key={title} value={title} />
-            ))}
-          </datalist>
-        </div>
+          <select
+            value=""
+            onChange={(e) => {
+              const selected = ASSIGNMENT_TEMPLATES.find(t => t.title === e.target.value);
+              if (selected) {
+                setAssignmentTitle(selected.title);
+                setInstructions(selected.instructions);
+              }
+            }}
+            className="w-full p-3 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-high text-on-surface mb-4 cursor-pointer appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4l5 5 5-5z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 0.75rem center',
+              paddingRight: '2.5rem',
+            }}
+          >
+            <option value="">📋 Choose a template...</option>
+            <optgroup label="Practice Templates">
+              <option value="Classic Mode Practice">Classic Mode Practice</option>
+              <option value="Flashcard Review">Flashcard Review</option>
+              <option value="Reading Vocabulary">Reading Vocabulary</option>
+            </optgroup>
+            <optgroup label="Game-Specific Templates">
+              <option value="Listening Challenge">Listening Challenge</option>
+              <option value="Spelling Bee">Spelling Bee</option>
+              <option value="Matching Pairs">Matching Pairs</option>
+              <option value="True or False">True or False</option>
+              <option value="Word Scramble">Word Scramble</option>
+              <option value="Reverse Mode">Reverse Mode</option>
+              <option value="Letter Sounds Practice">Letter Sounds Practice</option>
+            </optgroup>
+            <optgroup label="Assessment Templates">
+              <option value="Unit 5 Vocabulary">Unit 5 Vocabulary</option>
+              <option value="Midterm Review">Midterm Review</option>
+              <option value="Final Exam Practice">Final Exam Practice</option>
+              <option value="Advanced Vocabulary Test">Advanced Vocabulary Test</option>
+            </optgroup>
+            <optgroup label="Skill Building">
+              <option value="Word Building Exercise">Word Building Exercise</option>
+              <option value="Listening Comprehension">Listening Comprehension</option>
+              <option value="Grammar & Vocabulary">Grammar & Vocabulary</option>
+              <option value="Sentence Builder Challenge">Sentence Builder Challenge</option>
+            </optgroup>
+            <optgroup label="Challenge & Competition">
+              <option value="Mixed Modes Practice">Mixed Modes Practice</option>
+              <option value="XP Challenge">XP Challenge</option>
+              <option value="Speed Round">Speed Round</option>
+            </optgroup>
+          </select>
 
-        {/* Instructions */}
-        <div>
-          <label className="block text-sm font-bold text-on-surface mb-2">
-            Instructions for students (optional)
-          </label>
-          <textarea
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            placeholder="Add a note for your students..."
-            rows={2}
-            className="w-full p-4 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all resize-none"
-          />
-        </div>
-      </div>
+          {/* Editable Title Field */}
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-on-surface mb-2">
+              Assignment title <span className="text-error">*</span>
+            </label>
+            <input
+              type="text"
+              value={assignmentTitle}
+              onChange={(e) => setAssignmentTitle(e.target.value)}
+              placeholder="e.g., Fruits Vocabulary - Unit 5"
+              className="w-full p-4 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all"
+            />
+          </div>
 
-      {/* Presets */}
-      <div className="space-y-3">
-        <label className="block text-sm font-bold text-on-surface">
-          Recommended presets
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => applyPreset(preset.id)}
-              className={`p-4 rounded-2xl border-2 transition-all text-left ${
-                selectedPreset === preset.id
-                  ? 'border-primary bg-primary-container/10'
-                  : 'border-outline-variant/20 bg-surface-container-lowest hover:border-primary/30'
-              }`}
-            >
-              <div className="text-2xl mb-2">{preset.icon}</div>
-              <div className="font-bold text-on-surface text-sm mb-1">{preset.name}</div>
-              <div className="text-xs text-on-surface-variant">{preset.description}</div>
-            </button>
-          ))}
+          {/* Editable Instructions Field */}
+          <div>
+            <label className="block text-sm font-bold text-on-surface mb-2">
+              Instructions for students (optional)
+            </label>
+            <textarea
+              id="instructions-textarea"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="Add a note for your students... or choose a template above"
+              rows={2}
+              className="w-full p-4 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all resize-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -1252,28 +1467,23 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
           </button>
         </div>
 
-        {/* Beginner */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Beginner</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {GAME_MODE_LEVELS.beginner.map((mode) => {
+        {/* Compact grid layout - 5 columns for all modes */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {Object.values(GAME_MODE_LEVELS).flat().map((mode) => {
               const isSelected = assignmentModes.includes(mode.id);
               return (
                 <button
                   key={mode.id}
                   onClick={() => toggleGameMode(mode.id)}
-                  className={`relative p-3 rounded-xl border-2 transition-all text-center ${
+                  className={`relative p-2.5 rounded-xl border-2 transition-all text-center ${
                     isSelected
                       ? 'border-transparent bg-gradient-to-br shadow-lg'
-                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40'
+                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40 hover:scale-105'
                   }`}
                   style={isSelected ? { backgroundImage: `linear-gradient(to bottom right, ${mode.color})` } : undefined}
                 >
-                  <div className={`text-2xl mb-1 ${isSelected ? 'text-white' : 'text-on-surface'}`}>{mode.emoji}</div>
-                  <div className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
+                  <div className={`text-xl mb-1 ${isSelected ? 'text-surface-0' : 'text-on-surface'}`}>{mode.emoji}</div>
+                  <div className={`text-xs font-bold ${isSelected ? 'text-surface-0' : 'text-on-surface'}`}>{mode.name}</div>
                   {isSelected && (
                     <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
                       <Check size={10} className="text-white" />
@@ -1283,106 +1493,26 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               );
             })}
           </div>
-        </div>
 
-        {/* Intermediate */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-violet-500"></div>
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Intermediate</span>
+          {/* Difficulty indicators (compact legend) */}
+          <div className="flex flex-wrap gap-4 text-xs text-on-surface-variant pt-1">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+              <span>Beginner</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-violet-500"></div>
+              <span>Intermediate</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+              <span>Advanced</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+              <span>Mastery</span>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {GAME_MODE_LEVELS.intermediate.map((mode) => {
-              const isSelected = assignmentModes.includes(mode.id);
-              return (
-                <button
-                  key={mode.id}
-                  onClick={() => toggleGameMode(mode.id)}
-                  className={`relative p-3 rounded-xl border-2 transition-all text-center ${
-                    isSelected
-                      ? 'border-transparent bg-gradient-to-br shadow-lg'
-                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40'
-                  }`}
-                  style={isSelected ? { backgroundImage: `linear-gradient(to bottom right, ${mode.color})` } : undefined}
-                >
-                  <div className={`text-2xl mb-1 ${isSelected ? 'text-white' : 'text-on-surface'}`}>{mode.emoji}</div>
-                  <div className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
-                  {isSelected && (
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
-                      <Check size={10} className="text-white" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Advanced */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Advanced</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {GAME_MODE_LEVELS.advanced.map((mode) => {
-              const isSelected = assignmentModes.includes(mode.id);
-              return (
-                <button
-                  key={mode.id}
-                  onClick={() => toggleGameMode(mode.id)}
-                  className={`relative p-3 rounded-xl border-2 transition-all text-center ${
-                    isSelected
-                      ? 'border-transparent bg-gradient-to-br shadow-lg'
-                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40'
-                  }`}
-                  style={isSelected ? { backgroundImage: `linear-gradient(to bottom right, ${mode.color})` } : undefined}
-                >
-                  <div className={`text-2xl mb-1 ${isSelected ? 'text-white' : 'text-on-surface'}`}>{mode.emoji}</div>
-                  <div className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
-                  {isSelected && (
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
-                      <Check size={10} className="text-white" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Mastery */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Mastery</span>
-          </div>
-          <div>
-            {GAME_MODE_LEVELS.mastery.map((mode) => {
-              const isSelected = assignmentModes.includes(mode.id);
-              return (
-                <button
-                  key={mode.id}
-                  onClick={() => toggleGameMode(mode.id)}
-                  className={`w-full relative p-4 rounded-xl border-2 transition-all text-center ${
-                    isSelected
-                      ? 'border-transparent bg-gradient-to-br shadow-lg'
-                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40'
-                  }`}
-                  style={isSelected ? { backgroundImage: `linear-gradient(to bottom right, ${mode.color})` } : undefined}
-                >
-                  <div className={`text-2xl mb-1 ${isSelected ? 'text-white' : 'text-on-surface'}`}>{mode.emoji}</div>
-                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
-                  {isSelected && (
-                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/30 flex items-center justify-center">
-                      <Check size={12} className="text-white" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* Schedule (Optional) */}
@@ -1393,11 +1523,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         <div>
           <label className="block text-xs text-on-surface-variant mb-1">Deadline</label>
           <input
+            ref={dateInputRef}
             type="date"
             value={assignmentDeadline}
             onChange={(e) => setAssignmentDeadline(e.target.value)}
+            onClick={() => dateInputRef.current?.showPicker?.()}
             min={new Date().toISOString().split('T')[0]}
-            className="w-full p-3 rounded-xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface transition-all"
+            className="w-full p-3 rounded-xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface transition-all cursor-pointer"
           />
         </div>
       </div>
@@ -1538,7 +1670,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       {/* Navigation */}
       <div className="flex gap-3">
         <button
-          onClick={() => setStep(2)}
+          onClick={onBack}
           className="flex-1 py-4 bg-surface-container text-on-surface rounded-2xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
         >
           ← Back

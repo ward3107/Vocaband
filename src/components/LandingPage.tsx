@@ -31,7 +31,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <main>
         {/* Hero Section */}
-        <section className="pt-32 md:pt-40 pb-20 px-6 signature-gradient text-on-primary relative overflow-hidden">
+        <section className="pt-32 md:pt-40 pb-20 px-6 signature-gradient text-on-primary relative overflow-hidden min-h-[calc(100vh-4rem)] md:min-h-auto">
           {/* Background Decorations */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary-container/20 rounded-full blur-3xl -mr-48 -mt-48" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-container/10 rounded-full blur-3xl -ml-32 - mb-32" />

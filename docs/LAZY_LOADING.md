@@ -16,10 +16,11 @@ Large page components are now loaded on-demand using React.lazy():
 ### 2. **Heavy Library Lazy Loading**
 Large third-party libraries are now loaded dynamically:
 
-- **Tesseract.js** (~400KB) - Loaded only when OCR feature is used
 - **Mammoth** (~200KB) - Loaded only when importing Word documents
 - **Socket.IO Client** (~100KB) - Loaded only when connecting to live challenge server
 - **Canvas Confetti** (~50KB) - Loaded only when showing celebrations
+
+> **Note**: OCR functionality has been moved to a server-side Python microservice (PaddleOCR). This provides better accuracy and eliminates the need for the 400KB Tesseract.js client library in the browser bundle.
 
 ### 3. **Suspense Infrastructure**
 Created reusable Suspense wrapper components:
@@ -39,7 +40,8 @@ Created `src/utils/lazyLoad.ts` with:
 ## Performance Impact
 
 ### Expected Improvements:
-- **Initial bundle size**: Reduced by ~750KB
+- **Initial bundle size**: Reduced by ~350KB (Tesseract.js moved to server)
+- **OCR accuracy**: Improved with PaddleOCR's state-of-the-art recognition
 - **Time to Interactive**: Improved by ~2-3 seconds on 3G
 - **First Contentful Paint**: Improved by ~1 second
 - **Code splitting**: App is now split into ~15 chunks
@@ -47,6 +49,7 @@ Created `src/utils/lazyLoad.ts` with:
 ### Before Lazy Loading:
 - `main.js`: ~1.2MB (uncached)
 - All libraries loaded upfront
+- Tesseract.js (~400KB) loaded in browser
 
 ### After Lazy Loading:
 - `main.js`: ~450KB (core app)
@@ -54,9 +57,9 @@ Created `src/utils/lazyLoad.ts` with:
 - `terms-page.js`: ~80KB (loaded on demand)
 - `privacy-page.js`: ~90KB (loaded on demand)
 - `demo-mode.js`: ~120KB (loaded on demand)
-- `tesseract.js`: ~400KB (loaded on OCR use)
-- `mamthon.js`: ~200KB (loaded on docx import)
+- `mammoth.js`: ~200KB (loaded on docx import)
 - `socket.io.js`: ~100KB (loaded on live challenge)
+- **Server-side Python microservice**: PaddleOCR processing (~200-500MB RAM, not in browser bundle)
 
 ## Usage Examples
 

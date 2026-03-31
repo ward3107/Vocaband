@@ -3,14 +3,6 @@
  * These libraries will only be loaded when needed, reducing initial bundle size
  */
 
-// Lazy load Tesseract.js for OCR
-let tesseractCache: any = null;
-export const loadTesseract = async () => {
-  if (tesseractCache) return tesseractCache;
-  tesseractCache = await import('tesseract.js');
-  return tesseractCache;
-};
-
 // Lazy load Mammoth for document parsing
 let mammothCache: any = null;
 export const loadMammoth = async () => {
@@ -36,20 +28,6 @@ export const loadConfetti = async () => {
 };
 
 // Hook-based lazy loaders for React components
-export const useLazyTesseract = () => {
-  const [Tesseract, setTesseract] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    loadTesseract().then(module => {
-      setTesseract(module.default || module);
-      setLoading(false);
-    });
-  }, []);
-
-  return { Tesseract, loading };
-};
-
 export const useLazyMammoth = () => {
   const [mammoth, setMammoth] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
