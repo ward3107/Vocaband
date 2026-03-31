@@ -1334,6 +1334,11 @@ export default function App() {
     setOcrProgress(10); // Initial progress
 
     try {
+      // Get auth token for teacher authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { showToast("Please sign in again.", "error"); return; }
+
       // Create FormData with the image file
       const formData = new FormData();
       formData.append('file', file);
