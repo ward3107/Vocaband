@@ -20,7 +20,7 @@ Large third-party libraries are now loaded dynamically:
 - **Socket.IO Client** (~100KB) - Loaded only when connecting to live challenge server
 - **Canvas Confetti** (~50KB) - Loaded only when showing celebrations
 
-> **Note**: OCR functionality has been moved to a server-side Python microservice (PaddleOCR). This provides better accuracy and eliminates the need for the 400KB Tesseract.js client library in the browser bundle.
+> **Note**: OCR runs server-side using Tesseract.js in the Node.js process. No separate service or client-side library needed.
 
 ### 3. **Suspense Infrastructure**
 Created reusable Suspense wrapper components:
@@ -40,8 +40,8 @@ Created `src/utils/lazyLoad.ts` with:
 ## Performance Impact
 
 ### Expected Improvements:
-- **Initial bundle size**: Reduced by ~350KB (Tesseract.js moved to server)
-- **OCR accuracy**: Improved with PaddleOCR's state-of-the-art recognition
+- **Initial bundle size**: Reduced by ~350KB (OCR runs server-side)
+- **OCR accuracy**: Tesseract.js handles printed English text well
 - **Time to Interactive**: Improved by ~2-3 seconds on 3G
 - **First Contentful Paint**: Improved by ~1 second
 - **Code splitting**: App is now split into ~15 chunks
@@ -59,7 +59,7 @@ Created `src/utils/lazyLoad.ts` with:
 - `demo-mode.js`: ~120KB (loaded on demand)
 - `mammoth.js`: ~200KB (loaded on docx import)
 - `socket.io.js`: ~100KB (loaded on live challenge)
-- **Server-side Python microservice**: PaddleOCR processing (~200-500MB RAM, not in browser bundle)
+- **Server-side Tesseract.js**: OCR processing runs in Node.js process (no separate service)
 
 ## Usage Examples
 

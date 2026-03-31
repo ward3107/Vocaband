@@ -1322,14 +1322,8 @@ export default function App() {
 
   /**
    * handleOcrUpload
-   * This function takes an image file (e.g., a photo of a book page),
-   * sends it to the server-side Python OCR microservice (PaddleOCR) to "read" the text,
-   * and then matches that text against our vocabulary bank.
-   *
-   * Analogy: It's like giving the computer a pair of glasses and asking it
-   * to circle all the words it recognizes from our dictionary!
-   *
-   * Server-side OCR provides better accuracy, English-only filtering, and preprocessing.
+   * Takes an image file (e.g., a photo of a word list), sends it to the
+   * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
    */
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -89,13 +89,13 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     notes: "Only triggered by explicit teacher action; no personal data sent",
   },
   {
-    name: "PaddleOCR (Python microservice)",
+    name: "Tesseract.js (server-side OCR)",
     purpose: "OCR — extract English text from images for vocabulary matching",
-    dataCategories: ["uploaded image (sent to server-side OCR microservice via HTTPS)"],
+    dataCategories: ["uploaded image (processed in-memory on server via HTTPS)"],
     processorOnly: false,
     hostingRegion: "server-side (same region as main app)",
-    endpoint: "/api/ocr (Express proxy to Python service)",
-    notes: "Image sent with JWT authentication; processed by PaddleOCR with preprocessing (grayscale, resize, thresholding, denoising); only English words (a-z) returned; image not stored after processing",
+    endpoint: "/api/ocr",
+    notes: "Image sent with JWT authentication; processed by Tesseract.js in-process; only English words returned; image not stored after processing",
   },
   {
     name: "Google Favicon",

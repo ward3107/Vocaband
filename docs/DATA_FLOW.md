@@ -43,12 +43,12 @@ This document describes what personal data is sent, to which service, stored whe
 
 | Step | Data Sent | Destination | Stored Where | Retention |
 |------|-----------|-------------|--------------|-----------|
-| Upload image | Image file (multipart/form-data) | Node.js server → Python OCR microservice | Not stored anywhere | N/A |
-| OCR processing | Image file | PaddleOCR (Python microservice) | Not stored | N/A |
-| English filtering | Raw OCR text | Python regex (`^[a-z]+$`) | Not stored | N/A |
+| Upload image | Image file (multipart/form-data) | Node.js server (Tesseract.js) | Not stored anywhere | N/A |
+| OCR processing | Image buffer | Tesseract.js (in-process) | Not stored | N/A |
+| English filtering | Raw OCR text | Server-side regex (`^[a-zA-Z]{2,}$`) | Not stored | N/A |
 | Matched words | Filtered English words | Client-side state (matched against vocabulary bank) | Not stored | N/A |
 
-**Note:** OCR runs server-side using PaddleOCR for better accuracy. Only English words (a-z) are extracted. Image is sent via HTTPS with JWT authentication (teacher-only).
+**Note:** OCR runs server-side using Tesseract.js (no external service). Only English words are extracted. Image is sent via HTTPS with JWT authentication (teacher-only).
 
 ## 6. Google Sheets Import (Teacher)
 

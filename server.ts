@@ -6,6 +6,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types.js";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils.js";
@@ -132,6 +133,26 @@ async function startServer() {
 
   // Parse JSON request bodies (required for /api/translate endpoint)
   app.use(express.json());
+
+  // Multer for OCR image uploads (in-memory, no temp files)
+  const ocrUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+      cb(null, allowed.includes(file.mimetype));
+    },
+  });
+
+  // OCR-specific rate limiter (per-teacher, not per-IP)
+  const ocrRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many OCR requests. Please wait a minute before trying again." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || req.ip || "unknown",
+  });
 
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).
   // This way 100+ students behind the same school WiFi aren't blocked.
@@ -447,9 +468,9 @@ async function startServer() {
     }
   });
 
-  // OCR endpoint — server-side proxy to Python PaddleOCR microservice
+  // OCR endpoint — uses Tesseract.js to extract English words from uploaded images
   // Only authenticated teachers can access this
-  app.post("/api/ocr", async (req, res) => {
+  app.post("/api/ocr", ocrRateLimiter, ocrUpload.single("file"), async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Authentication required" });
@@ -467,79 +488,42 @@ async function startServer() {
       return res.status(403).json({ error: "Only teachers can use OCR" });
     }
 
-    // Check if OCR service is configured
-    const ocrServiceUrl = process.env.OCR_SERVICE_URL;
-    if (!ocrServiceUrl) {
-      return res.status(503).json({
-        error: "OCR service not configured",
-        message: "Please add OCR_SERVICE_URL to your .env file pointing to the Python PaddleOCR service."
-      });
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file uploaded, or invalid file type." });
     }
 
     try {
-      // Use formidable to parse multipart/form-data
-      const FormData = await import("formidable");
-      const form = FormData.default;
-      const formParse = form();
+      const Tesseract = await import("tesseract.js");
+      const { data } = await Tesseract.recognize(req.file.buffer, "eng");
+      const rawText = data.text || "";
 
-      // Parse the incoming form data
-      formParse.parse(req, async (err, fields, files) => {
-        if (err) {
-          console.error("Form parse error:", err);
-          return res.status(400).json({ error: "Invalid form data" });
-        }
+      // Extract English words, preserve original form, deduplicate
+      const allWords = rawText.split(/[\s\n\r.,;:!?'"()\[\]{}<>\/\\|@#$%^&*+=~`_\-0-9]+/);
+      const englishWordPattern = /^[a-zA-Z]{2,}$/;
+      const seen = new Set<string>();
+      const uniqueWords: string[] = [];
 
-        // Get the uploaded file
-        const file = files.file?.[0];
-        if (!file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
-
-        // Validate file type
-        const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-        if (!allowedTypes.includes(file.mimetype)) {
-          return res.status(400).json({ error: "Invalid file type. Please upload a JPEG or PNG image." });
-        }
-
-        // Validate file size (max 10MB)
-        const maxSize = 10 * 1024 * 1024;
-        if (file.size > maxSize) {
-          return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
-        }
-
-        try {
-          // Forward the request to the Python OCR service
-          const ocrResponse = await fetch(`${ocrServiceUrl}/ocr`, {
-            method: "POST",
-            headers: {
-              "Content-Type": file.mimetype,
-            },
-            body: file.buffer, // Send raw buffer
-          });
-
-          if (!ocrResponse.ok) {
-            const errorText = await ocrResponse.text();
-            console.error("OCR service error:", errorText);
-            return res.status(502).json({
-              error: "OCR service error",
-              message: "The OCR service is unavailable. Please try again."
-            });
+      for (const word of allWords) {
+        if (englishWordPattern.test(word)) {
+          const lower = word.toLowerCase();
+          if (!seen.has(lower)) {
+            seen.add(lower);
+            uniqueWords.push(lower);
           }
-
-          const ocrData = await ocrResponse.json();
-          res.json(ocrData);
-
-        } catch (fetchError) {
-          console.error("OCR fetch error:", fetchError);
-          res.status(502).json({
-            error: "Failed to connect to OCR service",
-            message: "Make sure the Python OCR service is running on the configured URL."
-          });
         }
+      }
+
+      res.json({
+        words: uniqueWords,
+        raw_text: rawText,
+        success: true,
       });
-    } catch (importError) {
-      console.error("Module import error:", importError);
-      res.status(500).json({ error: "Server configuration error" });
+    } catch (error) {
+      console.error("OCR error:", error);
+      res.status(500).json({
+        error: "OCR processing failed",
+        message: "An unexpected error occurred during text recognition.",
+      });
     }
   });
 
