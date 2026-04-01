@@ -106,7 +106,7 @@ async function startServer() {
           styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],  // unsafe-inline needed for motion library animation styles; fonts.googleapis.com for Google Fonts CSS
           fontSrc: ["'self'", "fonts.gstatic.com"],  // gstatic.com serves the actual font files
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", allowedOrigin],
+          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", allowedOrigin],
           frameSrc: ["https://accounts.google.com"],
           workerSrc: ["'self'", "blob:"],
         },
@@ -485,6 +485,7 @@ async function startServer() {
     // Verify user is a teacher
     const userData = await getUserRoleAndClass(uid);
     if (!userData || userData.role !== "teacher") {
+      console.warn(`[OCR] Access denied for uid=${uid}, role=${userData?.role ?? "not found"}`);
       return res.status(403).json({ error: "Only teachers can use OCR" });
     }
 
