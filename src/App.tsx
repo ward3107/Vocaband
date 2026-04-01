@@ -409,8 +409,9 @@ export default function App() {
 
         if (error || !data) {
           console.error('Failed to load Quick Play session:', error);
-          showToast("Invalid or expired Quick Play session", "error");
+          showToast("Invalid or expired Quick Play session. Please scan the QR code again.", "error");
           window.history.replaceState({}, '', window.location.pathname);
+          setView("public-landing");
           return;
         }
 
@@ -432,9 +433,7 @@ export default function App() {
               arabic: w.arabic,
               sentence: w.sentence || "",
               example: w.example || "",
-              band: "I" as Band,
-              level: 1,
-              frequency: 0
+              level: "Custom" as const
             }));
           } catch (e) {
             console.error('Failed to parse custom words:', e);
@@ -939,7 +938,8 @@ export default function App() {
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
-        setView("public-landing");
+        // Don't redirect Quick Play students — they don't need auth
+        if (!quickPlaySessionParam) setView("public-landing");
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
