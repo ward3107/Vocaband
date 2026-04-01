@@ -58,6 +58,9 @@ import ClassCard from "./components/ClassCard";
 import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
+import OAuthButton from "./components/OAuthButton";
+import OAuthCallback from "./components/OAuthCallback";
+import OAuthClassCode from "./components/OAuthClassCode";
 import { SuspenseWrapper } from "./components/SuspenseWrapper";
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
@@ -206,7 +209,7 @@ export default function App() {
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
-  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string }>>([]);
+  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
   const [showNewStudentForm, setShowNewStudentForm] = useState(false);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
@@ -227,7 +230,13 @@ export default function App() {
   const [consentChecked, setConsentChecked] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
-  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);      
+
+  // --- OAUTH STATE ---
+  const [isOAuthCallback, setIsOAuthCallback] = useState(false);
+  const [oauthEmail, setOauthEmail] = useState<string | null>(null);
+  const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
+  const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
 
   const AVATAR_CATEGORIES = {
     Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜", "🐶", "🐱", "🦈", "🐬", "🦅", "🐝", "🦉"],
@@ -607,12 +616,12 @@ export default function App() {
     return {
       uid: `${prefix}-${generateUUID()}`,
       displayName: name.trim().slice(0, 30),
-      email: null,
+      email: undefined,
       role: "guest",
       isGuest: true,
       avatar: "🦊",
       xp: 0,
-      classCode: null,
+      classCode: undefined,
       createdAt: new Date().toISOString()
     };
   };
@@ -653,7 +662,7 @@ export default function App() {
     }
   };
 
-  const handleAutoTranslate = async (term: string) => {
+  const handleAutoTranslate = async (term: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
     const newTranslating = new Set(quickPlayTranslating);
     newTranslating.add(term);
     setQuickPlayTranslating(newTranslating);
@@ -737,7 +746,7 @@ export default function App() {
   const isLiveChallengeRef = useRef(isLiveChallenge);
 
   // Timeout ref for cleanup (prevents memory leaks on unmount)
-  const feedbackTimeoutRef = useRef<NodeJS.Timeout>();
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
@@ -801,7 +810,7 @@ export default function App() {
   // always fail with "Authentication required" on the first attempt, causing
   // the console error the teacher sees before the retry succeeds.
   useEffect(() => {
-    let s: ReturnType<typeof io> | null = null;
+    let s: ReturnType<typeof io> | undefined = undefined;
     let cancelled = false;
 
     const getToken = async () => {
@@ -846,7 +855,7 @@ export default function App() {
         console.log("[Socket] ✓ Connected successfully");
         setSocketConnected(true);
       });
-      s.on("disconnect", (reason) => {
+      s.on("disconnect", (reason: any) => {
         console.log("[Socket] Disconnected:", reason);
         setSocketConnected(false);
       });
@@ -863,18 +872,21 @@ export default function App() {
           }
         }
       });
-      s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
-      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data) => {
-        setLeaderboard(data);
+      s.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
+      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
+        if (typeof data === "object" && data !== null && "name" in data && "baseScore" in data && "currentGameScore" in data) {
+          setLeaderboard(data as unknown as unknown as Record<string, LeaderboardEntry> | undefined);
+        } else {
+          setLeaderboard(undefined as unknown as Record<string, LeaderboardEntry>);
+        }
+      });
+      s.on(SOCKET_EVENTS.CHALLENGE_UPDATE, (data: unknown) => {
+        // Challenge updates are handled via the socket listener in the live challenge view
+        console.log("[Socket] Challenge updated:", data);
       });
     };
 
     connectSocket();
-
-    return () => {
-      cancelled = true;
-      s?.disconnect();
-    };
   }, []);
 
   // --- AUTH LOGIC ---
@@ -1850,7 +1862,8 @@ export default function App() {
           id: s.id,
           displayName: s.display_name,
           xp: s.xp || 0,
-          status: s.status
+          status: s.status,
+          avatar: s.avatar || '🦊'
         }));
 
         setExistingStudents(mappedStudents);
@@ -1862,7 +1875,8 @@ export default function App() {
         id: s.id,
         displayName: s.display_name,
         xp: s.xp || 0,
-        status: s.status
+        status: s.status,
+        avatar: s.avatar || '🦊'
       }));
 
       setExistingStudents(mappedStudents);
@@ -2097,7 +2111,8 @@ export default function App() {
       const { data: result, error: rpcError } = await supabase
         .rpc('get_or_create_student_profile', {
           p_class_code: trimmedCode,
-          p_display_name: trimmedName
+          p_display_name: trimmedName,
+          p_avatar: studentAvatar
         });
 
 
@@ -2125,6 +2140,7 @@ export default function App() {
         if (isNew) {
           setStudentLoginName("");
           setStudentLoginClassCode("");
+          setStudentAvatar("🦊");
           setExistingStudents([]);
           setShowNewStudentForm(false);
         }
@@ -2135,6 +2151,95 @@ export default function App() {
       console.error('Signup error:', error);
       setError("Could not create account. Please try again.");
     }
+  };
+
+  // --- OAUTH HANDLERS ---
+  const handleOAuthTeacherDetected = async (email: string) => {
+    try {
+      // Load teacher profile
+      const { data: teacherData, error } = await supabase
+        .from('teacher_profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error || !teacherData) {
+        setError('Teacher profile not found. Please contact admin.');
+        return;
+      }
+
+      // Set as teacher user
+      const teacherUser: AppUser = {
+        id: teacherData.id,
+        email: teacherData.email,
+        name: teacherData.display_name || email.split('@')[0],
+        role: 'teacher',
+        schoolName: teacherData.school_name,
+        createdAt: teacherData.created_at
+      };
+
+      setUser(teacherUser);
+      setView('teacherDashboard');
+      setLoading(false);
+      setIsOAuthCallback(false);
+    } catch (error) {
+      console.error('Teacher detection error:', error);
+      setError('Could not load teacher profile.');
+    }
+  };
+
+  const handleOAuthStudentDetected = async (email: string) => {
+    try {
+      // Load student profile
+      const { data: studentData, error } = await supabase
+        .from('student_profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error || !studentData) {
+        setError('Student profile not found. Please sign up again.');
+        return;
+      }
+
+      if (studentData.status !== 'active' && studentData.status !== 'approved') {
+        setError('Your account is pending approval. Please ask your teacher to approve it.');
+        return;
+      }
+
+      // Set as student user
+      const studentUser: AppUser = {
+        id: studentData.id,
+        email: studentData.email,
+        name: studentData.display_name || email.split('@')[0],
+        role: 'student',
+        classCode: studentData.class_code,
+        xp: studentData.xp || 0,
+        avatar: studentData.avatar,
+        createdAt: studentData.created_at
+      };
+
+      setUser(studentUser);
+      setView('studentDashboard');
+      setLoading(false);
+      setIsOAuthCallback(false);
+
+      // Load class data
+      if (studentData.class_code) {
+        await loadClassData(studentData.class_code);
+      }
+    } catch (error) {
+      console.error('Student detection error:', error);
+      setError('Could not load student profile.');
+    }
+  };
+
+  const handleOAuthNewUser = (email: string, authUid: string) => {
+    setOauthEmail(email);
+    setOauthAuthUid(authUid);
+    setShowOAuthClassCode(true);
+    setIsOAuthCallback(false);
+    setLoading(false);
   };
 
   // Teacher Approval System
@@ -3337,7 +3442,65 @@ export default function App() {
 
   if (view === "student-account-login") {
     return (
+      <>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-tertiary/10 to-secondary/10">
+        {/* OAuth Callback Handler */}
+        {isOAuthCallback && (
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-md"
+            >
+              <OAuthCallback
+                onTeacherDetected={handleOAuthTeacherDetected}
+                onStudentDetected={handleOAuthStudentDetected}
+                onNewUser={handleOAuthNewUser}
+              />
+            </motion.div>
+          </div>
+        )}
+
+        {/* OAuth Class Code Entry */}
+        {showOAuthClassCode && oauthEmail && oauthAuthUid && (
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-md"
+            >
+              <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      setShowOAuthClassCode(false);
+                      setOauthEmail(null);
+                      setOauthAuthUid(null);
+                    }}
+                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                  >
+                    <ArrowLeft size={16} />
+                    Back
+                  </button>
+                </div>
+                <OAuthClassCode
+                  email={oauthEmail}
+                  authUid={oauthAuthUid}
+                  onSuccess={() => {
+                    setShowOAuthClassCode(false);
+                    setOauthEmail(null);
+                    setOauthAuthUid(null);
+                  }}
+                  onError={setError}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Normal Student Login (only show if not in OAuth flow) */}
+        {!isOAuthCallback && !showOAuthClassCode && (
+          <>
         {/* Header */}
         <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-3 shadow-sm">
           <button
@@ -3463,14 +3626,16 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* New Student Button */}
-                  <button
-                    onClick={() => setShowNewStudentForm(true)}
-                    className="w-full bg-secondary-container text-on-secondary-container py-4 rounded-xl text-lg font-bold hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Plus size={20} />
-                    I'm a New Student
-                  </button>
+                  {/* OAuth Sign In Button */}
+                  <OAuthButton
+                    onSuccess={(email, isNewUser) => {
+                      // OAuth callback will handle routing
+                      setIsOAuthCallback(true);
+                    }}
+                    onError={(errorMessage) => {
+                      setError(errorMessage);
+                    }}
+                  />
                 </>
               ) : (
                 <>
@@ -3509,6 +3674,44 @@ export default function App() {
                         aria-describedby={error ? "new-student-error" : undefined}
                         className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
                       />
+                    </div>
+
+                    {/* Avatar Selection */}
+                    <div>
+                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                        Choose Your Avatar
+                      </label>
+                      <div className="mb-3 flex flex-wrap gap-1">
+                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map((category) => (
+                          <button
+                            key={category}
+                            onClick={() => setSelectedAvatarCategory(category)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              selectedAvatarCategory === category
+                                ? "bg-primary text-white"
+                                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
+                            }`}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-2 bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest">
+                        {AVATAR_CATEGORIES[selectedAvatarCategory].map((avatar) => (
+                          <button
+                            key={avatar}
+                            onClick={() => setStudentAvatar(avatar)}
+                            className={`text-3xl p-2 rounded-lg transition-all hover:scale-110 ${
+                              studentAvatar === avatar
+                                ? "bg-primary/20 ring-2 ring-primary"
+                                : "hover:bg-surface-container"
+                            }`}
+                            aria-label={`Choose ${avatar} avatar`}
+                          >
+                            {avatar}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {error && (
@@ -3571,10 +3774,13 @@ export default function App() {
             )}
           </motion.div>
         </div>
+      </>
+        )}  {/* Closes conditional from line 3499 */}
         {cookieBannerOverlay}
-      </div>
-    );
-  }
+      </div>  {/* Closes main div from line 3443 */}
+      </>
+      );  {/* Closes return */}
+    }  {/* Closes if */}
 
   if (view === "quick-play-student") {
     return (
@@ -8070,7 +8276,8 @@ export default function App() {
               )
               )}
             </motion.div>
-          )}
+          )
+        }
         </AnimatePresence>
       </div>
 
@@ -8147,6 +8354,6 @@ export default function App() {
       </div>
     )}
     <FloatingButtons showBackToTop={true} />
-  </div>
+    </div>
 );
-}
+};

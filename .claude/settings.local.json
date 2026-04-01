@@ -171,7 +171,12 @@
       "Bash(powershell -Command \"Get-Process | Where-Object { $_ProcessName -like ''*node*'' } | ForEach-Object { Stop-Process -Id $_Id -Force }\")",
       "mcp__plugin_firebase_firebase__developerknowledge_search_documents",
       "mcp__claude_ai_Supabase__list_tables",
-      "mcp__claude_ai_Supabase__list_projects"
+      "mcp__claude_ai_Supabase__list_projects",
+      "Bash(awk 'NR >= 7943 && NR <= 7950 {:*)",
+      "Bash(awk 'NR >= 7943 && NR <= 8356 {:*)",
+      "Bash(awk 'NR<=100 {count1 += gsub\\(/{/, \"\"{\"\", x\\); count2 += gsub\\(/}/, \"\"}\"\", x\\)} END {print \"\"First 100 lines: {\"\", count1, \"\"} :\"\", count2}' src/App.tsx)",
+      "Bash(awk 'NR>100 && NR<=200 {count1 += gsub\\(/{/, \"\"{\"\", x\\); count2 += gsub\\(/}/, \"\"}\"\", x\\)} END {print \"\"Lines 101-200: {\"\", count1, \"\"} :\"\", count2}' src/App.tsx)",
+      "Bash(awk 'NR>200 && NR<=300 {count1 += gsub\\(/{/, \"\"{\"\", x\\); count2 += gsub\\(/}/, \"\"}\"\", x\\)} END {print \"\"Lines 201-300: {\"\", count1, \"\"} :\"\", count2}' src/App.tsx)"
     ]
   }
 }
