@@ -8,6 +8,7 @@ import {
   Languages, Loader2
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
+import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../data/sentence-bank';
 import { supabase } from '../core/supabase';
 
 interface CreateAssignmentWizardProps {
@@ -42,6 +43,10 @@ interface CreateAssignmentWizardProps {
   handleDocxUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleOcrUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveAssignment: () => void;
+  assignmentSentences: string[];
+  setAssignmentSentences: (sentences: string[]) => void;
+  sentenceDifficulty: SentenceDifficulty;
+  setSentenceDifficulty: (level: SentenceDifficulty) => void;
   isOcrProcessing?: boolean;
   ocrProgress?: number;
   showTopicPacks: boolean;
@@ -208,6 +213,10 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   handleDocxUpload,
   handleOcrUpload,
   handleSaveAssignment,
+  assignmentSentences,
+  setAssignmentSentences,
+  sentenceDifficulty,
+  setSentenceDifficulty,
   isOcrProcessing = false,
   ocrProgress = 0,
   showTopicPacks,
@@ -1521,6 +1530,74 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             </div>
           </div>
       </div>
+
+      {/* Sentence Difficulty Level — only shown when Sentence Builder is selected */}
+      {assignmentModes.includes('sentence-builder') && (
+        <div className="space-y-3">
+          <label className="block text-sm font-bold text-on-surface">
+            Sentence Difficulty Level
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {([1, 2, 3, 4] as SentenceDifficulty[]).map((level) => {
+              const config = DIFFICULTY_CONFIG[level];
+              const isSelected = sentenceDifficulty === level;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setSentenceDifficulty(level)}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    isSelected
+                      ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                      : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50'
+                  }`}
+                >
+                  <div className="text-lg mb-1">{config.emoji}</div>
+                  <div className={`text-sm font-bold ${isSelected ? 'text-primary' : 'text-on-surface'}`}>{config.label}</div>
+                  <div className="text-xs text-on-surface-variant">{config.description}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sentence Preview & Editor */}
+          {assignmentSentences.length > 0 && (
+            <div className="mt-3">
+              <label className="block text-xs font-bold text-on-surface-variant mb-2">
+                Generated Sentences ({assignmentSentences.length}) — click to edit
+              </label>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {assignmentSentences.map((sentence, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-xs text-on-surface-variant font-mono w-5 shrink-0">{idx + 1}</span>
+                    <input
+                      type="text"
+                      value={sentence}
+                      onChange={(e) => {
+                        const updated = [...assignmentSentences];
+                        updated[idx] = e.target.value;
+                        setAssignmentSentences(updated);
+                      }}
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = assignmentSentences.filter((_, i) => i !== idx);
+                        setAssignmentSentences(updated);
+                      }}
+                      className="text-on-surface-variant hover:text-error transition-colors shrink-0"
+                      title="Remove sentence"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Schedule (Optional) */}
       <div className="space-y-3">
