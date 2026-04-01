@@ -35,7 +35,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
         {onTryDemo ? (
           <button
             onClick={onTryDemo}
-            className="bg-surface-container-lowest/20 border-2 border-surface-container-lowest/40 backdrop-blur-sm text-primary text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-md flex items-center gap-1"
+            className="bg-primary text-white text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/40 hover:shadow-primary/60 flex items-center gap-1 border-2 border-primary/30"
           >
             <Gamepad2 size={14} />
             <span className="hidden sm:inline">Try Demo</span>

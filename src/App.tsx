@@ -152,19 +152,33 @@ export default function App() {
   // Cookie consent state
   const [showCookieBanner, setShowCookieBanner] = useState(() => {
     try {
-      return !localStorage.getItem("vocaband_cookie_consent");
-    } catch {
+      const hasConsented = localStorage.getItem("vocaband_cookie_consent");
+      console.log('[Cookie Banner] Initial check - hasConsented:', !!hasConsented, 'value:', hasConsented);
+      return !hasConsented;
+    } catch (e) {
+      console.log('[Cookie Banner] localStorage error:', e);
       return true;
     }
   });
 
-  const handleCookieAccept = (preferences?: CookiePreferences) => {
+  const handleCookieAccept = (eventOrPreferences?: CookiePreferences | React.MouseEvent) => {
+    // Ignore React events - they were accidentally passed before the fix
+    const preferences = eventOrPreferences && typeof eventOrPreferences === 'object' && 'nativeEvent' in eventOrPreferences
+      ? undefined
+      : eventOrPreferences as CookiePreferences | undefined;
+
     try {
       const consentData = preferences
         ? JSON.stringify(preferences)
         : JSON.stringify({ essential: true, analytics: true, functional: true });
       localStorage.setItem("vocaband_cookie_consent", consentData);
-    } catch {}
+      console.log('[Cookie Banner] Consent saved:', consentData);
+      // Verify it was saved
+      const verify = localStorage.getItem("vocaband_cookie_consent");
+      console.log('[Cookie Banner] Verification read:', verify);
+    } catch (e) {
+      console.error('[Cookie Banner] Failed to save consent:', e);
+    }
     setShowCookieBanner(false);
   };
 
@@ -2064,14 +2078,21 @@ export default function App() {
     const trimmedName = studentLoginName.trim().slice(0, 30);
     const trimmedCode = studentLoginClassCode.trim().toUpperCase();
 
-
     if (!trimmedName || !trimmedCode) {
       setError("Please enter both class code and your name.");
       return;
     }
 
     try {
-      // Use the RPC function which has SECURITY DEFINER to bypass RLS
+      // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
+      const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
+      if (signInError || !signInData.session) {
+        setError("Could not create account. Please try again.");
+        console.error('Sign-in error:', signInError);
+        return;
+      }
+
+      // Step 2: Use the RPC function which has SECURITY DEFINER to bypass RLS
       const { data: result, error: rpcError } = await supabase
         .rpc('get_or_create_student_profile', {
           p_class_code: trimmedCode,
@@ -3199,9 +3220,15 @@ export default function App() {
   }, [allScores, analyticsClassFilter]);
 
   // Global cookie banner — renders on top of ANY view until accepted
+  // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
   const cookieBannerOverlay = showCookieBanner && !user ? (
     <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
   ) : null;
+
+  // Debug: log banner state on every render
+  if (showCookieBanner && !user) {
+    console.log('[Cookie Banner] Rendering banner - showCookieBanner:', showCookieBanner, 'user:', !!user);
+  }
 
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
