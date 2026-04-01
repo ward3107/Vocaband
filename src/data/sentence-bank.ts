@@ -1,66 +1,74 @@
 // sentence-bank.ts
-// Pre-written sentence bank + POS-based templates for Sentence Builder mode.
+// Pre-written sentence bank + difficulty-leveled POS templates for Sentence Builder mode.
 // Every word gets at least one sentence. Hand-written sentences take priority,
-// then POS templates fill in the rest. Can be replaced with AI generation later.
+// then level-appropriate POS templates fill in the rest.
 
 import { Word } from "./vocabulary";
 
 // ============================================================================
-// POS-BASED SENTENCE TEMPLATES
+// DIFFICULTY LEVELS
 // ============================================================================
-// {word} is replaced with the english word. Keep sentences 5-10 words.
 
-const NOUN_TEMPLATES = [
-  "I can see the {word} from here",
-  "The {word} is very important",
-  "She told me about the {word}",
-];
+export type SentenceDifficulty = 1 | 2 | 3 | 4;
 
-const VERB_TEMPLATES = [
-  "I like to {word} every day",
-  "She will {word} tomorrow morning",
-  "They {word} together after school",
-];
+export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
+  label: string;
+  description: string;
+  minWords: number;
+  maxWords: number;
+  emoji: string;
+}> = {
+  1: { label: 'Beginner', description: '3-5 words, simple present', minWords: 3, maxWords: 5, emoji: '🌱' },
+  2: { label: 'Elementary', description: '5-7 words, basic tenses', minWords: 5, maxWords: 7, emoji: '🌿' },
+  3: { label: 'Intermediate', description: '7-10 words, varied grammar', minWords: 7, maxWords: 10, emoji: '🌳' },
+  4: { label: 'Advanced', description: '10-15 words, complex structures', minWords: 10, maxWords: 15, emoji: '🏔️' },
+};
 
-const ADJ_TEMPLATES = [
-  "That is a very {word} idea",
-  "She felt {word} about the news",
-  "The house looks very {word} today",
-];
+// ============================================================================
+// POS-BASED SENTENCE TEMPLATES BY DIFFICULTY LEVEL
+// ============================================================================
 
-const ADV_TEMPLATES = [
-  "She walked {word} to the door",
-  "He {word} finished his homework",
-  "They spoke {word} during the meeting",
-];
-
-const PREP_TEMPLATES = [
-  "The book is {word} the table",
-  "We walked {word} the park",
-  "He stood {word} the door",
-];
-
-const CONJ_TEMPLATES = [
-  "I want to go {word} I am tired",
-  "She smiled {word} she was happy",
-];
-
-const DEFAULT_TEMPLATES = [
-  "I learned the word {word} today",
-  "Can you use {word} in a sentence",
-  "The teacher said {word} in class",
-];
-
-const TEMPLATES: Record<string, string[]> = {
-  n: NOUN_TEMPLATES,
-  v: VERB_TEMPLATES,
-  adj: ADJ_TEMPLATES,
-  adv: ADV_TEMPLATES,
-  prep: PREP_TEMPLATES,
-  conj: CONJ_TEMPLATES,
-  exclam: DEFAULT_TEMPLATES,
-  pron: DEFAULT_TEMPLATES,
-  default: DEFAULT_TEMPLATES,
+const LEVEL_TEMPLATES: Record<SentenceDifficulty, Record<string, string[]>> = {
+  // Level 1: Beginner — 3-5 words, simple present, SVO
+  1: {
+    n: ["I see the {word}", "The {word} is nice", "I like the {word}"],
+    v: ["I {word} every day", "She can {word} well", "We {word} a lot"],
+    adj: ["It is very {word}", "She is {word}", "That looks {word}"],
+    adv: ["She walks {word}", "He spoke {word}", "Run {word} now"],
+    prep: ["It is {word} here", "Stand {word} the door", "Go {word} there"],
+    conj: ["Go {word} come back", "Stay {word} he leaves"],
+    default: ["I know {word}", "She said {word}", "We use {word}"],
+  },
+  // Level 2: Elementary — 5-7 words, present/past, simple connectors
+  2: {
+    n: ["I can see the {word} from here", "The {word} is very important", "She told me about the {word}"],
+    v: ["I like to {word} every day", "She will {word} tomorrow morning", "They {word} together after school"],
+    adj: ["That is a very {word} idea", "She felt {word} about the news", "The house looks very {word} today"],
+    adv: ["She walked {word} to the door", "He {word} finished his homework", "They spoke {word} during the meeting"],
+    prep: ["The book is {word} the table", "We walked {word} the park", "He stood {word} the door"],
+    conj: ["I want to go {word} I am tired", "She smiled {word} she was happy"],
+    default: ["I learned the word {word} today", "Can you use {word} in a sentence", "The teacher said {word} in class"],
+  },
+  // Level 3: Intermediate — 7-10 words, varied tenses, relative clauses
+  3: {
+    n: ["The {word} that she found was very interesting", "We need a good {word} because it is important", "He talked about the {word} during the lesson"],
+    v: ["She decided to {word} when she got the chance", "They always {word} before the lesson starts in class", "He was trying to {word} but it was not easy"],
+    adj: ["The story was so {word} that everyone listened carefully", "He felt very {word} because the test went well", "She said the weather was quite {word} this morning"],
+    adv: ["She {word} finished her work before the bell rang", "He spoke {word} so that everyone could hear him", "They walked {word} through the park after lunch"],
+    prep: ["The cat jumped {word} the fence and ran away", "She put the book {word} the shelf in her room", "We sat {word} the tree and talked for hours"],
+    conj: ["She was happy {word} she got a good grade today", "He stayed home {word} he was not feeling well"],
+    default: ["The teacher explained the word {word} to the whole class", "She had to use {word} in her homework assignment", "They learned about {word} during the English lesson today"],
+  },
+  // Level 4: Advanced — 10-15 words, complex grammar, conditionals, passive
+  4: {
+    n: ["Although the {word} seemed unusual at first she quickly got used to it", "The teacher explained that a good {word} can make a big difference in life", "Many students were surprised to learn that the {word} had such a long history"],
+    v: ["If you {word} consistently every day you will see great improvement over time", "She was encouraged to {word} more often by her teacher and classmates", "He realized that he needed to {word} harder if he wanted to succeed"],
+    adj: ["Even though the situation appeared quite {word} at first they managed to find a solution", "It is widely believed that being {word} can open many doors in life", "The teacher told them that being {word} was one of the most important qualities"],
+    adv: ["She {word} completed the entire project before anyone else in the class had even started", "He spoke so {word} that the whole audience was completely impressed by his words", "They moved {word} through the crowded market looking for the best deals"],
+    prep: ["The students gathered {word} the large table to discuss their group project together", "She carefully placed all her books {word} the shelf before leaving the room", "He stood {word} the window and watched the rain falling on the garden outside"],
+    conj: ["She studied very hard for the exam {word} she wanted to get the highest grade possible", "He decided to stay at home {word} the weather outside was too cold and rainy"],
+    default: ["The teacher asked the students to explain the meaning of {word} in their own words", "She discovered that understanding {word} was essential for passing the final exam", "After studying for weeks they finally understood how to use {word} correctly in sentences"],
+  },
 };
 
 // ============================================================================
@@ -195,38 +203,60 @@ const SENTENCE_BANK: Map<number, string[]> = new Map([
 // ============================================================================
 
 /**
- * Get sentences for a given word.
- * Priority: hand-written bank > inline word.sentences > POS templates.
+ * Get sentences for a given word at a specific difficulty level.
+ * Priority: hand-written bank (filtered by word count) > inline word.sentences > level templates.
  */
-export function getSentencesForWord(word: Word): string[] {
-  // 1. Check hand-written bank
+export function getSentencesForWord(word: Word, difficulty: SentenceDifficulty = 2): string[] {
+  const config = DIFFICULTY_CONFIG[difficulty];
+
+  // 1. Check hand-written bank — filter by word count for the target level
   const handWritten = SENTENCE_BANK.get(word.id);
-  if (handWritten && handWritten.length > 0) return handWritten;
-
-  // 2. Check inline sentences on the Word object
-  if (word.sentences && word.sentences.length > 0) return word.sentences;
-
-  // 3. Multi-word phrases — use phrase-friendly fallback
-  const isPhrase = word.english.includes(" ");
-  if (isPhrase) {
-    return [
-      `She learned to say ${word.english} in English`,
-      `The teacher explained ${word.english} to the class`,
-    ];
+  if (handWritten && handWritten.length > 0) {
+    const fitting = handWritten.filter(s => {
+      const wc = s.split(/\s+/).length;
+      return wc >= config.minWords && wc <= config.maxWords;
+    });
+    if (fitting.length > 0) return fitting;
+    // If no hand-written sentence fits this level, still return them for levels 2-3
+    // (most hand-written sentences are 5-9 words)
+    if (difficulty === 2 || difficulty === 3) return handWritten;
   }
 
-  // 4. Fall back to POS templates
+  // 2. Check inline sentences on the Word object
+  if (word.sentences && word.sentences.length > 0) {
+    const fitting = word.sentences.filter(s => {
+      const wc = s.split(/\s+/).length;
+      return wc >= config.minWords && wc <= config.maxWords;
+    });
+    if (fitting.length > 0) return fitting;
+    if (difficulty === 2 || difficulty === 3) return word.sentences;
+  }
+
+  // 3. Multi-word phrases — use phrase-friendly fallback at appropriate length
+  const isPhrase = word.english.includes(" ");
+  if (isPhrase) {
+    const phraseTemplates: Record<SentenceDifficulty, string[]> = {
+      1: [`I say ${word.english}`, `She knows ${word.english}`],
+      2: [`She learned to say ${word.english} in English`, `The teacher explained ${word.english} to the class`],
+      3: [`The students practiced how to say ${word.english} correctly in class`, `She explained what ${word.english} means to her younger brother`],
+      4: [`Although ${word.english} is not easy to understand she managed to use it correctly in her essay`, `The teacher asked everyone to write a paragraph using ${word.english} in at least two different sentences`],
+    };
+    return phraseTemplates[difficulty];
+  }
+
+  // 4. Fall back to level-appropriate POS templates
   const primaryPos = (word.pos || "").split(",")[0].trim().toLowerCase();
-  const templates = TEMPLATES[primaryPos] || TEMPLATES["default"];
+  const levelTemplates = LEVEL_TEMPLATES[difficulty];
+  const templates = levelTemplates[primaryPos] || levelTemplates["default"];
   return templates.map(t => t.replace("{word}", word.english));
 }
 
 /**
- * Generate one random sentence per word for an assignment.
+ * Generate one random sentence per word for an assignment at a given difficulty.
  */
-export function generateSentencesForAssignment(words: Word[]): string[] {
+export function generateSentencesForAssignment(words: Word[], difficulty: SentenceDifficulty = 2): string[] {
   return words.map(word => {
-    const sentences = getSentencesForWord(word);
+    const sentences = getSentencesForWord(word, difficulty);
     return sentences[Math.floor(Math.random() * sentences.length)];
   });
 }

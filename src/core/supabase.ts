@@ -95,6 +95,7 @@ export interface AssignmentData {
   createdAt?: string;
   allowedModes?: string[];
   sentences?: string[];
+  sentenceDifficulty?: number;
 }
 
 export interface ProgressData {
@@ -168,6 +169,7 @@ export function mapAssignment(row: any): AssignmentData {
     deadline: row.deadline,
     allowedModes: row.allowed_modes,
     sentences: row.sentences ?? [],
+    sentenceDifficulty: row.sentence_difficulty ?? 2,
   };
 }
 
