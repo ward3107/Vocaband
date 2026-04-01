@@ -17,14 +17,14 @@ CREATE TABLE IF NOT EXISTS public.teacher_profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add comment
-COMMENT ON TABLE public.teacher_profiles IS
-  'Pre-approved teachers managed by admin via Supabase Dashboard. Only teachers in this table can access teacher dashboard.';
+-- Note: Table and policy comments removed to avoid potential conflicts
+
 
 -- Enable RLS
 ALTER TABLE public.teacher_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Only authenticated users can read (for OAuth check)
+DROP POLICY IF EXISTS "Teachers can be read by authenticated users" ON public.teacher_profiles;
 CREATE POLICY "Teachers can be read by authenticated users"
   ON public.teacher_profiles
   FOR SELECT
@@ -32,6 +32,7 @@ CREATE POLICY "Teachers can be read by authenticated users"
   USING (true);
 
 -- Policy: No one can insert via API (admin uses Supabase Dashboard directly)
+DROP POLICY IF EXISTS "Teachers cannot be inserted via API" ON public.teacher_profiles;
 CREATE POLICY "Teachers cannot be inserted via API"
   ON public.teacher_profiles
   FOR INSERT
@@ -39,6 +40,7 @@ CREATE POLICY "Teachers cannot be inserted via API"
   WITH CHECK (false);
 
 -- Policy: No one can update via API (admin uses Supabase Dashboard directly)
+DROP POLICY IF EXISTS "Teachers cannot be updated via API" ON public.teacher_profiles;
 CREATE POLICY "Teachers cannot be updated via API"
   ON public.teacher_profiles
   FOR UPDATE
@@ -46,6 +48,7 @@ CREATE POLICY "Teachers cannot be updated via API"
   USING (false);
 
 -- Policy: No one can delete via API (admin uses Supabase Dashboard directly)
+DROP POLICY IF EXISTS "Teachers cannot be deleted via API" ON public.teacher_profiles;
 CREATE POLICY "Teachers cannot be deleted via API"
   ON public.teacher_profiles
   FOR DELETE
@@ -104,10 +107,11 @@ DO LANGUAGE plpgsql
 $$
 BEGIN
   -- Drop is_teacher function (all overloads)
-  DROP FUNCTION IF EXISTS public.is_teacher() CASCADE;
+  DROP FUNCTION IF EXISTS public.is_teacher(TEXT) CASCADE;
 
   -- Drop get_or_create_student_profile_oauth function (all overloads)
-  DROP FUNCTION IF EXISTS public.get_or_create_student_profile_oauth() CASCADE;
+  DROP FUNCTION IF EXISTS public.get_or_create_student_profile_oauth(TEXT, TEXT, TEXT, UUID, TEXT) CASCADE;
+  DROP FUNCTION IF EXISTS public.get_or_create_student_profile_oauth(TEXT, TEXT, TEXT, UUID) CASCADE;
 
   -- Drop update_updated_at_column function (all overloads)
   DROP FUNCTION IF EXISTS public.update_updated_at_column() CASCADE;
@@ -128,8 +132,8 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.is_teacher IS
-  'Check if an email belongs to a pre-approved teacher.';
+-- Note: Function comments removed to avoid potential conflicts
+
 
 -- Function to get or create student profile via OAuth
 CREATE FUNCTION public.get_or_create_student_profile_oauth(
@@ -197,8 +201,8 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.get_or_create_student_profile_oauth IS
-  'Get or create student profile via OAuth authentication. Requires email, auth_uid from Google OAuth.';
+-- Note: Function comments removed to avoid potential conflicts
+
 
 -- ============================================
 -- 4. Create view for user type detection
@@ -220,8 +224,8 @@ SELECT
     ELSE 'new_user'
   END as role;
 
-COMMENT ON VIEW public.user_roles IS
-  'View to determine user role (teacher/student/new) based on email.';
+-- Note: View comment removed to avoid potential conflicts
+
 
 -- ============================================
 -- 5. Add updated_at trigger to teacher_profiles

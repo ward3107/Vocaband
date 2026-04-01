@@ -3,7 +3,7 @@
 -- ============================================
 
 -- Create table
-CREATE TABLE public.quick_play_joins (
+CREATE TABLE IF NOT EXISTS public.quick_play_joins (
   id bigserial PRIMARY KEY,
   session_code text NOT NULL,
   student_name text NOT NULL,
@@ -11,13 +11,15 @@ CREATE TABLE public.quick_play_joins (
 );
 
 -- Create index
-CREATE INDEX idx_quick_play_joins_session_code ON public.quick_play_joins(session_code);
+CREATE INDEX IF NOT EXISTS idx_quick_play_joins_session_code ON public.quick_play_joins(session_code);
 
 -- Enable RLS
 ALTER TABLE public.quick_play_joins ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+DROP POLICY IF EXISTS "Allow insert" ON public.quick_play_joins;
 CREATE POLICY "Allow insert" ON public.quick_play_joins FOR INSERT TO public WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow select" ON public.quick_play_joins;
 CREATE POLICY "Allow select" ON public.quick_play_joins FOR SELECT TO public USING (true);
 
 -- Realtime

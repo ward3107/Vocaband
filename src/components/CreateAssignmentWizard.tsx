@@ -10,6 +10,8 @@ import {
 import { Word } from '../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../constants/game';
 import { supabase } from '../core/supabase';
+import { analyzePastedText } from '../utils/wordAnalysis';
+import { PastePreviewModal } from './PastePreviewModal';
 
 interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number };
@@ -246,6 +248,11 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [joinedWords, setJoinedWords] = useState<number[]>([]);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
+
+  // Preview modal state for paste analysis
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewAnalysis, setPreviewAnalysis] = useState<any>(null);
+
   const pasteAreaRef = useRef<HTMLTextAreaRef>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -303,11 +310,16 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   }, [editingAssignment, assignmentTitle, selectedWords]);
 
   // Initialize editedWords from selectedWords prop (e.g., after OCR upload)
+  // Also clear editedWords when selectedWords is cleared (e.g., when switching classes)
   useEffect(() => {
     if (selectedWords.length > 0 && editedWords.length === 0) {
       console.log('[CREATE WIZARD] Initializing editedWords from selectedWords:', selectedWords.length);
       setEditedWords(getWordsWithStatus());
       setSubStep('editor');
+    } else if (selectedWords.length === 0 && editedWords.length > 0) {
+      console.log('[CREATE WIZARD] Clearing editedWords because selectedWords is empty');
+      setEditedWords([]);
+      setSubStep('landing');
     }
   }, [selectedWords]);
 
@@ -327,109 +339,82 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   };
 
   // Generate safe integer ID for custom words/phrases
+  const customIdCounter = useRef(0);
   const generateCustomId = () => {
     // Use negative IDs to avoid conflicts with database IDs
-    // Use timestamp in seconds to keep it within integer range
-    return -Math.floor(Date.now() / 1000);
+    // Use timestamp + counter to ensure uniqueness even when called rapidly
+    customIdCounter.current++;
+    return -(Date.now() * 1000 + customIdCounter.current);
   };
 
-  // Analyze pasted words using intelligent parsing (same algorithm as Quick Play)
-  const analyzePastedWords = (text: string): { matched: Word[]; unmatched: string[] } => {
-    if (!text.trim()) return { matched: [], unmatched: [] };
+  // Convert selected word IDs to WordWithStatus format
+  const getWordsWithStatus = (): WordWithStatus[] => {
+    const allWordsAvailable = [...allWords, ...customWords];
+    const wordWithStatus: WordWithStatus[] = [];
+    const processedIds = new Set<number>();
 
-    // Extract quote-wrapped phrases first using matchAll
-    const quoteRegex = /(["'])(?:(?=(\\1?))\2.)*?\1/g;
-    const quotedPhrases: string[] = [];
+    selectedWords.forEach(wordId => {
+      // Skip duplicates
+      if (processedIds.has(wordId)) return;
 
-    const quoteMatches = text.matchAll(quoteRegex);
-    for (const match of quoteMatches) {
-      quotedPhrases.push(match[0].replace(/['"]/g, '').trim().toLowerCase());
-    }
-
-    // Remove quoted phrases from remaining text
-    let remainingText = text.replace(/(["'])(?:(?=(\\1?))\2.)*?\1/g, '');
-
-    // Split by comma, newline, semicolon, or tab - spaces are part of the word
-    const splitTerms = remainingText.split(/[,\n;\t]+/)
-      .map(term => term.trim().toLowerCase())
-      .filter(term => term.length > 0);
-
-    // Combine quoted phrases and split terms
-    const searchTerms = [...quotedPhrases, ...splitTerms];
-
-    const matched: Word[] = [];
-    const unmatched: string[] = [];
-    const matchedWordIds = new Set<number>();
-
-    searchTerms.forEach(term => {
-      // Priority 1: Exact match
-      let matches = allWords.filter(w => w.english.toLowerCase() === term);
-
-      // Priority 2: Starts-with match (limit to 20 total)
-      if (matches.length < 20) {
-        const startsWithMatches = allWords.filter(w =>
-          w.english.toLowerCase().startsWith(term) &&
-          !matches.some(m => m.id === w.id)
-        );
-        matches.push(...startsWithMatches.slice(0, 20 - matches.length));
-      }
-
-      // Deduplicate by ID
-      const uniqueMatches = matches.filter(w => !matchedWordIds.has(w.id));
-      uniqueMatches.forEach(w => matchedWordIds.add(w.id));
-
-      if (uniqueMatches.length > 0) {
-        matched.push(...uniqueMatches);
-      } else {
-        unmatched.push(term);
+      const word = allWordsAvailable.find(w => w.id === wordId);
+      if (word) {
+        wordWithStatus.push({
+          id: word.id,
+          english: word.english,
+          hebrew: word.hebrew || '',
+          arabic: word.arabic || '',
+          hasTranslation: !!(word.hebrew || word.arabic),
+          isPhrase: false,
+        });
+        processedIds.add(wordId);
       }
     });
 
-    return { matched, unmatched };
+    return wordWithStatus;
   };
 
-  // Convert selected words to WordWithStatus
-  const getWordsWithStatus = (): WordWithStatus[] => {
-    const wordMap = new Map<number, Word>();
-    [...allWords, ...customWords].forEach(w => wordMap.set(w.id, w));
-
-    return selectedWords.map(id => {
-      const word = wordMap.get(id);
-      if (!word) return null;
-
-      const isJoinedPhrase = joinedWords.includes(id);
-      return {
-        id: word.id,
-        english: word.english,
-        hebrew: word.hebrew || '',
-        arabic: word.arabic || '',
-        hasTranslation: !!(word.hebrew || word.arabic),
-        isPhrase: isJoinedPhrase,
-        phraseWords: isJoinedPhrase ? [id] : undefined,
-      };
-    }).filter((w): w is WordWithStatus => w !== null);
-  };
-
-  // Handle paste and analyze
+  // Handle paste and analyze with preview
   const handlePasteAndAnalyze = () => {
-    const { matched, unmatched } = analyzePastedWords(pastedText);
+    const allWordsAvailable = [...allWords, ...customWords];
+    const analysis = analyzePastedText(pastedText, allWordsAvailable);
 
-    const wordWithStatus: WordWithStatus[] = matched.map(w => ({
-      id: w.id,
-      english: w.english,
-      hebrew: w.hebrew || '',
-      arabic: w.arabic || '',
-      hasTranslation: !!(w.hebrew || w.arabic),
-      isPhrase: false,
-    }));
+    setPreviewAnalysis(analysis);
+    setShowPreview(true);
+  };
 
-    // Add unmatched as custom words
-    const customWordsToAdd = unmatched.map((word, index) => {
+  // Confirm paste preview - add words to editor
+  const handlePreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => {
+    if (!previewAnalysis) return;
+
+    const { matchedWords, unmatchedTerms } = previewAnalysis;
+
+    // Convert matched words to WordWithStatus format
+    const wordWithStatus: WordWithStatus[] = [];
+    const processedIds = new Set<number>();
+
+    matchedWords.forEach(mw => {
+      if (!processedIds.has(mw.word.id)) {
+        wordWithStatus.push({
+          id: mw.word.id,
+          english: mw.word.english,
+          hebrew: mw.word.hebrew || '',
+          arabic: mw.word.arabic || '',
+          hasTranslation: !!(mw.word.hebrew || mw.word.arabic),
+          isPhrase: false,
+        });
+        processedIds.add(mw.word.id);
+      }
+    });
+
+    // Add unmatched as custom words with translations
+    const customWordsToAdd = unmatchedTerms.map((term) => {
+      const translations = customTranslations?.get(term.term);
       const newWord: Word = {
-        id: generateCustomId() - index, // Ensure unique IDs
-        english: word,
-        hebrew: '',
-        arabic: '',
+        id: generateCustomId(),
+        english: term.term,
+        hebrew: translations?.hebrew || '',
+        arabic: translations?.arabic || '',
         level: 'Custom',
       };
       return newWord;
@@ -440,11 +425,71 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       english: w.english,
       hebrew: w.hebrew,
       arabic: w.arabic,
-      hasTranslation: false,
+      hasTranslation: !!(w.hebrew || w.arabic),
       isPhrase: false,
     }))]);
 
+    // Also add to custom words in parent
+    setCustomWords(prev => [...prev, ...customWordsToAdd]);
+
+    setShowPreview(false);
+    setPreviewAnalysis(null);
     setSubStep('editor');
+  };
+
+  const handlePreviewQuickSave = (customTranslations: Map<string, { hebrew: string; arabic: string }>) => {
+    if (!previewAnalysis) return;
+
+    const { matchedWords, unmatchedTerms } = previewAnalysis;
+
+    // Build word IDs list for assignment
+    const finalWordIds: number[] = [];
+    const seenIds = new Set<number>();
+
+    // Build word IDs list for assignment
+    const wordIds: number[] = [];
+    const processedIds = new Set<number>();
+
+    // Add matched word IDs
+    matchedWords.forEach(mw => {
+      if (!seenIds.has(mw.word.id)) {
+        finalWordIds.push(mw.word.id);
+        seenIds.add(mw.word.id);
+      }
+    });
+
+    // Create custom words with translations and get their IDs
+    const customWordsToAdd = unmatchedTerms.map((term) => {
+      const translations = customTranslations.get(term.term);
+      const newWord: Word = {
+        id: generateCustomId(),
+        english: term.term,
+        hebrew: translations?.hebrew || '',
+        arabic: translations?.arabic || '',
+        level: 'Custom',
+      };
+      return newWord;
+    });
+
+    // Add to custom words
+    setCustomWords(prev => [...prev, ...customWordsToAdd]);
+
+    // Collect all word IDs for the assignment
+    const allWordIds = [...finalWordIds, ...customWordsToAdd.map(w => w.id)];
+
+    // Set the words and proceed directly to save
+    setSelectedWords(allWordIds);
+    setShowPreview(false);
+    setPreviewAnalysis(null);
+
+    // Navigate to step 3 (settings) to finalize
+    setStep(3);
+  };
+
+  // Cancel paste preview
+  const handlePreviewCancel = () => {
+    setShowPreview(false);
+    setPreviewAnalysis(null);
   };
 
   // Handle word selection in browse mode
@@ -2162,6 +2207,30 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Paste Preview Modal */}
+      {showPreview && previewAnalysis && (
+        <PastePreviewModal
+          analysis={previewAnalysis}
+          onConfirm={handlePreviewConfirm}
+          onCancel={handlePreviewCancel}
+          onQuickSave={handlePreviewQuickSave}
+          onRemoveUnmatched={(term) => {
+            // Remove unmatched term from preview
+            if (previewAnalysis) {
+              const updatedAnalysis = {
+                ...previewAnalysis,
+                unmatchedTerms: previewAnalysis.unmatchedTerms.filter(t => t.term !== term),
+                stats: {
+                  ...previewAnalysis.stats,
+                  unmatchedCount: previewAnalysis.stats.unmatchedCount - 1,
+                },
+              };
+              setPreviewAnalysis(updatedAnalysis);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

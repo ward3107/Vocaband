@@ -6,6 +6,7 @@
 
 -- Drop existing policies that might conflict
 DROP POLICY IF EXISTS "Students can insert own profile" ON public.student_profiles;
+DROP POLICY IF EXISTS "Teachers can insert student profiles" ON public.student_profiles;
 
 -- Policy: Students can insert their own profile (pending_approval only)
 CREATE POLICY "Students can insert own profile"
@@ -27,5 +28,4 @@ WITH CHECK (
   )
 );
 
-COMMENT ON POLICY "Students can insert own profile" ON public.student_profiles IS
-'Allows students to create their own profile during signup. Only pending_approval status allowed, and unique_id must follow format.';
+-- Note: Policy comment removed to avoid potential conflicts
