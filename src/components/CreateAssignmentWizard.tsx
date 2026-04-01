@@ -8,7 +8,7 @@ import {
   Languages, Loader2
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
-import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../data/sentence-bank';
+import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../constants/game';
 import { supabase } from '../core/supabase';
 
 interface CreateAssignmentWizardProps {
