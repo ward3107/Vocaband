@@ -227,6 +227,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   onBack,
   editingAssignment,
   setEditingAssignment,
+  showToast,
 }) => {
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState<SubStep>('landing');
@@ -244,8 +245,45 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [instructions, setInstructions] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [joinedWords, setJoinedWords] = useState<number[]>([]);
+  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
   const pasteAreaRef = useRef<HTMLTextAreaRef>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // --- AI TRANSLATION FOR ASSIGNMENTS ---
+  // Cache for translated words to avoid redundant API calls
+  const translationCache = useRef<Map<string, {hebrew: string, arabic: string}>>(new Map());
+
+  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string} | null> => {
+    // Check cache first
+    const cached = translationCache.current.get(englishWord.toLowerCase());
+    if (cached) return cached;
+
+    try {
+      // Using MyMemory Translation API (free, no API key required)
+      const [hebrewRes, arabicRes] = await Promise.all([
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|he`),
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|ar`)
+      ]);
+
+      const hebrewData = await hebrewRes.json();
+      const arabicData = await arabicRes.json();
+
+      if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
+        const result = {
+          hebrew: hebrewData.responseData.translatedText,
+          arabic: arabicData.responseData.translatedText
+        };
+        // Cache the result
+        translationCache.current.set(englishWord.toLowerCase(), result);
+        return result;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Translation service error:', error);
+      return null;
+    }
+  };
 
   // Load saved groups from localStorage
   useEffect(() => {
@@ -295,18 +333,55 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     return -Math.floor(Date.now() / 1000);
   };
 
-  // Analyze pasted words
+  // Analyze pasted words using intelligent parsing (same algorithm as Quick Play)
   const analyzePastedWords = (text: string): { matched: Word[]; unmatched: string[] } => {
-    const words = text.split(/[\s,;]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+    if (!text.trim()) return { matched: [], unmatched: [] };
+
+    // Extract quote-wrapped phrases first using matchAll
+    const quoteRegex = /(["'])(?:(?=(\\1?))\2.)*?\1/g;
+    const quotedPhrases: string[] = [];
+
+    const quoteMatches = text.matchAll(quoteRegex);
+    for (const match of quoteMatches) {
+      quotedPhrases.push(match[0].replace(/['"]/g, '').trim().toLowerCase());
+    }
+
+    // Remove quoted phrases from remaining text
+    let remainingText = text.replace(/(["'])(?:(?=(\\1?))\2.)*?\1/g, '');
+
+    // Split by comma, newline, semicolon, or tab - spaces are part of the word
+    const splitTerms = remainingText.split(/[,\n;\t]+/)
+      .map(term => term.trim().toLowerCase())
+      .filter(term => term.length > 0);
+
+    // Combine quoted phrases and split terms
+    const searchTerms = [...quotedPhrases, ...splitTerms];
+
     const matched: Word[] = [];
     const unmatched: string[] = [];
+    const matchedWordIds = new Set<number>();
 
-    words.forEach(word => {
-      const found = allWords.find(w => w.english.toLowerCase() === word);
-      if (found) {
-        matched.push(found);
+    searchTerms.forEach(term => {
+      // Priority 1: Exact match
+      let matches = allWords.filter(w => w.english.toLowerCase() === term);
+
+      // Priority 2: Starts-with match (limit to 20 total)
+      if (matches.length < 20) {
+        const startsWithMatches = allWords.filter(w =>
+          w.english.toLowerCase().startsWith(term) &&
+          !matches.some(m => m.id === w.id)
+        );
+        matches.push(...startsWithMatches.slice(0, 20 - matches.length));
+      }
+
+      // Deduplicate by ID
+      const uniqueMatches = matches.filter(w => !matchedWordIds.has(w.id));
+      uniqueMatches.forEach(w => matchedWordIds.add(w.id));
+
+      if (uniqueMatches.length > 0) {
+        matched.push(...uniqueMatches);
       } else {
-        unmatched.push(word);
+        unmatched.push(term);
       }
     });
 
@@ -418,7 +493,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     setEditingWord(null);
   };
 
-  // Auto-translate all missing words using server endpoint (secured)
+  // Auto-translate all missing words using MyMemory Translation API (client-side, same as Quick Play)
   const handleAutoTranslate = async () => {
     const wordsWithoutTranslation = editedWords.filter(w => !w.hasTranslation);
 
@@ -430,42 +505,25 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     setIsTranslating(true);
 
     try {
-      // Get session token for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        showToast?.('Please log in to use auto-translation', 'error');
-        return;
-      }
+      // Translate each word using MyMemory API
+      const translations = await Promise.all(
+        wordsWithoutTranslation.map(async (word) => {
+          const result = await translateWord(word.english);
+          return { word, result };
+        })
+      );
 
-      // Extract English words
-      const englishWords = wordsWithoutTranslation.map(w => w.english);
-
-      // Call server endpoint (authenticated, teacher-only)
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ words: englishWords })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Translation failed' }));
-        throw new Error(errorData.error || 'Translation failed');
-      }
-
-      const { hebrew, arabic } = await response.json();
-
-      // Update words with translations
+      // Update words with successful translations
+      let successCount = 0;
       setEditedWords(prev => prev.map(w => {
         if (!w.hasTranslation) {
-          const index = englishWords.indexOf(w.english);
-          if (index !== -1 && hebrew[index] && arabic[index]) {
+          const translation = translations.find(t => t.word.id === w.id);
+          if (translation?.result) {
+            successCount++;
             return {
               ...w,
-              hebrew: hebrew[index],
-              arabic: arabic[index],
+              hebrew: translation.result.hebrew,
+              arabic: translation.result.arabic,
               hasTranslation: true
             };
           }
@@ -477,21 +535,27 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       const translatedCustomWords = wordsWithoutTranslation.filter(w => w.id < 0);
       if (translatedCustomWords.length > 0) {
         setCustomWords(prev => prev.map(w => {
-          const index = translatedCustomWords.findIndex(tw => tw.id === w.id);
-          if (index !== -1 && hebrew[index] && arabic[index]) {
+          const translation = translations.find(t => t.word.id === w.id);
+          if (translation?.result) {
             return {
               ...w,
-              hebrew: hebrew[index],
-              arabic: arabic[index]
+              hebrew: translation.result.hebrew,
+              arabic: translation.result.arabic
             };
           }
           return w;
         }));
       }
 
+      if (successCount > 0) {
+        showToast?.(`Successfully translated ${successCount} word${successCount !== 1 ? 's' : ''}!`, 'success');
+      } else {
+        showToast?.('Translation service unavailable. Please try again later.', 'error');
+      }
+
     } catch (error) {
       console.error('Translation error:', error);
-      // Silent failure - don't show alert to user
+      showToast?.('Translation failed. Please try again later.', 'error');
     } finally {
       setIsTranslating(false);
     }
@@ -967,12 +1031,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 {isTranslating ? (
                   <>
                     <Loader2 className="animate-spin" size={18} />
-                    Translating with Google Cloud...
+                    AI is translating...
                   </>
                 ) : (
                   <>
                     <Languages size={18} />
-                    Translate all with Google Cloud ✨
+                    Translate all with AI ✨
                   </>
                 )}
               </button>
@@ -1049,10 +1113,11 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                           )}
                         </div>
                         <div className="text-xs sm:text-sm text-on-surface-variant truncate">
-                          {word.hebrew && <span className="ml-0">{word.hebrew}</span>}
-                          {word.hebrew && word.arabic && <span className="mx-1">•</span>}
-                          {word.arabic && <span>{word.arabic}</span>}
-                          {!word.hasTranslation && <span className="italic">(no translation)</span>}
+                          {word[targetLanguage] ? (
+                            <span>{word[targetLanguage]}</span>
+                          ) : (
+                            <span className="italic">({targetLanguage} translation unavailable)</span>
+                          )}
                         </div>
                       </div>
 
@@ -1218,9 +1283,11 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm text-on-surface truncate">{word.english}</div>
                       <div className="text-xs text-on-surface-variant truncate">
-                        {word.hebrew && <span>{word.hebrew}</span>}
-                        {word.hebrew && word.arabic && <span className="mx-1">•</span>}
-                        {word.arabic && <span>{word.arabic}</span>}
+                        {word[targetLanguage] ? (
+                          <span>{word[targetLanguage]}</span>
+                        ) : (
+                          <span className="italic">({targetLanguage} unavailable)</span>
+                        )}
                       </div>
                     </div>
                   </motion.button>
@@ -1357,8 +1424,18 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
           <ArrowLeft size={20} />
           Back
         </button>
-        <div className="text-sm font-bold text-on-surface-variant">
-          Step 2 of 3
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")}
+            className="flex items-center gap-2 bg-white px-3 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors"
+            title="Switch between Hebrew and Arabic"
+          >
+            <Languages size={18} />
+            <span className="text-sm font-bold uppercase">{targetLanguage}</span>
+          </button>
+          <div className="text-sm font-bold text-on-surface-variant">
+            Step 2 of 3
+          </div>
         </div>
       </div>
 

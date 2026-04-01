@@ -158,7 +158,20 @@
       "Bash(echo \"Found in .env.example at commit $commit\")",
       "Bash(done)",
       "Bash(git rm:*)",
-      "mcp__9e877a58-62c8-403b-a83a-d373ba08281a__execute_sql"
+      "mcp__9e877a58-62c8-403b-a83a-d373ba08281a__execute_sql",
+      "Bash(findstr \"2984 25360\")",
+      "Bash(findstr \":3000 :3001 :24678\")",
+      "Bash(ping:*)",
+      "Bash(ipconfig:*)",
+      "Bash(nslookup:*)",
+      "Bash(findstr \":3000 :3001\")",
+      "Bash(findstr \"IPv4\")",
+      "Bash(netsh advfirewall:*)",
+      "Bash(findstr \"ESTABLISHED\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object { $_ProcessName -like ''*node*'' } | ForEach-Object { Stop-Process -Id $_Id -Force }\")",
+      "mcp__plugin_firebase_firebase__developerknowledge_search_documents",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__list_projects"
     ]
   }
 }
