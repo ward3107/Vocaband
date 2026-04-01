@@ -4,25 +4,11 @@
 // then level-appropriate POS templates fill in the rest.
 
 import { Word } from "./vocabulary";
+import { SentenceDifficulty, DIFFICULTY_CONFIG } from "../constants/game";
 
-// ============================================================================
-// DIFFICULTY LEVELS
-// ============================================================================
-
-export type SentenceDifficulty = 1 | 2 | 3 | 4;
-
-export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
-  label: string;
-  description: string;
-  minWords: number;
-  maxWords: number;
-  emoji: string;
-}> = {
-  1: { label: 'Beginner', description: '3-5 words, simple present', minWords: 3, maxWords: 5, emoji: '🌱' },
-  2: { label: 'Elementary', description: '5-7 words, basic tenses', minWords: 5, maxWords: 7, emoji: '🌿' },
-  3: { label: 'Intermediate', description: '7-10 words, varied grammar', minWords: 7, maxWords: 10, emoji: '🌳' },
-  4: { label: 'Advanced', description: '10-15 words, complex structures', minWords: 10, maxWords: 15, emoji: '🏔️' },
-};
+// Re-export for backward compatibility
+export type { SentenceDifficulty } from "../constants/game";
+export { DIFFICULTY_CONFIG } from "../constants/game";
 
 // ============================================================================
 // POS-BASED SENTENCE TEMPLATES BY DIFFICULTY LEVEL
