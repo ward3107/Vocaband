@@ -107,6 +107,9 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
+  const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
+
   const [view, setView] = useState<
     | "public-landing"
     | "public-terms"
@@ -129,7 +132,7 @@ export default function App() {
     | "quick-play-setup"
     | "quick-play-teacher-monitor"
     | "quick-play-student"
-  >("public-landing");
+  >(quickPlaySessionParam ? "quick-play-student" : "public-landing");
   const previousViewRef = useRef<string>("public-landing");
 
   // Custom setView that tracks previous view for back navigation
@@ -3042,7 +3045,7 @@ export default function App() {
     <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
   ) : null;
 
-  if (loading) {
+  if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <RefreshCw className="animate-spin text-blue-700" size={48} />
     </div>;
