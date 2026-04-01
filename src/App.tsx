@@ -3402,9 +3402,9 @@ export default function App() {
                       value={quickPlayStudentName}
                       onChange={(e) => setQuickPlayStudentName(e.target.value.slice(0, 20))}
                       placeholder="Enter your nickname..."
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter' && quickPlayStudentName.trim()) {
-                          // Proceed to game
+                          (e.target as HTMLInputElement).closest('div')?.parentElement?.querySelector('button')?.click();
                         }
                       }}
                       className="w-full px-4 py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -3426,16 +3426,19 @@ export default function App() {
                       setUser(guestUser);
 
                       // Set up game with Quick Play words
-                      const gameWords = shuffle(quickPlayActiveSession.words).map(w => ({
+                      const words = shuffle(quickPlayActiveSession.words).map(w => ({
                         ...w,
                         hebrew: w.hebrew || "",
                         arabic: w.arabic || ""
                       }));
-                      setGameWords(gameWords);
+                      setAssignmentWords(words);
                       setCurrentIndex(0);
                       setScore(0);
                       setFeedback(null);
+                      setIsFinished(false);
+                      setMistakes([]);
                       setView("game");
+                      setShowModeSelection(true);
                     }}
                     disabled={!quickPlayStudentName.trim()}
                     className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
