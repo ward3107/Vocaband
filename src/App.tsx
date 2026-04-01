@@ -1785,7 +1785,7 @@ export default function App() {
         setSelectedWords([]);
         setAssignmentTitle("");
         setAssignmentDeadline("");
-        setAssignmentModes(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
+        setAssignmentModes([]); // No default selection - teacher must choose
         setAssignmentStep(1);
         setAssignmentSentences([]);
         setSentenceDifficulty(2);
@@ -4886,7 +4886,7 @@ export default function App() {
                         assignments={classAssignments}
                         openDropdownClassId={openDropdownClassId}
                         onToggleDropdown={setOpenDropdownClassId}
-                        onAssign={() => { setSelectedClass(c); setView("create-assignment"); setAssignmentStep(1); setSelectedWords([]); setAssignmentTitle(""); setAssignmentDeadline(""); setAssignmentModes(["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]); setAssignmentSentences([]); setEditingAssignment(null); }}
+                        onAssign={() => { setSelectedClass(c); setView("create-assignment"); setAssignmentStep(1); setSelectedWords([]); setAssignmentTitle(""); setAssignmentDeadline(""); setAssignmentModes([]); setAssignmentSentences([]); setEditingAssignment(null); }}
                         onCopyCode={() => {
                           navigator.clipboard.writeText(c.code);
                           setCopiedCode(c.code);

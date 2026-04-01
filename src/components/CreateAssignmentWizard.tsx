@@ -477,13 +477,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     // Collect all word IDs for the assignment
     const allWordIds = [...finalWordIds, ...customWordsToAdd.map(w => w.id)];
 
-    // Set the words and proceed directly to save
+    // Set the words and proceed to step 2 to configure title, modes, date
     setSelectedWords(allWordIds);
     setShowPreview(false);
     setPreviewAnalysis(null);
 
-    // Navigate to step 3 (settings) to finalize
-    setStep(3);
+    // Navigate to step 2 (configure title, modes, deadline)
+    setStep(2);
   };
 
   // Cancel paste preview
@@ -1615,16 +1615,15 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                   onClick={() => toggleGameMode(mode.id)}
                   className={`relative p-2.5 rounded-xl border-2 transition-all text-center ${
                     isSelected
-                      ? 'border-transparent bg-gradient-to-br shadow-lg'
-                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40 hover:scale-105'
+                      ? 'border-primary bg-primary/20 shadow-lg shadow-primary/30 scale-105 ring-2 ring-primary/50'
+                      : 'border-outline/30 bg-surface hover:border-outline/60 hover:bg-surface-container-low'
                   }`}
-                  style={isSelected ? { backgroundImage: `linear-gradient(to bottom right, ${mode.color})` } : undefined}
                 >
-                  <div className={`text-xl mb-1 ${isSelected ? 'text-surface-0' : 'text-on-surface'}`}>{mode.emoji}</div>
-                  <div className={`text-xs font-bold ${isSelected ? 'text-surface-0' : 'text-on-surface'}`}>{mode.name}</div>
+                  <div className={`text-xl mb-1 ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{mode.emoji}</div>
+                  <div className={`text-xs font-bold ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{mode.name}</div>
                   {isSelected && (
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
-                      <Check size={10} className="text-white" />
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-md">
+                      <Check size={12} className="text-white" />
                     </div>
                   )}
                 </button>
@@ -2224,6 +2223,21 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 stats: {
                   ...previewAnalysis.stats,
                   unmatchedCount: previewAnalysis.stats.unmatchedCount - 1,
+                  totalTerms: previewAnalysis.stats.totalTerms - 1,
+                },
+              };
+              setPreviewAnalysis(updatedAnalysis);
+            }
+          }}
+          onRemoveMatched={(wordId) => {
+            // Remove matched word from preview
+            if (previewAnalysis) {
+              const updatedAnalysis = {
+                ...previewAnalysis,
+                matchedWords: previewAnalysis.matchedWords.filter(mw => mw.word.id !== wordId),
+                stats: {
+                  ...previewAnalysis.stats,
+                  matchedCount: previewAnalysis.stats.matchedCount - 1,
                   totalTerms: previewAnalysis.stats.totalTerms - 1,
                 },
               };

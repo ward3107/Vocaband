@@ -2,14 +2,13 @@
  * Paste Preview Modal
  * Shows analysis results before committing to editor
  * Displays matched words, unmatched terms, and statistics
- * Now with translation editing support
+ * Now with inline translation editing and remove functionality
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, X, AlertCircle, FileText, Filter, Zap, Edit3, Sparkles, Loader2 } from 'lucide-react';
+import { Check, X, AlertCircle, FileText, Filter, Zap, Edit3, Sparkles, Loader2, Trash2 } from 'lucide-react';
 import { WordMatch, PastedTerm, WordAnalysisResult } from '../utils/wordAnalysis';
-import { TranslationEditModal } from './TranslationEditModal';
-import { applyCorrections, loadCorrectionsForWords } from '../utils/translationCorrections';
+import { applyCorrections, loadCorrectionsForWords, saveCorrection } from '../utils/translationCorrections';
 import type { TranslationCorrection } from '../utils/translationCorrections';
 
 interface PastePreviewModalProps {
@@ -18,6 +17,7 @@ interface PastePreviewModalProps {
   onCancel: () => void;
   onToggleWord?: (term: string) => void; // For adding/removing from selection
   onRemoveUnmatched?: (term: string) => void; // For removing unmatched terms
+  onRemoveMatched?: (wordId: number) => void; // For removing matched words
   onQuickSave?: (customTranslations: Map<string, { hebrew: string; arabic: string }>) => void; // For quick save without editor
 }
 
@@ -27,10 +27,12 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   onCancel,
   onToggleWord,
   onRemoveUnmatched,
+  onRemoveMatched,
   onQuickSave,
 }) => {
   const [corrections, setCorrections] = useState<Map<number, TranslationCorrection>>(new Map());
-  const [editingWord, setEditingWord] = useState<WordMatch | null>(null);
+  const [inlineEdits, setInlineEdits] = useState<Map<number, { hebrew: string; arabic: string }>>(new Map());
+  const [editingWordId, setEditingWordId] = useState<number | null>(null);
   const [isLoadingCorrections, setIsLoadingCorrections] = useState(false);
 
   // State for custom word translations
@@ -107,12 +109,36 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
 
   const { matchedWords, unmatchedTerms, stats } = analysis;
 
-  const handleSaveCorrection = () => {
+  const handleSaveCorrection = async (wordId: number) => {
+    const edit = inlineEdits.get(wordId);
+    if (!edit) return;
+
+    // Find the word to get its English text
+    const matchedWord = analysis?.matchedWords.find(mw => mw.word.id === wordId);
+    if (!matchedWord) return;
+
+    // Save to backend
+    await saveCorrection({
+      wordId,
+      english: matchedWord.word.english,
+      hebrew: edit.hebrew || undefined,
+      arabic: edit.arabic || undefined,
+    });
+
     // Reload corrections after saving
     if (analysis && analysis.matchedWords.length > 0) {
       loadCorrectionsForWords(analysis.matchedWords.map(mw => mw.word))
         .then(setCorrections);
     }
+
+    // Clear the inline edit
+    setInlineEdits(prev => {
+      const updated = new Map(prev);
+      updated.delete(wordId);
+      return updated;
+    });
+
+    setEditingWordId(null);
   };
 
   const handleConfirm = () => {
@@ -123,7 +149,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
     if (onQuickSave) {
       onQuickSave(customWordTranslations);
     } else {
-      handleConfirm();
+      onConfirm(customWordTranslations);
     }
   };
 
@@ -177,19 +203,110 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                 <div className="space-y-2">
                   {matchedWords.map((mw, index) => {
                     const corrected = applyCorrections(mw.word, corrections);
+                    const isEditing = editingWordId === mw.word.id;
+                    const inlineEdit = inlineEdits.get(mw.word.id);
+
                     return (
                       <div
                         key={`${mw.word.id}-${index}`}
-                        className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                        className={`p-3 rounded-xl border-2 transition-all ${
                           corrected.isCorrected
                             ? 'bg-indigo-50 border-indigo-200'
                             : 'bg-green-50 border-green-200'
                         }`}
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-on-surface text-sm truncate">
-                            {corrected.english}
-                          </p>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-on-surface text-sm">{corrected.english}</p>
+                            <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1">
+                              {mw.frequency > 1 && (
+                                <span className="text-green-700 font-bold">
+                                  ({mw.frequency}x)
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-500">
+                                {mw.matchType === 'exact' ? '✓ exact' : '~ starts-with'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                if (isEditing) {
+                                  handleSaveCorrection(mw.word.id);
+                                } else {
+                                  setEditingWordId(mw.word.id);
+                                }
+                              }}
+                              className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors"
+                              title={isEditing ? "Save changes" : "Edit translation"}
+                            >
+                              {isEditing ? (
+                                <Check size={16} className="text-green-600" />
+                              ) : (
+                                <Edit3 size={16} className="text-indigo-600" />
+                              )}
+                            </button>
+                            {onRemoveMatched && (
+                              <button
+                                onClick={() => onRemoveMatched(mw.word.id)}
+                                className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                                title="Remove this word"
+                              >
+                                <Trash2 size={16} className="text-red-600" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Inline translation edit */}
+                        {isEditing && (
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                              <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                                Hebrew
+                              </label>
+                              <input
+                                type="text"
+                                defaultValue={corrected.hebrew || ''}
+                                onChange={(e) => {
+                                  setInlineEdits(prev => {
+                                    const updated = new Map(prev);
+                                    const existing = updated.get(mw.word.id) || { hebrew: corrected.hebrew || '', arabic: corrected.arabic || '' };
+                                    updated.set(mw.word.id, { ...existing, hebrew: e.target.value });
+                                    return updated;
+                                  });
+                                }}
+                                placeholder="Enter Hebrew translation..."
+                                className="w-full px-3 py-2 text-sm rounded-lg bg-white border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                dir="rtl"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                                Arabic
+                              </label>
+                              <input
+                                type="text"
+                                defaultValue={corrected.arabic || ''}
+                                onChange={(e) => {
+                                  setInlineEdits(prev => {
+                                    const updated = new Map(prev);
+                                    const existing = updated.get(mw.word.id) || { hebrew: corrected.hebrew || '', arabic: corrected.arabic || '' };
+                                    updated.set(mw.word.id, { ...existing, arabic: e.target.value });
+                                    return updated;
+                                  });
+                                }}
+                                placeholder="Enter Arabic translation..."
+                                className="w-full px-3 py-2 text-sm rounded-lg bg-white border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                dir="rtl"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Display translations when not editing */}
+                        {!isEditing && (
                           <div className="flex items-center gap-2 text-xs text-on-surface-variant">
                             {corrected.hebrew && (
                               <span className="bg-white px-2 py-0.5 rounded">
@@ -207,25 +324,8 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                                 )}
                               </span>
                             )}
-                            {mw.frequency > 1 && (
-                              <span className="text-green-700 font-bold">
-                                ({mw.frequency}x)
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-500">
-                              {mw.matchType === 'exact' ? '✓ exact' : '~ starts-with'}
-                            </span>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setEditingWord(mw)}
-                            className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors"
-                            title="Edit translation"
-                          >
-                            <Edit3 size={16} className="text-indigo-600" />
-                          </button>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -368,8 +468,8 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3">
               <p className="text-sm text-blue-900 flex items-center gap-2">
                 <Edit3 size={16} />
-                <strong>Edit Translations:</strong> Click the edit button next to any word to correct
-                its Hebrew or Arabic translation. Your corrections will be saved and apply everywhere.
+                <strong>Edit Translations:</strong> Click the edit button next to any word to correct its Hebrew or Arabic translation inline.
+                Your corrections will be saved and apply everywhere. Use the remove button to exclude words from this assignment.
               </p>
             </div>
           </div>
@@ -382,39 +482,17 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
             >
               Cancel
             </button>
-            <div className="flex gap-2">
-              {onQuickSave && (
-                <button
-                  onClick={handleQuickSave}
-                  disabled={matchedWords.length === 0 && unmatchedTerms.length === 0}
-                  className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
-                >
-                  <Check size={18} />
-                  Quick Save & Assign
-                </button>
-              )}
-              <button
-                onClick={handleConfirm}
-                disabled={matchedWords.length === 0 && unmatchedTerms.length === 0}
-                className="px-6 py-3 signature-gradient text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
-              >
-                <Check size={18} />
-                Continue to Editor
-              </button>
-            </div>
+            <button
+              onClick={handleQuickSave}
+              disabled={matchedWords.length === 0 && unmatchedTerms.length === 0}
+              className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
+            >
+              <Check size={18} />
+              Save & Assign
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Translation Edit Modal */}
-      {editingWord && (
-        <TranslationEditModal
-          word={editingWord.word}
-          isOpen={!!editingWord}
-          onClose={() => setEditingWord(null)}
-          onSave={handleSaveCorrection}
-        />
-      )}
     </>
   );
 };
