@@ -6066,7 +6066,11 @@ export default function App() {
     );
   }
 
-  if (view === "quick-play-teacher-monitor" && quickPlayActiveSession) {
+  if (view === "quick-play-teacher-monitor") {
+    if (!quickPlayActiveSession) {
+      setView("quick-play-setup");
+      return null;
+    }
     const qrUrl = `${window.location.origin}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
 
     return (
