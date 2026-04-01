@@ -2224,6 +2224,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 stats: {
                   ...previewAnalysis.stats,
                   unmatchedCount: previewAnalysis.stats.unmatchedCount - 1,
+                  totalTerms: previewAnalysis.stats.totalTerms - 1,
                 },
               };
               setPreviewAnalysis(updatedAnalysis);

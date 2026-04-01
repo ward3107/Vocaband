@@ -217,13 +217,15 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                             </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setEditingWord(mw)}
-                          className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors"
-                          title="Edit translation"
-                        >
-                          <Edit3 size={16} className="text-indigo-600" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditingWord(mw)}
+                            className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors"
+                            title="Edit translation"
+                          >
+                            <Edit3 size={16} className="text-indigo-600" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

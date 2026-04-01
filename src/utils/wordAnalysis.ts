@@ -163,60 +163,49 @@ export function analyzePastedText(
   // Remove quoted phrases from remaining text
   let remainingText = text.replace(/(["'])(?:(?=(\\1?))\2.)*?\1/g, '');
 
-  // Check if remaining text contains prose (sentences with periods, etc.)
-  // Prose indicators: periods, multiple words without delimiters
-  const hasProse = /[.!?]/.test(remainingText) ||
-    (remainingText.split(/[,\n;\t]+/).length === 1 && remainingText.split(' ').length > 5);
+  // Split remaining text by delimiters AND spaces
+  // This ensures "apple banana orange" (no commas) becomes 3 separate words
+  const splitTerms = remainingText
+    .split(/[,\n;\t ]+/)
+    .map(term => term.trim().toLowerCase())
+    .filter(term => term.length > 0);
 
-  let extractedTerms: ExtractedWord[];
+  // Count frequency for split terms
+  const termMap = new Map<string, ExtractedWord>();
+  splitTerms.forEach(term => {
+    const count = termMap.get(term);
+    const isStop = STOP_WORDS.has(term);
 
-  if (hasProse) {
-    // Treat as prose - extract individual words
-    extractedTerms = extractWordsFromProse(remainingText);
-  } else {
-    // Treat as list - split by delimiters
-    const splitTerms = remainingText
-      .split(/[,\n;\t]+/)
-      .map(term => term.trim().toLowerCase())
-      .filter(term => term.length > 0);
+    if (count) {
+      termMap.set(term, {
+        word: term,
+        frequency: count.frequency + 1,
+        isStopWord: isStop,
+      });
+    } else {
+      termMap.set(term, {
+        word: term,
+        frequency: 1,
+        isStopWord: isStop,
+      });
+    }
+  });
 
-    // Count frequency
-    const termMap = new Map<string, ExtractedWord>();
-    splitTerms.forEach(term => {
-      const count = termMap.get(term);
-      const isStop = STOP_WORDS.has(term);
+  let extractedTerms = Array.from(termMap.values());
 
-      if (count) {
-        termMap.set(term, {
-          word: term,
-          frequency: count.frequency + 1,
-          isStopWord: isStop,
-        });
-      } else {
-        termMap.set(term, {
-          word: term,
-          frequency: 1,
-          isStopWord: isStop,
-        });
-      }
-    });
-
-    extractedTerms = Array.from(termMap.values());
-
-    // Add quoted phrases
-    quotedPhrases.forEach(phrase => {
-      const existing = extractedTerms.find(t => t.word === phrase);
-      if (existing) {
-        existing.frequency++;
-      } else {
-        extractedTerms.push({
-          word: phrase,
-          frequency: 1,
-          isStopWord: false,
-        });
-      }
-    });
-  }
+  // Add quoted phrases as separate terms
+  quotedPhrases.forEach(phrase => {
+    const existing = extractedTerms.find(t => t.word === phrase);
+    if (existing) {
+      existing.frequency++;
+    } else {
+      extractedTerms.push({
+        word: phrase,
+        frequency: 1,
+        isStopWord: false,
+      });
+    }
+  });
 
   // Filter out stop words
   const contentTerms = extractedTerms.filter(t => !t.isStopWord);
@@ -227,20 +216,18 @@ export function analyzePastedText(
   const matchedWordIds = new Set<number>();
 
   contentTerms.forEach(term => {
-    // Priority 1: Exact match
-    let exactMatches = validWords.filter(w => w.english.toLowerCase() === term.word);
+    // Find ALL matches (both exact and starts-with)
+    const exactMatches = validWords.filter(w => w.english.toLowerCase() === term.word);
+    const startsWithMatches = validWords.filter(w =>
+      w.english.toLowerCase().startsWith(term.word) &&
+      !exactMatches.some(m => m.id === w.id)
+    );
 
-    // Priority 2: Starts-with match (limit to 20 total)
-    if (exactMatches.length < 20) {
-      const startsWithMatches = validWords.filter(w =>
-        w.english.toLowerCase().startsWith(term.word) &&
-        !exactMatches.some(m => m.id === w.id)
-      );
-      exactMatches.push(...startsWithMatches.slice(0, 20 - exactMatches.length));
-    }
+    // Combine ALL matches (no limit)
+    const allMatches = [...exactMatches, ...startsWithMatches];
 
     // Deduplicate by ID
-    const uniqueMatches = exactMatches.filter(w => !matchedWordIds.has(w.id));
+    const uniqueMatches = allMatches.filter(w => !matchedWordIds.has(w.id));
     uniqueMatches.forEach(w => matchedWordIds.add(w.id));
 
     if (uniqueMatches.length > 0) {

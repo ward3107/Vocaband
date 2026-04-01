@@ -1519,7 +1519,7 @@ export default function App() {
 
   // --- QUICK PLAY PREVIEW HANDLERS ---
 
-  const handleQuickPlayPreviewConfirm = () => {
+  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => {
     if (!quickPlayPreviewAnalysis) return;
 
     const { matchedWords, unmatchedTerms } = quickPlayPreviewAnalysis;
@@ -1533,24 +1533,21 @@ export default function App() {
     });
     setQuickPlaySelectedWords(newSelectedWords);
 
-    // For unmatched terms, trigger translation
-    if (unmatchedTerms.length > 0) {
-      const translateAndAddUnmatched = async () => {
-        for (const term of unmatchedTerms) {
-          const translation = await translateWord(term.term);
-          if (translation) {
-            const customWord: Word = {
-              id: -Date.now() - Math.floor(Math.random() * 1000),
-              english: term.term.charAt(0).toUpperCase() + term.term.slice(1).toLowerCase(),
-              hebrew: translation.hebrew || "",
-              arabic: translation.arabic || "",
-              level: "Custom"
-            };
-            setQuickPlaySelectedWords(prev => [...prev, customWord]);
-          }
+    // Add custom words from translations (either from Translate All or manual entry)
+    if (unmatchedTerms.length > 0 && customTranslations) {
+      unmatchedTerms.forEach(term => {
+        const translation = customTranslations.get(term.term);
+        if (translation && (translation.hebrew || translation.arabic)) {
+          const customWord: Word = {
+            id: -Date.now() - Math.floor(Math.random() * 1000),
+            english: term.term.charAt(0).toUpperCase() + term.term.slice(1).toLowerCase(),
+            hebrew: translation.hebrew || "",
+            arabic: translation.arabic || "",
+            level: "Custom"
+          };
+          setQuickPlaySelectedWords(prev => [...prev, customWord]);
         }
-      };
-      translateAndAddUnmatched();
+      });
     }
 
     // Clear preview state
@@ -5154,7 +5151,13 @@ export default function App() {
         {/* End Quick Play Session Confirmation Modal */}
         <AnimatePresence>
           {endQuickPlayModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]"
+            >
+              {console.log('[End Session Modal] Rendering modal, session:', quickPlayActiveSession)}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -5173,7 +5176,10 @@ export default function App() {
                 </p>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setEndQuickPlayModal(false)}
+                    onClick={() => {
+                      console.log('[End Session] Keep Session clicked');
+                      setEndQuickPlayModal(false);
+                    }}
                     className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
                   >
                     Keep Session
@@ -5183,6 +5189,8 @@ export default function App() {
                       console.log('[End Session] Confirm button clicked');
                       console.log('[End Session] Session code:', quickPlayActiveSession?.sessionCode);
                       console.log('[End Session] Session ID:', quickPlayActiveSession?.id);
+
+                      showToast("Ending session...", "info");
 
                       const { error } = await supabase.rpc('end_quick_play_session', {
                         p_session_code: quickPlayActiveSession!.sessionCode
@@ -5215,7 +5223,7 @@ export default function App() {
                   </button>
                 </div>
               </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -6451,6 +6459,10 @@ export default function App() {
                       example: w.example || ""
                     }))) : null;
 
+                    // Close preview modal if open
+                    setShowQuickPlayPreview(false);
+                    setQuickPlayPreviewAnalysis(null);
+
                     // Create session with database words AND custom words
                     const { data, error } = await supabase.rpc('create_quick_play_session', {
                       p_word_ids: wordIds.length > 0 ? wordIds : null,
@@ -6591,17 +6603,14 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    // Analyze pasted text and show preview
-                    const allWordsAvailable = [...ALL_WORDS];
-                    const analysis = analyzePastedText(quickPlaySearchQuery, allWordsAvailable);
-                    setQuickPlayPreviewAnalysis(analysis);
-                    setShowQuickPlayPreview(true);
+                    // Close the editor - user is done editing words
+                    console.log('[Quick Play Editor] Done clicked, closing editor');
+                    setQuickPlayWordEditorOpen(false);
                   }}
-                  disabled={!quickPlaySearchQuery.trim()}
-                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base disabled:opacity-50 disabled:shadow-none"
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base"
                 >
                   <CheckCircle2 size={14} sm:size={18} />
-                  Done - Added {searchTerms.length} Words
+                  Done - Edited Words
                 </button>
               </div>
             </div>
@@ -6614,6 +6623,10 @@ export default function App() {
             analysis={quickPlayPreviewAnalysis}
             onConfirm={handleQuickPlayPreviewConfirm}
             onCancel={handleQuickPlayPreviewCancel}
+            onQuickSave={(customTranslations) => {
+              // Quick Save - skip going to editor, go straight to QR generation
+              handleQuickPlayPreviewConfirm(customTranslations);
+            }}
             onRemoveUnmatched={(term) => {
               // Remove unmatched term from preview
               if (quickPlayPreviewAnalysis) {
@@ -6623,6 +6636,7 @@ export default function App() {
                   stats: {
                     ...quickPlayPreviewAnalysis.stats,
                     unmatchedCount: quickPlayPreviewAnalysis.stats.unmatchedCount - 1,
+                    totalTerms: quickPlayPreviewAnalysis.stats.totalTerms - 1,
                   },
                 };
                 setQuickPlayPreviewAnalysis(updatedAnalysis);
@@ -6675,6 +6689,7 @@ export default function App() {
               onClick={() => {
                 console.log('[End Session] Button clicked');
                 console.log('[End Session] Session:', quickPlayActiveSession);
+                showToast("Opening end session confirmation...", "info");
                 setEndQuickPlayModal(true);
               }}
               className="bg-red-500 hover:bg-red-600 text-white px-4 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
