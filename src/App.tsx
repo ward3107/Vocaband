@@ -108,6 +108,7 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [studentDataLoading, setStudentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
 
@@ -2254,42 +2255,65 @@ export default function App() {
       const studentUid = session.user.id;
 
       // Step 2: Look up class + existing user profile in parallel
-      const [classResult, userResult] = await Promise.all([
-        supabase.from('classes').select('*').eq('code', trimmedCode),
-        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
-      ]);
-      if (classResult.error) throw classResult.error;
-      if (!classResult.data || classResult.data.length === 0) {
+      // OPTIMIZATION: Check cache first to avoid database query
+      let classData: ClassData;
+      const cacheKey = `vocaband_class_${trimmedCode}`;
+
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, cached: cacheTime } = JSON.parse(cached);
+          // Use cache if less than 5 minutes old
+          if (Date.now() - cacheTime < 5 * 60 * 1000) {
+            classData = data;
+          }
+        }
+      } catch { /* ignore cache errors */ }
+
+      const classResult = classData ? null : await supabase.from('classes').select('*').eq('code', trimmedCode);
+      if (classResult?.error) throw classResult.error;
+
+      if (classResult?.data && classResult.data.length > 0) {
+        classData = mapClass(classResult.data[0]);
+        // Update cache with fresh data
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data: classData,
+            cached: Date.now(),
+          }));
+        } catch { /* ignore */ }
+      }
+
+      if (!classData) {
         setError("Invalid Class Code!");
         return;
       }
-      const classData = mapClass(classResult.data[0]);
+
+      const [userResult] = await Promise.all([
+        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
+      ]);
+
+      // Cache class info in localStorage for faster future logins
+      try {
+        localStorage.setItem(`vocaband_class_${trimmedCode}`, JSON.stringify({
+          data: classData,
+          cached: Date.now(),
+        }));
+      } catch { /* ignore */ }
 
       // Step 2.5: Check if student is approved (for student_profiles workflow)
+      // OPTIMIZATION: Check both formats in parallel instead of sequentially
       const studentUniqueIdNew = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
       const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
 
-      // Check new format first, fall back to legacy
-      let studentProfile: { status: string } | null = null;
-      let profileError: unknown = null;
-      {
-        const result = await supabase
-          .from('student_profiles')
-          .select('status')
-          .eq('unique_id', studentUniqueIdNew)
-          .maybeSingle();
-        studentProfile = result.data;
-        profileError = result.error;
-      }
-      if (!studentProfile && !profileError) {
-        const result = await supabase
-          .from('student_profiles')
-          .select('status')
-          .eq('unique_id', studentUniqueIdLegacy)
-          .maybeSingle();
-        studentProfile = result.data;
-        profileError = result.error;
-      }
+      // Check both new and legacy formats in parallel - much faster!
+      const [newFormatResult, legacyFormatResult] = await Promise.all([
+        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdNew).maybeSingle(),
+        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdLegacy).maybeSingle(),
+      ]);
+
+      // Use new format result if found, otherwise fall back to legacy
+      const studentProfile = newFormatResult.data || legacyFormatResult.data;
 
 
       if (profileError) {
@@ -2325,30 +2349,49 @@ export default function App() {
         if (insertErr) throw insertErr;
       }
 
-      // Step 4: Fetch assignments + progress in parallel (user row now exists, RLS passes)
-      const [assignResult, progressResult] = await Promise.all([
-        supabase.from('assignments').select('*').eq('class_id', classData.id),
-        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
-      ]);
-      if (assignResult.error) throw assignResult.error;
-      if (progressResult.error) throw progressResult.error;
-
-      setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-      setStudentProgress((progressResult.data ?? []).map(mapProgress));
+      // OPTIMISTIC UI: Set user and show dashboard IMMEDIATELY
+      // This makes the login feel instant while data loads in background
       setUser(userData);
       setBadges(userData.badges || []);
       setXp(userData.xp ?? 0);
       setStreak(userData.streak ?? 0);
-      checkConsent(userData);
+      setView("student-dashboard");
+      setLoading(false); // Hide the loading spinner immediately
 
-      // Join Live Challenge
+      // Join Live Challenge immediately (doesn't need to wait for data)
       if (socket) {
         socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
           classCode: trimmedCode, name: trimmedName, uid: studentUid, token: session.access_token,
         });
       }
 
-      setView("student-dashboard");
+      // Check consent early (before background data load)
+      checkConsent(userData);
+
+      // BACKGROUND: Fetch assignments + progress after UI is visible
+      // This makes the login feel much faster!
+      setStudentDataLoading(true);
+      Promise.all([
+        supabase.from('assignments').select('*').eq('class_id', classData.id),
+        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
+      ]).then(([assignResult, progressResult]) => {
+        if (assignResult.error) {
+          console.error('Error loading assignments:', assignResult.error);
+        } else {
+          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+        }
+
+        if (progressResult.error) {
+          console.error('Error loading progress:', progressResult.error);
+        } else {
+          setStudentProgress((progressResult.data ?? []).map(mapProgress));
+        }
+
+        setStudentDataLoading(false);
+      }).catch((error) => {
+        console.error('Background data load error:', error);
+        setStudentDataLoading(false);
+      });
 
       // Persist student credentials so we can auto-restore on page refresh
       // (anonymous Supabase sessions don't reliably survive mobile/PWA restarts)
@@ -2371,6 +2414,7 @@ export default function App() {
       clearTimeout(loginTimeout);
       manualLoginInProgress.current = false;
       setLoading(false);
+      setStudentDataLoading(false);
     }
   };
 
@@ -3768,9 +3812,19 @@ export default function App() {
           )}
 
           <div className="bg-white p-5 sm:p-8 rounded-[28px] sm:rounded-[40px] shadow-xl">
-            <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2"><BookOpen className="text-blue-700" size={22} /> Your Assignments</h2>
-            
-            {studentAssignments.length === 0 ? (
+            <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2">
+              <BookOpen className="text-blue-700" size={22} /> Your Assignments
+            </h2>
+
+            {/* Background loading indicator */}
+            {studentDataLoading && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 animate-pulse">
+                <RefreshCw className="text-blue-700 animate-spin" size={16} />
+                <span className="text-blue-800 font-bold text-sm">Loading your assignments...</span>
+              </div>
+            )}
+
+            {studentAssignments.length === 0 && !studentDataLoading ? (
               <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">No assignments yet. Check back later!</p>
             ) : (
               <div className="space-y-5 sm:space-y-4">
