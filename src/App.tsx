@@ -47,7 +47,16 @@ import {
   Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, OperationType, handleDbError, mapUser, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import * as authService from "./services/authService";
+import * as userService from "./services/userService";
+import * as classService from "./services/classService";
+import * as assignmentService from "./services/assignmentService";
+import * as progressService from "./services/progressService";
+import * as shopService from "./services/shopService";
+import * as studentService from "./services/studentService";
+import * as quickPlayService from "./services/quickPlayService";
+import * as consentService from "./services/consentService";
 import { useAudio } from "./shared/hooks/useAudio";
 import FloatingButtons from "./shared/components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
@@ -819,7 +828,7 @@ export default function App() {
     let cancelled = false;
 
     const getToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authService.getSession();
       return session?.access_token ?? "";
     };
 
@@ -903,9 +912,9 @@ export default function App() {
     // Helper: fetch user profile with retry (mobile networks are flaky)
     const fetchUserProfile = async (uid: string, retries = 2): Promise<ReturnType<typeof mapUser> | null> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
-        const { data: userRow, error } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
-        if (userRow) return mapUser(userRow);
-        if (!error) return null; // No row exists — don't retry
+        const profile = await userService.fetchUserProfile(uid);
+        if (profile) return profile;
+        // fetchUserProfile returns null on no-row or error — retry on error
         if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
       }
       return null;
@@ -936,17 +945,15 @@ export default function App() {
             setView("teacher-dashboard");
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;
-            const { data: classRows } = await supabase
-              .from('classes').select('*').eq('code', code);
-            if (classRows && classRows.length > 0) {
-              const classData = mapClass(classRows[0]);
+            const classData = await classService.findClassByCode(code);
+            if (classData) {
               // Fetch assignments + progress in parallel for faster restore
-              const [assignResult, progressResult] = await Promise.all([
-                supabase.from('assignments').select('*').eq('class_id', classData.id),
-                supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', supabaseUser.id),
+              const [assignments, progress] = await Promise.all([
+                assignmentService.fetchAssignmentsByClassId(classData.id),
+                progressService.fetchProgressByClassCode(code, supabaseUser.id),
               ]);
-              setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-              setStudentProgress((progressResult.data ?? []).map(mapProgress));
+              setStudentAssignments(assignments);
+              setStudentProgress(progress);
             }
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
@@ -963,29 +970,24 @@ export default function App() {
               const { classCode: savedCode, displayName: savedName, uid: savedUid } = JSON.parse(savedRaw);
               if (savedCode && savedName && savedUid) {
                 // Look up the users row by the OLD uid
-                const { data: existingUser } = await supabase
-                  .from('users').select('*').eq('uid', savedUid).maybeSingle();
+                const existingUser = await userService.fetchUserProfile(savedUid);
                 if (existingUser) {
                   // Migrate the row to the new anonymous UID
-                  await supabase.from('users')
-                    .update({ uid: supabaseUser.id })
-                    .eq('uid', savedUid);
+                  await userService.migrateUid(savedUid, supabaseUser.id);
                   // Re-fetch with new UID
                   const restored = await fetchUserProfile(supabaseUser.id);
                   if (restored) {
                     setUser(restored);
                     checkConsent(restored);
                     if (restored.role === "student" && restored.classCode) {
-                      const { data: classRows } = await supabase
-                        .from('classes').select('*').eq('code', restored.classCode);
-                      if (classRows && classRows.length > 0) {
-                        const c = mapClass(classRows[0]);
-                        const [a, p] = await Promise.all([
-                          supabase.from('assignments').select('*').eq('class_id', c.id),
-                          supabase.from('progress').select('*').eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
+                      const classData = await classService.findClassByCode(restored.classCode);
+                      if (classData) {
+                        const [assignments, progress] = await Promise.all([
+                          assignmentService.fetchAssignmentsByClassId(classData.id),
+                          progressService.fetchProgressByClassCode(restored.classCode, supabaseUser.id),
                         ]);
-                        setStudentAssignments((a.data ?? []).map(mapAssignment));
-                        setStudentProgress((p.data ?? []).map(mapProgress));
+                        setStudentAssignments(assignments);
+                        setStudentProgress(progress);
                       }
                     }
                     setBadges(restored.badges || []);
@@ -1010,12 +1012,10 @@ export default function App() {
           // Auto-create teacher account for Google sign-ins only (not anonymous)
           const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
-            const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
-              check_email: supabaseUser.email ?? ""
-            });
+            const isAllowed = await authService.isTeacherAllowed(supabaseUser.email ?? "");
             if (!isAllowed) {
               setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
-              await supabase.auth.signOut();
+              await authService.signOut();
               return;
             }
             const newUser: AppUser = {
@@ -1025,9 +1025,10 @@ export default function App() {
               displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
             };
             // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
-            const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
-            if (insertErr) {
-              console.error("Teacher profile upsert failed:", insertErr);
+            try {
+              await userService.upsertUser(newUser);
+            } catch (err) {
+              console.error("Teacher profile upsert failed:", err);
             }
             setUser(newUser);
             const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => []);
@@ -1096,7 +1097,7 @@ export default function App() {
           const savedRaw = localStorage.getItem('vocaband_student_login');
           if (savedRaw) {
             // signInAnonymously triggers SIGNED_IN → restoreSession handles the rest
-            supabase.auth.signInAnonymously().catch(() => {
+            authService.signInAnonymously().catch(() => {
               localStorage.removeItem('vocaband_student_login');
               setLoading(false);
             });
@@ -1199,7 +1200,7 @@ export default function App() {
   // Retry any progress writes that failed during a previous session
   useEffect(() => {
     const retryPending = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authService.getSession();
       if (!session) return; // No session — skip retries
 
       const currentUid = session.user.id;
@@ -1212,8 +1213,8 @@ export default function App() {
             localStorage.removeItem(key); // Discard stale/foreign entries
             continue;
           }
-          const { error } = await supabase.from('progress').insert(progress);
-          if (!error) localStorage.removeItem(key);
+          await progressService.insertRawProgress(progress);
+          localStorage.removeItem(key);
         } catch {
           // Still offline — will retry on next load
         }
@@ -1228,10 +1229,10 @@ export default function App() {
     if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
     const code = user.classCode;
     const refresh = async () => {
-      const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
-      if (!classRows || classRows.length === 0) return;
-      const { data } = await supabase.from('assignments').select('*').eq('class_id', classRows[0].id);
-      if (data) setStudentAssignments(data.map(mapAssignment));
+      const classData = await classService.findClassByCode(code);
+      if (!classData) return;
+      const assignments = await assignmentService.fetchAssignmentsByClassId(classData.id);
+      setStudentAssignments(assignments);
     };
     const id = setInterval(refresh, 30000);
     return () => clearInterval(id);
@@ -1245,13 +1246,11 @@ export default function App() {
   }, [user?.role, view]);
 
   const fetchTeacherData = async (uid: string) => {
-    const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
-    if (!error && data) {
-      const mappedClasses = data.map(mapClass);
+    const mappedClasses = await classService.fetchTeacherClasses(uid);
+    if (mappedClasses.length > 0) {
       setClasses(mappedClasses);
-      return mappedClasses;
     }
-    return [];
+    return mappedClasses;
   };
 
   const handleCreateClass = async () => {
@@ -1268,9 +1267,8 @@ export default function App() {
     };
 
     try {
-      const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
-      if (error) throw error;
-      setClasses([...classes, mapClass(docRow)]);
+      const newClassData = await classService.createClass(newClass.name, newClass.teacherUid, newClass.code);
+      setClasses([...classes, newClassData]);
       setCreatedClassName(newClass.name);
       setShowCreateClassModal(false);
       setNewClassName("");
@@ -1299,7 +1297,7 @@ export default function App() {
 
     try {
       // Get auth token for teacher authentication
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authService.getSession();
       const token = session?.access_token;
       if (!token) { showToast("Please sign in again.", "error"); return; }
 
@@ -1774,8 +1772,8 @@ export default function App() {
           insertPayload.sentences = newAssignment.sentences;
         }
 
-        const { error } = await supabase.from('assignments').insert(insertPayload);
-        if (error) throw error;
+        await assignmentService.createAssignment(insertPayload);
+
         showToast("Assignment created successfully!", "success");
 
         // Refresh assignments list
@@ -1833,8 +1831,7 @@ export default function App() {
       message: "Are you sure you want to delete this class? This will also remove access for all students in this class.",
       onConfirm: async () => {
         try {
-          const { error } = await supabase.from('classes').delete().eq('id', classId);
-          if (error) throw error;
+          await classService.deleteClass(classId);
           setClasses(prev => prev.filter(c => c.id !== classId));
           showToast("Class deleted successfully.", "success");
         } catch (error) {
@@ -1859,12 +1856,7 @@ export default function App() {
     // Also persist to the consent_log DB table for compliance/audit trail
     if (user?.uid) {
       try {
-        await supabase.from('consent_log').insert({
-          uid: user.uid,
-          policy_version: PRIVACY_POLICY_VERSION,
-          terms_version: PRIVACY_POLICY_VERSION,
-          action: 'accept',
-        });
+        await consentService.recordConsent(user.uid, PRIVACY_POLICY_VERSION, 'accept');
       } catch (error) {
         trackError('Could not persist consent to database', 'database', 'low', { uid: user?.uid });
       }
@@ -2115,28 +2107,13 @@ export default function App() {
   // Helper to load assignments for a class
   const loadAssignmentsForClass = async (classData: any, code: string, studentUid: string) => {
 
-    // Use RPC to bypass RLS for assignments
-    const { data: assignResult, error: assignError } = await supabase
-      .rpc('get_assignments_for_class', {
-        p_class_id: classData.id
-      });
-
-    // Progress still uses direct query (should work for student's own progress)
-    const { data: progressResult, error: progressError } = await supabase
-      .from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid);
-
-
-    if (assignError) {
-      console.error('Assignments RPC error:', assignError);
-      // Fallback to direct query
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('assignments').select('*').eq('class_id', classData.id);
-      setStudentAssignments((fallbackData ?? []).map(mapAssignment));
-    } else {
-      setStudentAssignments((assignResult ?? []).map(mapAssignment));
-    }
-
-    setStudentProgress((progressResult ?? []).map(mapProgress));
+    // Fetch assignments + progress in parallel
+    const [assignments, progress] = await Promise.all([
+      assignmentService.fetchAssignmentsByClassId(classData.id),
+      progressService.fetchProgressByClassCode(code, studentUid),
+    ]);
+    setStudentAssignments(assignments);
+    setStudentProgress(progress);
   };
 
   const handleNewStudentSignup = async () => {
@@ -2150,7 +2127,7 @@ export default function App() {
 
     try {
       // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
-      const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
+      const { data: signInData, error: signInError } = await authService.signInAnonymously();
       if (signInError || !signInData.session) {
         setError("Could not create account. Please try again.");
         console.error('Sign-in error:', signInError);
@@ -2326,16 +2303,7 @@ export default function App() {
 
   const handleApproveStudent = async (studentId: string, displayName: string) => {
     try {
-      // Call the approve_student function
-      const { data, error } = await supabase.rpc('approve_student', {
-        p_profile_id: studentId
-      });
-
-
-      if (error) {
-        console.error('RPC error:', error);
-        throw error;
-      }
+      await studentService.approveStudent(studentId);
 
       // Refresh the list
       await loadPendingStudents();
@@ -2354,13 +2322,7 @@ export default function App() {
 
   const confirmRejectStudent = async (studentId: string) => {
     try {
-      const { error } = await supabase
-        .from('student_profiles')
-        .update({ status: 'rejected' })
-        .eq('id', studentId);
-
-      if (error) throw error;
-
+      await studentService.rejectStudent(studentId);
       // Refresh the list
       await loadPendingStudents();
     } catch (error) {
@@ -2401,7 +2363,7 @@ export default function App() {
       // Step 1: Sign in anonymously — reuse existing anonymous session if present.
       // signInAnonymously() acquires the Supabase auth lock, so we avoid
       // calling getSession() first (that would acquire the lock twice).
-      const { data, error: signInError } = await supabase.auth.signInAnonymously();
+      const { data, error: signInError } = await authService.signInAnonymously();
       if (signInError || !data.session) {
         setError("Login failed: " + (signInError?.message ?? "Could not create session"));
         return;
@@ -2425,11 +2387,11 @@ export default function App() {
         }
       } catch { /* ignore cache errors */ }
 
-      const classResult = classData ? null : await supabase.from('classes').select('*').eq('code', trimmedCode);
-      if (classResult?.error) throw classResult.error;
+      if (!classData) {
+        classData = await classService.findClassByCode(trimmedCode);
+      }
 
-      if (classResult?.data && classResult.data.length > 0) {
-        classData = mapClass(classResult.data[0]);
+      if (classData) {
         // Update cache with fresh data
         try {
           localStorage.setItem(cacheKey, JSON.stringify({
@@ -2444,9 +2406,7 @@ export default function App() {
         return;
       }
 
-      const [userResult] = await Promise.all([
-        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
-      ]);
+      const existingUserProfile = await userService.fetchUserProfile(studentUid);
 
       // Cache class info in localStorage for faster future logins
       try {
@@ -2461,19 +2421,11 @@ export default function App() {
       const studentUniqueIdNew = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
       const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
 
-      // Check both new and legacy formats in parallel - much faster!
-      const [newFormatResult, legacyFormatResult] = await Promise.all([
-        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdNew).maybeSingle(),
-        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdLegacy).maybeSingle(),
-      ]);
-
-      // Use new format result if found, otherwise fall back to legacy
-      const studentProfile = newFormatResult.data || legacyFormatResult.data;
+      // Check both new and legacy formats
+      const studentProfile = await studentService.checkStudentApproval([studentUniqueIdNew, studentUniqueIdLegacy]);
 
 
-      if (profileError) {
-        console.error('Error checking student approval:', profileError);
-      } else if (studentProfile) {
+      if (studentProfile) {
         if (studentProfile.status === 'pending_approval') {
           setError("Your account is pending approval from your teacher. Please check back later!");
           return;
@@ -2486,11 +2438,9 @@ export default function App() {
 
       // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
       let userData: AppUser;
-      if (userResult.data) {
-        userData = { ...mapUser(userResult.data), classCode: trimmedCode, role: "student", displayName: trimmedName };
-        const { error: updateErr } = await supabase
-          .from('users').update({ class_code: trimmedCode, role: "student", display_name: trimmedName }).eq('uid', studentUid);
-        if (updateErr) throw updateErr;
+      if (existingUserProfile) {
+        userData = { ...existingUserProfile, classCode: trimmedCode, role: "student", displayName: trimmedName };
+        await userService.updateStudentProfile(studentUid, { class_code: trimmedCode, role: "student", display_name: trimmedName });
       } else {
         userData = {
           uid: studentUid,
@@ -2500,8 +2450,7 @@ export default function App() {
           avatar: studentAvatar,
           badges: [],
         };
-        const { error: insertErr } = await supabase.from('users').insert(mapUserToDb(userData));
-        if (insertErr) throw insertErr;
+        await userService.createUser(userData);
       }
 
       // OPTIMISTIC UI: Set user and show dashboard IMMEDIATELY
@@ -2527,21 +2476,11 @@ export default function App() {
       // This makes the login feel much faster!
       setStudentDataLoading(true);
       Promise.all([
-        supabase.from('assignments').select('*').eq('class_id', classData.id),
-        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
-      ]).then(([assignResult, progressResult]) => {
-        if (assignResult.error) {
-          console.error('Error loading assignments:', assignResult.error);
-        } else {
-          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        }
-
-        if (progressResult.error) {
-          console.error('Error loading progress:', progressResult.error);
-        } else {
-          setStudentProgress((progressResult.data ?? []).map(mapProgress));
-        }
-
+        assignmentService.fetchAssignmentsByClassId(classData.id),
+        progressService.fetchProgressByClassCode(trimmedCode, studentUid),
+      ]).then(([assignments, progress]) => {
+        setStudentAssignments(assignments);
+        setStudentProgress(progress);
         setStudentDataLoading(false);
       }).catch((error) => {
         console.error('Background data load error:', error);
@@ -2589,8 +2528,7 @@ export default function App() {
     });
 
     try {
-      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
-      if (error) throw error;
+      await userService.updateBadges(user.uid, newBadges);
     } catch (error) {
       console.error("Error saving badge:", error);
       setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
@@ -2602,23 +2540,16 @@ export default function App() {
     if (now - (lastFetchRef.current.students ?? 0) < 10000) return;
     lastFetchRef.current.students = now;
     const codes = classes.map(c => c.code);
-    const chunks = chunkArray(codes, 30);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allRows: any[] = [];
-
-    for (const chunk of chunks) {
-      const { data } = await supabase.from('progress').select('*').in('class_code', chunk).limit(5000);
-      if (data) allRows.push(...data);
-    }
+    const allProgress = await progressService.fetchProgressByClassCodes(codes);
 
     const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    allRows.forEach(row => {
-      const key = `${row.student_name}-${row.class_code}`;
-      if (!studentMap[key] || new Date(row.completed_at) > new Date(studentMap[key].lastActive)) {
+    allProgress.forEach(row => {
+      const key = `${row.studentName}-${row.classCode}`;
+      if (!studentMap[key] || new Date(row.completedAt) > new Date(studentMap[key].lastActive)) {
         studentMap[key] = {
-          name: row.student_name,
-          classCode: row.class_code,
-          lastActive: row.completed_at,
+          name: row.studentName,
+          classCode: row.classCode,
+          lastActive: row.completedAt,
         };
       }
     });
@@ -2631,14 +2562,11 @@ export default function App() {
     const now = Date.now();
     if (now - (lastFetchRef.current.leaderboard ?? 0) < 10000) return;
     lastFetchRef.current.leaderboard = now;
-    const { data } = await supabase
-      .from('progress').select('student_name, score, avatar')
-      .eq('class_code', classCode)
-      .order('score', { ascending: false }).limit(10);
-    const scores = (data ?? []).map(row => ({
+    const rawScores = await progressService.fetchProgressScores(classCode, 10);
+    const scores = rawScores.map(row => ({
       name: row.student_name,
       score: row.score,
-      avatar: row.avatar || "🦊",
+      avatar: row.avatar,
     }));
     setGlobalLeaderboard(scores);
   };
@@ -2654,18 +2582,7 @@ export default function App() {
     }
 
     const codes = classes.map(c => c.code);
-    const chunks = chunkArray(codes, 30);
-    const allRows: ProgressData[] = [];
-
-    for (const chunk of chunks) {
-      const { data } = await supabase
-        .from('progress').select('*')
-        .in('class_code', chunk)
-        .order('completed_at', { ascending: false })
-        .limit(200);
-      if (data) allRows.push(...data.map(mapProgress));
-    }
-
+    const allRows = await progressService.fetchProgressForScores(codes, 200);
     setAllScores(allRows);
   };
 
@@ -2674,9 +2591,8 @@ export default function App() {
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
     console.log('fetchTeacherAssignments called with classIds:', classIds);
-    const { data, error } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
-    console.log('Assignments query result:', { data, error });
-    setTeacherAssignments((data ?? []).map(mapAssignment));
+    const assignments = await assignmentService.fetchAssignmentsByClassIds(classIds);
+    setTeacherAssignments(assignments);
     setTeacherAssignmentsLoading(false);
   };
 
@@ -2938,9 +2854,8 @@ export default function App() {
         });
 
         // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
-        const { error } = await supabase
-          .from('progress')
-          .insert({
+        try {
+          await progressService.insertRawProgress({
             student_name: progress.studentName,
             student_uid: progress.studentUid,
             assignment_id: progress.assignmentId,
@@ -2951,11 +2866,9 @@ export default function App() {
             mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
             avatar: progress.avatar
           });
-
-        if (error) {
-          console.error('[Quick Play] Failed to save progress:', error);
-        } else {
           console.log('[Quick Play] ✓ Progress saved successfully for', user.displayName);
+        } catch (progressError) {
+          console.error('[Quick Play] Failed to save progress:', progressError);
         }
 
         setIsSaving(false);
@@ -2985,11 +2898,11 @@ export default function App() {
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
     // Persist XP and streak to database
-    await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
+    await userService.updateXpAndStreak(user.uid, newXp, newStreak);
 
     // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
     // For regular students, we try to get the session UID
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await authService.getSession();
     const sessionUid = session?.user?.id;
 
     // Determine the student UID to use for progress tracking
@@ -3017,19 +2930,16 @@ export default function App() {
 
     try {
       // Use RPC to save progress (bypasses RLS for students)
-      const { data: progressId, error: rpcError } = await supabase
-        .rpc('save_student_progress', {
-          p_student_name: user.displayName,
-          p_student_uid: studentUid,
-          p_assignment_id: activeAssignment.id,
-          p_class_code: user.classCode || "",
-          p_score: cappedScore,
-          p_mode: gameMode,
-          p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-          p_avatar: user.avatar || "🦊"
-        });
-
-      if (rpcError) throw rpcError;
+      const progressId = await progressService.saveStudentProgress({
+        studentName: user.displayName,
+        studentUid: studentUid,
+        assignmentId: activeAssignment.id,
+        classCode: user.classCode || "",
+        score: cappedScore,
+        mode: gameMode,
+        mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+        avatar: user.avatar || "🦊"
+      });
 
       // Update local state with the saved progress
       const newProgress = {
@@ -3442,10 +3352,7 @@ export default function App() {
         <LandingPageWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("student-account-login")}
-          onTeacherLogin={() => supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.origin },
-          })}
+          onTeacherLogin={() => authService.signInWithGoogle(window.location.origin)}
           onTryDemo={() => setShowDemo(true)}
           isAuthenticated={!!user}
         />
@@ -4008,7 +3915,7 @@ export default function App() {
             <button onClick={() => { setShopTab("avatars"); setView("shop"); }} className="px-6 py-2.5 bg-gradient-to-r from-pink-400 to-rose-500 text-white font-bold rounded-xl hover:from-pink-500 hover:to-rose-600 transition-all text-base flex items-center gap-2 shadow-lg shadow-pink-500/30 animate-pulse">
               🛍️ Shop
             </button>
-            <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 text-stone-500 font-bold hover:text-red-500 hover:bg-red-50 rounded-xl text-sm transition-all">Logout</button>
+            <button onClick={() => authService.signOut()} className="px-4 py-2 text-stone-500 font-bold hover:text-red-500 hover:bg-red-50 rounded-xl text-sm transition-all">Logout</button>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
             <div className="w-14 h-14 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
@@ -4167,15 +4074,12 @@ export default function App() {
   if (user && view === "privacy-settings") {
     const handleExportData = async () => {
       try {
-        // Client-side data export — fetch user's own data via RLS-protected queries
-        const [userResult, progressResult] = await Promise.all([
-          supabase.from('users').select('*').eq('uid', user.uid).maybeSingle(),
-          supabase.from('progress').select('*').eq('student_uid', user.uid),
-        ]);
+        // Client-side data export — fetch user's own data
+        const { user: userData, progress: progressData } = await userService.exportUserData(user.uid);
         const exportData = {
           exported_at: new Date().toISOString(),
-          user: userResult.data,
-          progress: progressResult.data ?? [],
+          user: userData,
+          progress: progressData,
         };
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -4198,10 +4102,8 @@ export default function App() {
         onConfirm: async () => {
           try {
             // Delete user's progress and profile
-            await supabase.from('progress').delete().eq('student_uid', user.uid);
-            await supabase.from('users').delete().eq('uid', user.uid);
+            await userService.deleteUserAccount(user.uid);
             localStorage.removeItem('vocaband_consent_version');
-            await supabase.auth.signOut();
             showToast("Account deleted successfully.", "success");
           } catch (err) {
             console.error("Delete account error:", err);
@@ -4216,8 +4118,7 @@ export default function App() {
       const trimmed = newDisplayName.trim().slice(0, 30);
       if (!trimmed) return;
       try {
-        const { error: updateErr } = await supabase.from('users').update({ display_name: trimmed }).eq('uid', user.uid);
-        if (updateErr) throw updateErr;
+        await userService.updateDisplayName(user.uid, trimmed);
         setUser(prev => prev ? { ...prev, displayName: trimmed } : prev);
         setEditingName(false);
         showToast("Name updated!", "success");
@@ -4319,7 +4220,7 @@ export default function App() {
                     message: "Withdrawing consent will log you out. You can re-accept when you log in again. Continue?",
                     onConfirm: async () => {
                       localStorage.removeItem('vocaband_consent_version');
-                      await supabase.auth.signOut();
+                      await authService.signOut();
                       setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
                     },
                   });
@@ -4363,42 +4264,42 @@ export default function App() {
   if (user?.role === "student" && view === "shop") {
     const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
       if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
-      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: avatar.emoji, item_cost: avatar.cost });
-      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      const data = await shopService.purchaseItem('avatar', avatar.emoji, avatar.cost);
+      if (!data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
       setXp(data.new_xp);
       setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), avatar.emoji] } : prev);
       showToast(`Unlocked ${avatar.name}!`, "success");
     };
     const equipAvatar = async (emoji: string) => {
       setUser(prev => prev ? { ...prev, avatar: emoji } : prev);
-      await supabase.from('users').update({ avatar: emoji }).eq('uid', user.uid);
+      await userService.updateAvatar(user.uid, emoji);
       showToast("Avatar equipped!", "success");
     };
     const purchaseTheme = async (theme: typeof THEMES[0]) => {
       if (xp < theme.cost) { showToast("Not enough XP!", "error"); return; }
-      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'theme', item_id: theme.id, item_cost: theme.cost });
-      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      const data = await shopService.purchaseItem('theme', theme.id, theme.cost);
+      if (!data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
       setXp(data.new_xp);
       setUser(prev => prev ? { ...prev, unlockedThemes: [...(prev.unlockedThemes ?? []), theme.id] } : prev);
       showToast(`Unlocked ${theme.name}!`, "success");
     };
     const equipTheme = async (themeId: string) => {
       setUser(prev => prev ? { ...prev, activeTheme: themeId } : prev);
-      await supabase.from('users').update({ active_theme: themeId }).eq('uid', user.uid);
+      await userService.updateActiveTheme(user.uid, themeId);
       showToast("Theme applied!", "success");
     };
     const purchasePowerUp = async (powerUp: typeof POWER_UP_DEFS[0]) => {
       if (xp < powerUp.cost) { showToast("Not enough XP!", "error"); return; }
-      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'power_up', item_id: powerUp.id, item_cost: powerUp.cost });
-      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      const data = await shopService.purchaseItem('power_up', powerUp.id, powerUp.cost);
+      if (!data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
       setXp(data.new_xp);
       setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
       showToast(`Got ${powerUp.name}!`, "success");
     };
     const purchaseBooster = async (booster: typeof BOOSTERS_DEFS[0]) => {
       if (xp < booster.cost) { showToast("Not enough XP!", "error"); return; }
-      const { data, error } = await supabase.rpc('purchase_item', { item_type: 'booster', item_id: booster.id, item_cost: booster.cost });
-      if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+      const data = await shopService.purchaseItem('booster', booster.id, booster.cost);
+      if (!data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
       setXp(data.new_xp);
       showToast(`Got ${booster.name}! 🎉`, "success");
     };
@@ -4576,14 +4477,14 @@ export default function App() {
                       ) : isOwned ? (
                         <button onClick={async () => {
                           setUser(prev => prev ? { ...prev, activeTitle: title.id } as any : prev);
-                          await supabase.from('users').update({ active_title: title.id } as any).eq('uid', user.uid);
+                          await userService.updateActiveTitle(user.uid, title.id);
                           showToast("Title equipped!", "success");
                         }} className="text-xs font-bold text-green-600 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200">Equip</button>
                       ) : (
                         <button onClick={async () => {
                           if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
-                          const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
-                          if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                          const data = await shopService.purchaseItem('avatar', `title_${title.id}`, title.cost);
+                          if (!data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
                           setXp(data.new_xp);
                           setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
                           showToast(`Unlocked "${title.display}"!`, "success");
@@ -4620,14 +4521,14 @@ export default function App() {
                       ) : isOwned ? (
                         <button onClick={async () => {
                           setUser(prev => prev ? { ...prev, activeFrame: frame.id } as any : prev);
-                          await supabase.from('users').update({ active_frame: frame.id } as any).eq('uid', user.uid);
+                          await userService.updateActiveFrame(user.uid, frame.id);
                           showToast("Frame equipped!", "success");
                         }} className="text-xs font-bold text-green-600 mt-1 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200">Equip</button>
                       ) : (
                         <button onClick={async () => {
                           if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
-                          const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
-                          if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                          const data = await shopService.purchaseItem('avatar', `frame_${frame.id}`, frame.cost);
+                          if (!data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
                           setXp(data.new_xp);
                           setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
                           showToast(`Unlocked ${frame.name}!`, "success");
@@ -4745,7 +4646,7 @@ export default function App() {
           subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => authService.signOut()}
         />
 
         <div className="" style={{ maxWidth: '72rem', marginLeft: 'auto', marginRight: 'auto' }}>
@@ -4786,7 +4687,7 @@ export default function App() {
                       setView("live-challenge");
                       setIsLiveChallenge(true);
                       if (socket) {
-                        supabase.auth.getSession().then(({ data: { session } }) => {
+                        authService.getSession().then(({ data: { session } }) => {
                           const token = session?.access_token ?? "";
                           socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code, token });
                         });
@@ -4942,13 +4843,13 @@ export default function App() {
                         setView("create-assignment");
                       }}
                       onDeleteAssignment={async (assignment) => {
-                        const { error } = await supabase.from('assignments').delete().eq('id', assignment.id);
-                        if (error) {
-                          showToast("Failed to delete assignment: " + error.message, "error");
-                          return;
+                        try {
+                          await assignmentService.deleteAssignment(assignment.id);
+                          setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
+                          showToast("Assignment deleted successfully", "success");
+                        } catch (err: any) {
+                          showToast("Failed to delete assignment: " + (err?.message || "Unknown error"), "error");
                         }
-                        setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
-                        showToast("Assignment deleted successfully", "success");
                       }}
                     />
                     </div>
@@ -5087,9 +4988,10 @@ export default function App() {
                   </button>
                   <button
                     onClick={async () => {
-                      const { error } = await supabase.from('assignments').delete().eq('id', deleteConfirmModal.id);
-                      if (error) {
-                        showToast("Failed to delete: " + error.message, "error");
+                      try {
+                        await assignmentService.deleteAssignment(deleteConfirmModal.id);
+                      } catch (err: any) {
+                        showToast("Failed to delete: " + (err?.message || "Unknown error"), "error");
                         setDeleteConfirmModal(null);
                         return;
                       }
@@ -5193,15 +5095,11 @@ export default function App() {
 
                       showToast("Ending session...", "info");
 
-                      const { error } = await supabase.rpc('end_quick_play_session', {
-                        p_session_code: quickPlayActiveSession!.sessionCode
-                      });
-
-                      console.log('[End Session] RPC result:', { error, data: !error });
-
-                      if (error) {
-                        console.error('[End Session] Error:', error);
-                        showToast("Failed to end session: " + error.message, "error");
+                      try {
+                        await quickPlayService.endQuickPlaySession(quickPlayActiveSession!.sessionCode);
+                      } catch (err: any) {
+                        console.error('[End Session] Error:', err);
+                        showToast("Failed to end session: " + (err?.message || "Unknown error"), "error");
                         setEndQuickPlayModal(false);
                         return;
                       }
@@ -5701,7 +5599,7 @@ export default function App() {
           subtitle={`Review and approve student signups`}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => authService.signOut()}
           showBackButton
           onBack={() => setView("teacher-dashboard")}
         />
@@ -5859,7 +5757,7 @@ export default function App() {
           onBack={() => setView("teacher-dashboard")}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => authService.signOut()}
         />
 
         <div className="max-w-4xl mx-auto">
@@ -6097,20 +5995,20 @@ export default function App() {
                         example: w.example || ""
                       }))) : null;
 
-                      const { data, error } = await supabase.rpc('create_quick_play_session', {
-                        p_word_ids: wordIds.length > 0 ? wordIds : null,
-                        p_custom_words: customWordsJson
-                      });
-
-                      if (error) {
-                        showToast("Failed to create session: " + error.message, "error");
+                      let session: { session_code: string } & Record<string, any>;
+                      try {
+                        session = await quickPlayService.createQuickPlaySession(
+                          wordIds.length > 0 ? wordIds : null,
+                          customWordsJson
+                        ) as any;
+                      } catch (err: any) {
+                        showToast("Failed to create session: " + (err?.message || "Unknown error"), "error");
                         return;
                       }
 
-                      const session = data as { id: string, session_code: string };
                       setQuickPlaySessionCode(session.session_code);
                       setQuickPlayActiveSession({
-                        id: session.id,
+                        id: (session as any).id,
                         sessionCode: session.session_code,
                         wordIds: wordIds,
                         words: updatedSelection
@@ -6465,20 +6363,20 @@ export default function App() {
                     setQuickPlayPreviewAnalysis(null);
 
                     // Create session with database words AND custom words
-                    const { data, error } = await supabase.rpc('create_quick_play_session', {
-                      p_word_ids: wordIds.length > 0 ? wordIds : null,
-                      p_custom_words: customWordsJson
-                    });
-
-                    if (error) {
-                      showToast("Failed to create session: " + error.message, "error");
+                    let session: { session_code: string } & Record<string, any>;
+                    try {
+                      session = await quickPlayService.createQuickPlaySession(
+                        wordIds.length > 0 ? wordIds : null,
+                        customWordsJson
+                      ) as any;
+                    } catch (err: any) {
+                      showToast("Failed to create session: " + (err?.message || "Unknown error"), "error");
                       return;
                     }
 
-                    const session = data as { id: string, session_code: string };
                     setQuickPlaySessionCode(session.session_code);
                     setQuickPlayActiveSession({
-                      id: session.id,
+                      id: (session as any).id,
                       sessionCode: session.session_code,
                       wordIds: wordIds,
                       words: quickPlaySelectedWords // Include all words (db + custom)
@@ -6830,7 +6728,7 @@ export default function App() {
           onBack={() => setView("teacher-dashboard")}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => authService.signOut()}
         />
 
         <main className="pt-24 px-6 max-w-7xl mx-auto">
@@ -7463,7 +7361,7 @@ export default function App() {
           onBack={() => setView("teacher-dashboard")}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => authService.signOut()}
         />
 
         <main className="pt-24 px-6 max-w-4xl mx-auto">
@@ -7728,7 +7626,7 @@ export default function App() {
           onBack={() => setView("teacher-dashboard")}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => authService.signOut()}
         />
 
         <main className="pt-24 px-6 max-w-2xl mx-auto">
@@ -7760,7 +7658,7 @@ export default function App() {
                   setView("live-challenge");
                   setIsLiveChallenge(true);
                   if (socket) {
-                    supabase.auth.getSession().then(({ data: { session } }) => {
+                    authService.getSession().then(({ data: { session } }) => {
                       const token = session?.access_token ?? "";
                       socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code, token });
                     });
@@ -8194,7 +8092,7 @@ export default function App() {
                       const newPowerUps = { ...(user.powerUps ?? {}), fifty_fifty: ((user.powerUps ?? {})['fifty_fifty'] ?? 1) - 1 };
                       setHiddenOptions(toHide);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
+                      setTimeout(() => { userService.updatePowerUps(user.uid, newPowerUps); }, 0);
                     }} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
                       ✂️ 50/50 <span className="bg-amber-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['fifty_fifty']}</span>
                     </button>
@@ -8205,7 +8103,7 @@ export default function App() {
                       setCurrentIndex(prev => Math.min(prev + 1, gameWords.length - 1));
                       setHiddenOptions([]);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
+                      setTimeout(() => { userService.updatePowerUps(user.uid, newPowerUps); }, 0);
                     }} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
                       ⏭️ Skip <span className="bg-blue-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['skip']}</span>
                     </button>
@@ -8215,7 +8113,7 @@ export default function App() {
                       const newPowerUps = { ...(user.powerUps ?? {}), reveal_letter: ((user.powerUps ?? {})['reveal_letter'] ?? 1) - 1 };
                       if (currentWord) setSpellingInput(currentWord.english[0]);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-                      setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
+                      setTimeout(() => { userService.updatePowerUps(user.uid, newPowerUps); }, 0);
                     }} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
                       💡 Hint <span className="bg-green-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['reveal_letter']}</span>
                     </button>

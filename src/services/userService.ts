@@ -57,6 +57,16 @@ export async function updatePowerUps(uid: string, powerUps: Record<string, numbe
   if (error) throw error;
 }
 
+export async function migrateUid(oldUid: string, newUid: string): Promise<void> {
+  const { error } = await supabase.from('users').update({ uid: newUid }).eq('uid', oldUid);
+  if (error) throw error;
+}
+
+export async function updateStudentProfile(uid: string, updates: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase.from('users').update(updates).eq('uid', uid);
+  if (error) throw error;
+}
+
 export async function exportUserData(uid: string) {
   const [userResult, progressResult] = await Promise.all([
     supabase.from('users').select('*').eq('uid', uid).maybeSingle(),
