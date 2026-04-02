@@ -2023,48 +2023,40 @@ export default function App() {
     setUser(userData);
 
     // Ensure user record exists in users table (for XP/streak tracking)
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('uid', studentUid)
-      .maybeSingle();
+    try {
+      const existingUser = await userService.fetchUserProfile(studentUid);
 
-    if (checkError) {
-      trackAutoError(checkError, 'Student user record check failed during signup');
-    } else if (!existingUser) {
-      // Create user record if it doesn't exist
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          uid: studentUid,
-          email: profile.email,
-          display_name: profile.display_name,
-          role: 'student',
-          class_code: profile.class_code,
-          avatar: profile.avatar || '🦊',
-          badges: profile.badges || [],
-          xp: profile.xp || 0,
-          streak: 0,
-        });
-
-      if (insertError) {
-        trackAutoError(insertError, 'Failed to create student user record during signup');
+      if (!existingUser) {
+        // Create user record if it doesn't exist
+        try {
+          await userService.upsertUser({
+            uid: studentUid,
+            email: profile.email,
+            displayName: profile.display_name,
+            role: 'student',
+            classCode: profile.class_code,
+            avatar: profile.avatar || '🦊',
+            badges: profile.badges || [],
+            xp: profile.xp || 0,
+            streak: 0,
+          });
+        } catch (insertError) {
+          trackAutoError(insertError, 'Failed to create student user record during signup');
+        }
       } else {
+        // Update existing user record with latest profile data
+        try {
+          await userService.updateStudentProfile(studentUid, {
+            avatar: profile.avatar || '🦊',
+            badges: profile.badges || [],
+            xp: profile.xp || existingUser.xp
+          });
+        } catch (updateError) {
+          trackAutoError(updateError, 'Failed to update student user record during login');
+        }
       }
-    } else {
-      // Update existing user record with latest profile data
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          avatar: profile.avatar || '🦊',
-          badges: profile.badges || [],
-          xp: profile.xp || existingUser.xp
-        })
-        .eq('uid', studentUid);
-
-      if (updateError) {
-        trackAutoError(updateError, 'Failed to update student user record during login');
-      }
+    } catch (checkError) {
+      trackAutoError(checkError, 'Student user record check failed during signup');
     }
 
     // Fetch class data and assignments using RPC to bypass RLS
@@ -2080,11 +2072,10 @@ export default function App() {
     if (classError) {
       console.error('Class RPC error:', classError);
       // Fallback: try direct query (might fail due to RLS, but worth trying)
-      const { data: fallbackClassRows } = await supabase
-        .from('classes').select('*').eq('code', code);
+      const fallbackClass = await classService.findClassByCode(code);
 
-      if (fallbackClassRows && fallbackClassRows.length > 0) {
-        await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
+      if (fallbackClass) {
+        await loadAssignmentsForClass(fallbackClass, code, profile.auth_uid);
       } else {
         setStudentAssignments([]);
         setStudentProgress([]);
