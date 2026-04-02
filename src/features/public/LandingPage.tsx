@@ -27,11 +27,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         currentPage="home"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
+        onTryDemo={onTryDemo}
       />
 
       <main>
         {/* Hero Section */}
-        <section className="pt-32 md:pt-40 pb-20 px-6 signature-gradient text-on-primary relative overflow-hidden min-h-[calc(100vh-4rem)] md:min-h-auto">
+        <section className="pt-16 md:pt-40 pb-8 md:pb-20 px-4 md:px-6 signature-gradient text-on-primary relative overflow-hidden min-h-[100dvh] md:min-h-auto flex flex-col justify-center">
           {/* Background Decorations */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary-container/20 rounded-full blur-3xl -mr-48 -mt-48" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-container/10 rounded-full blur-3xl -ml-32 - mb-32" />
@@ -42,7 +43,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="text-sm font-black tracking-widest uppercase opacity-90 mb-4"
+              className="text-xs md:text-sm font-black tracking-widest uppercase opacity-90 mb-2 md:mb-4"
             >
               Israeli English Curriculum • Bands Vocabulary
             </motion.p>
@@ -52,7 +53,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               initial={{ opacity: 0, x: -100 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="text-5xl md:text-8xl font-black font-headline italic leading-none tracking-tighter mb-6 max-w-4xl"
+              className="text-4xl md:text-8xl font-black font-headline italic leading-none tracking-tighter mb-3 md:mb-6 max-w-4xl"
             >
               Level Up Your Vocabulary
             </motion.h1>
@@ -61,50 +62,39 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-              className="text-xl md:text-2xl font-bold opacity-90 mb-12 max-w-2xl leading-relaxed"
+              className="text-base md:text-xl font-bold opacity-90 mb-6 md:mb-12 max-w-2xl leading-relaxed px-2"
             >
               The digital playground for Israeli EFL students. Master your bands vocabulary through play.
             </motion.p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-4 w-full md:w-auto px-4">
               <motion.button
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
+                transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.35 }}
                 onClick={onGetStarted}
-                className="bg-tertiary-container text-on-tertiary-container px-12 py-5 rounded-xl text-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+                className="bg-tertiary-container text-on-tertiary-container px-8 md:px-12 py-3 md:py-5 rounded-xl text-xl md:text-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3"
               >
                 Start Learning
-                <Rocket size={24} />
+                <Rocket size={20} className="md:hidden" />
+                <Rocket size={24} className="hidden md:block" />
               </motion.button>
-              {onTryDemo && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.35 }}
-                  onClick={onTryDemo}
-                  className="bg-surface-container-lowest/20 border-2 border-surface-container-lowest/40 backdrop-blur-sm text-on-primary px-8 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/30 transition-all flex items-center justify-center gap-2"
-                >
-                  <Gamepad2 size={20} />
-                  Try Demo
-                </motion.button>
-              )}
               {!isAuthenticated && (
                 <motion.button
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1], delay: 0.4 }}
                   onClick={onTeacherLogin}
-                  className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-10 py-5 rounded-xl text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
+                  className="bg-surface-container-lowest/10 border-2 border-surface-container-lowest/30 backdrop-blur-sm text-on-primary px-6 md:px-10 py-3 md:py-5 rounded-xl text-base md:text-xl font-bold hover:bg-surface-container-lowest/20 transition-all"
                 >
                   Teacher Login
                 </motion.button>
               )}
             </div>
 
-            {/* Social Proof */}
-            <div className="mt-16 flex flex-col items-center gap-4">
+            {/* Social Proof - Hidden on mobile */}
+            <div className="hidden md:flex mt-16 flex-col items-center gap-4">
               <div className="flex -space-x-4">
                 <div className="w-12 h-12 rounded-full border-4 border-surface bg-primary/20 flex items-center justify-center text-lg font-bold">
                   🦊

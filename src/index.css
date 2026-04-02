@@ -140,6 +140,25 @@ h1, h2, h3, h4, h5, h6, .font-headline {
   animation: pulse-subtle 2s ease-in-out infinite;
 }
 
+/* Bounce-in animation for selection feedback */
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
 /* Fade-in animation for page transitions */
 @keyframes fade-in {
   from {

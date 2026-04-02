@@ -103,5 +103,4 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.get_or_create_student_profile IS
-  'Get existing student profile or create new pending one. unique_id now includes auth UID to prevent name collisions.';
+-- Note: Function comment removed to avoid potential overload conflicts

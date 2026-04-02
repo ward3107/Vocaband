@@ -158,14 +158,14 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
 
           {isExpanded ? (
             <button
-              onClick={handleSavePreferences}
+              onClick={() => handleSavePreferences()}
               className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white hover:scale-105 active:scale-95 transition-all shadow-lg shadow-blue-500/20"
             >
               Save Preferences
             </button>
           ) : (
             <button
-              onClick={onAccept}
+              onClick={() => onAccept()}
               className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white hover:scale-105 active:scale-95 transition-all shadow-lg shadow-blue-500/20"
             >
               Accept All

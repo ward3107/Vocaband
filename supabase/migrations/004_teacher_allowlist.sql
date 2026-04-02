@@ -23,3 +23,49 @@ RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$
     WHERE email = lower(check_email)
   );
 $$;
+
+-- Helper function to get current user's email from auth
+CREATE OR REPLACE FUNCTION public.get_my_email()
+RETURNS TEXT LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT auth.jwt()->>'email';
+$$;
+
+-- Create is_teacher() function for RLS policies
+-- Single-parameter version for direct calls
+CREATE OR REPLACE FUNCTION public.is_teacher(p_user_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.teacher_allowlist
+    WHERE email = p_user_email
+  );
+END;
+$$;
+
+-- Zero-parameter overload for RLS policies
+CREATE OR REPLACE FUNCTION public.is_teacher()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN public.is_teacher(public.get_my_email());
+END;
+$$;
+
+-- Create is_admin() function for RLS policies
+-- Checks if the current user's role is 'admin'
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE uid = auth.uid()::text
+    AND role = 'admin'
+  );
+$$;

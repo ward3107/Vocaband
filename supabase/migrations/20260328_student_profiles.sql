@@ -40,11 +40,13 @@ CREATE INDEX IF NOT EXISTS idx_student_profiles_status
 ALTER TABLE public.student_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Students can read their own profile
+DROP POLICY IF EXISTS "Students can read own profile" ON public.student_profiles;
 CREATE POLICY "Students can read own profile"
 ON public.student_profiles FOR SELECT
 USING (auth.uid() = auth_uid);
 
 -- Policy: Students can update their own profile (avatar, badges only)
+DROP POLICY IF EXISTS "Students can update own profile" ON public.student_profiles;
 CREATE POLICY "Students can update own profile"
 ON public.student_profiles FOR UPDATE
 USING (auth.uid() = auth_uid)
@@ -55,6 +57,7 @@ WITH CHECK (
 -- Note: Field-level restrictions handled in application layer
 
 -- Policy: Teachers can read profiles for their classes
+DROP POLICY IF EXISTS "Teachers can read class profiles" ON public.student_profiles;
 CREATE POLICY "Teachers can read class profiles"
 ON public.student_profiles FOR SELECT
 USING (
@@ -66,6 +69,7 @@ USING (
 );
 
 -- Policy: Teachers can approve students in their classes
+DROP POLICY IF EXISTS "Teachers can approve class students" ON public.student_profiles;
 CREATE POLICY "Teachers can approve class students"
 ON public.student_profiles FOR UPDATE
 USING (
@@ -82,6 +86,7 @@ WITH CHECK (
 );
 
 -- Policy: Service role can do everything
+DROP POLICY IF EXISTS "Service role full access" ON public.student_profiles;
 CREATE POLICY "Service role full access"
 ON public.student_profiles FOR ALL
 USING (auth.role() = 'service_role')
@@ -90,6 +95,9 @@ WITH CHECK (auth.role() = 'service_role');
 -- ============================================
 -- Helper Functions
 -- ============================================
+
+-- Drop existing functions if they exist
+DROP FUNCTION IF EXISTS public.get_or_create_student_profile(TEXT, TEXT);
 
 -- Function: Get or create student profile
 CREATE OR REPLACE FUNCTION public.get_or_create_student_profile(
@@ -140,6 +148,7 @@ END;
 $$;
 
 -- Function: Approve student and create auth user
+DROP FUNCTION IF EXISTS public.approve_student(UUID);
 CREATE OR REPLACE FUNCTION public.approve_student(
   p_profile_id UUID
 )
@@ -217,6 +226,4 @@ COMMENT ON COLUMN public.student_profiles.status IS 'pending_approval | approved
 
 COMMENT ON COLUMN public.student_profiles.email IS 'Internal email for auth (students never see this). Format: unique_id@internal.app';
 
-COMMENT ON FUNCTION public.get_or_create_student_profile IS 'Get existing student profile or create new pending one. Returns profile and is_new flag.';
-
-COMMENT ON FUNCTION public.approve_student IS 'Approve pending student and create Supabase auth user account. Returns updated profile.';
+-- Note: Function comments removed due to potential overload conflicts

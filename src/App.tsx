@@ -57,8 +57,13 @@ import TopAppBar from "./shared/components/TopAppBar";
 import ActionCard from "./shared/components/ActionCard";
 import ClassCard from "./features/teacher/components/ClassCard";
 import { CreateAssignmentWizard } from "./features/teacher/CreateAssignmentWizard";
+import { PastePreviewModal } from "./shared/components/PastePreviewModal";
+import { analyzePastedText } from "./shared/utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./shared/components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./shared/components/LazyComponents";
+import OAuthButton from "./shared/components/OAuthButton";
+import OAuthCallback from "./shared/components/OAuthCallback";
+import OAuthClassCode from "./shared/components/OAuthClassCode";
 import { SuspenseWrapper } from "./shared/components/SuspenseWrapper";
 import { ShowAnswerFeedback } from "./shared/components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./shared/utils/lazyLoad";
@@ -104,10 +109,12 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   </button>
 ));
 
+
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [studentDataLoading, setStudentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
 
@@ -152,19 +159,33 @@ export default function App() {
   // Cookie consent state
   const [showCookieBanner, setShowCookieBanner] = useState(() => {
     try {
-      return !localStorage.getItem("vocaband_cookie_consent");
-    } catch {
+      const hasConsented = localStorage.getItem("vocaband_cookie_consent");
+      console.log('[Cookie Banner] Initial check - hasConsented:', !!hasConsented, 'value:', hasConsented);
+      return !hasConsented;
+    } catch (e) {
+      console.log('[Cookie Banner] localStorage error:', e);
       return true;
     }
   });
 
-  const handleCookieAccept = (preferences?: CookiePreferences) => {
+  const handleCookieAccept = (eventOrPreferences?: CookiePreferences | React.MouseEvent) => {
+    // Ignore React events - they were accidentally passed before the fix
+    const preferences = eventOrPreferences && typeof eventOrPreferences === 'object' && 'nativeEvent' in eventOrPreferences
+      ? undefined
+      : eventOrPreferences as CookiePreferences | undefined;
+
     try {
       const consentData = preferences
         ? JSON.stringify(preferences)
         : JSON.stringify({ essential: true, analytics: true, functional: true });
       localStorage.setItem("vocaband_cookie_consent", consentData);
-    } catch {}
+      console.log('[Cookie Banner] Consent saved:', consentData);
+      // Verify it was saved
+      const verify = localStorage.getItem("vocaband_cookie_consent");
+      console.log('[Cookie Banner] Verification read:', verify);
+    } catch (e) {
+      console.error('[Cookie Banner] Failed to save consent:', e);
+    }
     setShowCookieBanner(false);
   };
 
@@ -191,7 +212,7 @@ export default function App() {
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
-  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string }>>([]);
+  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
   const [showNewStudentForm, setShowNewStudentForm] = useState(false);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
@@ -212,7 +233,13 @@ export default function App() {
   const [consentChecked, setConsentChecked] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
-  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);      
+
+  // --- OAUTH STATE ---
+  const [isOAuthCallback, setIsOAuthCallback] = useState(false);
+  const [oauthEmail, setOauthEmail] = useState<string | null>(null);
+  const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
+  const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
 
   const AVATAR_CATEGORIES = {
     Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜", "🐶", "🐱", "🦈", "🐬", "🦅", "🐝", "🦉"],
@@ -237,14 +264,18 @@ export default function App() {
   const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
   const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
   const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
+  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
+  const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string}[]>([]);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
   const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
+  const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
+  const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
+  const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState(null);
 
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -260,7 +291,10 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
-  const [assignmentModes, setAssignmentModes] = useState<string[]>(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
+  const [assignmentModes, setAssignmentModes] = useState<string[]>([]);
+  const [assignmentSentences, setAssignmentSentences] = useState<string[]>([]);
+  const [sentenceDifficulty, setSentenceDifficulty] = useState<1 | 2 | 3 | 4>(2);
+  const [sentencesAutoGenerated, setSentencesAutoGenerated] = useState(false);
   const [assignmentStep, setAssignmentStep] = useState(1);
 
   // --- SMART PASTE STATE ---
@@ -444,11 +478,23 @@ export default function App() {
         // Combine database and custom words
         const allWords = [...dbWords, ...customWords];
 
+        console.log('[Quick Play Load] Session loaded:', { sessionCode: data.session_code, wordIds: data.word_ids, dbWordsCount: dbWords.length, customWordsCount: customWords.length, totalWords: allWords.length });
+
+        if (allWords.length === 0) {
+          console.error('[Quick Play Load] No words in session!');
+          showToast("This Quick Play session has no words. Please contact your teacher.", "error");
+          window.history.replaceState({}, '', window.location.pathname);
+          setView("public-landing");
+          return;
+        }
+
         setQuickPlayActiveSession({
+          id: data.id,
           sessionCode: data.session_code,
           wordIds: data.word_ids,
           words: allWords
         });
+        console.log('[Quick Play Student] Session loaded:', { id: data.id, sessionCode: data.session_code });
         setView("quick-play-student");
       };
 
@@ -485,6 +531,72 @@ export default function App() {
     }
   }, [searchTerms, view]);
 
+  // Real-time polling for Quick Play teacher monitor
+  // Polls Supabase for student progress every 3 seconds when in teacher monitor view
+  useEffect(() => {
+    // Only poll when in teacher monitor view and have an active session
+    if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession?.id) return;
+
+    const pollProgress = async () => {
+      if (!quickPlayActiveSession?.id) return;
+
+      try {
+        console.log('[Quick Play Monitor] Polling for session:', quickPlayActiveSession.id);
+        // Fetch progress records for this Quick Play session
+        // We use assignmentId to store the session UUID (id) for Quick Play
+        const { data: progressData, error } = await supabase
+          .from('progress')
+          .select('student_name, score, avatar, completed_at, mode')
+          .eq('assignment_id', quickPlayActiveSession.id)
+          .order('completed_at', { ascending: false })
+          .limit(50);
+
+        if (error) {
+          console.error('[Quick Play Monitor] Error fetching progress:', error);
+          return;
+        }
+
+        console.log('[Quick Play Monitor] Progress data received:', progressData);
+
+        if (progressData) {
+          // Aggregate by student name (keep best score per mode)
+          const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string }>();
+
+          progressData.forEach((p: any) => {
+            const key = p.student_name;
+            const existing = studentMap.get(key);
+
+            if (!existing || p.score > existing.score || new Date(p.completed_at) > new Date(existing.lastSeen)) {
+              studentMap.set(key, {
+                name: p.student_name,
+                score: p.score,
+                avatar: p.avatar || '🦊',
+                lastSeen: p.completed_at
+              });
+            }
+          });
+
+          // Convert to array and sort by score
+          const students = Array.from(studentMap.values())
+            .sort((a, b) => b.score - a.score);
+
+          console.log('[Quick Play Monitor] Students after aggregation:', students);
+          setQuickPlayJoinedStudents(students);
+        }
+      } catch (err) {
+        console.error('[Quick Play Monitor] Poll error:', err);
+      }
+    };
+
+    // Poll immediately
+    pollProgress();
+
+    // Set up polling interval (every 3 seconds)
+    const interval = setInterval(pollProgress, 3000);
+
+    return () => clearInterval(interval);
+  }, [view, quickPlayActiveSession?.id]);
+
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   const toScoreHeightClass = (score: number) => {
     if (score < 25) return "h-1/4";
@@ -495,17 +607,29 @@ export default function App() {
 
   // --- HELPER: Create Guest User ---
   // Centralized function to create guest user objects with consistent structure
-  const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => ({
-    uid: `${prefix}-${crypto.randomUUID()}`,
-    displayName: name.trim().slice(0, 30),
-    email: null,
-    role: "guest",
-    isGuest: true,
-    avatar: "🦊",
-    xp: 0,
-    classCode: null,
-    createdAt: new Date().toISOString()
-  });
+  const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => {
+    // Mobile-compatible UUID generation (crypto.randomUUID() not supported on some mobile browsers)
+    const generateUUID = (): string => {
+      // Fallback for mobile browsers that don't support crypto.randomUUID()
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      // Simple fallback: timestamp + random
+      return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    };
+
+    return {
+      uid: `${prefix}-${generateUUID()}`,
+      displayName: name.trim().slice(0, 30),
+      email: undefined,
+      role: "guest",
+      isGuest: true,
+      avatar: "🦊",
+      xp: 0,
+      classCode: undefined,
+      createdAt: new Date().toISOString()
+    };
+  };
 
   // --- AI TRANSLATION FOR QUICK PLAY ---
   // Cache for translated words to avoid redundant API calls
@@ -543,7 +667,7 @@ export default function App() {
     }
   };
 
-  const handleAutoTranslate = async (term: string) => {
+  const handleAutoTranslate = async (term: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
     const newTranslating = new Set(quickPlayTranslating);
     newTranslating.add(term);
     setQuickPlayTranslating(newTranslating);
@@ -606,10 +730,7 @@ export default function App() {
   const [sentenceIndex, setSentenceIndex] = useState(0);
   const [availableWords, setAvailableWords] = useState<string[]>([]);
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
-  const [assignmentSentences, setAssignmentSentences] = useState<string[]>([]);
-  const [sentenceDifficulty, setSentenceDifficulty] = useState<1 | 2 | 3 | 4>(2);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [sentencesAutoGenerated, setSentencesAutoGenerated] = useState(false);
   const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
   const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
@@ -630,7 +751,7 @@ export default function App() {
   const isLiveChallengeRef = useRef(isLiveChallenge);
 
   // Timeout ref for cleanup (prevents memory leaks on unmount)
-  const feedbackTimeoutRef = useRef<NodeJS.Timeout>();
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
@@ -694,7 +815,7 @@ export default function App() {
   // always fail with "Authentication required" on the first attempt, causing
   // the console error the teacher sees before the retry succeeds.
   useEffect(() => {
-    let s: ReturnType<typeof io> | null = null;
+    let s: ReturnType<typeof io> | undefined = undefined;
     let cancelled = false;
 
     const getToken = async () => {
@@ -739,7 +860,7 @@ export default function App() {
         console.log("[Socket] ✓ Connected successfully");
         setSocketConnected(true);
       });
-      s.on("disconnect", (reason) => {
+      s.on("disconnect", (reason: any) => {
         console.log("[Socket] Disconnected:", reason);
         setSocketConnected(false);
       });
@@ -756,18 +877,21 @@ export default function App() {
           }
         }
       });
-      s.on("connect_error", (err) => console.error("Socket connection error:", err.message));
-      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data) => {
-        setLeaderboard(data);
+      s.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
+      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
+        if (typeof data === "object" && data !== null && "name" in data && "baseScore" in data && "currentGameScore" in data) {
+          setLeaderboard(data as unknown as unknown as Record<string, LeaderboardEntry> | undefined);
+        } else {
+          setLeaderboard(undefined as unknown as Record<string, LeaderboardEntry>);
+        }
+      });
+      s.on(SOCKET_EVENTS.CHALLENGE_UPDATE, (data: unknown) => {
+        // Challenge updates are handled via the socket listener in the live challenge view
+        console.log("[Socket] Challenge updated:", data);
       });
     };
 
     connectSocket();
-
-    return () => {
-      cancelled = true;
-      s?.disconnect();
-    };
   }, []);
 
   // --- AUTH LOGIC ---
@@ -1394,6 +1518,51 @@ export default function App() {
     setPasteMatchedCount(0);
   };
 
+  // --- QUICK PLAY PREVIEW HANDLERS ---
+
+  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => {
+    if (!quickPlayPreviewAnalysis) return;
+
+    const { matchedWords, unmatchedTerms } = quickPlayPreviewAnalysis;
+
+    // Add all matched database words
+    const newSelectedWords = [...quickPlaySelectedWords];
+    matchedWords.forEach(mw => {
+      if (!newSelectedWords.some(w => w.id === mw.word.id)) {
+        newSelectedWords.push(mw.word);
+      }
+    });
+    setQuickPlaySelectedWords(newSelectedWords);
+
+    // Add custom words from translations (either from Translate All or manual entry)
+    if (unmatchedTerms.length > 0 && customTranslations) {
+      unmatchedTerms.forEach(term => {
+        const translation = customTranslations.get(term.term);
+        if (translation && (translation.hebrew || translation.arabic)) {
+          const customWord: Word = {
+            id: -Date.now() - Math.floor(Math.random() * 1000),
+            english: term.term.charAt(0).toUpperCase() + term.term.slice(1).toLowerCase(),
+            hebrew: translation.hebrew || "",
+            arabic: translation.arabic || "",
+            level: "Custom"
+          };
+          setQuickPlaySelectedWords(prev => [...prev, customWord]);
+        }
+      });
+    }
+
+    // Clear preview state
+    setShowQuickPlayPreview(false);
+    setQuickPlayPreviewAnalysis(null);
+    setQuickPlaySearchQuery("");
+  };
+
+  const handleQuickPlayPreviewCancel = () => {
+    setShowQuickPlayPreview(false);
+    setQuickPlayPreviewAnalysis(null);
+  };
+
+
   // Tag-style single word entry
   const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || !tagInput.trim()) return;
@@ -1617,7 +1786,7 @@ export default function App() {
         setSelectedWords([]);
         setAssignmentTitle("");
         setAssignmentDeadline("");
-        setAssignmentModes(["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]);
+        setAssignmentModes([]); // No default selection - teacher must choose
         setAssignmentStep(1);
         setAssignmentSentences([]);
         setSentenceDifficulty(2);
@@ -1743,7 +1912,8 @@ export default function App() {
           id: s.id,
           displayName: s.display_name,
           xp: s.xp || 0,
-          status: s.status
+          status: s.status,
+          avatar: s.avatar || '🦊'
         }));
 
         setExistingStudents(mappedStudents);
@@ -1755,7 +1925,8 @@ export default function App() {
         id: s.id,
         displayName: s.display_name,
         xp: s.xp || 0,
-        status: s.status
+        status: s.status,
+        avatar: s.avatar || '🦊'
       }));
 
       setExistingStudents(mappedStudents);
@@ -1972,18 +2143,26 @@ export default function App() {
     const trimmedName = studentLoginName.trim().slice(0, 30);
     const trimmedCode = studentLoginClassCode.trim().toUpperCase();
 
-
     if (!trimmedName || !trimmedCode) {
       setError("Please enter both class code and your name.");
       return;
     }
 
     try {
-      // Use the RPC function which has SECURITY DEFINER to bypass RLS
+      // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
+      const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
+      if (signInError || !signInData.session) {
+        setError("Could not create account. Please try again.");
+        console.error('Sign-in error:', signInError);
+        return;
+      }
+
+      // Step 2: Use the RPC function which has SECURITY DEFINER to bypass RLS
       const { data: result, error: rpcError } = await supabase
         .rpc('get_or_create_student_profile', {
           p_class_code: trimmedCode,
-          p_display_name: trimmedName
+          p_display_name: trimmedName,
+          p_avatar: studentAvatar
         });
 
 
@@ -2011,6 +2190,7 @@ export default function App() {
         if (isNew) {
           setStudentLoginName("");
           setStudentLoginClassCode("");
+          setStudentAvatar("🦊");
           setExistingStudents([]);
           setShowNewStudentForm(false);
         }
@@ -2021,6 +2201,95 @@ export default function App() {
       console.error('Signup error:', error);
       setError("Could not create account. Please try again.");
     }
+  };
+
+  // --- OAUTH HANDLERS ---
+  const handleOAuthTeacherDetected = async (email: string) => {
+    try {
+      // Load teacher profile
+      const { data: teacherData, error } = await supabase
+        .from('teacher_profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error || !teacherData) {
+        setError('Teacher profile not found. Please contact admin.');
+        return;
+      }
+
+      // Set as teacher user
+      const teacherUser: AppUser = {
+        id: teacherData.id,
+        email: teacherData.email,
+        name: teacherData.display_name || email.split('@')[0],
+        role: 'teacher',
+        schoolName: teacherData.school_name,
+        createdAt: teacherData.created_at
+      };
+
+      setUser(teacherUser);
+      setView('teacherDashboard');
+      setLoading(false);
+      setIsOAuthCallback(false);
+    } catch (error) {
+      console.error('Teacher detection error:', error);
+      setError('Could not load teacher profile.');
+    }
+  };
+
+  const handleOAuthStudentDetected = async (email: string) => {
+    try {
+      // Load student profile
+      const { data: studentData, error } = await supabase
+        .from('student_profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error || !studentData) {
+        setError('Student profile not found. Please sign up again.');
+        return;
+      }
+
+      if (studentData.status !== 'active' && studentData.status !== 'approved') {
+        setError('Your account is pending approval. Please ask your teacher to approve it.');
+        return;
+      }
+
+      // Set as student user
+      const studentUser: AppUser = {
+        id: studentData.id,
+        email: studentData.email,
+        name: studentData.display_name || email.split('@')[0],
+        role: 'student',
+        classCode: studentData.class_code,
+        xp: studentData.xp || 0,
+        avatar: studentData.avatar,
+        createdAt: studentData.created_at
+      };
+
+      setUser(studentUser);
+      setView('studentDashboard');
+      setLoading(false);
+      setIsOAuthCallback(false);
+
+      // Load class data
+      if (studentData.class_code) {
+        await loadClassData(studentData.class_code);
+      }
+    } catch (error) {
+      console.error('Student detection error:', error);
+      setError('Could not load student profile.');
+    }
+  };
+
+  const handleOAuthNewUser = (email: string, authUid: string) => {
+    setOauthEmail(email);
+    setOauthAuthUid(authUid);
+    setShowOAuthClassCode(true);
+    setIsOAuthCallback(false);
+    setLoading(false);
   };
 
   // Teacher Approval System
@@ -2141,42 +2410,65 @@ export default function App() {
       const studentUid = session.user.id;
 
       // Step 2: Look up class + existing user profile in parallel
-      const [classResult, userResult] = await Promise.all([
-        supabase.from('classes').select('*').eq('code', trimmedCode),
-        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
-      ]);
-      if (classResult.error) throw classResult.error;
-      if (!classResult.data || classResult.data.length === 0) {
+      // OPTIMIZATION: Check cache first to avoid database query
+      let classData: ClassData;
+      const cacheKey = `vocaband_class_${trimmedCode}`;
+
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, cached: cacheTime } = JSON.parse(cached);
+          // Use cache if less than 5 minutes old
+          if (Date.now() - cacheTime < 5 * 60 * 1000) {
+            classData = data;
+          }
+        }
+      } catch { /* ignore cache errors */ }
+
+      const classResult = classData ? null : await supabase.from('classes').select('*').eq('code', trimmedCode);
+      if (classResult?.error) throw classResult.error;
+
+      if (classResult?.data && classResult.data.length > 0) {
+        classData = mapClass(classResult.data[0]);
+        // Update cache with fresh data
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data: classData,
+            cached: Date.now(),
+          }));
+        } catch { /* ignore */ }
+      }
+
+      if (!classData) {
         setError("Invalid Class Code!");
         return;
       }
-      const classData = mapClass(classResult.data[0]);
+
+      const [userResult] = await Promise.all([
+        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
+      ]);
+
+      // Cache class info in localStorage for faster future logins
+      try {
+        localStorage.setItem(`vocaband_class_${trimmedCode}`, JSON.stringify({
+          data: classData,
+          cached: Date.now(),
+        }));
+      } catch { /* ignore */ }
 
       // Step 2.5: Check if student is approved (for student_profiles workflow)
+      // OPTIMIZATION: Check both formats in parallel instead of sequentially
       const studentUniqueIdNew = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
       const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
 
-      // Check new format first, fall back to legacy
-      let studentProfile: { status: string } | null = null;
-      let profileError: unknown = null;
-      {
-        const result = await supabase
-          .from('student_profiles')
-          .select('status')
-          .eq('unique_id', studentUniqueIdNew)
-          .maybeSingle();
-        studentProfile = result.data;
-        profileError = result.error;
-      }
-      if (!studentProfile && !profileError) {
-        const result = await supabase
-          .from('student_profiles')
-          .select('status')
-          .eq('unique_id', studentUniqueIdLegacy)
-          .maybeSingle();
-        studentProfile = result.data;
-        profileError = result.error;
-      }
+      // Check both new and legacy formats in parallel - much faster!
+      const [newFormatResult, legacyFormatResult] = await Promise.all([
+        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdNew).maybeSingle(),
+        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdLegacy).maybeSingle(),
+      ]);
+
+      // Use new format result if found, otherwise fall back to legacy
+      const studentProfile = newFormatResult.data || legacyFormatResult.data;
 
 
       if (profileError) {
@@ -2212,30 +2504,49 @@ export default function App() {
         if (insertErr) throw insertErr;
       }
 
-      // Step 4: Fetch assignments + progress in parallel (user row now exists, RLS passes)
-      const [assignResult, progressResult] = await Promise.all([
-        supabase.from('assignments').select('*').eq('class_id', classData.id),
-        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
-      ]);
-      if (assignResult.error) throw assignResult.error;
-      if (progressResult.error) throw progressResult.error;
-
-      setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-      setStudentProgress((progressResult.data ?? []).map(mapProgress));
+      // OPTIMISTIC UI: Set user and show dashboard IMMEDIATELY
+      // This makes the login feel instant while data loads in background
       setUser(userData);
       setBadges(userData.badges || []);
       setXp(userData.xp ?? 0);
       setStreak(userData.streak ?? 0);
-      checkConsent(userData);
+      setView("student-dashboard");
+      setLoading(false); // Hide the loading spinner immediately
 
-      // Join Live Challenge
+      // Join Live Challenge immediately (doesn't need to wait for data)
       if (socket) {
         socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
           classCode: trimmedCode, name: trimmedName, uid: studentUid, token: session.access_token,
         });
       }
 
-      setView("student-dashboard");
+      // Check consent early (before background data load)
+      checkConsent(userData);
+
+      // BACKGROUND: Fetch assignments + progress after UI is visible
+      // This makes the login feel much faster!
+      setStudentDataLoading(true);
+      Promise.all([
+        supabase.from('assignments').select('*').eq('class_id', classData.id),
+        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
+      ]).then(([assignResult, progressResult]) => {
+        if (assignResult.error) {
+          console.error('Error loading assignments:', assignResult.error);
+        } else {
+          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+        }
+
+        if (progressResult.error) {
+          console.error('Error loading progress:', progressResult.error);
+        } else {
+          setStudentProgress((progressResult.data ?? []).map(mapProgress));
+        }
+
+        setStudentDataLoading(false);
+      }).catch((error) => {
+        console.error('Background data load error:', error);
+        setStudentDataLoading(false);
+      });
 
       // Persist student credentials so we can auto-restore on page refresh
       // (anonymous Supabase sessions don't reliably survive mobile/PWA restarts)
@@ -2258,6 +2569,7 @@ export default function App() {
       clearTimeout(loginTimeout);
       manualLoginInProgress.current = false;
       setLoading(false);
+      setStudentDataLoading(false);
     }
   };
 
@@ -2373,6 +2685,11 @@ export default function App() {
   const currentWord = gameWords[currentIndex];
   // Debug: verify word count in game
   if (view === "game" && activeAssignment) {
+  }
+
+  // Debug: log state when in game view
+  if (view === "game") {
+    console.log('[Game View Debug] view:', view, 'showModeSelection:', showModeSelection, 'assignmentWords.length:', assignmentWords.length);
   }
 
   const options = useMemo(() => {
@@ -2594,9 +2911,64 @@ export default function App() {
   };
 
   const saveScore = async () => {
-    if (!user || !activeAssignment) return;
+    if (!user) return;
     setIsSaving(true);
     setSaveError(null);
+
+    // Quick Play (guest) mode - save progress with session UUID as identifier
+    if (user.isGuest && quickPlayActiveSession) {
+      try {
+        const progress: Omit<ProgressData, "id"> = {
+          studentName: user.displayName,
+          studentUid: user.uid, // Guest UID
+          assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
+          classCode: "QUICK_PLAY", // Special identifier for Quick Play
+          score: Math.min(Math.max(0, score), gameWords.length * 10),
+          mode: gameMode,
+          completedAt: new Date().toISOString(),
+          mistakes: mistakes,
+          avatar: user.avatar || "🦊"
+        };
+
+        console.log('[Quick Play] Saving progress:', {
+          studentName: progress.studentName,
+          assignmentId: progress.assignmentId,
+          score: progress.score,
+          mode: progress.mode
+        });
+
+        // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
+        const { error } = await supabase
+          .from('progress')
+          .insert({
+            student_name: progress.studentName,
+            student_uid: progress.studentUid,
+            assignment_id: progress.assignmentId,
+            class_code: progress.classCode,
+            score: progress.score,
+            mode: progress.mode,
+            completed_at: progress.completedAt,
+            mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+            avatar: progress.avatar
+          });
+
+        if (error) {
+          console.error('[Quick Play] Failed to save progress:', error);
+        } else {
+          console.log('[Quick Play] ✓ Progress saved successfully for', user.displayName);
+        }
+
+        setIsSaving(false);
+        return;
+      } catch (err) {
+        console.error('[Quick Play] Error saving progress:', err);
+        setIsSaving(false);
+        return;
+      }
+    }
+
+    // Regular assignment mode
+    if (!activeAssignment) return;
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
     const maxPossible = gameWords.length * 10;
@@ -3047,9 +3419,15 @@ export default function App() {
   }, [allScores, analyticsClassFilter]);
 
   // Global cookie banner — renders on top of ANY view until accepted
+  // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
   const cookieBannerOverlay = showCookieBanner && !user ? (
     <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
   ) : null;
+
+  // Debug: log banner state on every render
+  if (showCookieBanner && !user) {
+    console.log('[Cookie Banner] Rendering banner - showCookieBanner:', showCookieBanner, 'user:', !!user);
+  }
 
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
@@ -3114,9 +3492,67 @@ export default function App() {
 
   if (view === "student-account-login") {
     return (
+      <>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-tertiary/10 to-secondary/10">
+        {/* OAuth Callback Handler */}
+        {isOAuthCallback && (
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-md"
+            >
+              <OAuthCallback
+                onTeacherDetected={handleOAuthTeacherDetected}
+                onStudentDetected={handleOAuthStudentDetected}
+                onNewUser={handleOAuthNewUser}
+              />
+            </motion.div>
+          </div>
+        )}
+
+        {/* OAuth Class Code Entry */}
+        {showOAuthClassCode && oauthEmail && oauthAuthUid && (
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-md"
+            >
+              <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      setShowOAuthClassCode(false);
+                      setOauthEmail(null);
+                      setOauthAuthUid(null);
+                    }}
+                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                  >
+                    <ArrowLeft size={16} />
+                    Back
+                  </button>
+                </div>
+                <OAuthClassCode
+                  email={oauthEmail}
+                  authUid={oauthAuthUid}
+                  onSuccess={() => {
+                    setShowOAuthClassCode(false);
+                    setOauthEmail(null);
+                    setOauthAuthUid(null);
+                  }}
+                  onError={setError}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Normal Student Login (only show if not in OAuth flow) */}
+        {!isOAuthCallback && !showOAuthClassCode && (
+          <>
         {/* Header */}
-        <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-4 shadow-sm">
+        <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-3 shadow-sm">
           <button
             onClick={() => {
               setView("public-landing");
@@ -3138,23 +3574,23 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-12">
+        {/* Main Content - centered and fits in viewport */}
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-lg"
           >
             {/* Student Login Card */}
-            <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <span className="text-4xl">👤</span>
+            <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10">
+              <div className="text-center mb-4 md:mb-8">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-container text-on-primary-container rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
+                  <span className="text-3xl md:text-4xl">👤</span>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-black font-headline mb-2">
+                <h1 className="text-2xl md:text-4xl font-black font-headline mb-1 md:mb-2">
                   Student Login
                 </h1>
-                <p className="text-lg font-bold text-on-surface-variant">
+                <p className="text-base md:text-lg font-bold text-on-surface-variant">
                   Join your class and save your progress!
                 </p>
               </div>
@@ -3162,7 +3598,7 @@ export default function App() {
               {!showNewStudentForm ? (
                 <>
                   {/* Class Code Input */}
-                  <div className="space-y-4 mb-6">
+                  <div className="space-y-3 mb-4 md:mb-6">
                     <div>
                       <label
                         htmlFor="student-class-code-input"
@@ -3184,7 +3620,7 @@ export default function App() {
                         maxLength={20}
                         autoFocus
                         aria-describedby={error ? "student-login-error" : undefined}
-                        className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
+                        className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
                       />
                     </div>
 
@@ -3240,14 +3676,16 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* New Student Button */}
-                  <button
-                    onClick={() => setShowNewStudentForm(true)}
-                    className="w-full bg-secondary-container text-on-secondary-container py-4 rounded-xl text-lg font-bold hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Plus size={20} />
-                    I'm a New Student
-                  </button>
+                  {/* OAuth Sign In Button */}
+                  <OAuthButton
+                    onSuccess={(email, isNewUser) => {
+                      // OAuth callback will handle routing
+                      setIsOAuthCallback(true);
+                    }}
+                    onError={(errorMessage) => {
+                      setError(errorMessage);
+                    }}
+                  />
                 </>
               ) : (
                 <>
@@ -3286,6 +3724,44 @@ export default function App() {
                         aria-describedby={error ? "new-student-error" : undefined}
                         className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
                       />
+                    </div>
+
+                    {/* Avatar Selection */}
+                    <div>
+                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                        Choose Your Avatar
+                      </label>
+                      <div className="mb-3 flex flex-wrap gap-1">
+                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map((category) => (
+                          <button
+                            key={category}
+                            onClick={() => setSelectedAvatarCategory(category)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              selectedAvatarCategory === category
+                                ? "bg-primary text-white"
+                                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
+                            }`}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-2 bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest">
+                        {AVATAR_CATEGORIES[selectedAvatarCategory].map((avatar) => (
+                          <button
+                            key={avatar}
+                            onClick={() => setStudentAvatar(avatar)}
+                            className={`text-3xl p-2 rounded-lg transition-all hover:scale-110 ${
+                              studentAvatar === avatar
+                                ? "bg-primary/20 ring-2 ring-primary"
+                                : "hover:bg-surface-container"
+                            }`}
+                            aria-label={`Choose ${avatar} avatar`}
+                          >
+                            {avatar}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {error && (
@@ -3348,15 +3824,18 @@ export default function App() {
             )}
           </motion.div>
         </div>
+      </>
+        )}  {/* Closes conditional from line 3499 */}
         {cookieBannerOverlay}
-      </div>
-    );
-  }
+      </div>  {/* Closes main div from line 3443 */}
+      </>
+      );  {/* Closes return */}
+    }  {/* Closes if */}
 
   if (view === "quick-play-student") {
     return (
       <div className="min-h-screen flex flex-col bg-surface">
-        <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-4 sm:px-6 py-4 z-50">
+        <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 z-50">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
               <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
@@ -3367,103 +3846,109 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={() => setView("public-landing")}
+            onClick={() => {
+              // If in game mode, go back to mode selection; otherwise go to landing
+              if (view === "game" && showModeSelection) {
+                setShowModeSelection(false);
+              } else if (view === "game") {
+                setView("quick-play-student");
+              } else {
+                setView("public-landing");
+              }
+            }}
             className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
           >
             ← Back
           </button>
         </header>
 
-        <main className="flex-grow flex flex-col items-center px-4 py-4 sm:py-6 max-w-4xl mx-auto w-full">
-          <AnimatePresence mode="wait">
+        <main className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
             {!quickPlayActiveSession ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="text-center py-20"
-              >
-                <Loader2 className="mx-auto animate-spin text-primary mb-4" size={48} />
-                <p className="text-on-surface-variant font-bold">Loading Quick Play session...</p>
-              </motion.div>
+              <div className="text-center py-12 sm:py-20">
+                <Loader2 className="mx-auto animate-spin text-primary mb-4" size={36} sm:size={48} />
+                <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
+              </div>
             ) : !quickPlayStudentName ? (
-              <motion.div
-                key="name-input"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-md"
-              >
-                <div className="text-center mb-8">
-                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                    <QrCode className="text-white" size={40} />
+              <div className="w-full max-w-md">
+                <div className="text-center mb-6 sm:mb-8">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                    <QrCode className="text-white" size={32} sm:size={40} />
                   </div>
-                  <h1 className="text-3xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
-                  <p className="text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
+                  <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
+                  <p className="text-sm sm:text-base text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
                     <input
+                      id="quick-play-name-input"
                       type="text"
-                      value={quickPlayStudentName}
-                      onChange={(e) => setQuickPlayStudentName(e.target.value.slice(0, 20))}
+                      inputMode="text"
+                      autoCapitalize="words"
+                      autoComplete="off"
+                      defaultValue={quickPlayStudentName}
                       placeholder="Enter your nickname..."
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && quickPlayStudentName.trim()) {
-                          (e.target as HTMLInputElement).closest('div')?.parentElement?.querySelector('button')?.click();
-                        }
-                      }}
-                      className="w-full px-4 py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       autoFocus
                     />
                   </div>
 
                   <button
+                    data-quick-play-join
                     onClick={() => {
-                      const trimmedName = quickPlayStudentName.trim();
+                      const input = document.getElementById('quick-play-name-input') as HTMLInputElement;
+                      const trimmedName = input?.value.trim() || "";
+
                       if (!trimmedName) {
-                        showToast("Please enter your name", "error");
+                        showToast("Please enter your name first", "error");
                         return;
                       }
 
-                      // Create guest user for Quick Play using helper
-                      const guestUser = createGuestUser(trimmedName, "quickplay");
+                      if (!quickPlayActiveSession) {
+                        showToast("Session expired. Please scan QR code again.", "error");
+                        return;
+                      }
 
-                      setUser(guestUser);
+                      if (!quickPlayActiveSession.words || quickPlayActiveSession.words.length === 0) {
+                        showToast("This session has no words. Please contact your teacher.", "error");
+                        return;
+                      }
 
-                      // Set up game with Quick Play words
-                      const words = shuffle(quickPlayActiveSession.words).map(w => ({
-                        ...w,
-                        hebrew: w.hebrew || "",
-                        arabic: w.arabic || ""
-                      }));
-                      setAssignmentWords(words);
-                      setCurrentIndex(0);
-                      setScore(0);
-                      setFeedback(null);
-                      setIsFinished(false);
-                      setMistakes([]);
-                      setView("game");
-                      setShowModeSelection(true);
+                      setTimeout(() => {
+                        setQuickPlayStudentName(trimmedName);
+                        const guestUser = createGuestUser(trimmedName, "quickplay");
+                        setUser(guestUser);
+
+                        const words = shuffle(quickPlayActiveSession.words).map(w => ({
+                          ...w,
+                          hebrew: w.hebrew || "",
+                          arabic: w.arabic || ""
+                        }));
+
+                        setAssignmentWords(words);
+                        setCurrentIndex(0);
+                        setScore(0);
+                        setFeedback(null);
+                        setIsFinished(false);
+                        setMistakes([]);
+                        setView("game");
+                        setShowModeSelection(true);
+                      }, 100);
                     }}
-                    disabled={!quickPlayStudentName.trim()}
-                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
+                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
                   >
                     Start Playing →
                   </button>
                 </div>
 
-                <div className="mt-8 p-4 bg-surface-container-low rounded-2xl border-2 border-surface-container-highest">
-                  <p className="text-sm text-on-surface-variant text-center">
+                <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-2xl border-2 border-surface-container-highest">
+                  <p className="text-xs sm:text-sm text-on-surface-variant text-center">
                     ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!
                   </p>
                 </div>
-              </motion.div>
+              </div>
             ) : null}
-          </AnimatePresence>
         </main>
       </div>
     );
@@ -3583,9 +4068,19 @@ export default function App() {
           )}
 
           <div className="bg-white p-5 sm:p-8 rounded-[28px] sm:rounded-[40px] shadow-xl">
-            <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2"><BookOpen className="text-blue-700" size={22} /> Your Assignments</h2>
-            
-            {studentAssignments.length === 0 ? (
+            <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2">
+              <BookOpen className="text-blue-700" size={22} /> Your Assignments
+            </h2>
+
+            {/* Background loading indicator */}
+            {studentDataLoading && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 animate-pulse">
+                <RefreshCw className="text-blue-700 animate-spin" size={16} />
+                <span className="text-blue-800 font-bold text-sm">Loading your assignments...</span>
+              </div>
+            )}
+
+            {studentAssignments.length === 0 && !studentDataLoading ? (
               <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">No assignments yet. Check back later!</p>
             ) : (
               <div className="space-y-5 sm:space-y-4">
@@ -4272,7 +4767,8 @@ export default function App() {
               </div>
             </HelpTooltip>
 
-            {/* Live Challenge */}
+            {/* Live Challenge - Hidden */}
+            {false && (
             <HelpTooltip className="h-full" content="Start a real-time vocabulary competition - students race to answer correctly!">
               <div className="h-full">
                 <ActionCard
@@ -4302,6 +4798,7 @@ export default function App() {
                 />
               </div>
             </HelpTooltip>
+            )}
 
             {/* Analytics */}
             <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
@@ -4390,7 +4887,7 @@ export default function App() {
                         assignments={classAssignments}
                         openDropdownClassId={openDropdownClassId}
                         onToggleDropdown={setOpenDropdownClassId}
-                        onAssign={() => { setSelectedClass(c); setView("create-assignment"); setAssignmentStep(1); }}
+                        onAssign={() => { setSelectedClass(c); setView("create-assignment"); setAssignmentStep(1); setSelectedWords([]); setAssignmentTitle(""); setAssignmentDeadline(""); setAssignmentModes([]); setAssignmentSentences([]); setEditingAssignment(null); }}
                         onCopyCode={() => {
                           navigator.clipboard.writeText(c.code);
                           setCopiedCode(c.code);
@@ -4655,7 +5152,13 @@ export default function App() {
         {/* End Quick Play Session Confirmation Modal */}
         <AnimatePresence>
           {endQuickPlayModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]"
+            >
+              {console.log('[End Session Modal] Rendering modal, session:', quickPlayActiveSession)}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -4674,23 +5177,36 @@ export default function App() {
                 </p>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setEndQuickPlayModal(false)}
+                    onClick={() => {
+                      console.log('[End Session] Keep Session clicked');
+                      setEndQuickPlayModal(false);
+                    }}
                     className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
                   >
                     Keep Session
                   </button>
                   <button
                     onClick={async () => {
+                      console.log('[End Session] Confirm button clicked');
+                      console.log('[End Session] Session code:', quickPlayActiveSession?.sessionCode);
+                      console.log('[End Session] Session ID:', quickPlayActiveSession?.id);
+
+                      showToast("Ending session...", "info");
+
                       const { error } = await supabase.rpc('end_quick_play_session', {
                         p_session_code: quickPlayActiveSession!.sessionCode
                       });
 
+                      console.log('[End Session] RPC result:', { error, data: !error });
+
                       if (error) {
+                        console.error('[End Session] Error:', error);
                         showToast("Failed to end session: " + error.message, "error");
                         setEndQuickPlayModal(false);
                         return;
                       }
 
+                      console.log('[End Session] ✓ Session ended successfully');
                       setView("teacher-dashboard");
                       setQuickPlayActiveSession(null);
                       setQuickPlaySelectedWords([]);
@@ -4708,7 +5224,7 @@ export default function App() {
                   </button>
                 </div>
               </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -4839,6 +5355,10 @@ export default function App() {
 
 
   if (view === "game" && showModeSelection) {
+    console.log('[Mode Selection] Rendering mode selection screen');
+    console.log('[Mode Selection] assignmentWords length:', assignmentWords.length);
+    console.log('[Mode Selection] activeAssignment:', activeAssignment);
+
     const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
       { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
       { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
@@ -4854,6 +5374,11 @@ export default function App() {
 
     const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
     const filteredModes = modes.filter(m => m.id === "flashcards" || allowedModes.includes(m.id));
+
+    console.log('[Mode Selection] Modes count:', filteredModes.length);
+    if (filteredModes.length === 0) {
+      console.error('[Mode Selection] No modes available!');
+    }
 
     const colorClasses: Record<string, string> = {
       emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
@@ -5326,7 +5851,7 @@ export default function App() {
     const unmatchedTerms = searchTerms.filter(term => !searchResults.has(term));
 
     return (
-      <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
+      <div className="min-h-screen bg-surface pt-16 sm:pt-24 pb-6 sm:pb-8 px-3 sm:px-4 md:px-6">
         <TopAppBar
           title="Quick Play Setup"
           subtitle="SELECT WORDS • GENERATE QR CODE"
@@ -5339,9 +5864,9 @@ export default function App() {
 
         <div className="max-w-4xl mx-auto">
           {/* Word Search Section */}
-          <div className="bg-surface-container-lowest rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-highest">
-            <h2 className="text-xl font-black text-on-surface mb-4 flex items-center gap-2">
-              <Search className="text-primary" size={20} />
+          <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-surface-container-highest">
+            <h2 className="text-lg sm:text-xl font-black text-on-surface mb-3 sm:mb-4 flex items-center gap-2">
+              <Search className="text-primary" size={18} sm:size={20} />
               Add Words to Search
             </h2>
 
@@ -5383,9 +5908,9 @@ export default function App() {
             ) : (
               <div
                 onClick={() => setQuickPlayWordEditorOpen(true)}
-                className="mb-4 p-8 bg-surface-container rounded-xl border-2 border-dashed border-surface-container-highest text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                className="mb-3 sm:mb-4 p-6 sm:p-8 bg-surface-container rounded-xl border-2 border-dashed border-surface-container-highest text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Search className="mx-auto text-on-surface-variant mb-2" size={32} />
+                <Search className="mx-auto text-on-surface-variant mb-2" size={24} sm:size={32} />
                 <p className="text-sm font-bold text-on-surface-variant mb-1">Click to add words</p>
                 <p className="text-xs text-on-surface-variant">Paste: apple, "ice cream", house</p>
               </div>
@@ -5395,9 +5920,9 @@ export default function App() {
             {searchTerms.length > 0 && (
               <button
                 onClick={() => setQuickPlayWordEditorOpen(true)}
-                className="w-full py-3 bg-white border-2 border-dashed border-surface-container-highest rounded-xl text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 mb-4"
+                className="w-full py-2.5 sm:py-3 bg-white border-2 border-dashed border-surface-container-highest rounded-xl text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 mb-3 sm:mb-4"
               >
-                <Plus size={16} />
+                <Plus size={14} sm:size={16} />
                 Add More Words
               </button>
             )}
@@ -5415,17 +5940,17 @@ export default function App() {
               <button
                 onClick={() => document.getElementById('quick-play-ocr-upload')?.click()}
                 disabled={isOcrProcessing}
-                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-bold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
+                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-bold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
               >
                 {isOcrProcessing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Processing image... {ocrProgress}%
+                    <span className="text-xs sm:text-sm">Processing... {ocrProgress}%</span>
                   </>
                 ) : (
                   <>
-                    <Camera size={16} />
-                    Upload Image to Extract Words
+                    <Camera size={14} sm:size={16} />
+                    <span className="text-xs sm:text-sm">Upload Image to Extract Words</span>
                   </>
                 )}
               </button>
@@ -5515,11 +6040,11 @@ export default function App() {
 
           {/* Quick Add All & Generate QR Button */}
           {(uniqueFoundWords.length > 0 || unmatchedTerms.length > 0) && quickPlaySelectedWords.length === 0 && (
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 mb-6 shadow-xl text-white">
-              <div className="flex items-center justify-between gap-4">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-xl text-white">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div>
-                  <h3 className="text-lg font-black mb-1">Quick Start!</h3>
-                  <p className="text-white/80 text-sm">
+                  <h3 className="text-base sm:text-lg font-black mb-1">Quick Start!</h3>
+                  <p className="text-white/80 text-xs sm:text-sm">
                     {exactMatchesCount > 0 && `${exactMatchesCount} exact match${exactMatchesCount > 1 ? 'es' : ''} ready`}
                     {exactMatchesCount > 0 && uniqueFoundWords.length > exactMatchesCount && ` + ${uniqueFoundWords.length - exactMatchesCount} more found`}
                     {unmatchedTerms.length > 0 && ` + ${unmatchedTerms.length} custom word${unmatchedTerms.length > 1 ? 's' : ''} to translate`}
@@ -5582,21 +6107,23 @@ export default function App() {
                         return;
                       }
 
-                      const session = data as { session_code: string };
+                      const session = data as { id: string, session_code: string };
                       setQuickPlaySessionCode(session.session_code);
                       setQuickPlayActiveSession({
+                        id: session.id,
                         sessionCode: session.session_code,
                         wordIds: wordIds,
                         words: updatedSelection
                       });
+                      console.log('[Quick Play Teacher] Session created:', session);
                       setQuickPlaySearchQuery("");
                       setView("quick-play-teacher-monitor");
                     }, 500);
                   }}
-                  className="px-6 py-3 bg-white text-green-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-green-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
                 >
-                  <QrCode size={20} />
-                  Add All & Generate QR
+                  <QrCode size={16} sm:size={20} />
+                  <span className="text-sm sm:text-base">Add All & Generate QR</span>
                 </button>
               </div>
             </div>
@@ -5604,46 +6131,47 @@ export default function App() {
 
           {/* Unmatched Terms - Add as Custom Words */}
           {unmatchedTerms.length > 0 && (
-            <div className="bg-gradient-to-br from-amber-50 to-purple-50 rounded-2xl p-4 mb-6 border-2 border-amber-200">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={20} />
+            <div className="bg-gradient-to-br from-amber-50 to-purple-50 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 border-2 border-amber-200">
+              <div className="flex items-start justify-between mb-2 sm:mb-3">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={16} sm:size={20} />
                   <div>
-                    <h3 className="font-black text-amber-900 mb-1">Custom Words Found</h3>
-                    <p className="text-sm text-amber-700">AI will translate these automatically! Click the green "Add All & Generate QR" button above to add everything at once.</p>
+                    <h3 className="font-black text-amber-900 mb-0.5 sm:mb-1 text-sm sm:text-base">Custom Words Found</h3>
+                    <p className="text-xs sm:text-sm text-amber-700">AI will translate these automatically! Click the green "Add All & Generate QR" button above to add everything at once.</p>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">
                 {unmatchedTerms.map(term => {
                   const isAdding = quickPlayAddingCustom.has(term);
                   const customData = quickPlayCustomWords.get(term);
 
                   if (isAdding) {
                     return (
-                      <div key={term} className="bg-white rounded-xl p-3 border-2 border-amber-300">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-on-surface">"{term}"</span>
-                            <span className="text-xs text-on-surface-variant">Add translations:</span>
+                      <div key={term} className="bg-white rounded-xl p-2 sm:p-3 border-2 border-amber-300">
+                        <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="font-black text-on-surface text-sm sm:text-base">"{term}"</span>
+                            <span className="text-[10px] sm:text-xs text-on-surface-variant">Add translations:</span>
                           </div>
                           {!quickPlayTranslating.has(term) && (
                             <button
                               onClick={() => handleAutoTranslate(term)}
-                              className="text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-1"
+                              className="text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-0.5 sm:gap-1"
                             >
-                              <Sparkles size={12} />
-                              Auto-translate with AI
+                              <Sparkles size={10} sm:size={12} />
+                              <span className="hidden sm:inline">Auto-translate with AI</span>
+                              <span className="sm:hidden">Translate</span>
                             </button>
                           )}
                         </div>
                         {quickPlayTranslating.has(term) && (
-                          <div className="flex items-center gap-2 mb-2 text-purple-600">
-                            <Loader2 className="animate-spin" size={16} />
-                            <span className="text-xs font-bold">AI is translating...</span>
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 text-purple-600">
+                            <Loader2 className="animate-spin" size={14} sm:size={16} />
+                            <span className="text-[10px] sm:text-xs font-bold">AI is translating...</span>
                           </div>
                         )}
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5 sm:gap-2">
                           <input
                             type="text"
                             placeholder="Hebrew translation..."
@@ -5653,7 +6181,7 @@ export default function App() {
                               newMap.set(term, { hebrew: e.target.value, arabic: customData?.arabic || "" });
                               setQuickPlayCustomWords(newMap);
                             }}
-                            className="flex-1 px-3 py-2 bg-surface-container border-2 border-surface-container-highest rounded-lg text-sm font-bold focus:border-primary focus:outline-none"
+                            className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-surface-container border-2 border-surface-container-highest rounded-lg text-xs sm:text-sm font-bold focus:border-primary focus:outline-none"
                           />
                           <input
                             type="text"
@@ -5664,7 +6192,7 @@ export default function App() {
                               newMap.set(term, { hebrew: customData?.hebrew || "", arabic: e.target.value });
                               setQuickPlayCustomWords(newMap);
                             }}
-                            className="flex-1 px-3 py-2 bg-surface-container border-2 border-surface-container-highest rounded-lg text-sm font-bold focus:border-primary focus:outline-none"
+                            className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-surface-container border-2 border-surface-container-highest rounded-lg text-xs sm:text-sm font-bold focus:border-primary focus:outline-none"
                           />
                           <button
                             onClick={() => {
@@ -5692,7 +6220,7 @@ export default function App() {
                               setQuickPlayAddingCustom(newAdding);
                             }}
                             disabled={!customData?.hebrew && !customData?.arabic}
-                            className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-500 text-white rounded-lg font-bold text-xs sm:text-sm hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             ✓ Add
                           </button>
@@ -5706,7 +6234,7 @@ export default function App() {
                               newAdding.delete(term);
                               setQuickPlayAddingCustom(newAdding);
                             }}
-                            className="px-4 py-2 bg-surface-container text-on-surface rounded-lg font-bold text-sm hover:bg-surface-container-highest transition-colors"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-surface-container text-on-surface rounded-lg font-bold text-xs sm:text-sm hover:bg-surface-container-highest transition-colors"
                           >
                             ✕
                           </button>
@@ -5718,12 +6246,12 @@ export default function App() {
                   const isAdded = quickPlaySelectedWords.some(w => w.english.toLowerCase() === term.toLowerCase());
 
                   return (
-                    <div key={term} className={`flex items-center gap-2 ${isAdded ? 'opacity-50' : ''}`}>
-                      <span className="px-3 py-1 bg-white rounded-full text-sm font-bold text-on-surface border-2 border-amber-300">
+                    <div key={term} className={`flex items-center gap-1.5 sm:gap-2 ${isAdded ? 'opacity-50' : ''}`}>
+                      <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white rounded-full text-xs sm:text-sm font-bold text-on-surface border-2 border-amber-300">
                         "{term}"
                       </span>
                       {isAdded ? (
-                        <span className="text-xs text-green-600 font-bold">✓ Added</span>
+                        <span className="text-[10px] sm:text-xs text-green-600 font-bold">✓ Added</span>
                       ) : (
                         <button
                           onClick={() => {
@@ -5733,10 +6261,11 @@ export default function App() {
                             // Auto-translate on open
                             handleAutoTranslate(term);
                           }}
-                          className="text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-1"
+                          className="text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-0.5 sm:gap-1"
                         >
-                          <Sparkles size={10} />
-                          Translate & Add
+                          <Sparkles size={8} sm:size={10} />
+                          <span className="hidden sm:inline">Translate & Add</span>
+                          <span className="sm:hidden">Translate</span>
                         </button>
                       )}
                     </div>
@@ -5748,13 +6277,13 @@ export default function App() {
 
           {/* Word Selection Grid */}
           {allFoundWords.length > 0 && (
-            <div className="bg-surface-container-lowest rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-highest">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
-                  <CheckCircle2 className="text-green-600" size={20} />
-                  Select Words ({quickPlaySelectedWords.length} selected)
+            <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-surface-container-highest">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
+                  <CheckCircle2 className="text-green-600" size={16} sm:size={20} />
+                  <span className="text-base sm:text-lg">Select Words ({quickPlaySelectedWords.length} selected)</span>
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 sm:gap-2">
                   {allFoundWords.length > 0 && quickPlaySelectedWords.length < allFoundWords.length && (
                     <button
                       onClick={() => setQuickPlaySelectedWords(allFoundWords)}
@@ -5776,7 +6305,7 @@ export default function App() {
 
               {/* Group results by search term */}
               {searchTerms.length > 0 && (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div className="space-y-2 sm:space-y-4 max-h-72 sm:max-h-96 overflow-y-auto">
                   {searchTerms
                     .filter(term => searchResults.has(term))
                     .map(term => {
@@ -5785,9 +6314,9 @@ export default function App() {
                       const someSelected = matches.some(w => quickPlaySelectedWords.some(sw => sw.id === w.id));
 
                       return (
-                        <div key={term} className="bg-surface-container rounded-xl p-4 border-2 border-surface-container-highest">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-black text-on-surface">
+                        <div key={term} className="bg-surface-container rounded-xl p-3 sm:p-4 border-2 border-surface-container-highest">
+                          <div className="flex items-center justify-between mb-2 sm:mb-3">
+                            <h3 className="font-black text-on-surface text-sm sm:text-base">
                               "{term}" • {matches.length} word{matches.length !== 1 ? 's' : ''}
                             </h3>
                             <button
@@ -5802,7 +6331,7 @@ export default function App() {
                                   setQuickPlaySelectedWords(prev => [...prev, ...newWords]);
                                 }
                               }}
-                              className={`text-sm px-3 py-1 rounded-lg font-bold transition-colors ${
+                              className={`text-[10px] sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg font-bold transition-colors ${
                                 allSelected
                                   ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
                                   : "bg-green-100 text-green-700 hover:bg-green-200"
@@ -5811,7 +6340,7 @@ export default function App() {
                               {allSelected ? "Deselect All" : someSelected ? "Select Remaining" : "Select All"}
                             </button>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                             {matches.map(word => {
                               const isSelected = quickPlaySelectedWords.some(w => w.id === word.id);
                               return (
@@ -5824,23 +6353,23 @@ export default function App() {
                                       setQuickPlaySelectedWords(prev => [...prev, word]);
                                     }
                                   }}
-                                  className={`p-3 rounded-lg border transition-all text-left ${
+                                  className={`p-2 sm:p-3 rounded-lg border transition-all text-left ${
                                     isSelected
                                       ? "bg-primary-container border-primary text-on-primary-container"
                                       : "bg-surface border-surface-container-highest hover:border-primary/50"
                                   }`}
                                 >
-                                  <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start justify-between gap-1.5 sm:gap-2">
                                     <div className="flex-1 min-w-0">
-                                      <p className={`font-black text-sm ${isSelected ? "text-on-primary-container" : "text-on-surface"}`}>
+                                      <p className={`font-black text-xs sm:text-sm ${isSelected ? "text-on-primary-container" : "text-on-surface"}`}>
                                         {word.english}
                                       </p>
-                                      <p className={`text-xs truncate ${isSelected ? "text-on-primary-container/80" : "text-on-surface-variant"}`}>
+                                      <p className={`text-[10px] sm:text-xs truncate ${isSelected ? "text-on-primary-container/80" : "text-on-surface-variant"}`}>
                                         {word.hebrew} / {word.arabic}
                                       </p>
                                     </div>
                                     {isSelected && (
-                                      <Check className="text-primary flex-shrink-0" size={16} />
+                                      <Check className="text-primary flex-shrink-0" size={14} sm:size={16} />
                                     )}
                                   </div>
                                 </button>
@@ -5857,29 +6386,29 @@ export default function App() {
 
           {/* Custom Words Section */}
           {quickPlaySelectedWords.filter(w => w.id < 0).length > 0 && (
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 shadow-lg border-2 border-amber-200">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-black text-amber-900 flex items-center gap-2">
-                  <Sparkles className="text-amber-600" size={20} />
-                  Custom Words ({quickPlaySelectedWords.filter(w => w.id < 0).length})
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-amber-200">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <h2 className="text-lg sm:text-xl font-black text-amber-900 flex items-center gap-1.5 sm:gap-2">
+                  <Sparkles className="text-amber-600" size={16} sm:size={20} />
+                  <span className="text-base sm:text-lg">Custom Words ({quickPlaySelectedWords.filter(w => w.id < 0).length})</span>
                 </h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                 {quickPlaySelectedWords.filter(w => w.id < 0).map(word => {
                   const isSelected = quickPlaySelectedWords.some(w => w.id === word.id);
                   return (
                     <div
                       key={word.id}
-                      className={`p-3 rounded-lg border transition-all ${
+                      className={`p-2 sm:p-3 rounded-lg border transition-all ${
                         isSelected
                           ? "bg-amber-100 border-amber-400 text-amber-900"
                           : "bg-white border-amber-200"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-1.5 sm:gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-black text-sm">{word.english}</p>
-                          <p className="text-xs truncate opacity-80">
+                          <p className="font-black text-xs sm:text-sm">{word.english}</p>
+                          <p className="text-[10px] sm:text-xs truncate opacity-80">
                             {word.hebrew || "No Hebrew"} / {word.arabic || "No Arabic"}
                           </p>
                         </div>
@@ -5889,7 +6418,7 @@ export default function App() {
                           }}
                           className="flex-shrink-0 text-rose-600 hover:text-rose-800"
                         >
-                          <X size={16} />
+                          <X size={14} sm:size={16} />
                         </button>
                       </div>
                     </div>
@@ -5901,11 +6430,11 @@ export default function App() {
 
           {/* Generate QR Code Button */}
           {quickPlaySelectedWords.length > 0 && (
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-xl text-white">
-              <div className="flex items-center justify-between gap-4">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-4 sm:p-6 shadow-xl text-white">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div>
-                  <h3 className="text-lg font-black mb-1">Ready to Start!</h3>
-                  <p className="text-white/80 text-sm">
+                  <h3 className="text-base sm:text-lg font-black mb-1">Ready to Start!</h3>
+                  <p className="text-white/80 text-xs sm:text-sm">
                     {quickPlaySelectedWords.length} word{quickPlaySelectedWords.length > 1 ? 's' : ''} selected
                   </p>
                 </div>
@@ -5931,6 +6460,10 @@ export default function App() {
                       example: w.example || ""
                     }))) : null;
 
+                    // Close preview modal if open
+                    setShowQuickPlayPreview(false);
+                    setQuickPlayPreviewAnalysis(null);
+
                     // Create session with database words AND custom words
                     const { data, error } = await supabase.rpc('create_quick_play_session', {
                       p_word_ids: wordIds.length > 0 ? wordIds : null,
@@ -5942,19 +6475,21 @@ export default function App() {
                       return;
                     }
 
-                    const session = data as { session_code: string };
+                    const session = data as { id: string, session_code: string };
                     setQuickPlaySessionCode(session.session_code);
                     setQuickPlayActiveSession({
+                      id: session.id,
                       sessionCode: session.session_code,
                       wordIds: wordIds,
                       words: quickPlaySelectedWords // Include all words (db + custom)
                     });
+                    console.log('[Quick Play Teacher] Session created with custom words:', session);
                     setView("quick-play-teacher-monitor");
                   }}
-                  className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-indigo-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
                 >
-                  <QrCode size={20} />
-                  Generate QR Code
+                  <QrCode size={16} sm:size={20} />
+                  <span className="text-sm sm:text-base">Generate QR Code</span>
                 </button>
               </div>
             </div>
@@ -5963,52 +6498,52 @@ export default function App() {
 
         {/* Word Editor Modal */}
         {quickPlayWordEditorOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col">
               {/* Header */}
-              <div className="p-6 border-b border-surface-container-highest">
+              <div className="p-4 sm:p-6 border-b border-surface-container-highest">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
-                    <Search className="text-primary" size={20} />
-                    Add Your Words
+                  <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
+                    <Search className="text-primary" size={16} sm:size={20} />
+                    <span className="text-base sm:text-lg">Add Your Words</span>
                   </h2>
                   <button
                     onClick={() => setQuickPlayWordEditorOpen(false)}
                     className="text-on-surface-variant hover:text-on-surface transition-colors"
                   >
-                    <X size={24} />
+                    <X size={20} sm:size={24} />
                   </button>
                 </div>
-                <p className="text-sm text-on-surface-variant mt-2">
+                <p className="text-xs sm:text-sm text-on-surface-variant mt-1.5 sm:mt-2">
                   Type or paste words below. Use <span className="font-bold">commas</span> to separate words, or put each word on a <span className="font-bold">new line</span>.
                 </p>
               </div>
 
               {/* Textarea */}
-              <div className="p-6 flex-grow overflow-y-auto">
+              <div className="p-4 sm:p-6 flex-grow overflow-y-auto">
                 <textarea
                   placeholder='Examples:&#10;apple, ice cream, house, book&#10;&#10;Or each word on a new line:&#10;apple&#10;ice cream&#10;house&#10;book&#10;&#10;Use commas or newlines to separate!'
                   value={quickPlaySearchQuery}
                   onChange={(e) => setQuickPlaySearchQuery(e.target.value)}
-                  className="w-full h-24 px-4 py-3 bg-surface-container border-2 border-surface-container-highest text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none"
+                  className="w-full h-20 sm:h-24 px-3 sm:px-4 py-2 sm:py-3 bg-surface-container border-2 border-surface-container-highest text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none text-sm sm:text-base"
                   autoFocus
                 />
 
                 {/* Word Preview */}
                 {searchTerms.length > 0 && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-bold text-on-surface">
+                  <div className="mt-3 sm:mt-4">
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                      <p className="text-xs sm:text-sm font-bold text-on-surface">
                         {searchTerms.length} word{searchTerms.length !== 1 ? 's' : ''} detected
                       </p>
                       <button
                         onClick={() => setQuickPlaySearchQuery("")}
-                        className="text-xs text-rose-600 font-bold hover:text-rose-700 transition-colors"
+                        className="text-[10px] sm:text-xs text-rose-600 font-bold hover:text-rose-700 transition-colors"
                       >
                         Clear All
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 max-h-40 sm:max-h-48 overflow-y-auto">
                       {searchTerms.map(term => (
                         <div
                           key={term}
@@ -6026,13 +6561,13 @@ export default function App() {
                               setDraggedWord(null);
                             }
                           }}
-                          className={`group flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border transition-all cursor-move
+                          className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white rounded-full border transition-all cursor-move
                             ${draggedWord === term ? 'opacity-50' : ''}
                             ${draggedWord && draggedWord !== term ? 'border-primary bg-primary/10 ring-2 ring-primary/30' : 'border-surface-container-highest hover:border-rose-300'}
                           `}
                           title={draggedWord && draggedWord !== term ? `Drop "${draggedWord}" here to make "${draggedWord} ${term}"` : term}
                         >
-                          <span className="text-sm font-bold text-on-surface">{term}</span>
+                          <span className="text-xs sm:text-sm font-bold text-on-surface">{term}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -6043,15 +6578,16 @@ export default function App() {
                             className="text-rose-400 hover:text-rose-600 transition-opacity"
                             aria-label={`Remove ${term}`}
                           >
-                            <X size={14} />
+                            <X size={12} sm:size={14} />
                           </button>
                         </div>
                       ))}
                     </div>
                     {searchTerms.length > 1 && (
-                      <p className="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
-                        <Info size={12} />
-                        Tip: Drag one word onto another to combine them into a phrase!
+                      <p className="text-[10px] sm:text-xs text-on-surface-variant mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
+                        <Info size={10} sm:size={12} />
+                        <span className="hidden sm:inline">Tip: Drag one word onto another to combine them into a phrase!</span>
+                        <span className="sm:hidden">Drag words together to make phrases!</span>
                       </p>
                     )}
                   </div>
@@ -6059,23 +6595,55 @@ export default function App() {
               </div>
 
               {/* Footer */}
-              <div className="p-6 border-t border-surface-container-highest flex items-center justify-between">
+              <div className="p-4 sm:p-6 border-t border-surface-container-highest flex items-center justify-between gap-2">
                 <button
                   onClick={() => setQuickPlayWordEditorOpen(false)}
-                  className="px-6 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-colors"
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-colors text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => setQuickPlayWordEditorOpen(false)}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg"
+                  onClick={() => {
+                    // Close the editor - user is done editing words
+                    console.log('[Quick Play Editor] Done clicked, closing editor');
+                    setQuickPlayWordEditorOpen(false);
+                  }}
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base"
                 >
-                  <CheckCircle2 size={18} />
-                  Done - Added {searchTerms.length} Words
+                  <CheckCircle2 size={14} sm:size={18} />
+                  Done - Edited Words
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Paste Preview Modal for Quick Play */}
+        {showQuickPlayPreview && quickPlayPreviewAnalysis && (
+          <PastePreviewModal
+            analysis={quickPlayPreviewAnalysis}
+            onConfirm={handleQuickPlayPreviewConfirm}
+            onCancel={handleQuickPlayPreviewCancel}
+            onQuickSave={(customTranslations) => {
+              // Quick Save - skip going to editor, go straight to QR generation
+              handleQuickPlayPreviewConfirm(customTranslations);
+            }}
+            onRemoveUnmatched={(term) => {
+              // Remove unmatched term from preview
+              if (quickPlayPreviewAnalysis) {
+                const updatedAnalysis = {
+                  ...quickPlayPreviewAnalysis,
+                  unmatchedTerms: quickPlayPreviewAnalysis.unmatchedTerms.filter(t => t.term !== term),
+                  stats: {
+                    ...quickPlayPreviewAnalysis.stats,
+                    unmatchedCount: quickPlayPreviewAnalysis.stats.unmatchedCount - 1,
+                    totalTerms: quickPlayPreviewAnalysis.stats.totalTerms - 1,
+                  },
+                };
+                setQuickPlayPreviewAnalysis(updatedAnalysis);
+              }
+            }}
+          />
         )}
       </div>
     );
@@ -6086,13 +6654,23 @@ export default function App() {
       setView("quick-play-setup");
       return null;
     }
-    const qrUrl = `${window.location.origin}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
+    // Fix QR code for local development: use local network IP instead of localhost
+    // so phones can scan and access the game
+    const getNetworkOrigin = () => {
+      const origin = window.location.origin;
+      if (origin.includes('localhost')) {
+        // In development, use local network IP so phones can connect
+        return 'http://10.0.0.5:3000';
+      }
+      return origin;
+    };
+    const qrUrl = `${getNetworkOrigin()}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-3 sm:p-6 text-white">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
             <button
               onClick={() => {
                 setView("teacher-dashboard");
@@ -6104,42 +6682,47 @@ export default function App() {
                 setQuickPlayAddingCustom(new Set());
                 setQuickPlayTranslating(new Set());
               }}
-              className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
+              className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-sm sm:text-base bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
             >
               ← Back to Dashboard
             </button>
             <button
-              onClick={() => setEndQuickPlayModal(true)}
+              onClick={() => {
+                console.log('[End Session] Button clicked');
+                console.log('[End Session] Session:', quickPlayActiveSession);
+                showToast("Opening end session confirmation...", "info");
+                setEndQuickPlayModal(true);
+              }}
               className="bg-red-500 hover:bg-red-600 text-white px-4 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
             >
               End Session
             </button>
           </div>
 
-          <div className="text-center mb-8">
+          <div className="text-center mb-6 sm:mb-8">
             <motion.h1
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
+              className="text-2xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
             >
               🎮 Quick Play
             </motion.h1>
-            <p className="text-white/90 font-bold text-sm sm:text-base">
+            <p className="text-white/90 font-bold text-xs sm:text-base">
               Scan QR code to play • {quickPlayActiveSession.words.length} words • No login required
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* QR Code Section */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                <QrCode size={24} />
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/20">
+              <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
+                <QrCode size={20} sm:size={24} />
                 QR Code
               </h2>
 
               {/* QR Code Display */}
-              <div className="bg-white rounded-xl p-4 mb-4">
-                <div className="aspect-square max-w-[250px] mx-auto">
+              <div className="bg-white rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
+                <div className="aspect-square max-w-[200px] sm:max-w-[250px] mx-auto">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`}
                     alt="Quick Play QR Code"
@@ -6148,7 +6731,7 @@ export default function App() {
                 </div>
               </div>
 
-              <p className="text-sm text-white/80 text-center mb-4">
+              <p className="text-xs sm:text-sm text-white/80 text-center mb-3 sm:mb-4">
                 Session Code: <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-black ml-1">
                   {quickPlayActiveSession.sessionCode}
                 </span>
@@ -6159,26 +6742,26 @@ export default function App() {
                   navigator.clipboard.writeText(qrUrl);
                   showToast("Link copied to clipboard!", "success");
                 }}
-                className="w-full px-4 py-3 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
               >
-                <Copy size={18} />
+                <Copy size={16} sm:size={18} />
                 Copy Link
               </button>
             </div>
 
             {/* Live Stats Section */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                <Users size={24} />
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/20">
+              <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
+                <Users size={20} sm:size={24} />
                 Live Stats
               </h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {/* Students Joined */}
-                <div className="bg-white/10 rounded-xl p-4">
+                <div className="bg-white/10 rounded-xl p-3 sm:p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold">Students Joined</span>
-                    <span className="text-2xl font-black">{quickPlayJoinedStudents.length}</span>
+                    <span className="text-xs sm:text-sm font-bold">Students Joined</span>
+                    <span className="text-xl sm:text-2xl font-black">{quickPlayJoinedStudents.length}</span>
                   </div>
                 </div>
 
@@ -7791,7 +8374,8 @@ export default function App() {
               )
               )}
             </motion.div>
-          )}
+          )
+        }
         </AnimatePresence>
       </div>
 
@@ -7868,6 +8452,6 @@ export default function App() {
       </div>
     )}
     <FloatingButtons showBackToTop={true} />
-  </div>
+    </div>
 );
-}
+};
