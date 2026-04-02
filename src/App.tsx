@@ -47,7 +47,8 @@ import {
   Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, OperationType, handleDbError, mapUser, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, OperationType, handleDbError, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { AuthProvider, useAuth, type RestoredSession } from "./features/auth/AuthContext";
 import * as authService from "./services/authService";
 import * as userService from "./services/userService";
 import * as classService from "./services/classService";
@@ -119,13 +120,46 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
 ));
 
 
+// Detect Quick Play session from URL synchronously
+const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
+
 export default function App() {
-  // --- AUTH & NAVIGATION STATE ---
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // These refs hold the real callbacks that AppContent registers.
+  // AuthProvider invokes them; AppContent populates them.
+  const sessionRestoredRef = useRef<(s: RestoredSession) => void>(() => {});
+  const signedOutRef = useRef<() => void>(() => {});
+  const noSessionRef = useRef<() => void>(() => {});
+  const authErrorRef = useRef<(msg: string) => void>(() => {});
+
+  return (
+    <AuthProvider
+      quickPlaySessionParam={quickPlaySessionParam}
+      onSessionRestored={(s) => sessionRestoredRef.current(s)}
+      onSignedOut={() => signedOutRef.current()}
+      onNoSession={() => noSessionRef.current()}
+      onAuthError={(msg) => authErrorRef.current(msg)}
+    >
+      <AppContent
+        onSessionRestoredRef={sessionRestoredRef}
+        onSignedOutRef={signedOutRef}
+        onNoSessionRef={noSessionRef}
+        onAuthErrorRef={authErrorRef}
+      />
+    </AuthProvider>
+  );
+}
+
+interface AppContentProps {
+  onSessionRestoredRef: React.MutableRefObject<(s: RestoredSession) => void>;
+  onSignedOutRef: React.MutableRefObject<() => void>;
+  onNoSessionRef: React.MutableRefObject<() => void>;
+  onAuthErrorRef: React.MutableRefObject<(msg: string) => void>;
+}
+
+function AppContent({ onSessionRestoredRef, onSignedOutRef, onNoSessionRef, onAuthErrorRef }: AppContentProps) {
+  // --- AUTH (from context) ---
+  const { user, setUser, loading, setLoading, manualLoginInProgress } = useAuth();
   const [studentDataLoading, setStudentDataLoading] = useState(false);
-  // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
-  const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
 
   const [view, setView] = useState<
     | "public-landing"
@@ -216,8 +250,8 @@ export default function App() {
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
   // listener before handleStudentLogin finishes its DB queries).
-  const manualLoginInProgress = useRef(false);
-  const restoreInProgress = useRef(false);
+  // manualLoginInProgress comes from useAuth() context
+  // restoreInProgress is internal to AuthContext
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
@@ -903,224 +937,8 @@ export default function App() {
     connectSocket();
   }, []);
 
-  // --- AUTH LOGIC ---
-  useEffect(() => {
-    // PKCE code exchange happens in main.tsx (outside React lifecycle)
-    // to avoid StrictMode double-mount races.  By the time this effect
-    // runs, the exchange is already in-flight or completed.
-
-    // Helper: fetch user profile with retry (mobile networks are flaky)
-    const fetchUserProfile = async (uid: string, retries = 2): Promise<ReturnType<typeof mapUser> | null> => {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        const profile = await userService.fetchUserProfile(uid);
-        if (profile) return profile;
-        // fetchUserProfile returns null on no-row or error — retry on error
-        if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      }
-      return null;
-    };
-
-    // Restore session from a Supabase user.  Called OUTSIDE the auth lock
-    // (fire-and-forget from the non-async onAuthStateChange callback).
-    const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
-      if (restoreInProgress.current) return;
-      restoreInProgress.current = true;
-      try {
-        const userData = await fetchUserProfile(supabaseUser.id);
-        if (userData) {
-          setUser(userData);
-          checkConsent(userData);
-          if (userData.role === "teacher") {
-            // Await so the dashboard has data before we show it — prevents
-            // the "empty dashboard until refresh" bug.  Retry once on failure.
-            try {
-              const fetchedClasses = await fetchTeacherData(supabaseUser.id);
-              fetchTeacherAssignments(fetchedClasses.map(c => c.id));
-            } catch {
-              // Retry once after a short delay (flaky network / cold start)
-              await new Promise(r => setTimeout(r, 1500));
-              const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => []);
-              fetchTeacherAssignments(fetchedClasses.map(c => c.id));
-            }
-            setView("teacher-dashboard");
-          } else if (userData.role === "student" && userData.classCode) {
-            const code = userData.classCode;
-            const classData = await classService.findClassByCode(code);
-            if (classData) {
-              // Fetch assignments + progress in parallel for faster restore
-              const [assignments, progress] = await Promise.all([
-                assignmentService.fetchAssignmentsByClassId(classData.id),
-                progressService.fetchProgressByClassCode(code, supabaseUser.id),
-              ]);
-              setStudentAssignments(assignments);
-              setStudentProgress(progress);
-            }
-            setBadges(userData.badges || []);
-            setXp(userData.xp ?? 0);
-            setStreak(userData.streak ?? 0);
-            setView("student-dashboard");
-          }
-        } else {
-          // No user row found for this anonymous UID.  Before giving up,
-          // check if a student login was persisted to localStorage — the
-          // anonymous UID may have changed on refresh (mobile/PWA).
-          try {
-            const savedRaw = localStorage.getItem('vocaband_student_login');
-            if (savedRaw) {
-              const { classCode: savedCode, displayName: savedName, uid: savedUid } = JSON.parse(savedRaw);
-              if (savedCode && savedName && savedUid) {
-                // Look up the users row by the OLD uid
-                const existingUser = await userService.fetchUserProfile(savedUid);
-                if (existingUser) {
-                  // Migrate the row to the new anonymous UID
-                  await userService.migrateUid(savedUid, supabaseUser.id);
-                  // Re-fetch with new UID
-                  const restored = await fetchUserProfile(supabaseUser.id);
-                  if (restored) {
-                    setUser(restored);
-                    checkConsent(restored);
-                    if (restored.role === "student" && restored.classCode) {
-                      const classData = await classService.findClassByCode(restored.classCode);
-                      if (classData) {
-                        const [assignments, progress] = await Promise.all([
-                          assignmentService.fetchAssignmentsByClassId(classData.id),
-                          progressService.fetchProgressByClassCode(restored.classCode, supabaseUser.id),
-                        ]);
-                        setStudentAssignments(assignments);
-                        setStudentProgress(progress);
-                      }
-                    }
-                    setBadges(restored.badges || []);
-                    setXp(restored.xp ?? 0);
-                    setStreak(restored.streak ?? 0);
-                    setView(restored.role === "teacher" ? "teacher-dashboard" : "student-dashboard");
-                    // Update saved UID for next refresh
-                    localStorage.setItem('vocaband_student_login', JSON.stringify({
-                      classCode: restored.classCode || savedCode,
-                      displayName: restored.displayName || savedName,
-                      uid: supabaseUser.id,
-                    }));
-                    return; // restored successfully
-                  }
-                }
-                // No existing user row — clear stale saved login
-                localStorage.removeItem('vocaband_student_login');
-              }
-            }
-          } catch { /* localStorage unavailable — non-critical */ }
-
-          // Auto-create teacher account for Google sign-ins only (not anonymous)
-          const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
-          if (isGoogleSignIn) {
-            const isAllowed = await authService.isTeacherAllowed(supabaseUser.email ?? "");
-            if (!isAllowed) {
-              setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
-              await authService.signOut();
-              return;
-            }
-            const newUser: AppUser = {
-              uid: supabaseUser.id,
-              email: supabaseUser.email || "",
-              role: "teacher",
-              displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
-            };
-            // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
-            try {
-              await userService.upsertUser(newUser);
-            } catch (err) {
-              console.error("Teacher profile upsert failed:", err);
-            }
-            setUser(newUser);
-            const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => []);
-            fetchTeacherAssignments(fetchedClasses.map(c => c.id));
-            setView("teacher-dashboard");
-          }
-        }
-      } catch (err) {
-        console.error("Session restore error:", err);
-      } finally {
-        restoreInProgress.current = false;
-        setLoading(false);
-      }
-    };
-
-    // CRITICAL: This callback must NOT be async.
-    // Supabase runs it inside an exclusive Navigator Lock. If the callback
-    // is async and does slow work (DB queries, retries), it holds the lock
-    // the whole time — blocking getSession(), signInAnonymously(), signOut(),
-    // and every other auth operation.  This causes the 5-second lock timeout
-    // → steal → AbortError chain that made login hang on mobile.
-    //
-    // Instead, we synchronously read the event/session, then fire-and-forget
-    // the async restore work.  The lock is released immediately.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // If handleStudentLogin is running, it owns loading/view — don't interfere.
-      if (manualLoginInProgress.current) return;
-
-      if (session?.user) {
-        // Fire-and-forget: releases the auth lock immediately, then
-        // does the slow DB work asynchronously.
-        restoreSession(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        try { localStorage.removeItem('vocaband_student_login'); } catch {}
-        // Don't redirect Quick Play students — they don't need auth
-        if (!quickPlaySessionParam) setView("public-landing");
-        setLoading(false);
-      } else if (event === 'INITIAL_SESSION') {
-        // No session exists — user needs to log in.
-        // Exception: if the URL has an OAuth code (?code=) or implicit token
-        // fragment (#access_token=), Supabase is still in the middle of the
-        // async code exchange.  Keep the spinner until SIGNED_IN fires and
-        // restoreSession → setLoading(false) completes.  Without this guard,
-        // the landing page flashes on mobile between INITIAL_SESSION (no
-        // session yet) and SIGNED_IN (exchange done), making the teacher
-        // think login failed and prompting a second attempt.
-        const isOAuthCallback =
-          window.location.search.includes("code=") ||
-          window.location.hash.includes("access_token=");
-
-        // If the PKCE exchange failed in boot(), show a toast and let the
-        // teacher try again immediately instead of silently showing landing.
-        const exchangeFailed = sessionStorage.getItem('oauth_exchange_failed');
-        if (exchangeFailed) {
-          sessionStorage.removeItem('oauth_exchange_failed');
-          setError("Sign-in timed out. Please try again.");
-          setLandingTab("teacher");
-          setLoading(false);
-        } else if (!isOAuthCallback) {
-          // Before showing the landing page, check if a student session was
-          // persisted — if so, silently re-authenticate.
-          // signInAnonymously() will trigger onAuthStateChange → SIGNED_IN,
-          // which calls restoreSession → handles the UID migration.
-          // NOTE: fire-and-forget to avoid blocking the auth lock.
-          const savedRaw = localStorage.getItem('vocaband_student_login');
-          if (savedRaw) {
-            // signInAnonymously triggers SIGNED_IN → restoreSession handles the rest
-            authService.signInAnonymously().catch(() => {
-              localStorage.removeItem('vocaband_student_login');
-              setLoading(false);
-            });
-          } else {
-            setLoading(false);
-          }
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Safety timeout: if onAuthStateChange never fires (e.g. fully offline),
-  // stop the spinner so the app doesn't hang forever.  Skip if a manual
-  // login (handleStudentLogin) or session restore (restoreSession) is in
-  // progress — they manage their own loading state.
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!manualLoginInProgress.current && !restoreInProgress.current) setLoading(false);
-    }, 8000);
-    return () => clearTimeout(timeout);
-  }, []);
+  // Auth logic (onAuthStateChange, session restore, safety timeout) is now in AuthContext.
+  // The onSessionRestored callback below handles App-level side effects.
 
   // --- BACK BUTTON (History API) ---
   // Track whether a view change was triggered by the browser back/forward button
@@ -2585,6 +2403,44 @@ export default function App() {
     const assignments = await assignmentService.fetchAssignmentsByClassIds(classIds);
     setTeacherAssignments(assignments);
     setTeacherAssignmentsLoading(false);
+  };
+
+  // --- AUTH CALLBACK WIRING ---
+  // Register callbacks for AuthContext to invoke when sessions are restored/lost.
+  // These run in AppContent's scope so they can access all local state setters.
+  onSessionRestoredRef.current = async (session: RestoredSession) => {
+    const u = session.user;
+    checkConsent(u);
+    if (u.role === "teacher") {
+      try {
+        const fetchedClasses = await fetchTeacherData(u.uid);
+        fetchTeacherAssignments(fetchedClasses.map(c => c.id));
+      } catch {
+        await new Promise(r => setTimeout(r, 1500));
+        const fetchedClasses = await fetchTeacherData(u.uid).catch(() => []);
+        fetchTeacherAssignments(fetchedClasses.map(c => c.id));
+      }
+      setView("teacher-dashboard");
+    } else if (u.role === "student" && u.classCode) {
+      if (session.studentData) {
+        setStudentAssignments(session.studentData.assignments);
+        setStudentProgress(session.studentData.progress);
+      }
+      setBadges(u.badges || []);
+      setXp(u.xp ?? 0);
+      setStreak(u.streak ?? 0);
+      setView("student-dashboard");
+    }
+  };
+  onSignedOutRef.current = () => {
+    if (!quickPlaySessionParam) setView("public-landing");
+  };
+  onNoSessionRef.current = () => {
+    // No action needed — loading is already set to false by AuthContext
+  };
+  onAuthErrorRef.current = (msg: string) => {
+    setError(msg);
+    setLandingTab("teacher");
   };
 
   // --- GAME LOGIC ---
