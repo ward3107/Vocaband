@@ -336,29 +336,10 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
             {/* Unmatched Terms */}
             {unmatchedTerms.length > 0 && (
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
-                    <AlertCircle className="text-orange-600" size={16} />
-                    New Custom Words ({unmatchedTerms.length} unique)
-                  </h3>
-                  <button
-                    onClick={handleTranslateAll}
-                    disabled={isTranslating}
-                    className="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 transition-colors"
-                  >
-                    {isTranslating ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        Translating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={12} />
-                        Translate All
-                      </>
-                    )}
-                  </button>
-                </div>
+                <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
+                  <AlertCircle className="text-orange-600" size={16} />
+                  New Custom Words ({unmatchedTerms.length} unique)
+                </h3>
                 <div className="space-y-2">
                   {unmatchedTerms.map((term, index) => {
                     const translations = customWordTranslations.get(term.term);
@@ -482,14 +463,35 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
             >
               Cancel
             </button>
-            <button
-              onClick={handleQuickSave}
-              disabled={matchedWords.length === 0 && unmatchedTerms.length === 0}
-              className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
-            >
-              <Check size={18} />
-              Save & Assign
-            </button>
+            <div className="flex gap-2">
+              {unmatchedTerms.length > 0 && (
+                <button
+                  onClick={handleTranslateAll}
+                  disabled={isTranslating}
+                  className="px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-sm font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 transition-colors"
+                >
+                  {isTranslating ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Translating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      Translate Custom Words
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={handleQuickSave}
+                disabled={matchedWords.length === 0 && unmatchedTerms.length === 0}
+                className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
+              >
+                <Check size={18} />
+                Save & Assign
+              </button>
+            </div>
           </div>
         </div>
       </div>

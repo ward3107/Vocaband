@@ -5,7 +5,7 @@ import {
   Clipboard, BookOpen, FolderOpen, Copy, Share2,
   Zap, Target, Headphones, PenTool, CheckCircle, RotateCcw,
   Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle, Camera,
-  Languages, Loader2
+  Loader2
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../constants/game';
@@ -247,7 +247,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [instructions, setInstructions] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [joinedWords, setJoinedWords] = useState<number[]>([]);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
+  const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
+  const [customSentenceInput, setCustomSentenceInput] = useState('');
 
   // Preview modal state for paste analysis
   const [showPreview, setShowPreview] = useState(false);
@@ -1157,11 +1158,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-xs sm:text-sm text-on-surface-variant truncate">
-                          {word[targetLanguage] ? (
-                            <span>{word[targetLanguage]}</span>
-                          ) : (
-                            <span className="italic">({targetLanguage} translation unavailable)</span>
+                        <div className="text-xs sm:text-sm text-on-surface-variant truncate flex items-center gap-2">
+                          {word.hebrew && <span>{word.hebrew}</span>}
+                          {word.hebrew && word.arabic && <span className="text-outline/40">•</span>}
+                          {word.arabic && <span>{word.arabic}</span>}
+                          {!word.hebrew && !word.arabic && (
+                            <span className="italic">No translation available</span>
                           )}
                         </div>
                       </div>
@@ -1327,11 +1329,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm text-on-surface truncate">{word.english}</div>
-                      <div className="text-xs text-on-surface-variant truncate">
-                        {word[targetLanguage] ? (
-                          <span>{word[targetLanguage]}</span>
-                        ) : (
-                          <span className="italic">({targetLanguage} unavailable)</span>
+                      <div className="text-xs text-on-surface-variant truncate flex items-center gap-2">
+                        {word.hebrew && <span>{word.hebrew}</span>}
+                        {word.hebrew && word.arabic && <span className="text-outline/40">•</span>}
+                        {word.arabic && <span>{word.arabic}</span>}
+                        {!word.hebrew && !word.arabic && (
+                          <span className="italic">No translation available</span>
                         )}
                       </div>
                     </div>
@@ -1469,18 +1472,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
           <ArrowLeft size={20} />
           Back
         </button>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")}
-            className="flex items-center gap-2 bg-white px-3 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors"
-            title="Switch between Hebrew and Arabic"
-          >
-            <Languages size={18} />
-            <span className="text-sm font-bold uppercase">{targetLanguage}</span>
-          </button>
-          <div className="text-sm font-bold text-on-surface-variant">
-            Step 2 of 3
-          </div>
+        <div className="text-sm font-bold text-on-surface-variant">
+          Step 2 of 3
         </div>
       </div>
 
@@ -1606,24 +1599,24 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         </div>
 
         {/* Compact grid layout - 5 columns for all modes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {Object.values(GAME_MODE_LEVELS).flat().map((mode) => {
               const isSelected = assignmentModes.includes(mode.id);
               return (
                 <button
                   key={mode.id}
                   onClick={() => toggleGameMode(mode.id)}
-                  className={`relative p-2.5 rounded-xl border-2 transition-all text-center ${
+                  className={`relative p-3 rounded-2xl border-2 transition-all duration-300 text-center ${
                     isSelected
-                      ? 'border-primary bg-primary/20 shadow-lg shadow-primary/30 scale-105 ring-2 ring-primary/50'
-                      : 'border-outline/30 bg-surface hover:border-outline/60 hover:bg-surface-container-low'
+                      ? 'border-primary bg-primary shadow-xl shadow-primary/40 scale-105'
+                      : 'border-outline/20 bg-surface-container hover:border-outline/40 hover:bg-surface-container-high hover:shadow-md hover:scale-[1.02]'
                   }`}
                 >
-                  <div className={`text-xl mb-1 ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{mode.emoji}</div>
-                  <div className={`text-xs font-bold ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{mode.name}</div>
+                  <div className={`text-2xl mb-1.5 transition-transform duration-300 ${isSelected ? 'scale-110' : 'scale-100'}`}>{mode.emoji}</div>
+                  <div className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
                   {isSelected && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-md">
-                      <Check size={12} className="text-white" />
+                    <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-primary animate-bounce-in">
+                      <Check size={14} className="text-primary" weight="bold" />
                     </div>
                   )}
                 </button>
@@ -1667,53 +1660,135 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                   key={level}
                   type="button"
                   onClick={() => setSentenceDifficulty(level)}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                  className={`relative p-3 rounded-lg border-2 transition-all duration-300 text-center ${
                     isSelected
-                      ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                      : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50'
+                      ? 'border-primary bg-primary shadow-md scale-105'
+                      : 'border-outline/20 bg-surface-container hover:border-outline/40 hover:bg-surface-container-high'
                   }`}
                 >
                   <div className="text-lg mb-1">{config.emoji}</div>
-                  <div className={`text-sm font-bold ${isSelected ? 'text-primary' : 'text-on-surface'}`}>{config.label}</div>
-                  <div className="text-xs text-on-surface-variant">{config.description}</div>
+                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{config.label}</div>
+                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-on-surface-variant'}`}>{config.description}</div>
+                  {isSelected && (
+                    <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-white flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                    </div>
+                  )}
                 </button>
               );
             })}
+          </div>
+
+          {/* Add Custom Sentence */}
+          <div className="mt-4 space-y-2">
+            <label className="block text-xs font-bold text-on-surface-variant">
+              Add Your Own Sentences
+            </label>
+            <div className="flex gap-2">
+              <textarea
+                value={customSentenceInput}
+                onChange={(e) => setCustomSentenceInput(e.target.value)}
+                placeholder="Write or paste your sentence here..."
+                rows={2}
+                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+              />
+              <button
+                onClick={() => {
+                  if (customSentenceInput.trim()) {
+                    setAssignmentSentences([...assignmentSentences, customSentenceInput.trim()]);
+                    setCustomSentenceInput('');
+                  }
+                }}
+                disabled={!customSentenceInput.trim()}
+                className="px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2 self-end"
+              >
+                <Plus size={18} />
+                Add
+              </button>
+            </div>
           </div>
 
           {/* Sentence Preview & Editor */}
           {assignmentSentences.length > 0 && (
             <div className="mt-3">
               <label className="block text-xs font-bold text-on-surface-variant mb-2">
-                Generated Sentences ({assignmentSentences.length}) — click to edit
+                Generated Sentences ({assignmentSentences.length}) — hover to preview, click to edit
               </label>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                {assignmentSentences.map((sentence, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+              <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+                {assignmentSentences.map((sentence, idx) => {
+                  const isInFirstHalf = idx < Math.ceil(assignmentSentences.length / 2);
+                  return (
+                  <div
+                    key={idx}
+                    onClick={() => setEditingSentenceIndex(idx)}
+                    className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50 hover:bg-surface-container-high cursor-pointer transition-all group"
+                  >
                     <span className="text-xs text-on-surface-variant font-mono w-5 shrink-0">{idx + 1}</span>
-                    <input
-                      type="text"
-                      value={sentence}
-                      onChange={(e) => {
-                        const updated = [...assignmentSentences];
-                        updated[idx] = e.target.value;
-                        setAssignmentSentences(updated);
-                      }}
-                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
-                    />
+                    <span className="flex-1 text-sm text-on-surface truncate group-hover:text-primary transition-colors">
+                      {sentence}
+                    </span>
+                    {/* Hover preview tooltip - smart positioning */}
+                    <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-surface rounded-xl shadow-xl border-2 border-outline-variant/30 p-3 pointer-events-none ${
+                      isInFirstHalf ? 'absolute top-full left-0 mt-2' : 'absolute bottom-full left-0 mb-2'
+                    }`}>
+                      <div className="text-sm text-on-surface break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {sentence}
+                      </div>
+                      {/* Arrow pointing direction */}
+                      <div className={`absolute ${isInFirstHalf ? 'bottom-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-surface -mt-px' : 'top-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-surface -mt-px'}`} />
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updated = assignmentSentences.filter((_, i) => i !== idx);
                         setAssignmentSentences(updated);
                       }}
-                      className="text-on-surface-variant hover:text-error transition-colors shrink-0"
+                      className="text-on-surface-variant hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       title="Remove sentence"
                     >
-                      <X size={16} />
+                      <X size={14} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Sentence Edit Modal */}
+          {editingSentenceIndex !== null && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingSentenceIndex(null)}>
+              <div className="bg-surface rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-on-surface mb-4">
+                  Edit Sentence #{editingSentenceIndex + 1}
+                </h3>
+                <textarea
+                  autoFocus
+                  value={assignmentSentences[editingSentenceIndex]}
+                  onChange={(e) => {
+                    const updated = [...assignmentSentences];
+                    updated[editingSentenceIndex] = e.target.value;
+                    setAssignmentSentences(updated);
+                  }}
+                  rows={3}
+                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                />
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => setEditingSentenceIndex(null)}
+                    className="flex-1 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setEditingSentenceIndex(null)}
+                    className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           )}
