@@ -49,6 +49,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, OperationType, handleDbError, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { AuthProvider, useAuth, type RestoredSession } from "./features/auth/AuthContext";
+import { UIProvider, useUI } from "./shared/contexts/UIContext";
 import * as authService from "./services/authService";
 import * as userService from "./services/userService";
 import * as classService from "./services/classService";
@@ -132,20 +133,22 @@ export default function App() {
   const authErrorRef = useRef<(msg: string) => void>(() => {});
 
   return (
-    <AuthProvider
-      quickPlaySessionParam={quickPlaySessionParam}
-      onSessionRestored={(s) => sessionRestoredRef.current(s)}
-      onSignedOut={() => signedOutRef.current()}
-      onNoSession={() => noSessionRef.current()}
-      onAuthError={(msg) => authErrorRef.current(msg)}
-    >
-      <AppContent
-        onSessionRestoredRef={sessionRestoredRef}
-        onSignedOutRef={signedOutRef}
-        onNoSessionRef={noSessionRef}
-        onAuthErrorRef={authErrorRef}
-      />
-    </AuthProvider>
+    <UIProvider>
+      <AuthProvider
+        quickPlaySessionParam={quickPlaySessionParam}
+        onSessionRestored={(s) => sessionRestoredRef.current(s)}
+        onSignedOut={() => signedOutRef.current()}
+        onNoSession={() => noSessionRef.current()}
+        onAuthError={(msg) => authErrorRef.current(msg)}
+      >
+        <AppContent
+          onSessionRestoredRef={sessionRestoredRef}
+          onSignedOutRef={signedOutRef}
+          onNoSessionRef={noSessionRef}
+          onAuthErrorRef={authErrorRef}
+        />
+      </AuthProvider>
+    </UIProvider>
   );
 }
 
@@ -359,22 +362,8 @@ function AppContent({ onSessionRestoredRef, onSignedOutRef, onNoSessionRef, onAu
   const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
 
-  // --- TOAST NOTIFICATIONS STATE ---
-  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
-  };
-
-  // --- CONFIRMATION DIALOG STATE ---
-  const [confirmDialog, setConfirmDialog] = useState<{
-    show: boolean,
-    message: string,
-    onConfirm: () => void
-  }>({ show: false, message: '', onConfirm: () => {} });
+  // --- TOAST & CONFIRMATION DIALOG (from UIContext) ---
+  const { toasts, showToast, confirmDialog, setConfirmDialog } = useUI();
 
   // --- ASSIGNMENT WELCOME POPUP STATE ---
   const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(() => {
