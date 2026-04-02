@@ -4,11 +4,11 @@
 // then level-appropriate POS templates fill in the rest.
 
 import { Word } from "./vocabulary";
-import { SentenceDifficulty, DIFFICULTY_CONFIG } from "../constants/game";
+import { SentenceDifficulty, DIFFICULTY_CONFIG } from "../shared/constants/game";
 
 // Re-export for backward compatibility
-export type { SentenceDifficulty } from "../constants/game";
-export { DIFFICULTY_CONFIG } from "../constants/game";
+export type { SentenceDifficulty } from "../shared/constants/game";
+export { DIFFICULTY_CONFIG } from "../shared/constants/game";
 
 // ============================================================================
 // POS-BASED SENTENCE TEMPLATES BY DIFFICULTY LEVEL

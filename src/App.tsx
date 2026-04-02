@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
-import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
-import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
+import { HelpTooltip, HelpIcon } from "./shared/components/HelpTooltip";
+import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS } from "./data/vocabulary";
+import type { Word } from "./shared/types";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
   searchWords
@@ -47,20 +48,20 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { useAudio } from "./hooks/useAudio";
-import FloatingButtons from "./components/FloatingButtons";
+import { useAudio } from "./shared/hooks/useAudio";
+import FloatingButtons from "./shared/components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
-import { shuffle, chunkArray, addUnique, removeKey } from './utils';
+import { shuffle, chunkArray, addUnique, removeKey } from './shared/utils/helpers';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
-import TopAppBar from "./components/TopAppBar";
-import ActionCard from "./components/ActionCard";
-import ClassCard from "./components/ClassCard";
-import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
-import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
-import { SuspenseWrapper } from "./components/SuspenseWrapper";
-import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
-import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
+import TopAppBar from "./shared/components/TopAppBar";
+import ActionCard from "./shared/components/ActionCard";
+import ClassCard from "./features/teacher/components/ClassCard";
+import { CreateAssignmentWizard } from "./features/teacher/CreateAssignmentWizard";
+import CookieBanner, { CookiePreferences } from "./shared/components/CookieBanner";
+import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./shared/components/LazyComponents";
+import { SuspenseWrapper } from "./shared/components/SuspenseWrapper";
+import { ShowAnswerFeedback } from "./shared/components/ShowAnswerFeedback";
+import { loadMammoth, loadSocketIO, loadConfetti } from "./shared/utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -68,8 +69,8 @@ import {
   XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
   THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES, LETTER_COLORS,
   type GameMode,
-} from "./constants/game";
-import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
+} from "./shared/constants/game";
+import { ErrorTrackingPanel } from "./shared/components/ErrorTrackingPanel";
 
 // Types for lazy-loaded modules
 type MammothModule = typeof import('mammoth');

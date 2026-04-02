@@ -8,7 +8,7 @@ import {
   searchWords,
   findMatchesEnhanced,
 } from '../data/vocabulary-matching';
-import type { Word } from '../vocabulary';
+import type { Word } from '../shared/types';
 
 // Helper to create minimal Word objects for testing
 function makeWord(overrides: Partial<Word> & { id: number; english: string }): Word {

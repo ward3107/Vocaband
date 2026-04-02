@@ -1,4 +1,4 @@
-import { Language } from "../hooks/useLanguage";
+import { Language } from "../../shared/hooks/useLanguage";
 
 // UI Translations (shared between Privacy and Terms)
 export const uiTranslations: Record<Language, {

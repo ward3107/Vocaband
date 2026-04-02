@@ -63,10 +63,10 @@ class LazyErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
 }
 
 // Lazy load page components - these use default exports
-export const LazyLandingPage = lazy(() => import('./LandingPage'));
-export const LazyTermsPage = lazy(() => import('./TermsPage'));
-export const LazyPublicPrivacyPage = lazy(() => import('./PublicPrivacyPage'));
-export const LazyDemoMode = lazy(() => import('./DemoMode'));
+export const LazyLandingPage = lazy(() => import('../../features/public/LandingPage'));
+export const LazyTermsPage = lazy(() => import('../../features/public/TermsPage'));
+export const LazyPublicPrivacyPage = lazy(() => import('../../features/public/PublicPrivacyPage'));
+export const LazyDemoMode = lazy(() => import('../../features/public/DemoMode'));
 
 // Wrapper components with Suspense and Error Boundary
 export const LandingPageWrapper: ComponentType<any> = (props) => (

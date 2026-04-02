@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getTrackedErrors, clearTrackedErrors, type TrackedError } from '../errorTracking';
+import { getTrackedErrors, clearTrackedErrors, type TrackedError } from '../../errorTracking';
 
 export function ErrorTrackingPanel() {
   const [show, setShow] = useState(false);

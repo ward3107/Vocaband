@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { shuffle, chunkArray } from '../utils';
+import { shuffle, chunkArray } from '../shared/utils/helpers';
 
 // ─── chunkArray ───────────────────────────────────────────────────────────────
 

@@ -1,12 +1,12 @@
 import React from "react";
 import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink, ArrowLeft } from "lucide-react";
-import PublicNav from "./PublicNav";
-import MobileNav from "./MobileNav";
-import FloatingButtons from "./FloatingButtons";
-import BackButton from "./BackButton";
-import LanguageSwitcher from "./LanguageSwitcher";
-import { useLanguage } from "../hooks/useLanguage";
-import { privacyTranslations, uiTranslations } from "../config/translations/legalTranslations";
+import PublicNav from "../../shared/components/PublicNav";
+import MobileNav from "../../shared/components/MobileNav";
+import FloatingButtons from "../../shared/components/FloatingButtons";
+import BackButton from "../../shared/components/BackButton";
+import LanguageSwitcher from "../../shared/components/LanguageSwitcher";
+import { useLanguage } from "../../shared/hooks/useLanguage";
+import { privacyTranslations, uiTranslations } from "../../config/translations/legalTranslations";
 
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;

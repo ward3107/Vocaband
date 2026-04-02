@@ -4,18 +4,9 @@
 // Band 1 (Core I): 1040 words
 // Band 2 (Core II): 1027 words
 
-export interface Word {
-  id: number;
-  english: string;
-  hebrew: string;
-  arabic: string;
-  imageUrl?: string;
-  level?: "Band 1" | "Band 2" | "Band 3" | "Custom";
-  core?: "Core I" | "Core II";
-  pos?: string; // Part of Speech
-  recProd?: "Rec" | "Prod" | "Rec/Prod"; // Receptive or Productive or Both
-  sentences?: string[]; // Pre-written example sentences for Sentence Builder
-}
+// Re-export Word type from shared types for backwards compatibility
+export type { Word } from '../shared/types';
+import type { Word } from '../shared/types';
 
 // ============================================================================
 // BAND 1 - CORE I (1040 words)

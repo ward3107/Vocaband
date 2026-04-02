@@ -1,11 +1,11 @@
 import React from "react";
 import { ArrowLeft, Printer, FileText, Scale, Users, Shield, AlertTriangle, Gavel, Mail } from "lucide-react";
-import PublicNav from "./PublicNav";
-import MobileNav from "./MobileNav";
-import FloatingButtons from "./FloatingButtons";
-import LanguageSwitcher from "./LanguageSwitcher";
-import { useLanguage } from "../hooks/useLanguage";
-import { termsTranslations, uiTranslations } from "../config/translations/legalTranslations";
+import PublicNav from "../../shared/components/PublicNav";
+import MobileNav from "../../shared/components/MobileNav";
+import FloatingButtons from "../../shared/components/FloatingButtons";
+import LanguageSwitcher from "../../shared/components/LanguageSwitcher";
+import { useLanguage } from "../../shared/hooks/useLanguage";
+import { termsTranslations, uiTranslations } from "../../config/translations/legalTranslations";
 
 interface TermsPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;

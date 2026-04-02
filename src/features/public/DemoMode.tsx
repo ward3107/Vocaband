@@ -17,9 +17,9 @@ import {
   Crown,
   Target
 } from "lucide-react";
-import { Word } from "../data/vocabulary";
-import { useAudio } from "../hooks/useAudio";
-import { useLanguage, Language } from "../hooks/useLanguage";
+import type { Word } from "../../shared/types";
+import { useAudio } from "../../shared/hooks/useAudio";
+import { useLanguage, Language } from "../../shared/hooks/useLanguage";
 
 interface DemoModeProps {
   onClose: () => void;

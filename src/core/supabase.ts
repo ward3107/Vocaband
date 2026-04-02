@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Re-export types from shared for backwards compatibility
+export { OperationType, type AppUser, type ClassData, type AssignmentData, type ProgressData, type DbErrorInfo } from '../shared/types';
+import { OperationType } from '../shared/types';
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
@@ -18,26 +22,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------
-
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-export interface DbErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    isAnonymous: boolean | undefined;
-  };
-}
 
 export async function handleDbError(
   error: unknown,
@@ -60,56 +44,7 @@ export async function handleDbError(
 // Row-to-interface mappers (DB uses snake_case, TS uses camelCase)
 // ---------------------------------------------------------------------------
 
-export interface AppUser {
-  uid: string;
-  email?: string;
-  role: 'teacher' | 'student' | 'admin' | 'guest';
-  displayName: string;
-  classCode?: string;
-  avatar?: string;
-  badges?: string[];
-  xp?: number;
-  streak?: number;
-  unlockedAvatars?: string[];
-  unlockedThemes?: string[];
-  powerUps?: Record<string, number>;
-  activeTheme?: string;
-  isGuest?: boolean;
-  createdAt?: string;
-}
-
-export interface ClassData {
-  id: string;
-  name: string;
-  code: string;
-  teacherUid: string;
-}
-
-export interface AssignmentData {
-  id: string;
-  classId: string;
-  wordIds: number[];
-  words?: import('./vocabulary').Word[];
-  title: string;
-  deadline?: string | null;
-  createdAt?: string;
-  allowedModes?: string[];
-  sentences?: string[];
-  sentenceDifficulty?: number;
-}
-
-export interface ProgressData {
-  id: string;
-  studentName: string;
-  studentUid?: string;
-  assignmentId: string;
-  classCode: string;
-  score: number;
-  mode: string;
-  completedAt: string;
-  mistakes?: number[];
-  avatar?: string;
-}
+import type { AppUser, ProgressData } from '../shared/types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapUser(row: any): AppUser {
@@ -149,7 +84,7 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapClass(row: any): ClassData {
+export function mapClass(row: any) {
   return {
     id: row.id,
     name: row.name,
@@ -159,7 +94,7 @@ export function mapClass(row: any): ClassData {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapAssignment(row: any): AssignmentData {
+export function mapAssignment(row: any) {
   return {
     id: row.id,
     classId: row.class_id,

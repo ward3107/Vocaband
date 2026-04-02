@@ -1,5 +1,5 @@
 import {StrictMode} from 'react';
-import { AccessibilityWidget } from './components/AccessibilityWidget';
+import { AccessibilityWidget } from './shared/components/AccessibilityWidget';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary.tsx';

@@ -8,9 +8,9 @@ import {
   ArrowRight,
   Link2,
 } from "lucide-react";
-import PublicNav from "./PublicNav";
-import MobileNav from "./MobileNav";
-import FloatingButtons from "./FloatingButtons";
+import PublicNav from "../../shared/components/PublicNav";
+import MobileNav from "../../shared/components/MobileNav";
+import FloatingButtons from "../../shared/components/FloatingButtons";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
