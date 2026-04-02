@@ -90,6 +90,7 @@ import { ErrorTrackingPanel } from "./shared/components/ErrorTrackingPanel";
 import { ShopView } from "./features/shop/ShopView";
 import { PrivacySettingsView } from "./features/student/PrivacySettingsView";
 import { TeacherApprovalsView } from "./features/teacher/TeacherApprovalsView";
+import { GradebookView } from "./features/teacher/GradebookView";
 import { GlobalLeaderboardView } from "./features/student/GlobalLeaderboardView";
 
 // Types for lazy-loaded modules
