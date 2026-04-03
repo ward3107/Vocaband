@@ -141,10 +141,21 @@ export const useAudio = () => {
     }
   }
 
-  const speak = (wordId: number) => {
+  const speak = (wordId: number, fallbackText?: string) => {
     // Stop any currently playing audio first
     Object.values(wordCache).forEach(h => h.stop())
     window.speechSynthesis?.cancel()
+
+    // Custom words (negative IDs) don't have audio files — use browser TTS
+    if (wordId < 0) {
+      if (fallbackText && 'speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(fallbackText)
+        utterance.lang = 'en-US'
+        utterance.rate = 0.95
+        window.speechSynthesis.speak(utterance)
+      }
+      return
+    }
 
     preload(wordId)
 
@@ -159,7 +170,7 @@ export const useAudio = () => {
   }
 
   const preloadMany = (wordIds: number[]) => {
-    wordIds.forEach(preload)
+    wordIds.filter(id => id > 0).forEach(preload)
   }
 
   // Preload a small batch of motivational phrases (avoids Audio pool exhaustion)
