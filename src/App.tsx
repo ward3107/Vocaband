@@ -6001,7 +6001,7 @@ export default function App() {
                 }`}
               >
                 {toast.type === 'success' && <CheckCircle2 size={20} />}
-                {toast.type === 'error' && <AlertCircle size={20} />}
+                {toast.type === 'error' && <AlertTriangle size={20} />}
                 {toast.type === 'info' && <Info size={20} />}
                 <span>{toast.message}</span>
               </motion.div>
