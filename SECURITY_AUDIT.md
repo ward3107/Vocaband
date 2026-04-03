@@ -225,19 +225,19 @@ HSTS: max-age=31536000; includeSubDomains; preload
 
 ### HIGH Severity
 
-#### H1: Student `unique_id` Collision in Approval Workflow
+#### H1: Student `unique_id` Collision in Approval Workflow *(Fixed — 2026-03-30)*
 
-**Location:** `App.tsx:2200`
+**Location:** `App.tsx:2164`, `supabase/migrations/20260330_security_fixes.sql`
 **Description:** The student profile lookup uses `unique_id = lowercase(classCode) + lowercase(studentName)`. If two students in the same class use the same display name, they share a profile row. Approving one approves both.
 **Impact:** A student could bypass the approval workflow by registering with the same name as an already-approved student.
-**Recommendation:** Include a unique component (e.g., the anonymous UID or a random suffix) in `unique_id` to guarantee uniqueness per student, not per name.
+**Fix:** `unique_id` now includes the caller's anonymous auth UID (`code + name + ':' + uid`). The `get_or_create_student_profile` SECURITY DEFINER function enforces this server-side. Legacy rows are migrated to the new format on next login.
 
-#### H2: Student Can Change Own `class_code` via Direct Supabase Update
+#### H2: Student Can Change Own `class_code` via Direct Supabase Update *(Fixed — 2026-03-30)*
 
-**Location:** `schema.sql:124-132`
-**Description:** The `users_update` RLS policy only freezes the `role` column. A student could call `supabase.from('users').update({ class_code: 'ANOTHER_CODE' })` to move themselves to a different class without teacher approval.
+**Location:** `supabase/migrations/20260330_security_fixes.sql`
+**Description:** The `users_update` RLS policy only froze the `role` column. A student could call `supabase.from('users').update({ class_code: 'ANOTHER_CODE' })` to move themselves to a different class without teacher approval.
 **Impact:** Unauthorized access to another class's assignments and leaderboard.
-**Recommendation:** Add a `WITH CHECK` constraint that either freezes `class_code` or validates membership via `student_profiles`.
+**Fix:** The `users_update` policy now freezes both `role` and `class_code` in a single `EXISTS` subquery. Non-admins may only retain their existing `class_code` (or set it from NULL during initial insert).
 
 ### MEDIUM Severity
 
@@ -336,8 +336,8 @@ HSTS: max-age=31536000; includeSubDomains; preload
 
 | Priority | Action | Effort |
 |----------|--------|--------|
-| **High** | Fix student `unique_id` to include UID or random component | Small |
-| **High** | Add RLS constraint to prevent students from changing `class_code` | Small |
+| ~~**High**~~ | ~~Fix student `unique_id` to include UID or random component~~ | ✅ Done |
+| ~~**High**~~ | ~~Add RLS constraint to prevent students from changing `class_code`~~ | ✅ Done |
 | **Medium** | Persist consent to `consent_log` table (not just localStorage) | Small |
 | **Medium** | Remove token from `join-challenge` payload (use handshake auth only) | Small |
 | **Low** | Use `crypto.randomUUID()` for guest UIDs | Trivial |
