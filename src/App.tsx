@@ -955,14 +955,13 @@ export default function App() {
     // to avoid StrictMode double-mount races.  By the time this effect
     // runs, the exchange is already in-flight or completed.
 
-    // Helper: fetch user profile with retry (mobile networks are flaky,
-    // and RLS may briefly reject queries while the fresh JWT propagates).
-    const fetchUserProfile = async (uid: string, retries = 3): Promise<ReturnType<typeof mapUser> | null> => {
+    // Helper: fetch user profile with a single retry for transient errors.
+    const fetchUserProfile = async (uid: string, retries = 1): Promise<ReturnType<typeof mapUser> | null> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
         const { data: userRow, error } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
         if (userRow) return mapUser(userRow);
-        if (!error && attempt >= 1) return null; // No row exists and we've waited — don't keep retrying
-        if (attempt < retries) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+        if (!error) return null; // No row exists — don't retry
+        if (attempt < retries) await new Promise(r => setTimeout(r, 500));
       }
       return null;
     };
@@ -973,25 +972,14 @@ export default function App() {
       if (restoreInProgress.current) return;
       restoreInProgress.current = true;
       try {
-        // Brief pause to let the fresh Supabase JWT propagate to the API —
-        // without this, the first DB query can hit RLS errors on cold starts.
-        await new Promise(r => setTimeout(r, 300));
         const userData = await fetchUserProfile(supabaseUser.id);
         if (userData) {
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
             // Await so the dashboard has data before we show it — prevents
-            // the "empty dashboard until refresh" bug.  Retry with backoff on failure.
-            let fetchedClasses: Awaited<ReturnType<typeof fetchTeacherData>> = [];
-            for (let t = 0; t < 3; t++) {
-              try {
-                fetchedClasses = await fetchTeacherData(supabaseUser.id);
-                break; // success
-              } catch {
-                if (t < 2) await new Promise(r => setTimeout(r, 1500 * (t + 1)));
-              }
-            }
+            // the "empty dashboard until refresh" bug.
+            const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
             setView("teacher-dashboard");
           } else if (userData.role === "student" && userData.classCode) {
@@ -1224,7 +1212,7 @@ export default function App() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!manualLoginInProgress.current && !restoreInProgress.current) setLoading(false);
-    }, 8000);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, []);
 
