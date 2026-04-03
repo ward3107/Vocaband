@@ -24,7 +24,22 @@ No app store. No personal data required. Works offline.
 
 ## Screenshots
 
+### Landing Page
+![Vocaband landing page](./vocaband-homepage.png)
 
+### Student Dashboard
+<table>
+  <tr>
+    <td align="center"><b>Dashboard — Missions & XP</b></td>
+    <td align="center"><b>Choose Your Quest — 10 Game Modes</b></td>
+    <td align="center"><b>Live Challenge — Vocabulary Rumble</b></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/screenshots/screen.png" width="220" alt="Student dashboard with leaderboard and active missions"/></td>
+    <td><img src="./docs/screenshots/screen2.png" width="220" alt="Game mode selection screen"/></td>
+    <td><img src="./docs/screenshots/scree3n.png" width="220" alt="Live challenge leaderboard"/></td>
+  </tr>
+</table>
 
 ---
 
