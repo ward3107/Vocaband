@@ -981,7 +981,37 @@ export default function App() {
             // the "empty dashboard until refresh" bug.
             const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
-            setView("teacher-dashboard");
+            // Check if teacher had an active Quick Play session before refresh
+            try {
+              const savedSession = localStorage.getItem('vocaband_quick_play_session');
+              if (savedSession) {
+                const parsed = JSON.parse(savedSession);
+                const { data: sessionData } = await supabase
+                  .from('quick_play_sessions')
+                  .select('id, session_code, word_ids, is_active')
+                  .eq('id', parsed.id)
+                  .eq('is_active', true)
+                  .maybeSingle();
+                if (sessionData) {
+                  const dbWords = ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
+                  setQuickPlayActiveSession({
+                    id: sessionData.id,
+                    sessionCode: sessionData.session_code,
+                    wordIds: sessionData.word_ids || [],
+                    words: parsed.words?.length ? parsed.words : dbWords,
+                  });
+                  setQuickPlaySessionCode(sessionData.session_code);
+                  setView("quick-play-teacher-monitor");
+                } else {
+                  localStorage.removeItem('vocaband_quick_play_session');
+                  setView("teacher-dashboard");
+                }
+              } else {
+                setView("teacher-dashboard");
+              }
+            } catch {
+              setView("teacher-dashboard");
+            }
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;
             const { data: classRows } = await supabase
@@ -6202,13 +6232,14 @@ export default function App() {
 
                       const session = data as { id: string, session_code: string };
                       setQuickPlaySessionCode(session.session_code);
-                      setQuickPlayActiveSession({
+                      const newSession = {
                         id: session.id,
                         sessionCode: session.session_code,
                         wordIds: wordIds,
                         words: updatedSelection
-                      });
-                      console.log('[Quick Play Teacher] Session created:', session);
+                      };
+                      setQuickPlayActiveSession(newSession);
+                      try { localStorage.setItem('vocaband_quick_play_session', JSON.stringify({ id: session.id, words: updatedSelection })); } catch {}
                       setQuickPlaySearchQuery("");
                       setView("quick-play-teacher-monitor");
                     }, 500);
@@ -6570,13 +6601,14 @@ export default function App() {
 
                     const session = data as { id: string, session_code: string };
                     setQuickPlaySessionCode(session.session_code);
-                    setQuickPlayActiveSession({
+                    const newSession = {
                       id: session.id,
                       sessionCode: session.session_code,
                       wordIds: wordIds,
-                      words: quickPlaySelectedWords // Include all words (db + custom)
-                    });
-                    console.log('[Quick Play Teacher] Session created with custom words:', session);
+                      words: quickPlaySelectedWords
+                    };
+                    setQuickPlayActiveSession(newSession);
+                    try { localStorage.setItem('vocaband_quick_play_session', JSON.stringify({ id: session.id, words: quickPlaySelectedWords })); } catch {}
                     setView("quick-play-teacher-monitor");
                   }}
                   className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-indigo-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
@@ -6789,6 +6821,7 @@ export default function App() {
                 setQuickPlayCustomWords(new Map());
                 setQuickPlayAddingCustom(new Set());
                 setQuickPlayTranslating(new Set());
+                try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
               }}
               className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-sm sm:text-base bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
             >
@@ -6975,6 +7008,7 @@ export default function App() {
                     setQuickPlayCustomWords(new Map());
                     setQuickPlayAddingCustom(new Set());
                     setQuickPlayTranslating(new Set());
+                    try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
                     showToast("Quick Play session ended", "success");
                     setEndQuickPlayModal(false);
                   }}
