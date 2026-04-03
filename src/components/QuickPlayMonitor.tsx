@@ -232,6 +232,13 @@ export default function QuickPlayMonitor({
       showToast(`Failed to remove ${name}: ${error.message}`, 'error');
     } else {
       setStudents((prev: Student[]) => prev.filter(s => s.name !== name));
+      // Track kicked name in localStorage so they can't rejoin
+      try {
+        const key = `vocaband_kicked_${session.id}`;
+        const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+        if (!kicked.includes(name)) kicked.push(name);
+        localStorage.setItem(key, JSON.stringify(kicked));
+      } catch {}
       showToast(`${name} removed from session`, 'info');
     }
     setConfirmKick(null);

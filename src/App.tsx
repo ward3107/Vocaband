@@ -508,6 +508,65 @@ export default function App() {
       };
 
       loadQuickPlaySession();
+    } else {
+      // No URL param — try recovering a saved guest session from localStorage
+      try {
+        const saved = localStorage.getItem('vocaband_qp_guest');
+        if (saved) {
+          const { sessionId, sessionCode, name, avatar } = JSON.parse(saved);
+          if (sessionId && sessionCode && name) {
+            // Verify session is still active
+            const loadSaved = async () => {
+              const { data: { session: existingSession } } = await supabase.auth.getSession();
+              if (!existingSession) await supabase.auth.signInAnonymously().catch(() => {});
+
+              const { data } = await supabase
+                .from('quick_play_sessions')
+                .select('id, session_code, word_ids, is_active, custom_words')
+                .eq('id', sessionId)
+                .eq('is_active', true)
+                .maybeSingle();
+
+              if (data) {
+                const dbWords = ALL_WORDS.filter(w => (data.word_ids || []).includes(w.id));
+                let customWords: Word[] = [];
+                if (data.custom_words) {
+                  try {
+                    const cw = typeof data.custom_words === 'string' ? JSON.parse(data.custom_words) : data.custom_words;
+                    customWords = cw.map((w: any, i: number) => ({
+                      id: -(Date.now() + i), english: w.english, hebrew: w.hebrew, arabic: w.arabic, level: "Custom" as const
+                    }));
+                  } catch {}
+                }
+                const allSessionWords = [...dbWords, ...customWords];
+                if (allSessionWords.length > 0) {
+                  setQuickPlayActiveSession({ id: data.id, sessionCode: data.session_code, wordIds: data.word_ids || [], words: allSessionWords });
+                  setQuickPlayStudentName(name);
+                  setQuickPlayAvatar(avatar || '\uD83E\uDD8A');
+                  // Go straight to mode selection (they already joined)
+                  const guestUser = createGuestUser(name, 'quickplay', avatar || '\uD83E\uDD8A');
+                  setUser(guestUser);
+                  const words = allSessionWords.map(w => ({ ...w, hebrew: w.hebrew || '', arabic: w.arabic || '' }));
+                  setAssignmentWords(words);
+                  const quickPlaySentences = generateSentencesForAssignment(words, 2);
+                  setActiveAssignment({
+                    id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
+                    title: "Quick Play",
+                    allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    sentences: quickPlaySentences, sentenceDifficulty: 2,
+                  });
+                  setView("game");
+                  setShowModeSelection(true);
+                  return;
+                }
+              }
+              // Session ended or invalid — clear saved data
+              localStorage.removeItem('vocaband_qp_guest');
+            };
+            loadSaved();
+          }
+        }
+      } catch {}
     }
   }, []);
 
@@ -4082,6 +4141,7 @@ export default function App() {
           setActiveAssignment(null);
           setUser(null);
           setView("public-landing");
+          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         }}
       />
     );
@@ -4099,6 +4159,7 @@ export default function App() {
           setActiveAssignment(null);
           setUser(null);
           setView("public-landing");
+          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         }}
       />
     );
@@ -4194,7 +4255,7 @@ export default function App() {
 
                   <button
                     data-quick-play-join
-                    onClick={() => {
+                    onClick={async () => {
                       const input = document.getElementById('quick-play-name-input') as HTMLInputElement;
                       const trimmedName = input?.value.trim() || "";
 
@@ -4208,8 +4269,30 @@ export default function App() {
                         return;
                       }
 
+                      // Check if this name was kicked from this session
+                      try {
+                        const kickedKey = `vocaband_kicked_${quickPlayActiveSession.id}`;
+                        const kickedNames: string[] = JSON.parse(localStorage.getItem(kickedKey) || '[]');
+                        if (kickedNames.includes(trimmedName)) {
+                          showToast("This name has been removed from the session by the teacher.", "error");
+                          return;
+                        }
+                      } catch {}
+
                       if (!quickPlayActiveSession.words || quickPlayActiveSession.words.length === 0) {
                         showToast("This session has no words. Please contact your teacher.", "error");
+                        return;
+                      }
+
+                      // Check for duplicate name in this session
+                      const { data: existingProgress } = await supabase
+                        .from('progress')
+                        .select('id')
+                        .eq('assignment_id', quickPlayActiveSession.id)
+                        .eq('student_name', trimmedName)
+                        .limit(1);
+                      if (existingProgress && existingProgress.length > 0) {
+                        showToast("This name is already taken. Please choose a different one.", "error");
                         return;
                       }
 
@@ -4245,6 +4328,16 @@ export default function App() {
                         setMistakes([]);
                         setView("game");
                         setShowModeSelection(true);
+
+                        // Save guest session to localStorage for page refresh recovery
+                        try {
+                          localStorage.setItem('vocaband_qp_guest', JSON.stringify({
+                            sessionId: quickPlayActiveSession.id,
+                            sessionCode: quickPlayActiveSession.sessionCode,
+                            name: trimmedName,
+                            avatar: quickPlayAvatar,
+                          }));
+                        } catch {}
 
                         // Record that student joined — so teacher sees them in live stats immediately
                         supabase.auth.getSession().then(({ data: { session } }) => {
