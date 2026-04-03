@@ -1133,8 +1133,17 @@ export default function App() {
     if (!newClassName || !user) return;
 
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
-    const code = Array.from(crypto.getRandomValues(new Uint32Array(8)))
-      .map(x => alphabet[x % alphabet.length])
+    const randomValues = crypto.getRandomValues(new Uint32Array(8));
+    const code = Array.from(randomValues)
+      .map(x => {
+        // Rejection sampling to avoid modulo bias
+        const limit = Math.floor(0x100000000 / alphabet.length) * alphabet.length;
+        let val = x;
+        while (val >= limit) {
+          val = crypto.getRandomValues(new Uint32Array(1))[0];
+        }
+        return alphabet[val % alphabet.length];
+      })
       .join("");
     const newClass = {
       name: newClassName,
@@ -1428,7 +1437,7 @@ export default function App() {
     if (!gSheetsUrl.trim()) return;
     try {
       const parsed = new URL(gSheetsUrl.trim());
-      if (!parsed.hostname.endsWith("google.com")) {
+      if (parsed.hostname !== "google.com" && !parsed.hostname.endsWith(".google.com")) {
         showToast("Only Google Sheets URLs are allowed.", "error");
         return;
       }
