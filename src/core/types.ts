@@ -31,13 +31,11 @@ export interface JoinChallengePayload {
   classCode: string;
   name: string;
   uid: string;
-  token?: string;
   isGuest?: boolean;
 }
 
 export interface ObserveChallengePayload {
   classCode: string;
-  token: string;
 }
 
 export interface UpdateScorePayload {

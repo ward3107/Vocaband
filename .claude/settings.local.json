@@ -158,7 +158,8 @@
       "Bash(echo \"Found in .env.example at commit $commit\")",
       "Bash(done)",
       "Bash(git rm:*)",
-      "mcp__9e877a58-62c8-403b-a83a-d373ba08281a__execute_sql"
+      "mcp__9e877a58-62c8-403b-a83a-d373ba08281a__execute_sql",
+      "mcp__b250b818-fec6-4a8d-b84c-27417275ef42__list_teams"
     ]
   }
 }
