@@ -221,6 +221,7 @@ export default function App() {
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
   const [endQuickPlayModal, setEndQuickPlayModal] = useState(false);
+  const [qrEnlarged, setQrEnlarged] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [openDropdownClassId, setOpenDropdownClassId] = useState<string | null>(null);
   const [xp, setXp] = useState(0);
@@ -540,29 +541,37 @@ export default function App() {
   // Polls Supabase for student progress every 3 seconds when in teacher monitor view
   // Helper: aggregate raw progress rows into the leaderboard format
   const aggregateProgress = useCallback((progressData: any[]) => {
-    const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }>();
+    const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> }>();
 
     progressData.forEach((p: any) => {
       const key = p.student_name;
       const existing = studentMap.get(key);
 
       if (!existing) {
+        const modes = new Map<string, number>();
+        if (p.mode !== 'joined') modes.set(p.mode, Number(p.score));
         studentMap.set(key, {
           name: p.student_name,
           score: p.mode === 'joined' ? 0 : Number(p.score),
           avatar: p.avatar || '🦊',
           lastSeen: p.completed_at,
           mode: p.mode,
-          studentUid: p.student_uid
+          studentUid: p.student_uid,
+          modes
         });
       } else {
         if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
           existing.lastSeen = p.completed_at;
           existing.mode = p.mode;
         }
-        if (p.mode !== 'joined' && Number(p.score) > existing.score) {
-          existing.score = Number(p.score);
+        // Track best score per mode, then sum for cumulative total
+        if (p.mode !== 'joined') {
+          const prev = existing.modes.get(p.mode) || 0;
+          if (Number(p.score) > prev) existing.modes.set(p.mode, Number(p.score));
         }
+        let total = 0;
+        existing.modes.forEach(v => { total += v; });
+        existing.score = total;
       }
     });
 
@@ -6915,15 +6924,20 @@ export default function App() {
                 QR Code
               </h2>
 
-              {/* QR Code Display */}
-              <div className="bg-white rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
+              {/* QR Code Display — click to enlarge */}
+              <div
+                className="bg-white rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setQrEnlarged(true)}
+                title="Click to enlarge QR code"
+              >
                 <div className="aspect-square max-w-[200px] sm:max-w-[250px] mx-auto">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`}
                     alt="Quick Play QR Code"
                     className="w-full h-full object-contain"
                   />
                 </div>
+                <p className="text-center text-purple-400 text-xs mt-2 font-medium">Tap to enlarge</p>
               </div>
 
               <p className="text-xs sm:text-sm text-white/80 text-center mb-3 sm:mb-4">
@@ -6960,20 +6974,74 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Live Leaderboard */}
-                {quickPlayJoinedStudents.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-black text-white/80">LIVE LEADERBOARD</h3>
-                    {quickPlayJoinedStudents
-                      .sort((a, b) => b.score - a.score)
-                      .map((student, idx) => {
-                        const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000; // active within 60s
+                {/* Podium + Live Leaderboard */}
+                {(() => {
+                  const sorted = [...quickPlayJoinedStudents].sort((a, b) => b.score - a.score);
+                  const top3 = sorted.slice(0, 3);
+                  const rest = sorted.slice(3);
+                  const removeStudent = async (name: string) => {
+                    if (!confirm(`Remove ${name} from the session?`)) return;
+                    const { error } = await supabase
+                      .from('progress')
+                      .delete()
+                      .eq('assignment_id', quickPlayActiveSession!.id)
+                      .eq('student_name', name);
+                    if (error) {
+                      showToast(`Failed to remove ${name}: ${error.message}`, "error");
+                    } else {
+                      setQuickPlayJoinedStudents(prev => prev.filter(s => s.name !== name));
+                      showToast(`${name} removed`, "info");
+                    }
+                  };
+
+                  return sorted.length > 0 ? (
+                    <div className="space-y-3">
+                      {/* Podium for top 3 */}
+                      {top3.length > 0 && (
+                        <div className="flex items-end justify-center gap-2 sm:gap-3 mb-2">
+                          {/* 2nd place */}
+                          {top3[1] && (
+                            <div className="flex flex-col items-center w-24 sm:w-28">
+                              <span className="text-3xl mb-1">{top3[1].avatar}</span>
+                              <span className="text-xs font-bold truncate max-w-full">{top3[1].name}</span>
+                              <div className="w-full bg-gradient-to-t from-slate-400 to-slate-300 rounded-t-lg mt-1 flex flex-col items-center justify-end py-2" style={{ height: '60px' }}>
+                                <span className="text-lg">🥈</span>
+                                <span className="text-xs font-black text-slate-700">{top3[1].score}</span>
+                              </div>
+                            </div>
+                          )}
+                          {/* 1st place */}
+                          {top3[0] && (
+                            <div className="flex flex-col items-center w-28 sm:w-32">
+                              <span className="text-4xl mb-1">{top3[0].avatar}</span>
+                              <span className="text-sm font-bold truncate max-w-full">{top3[0].name}</span>
+                              <div className="w-full bg-gradient-to-t from-yellow-500 to-yellow-300 rounded-t-lg mt-1 flex flex-col items-center justify-end py-2" style={{ height: '80px' }}>
+                                <span className="text-2xl">🥇</span>
+                                <span className="text-sm font-black text-yellow-800">{top3[0].score}</span>
+                              </div>
+                            </div>
+                          )}
+                          {/* 3rd place */}
+                          {top3[2] && (
+                            <div className="flex flex-col items-center w-24 sm:w-28">
+                              <span className="text-3xl mb-1">{top3[2].avatar}</span>
+                              <span className="text-xs font-bold truncate max-w-full">{top3[2].name}</span>
+                              <div className="w-full bg-gradient-to-t from-orange-500 to-orange-300 rounded-t-lg mt-1 flex flex-col items-center justify-end py-2" style={{ height: '45px' }}>
+                                <span className="text-lg">🥉</span>
+                                <span className="text-xs font-black text-orange-800">{top3[2].score}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Full list with online status, mode, and remove */}
+                      <h3 className="text-sm font-black text-white/80">ALL STUDENTS</h3>
+                      {sorted.map((student, idx) => {
+                        const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000;
                         const modeLabel = student.mode === 'joined' ? 'Lobby' : student.mode;
                         return (
-                          <div
-                            key={student.name}
-                            className="bg-white/10 rounded-xl p-3 flex items-center justify-between gap-2"
-                          >
+                          <div key={student.name} className="bg-white/10 rounded-xl p-3 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="text-lg font-black w-7 text-center shrink-0">#{idx + 1}</span>
                               <span className="text-2xl shrink-0">{student.avatar}</span>
@@ -6988,20 +7056,7 @@ export default function App() {
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-xl font-black">{student.score}<span className="text-xs font-normal text-white/60 ml-0.5">pts</span></span>
                               <button
-                                onClick={async () => {
-                                  if (!confirm(`Remove ${student.name} from the session?`)) return;
-                                  const { error } = await supabase
-                                    .from('progress')
-                                    .delete()
-                                    .eq('assignment_id', quickPlayActiveSession!.id)
-                                    .eq('student_name', student.name);
-                                  if (error) {
-                                    showToast(`Failed to remove ${student.name}: ${error.message}`, "error");
-                                  } else {
-                                    setQuickPlayJoinedStudents(prev => prev.filter(s => s.name !== student.name));
-                                    showToast(`${student.name} removed`, "info");
-                                  }
-                                }}
+                                onClick={() => removeStudent(student.name)}
                                 className="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/50 transition-colors"
                                 title={`Remove ${student.name}`}
                               >
@@ -7011,8 +7066,9 @@ export default function App() {
                           </div>
                         );
                       })}
-                  </div>
-                )}
+                    </div>
+                  ) : null;
+                })()}
 
                 {quickPlayJoinedStudents.length === 0 && (
                   <div className="text-center py-8 text-white/60">
@@ -7042,6 +7098,45 @@ export default function App() {
             </div>
           </div>
         </div>
+      {/* Enlarged QR Code Modal */}
+      <AnimatePresence>
+        {qrEnlarged && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] cursor-pointer"
+            onClick={() => setQrEnlarged(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-10 max-w-lg w-full shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="aspect-square w-full mx-auto">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(qrUrl)}`}
+                  alt="Quick Play QR Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <p className="text-center text-purple-600 font-mono font-black text-2xl sm:text-3xl mt-4">
+                {quickPlayActiveSession?.sessionCode}
+              </p>
+              <p className="text-center text-stone-400 text-sm mt-1">Scan to join</p>
+              <button
+                onClick={() => setQrEnlarged(false)}
+                className="mt-4 w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-2xl font-bold transition-colors"
+              >
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* End Quick Play Session Confirmation Modal */}
       <AnimatePresence>
         {endQuickPlayModal && (
@@ -8674,7 +8769,8 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* Live Leaderboard Widget */}
+      {/* Live Leaderboard Widget — hidden for Quick Play guests (no socket-based data) */}
+      {!user?.isGuest && (
       <div className="lg:col-span-1">
         <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
@@ -8732,6 +8828,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      )}
     </div>
 
     {gameMode !== "matching" && (
