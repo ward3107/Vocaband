@@ -5038,7 +5038,7 @@ export default function App() {
                         }}
                         onWhatsApp={() => {
                           window.open(
-                            `https://wa.me/?text=${encodeURIComponent(`📚 Join my class *${c.name}* on Vocaband!\n\n🔑 Class Code:\n\n\`\`\`${c.code}\`\`\`\n\nPaste the code in the app to join!`)}`,
+                            `https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + c.name + "* on Vocaband!\n\n🔑 Class Code:\n\n```\n" + c.code + "\n```\n\nPaste the code in the app to join!")}`,
                           '_blank'
                         );
                       }}
@@ -5182,7 +5182,7 @@ export default function App() {
                     <span>Copy</span>
                   </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class *${createdClassName}* on Vocaband!\n\n🔑 Class Code:\n\n\`\`\`${createdClassCode}\`\`\`\n\nPaste the code in the app to join!`)}`}
+                    href={`https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + createdClassName + "* on Vocaband!\n\n🔑 Class Code:\n\n```\n" + createdClassCode + "\n```\n\nPaste the code in the app to join!")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
@@ -5294,84 +5294,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* End Quick Play Session Confirmation Modal */}
-        <AnimatePresence>
-          {endQuickPlayModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]"
-            >
-              {console.log('[End Session Modal] Rendering modal, session:', quickPlayActiveSession)}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
-              >
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <LogOut size={32} />
-                </div>
-                <h2 className="text-2xl font-black mb-2">End Quick Play Session?</h2>
-                <p className="text-stone-500 mb-6">
-                  Students will no longer be able to join this session using the code <strong>{quickPlayActiveSession?.sessionCode}</strong>. The session and all progress will be permanently ended.
-                </p>
-                <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
-                  ⚠️ Make sure all students have finished their games before ending.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      console.log('[End Session] Keep Session clicked');
-                      setEndQuickPlayModal(false);
-                    }}
-                    className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
-                  >
-                    Keep Session
-                  </button>
-                  <button
-                    onClick={async () => {
-                      console.log('[End Session] Confirm button clicked');
-                      console.log('[End Session] Session code:', quickPlayActiveSession?.sessionCode);
-                      console.log('[End Session] Session ID:', quickPlayActiveSession?.id);
-
-                      showToast("Ending session...", "info");
-
-                      const { error } = await supabase.rpc('end_quick_play_session', {
-                        p_session_code: quickPlayActiveSession!.sessionCode
-                      });
-
-                      console.log('[End Session] RPC result:', { error, data: !error });
-
-                      if (error) {
-                        console.error('[End Session] Error:', error);
-                        showToast("Failed to end session: " + error.message, "error");
-                        setEndQuickPlayModal(false);
-                        return;
-                      }
-
-                      console.log('[End Session] ✓ Session ended successfully');
-                      setView("teacher-dashboard");
-                      setQuickPlayActiveSession(null);
-                      setQuickPlaySelectedWords([]);
-                      setQuickPlaySessionCode(null);
-                      setQuickPlayJoinedStudents([]);
-                      setQuickPlayCustomWords(new Map());
-                      setQuickPlayAddingCustom(new Set());
-                      setQuickPlayTranslating(new Set());
-                      showToast("Quick Play session ended", "success");
-                      setEndQuickPlayModal(false);
-                    }}
-                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
-                  >
-                    End Session
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* End Quick Play Session Modal moved to quick-play-teacher-monitor view */}
 
         {/* Toast Notifications */}
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
@@ -6961,6 +6884,69 @@ export default function App() {
             </div>
           </div>
         </div>
+      {/* End Quick Play Session Confirmation Modal */}
+      <AnimatePresence>
+        {endQuickPlayModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut size={32} />
+              </div>
+              <h2 className="text-2xl font-black mb-2">End Quick Play Session?</h2>
+              <p className="text-stone-500 mb-6">
+                Students will no longer be able to join this session using the code <strong>{quickPlayActiveSession?.sessionCode}</strong>. The session and all progress will be permanently ended.
+              </p>
+              <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
+                ⚠️ Make sure all students have finished their games before ending.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEndQuickPlayModal(false)}
+                  className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
+                >
+                  Keep Session
+                </button>
+                <button
+                  onClick={async () => {
+                    showToast("Ending session...", "info");
+                    const { error } = await supabase.rpc('end_quick_play_session', {
+                      p_session_code: quickPlayActiveSession!.sessionCode
+                    });
+                    if (error) {
+                      showToast("Failed to end session: " + error.message, "error");
+                      setEndQuickPlayModal(false);
+                      return;
+                    }
+                    setView("teacher-dashboard");
+                    setQuickPlayActiveSession(null);
+                    setQuickPlaySelectedWords([]);
+                    setQuickPlaySessionCode(null);
+                    setQuickPlayJoinedStudents([]);
+                    setQuickPlayCustomWords(new Map());
+                    setQuickPlayAddingCustom(new Set());
+                    setQuickPlayTranslating(new Set());
+                    showToast("Quick Play session ended", "success");
+                    setEndQuickPlayModal(false);
+                  }}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                >
+                  End Session
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     );
   }
