@@ -4116,7 +4116,13 @@ export default function App() {
 
                         // Record that student joined — so teacher sees them in live stats immediately
                         supabase.auth.getSession().then(({ data: { session } }) => {
-                          const authUid = session?.user?.id || guestUser.uid;
+                          const authUid = session?.user?.id;
+                          if (!authUid) {
+                            console.error('[Quick Play] No auth session - cannot record join');
+                            showToast("Debug: No auth session for progress insert", "error");
+                            return;
+                          }
+                          console.log('[Quick Play] Recording join with authUid:', authUid, 'sessionId:', quickPlayActiveSession.id);
                           supabase.from('progress').insert({
                             student_name: trimmedName,
                             student_uid: authUid,
@@ -4128,7 +4134,13 @@ export default function App() {
                             mistakes: [],
                             avatar: guestUser.avatar || "🦊",
                           }).then(({ error }) => {
-                            if (error) console.error('[Quick Play] Failed to record join:', error);
+                            if (error) {
+                              console.error('[Quick Play] Failed to record join:', error);
+                              showToast("Debug: Insert failed - " + error.message, "error");
+                            } else {
+                              console.log('[Quick Play] ✓ Join recorded successfully');
+                              showToast("Debug: Join recorded OK", "success");
+                            }
                           });
                         });
                       }, 100);
