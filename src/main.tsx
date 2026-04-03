@@ -17,9 +17,9 @@ async function boot() {
   const params = new URLSearchParams(window.location.search);
   if (params.has('code')) {
     const code = params.get('code')!;
-    // Retry the exchange up to 2 times (cold-start / flaky network)
+    // Retry the exchange up to 4 times with longer backoff (cold-start / flaky network)
     let succeeded = false;
-    for (let attempt = 0; attempt < 3 && !succeeded; attempt++) {
+    for (let attempt = 0; attempt < 5 && !succeeded; attempt++) {
       try {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
@@ -30,11 +30,11 @@ async function boot() {
           break;
         } else {
           console.warn(`OAuth exchange attempt ${attempt + 1} failed:`, error.message);
-          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          if (attempt < 4) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         }
       } catch {
         console.warn(`OAuth exchange attempt ${attempt + 1} threw`);
-        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        if (attempt < 4) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
       }
     }
     if (!succeeded) {
