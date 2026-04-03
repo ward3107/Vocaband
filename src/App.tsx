@@ -3111,7 +3111,7 @@ export default function App() {
             score: progress.score,
             mode: progress.mode,
             completed_at: progress.completedAt,
-            mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+            mistakes: Array.isArray(mistakes) ? mistakes : [],
             avatar: progress.avatar
           });
 
@@ -4125,7 +4125,7 @@ export default function App() {
                             score: 0,
                             mode: "joined",
                             completed_at: new Date().toISOString(),
-                            mistakes: 0,
+                            mistakes: [],
                             avatar: guestUser.avatar || "🦊",
                           }).then(({ error }) => {
                             if (error) console.error('[Quick Play] Failed to record join:', error);
