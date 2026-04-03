@@ -248,12 +248,12 @@ HSTS: max-age=31536000; includeSubDomains; preload
 **Impact:** Low in practice (anonymous auth, class codes are not highly sensitive), but violates principle of least exposure.
 **Recommendation:** Use `sessionStorage` instead (clears on tab close) or store only a session identifier.
 
-#### M2: UID Migration Without Integrity Check
+#### M2: UID Migration Without Integrity Check *(Mitigated — 2026-04-03)*
 
-**Location:** `App.tsx:1014-1017`
-**Description:** When a student's anonymous UID changes between sessions, the code updates the `users` row: `UPDATE users SET uid = newUid WHERE uid = oldUid`. The `oldUid` comes from localStorage. A malicious script modifying localStorage could potentially hijack another student's account.
-**Impact:** Low — requires local access to the browser, and the attacker would need to know a valid target UID.
-**Recommendation:** Validate that the old UID matches the current Supabase session's previous UID, or use a signed token.
+**Location:** `App.tsx` — student session restore
+**Description:** When a student's anonymous UID changes between sessions, the code updates the `users` row using `savedUid` from localStorage. A tampered localStorage value could point to another student's UID.
+**Impact:** Low — RLS policies (`auth.uid()::text = uid`) block SELECT/UPDATE for non-matching UIDs, and the attacker would need local browser access.
+**Fix:** Added UUID format validation (`/^[0-9a-f]{8}-...-[0-9a-f]{12}$/i`) for `savedUid` before any DB operation. Non-UUID values are rejected and stale login is cleared. Full elimination would require a server-side signed migration token.
 
 #### M3: Consent Stored Only in localStorage *(Fixed — 2026-04-03)*
 
@@ -262,19 +262,19 @@ HSTS: max-age=31536000; includeSubDomains; preload
 **Impact:** Compliance gap — no server-side proof of consent for GDPR/Amendment 13.
 **Fix:** `recordConsent` already wrote to `consent_log` (accept). `checkConsent` now falls back to a DB query when localStorage is missing — if a valid `accept` record exists, the banner is suppressed and localStorage is restored. Withdraw consent now also inserts a `withdraw` record into `consent_log` for a complete audit trail.
 
-#### M4: Token Resent in Socket.IO Event Payload on Reconnect
+#### M4: Token Resent in Socket.IO Event Payload on Reconnect *(Fixed — 2026-04-03)*
 
-**Location:** `App.tsx:923`
-**Description:** On socket reconnect, the token is sent inside the `join-challenge` event payload (in addition to the handshake auth). This means the token appears in the WebSocket frame body, making it more visible in debugging tools and logs.
-**Impact:** Low — the connection already requires the token in `handshake.auth`. Redundant exposure.
-**Recommendation:** On reconnect, rely on the `auth` callback in socket options (line 910) rather than resending the token in the event payload.
+**Location:** `App.tsx` — socket init; `server.ts` — join-challenge, observe-challenge handlers; `src/core/types.ts`
+**Description:** The socket used a static auth token set at connection time, and also resent the token inside `join-challenge`/`observe-challenge` event payloads for server-side re-verification.
+**Impact:** Low — the connection already required the token in `handshake.auth`. Redundant exposure in frame body.
+**Fix:** Socket now uses an async auth callback (`auth: (cb) => getToken().then(t => cb({ token: t }))`), ensuring a fresh JWT is fetched on every reconnect at the handshake level. Token removed from all event payloads. Server `join-challenge` handler now validates the payload `uid` against `socket.data.uid` (stored by the connection middleware) instead of re-verifying a token. `observe-challenge` likewise uses `socket.data.uid`.
 
-#### M5: In-Memory Rate Limiters Reset on Server Restart
+#### M5: In-Memory Rate Limiters Reset on Server Restart *(Accepted Risk)*
 
 **Location:** `server.ts:131-154`
 **Description:** All Socket.IO rate limiters use in-memory `Record<string, ...>` objects. A server restart (deploy, crash) resets all counters.
 **Impact:** Low — Supabase rate limits and JWT verification provide additional protection. Brief window after restart has no rate limiting.
-**Recommendation:** Acceptable for current scale. Consider Redis-backed rate limiting if abuse becomes a concern.
+**Decision:** Accepted for current scale. Redis-backed rate limiting should be considered if abuse patterns emerge or user volume grows significantly.
 
 ### LOW Severity
 
@@ -339,7 +339,7 @@ HSTS: max-age=31536000; includeSubDomains; preload
 | ~~**High**~~ | ~~Fix student `unique_id` to include UID or random component~~ | ✅ Done |
 | ~~**High**~~ | ~~Add RLS constraint to prevent students from changing `class_code`~~ | ✅ Done |
 | ~~**Medium**~~ | ~~Persist consent to `consent_log` table (not just localStorage)~~ | ✅ Done |
-| **Medium** | Remove token from `join-challenge` payload (use handshake auth only) | Small |
+| ~~**Medium**~~ | ~~Remove token from `join-challenge` payload (use handshake auth only)~~ | ✅ Done |
 | **Low** | Use `crypto.randomUUID()` for guest UIDs | Trivial |
 | **Low** | Sanitize error messages shown to users | Small |
 | **Low** | Restrict `imgSrc` CSP to known domains | Trivial |

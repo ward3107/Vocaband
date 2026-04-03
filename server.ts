@@ -256,18 +256,18 @@ async function startServer() {
     const clientIp = getSocketIp(socket);
     console.log(`[Socket] Client connected: uid=${uid}, ip=${clientIp}, socket=${socket.id}`);
 
-    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, token }: JoinChallengePayload) => {
-      if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid) || !isValidToken(token)) return;
+    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid }: JoinChallengePayload) => {
+      if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid)) return;
 
       // Pre-auth IP limiter: stops raw flooding before we hit Supabase
       if (!preAuthIpLimiter.checkLimit(clientIp)) return;
 
-      // Verify Supabase JWT and confirm uid matches
-      const verifiedUid = await verifyToken(token);
-      if (!verifiedUid || verifiedUid !== uid) return;
+      // Identity check: payload uid must match the uid verified at connection time.
+      // The connection middleware already verified the JWT and stored the uid in socket.data.
+      if (uid !== socket.data.uid) return;
 
       // Post-auth per-user limiter: each authenticated user gets 5 joins/min
-      if (!perUserLimiter.checkLimit(verifiedUid)) return;
+      if (!perUserLimiter.checkLimit(uid)) return;
 
       const userData = await getUserRoleAndClass(uid);
       if (!userData) return;
@@ -306,14 +306,14 @@ async function startServer() {
     });
 
     // Observe-only mode for teachers - joins room without being on leaderboard
-    socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, async ({ classCode, token }: ObserveChallengePayload) => {
-      if (!isValidClassCode(classCode) || !isValidToken(token)) return;
+    socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, async ({ classCode }: ObserveChallengePayload) => {
+      if (!isValidClassCode(classCode)) return;
 
       // Pre-auth IP limiter
       if (!preAuthIpLimiter.checkLimit(clientIp)) return;
 
-      const verifiedUid = await verifyToken(token);
-      if (!verifiedUid) return;
+      // Use the uid verified at connection time — no need to re-verify the token
+      const verifiedUid = socket.data.uid as string;
 
       // Per-user rate limiter for observe
       if (!observeLimiter.checkLimit(verifiedUid)) return;

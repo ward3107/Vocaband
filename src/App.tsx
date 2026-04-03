@@ -726,7 +726,9 @@ export default function App() {
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        auth: { token }, // Pass token directly, not via async callback
+        // Async callback ensures a fresh token is fetched on every reconnect,
+        // so the handshake never carries a stale/expired JWT.
+        auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
       });
 
       // Debug: log connection attempt
@@ -749,9 +751,7 @@ export default function App() {
         // Token is provided via the socket auth callback (line above), not in the payload.
         if (currentUser?.classCode && isLiveChallengeRef.current) {
           if (currentUser.role === "student") {
-            getToken().then(t => {
-              s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid, token: t });
-            });
+            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
           }
         }
       });
@@ -836,7 +836,8 @@ export default function App() {
             const savedRaw = localStorage.getItem('vocaband_student_login');
             if (savedRaw) {
               const { classCode: savedCode, displayName: savedName, uid: savedUid } = JSON.parse(savedRaw);
-              if (savedCode && savedName && savedUid) {
+              const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              if (savedCode && savedName && savedUid && UUID_RE.test(savedUid)) {
                 // Look up the users row by the OLD uid
                 const { data: existingUser } = await supabase
                   .from('users').select('*').eq('uid', savedUid).maybeSingle();
@@ -2258,7 +2259,7 @@ export default function App() {
       // Join Live Challenge
       if (socket) {
         socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
-          classCode: trimmedCode, name: trimmedName, uid: studentUid, token: session.access_token,
+          classCode: trimmedCode, name: trimmedName, uid: studentUid,
         });
       }
 
@@ -4327,10 +4328,7 @@ export default function App() {
                       setView("live-challenge");
                       setIsLiveChallenge(true);
                       if (socket) {
-                        supabase.auth.getSession().then(({ data: { session } }) => {
-                          const token = session?.access_token ?? "";
-                          socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code, token });
-                        });
+                        socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
                       }
                     } else {
                       setView("live-challenge-class-select");
@@ -7214,10 +7212,7 @@ export default function App() {
                   setView("live-challenge");
                   setIsLiveChallenge(true);
                   if (socket) {
-                    supabase.auth.getSession().then(({ data: { session } }) => {
-                      const token = session?.access_token ?? "";
-                      socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code, token });
-                    });
+                    socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code });
                   }
                 }}
                 className="bg-surface-container-lowest rounded-xl p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
