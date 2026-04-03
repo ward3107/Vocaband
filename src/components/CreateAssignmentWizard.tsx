@@ -106,28 +106,33 @@ const GAME_MODE_LEVELS = {
 };
 
 // Combined assignment templates - title + instructions pairs
-const ASSIGNMENT_TEMPLATES = [
-  { title: 'Classic Mode Practice', instructions: 'Practice mode - review vocabulary with flashcards and matching activities' },
-  { title: 'Listening Challenge', instructions: 'Listening practice - audio focus' },
-  { title: 'Spelling Bee', instructions: 'Spelling focus - writing practice' },
-  { title: 'Matching Pairs', instructions: 'Matching game - word connection' },
-  { title: 'True or False', instructions: 'True/false focus - comprehension' },
-  { title: 'Flashcard Review', instructions: 'Flashcards focus - self-paced' },
-  { title: 'Word Scramble', instructions: 'Scramble practice - letter unscramble' },
-  { title: 'Reverse Mode', instructions: 'Reverse mode - output practice' },
-  { title: 'Letter Sounds Practice', instructions: 'Letter sounds - phonics practice' },
-  { title: 'Sentence Builder Challenge', instructions: 'Mixed modes - variety' },
-  { title: 'Mixed Modes Practice', instructions: 'Mixed modes - play multiple game types for varied and engaging practice' },
-  { title: 'Unit 5 Vocabulary', instructions: 'Practice mode - flashcards & matching' },
-  { title: 'Midterm Review', instructions: 'Study session - learn then test' },
-  { title: 'Final Exam Practice', instructions: 'Challenge mode - all 9 modes' },
-  { title: 'Word Building Exercise', instructions: 'Spelling focus - writing practice' },
-  { title: 'Listening Comprehension', instructions: 'Listening practice - audio focus' },
-  { title: 'Reading Vocabulary', instructions: 'Flashcards focus - self-paced' },
-  { title: 'Grammar & Vocabulary', instructions: 'Teacher-led - guided' },
-  { title: 'Advanced Vocabulary Test', instructions: 'Test mode - no hints' },
-  { title: 'XP Challenge', instructions: 'Class competition - leaderboard' },
-  { title: 'Speed Round', instructions: 'Timed challenge - speed test' },
+const ASSIGNMENT_TEMPLATES: { title: string; instructions: string; modes?: string[]; group: string }[] = [
+  // ── Quick Practice ─────────────────────────────────────────────────────────
+  { group: 'Quick Practice', title: 'Flashcard Review', instructions: 'Learn new words at your own pace with visual flashcards', modes: ['flashcards'] },
+  { group: 'Quick Practice', title: 'Classic Quiz', instructions: 'Multiple-choice vocabulary quiz — pick the correct translation', modes: ['classic'] },
+  { group: 'Quick Practice', title: 'Listening Practice', instructions: 'Listen to words and choose the correct answer — builds audio recognition', modes: ['listening'] },
+  { group: 'Quick Practice', title: 'Matching Pairs', instructions: 'Connect words to their translations — drag-and-match style', modes: ['matching'] },
+  { group: 'Quick Practice', title: 'True or False', instructions: 'Decide if translations are correct — quick comprehension check', modes: ['true-false'] },
+  // ── Writing & Spelling ─────────────────────────────────────────────────────
+  { group: 'Writing & Spelling', title: 'Spelling Bee', instructions: 'Type the correct spelling — builds writing accuracy', modes: ['spelling'] },
+  { group: 'Writing & Spelling', title: 'Word Scramble', instructions: 'Unscramble the letters to form the correct word', modes: ['scramble'] },
+  { group: 'Writing & Spelling', title: 'Sentence Builder', instructions: 'Arrange words to build correct sentences — advanced writing practice', modes: ['sentence-builder'] },
+  { group: 'Writing & Spelling', title: 'Letter Sounds', instructions: 'Practice phonics — identify words by their letter sounds', modes: ['letter-sounds'] },
+  // ── Mixed Modes ────────────────────────────────────────────────────────────
+  { group: 'Mixed Modes', title: 'Beginner Mix', instructions: 'Gentle start — flashcards, matching, and classic quiz', modes: ['flashcards', 'matching', 'classic', 'listening'] },
+  { group: 'Mixed Modes', title: 'Full Practice', instructions: 'All core game modes for thorough vocabulary practice', modes: ['flashcards', 'matching', 'classic', 'listening', 'true-false', 'spelling', 'reverse', 'scramble', 'letter-sounds'] },
+  { group: 'Mixed Modes', title: 'Challenge Mode', instructions: 'Every mode including sentence builder — for advanced students', modes: ['flashcards', 'matching', 'classic', 'listening', 'true-false', 'spelling', 'reverse', 'scramble', 'letter-sounds', 'sentence-builder'] },
+  { group: 'Mixed Modes', title: 'Reading & Listening', instructions: 'Focus on receptive skills — flashcards, listening, and true/false', modes: ['flashcards', 'listening', 'true-false'] },
+  { group: 'Mixed Modes', title: 'Writing Focus', instructions: 'Productive skills — spelling, scramble, reverse, and sentence builder', modes: ['spelling', 'scramble', 'reverse', 'sentence-builder'] },
+  // ── Assessment ─────────────────────────────────────────────────────────────
+  { group: 'Assessment', title: 'Quick Check', instructions: 'Short vocabulary check — classic quiz and true/false only', modes: ['classic', 'true-false'] },
+  { group: 'Assessment', title: 'Spelling Test', instructions: 'Written assessment — spelling and word scramble', modes: ['spelling', 'scramble'] },
+  { group: 'Assessment', title: 'Listening Exam', instructions: 'Audio-based assessment — listening and letter sounds', modes: ['listening', 'letter-sounds'] },
+  { group: 'Assessment', title: 'Comprehensive Test', instructions: 'Full assessment across all modes — test overall vocabulary mastery', modes: ['classic', 'listening', 'spelling', 'matching', 'true-false', 'reverse'] },
+  // ── Homework ───────────────────────────────────────────────────────────────
+  { group: 'Homework', title: 'Weekly Homework', instructions: 'Complete all activities at home — practice at your own pace', modes: ['flashcards', 'classic', 'spelling', 'matching'] },
+  { group: 'Homework', title: 'Review & Practice', instructions: 'Self-study assignment — start with flashcards then test yourself', modes: ['flashcards', 'classic', 'true-false', 'listening'] },
+  { group: 'Homework', title: 'XP Challenge', instructions: 'Earn as many XP points as possible — compete on the leaderboard!', modes: ['classic', 'spelling', 'matching', 'true-false', 'reverse', 'scramble'] },
 ];
 
 const INSTRUCTION_TEMPLATES = [
@@ -1679,6 +1684,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               if (selected) {
                 setAssignmentTitle(selected.title);
                 setInstructions(selected.instructions);
+                if (selected.modes) setAssignmentModes(selected.modes);
               }
             }}
             className="w-full p-3 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-high text-on-surface mb-4 cursor-pointer appearance-none"
@@ -1689,38 +1695,17 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               paddingRight: '2.5rem',
             }}
           >
-            <option value="">📋 Choose a template...</option>
-            <optgroup label="Practice Templates">
-              <option value="Classic Mode Practice">Classic Mode Practice</option>
-              <option value="Flashcard Review">Flashcard Review</option>
-              <option value="Reading Vocabulary">Reading Vocabulary</option>
-            </optgroup>
-            <optgroup label="Game-Specific Templates">
-              <option value="Listening Challenge">Listening Challenge</option>
-              <option value="Spelling Bee">Spelling Bee</option>
-              <option value="Matching Pairs">Matching Pairs</option>
-              <option value="True or False">True or False</option>
-              <option value="Word Scramble">Word Scramble</option>
-              <option value="Reverse Mode">Reverse Mode</option>
-              <option value="Letter Sounds Practice">Letter Sounds Practice</option>
-            </optgroup>
-            <optgroup label="Assessment Templates">
-              <option value="Unit 5 Vocabulary">Unit 5 Vocabulary</option>
-              <option value="Midterm Review">Midterm Review</option>
-              <option value="Final Exam Practice">Final Exam Practice</option>
-              <option value="Advanced Vocabulary Test">Advanced Vocabulary Test</option>
-            </optgroup>
-            <optgroup label="Skill Building">
-              <option value="Word Building Exercise">Word Building Exercise</option>
-              <option value="Listening Comprehension">Listening Comprehension</option>
-              <option value="Grammar & Vocabulary">Grammar & Vocabulary</option>
-              <option value="Sentence Builder Challenge">Sentence Builder Challenge</option>
-            </optgroup>
-            <optgroup label="Challenge & Competition">
-              <option value="Mixed Modes Practice">Mixed Modes Practice</option>
-              <option value="XP Challenge">XP Challenge</option>
-              <option value="Speed Round">Speed Round</option>
-            </optgroup>
+            <option value="">{"\uD83D\uDCCB"} Choose a template...</option>
+            {(() => {
+              const groups = [...new Set(ASSIGNMENT_TEMPLATES.map(t => t.group))];
+              return groups.map(group => (
+                <optgroup key={group} label={group}>
+                  {ASSIGNMENT_TEMPLATES.filter(t => t.group === group).map(t => (
+                    <option key={t.title} value={t.title}>{t.title}</option>
+                  ))}
+                </optgroup>
+              ));
+            })()}
           </select>
 
           {/* Editable Title Field */}
