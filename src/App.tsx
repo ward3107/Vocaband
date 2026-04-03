@@ -614,12 +614,41 @@ export default function App() {
   const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => {
     // Mobile-compatible UUID generation (crypto.randomUUID() not supported on some mobile browsers)
     const generateUUID = (): string => {
-      // Fallback for mobile browsers that don't support crypto.randomUUID()
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      // Prefer native crypto.randomUUID when available
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
         return crypto.randomUUID();
       }
-      // Simple fallback: timestamp + random
-      return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+      // Fallback: generate a UUID-like string using crypto.getRandomValues if available
+      if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+
+        // Set version (4) and variant bits to match UUID v4 layout
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+        const toHex = (b: number) => b.toString(16).padStart(2, "0");
+        const hex = Array.from(bytes, toHex).join("");
+
+        return [
+          hex.substring(0, 8),
+          hex.substring(8, 12),
+          hex.substring(12, 16),
+          hex.substring(16, 20),
+          hex.substring(20)
+        ].join("-");
+      }
+
+      // Last-resort fallback: use timestamp plus a monotonically increasing counter.
+      // This avoids Math.random but does not provide strong unpredictability.
+      const now = Date.now().toString(36);
+      if (!(generateUUID as any)._counter) {
+        (generateUUID as any)._counter = 0;
+      }
+      (generateUUID as any)._counter = ((generateUUID as any)._counter + 1) | 0;
+      const counter = ((generateUUID as any)._counter as number).toString(36);
+      return `${now}-${counter}`;
     };
 
     return {
