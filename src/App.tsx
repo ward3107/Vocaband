@@ -608,10 +608,21 @@ export default function App() {
     // Poll immediately
     pollProgress();
 
-    // Set up polling interval (every 3 seconds)
-    const interval = setInterval(pollProgress, 3000);
+    // Poll every 5 seconds; pause when the tab is hidden to save requests
+    let interval = setInterval(pollProgress, 5000);
+    const handleVisibility = () => {
+      clearInterval(interval);
+      if (!document.hidden) {
+        pollProgress(); // catch up immediately
+        interval = setInterval(pollProgress, 5000);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [view, quickPlayActiveSession?.id]);
 
   // Quick Play student: poll session status so teacher ending it kicks them out
@@ -631,7 +642,9 @@ export default function App() {
         setView("public-landing");
       }
     };
-    const interval = setInterval(checkSession, 5000);
+    // Check every 15 seconds (just detects session end — not time-critical)
+    checkSession();
+    const interval = setInterval(checkSession, 15000);
     return () => clearInterval(interval);
   }, [user?.isGuest, quickPlayActiveSession?.sessionCode]);
 
