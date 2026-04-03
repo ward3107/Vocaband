@@ -3,6 +3,8 @@
  * These libraries will only be loaded when needed, reducing initial bundle size
  */
 
+import React from 'react';
+
 // Lazy load Mammoth for document parsing
 let mammothCache: any = null;
 export const loadMammoth = async () => {
@@ -69,6 +71,3 @@ export const useLazyConfetti = () => {
 
   return { confetti, loading };
 };
-
-// Import React for the hooks
-import React from 'react';
