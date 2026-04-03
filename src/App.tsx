@@ -3078,9 +3078,12 @@ export default function App() {
     // Quick Play (guest) mode - save progress with session UUID as identifier
     if (user.isGuest && quickPlayActiveSession) {
       try {
+        // Use the actual Supabase auth UID (not the guest app UID) so RLS allows the insert
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        const authUid = authSession?.user?.id || user.uid;
         const progress: Omit<ProgressData, "id"> = {
           studentName: user.displayName,
-          studentUid: user.uid, // Guest UID
+          studentUid: authUid,
           assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
           classCode: "QUICK_PLAY", // Special identifier for Quick Play
           score: Math.min(Math.max(0, score), gameWords.length * 10),
@@ -4112,18 +4115,21 @@ export default function App() {
                         setShowModeSelection(true);
 
                         // Record that student joined — so teacher sees them in live stats immediately
-                        supabase.from('progress').insert({
-                          student_name: trimmedName,
-                          student_uid: guestUser.uid,
-                          assignment_id: quickPlayActiveSession.id,
-                          class_code: "QUICK_PLAY",
-                          score: 0,
-                          mode: "joined",
-                          completed_at: new Date().toISOString(),
-                          mistakes: 0,
-                          avatar: guestUser.avatar || "🦊",
-                        }).then(({ error }) => {
-                          if (error) console.error('[Quick Play] Failed to record join:', error);
+                        supabase.auth.getSession().then(({ data: { session } }) => {
+                          const authUid = session?.user?.id || guestUser.uid;
+                          supabase.from('progress').insert({
+                            student_name: trimmedName,
+                            student_uid: authUid,
+                            assignment_id: quickPlayActiveSession.id,
+                            class_code: "QUICK_PLAY",
+                            score: 0,
+                            mode: "joined",
+                            completed_at: new Date().toISOString(),
+                            mistakes: 0,
+                            avatar: guestUser.avatar || "🦊",
+                          }).then(({ error }) => {
+                            if (error) console.error('[Quick Play] Failed to record join:', error);
+                          });
                         });
                       }, 100);
                     }}
