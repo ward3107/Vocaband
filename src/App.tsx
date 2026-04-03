@@ -70,6 +70,7 @@ import ClassCard from "./features/teacher/components/ClassCard";
 import { CreateAssignmentWizard } from "./features/teacher/CreateAssignmentWizard";
 import { AnalyticsView } from "./features/teacher/AnalyticsView";
 import { LiveChallengeClassSelectView } from "./features/teacher/LiveChallengeClassSelectView";
+import { LiveChallengeView } from "./features/live-challenge/LiveChallengeView";
 import { PastePreviewModal } from "./shared/components/PastePreviewModal";
 import { analyzePastedText } from "./shared/utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./shared/components/CookieBanner";
