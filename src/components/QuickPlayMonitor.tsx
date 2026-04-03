@@ -133,9 +133,7 @@ export default function QuickPlayMonitor({
 
   // QR URL
   const getNetworkOrigin = () => {
-    const origin = window.location.origin;
-    if (origin.includes('localhost')) return 'http://10.0.0.5:3000';
-    return origin;
+    return window.location.origin;
   };
   const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
 
@@ -261,7 +259,11 @@ export default function QuickPlayMonitor({
         {/* ─── Header ──────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
           <button
-            onClick={onBack}
+            onClick={() => {
+              if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }
+              setMusicPlaying(false);
+              onBack();
+            }}
             className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
           >
             &larr; Dashboard
@@ -759,6 +761,8 @@ export default function QuickPlayMonitor({
                 </button>
                 <button
                   onClick={() => {
+                    if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }
+                    setMusicPlaying(false);
                     setEndModal(false);
                     onEndSession();
                   }}

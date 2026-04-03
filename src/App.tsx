@@ -267,6 +267,8 @@ export default function App() {
   const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
+  const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
+  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[Math.floor(Math.random() * QUICK_PLAY_AVATARS.length)]);
   const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
@@ -487,7 +489,6 @@ export default function App() {
         // Combine database and custom words
         const allWords = [...dbWords, ...customWords];
 
-        console.log('[Quick Play Load] Session loaded:', { sessionCode: data.session_code, wordIds: data.word_ids, dbWordsCount: dbWords.length, customWordsCount: customWords.length, totalWords: allWords.length });
 
         if (allWords.length === 0) {
           console.error('[Quick Play Load] No words in session!');
@@ -503,7 +504,6 @@ export default function App() {
           wordIds: data.word_ids,
           words: allWords
         });
-        console.log('[Quick Play Student] Session loaded:', { id: data.id, sessionCode: data.session_code });
         setView("quick-play-student");
       };
 
@@ -547,7 +547,8 @@ export default function App() {
     const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> }>();
 
     progressData.forEach((p: any) => {
-      const key = p.student_name;
+      // Group by student_uid to avoid merging different students with same name
+      const key = p.student_uid || p.student_name;
       const existing = studentMap.get(key);
 
       if (!existing) {
@@ -594,14 +595,13 @@ export default function App() {
         .select('student_name, student_uid, score, avatar, completed_at, mode')
         .eq('assignment_id', sessionId)
         .order('completed_at', { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (error) {
         console.error('[Quick Play Monitor] Error fetching progress:', error);
         return;
       }
       if (data) {
-        console.log('[Quick Play Monitor] Initial fetch:', data.length, 'rows');
         setQuickPlayJoinedStudents(aggregateProgress(data));
       }
     };
@@ -619,13 +619,11 @@ export default function App() {
           filter: `assignment_id=eq.${sessionId}`
         },
         (payload) => {
-          console.log('[Quick Play Monitor] Realtime event:', payload.eventType);
           // Re-fetch on any change — simple and correct
           fetchProgress();
         }
       )
       .subscribe((status) => {
-        console.log('[Quick Play Monitor] Realtime subscription:', status);
       });
 
     return () => {
@@ -673,20 +671,27 @@ export default function App() {
           filter: `assignment_id=eq.${sessionId}`
         },
         () => {
-          // Check if our own progress was deleted by querying
-          supabase
-            .from('progress')
-            .select('id')
-            .eq('assignment_id', sessionId)
-            .eq('student_name', user.displayName)
-            .limit(1)
-            .then(({ data }) => {
+          // Check if our own progress was deleted by querying with auth UID
+          supabase.auth.getSession().then(({ data: { session: authSess } }) => {
+            const authUid = authSess?.user?.id;
+            const query = supabase
+              .from('progress')
+              .select('id')
+              .eq('assignment_id', sessionId);
+            // Prefer UID match, fall back to name
+            if (authUid) {
+              query.eq('student_uid', authUid);
+            } else {
+              query.eq('student_name', user.displayName);
+            }
+            query.limit(1).then(({ data }) => {
               if (!data || data.length === 0) {
                 // Our progress was deleted — we've been kicked
                 setQuickPlayKicked(true);
                 setActiveAssignment(null);
               }
             });
+          });
         }
       )
       .subscribe();
@@ -707,7 +712,7 @@ export default function App() {
 
   // --- HELPER: Create Guest User ---
   // Centralized function to create guest user objects with consistent structure
-  const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => {
+  const createGuestUser = (name: string, prefix: string = 'guest', avatar: string = '\uD83E\uDD8A'): AppUser => {
     // Mobile-compatible UUID generation (crypto.randomUUID() not supported on some mobile browsers)
     const generateUUID = (): string => {
       // Prefer native crypto.randomUUID when available
@@ -753,7 +758,7 @@ export default function App() {
       email: undefined,
       role: "guest",
       isGuest: true,
-      avatar: "🦊",
+      avatar,
       xp: 0,
       classCode: undefined,
       createdAt: new Date().toISOString()
@@ -902,16 +907,16 @@ export default function App() {
     }
   }, [view]);
 
-  // Speak motivational message during gameplay — audio and text use the SAME phrase
+  // Speak motivational message during gameplay — only when student is in game view
   useEffect(() => {
-    if (motivationalMessage) {
+    if (motivationalMessage && view === "game") {
       playMotivational();
     }
-  }, [motivationalMessage]);
+  }, [motivationalMessage, view]);
 
-  // Speak congratulatory message when a mode is finished
+  // Speak congratulatory message when a mode is finished — only in game view
   useEffect(() => {
-    if (isFinished && user?.displayName) {
+    if (isFinished && user?.displayName && view === "game") {
       const phrases = [
         `Kol Hakavod ${user.displayName}! You did amazing!`,
         `Excellent work ${user.displayName}! You're a superstar!`,
@@ -983,16 +988,13 @@ export default function App() {
       });
 
       // Debug: log connection attempt
-      console.log("[Socket] Connecting to", socketUrl, "with token:", token ? "✓" : "✗");
 
       setSocket(s);
 
       s.on("connect", () => {
-        console.log("[Socket] ✓ Connected successfully");
         setSocketConnected(true);
       });
       s.on("disconnect", (reason: any) => {
-        console.log("[Socket] Disconnected:", reason);
         setSocketConnected(false);
       });
       s.on("reconnect", () => {
@@ -1016,11 +1018,17 @@ export default function App() {
       });
       s.on(SOCKET_EVENTS.CHALLENGE_UPDATE, (data: unknown) => {
         // Challenge updates are handled via the socket listener in the live challenge view
-        console.log("[Socket] Challenge updated:", data);
       });
     };
 
     connectSocket();
+
+    return () => {
+      cancelled = true;
+      if (s) {
+        s.disconnect();
+      }
+    };
   }, []);
 
   // --- AUTH LOGIC ---
@@ -3160,19 +3168,12 @@ export default function App() {
           studentUid: authUid,
           assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
           classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.min(Math.max(0, score), gameWords.length * 10),
+          score: Math.max(0, score),
           mode: gameMode,
           completedAt: new Date().toISOString(),
           mistakes: mistakes,
-          avatar: user.avatar || "🦊"
+          avatar: user.avatar || "\uD83E\uDD8A"
         };
-
-        console.log('[Quick Play] Saving progress:', {
-          studentName: progress.studentName,
-          assignmentId: progress.assignmentId,
-          score: progress.score,
-          mode: progress.mode
-        });
 
         // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
         const { error } = await supabase
@@ -3192,7 +3193,6 @@ export default function App() {
         if (error) {
           console.error('[Quick Play] Failed to save progress:', error);
         } else {
-          console.log('[Quick Play] ✓ Progress saved successfully for', user.displayName);
         }
 
         setIsSaving(false);
@@ -4120,10 +4120,15 @@ export default function App() {
           <button
             onClick={() => {
               // If in game mode, go back to mode selection; otherwise go to landing
-              if (view === "game" && showModeSelection) {
-                setShowModeSelection(false);
-              } else if (view === "game") {
-                setView("quick-play-student");
+              if (view === "game" && !showModeSelection) {
+                // Go back to mode selection (not name entry)
+                setShowModeSelection(true);
+                setIsFinished(false);
+                setFeedback(null);
+              } else if (view === "game" && showModeSelection) {
+                setView("public-landing");
+                setQuickPlayActiveSession(null);
+                setUser(null);
               } else {
                 setView("public-landing");
               }
@@ -4151,6 +4156,26 @@ export default function App() {
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
+                  {/* Avatar picker */}
+                  <div>
+                    <label className="block text-sm font-bold text-on-surface-variant mb-2 text-center">Choose your avatar</label>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {QUICK_PLAY_AVATARS.map(av => (
+                        <button
+                          key={av}
+                          onClick={() => setQuickPlayAvatar(av)}
+                          className={`text-2xl w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
+                            quickPlayAvatar === av
+                              ? 'bg-primary/20 ring-3 ring-primary scale-110'
+                              : 'bg-surface-container hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {av}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
                     <input
@@ -4159,6 +4184,7 @@ export default function App() {
                       inputMode="text"
                       autoCapitalize="words"
                       autoComplete="off"
+                      maxLength={30}
                       defaultValue={quickPlayStudentName}
                       placeholder="Enter your nickname..."
                       className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -4177,8 +4203,6 @@ export default function App() {
                         return;
                       }
 
-                      showToast("Debug: Start Playing clicked, name=" + trimmedName + ", session=" + quickPlayActiveSession?.id, "info");
-
                       if (!quickPlayActiveSession) {
                         showToast("Session expired. Please scan QR code again.", "error");
                         return;
@@ -4191,7 +4215,7 @@ export default function App() {
 
                       setTimeout(async () => {
                         setQuickPlayStudentName(trimmedName);
-                        const guestUser = createGuestUser(trimmedName, "quickplay");
+                        const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
                         setUser(guestUser);
 
                         const words = shuffle(quickPlayActiveSession.words).map(w => ({
@@ -4227,10 +4251,8 @@ export default function App() {
                           const authUid = session?.user?.id;
                           if (!authUid) {
                             console.error('[Quick Play] No auth session - cannot record join');
-                            showToast("Debug: No auth session for progress insert", "error");
                             return;
                           }
-                          console.log('[Quick Play] Recording join with authUid:', authUid, 'sessionId:', quickPlayActiveSession.id);
                           supabase.from('progress').insert({
                             student_name: trimmedName,
                             student_uid: authUid,
@@ -4244,10 +4266,6 @@ export default function App() {
                           }).then(({ error }) => {
                             if (error) {
                               console.error('[Quick Play] Failed to record join:', error);
-                              showToast("Debug: Insert failed - " + error.message, "error");
-                            } else {
-                              console.log('[Quick Play] ✓ Join recorded successfully');
-                              showToast("Debug: Join recorded OK", "success");
                             }
                           });
                         });
@@ -5604,9 +5622,6 @@ export default function App() {
 
 
   if (view === "game" && showModeSelection) {
-    console.log('[Mode Selection] Rendering mode selection screen');
-    console.log('[Mode Selection] assignmentWords length:', assignmentWords.length);
-    console.log('[Mode Selection] activeAssignment:', activeAssignment);
 
     const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
       { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
@@ -5622,9 +5637,8 @@ export default function App() {
     ];
 
     const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
-    const filteredModes = modes.filter(m => m.id === "flashcards" || allowedModes.includes(m.id));
+    const filteredModes = modes.filter(m => allowedModes.includes(m.id));
 
-    console.log('[Mode Selection] Modes count:', filteredModes.length);
     if (filteredModes.length === 0) {
       console.error('[Mode Selection] No modes available!');
     }
