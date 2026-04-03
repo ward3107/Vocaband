@@ -2581,7 +2581,7 @@ export default function App() {
 
       // Use new format result if found, otherwise fall back to legacy
       const studentProfile = newFormatResult.data || legacyFormatResult.data;
-
+      const profileError = newFormatResult.error || legacyFormatResult.error;
 
       if (profileError) {
         console.error('Error checking student approval:', profileError);
