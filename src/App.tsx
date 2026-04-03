@@ -4071,6 +4071,8 @@ export default function App() {
                         return;
                       }
 
+                      showToast("Debug: Start Playing clicked, name=" + trimmedName + ", session=" + quickPlayActiveSession?.id, "info");
+
                       if (!quickPlayActiveSession) {
                         showToast("Session expired. Please scan QR code again.", "error");
                         return;
