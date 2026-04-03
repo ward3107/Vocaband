@@ -602,6 +602,27 @@ export default function App() {
     return () => clearInterval(interval);
   }, [view, quickPlayActiveSession?.id]);
 
+  // Quick Play student: poll session status so teacher ending it kicks them out
+  useEffect(() => {
+    if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
+    const checkSession = async () => {
+      const { data } = await supabase
+        .from('quick_play_sessions')
+        .select('is_active')
+        .eq('session_code', quickPlayActiveSession.sessionCode)
+        .maybeSingle();
+      if (data && !data.is_active) {
+        showToast("The teacher has ended this Quick Play session.", "info");
+        setQuickPlayActiveSession(null);
+        setActiveAssignment(null);
+        setUser(null);
+        setView("public-landing");
+      }
+    };
+    const interval = setInterval(checkSession, 5000);
+    return () => clearInterval(interval);
+  }, [user?.isGuest, quickPlayActiveSession?.sessionCode]);
+
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   const toScoreHeightClass = (score: number) => {
     if (score < 25) return "h-1/4";
@@ -934,14 +955,13 @@ export default function App() {
     // to avoid StrictMode double-mount races.  By the time this effect
     // runs, the exchange is already in-flight or completed.
 
-    // Helper: fetch user profile with retry (mobile networks are flaky,
-    // and RLS may briefly reject queries while the fresh JWT propagates).
-    const fetchUserProfile = async (uid: string, retries = 3): Promise<ReturnType<typeof mapUser> | null> => {
+    // Helper: fetch user profile with a single retry for transient errors.
+    const fetchUserProfile = async (uid: string, retries = 1): Promise<ReturnType<typeof mapUser> | null> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
         const { data: userRow, error } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
         if (userRow) return mapUser(userRow);
-        if (!error && attempt >= 1) return null; // No row exists and we've waited — don't keep retrying
-        if (attempt < retries) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+        if (!error) return null; // No row exists — don't retry
+        if (attempt < retries) await new Promise(r => setTimeout(r, 500));
       }
       return null;
     };
@@ -952,25 +972,14 @@ export default function App() {
       if (restoreInProgress.current) return;
       restoreInProgress.current = true;
       try {
-        // Brief pause to let the fresh Supabase JWT propagate to the API —
-        // without this, the first DB query can hit RLS errors on cold starts.
-        await new Promise(r => setTimeout(r, 300));
         const userData = await fetchUserProfile(supabaseUser.id);
         if (userData) {
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
             // Await so the dashboard has data before we show it — prevents
-            // the "empty dashboard until refresh" bug.  Retry with backoff on failure.
-            let fetchedClasses: Awaited<ReturnType<typeof fetchTeacherData>> = [];
-            for (let t = 0; t < 3; t++) {
-              try {
-                fetchedClasses = await fetchTeacherData(supabaseUser.id);
-                break; // success
-              } catch {
-                if (t < 2) await new Promise(r => setTimeout(r, 1500 * (t + 1)));
-              }
-            }
+            // the "empty dashboard until refresh" bug.
+            const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
             setView("teacher-dashboard");
           } else if (userData.role === "student" && userData.classCode) {
@@ -1203,7 +1212,7 @@ export default function App() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!manualLoginInProgress.current && !restoreInProgress.current) setLoading(false);
-    }, 8000);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -5054,7 +5063,7 @@ export default function App() {
                         }}
                         onWhatsApp={() => {
                           window.open(
-                            `https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + c.name + "* on Vocaband!\n\n🔑 Class Code:\n\n```\n" + c.code + "\n```\n\nPaste the code in the app to join!")}`,
+                            `https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + c.name + "* on Vocaband!\n\n🔑 Class Code:\n\n▶️  *" + c.code + "*  ◀️\n\nCopy the code above and paste it in the app to join!")}`,
                           '_blank'
                         );
                       }}
@@ -5198,7 +5207,7 @@ export default function App() {
                     <span>Copy</span>
                   </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + createdClassName + "* on Vocaband!\n\n🔑 Class Code:\n\n```\n" + createdClassCode + "\n```\n\nPaste the code in the app to join!")}`}
+                    href={`https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + createdClassName + "* on Vocaband!\n\n🔑 Class Code:\n\n▶️  *" + createdClassCode + "*  ◀️\n\nCopy the code above and paste it in the app to join!")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
@@ -6686,17 +6695,32 @@ export default function App() {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={() => {
-                    // Close the editor - user is done editing words
-                    console.log('[Quick Play Editor] Done clicked, closing editor');
-                    setQuickPlayWordEditorOpen(false);
-                  }}
-                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base"
-                >
-                  <CheckCircle2 size={14} sm:size={18} />
-                  Done - Edited Words
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (!quickPlaySearchQuery.trim()) return;
+                      // Analyze pasted words with the same engine used in assignments
+                      const analysis = analyzePastedText(quickPlaySearchQuery, ALL_WORDS);
+                      setQuickPlayPreviewAnalysis(analysis as any);
+                      setShowQuickPlayPreview(true);
+                      setQuickPlayWordEditorOpen(false);
+                    }}
+                    disabled={!quickPlaySearchQuery.trim()}
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base disabled:opacity-50"
+                  >
+                    <Sparkles size={14} />
+                    Analyze & Preview
+                  </button>
+                  <button
+                    onClick={() => {
+                      setQuickPlayWordEditorOpen(false);
+                    }}
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base"
+                  >
+                    <CheckCircle2 size={14} sm:size={18} />
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -8017,7 +8041,15 @@ export default function App() {
             className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >Choose Another Mode</button>
           <button
-            onClick={() => { setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true); setView("student-dashboard"); }}
+            onClick={() => {
+              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
+              if (user?.isGuest) {
+                // Quick Play guest: back to mode selection (not student dashboard)
+                setView("game");
+              } else {
+                setView("student-dashboard");
+              }
+            }}
             disabled={isSaving}
             className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
           >Back to Dashboard</button>
