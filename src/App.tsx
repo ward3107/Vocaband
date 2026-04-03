@@ -538,114 +538,123 @@ export default function App() {
 
   // Real-time polling for Quick Play teacher monitor
   // Polls Supabase for student progress every 3 seconds when in teacher monitor view
+  // Helper: aggregate raw progress rows into the leaderboard format
+  const aggregateProgress = useCallback((progressData: any[]) => {
+    const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }>();
+
+    progressData.forEach((p: any) => {
+      const key = p.student_name;
+      const existing = studentMap.get(key);
+
+      if (!existing) {
+        studentMap.set(key, {
+          name: p.student_name,
+          score: p.mode === 'joined' ? 0 : Number(p.score),
+          avatar: p.avatar || '🦊',
+          lastSeen: p.completed_at,
+          mode: p.mode,
+          studentUid: p.student_uid
+        });
+      } else {
+        if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
+          existing.lastSeen = p.completed_at;
+          existing.mode = p.mode;
+        }
+        if (p.mode !== 'joined' && Number(p.score) > existing.score) {
+          existing.score = Number(p.score);
+        }
+      }
+    });
+
+    return Array.from(studentMap.values()).sort((a, b) => b.score - a.score);
+  }, []);
+
   useEffect(() => {
-    // Only poll when in teacher monitor view and have an active session
+    // Only subscribe when in teacher monitor view and have an active session
     if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession?.id) return;
 
-    const pollProgress = async () => {
-      if (!quickPlayActiveSession?.id) return;
+    const sessionId = quickPlayActiveSession.id;
 
-      try {
-        console.log('[Quick Play Monitor] Polling for session:', quickPlayActiveSession.id);
-        // Fetch progress records for this Quick Play session
-        // We use assignmentId to store the session UUID (id) for Quick Play
-        const { data: progressData, error } = await supabase
-          .from('progress')
-          .select('student_name, student_uid, score, avatar, completed_at, mode')
-          .eq('assignment_id', quickPlayActiveSession.id)
-          .order('completed_at', { ascending: false })
-          .limit(50);
+    // 1. Initial fetch to hydrate state
+    const fetchProgress = async () => {
+      const { data, error } = await supabase
+        .from('progress')
+        .select('student_name, student_uid, score, avatar, completed_at, mode')
+        .eq('assignment_id', sessionId)
+        .order('completed_at', { ascending: false })
+        .limit(50);
 
-        if (error) {
-          console.error('[Quick Play Monitor] Error fetching progress:', error);
-          return;
-        }
-
-        console.log('[Quick Play Monitor] Progress data received:', progressData);
-
-        if (progressData) {
-          // Aggregate by student name: track best score AND most recent activity separately
-          const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }>();
-
-          progressData.forEach((p: any) => {
-            const key = p.student_name;
-            const existing = studentMap.get(key);
-
-            if (!existing) {
-              studentMap.set(key, {
-                name: p.student_name,
-                score: p.mode === 'joined' ? 0 : Number(p.score),
-                avatar: p.avatar || '🦊',
-                lastSeen: p.completed_at,
-                mode: p.mode,
-                studentUid: p.student_uid
-              });
-            } else {
-              // Always update lastSeen to most recent activity
-              if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
-                existing.lastSeen = p.completed_at;
-                existing.mode = p.mode;
-              }
-              // Keep the highest score (ignore "joined" mode entries with score 0)
-              if (p.mode !== 'joined' && Number(p.score) > existing.score) {
-                existing.score = Number(p.score);
-              }
-            }
-          });
-
-          // Convert to array and sort by score
-          const students = Array.from(studentMap.values())
-            .sort((a, b) => b.score - a.score);
-
-          console.log('[Quick Play Monitor] Students after aggregation:', students);
-          setQuickPlayJoinedStudents(students);
-        }
-      } catch (err) {
-        console.error('[Quick Play Monitor] Poll error:', err);
+      if (error) {
+        console.error('[Quick Play Monitor] Error fetching progress:', error);
+        return;
+      }
+      if (data) {
+        console.log('[Quick Play Monitor] Initial fetch:', data.length, 'rows');
+        setQuickPlayJoinedStudents(aggregateProgress(data));
       }
     };
+    fetchProgress();
 
-    // Poll immediately
-    pollProgress();
-
-    // Poll every 5 seconds; pause when the tab is hidden to save requests
-    let interval = setInterval(pollProgress, 5000);
-    const handleVisibility = () => {
-      clearInterval(interval);
-      if (!document.hidden) {
-        pollProgress(); // catch up immediately
-        interval = setInterval(pollProgress, 5000);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
+    // 2. Subscribe to realtime changes on progress table for this session
+    const channel = supabase
+      .channel(`qp-progress-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',  // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'progress',
+          filter: `assignment_id=eq.${sessionId}`
+        },
+        (payload) => {
+          console.log('[Quick Play Monitor] Realtime event:', payload.eventType);
+          // Re-fetch on any change — simple and correct
+          fetchProgress();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Quick Play Monitor] Realtime subscription:', status);
+      });
 
     return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      supabase.removeChannel(channel);
     };
-  }, [view, quickPlayActiveSession?.id]);
+  }, [view, quickPlayActiveSession?.id, aggregateProgress]);
 
-  // Quick Play student: poll session status so teacher ending it kicks them out
+  // Quick Play student: subscribe to session status so teacher ending it kicks them out
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
-    const checkSession = async () => {
-      const { data } = await supabase
-        .from('quick_play_sessions')
-        .select('is_active')
-        .eq('session_code', quickPlayActiveSession.sessionCode)
-        .maybeSingle();
-      if (data && !data.is_active) {
-        showToast("The teacher has ended this Quick Play session.", "info");
-        setQuickPlayActiveSession(null);
-        setActiveAssignment(null);
-        setUser(null);
-        setView("public-landing");
-      }
+
+    const sessionCode = quickPlayActiveSession.sessionCode;
+
+    // Subscribe to changes on this session row
+    const channel = supabase
+      .channel(`qp-session-${sessionCode}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quick_play_sessions',
+          filter: `session_code=eq.${sessionCode}`
+        },
+        (payload) => {
+          if (payload.new && !(payload.new as any).is_active) {
+            showToast("The teacher has ended this Quick Play session.", "info");
+            setQuickPlayActiveSession(null);
+            setActiveAssignment(null);
+            setUser(null);
+            setView("public-landing");
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Quick Play Student] Session subscription:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    // Check every 15 seconds (just detects session end — not time-critical)
-    checkSession();
-    const interval = setInterval(checkSession, 15000);
-    return () => clearInterval(interval);
   }, [user?.isGuest, quickPlayActiveSession?.sessionCode]);
 
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
