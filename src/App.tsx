@@ -434,6 +434,12 @@ export default function App() {
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
+        // Ensure we have at least an anonymous auth session — RLS requires it
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        if (!existingSession) {
+          await supabase.auth.signInAnonymously().catch(() => {});
+        }
+
         const { data, error } = await supabase
           .from('quick_play_sessions')
           .select('*')
