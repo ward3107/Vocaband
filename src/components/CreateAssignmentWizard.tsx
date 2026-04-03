@@ -965,11 +965,10 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 onClick={async () => {
                   try {
                     const text = await navigator.clipboard.readText();
-                    setPastedText(text);
-                  } catch {
-                    // Fallback: prompt user
-                    const text = prompt('Paste your words here:');
                     if (text) setPastedText(text);
+                  } catch {
+                    // Clipboard API denied — focus the textarea so user can paste manually
+                    pasteAreaRef.current?.focus();
                   }
                 }}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-surface-container text-on-surface rounded-2xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
