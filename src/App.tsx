@@ -1044,12 +1044,58 @@ export default function App() {
           // Auto-create teacher account for Google sign-ins only (not anonymous)
           const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
+            // First check if this is an OAuth student (they exist in student_profiles, not users)
+            const { data: studentProfile } = await supabase
+              .from('student_profiles')
+              .select('*')
+              .eq('email', supabaseUser.email ?? "")
+              .maybeSingle();
+            if (studentProfile && (studentProfile.status === 'active' || studentProfile.status === 'approved')) {
+              // Existing approved OAuth student — create/update their users row and log them in
+              const studentUser: AppUser = {
+                uid: supabaseUser.id,
+                email: studentProfile.email,
+                displayName: studentProfile.display_name || (supabaseUser.user_metadata?.full_name as string) || "Student",
+                role: "student",
+                classCode: studentProfile.class_code,
+                xp: studentProfile.xp || 0,
+                avatar: studentProfile.avatar,
+              };
+              await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
+              setUser(studentUser);
+              if (studentProfile.class_code) {
+                const { data: classRows } = await supabase
+                  .from('classes').select('*').eq('code', studentProfile.class_code);
+                if (classRows && classRows.length > 0) {
+                  const classData = mapClass(classRows[0]);
+                  const [assignResult, progressResult] = await Promise.all([
+                    supabase.from('assignments').select('*').eq('class_id', classData.id),
+                    supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
+                  ]);
+                  setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+                  setStudentProgress((progressResult.data ?? []).map(mapProgress));
+                }
+              }
+              setView("student-dashboard");
+              return;
+            } else if (studentProfile && studentProfile.status === 'pending_approval') {
+              setError("Your account is pending approval. Please ask your teacher to approve it.");
+              await supabase.auth.signOut();
+              return;
+            }
+
+            // Not a known student — check teacher allowlist
             const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
               check_email: supabaseUser.email ?? ""
             });
             if (!isAllowed) {
-              setError("Your account is not authorised as a teacher. Contact your administrator to be added.");
-              await supabase.auth.signOut();
+              // Not a teacher either — this is a new OAuth student who hasn't
+              // entered a class code yet.  Show the class code entry form.
+              setOauthEmail(supabaseUser.email || "");
+              setOauthAuthUid(supabaseUser.id);
+              setShowOAuthClassCode(true);
+              setView("student-account-login");
+              setLoading(false);
               return;
             }
             const newUser: AppUser = {
@@ -2268,34 +2314,15 @@ export default function App() {
   };
 
   // --- OAUTH HANDLERS ---
-  const handleOAuthTeacherDetected = async (email: string) => {
+  const handleOAuthTeacherDetected = async (_email: string) => {
     try {
-      // Load teacher profile
-      const { data: teacherData, error } = await supabase
-        .from('teacher_profiles')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (error || !teacherData) {
-        setError('Teacher profile not found. Please contact admin.');
-        return;
-      }
-
-      // Set as teacher user
-      const teacherUser: AppUser = {
-        id: teacherData.id,
-        email: teacherData.email,
-        name: teacherData.display_name || email.split('@')[0],
-        role: 'teacher',
-        schoolName: teacherData.school_name,
-        createdAt: teacherData.created_at
-      };
-
-      setUser(teacherUser);
-      setView('teacherDashboard');
-      setLoading(false);
+      // The onAuthStateChange → restoreSession path already handles teacher
+      // login (including auto-creating the users row for allowed Google
+      // sign-ins).  Just close the OAuth UI and let it finish.
       setIsOAuthCallback(false);
+      setLoading(true);
+      // If restoreSession already ran and set the view, we're done.
+      // If not, the next onAuthStateChange event will trigger it.
     } catch (error) {
       console.error('Teacher detection error:', error);
       setError('Could not load teacher profile.');
@@ -2304,7 +2331,7 @@ export default function App() {
 
   const handleOAuthStudentDetected = async (email: string) => {
     try {
-      // Load student profile
+      // Load student profile from student_profiles table
       const { data: studentData, error } = await supabase
         .from('student_profiles')
         .select('*')
@@ -2321,27 +2348,48 @@ export default function App() {
         return;
       }
 
-      // Set as student user
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      if (!supabaseUser) {
+        setError('Session expired. Please sign in again.');
+        return;
+      }
+
+      // Ensure a users table row exists for this OAuth student (restoreSession needs it)
       const studentUser: AppUser = {
-        id: studentData.id,
+        uid: supabaseUser.id,
         email: studentData.email,
-        name: studentData.display_name || email.split('@')[0],
+        displayName: studentData.display_name || email.split('@')[0],
         role: 'student',
         classCode: studentData.class_code,
         xp: studentData.xp || 0,
         avatar: studentData.avatar,
-        createdAt: studentData.created_at
+        createdAt: studentData.created_at,
       };
+      await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
 
       setUser(studentUser);
-      setView('studentDashboard');
-      setLoading(false);
       setIsOAuthCallback(false);
 
-      // Load class data
+      // Load class assignments and progress
       if (studentData.class_code) {
-        await loadClassData(studentData.class_code);
+        const { data: classRows } = await supabase
+          .from('classes').select('*').eq('code', studentData.class_code);
+        if (classRows && classRows.length > 0) {
+          const classData = mapClass(classRows[0]);
+          const [assignResult, progressResult] = await Promise.all([
+            supabase.from('assignments').select('*').eq('class_id', classData.id),
+            supabase.from('progress').select('*').eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
+          ]);
+          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+          setStudentProgress((progressResult.data ?? []).map(mapProgress));
+        }
       }
+
+      setBadges(studentUser.badges || []);
+      setXp(studentUser.xp ?? 0);
+      setStreak(studentUser.streak ?? 0);
+      setView("student-dashboard");
+      setLoading(false);
     } catch (error) {
       console.error('Student detection error:', error);
       setError('Could not load student profile.');
@@ -3603,10 +3651,12 @@ export default function App() {
                 <OAuthClassCode
                   email={oauthEmail}
                   authUid={oauthAuthUid}
-                  onSuccess={() => {
+                  onSuccess={async () => {
                     setShowOAuthClassCode(false);
                     setOauthEmail(null);
                     setOauthAuthUid(null);
+                    // After class code entry, load the student profile and log them in
+                    await handleOAuthStudentDetected(oauthEmail!);
                   }}
                   onError={setError}
                 />
@@ -4982,7 +5032,7 @@ export default function App() {
                         }}
                         onWhatsApp={() => {
                           window.open(
-                            `https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${c.name}" on Vocaband!\n\n🔑 Class Code:\n\n${c.code}\n\nCopy the code above and paste it in the app!`)}`,
+                            `https://wa.me/?text=${encodeURIComponent(`📚 Join my class *${c.name}* on Vocaband!\n\n🔑 Class Code:\n\n\`\`\`${c.code}\`\`\`\n\nPaste the code in the app to join!`)}`,
                           '_blank'
                         );
                       }}
@@ -5126,7 +5176,7 @@ export default function App() {
                     <span>Copy</span>
                   </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class "${createdClassName}" on Vocaband!\n\n🔑 Class Code:\n\n${createdClassCode}\n\nCopy the code above and paste it in the app!`)}`}
+                    href={`https://wa.me/?text=${encodeURIComponent(`📚 Join my class *${createdClassName}* on Vocaband!\n\n🔑 Class Code:\n\n\`\`\`${createdClassCode}\`\`\`\n\nPaste the code in the app to join!`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"

@@ -35,19 +35,18 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
 
   const handleSubmit = async () => {
     const trimmedCode = classCode.trim().toUpperCase();
-    const trimmedName = displayName.trim();
 
-    if (!trimmedCode || !trimmedName) {
-      onError('Please enter both class code and your name.');
+    if (!trimmedCode) {
+      onError('Please enter a class code.');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Get display name from Google if not provided
+      // Use the Google display name (OAuth always provides one)
       const { data: { user } } = await supabase.auth.getUser();
-      const googleDisplayName = user?.user_metadata?.full_name || trimmedName;
+      const googleDisplayName = user?.user_metadata?.full_name || user?.user_metadata?.name || email.split('@')[0];
 
       // Call OAuth student profile function
       const { data: result, error: rpcError } = await supabase
