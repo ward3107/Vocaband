@@ -266,7 +266,7 @@ export default function App() {
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
-  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string}[]>([]);
+  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
@@ -551,7 +551,7 @@ export default function App() {
         // We use assignmentId to store the session UUID (id) for Quick Play
         const { data: progressData, error } = await supabase
           .from('progress')
-          .select('student_name, score, avatar, completed_at, mode')
+          .select('student_name, student_uid, score, avatar, completed_at, mode')
           .eq('assignment_id', quickPlayActiveSession.id)
           .order('completed_at', { ascending: false })
           .limit(50);
@@ -564,20 +564,32 @@ export default function App() {
         console.log('[Quick Play Monitor] Progress data received:', progressData);
 
         if (progressData) {
-          // Aggregate by student name (keep best score per mode)
-          const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string }>();
+          // Aggregate by student name: track best score AND most recent activity separately
+          const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }>();
 
           progressData.forEach((p: any) => {
             const key = p.student_name;
             const existing = studentMap.get(key);
 
-            if (!existing || p.score > existing.score || new Date(p.completed_at) > new Date(existing.lastSeen)) {
+            if (!existing) {
               studentMap.set(key, {
                 name: p.student_name,
-                score: p.score,
+                score: p.mode === 'joined' ? 0 : Number(p.score),
                 avatar: p.avatar || '🦊',
-                lastSeen: p.completed_at
+                lastSeen: p.completed_at,
+                mode: p.mode,
+                studentUid: p.student_uid
               });
+            } else {
+              // Always update lastSeen to most recent activity
+              if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
+                existing.lastSeen = p.completed_at;
+                existing.mode = p.mode;
+              }
+              // Keep the highest score (ignore "joined" mode entries with score 0)
+              if (p.mode !== 'joined' && Number(p.score) > existing.score) {
+                existing.score = Number(p.score);
+              }
             }
           });
 
@@ -6932,20 +6944,51 @@ export default function App() {
                     <h3 className="text-sm font-black text-white/80">LIVE LEADERBOARD</h3>
                     {quickPlayJoinedStudents
                       .sort((a, b) => b.score - a.score)
-                      .slice(0, 5)
-                      .map((student, idx) => (
-                        <div
-                          key={student.name}
-                          className="bg-white/10 rounded-xl p-3 flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-black">#{idx + 1}</span>
-                            <span className="text-2xl">{student.avatar}</span>
-                            <span className="font-bold">{student.name}</span>
+                      .map((student, idx) => {
+                        const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000; // active within 60s
+                        const modeLabel = student.mode === 'joined' ? 'Lobby' : student.mode;
+                        return (
+                          <div
+                            key={student.name}
+                            className="bg-white/10 rounded-xl p-3 flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-lg font-black w-7 text-center shrink-0">#{idx + 1}</span>
+                              <span className="text-2xl shrink-0">{student.avatar}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} title={isOnline ? 'Online' : 'Offline'} />
+                                  <span className="font-bold truncate">{student.name}</span>
+                                </div>
+                                <span className="text-xs text-white/60 capitalize">{modeLabel}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xl font-black">{student.score}<span className="text-xs font-normal text-white/60 ml-0.5">pts</span></span>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Remove ${student.name} from the session?`)) return;
+                                  const { error } = await supabase
+                                    .from('progress')
+                                    .delete()
+                                    .eq('assignment_id', quickPlayActiveSession!.id)
+                                    .eq('student_name', student.name);
+                                  if (error) {
+                                    showToast(`Failed to remove ${student.name}: ${error.message}`, "error");
+                                  } else {
+                                    setQuickPlayJoinedStudents(prev => prev.filter(s => s.name !== student.name));
+                                    showToast(`${student.name} removed`, "info");
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/50 transition-colors"
+                                title={`Remove ${student.name}`}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
                           </div>
-                          <span className="text-xl font-black">{student.score}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 )}
 
