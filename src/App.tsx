@@ -2888,7 +2888,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder") {
-      speakWord(currentWord.id);
+      speakWord(currentWord.id, currentWord.english);
     }
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
 
@@ -3204,7 +3204,8 @@ export default function App() {
     if (matchedIds.includes(item.id)) return;
 
     // Pronounce the word when clicking any card (deferred to not block paint)
-    setTimeout(() => { speakWord(item.id); }, 0);
+    const matchWord = gameWords.find(w => w.id === item.id);
+    setTimeout(() => { speakWord(item.id, matchWord?.english); }, 0);
 
     if (!selectedMatch) {
       setSelectedMatch(item);
@@ -4038,7 +4039,7 @@ export default function App() {
                         return;
                       }
 
-                      setTimeout(() => {
+                      setTimeout(async () => {
                         setQuickPlayStudentName(trimmedName);
                         const guestUser = createGuestUser(trimmedName, "quickplay");
                         setUser(guestUser);
@@ -4070,6 +4071,21 @@ export default function App() {
                         setMistakes([]);
                         setView("game");
                         setShowModeSelection(true);
+
+                        // Record that student joined — so teacher sees them in live stats immediately
+                        supabase.from('progress').insert({
+                          student_name: trimmedName,
+                          student_uid: guestUser.uid,
+                          assignment_id: quickPlayActiveSession.id,
+                          class_code: "QUICK_PLAY",
+                          score: 0,
+                          mode: "joined",
+                          completed_at: new Date().toISOString(),
+                          mistakes: 0,
+                          avatar: guestUser.avatar || "🦊",
+                        }).then(({ error }) => {
+                          if (error) console.error('[Quick Play] Failed to record join:', error);
+                        });
                       }, 100);
                     }}
                     className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
@@ -8302,7 +8318,7 @@ export default function App() {
                 </div>
                 <div className="flex justify-center gap-2 mt-1 sm:mt-0">
                   <button
-                    onClick={() => speakWord(currentWord?.id)}
+                    onClick={() => speakWord(currentWord?.id, currentWord?.english)}
                     className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"
