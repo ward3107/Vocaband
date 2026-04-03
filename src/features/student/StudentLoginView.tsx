@@ -1,0 +1,419 @@
+import React from "react";
+import { ArrowLeft, AlertTriangle, Check } from "lucide-react";
+import { motion } from "motion/react";
+import OAuthButton from "../../shared/components/OAuthButton";
+import OAuthCallback from "../../shared/components/OAuthCallback";
+import OAuthClassCode from "../../shared/components/OAuthClassCode";
+
+export interface StudentLoginViewProps {
+  // State
+  studentLoginClassCode: string;
+  setStudentLoginClassCode: (val: string) => void;
+  studentLoginName: string;
+  setStudentLoginName: (val: string) => void;
+  existingStudents: Array<{ id: string; displayName: string; xp: number; status: string; avatar?: string }>;
+  setExistingStudents: (val: Array<{ id: string; displayName: string; xp: number; status: string; avatar?: string }>) => void;
+  showNewStudentForm: boolean;
+  setShowNewStudentForm: (val: boolean) => void;
+  isOAuthCallback: boolean;
+  setIsOAuthCallback: (val: boolean) => void;
+  oauthEmail: string | null;
+  setOauthEmail: (val: string | null) => void;
+  oauthAuthUid: string | null;
+  setOauthAuthUid: (val: string | null) => void;
+  showOAuthClassCode: boolean;
+  setShowOAuthClassCode: (val: boolean) => void;
+  error: string | null;
+  setError: (val: string | null) => void;
+  studentAvatar: string;
+  setStudentAvatar: (val: string) => void;
+  selectedAvatarCategory: string;
+  setSelectedAvatarCategory: (val: string) => void;
+  avatarCategories: Record<string, string[]>;
+
+  // Functions
+  loadStudentsInClass: (classCode: string) => void;
+  handleLoginAsStudent: (studentId: string) => void;
+  handleNewStudentSignup: () => void;
+  handleOAuthTeacherDetected: (email: string) => Promise<void>;
+  handleOAuthStudentDetected: (email: string) => Promise<void>;
+  handleOAuthNewUser: (email: string, authUid: string) => void;
+  setView: (view: "public-landing") => void;
+
+  // Overlay
+  cookieBannerOverlay: React.ReactNode;
+}
+
+export const StudentLoginView: React.FC<StudentLoginViewProps> = ({
+  studentLoginClassCode,
+  setStudentLoginClassCode,
+  studentLoginName,
+  setStudentLoginName,
+  existingStudents,
+  setExistingStudents,
+  showNewStudentForm,
+  setShowNewStudentForm,
+  isOAuthCallback,
+  setIsOAuthCallback,
+  oauthEmail,
+  setOauthEmail,
+  oauthAuthUid,
+  setOauthAuthUid,
+  showOAuthClassCode,
+  setShowOAuthClassCode,
+  error,
+  setError,
+  studentAvatar,
+  setStudentAvatar,
+  selectedAvatarCategory,
+  setSelectedAvatarCategory,
+  avatarCategories,
+  loadStudentsInClass,
+  handleLoginAsStudent,
+  handleNewStudentSignup,
+  handleOAuthTeacherDetected,
+  handleOAuthStudentDetected,
+  handleOAuthNewUser,
+  setView,
+  cookieBannerOverlay,
+}) => {
+  return (
+    <>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-tertiary/10 to-secondary/10">
+      {/* OAuth Callback Handler */}
+      {isOAuthCallback && (
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md"
+          >
+            <OAuthCallback
+              onTeacherDetected={handleOAuthTeacherDetected}
+              onStudentDetected={handleOAuthStudentDetected}
+              onNewUser={handleOAuthNewUser}
+            />
+          </motion.div>
+        </div>
+      )}
+
+      {/* OAuth Class Code Entry */}
+      {showOAuthClassCode && oauthEmail && oauthAuthUid && (
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md"
+          >
+            <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
+              <div className="mb-4">
+                <button
+                  onClick={() => {
+                    setShowOAuthClassCode(false);
+                    setOauthEmail(null);
+                    setOauthAuthUid(null);
+                  }}
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+              </div>
+              <OAuthClassCode
+                email={oauthEmail}
+                authUid={oauthAuthUid}
+                onSuccess={() => {
+                  setShowOAuthClassCode(false);
+                  setOauthEmail(null);
+                  setOauthAuthUid(null);
+                }}
+                onError={setError}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Normal Student Login (only show if not in OAuth flow) */}
+      {!isOAuthCallback && !showOAuthClassCode && (
+        <>
+      {/* Header */}
+      <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-3 shadow-sm">
+        <button
+          onClick={() => {
+            setView("public-landing");
+            setStudentLoginClassCode("");
+            setStudentLoginName("");
+            setExistingStudents([]);
+            setShowNewStudentForm(false);
+          }}
+          className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
+        >
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          Back
+        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg">
+            <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
+          </div>
+          <span className="text-lg sm:text-xl font-black signature-gradient-text hidden sm:block">Vocaband</span>
+        </div>
+      </header>
+
+      {/* Main Content - centered and fits in viewport */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-lg"
+        >
+          {/* Student Login Card */}
+          <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10">
+            <div className="text-center mb-4 md:mb-8">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-container text-on-primary-container rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
+                <span className="text-3xl md:text-4xl">👤</span>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-black font-headline mb-1 md:mb-2">
+                Student Login
+              </h1>
+              <p className="text-base md:text-lg font-bold text-on-surface-variant">
+                Join your class and save your progress!
+              </p>
+            </div>
+
+            {!showNewStudentForm ? (
+              <>
+                {/* Class Code Input */}
+                <div className="space-y-3 mb-4 md:mb-6">
+                  <div>
+                    <label
+                      htmlFor="student-class-code-input"
+                      className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
+                    >
+                      Class Code
+                    </label>
+                    <input
+                      id="student-class-code-input"
+                      type="text"
+                      value={studentLoginClassCode}
+                      onChange={(e) => {
+                        setStudentLoginClassCode(e.target.value.toUpperCase());
+                        if (e.target.value.length >= 3) {
+                          loadStudentsInClass(e.target.value);
+                        }
+                      }}
+                      placeholder="MATH101"
+                      maxLength={20}
+                      autoFocus
+                      aria-describedby={error ? "student-login-error" : undefined}
+                      className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
+                    />
+                  </div>
+
+                  {error && (
+                    <motion.div
+                      id="student-login-error"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                      role="alert"
+                    >
+                      <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                      <span>{error}</span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Existing Students List */}
+                {studentLoginClassCode && existingStudents.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-sm font-bold mb-3 text-on-surface-variant uppercase tracking-wide">
+                      Select your name:
+                    </p>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {existingStudents.map((student) => (
+                        <button
+                          key={student.id}
+                          onClick={() => handleLoginAsStudent(student.id)}
+                          className="w-full px-6 py-4 bg-surface-container-lowest hover:bg-primary-container hover:text-on-primary-container rounded-xl text-left font-bold transition-all flex items-center justify-between group border-2 border-surface-container-highest hover:border-primary"
+                        >
+                          <span className="flex items-center gap-3">
+                            <span className="text-2xl">{student.avatar || '🦊'}</span>
+                            <span className="text-lg">{student.displayName}</span>
+                          </span>
+                          <span className="text-sm font-bold text-on-surface-variant group-hover:text-on-primary-container">
+                            {student.xp} XP
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No Students Found */}
+                {studentLoginClassCode && existingStudents.length === 0 && (
+                  <div className="mb-6 p-4 bg-surface-container-highest rounded-xl text-center">
+                    <p className="text-sm font-bold text-on-surface-variant">
+                      No students found in this class yet.
+                    </p>
+                    <p className="text-xs text-on-surface-variant mt-1">
+                      Be the first to join! 👇
+                    </p>
+                  </div>
+                )}
+
+                {/* OAuth Sign In Button */}
+                <OAuthButton
+                  onSuccess={(email, isNewUser) => {
+                    // OAuth callback will handle routing
+                    setIsOAuthCallback(true);
+                  }}
+                  onError={(errorMessage) => {
+                    setError(errorMessage);
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                {/* New Student Form */}
+                <div className="space-y-4 mb-6">
+                  <div className="p-4 bg-surface-container-highest rounded-xl">
+                    <p className="text-sm font-bold text-on-surface-variant mb-1">
+                      Class: <span className="text-primary font-black">{studentLoginClassCode}</span>
+                    </p>
+                    <button
+                      onClick={() => {
+                        setShowNewStudentForm(false);
+                        setStudentLoginClassCode("");
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Change class code
+                    </button>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="new-student-name-input"
+                      className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
+                    >
+                      Your Full Name
+                    </label>
+                    <input
+                      id="new-student-name-input"
+                      type="text"
+                      value={studentLoginName}
+                      onChange={(e) => setStudentLoginName(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleNewStudentSignup()}
+                      placeholder="Sarah Johnson"
+                      maxLength={30}
+                      aria-describedby={error ? "new-student-error" : undefined}
+                      className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
+                    />
+                  </div>
+
+                  {/* Avatar Selection */}
+                  <div>
+                    <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                      Choose Your Avatar
+                    </label>
+                    <div className="mb-3 flex flex-wrap gap-1">
+                      {(Object.keys(avatarCategories) as Array<string>).map((category) => (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedAvatarCategory(category)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            selectedAvatarCategory === category
+                              ? "bg-primary text-white"
+                              : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
+                          }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-2 bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest">
+                      {avatarCategories[selectedAvatarCategory]?.map((avatar) => (
+                        <button
+                          key={avatar}
+                          onClick={() => setStudentAvatar(avatar)}
+                          className={`text-3xl p-2 rounded-lg transition-all hover:scale-110 ${
+                            studentAvatar === avatar
+                              ? "bg-primary/20 ring-2 ring-primary"
+                              : "hover:bg-surface-container"
+                          }`}
+                          aria-label={`Choose ${avatar} avatar`}
+                        >
+                          {avatar}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {error && (
+                    <motion.div
+                      id="new-student-error"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                      role="alert"
+                    >
+                      <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                      <span>{error}</span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  onClick={handleNewStudentSignup}
+                  className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 mb-4"
+                >
+                  Request Account
+                  <Check size={24} />
+                </button>
+
+                {/* Info Notice */}
+                <div className="p-4 bg-tertiary-container text-on-tertiary-container rounded-xl">
+                  <p className="text-sm font-bold text-center">
+                    ⏳ <strong>Teacher Approval Required</strong>
+                  </p>
+                  <p className="text-xs text-center mt-1">
+                    Tell your teacher to approve your account. Once approved, you can log in and start earning XP!
+                  </p>
+                </div>
+
+                {/* Back Button */}
+                <button
+                  onClick={() => setShowNewStudentForm(false)}
+                  className="w-full mt-4 py-3 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  ← Back to student list
+                </button>
+              </>
+            )}
+
+          </div>
+
+          {/* Feature Pills */}
+          {!showNewStudentForm && (
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {["✅ Save Progress", "✅ Earn XP", "✅ Assignments", "✅ Live Challenge"].map((feature, i) => (
+                <span
+                  key={i}
+                  className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-xs font-bold text-on-surface-variant shadow-sm"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </>
+      )}  {/* Closes conditional from line 3499 */}
+      {cookieBannerOverlay}
+    </div>  {/* Closes main div from line 3443 */}
+    </>
+  );
+};
