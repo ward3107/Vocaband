@@ -82,7 +82,7 @@ type WordWithStatus = {
   phraseWords?: number[];
 };
 
-type SubStep = 'landing' | 'paste' | 'editor' | 'browse' | 'saved-groups';
+type SubStep = 'landing' | 'paste' | 'editor' | 'browse' | 'saved-groups' | 'topic-packs';
 
 const GAME_MODE_LEVELS = {
   beginner: [
@@ -233,6 +233,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 }) => {
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState<SubStep>('landing');
+  const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [editedWords, setEditedWords] = useState<WordWithStatus[]>([]);
   const [selectedWordIds, setSelectedWordIds] = useState<number[]>([]);
   const [editingWord, setEditingWord] = useState<WordWithStatus | null>(null);
@@ -861,6 +862,34 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 </div>
               </motion.button>
 
+              {/* Topic Packs */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSubStep('topic-packs')}
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-amber-500/20 hover:shadow-2xl hover:shadow-amber-500/30 transition-all text-left"
+              >
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
+                        Topic Packs
+                      </h3>
+                      <p className="text-white/90 text-xs sm:text-sm mb-2">
+                        Ready-made themed word collections
+                      </p>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
+                        <span className="text-white text-xs font-bold">{TOPIC_PACKS.length} packs available</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl sm:text-4xl">{"\uD83C\uDFAF"}</span>
+                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+
               {/* OCR Upload - New Option */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -1446,6 +1475,157 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               <Plus size={20} />
               Create new group
             </button>
+          </motion.div>
+        );
+
+      case 'topic-packs':
+        return (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setSubStep('landing')}
+                className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold transition-colors"
+              >
+                <ArrowLeft size={20} />
+                Back
+              </button>
+              <div className="text-sm font-bold text-on-surface-variant">
+                Step 1 of 3
+              </div>
+            </div>
+
+            <div className="text-center">
+              <h2 className="text-2xl font-black text-on-surface mb-2">
+                Topic Packs
+              </h2>
+              <p className="text-on-surface-variant">
+                Select a themed pack to add words instantly
+              </p>
+            </div>
+
+            {/* Topic Packs Grid */}
+            <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1">
+              {TOPIC_PACKS.map((pack) => {
+                const wordCount = pack.ids.length;
+                const isExpanded = expandedPack === pack.name;
+                const packWords = allWords.filter(w => pack.ids.includes(w.id));
+                const alreadySelected = pack.ids.filter(id => selectedWords.includes(id)).length;
+
+                return (
+                  <div key={pack.name} className="rounded-2xl border-2 border-outline-variant/20 bg-surface-container-lowest overflow-hidden transition-all">
+                    {/* Pack Header - clickable to expand/collapse */}
+                    <button
+                      onClick={() => setExpandedPack(isExpanded ? null : pack.name)}
+                      className="w-full flex items-center gap-3 p-3 sm:p-4 hover:bg-primary-container/5 transition-all text-left"
+                    >
+                      <span className="text-2xl sm:text-3xl">{pack.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-on-surface">{pack.name}</div>
+                        <div className="text-xs text-on-surface-variant">
+                          {wordCount} word{wordCount !== 1 ? 's' : ''}
+                          {alreadySelected > 0 && (
+                            <span className="ml-1 text-primary font-bold">
+                              ({alreadySelected} selected)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newIds = pack.ids.filter(id => !selectedWords.includes(id));
+                            if (newIds.length > 0) {
+                              setSelectedWords([...selectedWords, ...newIds]);
+                              if (showToast) showToast(`Added ${newIds.length} words from ${pack.name}`, 'success');
+                            } else {
+                              if (showToast) showToast(`All words from ${pack.name} already selected`, 'info');
+                            }
+                          }}
+                          className="px-3 py-1.5 text-xs font-bold rounded-full bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                        >
+                          {alreadySelected === wordCount ? 'Added' : '+ Add All'}
+                        </motion.button>
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 90 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronRight className="text-on-surface-variant" size={18} />
+                        </motion.div>
+                      </div>
+                    </button>
+
+                    {/* Expanded Word Preview */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-outline-variant/10">
+                            <div className="flex flex-wrap gap-1.5 mt-3">
+                              {packWords.map(word => {
+                                const isSelected = selectedWords.includes(word.id);
+                                return (
+                                  <button
+                                    key={word.id}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setSelectedWords(selectedWords.filter(id => id !== word.id));
+                                      } else {
+                                        setSelectedWords([...selectedWords, word.id]);
+                                      }
+                                    }}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                                      isSelected
+                                        ? 'bg-primary text-on-primary shadow-sm'
+                                        : 'bg-surface-container text-on-surface-variant hover:bg-primary-container/30 hover:text-on-surface'
+                                    }`}
+                                  >
+                                    {isSelected && <span className="mr-1">{"\u2713"}</span>}
+                                    {word.english}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom action */}
+            {selectedWords.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="sticky bottom-0 bg-surface/95 backdrop-blur-sm pt-3 pb-1"
+              >
+                <button
+                  onClick={() => {
+                    setSubStep('editor');
+                  }}
+                  className="w-full py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                >
+                  Continue with {selectedWords.length} words
+                  <ArrowRight size={20} />
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         );
     }

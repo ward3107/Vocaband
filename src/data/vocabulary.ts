@@ -5235,4 +5235,104 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "\u{1F60A}",
     ids: byEnglish(["happy","sad","angry","scared","worried","excited","bored","proud","lonely","nervous","calm","love","hate","fear","hope","joy","laugh","cry","smile","sorry","shame","jealous","kind","friendly","rude","shy","brave","confident","mood","feeling"]),
   },
+  {
+    name: "Sports",
+    icon: "\u26BD",
+    ids: byEnglish(["swim","swimming","player","team","goal","champion","championship","competition","compete","medal","stadium","gym","fitness","athlete (n)","athletic competition","athletics","ball (n)","baseball (n)","basketball (n)","coach (n)","compete (v)","compete in","score (n)","score (v)","race (n)","soccer (n)","tennis (n)","volleyball (n)"]),
+  },
+  {
+    name: "Technology",
+    icon: "\uD83D\uDCBB",
+    ids: byEnglish(["computer","internet","screen","technology","online","download","upload","email","network","code","click","cellphone (n)","click (on)","click (v)","computer (n)","computer game","computer program","computer store","digital (adj)","printer (n)","program (n)","robot (n)"]),
+  },
+  {
+    name: "Clothes & Fashion",
+    icon: "\uD83D\uDC57",
+    ids: byEnglish(["shirt","shoes","jacket","hat","coat","fashion","wear","uniform","pocket","boots","tie","scarf","belt","gloves","sweater","sleeve","skirt","shorts","bathing suit (n)","belt (n)","boot (n)","cloth bag","dress (v)","get dressed","jeans (n)"]),
+  },
+  {
+    name: "Music & Art",
+    icon: "\uD83C\uDFB5",
+    ids: byEnglish(["drum","concert","instrument","musician","tune","perform","performance","drawing","museum","sculpture","stage","theater","art (n)","artist (n)","band (n)","cartoon (n)","dance (n)","dance (v)","guitar (n)","movie (n)","music (n)","painting (n)","photograph (n)","poem (n)","sing (v)"]),
+  },
+  {
+    name: "Work & Career",
+    icon: "\uD83D\uDCBC",
+    ids: byEnglish(["career","office","manager","employee","interview","hire","company","business","skill","industry","earn","income","boss (n)","career (n)","contract (n)","employ","employ (v)","employer","job (n)","meeting (n)","office (n)","project (n)","work (n)"]),
+  },
+  {
+    name: "Home & House",
+    icon: "\uD83C\uDFE0",
+    ids: byEnglish(["wall","roof","furniture","chair","sofa","lamp","apartment","garage","fence","ceiling","shelf","carpet","curtain","apartment (n)","bathroom (n)","bed (n)","bedroom (n)","bookshelf (n)","curtains (n)","door (n)","floor (n)","garden (n)","home (n)","house (n)","kitchen (n)","neighbor (n)","room (n)","stairs (n)","table (n)"]),
+  },
+  {
+    name: "Weather & Seasons",
+    icon: "\u2600\uFE0F",
+    ids: byEnglish(["snow","storm","cloud","sunny","cool","temperature","fog","thunder","lightning","degree","climate","season","cloudy","cold (adj)","dry (adj)","hot (adj)","ice (n)","rain (n)","rainbow (n)","rainy","spring (n)","summer (n)","warm (adj)","weather (n)","wet (adj)","winter (n)"]),
+  },
+  {
+    name: "Time & Calendar",
+    icon: "\u23F0",
+    ids: byEnglish(["today","tomorrow","yesterday","soon","later","late","clock","century","moment","daily","weekly","forever","a long time ago","afternoon (n)","all the time","at night","at present","at the moment","be late for","calendar (n)","early (adj)","evening (n)","future (n)","midnight (n)","minute (n)","month (n)","morning (n)","night (n)","time (n)"]),
+  },
+  {
+    name: "Money & Shopping",
+    icon: "\uD83D\uDCB0",
+    ids: byEnglish(["pay","price","cost","customer","cash","coin","bill","discount","bargain","afford","budget","profit","tax","fee","currency","wallet","bank (n)","buy (v)","can afford","cheap (adj)","market (n)","money (n)","sell (v)","shop (n)","store (n)"]),
+  },
+  {
+    name: "Crime & Law",
+    icon: "\u2696\uFE0F",
+    ids: byEnglish(["crime","law","court","prison","jail","steal","murder","punishment","guilty","evidence","trial","victim","criminal","illegal","legal","fine","robbery","justice","rule","arrest (n, v)","judge (n)","pass a law","police (n)","police station","policeman (n)","prison (n)","prisoners","steal (v)","thief (n)"]),
+  },
+  {
+    name: "Media",
+    icon: "\uD83D\uDCF1",
+    ids: byEnglish(["magazine","television","article","broadcast","interview","social media","channel","communicate","communication","message","announce","speech","blog (n)","headline (n)","letter (n)","news (n)","newspaper (n)","radio (n)","report (n)","reporter (n)","text (n)","text message"]),
+  },
+  {
+    name: "Science",
+    icon: "\uD83D\uDD2C",
+    ids: byEnglish(["science","scientist","discover","laboratory","theory","physics","biology","energy","planet","space","bacteria","discovery (n)","invention (n)","inventor (n)","research (n)","scientist (n)"]),
+  },
+  {
+    name: "City & Places",
+    icon: "\uD83C\uDFD9\uFE0F",
+    ids: byEnglish(["city","village","museum","restaurant","hotel","post office","center","square","tower","factory","downtown","airport (n)","bridge (n)","building (n)","hospital (n)","library (n)","mall (n)","neighborhood (n)","park (n)","station (n)","street (n)","supermarket (n)","town (n)"]),
+  },
+  {
+    name: "Colors",
+    icon: "\uD83C\uDFA8",
+    ids: byEnglish(["color","red","blue","green","yellow","black","white","brown","orange","pink","purple","grey","bright","silver","dark (adj)","light (adj)","color (n)","colorful (adj)"]),
+  },
+  {
+    name: "Relationships",
+    icon: "\uD83D\uDC91",
+    ids: byEnglish(["friendship","relationship","partner","marry","wedding","respect","argue","argument","apologize","together","miss","fall in love","apology (for)","belong to (v)","boyfriend","care about","date (n)","get married","girlfriend","hug (n)","love (v)","trust (v)"]),
+  },
+  {
+    name: "Environment",
+    icon: "\u267B\uFE0F",
+    ids: byEnglish(["environment","recycle","climate","global warming","energy","waste","protect","extinction","forest","ocean","earth","organic","resource","damage (v)","earthquake (n)","energy (n)","environment (n)","environmental","environmentally friendly","extinct (adj)","become extinct","forest (n)","nature (n)","nature reserve (n)","ocean (n)","pollution (n)","solar energy"]),
+  },
+  {
+    name: "War & Peace",
+    icon: "\u2694\uFE0F",
+    ids: byEnglish(["peace","army","soldier","weapon","battle","enemy","conflict","victory","freedom","destroy","destruction","attack (n, v)","defeat (v)","enemy (n)","fight (n)","fight (v)","fighting (n)","force (n)","force (v)","hero (n)","war (n)"]),
+  },
+  {
+    name: "Cooking",
+    icon: "\uD83D\uDC68\u200D\uD83C\uDF73",
+    ids: byEnglish(["ingredient","mix","pour","plate","cup","spoon","fork","knife","melt","delicious","bake (v)","bowl (n)","cook (n)","cook (v)","cooking","cup (n)","cup of coffee","cupboard","microwave (n)","slice (n)","taste (n)"]),
+  },
+  {
+    name: "Numbers",
+    icon: "\uD83D\uDD22",
+    ids: byEnglish(["total","sum","equal","half","million","billion","calculate","amount","figure","plus","zero","single","pair","a few","a little","a number of","add (v)","average (adj)","hundred","increase (v)","least","number (n)","thousand"]),
+  },
+  {
+    name: "Education",
+    icon: "\uD83C\uDF93",
+    ids: byEnglish(["education","degree","diploma","elementary school","grade (n)","high school","homework (n)","learn (v)","lesson (n)","mark (n)","notebook (n)","pass (v)","principal (n)","quiz (n)","study (v)","subject (n)","teacher (n)","test (n)","university (n)"]),
+  },
 ];
