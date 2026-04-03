@@ -255,12 +255,12 @@ HSTS: max-age=31536000; includeSubDomains; preload
 **Impact:** Low — requires local access to the browser, and the attacker would need to know a valid target UID.
 **Recommendation:** Validate that the old UID matches the current Supabase session's previous UID, or use a signed token.
 
-#### M3: Consent Stored Only in localStorage
+#### M3: Consent Stored Only in localStorage *(Fixed — 2026-04-03)*
 
-**Location:** `App.tsx:1715-1726`
-**Description:** Consent acceptance writes to `localStorage` only. The `consent_log` DB table exists but is not populated by the app code. Clearing browser data bypasses the consent prompt.
+**Location:** `App.tsx` — `checkConsent`, `recordConsent`, withdraw consent handler
+**Description:** Consent acceptance wrote to `localStorage` only. The `consent_log` DB table existed but was not populated by the app code. Clearing browser data bypassed the consent prompt.
 **Impact:** Compliance gap — no server-side proof of consent for GDPR/Amendment 13.
-**Recommendation:** Call `supabase.from('consent_log').insert(...)` when user accepts, and check the DB record on session restore.
+**Fix:** `recordConsent` already wrote to `consent_log` (accept). `checkConsent` now falls back to a DB query when localStorage is missing — if a valid `accept` record exists, the banner is suppressed and localStorage is restored. Withdraw consent now also inserts a `withdraw` record into `consent_log` for a complete audit trail.
 
 #### M4: Token Resent in Socket.IO Event Payload on Reconnect
 
@@ -338,7 +338,7 @@ HSTS: max-age=31536000; includeSubDomains; preload
 |----------|--------|--------|
 | ~~**High**~~ | ~~Fix student `unique_id` to include UID or random component~~ | ✅ Done |
 | ~~**High**~~ | ~~Add RLS constraint to prevent students from changing `class_code`~~ | ✅ Done |
-| **Medium** | Persist consent to `consent_log` table (not just localStorage) | Small |
+| ~~**Medium**~~ | ~~Persist consent to `consent_log` table (not just localStorage)~~ | ✅ Done |
 | **Medium** | Remove token from `join-challenge` payload (use handshake auth only) | Small |
 | **Low** | Use `crypto.randomUUID()` for guest UIDs | Trivial |
 | **Low** | Sanitize error messages shown to users | Small |

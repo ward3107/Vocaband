@@ -1684,11 +1684,30 @@ export default function App() {
     });
   };
 
-  // Check if user needs to accept the current privacy policy version
-  const checkConsent = (_userData: AppUser) => {
-    // Use localStorage to track consent — no DB columns needed
+  // Check if user needs to accept the current privacy policy version.
+  // Fast path: localStorage. Fallback: DB consent_log (handles cleared storage).
+  const checkConsent = (userData: AppUser) => {
     const accepted = localStorage.getItem('vocaband_consent_version');
-    if (accepted !== PRIVACY_POLICY_VERSION) {
+    if (accepted === PRIVACY_POLICY_VERSION) return;
+
+    // localStorage missing — check DB before showing the banner
+    if (userData.uid) {
+      supabase
+        .from('consent_log')
+        .select('policy_version')
+        .eq('uid', userData.uid)
+        .eq('action', 'accept')
+        .eq('policy_version', PRIVACY_POLICY_VERSION)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            // Valid consent found in DB — restore localStorage and skip banner
+            try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
+          } else {
+            setNeedsConsent(true);
+          }
+        });
+    } else {
       setNeedsConsent(true);
     }
   };
@@ -3832,6 +3851,16 @@ export default function App() {
                     message: "Withdrawing consent will log you out. You can re-accept when you log in again. Continue?",
                     onConfirm: async () => {
                       localStorage.removeItem('vocaband_consent_version');
+                      if (user?.uid) {
+                        try {
+                          await supabase.from('consent_log').insert({
+                            uid: user.uid,
+                            policy_version: PRIVACY_POLICY_VERSION,
+                            terms_version: PRIVACY_POLICY_VERSION,
+                            action: 'withdraw',
+                          });
+                        } catch { /* non-critical — sign out regardless */ }
+                      }
                       await supabase.auth.signOut();
                       setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
                     },
