@@ -189,6 +189,18 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                 <span className="font-black text-amber-600">{stats.duplicateCount}</span>
               </div>
             )}
+            {(stats as any).fuzzyMatchCount > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-on-surface">Fuzzy:</span>
+                <span className="font-black text-purple-600">{(stats as any).fuzzyMatchCount}</span>
+              </div>
+            )}
+            {((stats as any).hebrewMatchCount > 0 || (stats as any).arabicMatchCount > 0) && (
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-on-surface">HE/AR:</span>
+                <span className="font-black text-blue-600">{((stats as any).hebrewMatchCount || 0) + ((stats as any).arabicMatchCount || 0)}</span>
+              </div>
+            )}
           </div>
 
           {/* Content */}
@@ -225,8 +237,23 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                                 </span>
                               )}
                               <span className="text-xs text-gray-500">
-                                {mw.matchType === 'exact' ? '✓ exact' : '~ starts-with'}
+                                {mw.matchType === 'exact' ? '\u2713 exact' :
+                                 mw.matchType === 'hebrew' ? '\u2713 Hebrew' :
+                                 mw.matchType === 'arabic' ? '\u2713 Arabic' :
+                                 mw.matchType === 'phrase' ? '\u2713 phrase' :
+                                 mw.matchType === 'fuzzy' ? '\u2248 fuzzy' :
+                                 mw.matchType === 'family' ? '\u223C family' :
+                                 '~ starts-with'}
                               </span>
+                              {'confidence' in mw && typeof (mw as any).confidence === 'number' && (mw as any).confidence < 1.0 && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                  (mw as any).confidence >= 0.8 ? 'bg-green-100 text-green-700' :
+                                  (mw as any).confidence >= 0.6 ? 'bg-amber-100 text-amber-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {Math.round((mw as any).confidence * 100)}%
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -419,6 +446,34 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Word Family Suggestions */}
+            {analysis.wordFamilySuggestions && analysis.wordFamilySuggestions.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
+                  <Sparkles className="text-purple-600" size={16} />
+                  Related Words ({analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0)} suggestions)
+                </h3>
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-3 space-y-2">
+                  {analysis.wordFamilySuggestions.map((family) => (
+                    <div key={family.rootWord} className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-purple-600 font-bold mr-1">root: {family.rootWord}</span>
+                      {family.familyMembers.map((w) => (
+                        <span
+                          key={w.id}
+                          className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
+                        >
+                          {w.english}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-purple-500 mt-1">
+                    These related words share the same root as words you pasted. They will be auto-included on confirm.
+                  </p>
                 </div>
               </div>
             )}
