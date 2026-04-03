@@ -343,3 +343,21 @@ HSTS: max-age=31536000; includeSubDomains; preload
 | **Low** | Use `crypto.randomUUID()` for guest UIDs | Trivial |
 | **Low** | Sanitize error messages shown to users | Small |
 | **Low** | Restrict `imgSrc` CSP to known domains | Trivial |
+
+---
+
+## 10. Addendum — CodeQL Findings (2026-04-03)
+
+Two additional high-severity issues were identified by GitHub CodeQL on branch `claude/fix-security-vulnerabilities-ZvlDj` and remediated in the same branch.
+
+### CQ1: Biased Random Numbers in Class Code Generation *(Fixed)*
+
+**Location:** `App.tsx` — `handleCreateClass`
+**Description:** Class join codes were generated using `crypto.getRandomValues()` but mapped to an alphabet via `x % alphabet.length`. Since `2^32` is not divisible by 31 (the alphabet size), characters with lower index values were marginally more likely to appear.
+**Fix:** Replaced modulo mapping with rejection sampling — values that exceed the largest multiple of the alphabet size are discarded and resampled, ensuring uniform distribution.
+
+### CQ2: Incomplete URL Hostname Sanitization *(Fixed)*
+
+**Location:** `App.tsx` — `handleGSheetsImport`
+**Description:** The Google Sheets URL check used `parsed.hostname.endsWith("google.com")`, which would also accept hostnames like `evilgoogle.com` or `notgoogle.com`.
+**Fix:** Changed to require `parsed.hostname === "google.com"` or `parsed.hostname.endsWith(".google.com")`, ensuring only legitimate Google domains are accepted.

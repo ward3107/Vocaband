@@ -120,7 +120,7 @@ Configured via `helmet` in `server.ts`:
 | Live score | Must be `number`, finite, `[0, 10000]`, increments by max 10 per update |
 | File uploads | CSV/XLSX/DOCX: max 5 MB; OCR images: max 10 MB |
 | Word imports | Max 500 words per import |
-| Google Sheets URL | Must be `google.com` domain |
+| Google Sheets URL | Hostname must be exactly `google.com` or end with `.google.com` (prevents subdomain spoofing) |
 | Socket payloads | All fields validated for type and length before processing |
 
 ---
