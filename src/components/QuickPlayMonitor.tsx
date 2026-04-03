@@ -87,13 +87,22 @@ const THEMES = {
 
 type ThemeKey = keyof typeof THEMES;
 
-// ─── Music tracks (URLs for free background music) ────────────────────────────
-// These are placeholder URLs - teacher can toggle music on/off
+// ─── Music tracks (instrumental background loops in public/music/) ─────────────
 const MUSIC_TRACKS = [
-  { name: 'Upbeat Energy', icon: '⚡', file: 'upbeat' },
-  { name: 'Chill Vibes', icon: '🎵', file: 'chill' },
-  { name: 'Epic Battle', icon: '🔥', file: 'epic' },
+  { name: 'Steady Focus', icon: '🎯', file: 'bgm-steady-focus' },
+  { name: 'Upbeat Energy', icon: '⚡', file: 'bgm-upbeat-energy' },
+  { name: 'Chill Vibes', icon: '🌊', file: 'bgm-chill-vibes' },
+  { name: 'Adventure Quest', icon: '🗺️', file: 'bgm-adventure-quest' },
+  { name: 'Funky Groove', icon: '🎸', file: 'bgm-funky-groove' },
+  { name: 'Space Explorer', icon: '🚀', file: 'bgm-space-explorer' },
+  { name: 'Victory March', icon: '🏆', file: 'bgm-victory-march' },
 ];
+
+const getMusicUrl = (file: string): string => {
+  const cloudflareUrl = import.meta.env.VITE_CLOUDFLARE_URL;
+  if (cloudflareUrl) return `${cloudflareUrl}/music/${file}.wav`;
+  return `/music/${file}.wav`;
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function QuickPlayMonitor({
@@ -110,8 +119,12 @@ export default function QuickPlayMonitor({
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState(0);
-  const [musicVolume, setMusicVolume] = useState(0.5);
+  const [currentTrack, setCurrentTrack] = useState(() => {
+    try { return parseInt(localStorage.getItem('vocaband-music-track') || '0') || 0; } catch { return 0; }
+  });
+  const [musicVolume, setMusicVolume] = useState(() => {
+    try { return parseFloat(localStorage.getItem('vocaband-music-volume') || '0.5') || 0.5; } catch { return 0.5; }
+  });
   const musicRef = useRef<Howl | null>(null);
   const joinSoundRef = useRef<Howl | null>(null);
   const prevStudentCountRef = useRef(students.length);
@@ -150,41 +163,52 @@ export default function QuickPlayMonitor({
   // ─── Background music ──────────────────────────────────────────────────────
   const toggleMusic = () => {
     if (musicPlaying && musicRef.current) {
-      musicRef.current.pause();
-      setMusicPlaying(false);
+      musicRef.current.fade(musicVolume, 0, 300);
+      setTimeout(() => {
+        musicRef.current?.pause();
+        musicRef.current?.volume(musicVolume);
+        setMusicPlaying(false);
+      }, 300);
     } else {
       if (!musicRef.current) {
-        // Use a motivational track as placeholder background music
-        const tracks = ['awesome', 'youre-on-fire', 'crushing-it'];
         musicRef.current = new Howl({
-          src: [`/motivational/${tracks[currentTrack]}.mp3`],
-          volume: musicVolume,
+          src: [getMusicUrl(MUSIC_TRACKS[currentTrack].file)],
+          volume: 0,
           loop: true,
         });
       }
       musicRef.current.play();
+      musicRef.current.fade(0, musicVolume, 500);
       setMusicPlaying(true);
     }
   };
 
   const changeTrack = (idx: number) => {
     setCurrentTrack(idx);
+    try { localStorage.setItem('vocaband-music-track', String(idx)); } catch {}
+
+    // Crossfade: fade out old, start new
     if (musicRef.current) {
-      musicRef.current.stop();
-      musicRef.current.unload();
+      const old = musicRef.current;
+      old.fade(musicVolume, 0, 500);
+      setTimeout(() => { old.stop(); old.unload(); }, 500);
     }
-    const tracks = ['awesome', 'youre-on-fire', 'crushing-it'];
-    musicRef.current = new Howl({
-      src: [`/motivational/${tracks[idx]}.mp3`],
-      volume: musicVolume,
+    const newTrack = new Howl({
+      src: [getMusicUrl(MUSIC_TRACKS[idx].file)],
+      volume: 0,
       loop: true,
     });
-    if (musicPlaying) musicRef.current.play();
+    musicRef.current = newTrack;
+    if (musicPlaying) {
+      newTrack.play();
+      newTrack.fade(0, musicVolume, 500);
+    }
     setShowMusicPicker(false);
   };
 
   useEffect(() => {
     if (musicRef.current) musicRef.current.volume(musicVolume);
+    try { localStorage.setItem('vocaband-music-volume', String(musicVolume)); } catch {}
   }, [musicVolume]);
 
   // Cleanup music on unmount
