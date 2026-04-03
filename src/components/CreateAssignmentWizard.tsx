@@ -5,7 +5,7 @@ import {
   Clipboard, BookOpen, FolderOpen, Copy, Share2,
   Zap, Target, Headphones, PenTool, CheckCircle, RotateCcw,
   Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle, Camera,
-  Loader2
+  Loader2, Languages
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../constants/game';
