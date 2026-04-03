@@ -5,11 +5,13 @@ import {
   Clipboard, BookOpen, FolderOpen, Copy, Share2,
   Zap, Target, Headphones, PenTool, CheckCircle, RotateCcw,
   Volume2, Shuffle, ArrowRight, ArrowLeft, Sparkles, Save, XCircle, Camera,
-  Languages, Loader2
+  Loader2
 } from 'lucide-react';
 import { Word } from '../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../constants/game';
 import { supabase } from '../core/supabase';
+import { analyzePastedText } from '../utils/wordAnalysis';
+import { PastePreviewModal } from './PastePreviewModal';
 
 interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number };
@@ -227,6 +229,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   onBack,
   editingAssignment,
   setEditingAssignment,
+  showToast,
 }) => {
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState<SubStep>('landing');
@@ -244,8 +247,51 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [instructions, setInstructions] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [joinedWords, setJoinedWords] = useState<number[]>([]);
+  const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
+  const [customSentenceInput, setCustomSentenceInput] = useState('');
+
+  // Preview modal state for paste analysis
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewAnalysis, setPreviewAnalysis] = useState<any>(null);
+
   const pasteAreaRef = useRef<HTMLTextAreaRef>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // --- AI TRANSLATION FOR ASSIGNMENTS ---
+  // Cache for translated words to avoid redundant API calls
+  const translationCache = useRef<Map<string, {hebrew: string, arabic: string}>>(new Map());
+
+  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string} | null> => {
+    // Check cache first
+    const cached = translationCache.current.get(englishWord.toLowerCase());
+    if (cached) return cached;
+
+    try {
+      // Using MyMemory Translation API (free, no API key required)
+      const [hebrewRes, arabicRes] = await Promise.all([
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|he`),
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|ar`)
+      ]);
+
+      const hebrewData = await hebrewRes.json();
+      const arabicData = await arabicRes.json();
+
+      if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
+        const result = {
+          hebrew: hebrewData.responseData.translatedText,
+          arabic: arabicData.responseData.translatedText
+        };
+        // Cache the result
+        translationCache.current.set(englishWord.toLowerCase(), result);
+        return result;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Translation service error:', error);
+      return null;
+    }
+  };
 
   // Load saved groups from localStorage
   useEffect(() => {
@@ -265,11 +311,16 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   }, [editingAssignment, assignmentTitle, selectedWords]);
 
   // Initialize editedWords from selectedWords prop (e.g., after OCR upload)
+  // Also clear editedWords when selectedWords is cleared (e.g., when switching classes)
   useEffect(() => {
     if (selectedWords.length > 0 && editedWords.length === 0) {
       console.log('[CREATE WIZARD] Initializing editedWords from selectedWords:', selectedWords.length);
       setEditedWords(getWordsWithStatus());
       setSubStep('editor');
+    } else if (selectedWords.length === 0 && editedWords.length > 0) {
+      console.log('[CREATE WIZARD] Clearing editedWords because selectedWords is empty');
+      setEditedWords([]);
+      setSubStep('landing');
     }
   }, [selectedWords]);
 
@@ -289,72 +340,82 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   };
 
   // Generate safe integer ID for custom words/phrases
+  const customIdCounter = useRef(0);
   const generateCustomId = () => {
     // Use negative IDs to avoid conflicts with database IDs
-    // Use timestamp in seconds to keep it within integer range
-    return -Math.floor(Date.now() / 1000);
+    // Use timestamp + counter to ensure uniqueness even when called rapidly
+    customIdCounter.current++;
+    return -(Date.now() * 1000 + customIdCounter.current);
   };
 
-  // Analyze pasted words
-  const analyzePastedWords = (text: string): { matched: Word[]; unmatched: string[] } => {
-    const words = text.split(/[\s,;]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
-    const matched: Word[] = [];
-    const unmatched: string[] = [];
+  // Convert selected word IDs to WordWithStatus format
+  const getWordsWithStatus = (): WordWithStatus[] => {
+    const allWordsAvailable = [...allWords, ...customWords];
+    const wordWithStatus: WordWithStatus[] = [];
+    const processedIds = new Set<number>();
 
-    words.forEach(word => {
-      const found = allWords.find(w => w.english.toLowerCase() === word);
-      if (found) {
-        matched.push(found);
-      } else {
-        unmatched.push(word);
+    selectedWords.forEach(wordId => {
+      // Skip duplicates
+      if (processedIds.has(wordId)) return;
+
+      const word = allWordsAvailable.find(w => w.id === wordId);
+      if (word) {
+        wordWithStatus.push({
+          id: word.id,
+          english: word.english,
+          hebrew: word.hebrew || '',
+          arabic: word.arabic || '',
+          hasTranslation: !!(word.hebrew || word.arabic),
+          isPhrase: false,
+        });
+        processedIds.add(wordId);
       }
     });
 
-    return { matched, unmatched };
+    return wordWithStatus;
   };
 
-  // Convert selected words to WordWithStatus
-  const getWordsWithStatus = (): WordWithStatus[] => {
-    const wordMap = new Map<number, Word>();
-    [...allWords, ...customWords].forEach(w => wordMap.set(w.id, w));
-
-    return selectedWords.map(id => {
-      const word = wordMap.get(id);
-      if (!word) return null;
-
-      const isJoinedPhrase = joinedWords.includes(id);
-      return {
-        id: word.id,
-        english: word.english,
-        hebrew: word.hebrew || '',
-        arabic: word.arabic || '',
-        hasTranslation: !!(word.hebrew || word.arabic),
-        isPhrase: isJoinedPhrase,
-        phraseWords: isJoinedPhrase ? [id] : undefined,
-      };
-    }).filter((w): w is WordWithStatus => w !== null);
-  };
-
-  // Handle paste and analyze
+  // Handle paste and analyze with preview
   const handlePasteAndAnalyze = () => {
-    const { matched, unmatched } = analyzePastedWords(pastedText);
+    const allWordsAvailable = [...allWords, ...customWords];
+    const analysis = analyzePastedText(pastedText, allWordsAvailable);
 
-    const wordWithStatus: WordWithStatus[] = matched.map(w => ({
-      id: w.id,
-      english: w.english,
-      hebrew: w.hebrew || '',
-      arabic: w.arabic || '',
-      hasTranslation: !!(w.hebrew || w.arabic),
-      isPhrase: false,
-    }));
+    setPreviewAnalysis(analysis);
+    setShowPreview(true);
+  };
 
-    // Add unmatched as custom words
-    const customWordsToAdd = unmatched.map((word, index) => {
+  // Confirm paste preview - add words to editor
+  const handlePreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => {
+    if (!previewAnalysis) return;
+
+    const { matchedWords, unmatchedTerms } = previewAnalysis;
+
+    // Convert matched words to WordWithStatus format
+    const wordWithStatus: WordWithStatus[] = [];
+    const processedIds = new Set<number>();
+
+    matchedWords.forEach(mw => {
+      if (!processedIds.has(mw.word.id)) {
+        wordWithStatus.push({
+          id: mw.word.id,
+          english: mw.word.english,
+          hebrew: mw.word.hebrew || '',
+          arabic: mw.word.arabic || '',
+          hasTranslation: !!(mw.word.hebrew || mw.word.arabic),
+          isPhrase: false,
+        });
+        processedIds.add(mw.word.id);
+      }
+    });
+
+    // Add unmatched as custom words with translations
+    const customWordsToAdd = unmatchedTerms.map((term) => {
+      const translations = customTranslations?.get(term.term);
       const newWord: Word = {
-        id: generateCustomId() - index, // Ensure unique IDs
-        english: word,
-        hebrew: '',
-        arabic: '',
+        id: generateCustomId(),
+        english: term.term,
+        hebrew: translations?.hebrew || '',
+        arabic: translations?.arabic || '',
         level: 'Custom',
       };
       return newWord;
@@ -365,11 +426,71 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       english: w.english,
       hebrew: w.hebrew,
       arabic: w.arabic,
-      hasTranslation: false,
+      hasTranslation: !!(w.hebrew || w.arabic),
       isPhrase: false,
     }))]);
 
+    // Also add to custom words in parent
+    setCustomWords(prev => [...prev, ...customWordsToAdd]);
+
+    setShowPreview(false);
+    setPreviewAnalysis(null);
     setSubStep('editor');
+  };
+
+  const handlePreviewQuickSave = (customTranslations: Map<string, { hebrew: string; arabic: string }>) => {
+    if (!previewAnalysis) return;
+
+    const { matchedWords, unmatchedTerms } = previewAnalysis;
+
+    // Build word IDs list for assignment
+    const finalWordIds: number[] = [];
+    const seenIds = new Set<number>();
+
+    // Build word IDs list for assignment
+    const wordIds: number[] = [];
+    const processedIds = new Set<number>();
+
+    // Add matched word IDs
+    matchedWords.forEach(mw => {
+      if (!seenIds.has(mw.word.id)) {
+        finalWordIds.push(mw.word.id);
+        seenIds.add(mw.word.id);
+      }
+    });
+
+    // Create custom words with translations and get their IDs
+    const customWordsToAdd = unmatchedTerms.map((term) => {
+      const translations = customTranslations.get(term.term);
+      const newWord: Word = {
+        id: generateCustomId(),
+        english: term.term,
+        hebrew: translations?.hebrew || '',
+        arabic: translations?.arabic || '',
+        level: 'Custom',
+      };
+      return newWord;
+    });
+
+    // Add to custom words
+    setCustomWords(prev => [...prev, ...customWordsToAdd]);
+
+    // Collect all word IDs for the assignment
+    const allWordIds = [...finalWordIds, ...customWordsToAdd.map(w => w.id)];
+
+    // Set the words and proceed to step 2 to configure title, modes, date
+    setSelectedWords(allWordIds);
+    setShowPreview(false);
+    setPreviewAnalysis(null);
+
+    // Navigate to step 2 (configure title, modes, deadline)
+    setStep(2);
+  };
+
+  // Cancel paste preview
+  const handlePreviewCancel = () => {
+    setShowPreview(false);
+    setPreviewAnalysis(null);
   };
 
   // Handle word selection in browse mode
@@ -418,7 +539,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     setEditingWord(null);
   };
 
-  // Auto-translate all missing words using server endpoint (secured)
+  // Auto-translate all missing words using MyMemory Translation API (client-side, same as Quick Play)
   const handleAutoTranslate = async () => {
     const wordsWithoutTranslation = editedWords.filter(w => !w.hasTranslation);
 
@@ -430,42 +551,25 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     setIsTranslating(true);
 
     try {
-      // Get session token for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        showToast?.('Please log in to use auto-translation', 'error');
-        return;
-      }
+      // Translate each word using MyMemory API
+      const translations = await Promise.all(
+        wordsWithoutTranslation.map(async (word) => {
+          const result = await translateWord(word.english);
+          return { word, result };
+        })
+      );
 
-      // Extract English words
-      const englishWords = wordsWithoutTranslation.map(w => w.english);
-
-      // Call server endpoint (authenticated, teacher-only)
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ words: englishWords })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Translation failed' }));
-        throw new Error(errorData.error || 'Translation failed');
-      }
-
-      const { hebrew, arabic } = await response.json();
-
-      // Update words with translations
+      // Update words with successful translations
+      let successCount = 0;
       setEditedWords(prev => prev.map(w => {
         if (!w.hasTranslation) {
-          const index = englishWords.indexOf(w.english);
-          if (index !== -1 && hebrew[index] && arabic[index]) {
+          const translation = translations.find(t => t.word.id === w.id);
+          if (translation?.result) {
+            successCount++;
             return {
               ...w,
-              hebrew: hebrew[index],
-              arabic: arabic[index],
+              hebrew: translation.result.hebrew,
+              arabic: translation.result.arabic,
               hasTranslation: true
             };
           }
@@ -477,21 +581,27 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       const translatedCustomWords = wordsWithoutTranslation.filter(w => w.id < 0);
       if (translatedCustomWords.length > 0) {
         setCustomWords(prev => prev.map(w => {
-          const index = translatedCustomWords.findIndex(tw => tw.id === w.id);
-          if (index !== -1 && hebrew[index] && arabic[index]) {
+          const translation = translations.find(t => t.word.id === w.id);
+          if (translation?.result) {
             return {
               ...w,
-              hebrew: hebrew[index],
-              arabic: arabic[index]
+              hebrew: translation.result.hebrew,
+              arabic: translation.result.arabic
             };
           }
           return w;
         }));
       }
 
+      if (successCount > 0) {
+        showToast?.(`Successfully translated ${successCount} word${successCount !== 1 ? 's' : ''}!`, 'success');
+      } else {
+        showToast?.('Translation service unavailable. Please try again later.', 'error');
+      }
+
     } catch (error) {
       console.error('Translation error:', error);
-      // Silent failure - don't show alert to user
+      showToast?.('Translation failed. Please try again later.', 'error');
     } finally {
       setIsTranslating(false);
     }
@@ -967,12 +1077,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 {isTranslating ? (
                   <>
                     <Loader2 className="animate-spin" size={18} />
-                    Translating with Google Cloud...
+                    AI is translating...
                   </>
                 ) : (
                   <>
                     <Languages size={18} />
-                    Translate all with Google Cloud ✨
+                    Translate all with AI ✨
                   </>
                 )}
               </button>
@@ -1048,11 +1158,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-xs sm:text-sm text-on-surface-variant truncate">
-                          {word.hebrew && <span className="ml-0">{word.hebrew}</span>}
-                          {word.hebrew && word.arabic && <span className="mx-1">•</span>}
+                        <div className="text-xs sm:text-sm text-on-surface-variant truncate flex items-center gap-2">
+                          {word.hebrew && <span>{word.hebrew}</span>}
+                          {word.hebrew && word.arabic && <span className="text-outline/40">•</span>}
                           {word.arabic && <span>{word.arabic}</span>}
-                          {!word.hasTranslation && <span className="italic">(no translation)</span>}
+                          {!word.hebrew && !word.arabic && (
+                            <span className="italic">No translation available</span>
+                          )}
                         </div>
                       </div>
 
@@ -1217,10 +1329,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm text-on-surface truncate">{word.english}</div>
-                      <div className="text-xs text-on-surface-variant truncate">
+                      <div className="text-xs text-on-surface-variant truncate flex items-center gap-2">
                         {word.hebrew && <span>{word.hebrew}</span>}
-                        {word.hebrew && word.arabic && <span className="mx-1">•</span>}
+                        {word.hebrew && word.arabic && <span className="text-outline/40">•</span>}
                         {word.arabic && <span>{word.arabic}</span>}
+                        {!word.hebrew && !word.arabic && (
+                          <span className="italic">No translation available</span>
+                        )}
                       </div>
                     </div>
                   </motion.button>
@@ -1484,25 +1599,24 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         </div>
 
         {/* Compact grid layout - 5 columns for all modes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {Object.values(GAME_MODE_LEVELS).flat().map((mode) => {
               const isSelected = assignmentModes.includes(mode.id);
               return (
                 <button
                   key={mode.id}
                   onClick={() => toggleGameMode(mode.id)}
-                  className={`relative p-2.5 rounded-xl border-2 transition-all text-center ${
+                  className={`relative p-3 rounded-2xl border-2 transition-all duration-300 text-center ${
                     isSelected
-                      ? 'border-transparent bg-gradient-to-br shadow-lg'
-                      : 'border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40 hover:scale-105'
+                      ? 'border-primary bg-primary shadow-xl shadow-primary/40 scale-105'
+                      : 'border-outline/20 bg-surface-container hover:border-outline/40 hover:bg-surface-container-high hover:shadow-md hover:scale-[1.02]'
                   }`}
-                  style={isSelected ? { backgroundImage: `linear-gradient(to bottom right, ${mode.color})` } : undefined}
                 >
-                  <div className={`text-xl mb-1 ${isSelected ? 'text-surface-0' : 'text-on-surface'}`}>{mode.emoji}</div>
-                  <div className={`text-xs font-bold ${isSelected ? 'text-surface-0' : 'text-on-surface'}`}>{mode.name}</div>
+                  <div className={`text-2xl mb-1.5 transition-transform duration-300 ${isSelected ? 'scale-110' : 'scale-100'}`}>{mode.emoji}</div>
+                  <div className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
                   {isSelected && (
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
-                      <Check size={10} className="text-white" />
+                    <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-primary animate-bounce-in">
+                      <Check size={14} className="text-primary" weight="bold" />
                     </div>
                   )}
                 </button>
@@ -1546,53 +1660,135 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                   key={level}
                   type="button"
                   onClick={() => setSentenceDifficulty(level)}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                  className={`relative p-3 rounded-lg border-2 transition-all duration-300 text-center ${
                     isSelected
-                      ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                      : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50'
+                      ? 'border-primary bg-primary shadow-md scale-105'
+                      : 'border-outline/20 bg-surface-container hover:border-outline/40 hover:bg-surface-container-high'
                   }`}
                 >
                   <div className="text-lg mb-1">{config.emoji}</div>
-                  <div className={`text-sm font-bold ${isSelected ? 'text-primary' : 'text-on-surface'}`}>{config.label}</div>
-                  <div className="text-xs text-on-surface-variant">{config.description}</div>
+                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{config.label}</div>
+                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-on-surface-variant'}`}>{config.description}</div>
+                  {isSelected && (
+                    <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-white flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                    </div>
+                  )}
                 </button>
               );
             })}
+          </div>
+
+          {/* Add Custom Sentence */}
+          <div className="mt-4 space-y-2">
+            <label className="block text-xs font-bold text-on-surface-variant">
+              Add Your Own Sentences
+            </label>
+            <div className="flex gap-2">
+              <textarea
+                value={customSentenceInput}
+                onChange={(e) => setCustomSentenceInput(e.target.value)}
+                placeholder="Write or paste your sentence here..."
+                rows={2}
+                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+              />
+              <button
+                onClick={() => {
+                  if (customSentenceInput.trim()) {
+                    setAssignmentSentences([...assignmentSentences, customSentenceInput.trim()]);
+                    setCustomSentenceInput('');
+                  }
+                }}
+                disabled={!customSentenceInput.trim()}
+                className="px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2 self-end"
+              >
+                <Plus size={18} />
+                Add
+              </button>
+            </div>
           </div>
 
           {/* Sentence Preview & Editor */}
           {assignmentSentences.length > 0 && (
             <div className="mt-3">
               <label className="block text-xs font-bold text-on-surface-variant mb-2">
-                Generated Sentences ({assignmentSentences.length}) — click to edit
+                Generated Sentences ({assignmentSentences.length}) — hover to preview, click to edit
               </label>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                {assignmentSentences.map((sentence, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+              <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+                {assignmentSentences.map((sentence, idx) => {
+                  const isInFirstHalf = idx < Math.ceil(assignmentSentences.length / 2);
+                  return (
+                  <div
+                    key={idx}
+                    onClick={() => setEditingSentenceIndex(idx)}
+                    className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50 hover:bg-surface-container-high cursor-pointer transition-all group"
+                  >
                     <span className="text-xs text-on-surface-variant font-mono w-5 shrink-0">{idx + 1}</span>
-                    <input
-                      type="text"
-                      value={sentence}
-                      onChange={(e) => {
-                        const updated = [...assignmentSentences];
-                        updated[idx] = e.target.value;
-                        setAssignmentSentences(updated);
-                      }}
-                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
-                    />
+                    <span className="flex-1 text-sm text-on-surface truncate group-hover:text-primary transition-colors">
+                      {sentence}
+                    </span>
+                    {/* Hover preview tooltip - smart positioning */}
+                    <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-surface rounded-xl shadow-xl border-2 border-outline-variant/30 p-3 pointer-events-none ${
+                      isInFirstHalf ? 'absolute top-full left-0 mt-2' : 'absolute bottom-full left-0 mb-2'
+                    }`}>
+                      <div className="text-sm text-on-surface break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {sentence}
+                      </div>
+                      {/* Arrow pointing direction */}
+                      <div className={`absolute ${isInFirstHalf ? 'bottom-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-surface -mt-px' : 'top-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-surface -mt-px'}`} />
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updated = assignmentSentences.filter((_, i) => i !== idx);
                         setAssignmentSentences(updated);
                       }}
-                      className="text-on-surface-variant hover:text-error transition-colors shrink-0"
+                      className="text-on-surface-variant hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       title="Remove sentence"
                     >
-                      <X size={16} />
+                      <X size={14} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Sentence Edit Modal */}
+          {editingSentenceIndex !== null && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingSentenceIndex(null)}>
+              <div className="bg-surface rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-on-surface mb-4">
+                  Edit Sentence #{editingSentenceIndex + 1}
+                </h3>
+                <textarea
+                  autoFocus
+                  value={assignmentSentences[editingSentenceIndex]}
+                  onChange={(e) => {
+                    const updated = [...assignmentSentences];
+                    updated[editingSentenceIndex] = e.target.value;
+                    setAssignmentSentences(updated);
+                  }}
+                  rows={3}
+                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                />
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => setEditingSentenceIndex(null)}
+                    className="flex-1 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setEditingSentenceIndex(null)}
+                    className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2085,6 +2281,46 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Paste Preview Modal */}
+      {showPreview && previewAnalysis && (
+        <PastePreviewModal
+          analysis={previewAnalysis}
+          onConfirm={handlePreviewConfirm}
+          onCancel={handlePreviewCancel}
+          onQuickSave={handlePreviewQuickSave}
+          onRemoveUnmatched={(term) => {
+            // Remove unmatched term from preview
+            if (previewAnalysis) {
+              const updatedAnalysis = {
+                ...previewAnalysis,
+                unmatchedTerms: previewAnalysis.unmatchedTerms.filter(t => t.term !== term),
+                stats: {
+                  ...previewAnalysis.stats,
+                  unmatchedCount: previewAnalysis.stats.unmatchedCount - 1,
+                  totalTerms: previewAnalysis.stats.totalTerms - 1,
+                },
+              };
+              setPreviewAnalysis(updatedAnalysis);
+            }
+          }}
+          onRemoveMatched={(wordId) => {
+            // Remove matched word from preview
+            if (previewAnalysis) {
+              const updatedAnalysis = {
+                ...previewAnalysis,
+                matchedWords: previewAnalysis.matchedWords.filter(mw => mw.word.id !== wordId),
+                stats: {
+                  ...previewAnalysis.stats,
+                  matchedCount: previewAnalysis.stats.matchedCount - 1,
+                  totalTerms: previewAnalysis.stats.totalTerms - 1,
+                },
+              };
+              setPreviewAnalysis(updatedAnalysis);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,15 +1,18 @@
 import React from "react";
+import { Gamepad2 } from "lucide-react";
 
 interface PublicNavProps {
   currentPage: "home" | "terms" | "privacy";
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  onTryDemo?: () => void;
 }
 
 const PublicNav: React.FC<PublicNavProps> = ({
   currentPage,
   onNavigate,
   onGetStarted,
+  onTryDemo,
 }) => {
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-stone-100/80 backdrop-blur-md flex justify-between items-center px-4 md:px-6 py-2 border-b border-stone-200/50">
@@ -29,12 +32,23 @@ const PublicNav: React.FC<PublicNavProps> = ({
       </button>
 
       <div className="flex items-center gap-2 md:gap-3">
-        <button
-          onClick={onGetStarted}
-          className="signature-gradient text-white text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-md shadow-blue-500/20"
-        >
-          Get Started
-        </button>
+        {onTryDemo ? (
+          <button
+            onClick={onTryDemo}
+            className="bg-primary text-white text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/40 hover:shadow-primary/60 flex items-center gap-1 border-2 border-primary/30"
+          >
+            <Gamepad2 size={14} />
+            <span className="hidden sm:inline">Try Demo</span>
+            <span className="sm:hidden">Demo</span>
+          </button>
+        ) : (
+          <button
+            onClick={onGetStarted}
+            className="signature-gradient text-white text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-md shadow-blue-500/20"
+          >
+            Get Started
+          </button>
+        )}
       </div>
     </nav>
   );

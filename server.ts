@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types.js";
@@ -151,7 +151,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many OCR requests. Please wait a minute before trying again." },
-    keyGenerator: (req) => req.headers.authorization?.substring(7) || req.ip || "unknown",
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req) || "unknown",
   });
 
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).

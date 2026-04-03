@@ -78,10 +78,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
             {assignments.length > 0 && (
               <button
                 onClick={handleToggleDropdown}
-                className="text-xs font-bold text-primary flex items-center gap-1 hover:underline shrink-0 bg-white px-2 py-1 rounded-lg shadow-sm border border-blue-100 cursor-pointer transition-all hover:bg-blue-50 active:scale-95"
+                className="text-sm font-bold text-white flex items-center gap-1 shrink-0 bg-gradient-to-r from-cyan-500 to-sky-600 px-3 py-2 rounded-xl shadow-lg shadow-cyan-500/40 cursor-pointer transition-all hover:scale-105 active:scale-95 border-2 border-white/30"
               >
                 <span style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <BookOpen size={14} />
+                  <BookOpen size={16} />
                   {assignments.length} {showAssignments ? '▲' : '▼'}
                   <span className="hidden sm:inline"> Assignments</span>
                 </span>

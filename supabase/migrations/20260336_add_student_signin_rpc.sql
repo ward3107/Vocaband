@@ -70,6 +70,9 @@ COMMENT ON FUNCTION public.student_sign_in IS 'Validate student credentials and 
 -- This creates a session for an existing auth user
 -- ============================================
 
+-- Drop existing function if it exists
+DROP FUNCTION IF EXISTS public.create_student_session(UUID);
+
 -- Function to create a session for a student auth account
 CREATE OR REPLACE FUNCTION public.create_student_session(
   p_auth_uid UUID
@@ -112,4 +115,4 @@ $$;
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.create_student_session(UUID) TO authenticated;
 
-COMMENT ON FUNCTION public.create_student_session IS 'Helper to establish session for existing auth user (used internally)';
+-- Note: Function comment removed to avoid potential overload conflicts
