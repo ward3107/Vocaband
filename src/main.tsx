@@ -39,8 +39,12 @@ async function boot() {
     console.error('Boot error:', err);
   }
 
-  // Load App asynchronously so the browser stays responsive
+  // Pre-load vocabulary data (494KB) in its own chunk, then yield
+  // so the browser stays responsive before loading App (457KB)
+  await import('./data/vocabulary');
+  await new Promise(r => setTimeout(r, 0));
   const { default: App } = await import('./App');
+  await new Promise(r => setTimeout(r, 0));
   const { AccessibilityWidget } = await import('./components/AccessibilityWidget');
   const { default: ErrorBoundary } = await import('./ErrorBoundary');
 
