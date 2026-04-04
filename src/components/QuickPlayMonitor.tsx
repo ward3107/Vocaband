@@ -34,13 +34,6 @@ interface QuickPlayMonitorProps {
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-// ─── Random avatars for students ─────────────────────────────────────────────
-const ANIMAL_AVATARS = [
-  '🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄',
-  '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹',
-  '🦝', '🐧', '🦚', '🐝', '🦩', '🐬', '🦎', '🐢',
-];
-
 // ─── Theme definitions (light surface + accent colors) ────────────────────────
 const THEMES = {
   classic: {
@@ -118,7 +111,6 @@ export default function QuickPlayMonitor({
     try { return parseFloat(localStorage.getItem('vocaband-music-volume') || '0.5') || 0.5; } catch { return 0.5; }
   });
   const musicRef = useRef<Howl | null>(null);
-  const joinSoundRef = useRef<Howl | null>(null);
   const prevStudentCountRef = useRef(students.length);
 
   const t = THEMES[theme];
@@ -130,23 +122,8 @@ export default function QuickPlayMonitor({
   const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
 
   // ─── Join sound effect ────────────────────────────────────────────────────
+  // Track student count changes (no sound — teacher requested silence on join)
   useEffect(() => {
-    // Create a simple join sound using a short motivational clip
-    joinSoundRef.current = new Howl({
-      src: ['/motivational/correct.mp3'],
-      volume: 0.4,
-      preload: true,
-    });
-    return () => {
-      joinSoundRef.current?.unload();
-    };
-  }, []);
-
-  // Play join sound when new student joins
-  useEffect(() => {
-    if (students.length > prevStudentCountRef.current) {
-      joinSoundRef.current?.play();
-    }
     prevStudentCountRef.current = students.length;
   }, [students.length]);
 
@@ -244,13 +221,8 @@ export default function QuickPlayMonitor({
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
-  // ─── Assign consistent avatar per student ──────────────────────────────────
-  const getAvatar = (name: string, idx: number) => {
-    // Use a hash of the name to pick a consistent avatar
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
-    return ANIMAL_AVATARS[Math.abs(hash) % ANIMAL_AVATARS.length];
-  };
+  // ─── Get student's chosen avatar (from DB) with fallback ───────────────────
+  const getStudentAvatar = (student: Student) => student.avatar || '\uD83E\uDD8A';
 
   // CSS for float animation (injected once)
   const floatStyle = `@keyframes qp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`;
@@ -349,7 +321,7 @@ export default function QuickPlayMonitor({
                   {top3[1] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getAvatar(top3[1].name, 1)}</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm`}>2nd</div>
                       </motion.div>
                       <p className="font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center">{top3[1].name}</p>
@@ -366,7 +338,7 @@ export default function QuickPlayMonitor({
                   {top3[0] && (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
-                        <div className={`w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl border-4 border-primary shadow-2xl scale-110`}>{getAvatar(top3[0].name, 0)}</div>
+                        <div className={`w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl border-4 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] font-black px-2 py-0.5 rounded-full shadow-md`}>1st</div>
                       </motion.div>
                       <p className="font-headline text-sm sm:text-lg font-black truncate max-w-[100px] text-center">{top3[0].name}</p>
@@ -384,7 +356,7 @@ export default function QuickPlayMonitor({
                   {top3[2] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getAvatar(top3[2].name, 2)}</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm`}>3rd</div>
                       </motion.div>
                       <p className="font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center">{top3[2].name}</p>
@@ -435,7 +407,7 @@ export default function QuickPlayMonitor({
                       </button>
                       <div className="relative shrink-0">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-surface-container-high flex items-center justify-center text-xl sm:text-2xl border-2 border-surface-container-highest">
-                          {student.avatar !== '\uD83E\uDD8A' ? student.avatar : getAvatar(student.name, idx)}
+                          {getStudentAvatar(student)}
                         </div>
                         <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                       </div>
