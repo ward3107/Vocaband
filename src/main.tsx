@@ -4,10 +4,9 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
-import { registerSW } from 'virtual:pwa-register';
+// PWA service worker disabled — was causing white screens due to stale cache
+// import { registerSW } from 'virtual:pwa-register';
 import { supabase } from './core/supabase';
-
-registerSW();
 
 // Exchange PKCE auth code BEFORE React mounts.  We must await this so the
 // lock is released before onAuthStateChange tries to acquire it — otherwise
