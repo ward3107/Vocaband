@@ -10,7 +10,7 @@ import {
 import { Word } from '../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../constants/game';
 import { supabase } from '../core/supabase';
-import { analyzePastedText } from '../utils/wordAnalysis';
+import { analyzePastedText, type WordAnalysisResult } from '../utils/wordAnalysis';
 import { PastePreviewModal } from './PastePreviewModal';
 
 interface CreateAssignmentWizardProps {
@@ -19,17 +19,17 @@ interface CreateAssignmentWizardProps {
   band1Words: Word[];
   band2Words: Word[];
   customWords: Word[];
-  setCustomWords: (words: Word[]) => void;
+  setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
   assignmentTitle: string;
   setAssignmentTitle: (title: string) => void;
   assignmentDeadline: string;
   setAssignmentDeadline: (date: string) => void;
   assignmentModes: string[];
-  setAssignmentModes: (modes: string[]) => void;
+  setAssignmentModes: React.Dispatch<React.SetStateAction<string[]>>;
   selectedWords: number[];
-  setSelectedWords: (words: number[]) => void;
+  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
   selectedLevel: string;
-  setSelectedLevel: (level: string) => void;
+  setSelectedLevel: (level: "Band 1" | "Band 2" | "Custom") => void;
   tagInput: string;
   setTagInput: (input: string) => void;
   pastedText: string;
@@ -41,7 +41,7 @@ interface CreateAssignmentWizardProps {
   handlePasteSubmit: () => void;
   handleAddUnmatchedAsCustom: () => void;
   handleSkipUnmatched: () => void;
-  handleTagInputKeyDown: (e: React.KeyboardEvent) => void;
+  handleTagInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleDocxUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleOcrUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveAssignment: () => void;
@@ -63,13 +63,16 @@ interface CreateAssignmentWizardProps {
 }
 
 interface AssignmentData {
-  id: number;
+  id: string;
   title: string;
   wordIds: number[];
   words?: Word[];
-  deadline?: string;
+  deadline?: string | null;
   allowedModes?: string[];
   classId: string;
+  sentences?: string[];
+  sentenceDifficulty?: number;
+  createdAt?: string;
 }
 
 type WordWithStatus = {
@@ -258,9 +261,9 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 
   // Preview modal state for paste analysis
   const [showPreview, setShowPreview] = useState(false);
-  const [previewAnalysis, setPreviewAnalysis] = useState<any>(null);
+  const [previewAnalysis, setPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
-  const pasteAreaRef = useRef<HTMLTextAreaRef>(null);
+  const pasteAreaRef = useRef<HTMLTextAreaElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   // --- AI TRANSLATION FOR ASSIGNMENTS ---
@@ -1780,7 +1783,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                   <div className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{mode.name}</div>
                   {isSelected && (
                     <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-primary animate-bounce-in">
-                      <Check size={14} className="text-primary" weight="bold" />
+                      <Check size={14} className="text-primary" strokeWidth={3} />
                     </div>
                   )}
                 </button>
