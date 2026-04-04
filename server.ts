@@ -119,7 +119,10 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
+          // 'unsafe-inline' required: Vite injects an inline module-preload polyfill
+          // in production builds that cannot use a static hash (changes each build).
+          // Cloudflare injects its analytics beacon from static.cloudflareinsights.com.
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
           imgSrc: ["'self'", "data:", "blob:", `https://${supabaseHost}`, ...(cdnUrl ? [cdnUrl] : [])],
@@ -130,6 +133,8 @@ async function startServer() {
             `wss://${supabaseHost}`,
             "https://accounts.google.com",
             "https://translation.googleapis.com",
+            // Cloudflare analytics
+            "https://cloudflareinsights.com",
             ...(cdnUrl ? [cdnUrl] : []),
             // Allow WebSocket connections to the same origin
             "ws:", "wss:",
