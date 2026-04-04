@@ -5190,13 +5190,20 @@ export const ALL_WORDS: Word[] = [
 
 // ============================================================================
 // TOPIC PACKS — curated word lists by theme (IDs from ALL_WORDS)
+// Lazy-computed on first access to avoid blocking module load
 // ============================================================================
-const byEnglish = (terms: string[]) => {
-  const termsSet = new Set(terms.map(t => t.toLowerCase()));
-  return ALL_WORDS.filter(w => termsSet.has(w.english.toLowerCase())).map(w => w.id);
-};
+let _topicPacksCache: { name: string; icon: string; ids: number[] }[] | null = null;
 
-export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
+function buildTopicPacks(): { name: string; icon: string; ids: number[] }[] {
+  // Build a lookup map once for O(1) matching
+  const englishToId = new Map<string, number>();
+  for (const w of ALL_WORDS) {
+    englishToId.set(w.english.toLowerCase(), w.id);
+  }
+  const byEnglish = (terms: string[]) =>
+    terms.map(t => englishToId.get(t.toLowerCase())).filter((id): id is number => id !== undefined);
+
+  return [
   {
     name: "Family",
     icon: "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}",
@@ -5337,4 +5344,18 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "\uD83C\uDF93",
     ids: byEnglish(["education","degree","diploma","elementary school","grade (n)","high school","homework (n)","learn (v)","lesson (n)","mark (n)","notebook (n)","pass (v)","principal (n)","quiz (n)","study (v)","subject (n)","teacher (n)","test (n)","university (n)"]),
   },
-];
+  ];
+}
+
+export function getTopicPacks(): { name: string; icon: string; ids: number[] }[] {
+  if (!_topicPacksCache) _topicPacksCache = buildTopicPacks();
+  return _topicPacksCache;
+}
+
+// Backwards-compatible export (getter triggers lazy computation on first access)
+export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = new Proxy([] as any, {
+  get(target, prop, receiver) {
+    const packs = getTopicPacks();
+    return Reflect.get(packs, prop, receiver);
+  },
+});
