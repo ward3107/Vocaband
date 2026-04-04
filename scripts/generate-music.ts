@@ -40,12 +40,8 @@ for (let oct = 2; oct <= 6; oct++) {
   }
 }
 
-// Seeded random for reproducible output
+// Seeded random for reproducible humanization
 let seed = 42;
-function seededRandom(): number {
-  seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
-  return seed / 0x7fffffff;
-}
 
 // ─── WAV file writer ──────────────────────────────────────────────────────────
 function writeWav(filename: string, samples: Float32Array) {
@@ -96,14 +92,6 @@ function sawtooth(freq: number, t: number): number {
 
 function noise(): number {
   return Math.random() * 2 - 1;
-}
-
-// Exponential decay envelope (more natural than linear)
-function expEnv(t: number, start: number, dur: number, attack = 0.01, decay = 0.3): number {
-  const elapsed = t - start;
-  if (elapsed < 0 || elapsed > dur) return 0;
-  if (elapsed < attack) return elapsed / attack;
-  return Math.exp(-elapsed / decay);
 }
 
 // ADSR envelope with exponential curves
