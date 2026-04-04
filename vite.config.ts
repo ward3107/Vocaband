@@ -29,7 +29,7 @@ export default defineConfig(() => {
         },
         workbox: {
           cleanupOutdatedCaches: true,
-          navigateFallbackDenylist: [/./],
+          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
               urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
