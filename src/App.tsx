@@ -47,7 +47,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { getPlanLimits, isModeAllowed, isPro } from "./utils/planLimits";
 import { useAudio } from "./hooks/useAudio";
 import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
@@ -1359,7 +1358,6 @@ export default function App() {
               email: supabaseUser.email || "",
               role: "teacher",
               displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
-              plan: isAllowed ? 'pro' : 'free',
             };
             // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
             const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
@@ -1627,13 +1625,6 @@ export default function App() {
         return alphabet[val % alphabet.length];
       })
       .join("");
-    // Free tier: check class limit
-    const planLimits = getPlanLimits(user.plan);
-    if (classes.length >= planLimits.maxClasses) {
-      showToast(`Free plan allows ${planLimits.maxClasses} class${planLimits.maxClasses === 1 ? '' : 'es'}. Contact your admin for Pro access.`, "info");
-      return;
-    }
-
     const newClass = {
       name: newClassName,
       teacherUid: user.uid,
@@ -1663,12 +1654,6 @@ export default function App() {
    * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
    */
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Free tier: OCR not available
-    if (!getPlanLimits(user?.plan).ocrEnabled) {
-      showToast("OCR scanning requires Pro. Contact your admin for access.", "info");
-      e.target.value = "";
-      return;
-    }
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { showToast("Image too large (max 10 MB).", "error"); e.target.value = ""; return; }
@@ -5354,17 +5339,6 @@ export default function App() {
           onLogout={() => supabase.auth.signOut()}
         />
 
-        {/* Plan badge */}
-        {user?.role === 'teacher' && (
-          <div className="flex justify-end px-4 sm:px-6 -mb-2 mt-1" style={{ maxWidth: '72rem', marginLeft: 'auto', marginRight: 'auto' }}>
-            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-              isPro(user.plan) ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'
-            }`}>
-              {isPro(user.plan) ? '⭐ Pro' : 'Free'}
-            </span>
-          </div>
-        )}
-
         <div className="" style={{ maxWidth: '72rem', marginLeft: 'auto', marginRight: 'auto' }}>
           {/* Quick Action Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -5968,22 +5942,13 @@ export default function App() {
               const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
               // In Quick Play: lock modes that were already completed this session
               const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
-              // Free tier: lock modes not in the allowed list
-              const isPlanLocked = user?.role === 'teacher' && !isQuickPlayGuest && !isModeAllowed(mode.id, user?.plan);
-              const isLocked = isQpLocked || isPlanLocked;
 
               return (
                 <motion.button
                   key={mode.id}
-                  onClick={() => {
-                    if (isLocked) {
-                      if (isPlanLocked) showToast("This mode requires Pro. Contact your admin for access.", "info");
-                      return;
-                    }
-                    setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true);
-                  }}
-                  disabled={isLocked}
-                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                  onClick={() => { if (isQpLocked) return; setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
+                  disabled={isQpLocked}
+                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
@@ -5992,12 +5957,7 @@ export default function App() {
                 >
                   <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
-                    {isPlanLocked && (
-                      <div className="absolute -top-2 -right-2 bg-amber-500 text-white rounded-full px-1.5 py-0.5 shadow-md text-[9px] font-black">
-                        PRO
-                      </div>
-                    )}
-                    {!isPlanLocked && (isCompleted || isQpLocked) && (
+                    {(isCompleted || isQpLocked) && (
                       <div className={`absolute -top-2 -right-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
                         <CheckCircle2 size={16} />
                       </div>
