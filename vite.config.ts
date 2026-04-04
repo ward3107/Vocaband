@@ -10,6 +10,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        selfDestroying: true,
         includeAssets: ['icon.svg'],
         manifest: {
           name: 'Vocaband',
