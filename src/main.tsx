@@ -1,36 +1,44 @@
+console.log('[BOOT] main.tsx loaded');
 import {StrictMode} from 'react';
 import { AccessibilityWidget } from './components/AccessibilityWidget';
 import {createRoot} from 'react-dom/client';
+console.log('[BOOT] React imports OK');
 import App from './App.tsx';
+console.log('[BOOT] App import OK');
 import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
 // PWA service worker disabled — was causing white screens due to stale cache
 // import { registerSW } from 'virtual:pwa-register';
 import { supabase } from './core/supabase';
+console.log('[BOOT] All imports OK');
 
-// Exchange PKCE auth code BEFORE React mounts.  We must await this so the
-// lock is released before onAuthStateChange tries to acquire it — otherwise
-// they fight for 5 seconds, onAuthStateChange steals the lock, and the
-// exchange is aborted (teacher session never established).
 function renderApp() {
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <ErrorBoundary>
-        <>
-          <App />
-          <AccessibilityWidget />
-        </>
-      </ErrorBoundary>
-    </StrictMode>,
-  );
+  console.log('[BOOT] renderApp() called');
+  try {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <ErrorBoundary>
+          <>
+            <App />
+            <AccessibilityWidget />
+          </>
+        </ErrorBoundary>
+      </StrictMode>,
+    );
+    console.log('[BOOT] React rendered');
+  } catch (err) {
+    console.error('[BOOT] React render failed:', err);
+    document.getElementById('root')!.innerHTML = '<div style="padding:2rem;color:red;font-family:sans-serif"><h1>App crashed</h1><pre>' + String(err) + '</pre></div>';
+  }
 }
 
 async function boot() {
+  console.log('[BOOT] boot() started');
   try {
     const params = new URLSearchParams(window.location.search);
     if (params.has('code')) {
+      console.log('[BOOT] PKCE code exchange starting');
       const code = params.get('code')!;
-      // Exchange PKCE code for session. Retry once on transient failure.
       let succeeded = false;
       for (let attempt = 0; attempt < 2 && !succeeded; attempt++) {
         try {
@@ -49,8 +57,6 @@ async function boot() {
         }
       }
       if (!succeeded) {
-        // Only flag as failed if no session exists at all — if a previous
-        // exchange already established the session, the user is fine.
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           sessionStorage.setItem('oauth_exchange_failed', '1');
@@ -60,8 +66,9 @@ async function boot() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   } catch (err) {
-    console.error('Boot error (rendering app anyway):', err);
+    console.error('[BOOT] Boot error (rendering app anyway):', err);
   }
+  console.log('[BOOT] About to call renderApp()');
   renderApp();
 }
 
