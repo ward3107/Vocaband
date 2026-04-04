@@ -111,6 +111,22 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   </button>
 ));
 
+// Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
+function secureRandomInt(max: number): number {
+  if (max <= 0) return 0;
+  const limit = (0x100000000 - (0x100000000 % max)) >>> 0;
+  let r: number;
+  do {
+    r = crypto.getRandomValues(new Uint32Array(1))[0];
+  } while (r >= limit);
+  return r % max;
+}
+
+// Generate a unique negative ID for custom words (not security-sensitive, just needs uniqueness)
+function uniqueNegativeId(offset = 0): number {
+  return -(Date.now() + offset + secureRandomInt(10000));
+}
+
 
 export default function App() {
   // --- AUTH & NAVIGATION STATE ---
@@ -268,7 +284,7 @@ export default function App() {
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
-  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * QUICK_PLAY_AVATARS.length)]);
+  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
   const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
@@ -1038,7 +1054,7 @@ export default function App() {
         `Great job ${user.displayName}! Keep going!`,
         `Well done ${user.displayName}! You're getting better and better!`,
       ];
-      const phrase = phrases[Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * phrases.length)];
+      const phrase = phrases[secureRandomInt( phrases.length)];
       setTimeout(() => speak(phrase), 500);
     }
   }, [isFinished]);
@@ -1890,7 +1906,7 @@ export default function App() {
         const translation = customTranslations.get(term.term);
         if (translation && (translation.hebrew || translation.arabic)) {
           const customWord: Word = {
-            id: -Date.now() - crypto.getRandomValues(new Uint32Array(1))[0] % 1000,
+            id: uniqueNegativeId(),
             english: term.term.charAt(0).toUpperCase() + term.term.slice(1).toLowerCase(),
             hebrew: translation.hebrew || "",
             arabic: translation.arabic || "",
@@ -3086,7 +3102,7 @@ export default function App() {
   useEffect(() => {
     if (currentWord) {
       // 50% chance to show correct translation, 50% chance to show wrong translation
-      if (crypto.getRandomValues(new Uint32Array(1))[0] % 2 === 0) {
+      if (secureRandomInt(2) === 0) {
         setTfOption(currentWord);
       } else {
         let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
@@ -3094,7 +3110,7 @@ export default function App() {
           const allPossibleWords = [...ALL_WORDS, ...gameWords];
           possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
         }
-        setTfOption(possibleDistractors[Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * possibleDistractors.length)]);
+        setTfOption(possibleDistractors[secureRandomInt( possibleDistractors.length)]);
       }
       setIsFlipped(false);
     }
@@ -6505,7 +6521,7 @@ export default function App() {
                         quickPlayCustomWords.forEach((data, term) => {
                           if (data.hebrew || data.arabic) {
                             customWordsToAdd.push({
-                              id: -Date.now() - crypto.getRandomValues(new Uint32Array(1))[0] % 1000 - customWordsToAdd.length,
+                              id: uniqueNegativeId() - customWordsToAdd.length,
                               english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                               hebrew: data.hebrew || "",
                               arabic: data.arabic || "",
@@ -6566,7 +6582,7 @@ export default function App() {
                         const translation = await translateWord(term);
                         if (translation) {
                           customWordsToAdd.push({
-                            id: -Date.now() - crypto.getRandomValues(new Uint32Array(1))[0] % 1000 - customWordsToAdd.length,
+                            id: uniqueNegativeId() - customWordsToAdd.length,
                             english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                             hebrew: translation.hebrew,
                             arabic: translation.arabic,
@@ -6702,7 +6718,7 @@ export default function App() {
 
                               // Create custom word with negative ID
                               const customWord: Word = {
-                                id: -Date.now() - crypto.getRandomValues(new Uint32Array(1))[0] % 1000,
+                                id: uniqueNegativeId(),
                                 english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                                 hebrew: data.hebrew || "",
                                 arabic: data.arabic || "",
@@ -8214,7 +8230,7 @@ export default function App() {
             `Way to go, ${user?.displayName}!`,
             `${user?.displayName} is on fire!`,
             `Bravo, ${user?.displayName}!`,
-          ][Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * 8)]
+          ][secureRandomInt( 8)]
         }</h1>
         <p className="text-lg sm:text-xl mb-6">{
           [
@@ -8223,7 +8239,7 @@ export default function App() {
             "Your vocabulary is growing!",
             "Keep this momentum going!",
             "You're making great progress!",
-          ][Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * 5)]
+          ][secureRandomInt( 5)]
         }</p>
         <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">

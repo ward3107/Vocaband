@@ -85,7 +85,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           </button>
         )}
         <div className="w-10 h-10 rounded-full signature-gradient border-2 border-white overflow-hidden shadow-sm">
-          {userAvatar ? (
+          {userAvatar && /^https?:\/\//i.test(userAvatar) ? (
             <img alt="Profile" src={userAvatar} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-white font-bold">
