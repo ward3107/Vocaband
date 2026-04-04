@@ -97,9 +97,39 @@ async function startServer() {
     // Trust proxy so req.ip reflects the real client IP behind Cloudflare/Render
     app.set("trust proxy", 1);
 
-    // Security headers via helmet — CSP disabled temporarily to debug white screen
+    // Security headers via helmet with Content Security Policy
+    // CSP restricts which origins can serve scripts, styles, images, etc.
+    const supabaseHost = process.env.SUPABASE_URL
+      ? new URL(process.env.SUPABASE_URL).host
+      : "*.supabase.co";
+    const cdnUrl = process.env.VITE_CLOUDFLARE_URL || process.env.VITE_CLOUDFRONT_URL || "";
+
     app.use(helmet({
-      contentSecurityPolicy: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
+          imgSrc: ["'self'", "data:", "blob:", `https://${supabaseHost}`, ...(cdnUrl ? [cdnUrl] : [])],
+          mediaSrc: ["'self'", `https://${supabaseHost}`, ...(cdnUrl ? [cdnUrl] : [])],
+          connectSrc: [
+            "'self'",
+            `https://${supabaseHost}`,
+            `wss://${supabaseHost}`,
+            "https://accounts.google.com",
+            "https://translation.googleapis.com",
+            ...(cdnUrl ? [cdnUrl] : []),
+            // Allow WebSocket connections to the same origin
+            "ws:", "wss:",
+          ],
+          frameSrc: ["'self'", "https://accounts.google.com"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+        },
+      },
       // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure
       hsts: {
         maxAge: 31536000,
