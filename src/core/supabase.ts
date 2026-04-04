@@ -3,17 +3,32 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    // Use PKCE flow for better mobile/redirect support
-    flowType: 'pkce',
-    // Disable automatic URL detection — we exchange the PKCE code manually
-    // in main.tsx before React mounts.
-    detectSessionInUrl: false,
-  },
-});
+// Guard: warn loudly if Supabase env vars are missing so the app doesn't
+// silently hang on a loading spinner forever.
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+if (!isSupabaseConfigured) {
+  console.error(
+    '[Vocaband] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are not set. ' +
+    'The app will run in offline/unconfigured mode. ' +
+    'Copy .env.example to .env and fill in your Supabase credentials.'
+  );
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      // Use PKCE flow for better mobile/redirect support
+      flowType: 'pkce',
+      // Disable automatic URL detection — we exchange the PKCE code manually
+      // in main.tsx before React mounts.
+      detectSessionInUrl: false,
+    },
+  }
+);
 
 // ---------------------------------------------------------------------------
 // Error handling

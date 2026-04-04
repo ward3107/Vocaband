@@ -11,20 +11,29 @@ import { createClient } from "@supabase/supabase-js";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types.js";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils.js";
 
-// Validate required environment variables before starting
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
-  process.exit(1);
+// Check if Supabase is configured — server features (auth, socket, API endpoints)
+// require these, but the frontend can still be served without them.
+const hasSupabaseConfig = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+if (!hasSupabaseConfig) {
+  console.warn(
+    "WARNING: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set.\n" +
+    "The server will start but auth, socket, and API endpoints will be disabled.\n" +
+    "Copy .env.example to .env and add your Supabase credentials."
+  );
 }
 
 // Supabase admin client — uses the service role key to verify tokens server-side
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+// Only created if credentials are available.
+const supabaseAdmin = hasSupabaseConfig
+  ? createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+  : null;
 
 async function verifyToken(token: string): Promise<string | null> {
+  if (!supabaseAdmin) return null;
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     if (error) {
@@ -45,6 +54,7 @@ async function verifyToken(token: string): Promise<string | null> {
 type UserRole = "teacher" | "student" | "admin";
 
 async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
+  if (!supabaseAdmin) return null;
   try {
     const { data, error } = await supabaseAdmin
       .from("users")
@@ -62,6 +72,7 @@ async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; class
 }
 
 async function isTeacherForClass(uid: string, classCode: string): Promise<boolean> {
+  if (!supabaseAdmin) return false;
   try {
     const { data, error } = await supabaseAdmin
       .from("classes")
@@ -300,6 +311,7 @@ async function startServer() {
       // much faster than fetching 1000 rows and summing in JS — critical for 200+ users)
       let totalScore = 0;
       try {
+        if (!supabaseAdmin) throw new Error("Supabase not configured");
         const { data, error } = await supabaseAdmin
           .from("progress")
           .select("score.sum()")
@@ -560,6 +572,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+
+    // Prevent browsers from caching the service worker — must always fetch fresh
+    app.get("/sw.js", (_req, res) => {
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Service-Worker-Allowed", "/");
+      res.sendFile(path.join(distPath, "sw.js"));
+    });
+
     app.use(express.static(distPath));
 
     // Serve sitemap.xml with explicit XML content type so search engines

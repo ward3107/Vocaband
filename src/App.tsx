@@ -46,7 +46,7 @@ import {
   Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
@@ -1157,6 +1157,12 @@ export default function App() {
 
   // --- AUTH LOGIC ---
   useEffect(() => {
+    // If Supabase isn't configured, skip auth entirely and show the landing page.
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     // PKCE code exchange happens in main.tsx (outside React lifecycle)
     // to avoid StrictMode double-mount races.  By the time this effect
     // runs, the exchange is already in-flight or completed.
@@ -3839,10 +3845,19 @@ export default function App() {
     </div>;
   }
 
+  // Configuration error banner — shown when Supabase env vars are missing
+  const configErrorBanner = !isSupabaseConfigured ? (
+    <div className="fixed top-0 left-0 w-full bg-red-600 text-white px-4 py-3 text-center text-sm font-bold z-[9999]">
+      <AlertTriangle size={16} className="inline mr-2" />
+      Supabase is not configured. Copy <code className="bg-red-700 px-1 rounded">.env.example</code> to <code className="bg-red-700 px-1 rounded">.env</code> and add your credentials, then restart the server.
+    </div>
+  ) : null;
+
   // --- PUBLIC VIEWS (No authentication required) ---
   if (view === "public-landing") {
     return (
       <>
+        {configErrorBanner}
         <LandingPageWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("student-account-login")}
