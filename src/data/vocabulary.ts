@@ -5191,8 +5191,10 @@ export const ALL_WORDS: Word[] = [
 // ============================================================================
 // TOPIC PACKS — curated word lists by theme (IDs from ALL_WORDS)
 // ============================================================================
-const byEnglish = (terms: string[]) =>
-  ALL_WORDS.filter(w => terms.includes(w.english.toLowerCase())).map(w => w.id);
+const byEnglish = (terms: string[]) => {
+  const termsSet = new Set(terms.map(t => t.toLowerCase()));
+  return ALL_WORDS.filter(w => termsSet.has(w.english.toLowerCase())).map(w => w.id);
+};
 
 export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
