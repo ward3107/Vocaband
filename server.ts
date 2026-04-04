@@ -140,7 +140,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many OCR requests. Please wait a minute before trying again." },
-    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req) || "unknown",
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
   });
 
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).

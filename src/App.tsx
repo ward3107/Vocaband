@@ -60,7 +60,7 @@ import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
 import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import { PastePreviewModal } from "./components/PastePreviewModal";
-import { analyzePastedText } from "./utils/wordAnalysis";
+import { analyzePastedText, type WordAnalysisResult } from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
 import OAuthButton from "./components/OAuthButton";
@@ -83,7 +83,7 @@ import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 type MammothModule = typeof import('mammoth');
 type ConfettiModule = typeof import('canvas-confetti');
 type SocketIOModule = typeof import('socket.io-client');
-type Socket = SocketIOModule['Socket'];
+type Socket = InstanceType<SocketIOModule['Socket']>;
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -298,7 +298,7 @@ export default function App() {
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
-  const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState(null);
+  const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -1077,7 +1077,7 @@ export default function App() {
   // always fail with "Authentication required" on the first attempt, causing
   // the console error the teacher sees before the retry succeeds.
   useEffect(() => {
-    let s: ReturnType<typeof io> | undefined = undefined;
+    let s: Socket | undefined = undefined;
     let cancelled = false;
 
     const getToken = async () => {
@@ -1106,46 +1106,42 @@ export default function App() {
       const io = socketIO.default || socketIO;
 
       const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
-      s = io(socketUrl || "/", {
+      const sock = io(socketUrl || "/", {
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         // Async callback ensures a fresh token is fetched on every reconnect,
         // so the handshake never carries a stale/expired JWT.
         auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
-      });
+      }) as Socket;
+      s = sock;
 
-      // Debug: log connection attempt
+      setSocket(sock);
 
-      setSocket(s);
-
-      s.on("connect", () => {
+      sock.on("connect", () => {
         setSocketConnected(true);
       });
-      s.on("disconnect", (reason: any) => {
+      sock.on("disconnect", (reason: any) => {
         setSocketConnected(false);
       });
-      s.on("reconnect", () => {
+      sock.on("reconnect", () => {
         setSocketConnected(true);
         const currentUser = userRef.current;
         // Allow students to rejoin live challenge on reconnect.
         // Token is provided via the socket auth callback (line above), not in the payload.
         if (currentUser?.classCode && isLiveChallengeRef.current) {
           if (currentUser.role === "student") {
-            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
+            sock.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
           }
         }
       });
-      s.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
-      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
-        if (typeof data === "object" && data !== null && "name" in data && "baseScore" in data && "currentGameScore" in data) {
-          setLeaderboard(data as unknown as unknown as Record<string, LeaderboardEntry> | undefined);
+      sock.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
+      sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
+        if (typeof data === "object" && data !== null) {
+          setLeaderboard(data as Record<string, LeaderboardEntry>);
         } else {
-          setLeaderboard(undefined as unknown as Record<string, LeaderboardEntry>);
+          setLeaderboard({});
         }
-      });
-      s.on(SOCKET_EVENTS.CHALLENGE_UPDATE, (data: unknown) => {
-        // Challenge updates are handled via the socket listener in the live challenge view
       });
     };
 
@@ -1700,7 +1696,7 @@ export default function App() {
       console.log('Raw text for reference:', rawText.substring(0, 100) + '...');
 
       // Create Word objects for custom assignment
-      const customWordsFromOCR: Word[] = extractedWords.map((word, index) => ({
+      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => ({
         id: Date.now() + index, // Generate unique ID
         english: word,
         hebrew: '', // Leave empty - user can add later
@@ -2798,7 +2794,7 @@ export default function App() {
 
       // Step 2: Look up class + existing user profile in parallel
       // OPTIMIZATION: Check cache first to avoid database query
-      let classData: ClassData;
+      let classData: ClassData | undefined;
       const cacheKey = `vocaband_class_${trimmedCode}`;
 
       try {
@@ -2947,7 +2943,7 @@ export default function App() {
     } catch (error) {
       trackAutoError(error, 'Student login failed');
       const errorMsg = error && typeof error === 'object' && 'message' in error
-        ? (error.message.includes('fetch') || error.message.includes('network')
+        ? (String((error as { message: unknown }).message).includes('fetch') || String((error as { message: unknown }).message).includes('network')
           ? "Network error. Please check your connection."
           : "Could not log in. Please try again.")
         : "Could not log in. Please try again.";
@@ -3447,7 +3443,7 @@ export default function App() {
         const existingIndex = prev.findIndex(
           p => p.assignmentId === activeAssignment.id
             && p.mode === gameMode
-            && p.studentUid === currentAuthUid
+            && p.studentUid === studentUid
         );
 
         if (existingIndex >= 0) {
@@ -4291,22 +4287,9 @@ export default function App() {
           </div>
           <button
             onClick={async () => {
-              // If in game mode, go back to mode selection; otherwise go to landing
-              if (view === "game" && !showModeSelection) {
-                // Go back to mode selection (not name entry)
-                setShowModeSelection(true);
-                setIsFinished(false);
-                setFeedback(null);
-              } else if (view === "game" && showModeSelection) {
-                // Leaving QP entirely — remove from podium
-                await cleanupQuickPlayGuest();
-                setView("public-landing");
-                setQuickPlayActiveSession(null);
-                setUser(null);
-              } else {
-                // Leaving join screen — just go back
-                setView("public-landing");
-              }
+              // Leaving join screen — go back to landing
+              setView("public-landing");
+              setQuickPlayActiveSession(null);
             }}
             className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
           >
@@ -4317,14 +4300,14 @@ export default function App() {
         <main className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
             {!quickPlayActiveSession ? (
               <div className="text-center py-12 sm:py-20">
-                <Loader2 className="mx-auto animate-spin text-primary mb-4" size={36} sm:size={48} />
+                <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
                 <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
               </div>
             ) : !quickPlayStudentName ? (
               <div className="w-full max-w-md">
                 <div className="text-center mb-6 sm:mb-8">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                    <QrCode className="text-white" size={32} sm:size={40} />
+                    <QrCode className="text-white w-8 h-8 sm:w-10 sm:h-10" />
                   </div>
                   <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
                   <p className="text-sm sm:text-base text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
@@ -6214,7 +6197,7 @@ export default function App() {
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
-          showBackButton
+          showBack
           onBack={() => setView("teacher-dashboard")}
         />
 
@@ -6378,7 +6361,7 @@ export default function App() {
           {/* Word Search Section */}
           <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-surface-container-highest">
             <h2 className="text-lg sm:text-xl font-black text-on-surface mb-3 sm:mb-4 flex items-center gap-2">
-              <Search className="text-primary" size={18} sm:size={20} />
+              <Search className="text-primary" size={18} />
               Add Words to Search
             </h2>
 
@@ -6422,7 +6405,7 @@ export default function App() {
                 onClick={() => setQuickPlayWordEditorOpen(true)}
                 className="mb-3 sm:mb-4 p-6 sm:p-8 bg-surface-container rounded-xl border-2 border-dashed border-surface-container-highest text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Search className="mx-auto text-on-surface-variant mb-2" size={24} sm:size={32} />
+                <Search className="mx-auto text-on-surface-variant mb-2" size={24} />
                 <p className="text-sm font-bold text-on-surface-variant mb-1">Click to add words</p>
                 <p className="text-xs text-on-surface-variant">Paste: apple, "ice cream", house</p>
               </div>
@@ -6434,7 +6417,7 @@ export default function App() {
                 onClick={() => setQuickPlayWordEditorOpen(true)}
                 className="w-full py-2.5 sm:py-3 bg-white border-2 border-dashed border-surface-container-highest rounded-xl text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 mb-3 sm:mb-4"
               >
-                <Plus size={14} sm:size={16} />
+                <Plus size={14} />
                 Add More Words
               </button>
             )}
@@ -6461,7 +6444,7 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <Camera size={14} sm:size={16} />
+                    <Camera size={14} />
                     <span className="text-xs sm:text-sm">Upload Image to Extract Words</span>
                   </>
                 )}
@@ -6582,11 +6565,7 @@ export default function App() {
                             english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                             hebrew: translation.hebrew,
                             arabic: translation.arabic,
-                            sentence: "",
-                            example: "",
-                            band: "I" as Band,
-                            level: 1,
-                            frequency: 0
+                            level: "Custom"
                           });
                         }
                       }
@@ -6605,8 +6584,6 @@ export default function App() {
                         english: w.english,
                         hebrew: w.hebrew,
                         arabic: w.arabic,
-                        sentence: w.sentence || "",
-                        example: w.example || ""
                       }))) : null;
 
                       const { data, error } = await supabase.rpc('create_quick_play_session', {
@@ -6635,7 +6612,7 @@ export default function App() {
                   }}
                   className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-green-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
                 >
-                  <QrCode size={16} sm:size={20} />
+                  <QrCode size={16} />
                   <span className="text-sm sm:text-base">Add All & Generate QR</span>
                 </button>
               </div>
@@ -6647,7 +6624,7 @@ export default function App() {
             <div className="bg-gradient-to-br from-amber-50 to-purple-50 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 border-2 border-amber-200">
               <div className="flex items-start justify-between mb-2 sm:mb-3">
                 <div className="flex items-start gap-2 sm:gap-3">
-                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={16} sm:size={20} />
+                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
                   <div>
                     <h3 className="font-black text-amber-900 mb-0.5 sm:mb-1 text-sm sm:text-base">Custom Words Found</h3>
                     <p className="text-xs sm:text-sm text-amber-700">AI will translate these automatically! Click the green "Add All & Generate QR" button above to add everything at once.</p>
@@ -6672,7 +6649,7 @@ export default function App() {
                               onClick={() => handleAutoTranslate(term)}
                               className="text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-0.5 sm:gap-1"
                             >
-                              <Sparkles size={10} sm:size={12} />
+                              <Sparkles size={10} />
                               <span className="hidden sm:inline">Auto-translate with AI</span>
                               <span className="sm:hidden">Translate</span>
                             </button>
@@ -6680,7 +6657,7 @@ export default function App() {
                         </div>
                         {quickPlayTranslating.has(term) && (
                           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 text-purple-600">
-                            <Loader2 className="animate-spin" size={14} sm:size={16} />
+                            <Loader2 className="animate-spin" size={14} />
                             <span className="text-[10px] sm:text-xs font-bold">AI is translating...</span>
                           </div>
                         )}
@@ -6776,7 +6753,7 @@ export default function App() {
                           }}
                           className="text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-0.5 sm:gap-1"
                         >
-                          <Sparkles size={8} sm:size={10} />
+                          <Sparkles size={8} />
                           <span className="hidden sm:inline">Translate & Add</span>
                           <span className="sm:hidden">Translate</span>
                         </button>
@@ -6793,7 +6770,7 @@ export default function App() {
             <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-surface-container-highest">
               <div className="flex justify-between items-center mb-3 sm:mb-4">
                 <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
-                  <CheckCircle2 className="text-green-600" size={16} sm:size={20} />
+                  <CheckCircle2 className="text-green-600" size={16} />
                   <span className="text-base sm:text-lg">Select Words ({quickPlaySelectedWords.length} selected)</span>
                 </h2>
                 <div className="flex gap-1.5 sm:gap-2">
@@ -6882,7 +6859,7 @@ export default function App() {
                                       </p>
                                     </div>
                                     {isSelected && (
-                                      <Check className="text-primary flex-shrink-0" size={14} sm:size={16} />
+                                      <Check className="text-primary flex-shrink-0" size={14} />
                                     )}
                                   </div>
                                 </button>
@@ -6902,7 +6879,7 @@ export default function App() {
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-amber-200">
               <div className="flex justify-between items-center mb-3 sm:mb-4">
                 <h2 className="text-lg sm:text-xl font-black text-amber-900 flex items-center gap-1.5 sm:gap-2">
-                  <Sparkles className="text-amber-600" size={16} sm:size={20} />
+                  <Sparkles className="text-amber-600" size={16} />
                   <span className="text-base sm:text-lg">Custom Words ({quickPlaySelectedWords.filter(w => w.id < 0).length})</span>
                 </h2>
               </div>
@@ -6931,7 +6908,7 @@ export default function App() {
                           }}
                           className="flex-shrink-0 text-rose-600 hover:text-rose-800"
                         >
-                          <X size={14} sm:size={16} />
+                          <X size={14} />
                         </button>
                       </div>
                     </div>
@@ -6969,8 +6946,6 @@ export default function App() {
                       english: w.english,
                       hebrew: w.hebrew,
                       arabic: w.arabic,
-                      sentence: w.sentence || "",
-                      example: w.example || ""
                     }))) : null;
 
                     // Close preview modal if open
@@ -7002,7 +6977,7 @@ export default function App() {
                   }}
                   className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-indigo-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
                 >
-                  <QrCode size={16} sm:size={20} />
+                  <QrCode size={16} />
                   <span className="text-sm sm:text-base">Generate QR Code</span>
                 </button>
               </div>
@@ -7018,14 +6993,14 @@ export default function App() {
               <div className="p-4 sm:p-6 border-b border-surface-container-highest">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
-                    <Search className="text-primary" size={16} sm:size={20} />
+                    <Search className="text-primary" size={16} />
                     <span className="text-base sm:text-lg">Add Your Words</span>
                   </h2>
                   <button
                     onClick={() => setQuickPlayWordEditorOpen(false)}
                     className="text-on-surface-variant hover:text-on-surface transition-colors"
                   >
-                    <X size={20} sm:size={24} />
+                    <X size={20} />
                   </button>
                 </div>
                 <p className="text-xs sm:text-sm text-on-surface-variant mt-1.5 sm:mt-2">
@@ -7092,14 +7067,14 @@ export default function App() {
                             className="text-rose-400 hover:text-rose-600 transition-opacity"
                             aria-label={`Remove ${term}`}
                           >
-                            <X size={12} sm:size={14} />
+                            <X size={12} />
                           </button>
                         </div>
                       ))}
                     </div>
                     {searchTerms.length > 1 && (
                       <p className="text-[10px] sm:text-xs text-on-surface-variant mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
-                        <Info size={10} sm:size={12} />
+                        <Info size={10} />
                         <span className="hidden sm:inline">Tip: Drag one word onto another to combine them into a phrase!</span>
                         <span className="sm:hidden">Drag words together to make phrases!</span>
                       </p>
@@ -7138,7 +7113,7 @@ export default function App() {
                     }}
                     className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base"
                   >
-                    <CheckCircle2 size={14} sm:size={18} />
+                    <CheckCircle2 size={14} />
                     Done
                   </button>
                 </div>

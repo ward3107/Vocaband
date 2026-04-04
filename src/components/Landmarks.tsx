@@ -112,12 +112,8 @@ interface HeadingProps {
 }
 
 export const Heading: React.FC<HeadingProps> = ({ level, children, className = '' }) => {
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
-  return (
-    <Tag className={className}>
-      {children}
-    </Tag>
-  );
+  const Tag = `h${level}` as keyof React.JSX.IntrinsicElements;
+  return React.createElement(Tag, { className }, children);
 };
 
 /**
