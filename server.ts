@@ -103,6 +103,7 @@ async function startServer() {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com"],  // unsafe-inline required by Cloudflare Rocket Loader (injects inline bootstrap); cloudflareinsights.com for Web Analytics
+          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com"],  // explicit elem directive so helmet's script-src-attr 'none' doesn't block inline <script> tags
           styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],  // unsafe-inline needed for motion library animation styles; fonts.googleapis.com for Google Fonts CSS
           fontSrc: ["'self'", "fonts.gstatic.com"],  // gstatic.com serves the actual font files
           imgSrc: ["'self'", "data:", "https:"],
