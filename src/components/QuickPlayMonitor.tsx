@@ -41,47 +41,39 @@ const ANIMAL_AVATARS = [
   '🦝', '🐧', '🦚', '🐝', '🦩', '🐬', '🦎', '🐢',
 ];
 
-// ─── Theme definitions ────────────────────────────────────────────────────────
+// ─── Theme definitions (light surface + accent colors) ────────────────────────
 const THEMES = {
   classic: {
-    name: 'Classic',
-    icon: '💜',
-    bg: 'from-indigo-600 via-purple-600 to-pink-500',
-    card: 'bg-white/10 border-white/20',
-    accent: 'bg-purple-500',
-    podiumGold: 'from-yellow-400 to-amber-300',
-    podiumSilver: 'from-slate-300 to-slate-200',
-    podiumBronze: 'from-orange-400 to-orange-300',
+    name: 'Classic', icon: '\uD83D\uDC9C', dot: 'bg-primary',
+    bg: 'bg-surface', text: 'text-on-surface',
+    card: 'bg-surface-container-lowest border-surface-container-highest',
+    qrCard: 'from-primary to-primary-container',
+    podium1: 'from-primary-container to-primary', podium2: 'from-tertiary-fixed to-tertiary', podium3: 'from-secondary-container to-secondary',
+    accent: 'text-primary', accentBg: 'bg-primary', badge1: 'bg-primary text-on-primary', badge2: 'bg-tertiary text-on-tertiary', badge3: 'bg-secondary text-on-secondary',
   },
   neon: {
-    name: 'Neon Night',
-    icon: '🌃',
-    bg: 'from-gray-900 via-gray-800 to-gray-900',
-    card: 'bg-white/5 border-cyan-500/30',
-    accent: 'bg-cyan-500',
-    podiumGold: 'from-yellow-400 to-yellow-200',
-    podiumSilver: 'from-cyan-400 to-cyan-200',
-    podiumBronze: 'from-pink-500 to-pink-300',
+    name: 'Neon Night', icon: '\uD83C\uDF03', dot: 'bg-gray-900',
+    bg: 'bg-gray-950', text: 'text-white',
+    card: 'bg-white/5 border-cyan-500/20',
+    qrCard: 'from-cyan-600 to-purple-700',
+    podium1: 'from-yellow-400 to-yellow-600', podium2: 'from-cyan-400 to-cyan-600', podium3: 'from-pink-400 to-pink-600',
+    accent: 'text-cyan-400', accentBg: 'bg-cyan-500', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-cyan-400 text-cyan-900', badge3: 'bg-pink-400 text-pink-900',
   },
   ocean: {
-    name: 'Ocean',
-    icon: '🌊',
-    bg: 'from-blue-700 via-cyan-600 to-teal-500',
-    card: 'bg-white/10 border-white/20',
-    accent: 'bg-teal-500',
-    podiumGold: 'from-yellow-400 to-amber-300',
-    podiumSilver: 'from-blue-300 to-blue-200',
-    podiumBronze: 'from-teal-400 to-teal-300',
+    name: 'Ocean', icon: '\uD83C\uDF0A', dot: 'bg-secondary',
+    bg: 'bg-surface', text: 'text-on-surface',
+    card: 'bg-surface-container-lowest border-secondary-container',
+    qrCard: 'from-secondary to-secondary-container',
+    podium1: 'from-yellow-400 to-amber-300', podium2: 'from-blue-300 to-blue-500', podium3: 'from-teal-300 to-teal-500',
+    accent: 'text-secondary', accentBg: 'bg-secondary', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-blue-500 text-white', badge3: 'bg-teal-500 text-white',
   },
   sunset: {
-    name: 'Sunset',
-    icon: '🌅',
-    bg: 'from-orange-500 via-rose-500 to-purple-600',
-    card: 'bg-white/10 border-white/20',
-    accent: 'bg-rose-500',
-    podiumGold: 'from-yellow-300 to-yellow-100',
-    podiumSilver: 'from-rose-300 to-rose-200',
-    podiumBronze: 'from-orange-400 to-orange-300',
+    name: 'Sunset', icon: '\uD83C\uDF05', dot: 'bg-error-container',
+    bg: 'bg-surface', text: 'text-on-surface',
+    card: 'bg-surface-container-lowest border-error-container/30',
+    qrCard: 'from-error-container to-error',
+    podium1: 'from-yellow-300 to-amber-400', podium2: 'from-rose-300 to-rose-500', podium3: 'from-orange-300 to-orange-500',
+    accent: 'text-error', accentBg: 'bg-error', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-rose-500 text-white', badge3: 'bg-orange-500 text-white',
   },
 };
 
@@ -260,399 +252,224 @@ export default function QuickPlayMonitor({
     return ANIMAL_AVATARS[Math.abs(hash) % ANIMAL_AVATARS.length];
   };
 
+  // CSS for float animation (injected once)
+  const floatStyle = `@keyframes qp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`;
+
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${t.bg} p-3 sm:p-6 text-white transition-colors duration-500`}>
-      <div className="max-w-5xl mx-auto">
-        {/* ─── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+    <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-hidden transition-colors duration-500`}>
+      <style>{floatStyle}</style>
+
+      {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
+      <header className="bg-white/80 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4">
+        <div className="flex items-center gap-4 sm:gap-8">
           <button
             onClick={() => {
               if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }
               setMusicPlaying(false);
               onBack();
             }}
-            className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
+            className="font-headline font-black italic text-xl sm:text-2xl text-primary tracking-tighter hover:opacity-80 transition-opacity"
           >
-            &larr; Dashboard
+            Vocaband
           </button>
-
-          <div className="flex items-center gap-2">
-            {/* Theme picker */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowThemePicker(!showThemePicker); setShowMusicPicker(false); }}
-                className="flex items-center gap-1.5 text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
-                title="Change theme"
-              >
-                <Palette size={16} />
-                <span className="hidden sm:inline">Theme</span>
-              </button>
-              <AnimatePresence>
-                {showThemePicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    className="absolute right-0 top-full mt-2 bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/20 p-2 z-50 min-w-[160px] shadow-2xl"
-                  >
-                    {Object.entries(THEMES).map(([key, th]) => (
-                      <button
-                        key={key}
-                        onClick={() => { setTheme(key as ThemeKey); setShowThemePicker(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                          theme === key ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
-                        }`}
-                      >
-                        <span className="text-lg">{th.icon}</span>
-                        {th.name}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Music controls */}
-            <div className="relative">
-              <button
-                onClick={toggleMusic}
-                className={`flex items-center gap-1.5 text-sm backdrop-blur-sm px-3 py-2 rounded-full border transition-all ${
-                  musicPlaying
-                    ? 'bg-green-500/30 border-green-400/50 text-green-200'
-                    : 'bg-white/20 border-white/30 hover:bg-white/30 text-white/80'
-                }`}
-                title={musicPlaying ? 'Pause music' : 'Play music'}
-              >
-                {musicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                <span className="hidden sm:inline">{musicPlaying ? 'Music On' : 'Music'}</span>
-              </button>
-            </div>
-
-            {/* Music track picker */}
-            {musicPlaying && (
-              <div className="relative">
+        </div>
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Theme color dots */}
+          <div className="flex items-center bg-surface-container rounded-full px-3 py-1.5 gap-2">
+            <Palette size={16} className="text-primary" />
+            <div className="flex gap-1">
+              {Object.entries(THEMES).map(([key, th]) => (
                 <button
-                  onClick={() => { setShowMusicPicker(!showMusicPicker); setShowThemePicker(false); }}
-                  className="flex items-center gap-1 text-sm bg-white/20 backdrop-blur-sm px-2.5 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
-                >
-                  <Music size={14} />
-                  <ChevronDown size={14} />
-                </button>
-                <AnimatePresence>
-                  {showMusicPicker && (
+                  key={key}
+                  onClick={() => setTheme(key as ThemeKey)}
+                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${th.dot} transition-all ${
+                    theme === key ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'opacity-60 hover:opacity-100'
+                  }`}
+                  title={th.name}
+                />
+              ))}
+            </div>
+          </div>
+          {/* Music select */}
+          <div className="flex items-center bg-surface-container rounded-full px-3 py-1.5 gap-2">
+            <button onClick={toggleMusic} className="text-primary" title={musicPlaying ? 'Pause' : 'Play'}>
+              {musicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+            <select
+              value={currentTrack}
+              onChange={e => changeTrack(parseInt(e.target.value))}
+              className="bg-transparent border-none text-xs sm:text-sm font-headline font-semibold focus:ring-0 text-on-surface cursor-pointer pr-6"
+            >
+              {MUSIC_TRACKS.map((track, idx) => (
+                <option key={track.file} value={idx}>{track.icon} {track.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </header>
+
+      {/* ─── Main content ──────────────────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
+        {/* ─── Hero: QR + Podium row ────────────────────────────────────────── */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8">
+          {/* QR Code & Join Info */}
+          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-6 sm:p-8 flex items-center gap-6 shadow-lg relative overflow-hidden`}>
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+            <div className="bg-white p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`}
+                alt="Quick Play QR Code"
+                className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
+              />
+            </div>
+            <div className="flex flex-col justify-center text-white min-w-0">
+              <span className="font-label text-[10px] uppercase tracking-[0.2em] opacity-80">Join at {window.location.host}</span>
+              <h2 className="font-headline text-3xl sm:text-4xl font-black tracking-tighter">{session.sessionCode}</h2>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-xs font-medium">{students.length > 0 ? `${students.length} players joined` : 'Waiting for players...'}</span>
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(qrUrl); showToast('Link copied!', 'success'); }}
+                className="mt-3 flex items-center gap-1.5 text-xs font-bold text-white/80 hover:text-white transition-colors"
+              >
+                <Copy size={12} /> Copy Link
+              </button>
+            </div>
+          </div>
+
+          {/* Podium Section */}
+          <div className={`lg:col-span-8 ${t.card} rounded-xl p-4 sm:p-6 flex items-end justify-center gap-3 sm:gap-6 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px]`}>
+            <div className="absolute top-3 left-4 font-label text-[10px] uppercase tracking-widest opacity-30 font-black">Current Leaders</div>
+
+            {top3.length > 0 ? (
+              <>
+                {/* 2nd place */}
+                <div className="flex flex-col items-center gap-1.5">
+                  {top3[1] ? (
+                    <>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getAvatar(top3[1].name, 1)}</div>
+                        <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm`}>2nd</div>
+                      </motion.div>
+                      <p className="font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center">{top3[1].name}</p>
+                      <p className={`font-label text-[10px] ${t.accent} font-bold`}>{top3[1].score} pts</p>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 bg-gradient-to-b ${t.podium2} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
+                        <span className="text-white/20 text-4xl font-black">2</span>
+                      </motion.div>
+                    </>
+                  ) : <div className="w-20" style={{ height: 140 }} />}
+                </div>
+
+                {/* 1st place */}
+                <div className="flex flex-col items-center gap-1.5">
+                  {top3[0] && (
+                    <>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
+                        <div className={`w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl border-4 border-primary shadow-2xl scale-110`}>{getAvatar(top3[0].name, 0)}</div>
+                        <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] font-black px-2 py-0.5 rounded-full shadow-md`}>1st</div>
+                      </motion.div>
+                      <p className="font-headline text-sm sm:text-lg font-black truncate max-w-[100px] text-center">{top3[0].name}</p>
+                      <p className={`font-label text-xs ${t.accent} font-black`}>{top3[0].score} pts</p>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 bg-gradient-to-b ${t.podium1} rounded-t-xl flex items-center justify-center shadow-2xl overflow-hidden relative`}>
+                        <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                        <span className="text-white/20 text-6xl font-black relative z-10">1</span>
+                      </motion.div>
+                    </>
+                  )}
+                </div>
+
+                {/* 3rd place */}
+                <div className="flex flex-col items-center gap-1.5">
+                  {top3[2] ? (
+                    <>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getAvatar(top3[2].name, 2)}</div>
+                        <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm`}>3rd</div>
+                      </motion.div>
+                      <p className="font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center">{top3[2].name}</p>
+                      <p className={`font-label text-[10px] ${t.accent} font-bold`}>{top3[2].score} pts</p>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 bg-gradient-to-b ${t.podium3} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
+                        <span className="text-white/20 text-4xl font-black">3</span>
+                      </motion.div>
+                    </>
+                  ) : <div className="w-20" style={{ height: 120 }} />}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 w-full">
+                <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
+                  <Users size={48} className="mx-auto mb-3 opacity-20" />
+                </motion.div>
+                <p className="font-headline font-bold text-on-surface-variant">Waiting for players...</p>
+                <p className="text-sm text-on-surface-variant/60 mt-1">Share the QR code to get started</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ─── Student Grid ────────────────────────────────────────────────── */}
+        {sorted.length > 0 && (
+          <section>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+              <AnimatePresence mode="popLayout">
+                {sorted.map((student, idx) => {
+                  const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000;
+                  return (
                     <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-2 bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/20 p-2 z-50 min-w-[180px] shadow-2xl"
+                      key={student.name}
+                      layout
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className={`${t.card} rounded-lg p-3 sm:p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-all border group relative`}
                     >
-                      {MUSIC_TRACKS.map((track, idx) => (
-                        <button
-                          key={track.file}
-                          onClick={() => changeTrack(idx)}
-                          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                            currentTrack === idx ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <span>{track.icon}</span>
-                          {track.name}
-                        </button>
-                      ))}
-                      {/* Volume slider */}
-                      <div className="px-3 py-2 border-t border-white/10 mt-1">
-                        <div className="flex items-center gap-2">
-                          <VolumeX size={12} className="text-white/50" />
-                          <input
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            value={musicVolume}
-                            onChange={e => setMusicVolume(parseFloat(e.target.value))}
-                            className="flex-1 accent-white h-1"
-                          />
-                          <Volume2 size={12} className="text-white/50" />
+                      {/* Kick on hover */}
+                      <button
+                        onClick={() => setConfirmKick(student.name)}
+                        className="absolute top-1 right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/80 text-on-error transition-all z-10"
+                        title={`Remove ${student.name}`}
+                      >
+                        <X size={10} />
+                      </button>
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-surface-container-high flex items-center justify-center text-xl sm:text-2xl border-2 border-surface-container-highest">
+                          {student.avatar !== '\uD83E\uDD8A' ? student.avatar : getAvatar(student.name, idx)}
                         </div>
+                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-headline text-xs sm:text-sm font-bold truncate">{student.name}</span>
+                        <span className="font-label text-[9px] sm:text-[10px] text-on-surface-variant font-medium">{student.score} pts</span>
                       </div>
                     </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* End session */}
-            <button
-              onClick={() => setEndModal(true)}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full font-bold transition-all text-sm shadow-lg hover:shadow-xl hover:scale-105"
-            >
-              End Session
-            </button>
-          </div>
-        </div>
-
-        {/* ─── Title ───────────────────────────────────────────────────────── */}
-        <div className="text-center mb-6">
-          <motion.h1
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
-          >
-            {theme === 'neon' ? '🕹️' : '🎮'} Quick Play
-          </motion.h1>
-          <p className="text-white/90 font-bold text-xs sm:text-base">
-            Scan QR code to play &bull; {session.words.length} words &bull; No login required
-          </p>
-        </div>
-
-        {/* ─── Main grid ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-
-          {/* ─── QR Code Section ───────────────────────────────────────────── */}
-          <div className={`${t.card} backdrop-blur-md rounded-2xl p-4 sm:p-6 border`}>
-            <h2 className="text-lg sm:text-xl font-black mb-3 flex items-center gap-2">
-              <QrCode size={20} />
-              Scan to Join
-            </h2>
-            <div
-              className="bg-white rounded-xl p-3 sm:p-4 mb-3 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setQrEnlarged(true)}
-              title="Click to enlarge"
-            >
-              <div className="aspect-square max-w-[200px] sm:max-w-[250px] mx-auto">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`}
-                  alt="Quick Play QR Code"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <p className="text-center text-purple-400 text-xs mt-2 font-medium">Tap to enlarge</p>
+                  );
+                })}
+              </AnimatePresence>
             </div>
-            <p className="text-xs sm:text-sm text-white/80 text-center mb-3">
-              Session Code:{' '}
-              <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-black ml-1">
-                {session.sessionCode}
-              </span>
-            </p>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(qrUrl);
-                showToast('Link copied!', 'success');
-              }}
-              className="w-full px-4 py-3 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm"
-            >
-              <Copy size={16} />
-              Copy Link
-            </button>
-          </div>
+          </section>
+        )}
+      </main>
 
-          {/* ─── Live Leaderboard Section ───────────────────────────────────── */}
-          <div className={`${t.card} backdrop-blur-md rounded-2xl p-4 sm:p-6 border`}>
-            {/* Student count with animated counter */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
-                <Users size={20} />
-                Players
-              </h2>
-              <motion.div
-                key={students.length}
-                initial={{ scale: 1.3, color: '#4ade80' }}
-                animate={{ scale: 1, color: '#ffffff' }}
-                className="text-2xl sm:text-3xl font-black"
-              >
-                {students.length}
-              </motion.div>
-            </div>
-
-            {sorted.length > 0 ? (
-              <div className="space-y-4">
-                {/* ─── Animated Podium ─────────────────────────────────────── */}
-                {top3.length > 0 && (
-                  <div className="flex items-end justify-center gap-2 sm:gap-3 pt-8 pb-2">
-                    {/* 2nd place */}
-                    <div className="flex flex-col items-center w-24 sm:w-28">
-                      {top3[1] ? (
-                        <>
-                          <motion.span
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-3xl mb-1"
-                          >
-                            {getAvatar(top3[1].name, 1)}
-                          </motion.span>
-                          <span className="text-xs font-bold truncate max-w-full text-center">{top3[1].name}</span>
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: 60 }}
-                            transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}
-                            className={`w-full bg-gradient-to-t ${t.podiumSilver} rounded-t-lg mt-1 flex flex-col items-center justify-end py-2 overflow-hidden`}
-                          >
-                            <span className="text-lg">🥈</span>
-                            <span className="text-xs font-black text-slate-700">{top3[1].score}</span>
-                          </motion.div>
-                        </>
-                      ) : <div style={{ height: 90 }} />}
-                    </div>
-
-                    {/* 1st place */}
-                    <div className="flex flex-col items-center w-28 sm:w-32">
-                      {top3[0] && (
-                        <>
-                          <motion.span
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-4xl mb-1"
-                          >
-                            {getAvatar(top3[0].name, 0)}
-                          </motion.span>
-                          <span className="text-sm font-bold truncate max-w-full text-center">{top3[0].name}</span>
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: 85 }}
-                            transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }}
-                            className={`w-full bg-gradient-to-t ${t.podiumGold} rounded-t-lg mt-1 flex flex-col items-center justify-end py-2 overflow-hidden relative`}
-                          >
-                            {/* Crown shimmer */}
-                            <motion.div
-                              animate={{ opacity: [0.3, 0.7, 0.3] }}
-                              transition={{ repeat: Infinity, duration: 2 }}
-                              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                            />
-                            <span className="text-2xl relative z-10">🥇</span>
-                            <span className="text-sm font-black text-yellow-800 relative z-10">{top3[0].score}</span>
-                          </motion.div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* 3rd place */}
-                    <div className="flex flex-col items-center w-24 sm:w-28">
-                      {top3[2] ? (
-                        <>
-                          <motion.span
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.3 }}
-                            className="text-3xl mb-1"
-                          >
-                            {getAvatar(top3[2].name, 2)}
-                          </motion.span>
-                          <span className="text-xs font-bold truncate max-w-full text-center">{top3[2].name}</span>
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: 45 }}
-                            transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }}
-                            className={`w-full bg-gradient-to-t ${t.podiumBronze} rounded-t-lg mt-1 flex flex-col items-center justify-end py-2 overflow-hidden`}
-                          >
-                            <span className="text-lg">🥉</span>
-                            <span className="text-xs font-black text-orange-800">{top3[2].score}</span>
-                          </motion.div>
-                        </>
-                      ) : <div style={{ height: 70 }} />}
-                    </div>
-                  </div>
-                )}
-
-                {/* ─── Student Bubble Grid ───────────────────────────────────── */}
-                <h3 className="text-sm font-black text-white/60 uppercase tracking-wider">All Players</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <AnimatePresence mode="popLayout">
-                    {sorted.map((student, idx) => {
-                      const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000;
-                      const modeLabel = student.mode === 'joined' ? 'Lobby' : student.mode;
-                      const rankColor = idx === 0 ? 'ring-yellow-400' : idx === 1 ? 'ring-slate-300' : idx === 2 ? 'ring-orange-400' : 'ring-transparent';
-                      const maxScore = sorted[0]?.score || 1;
-                      const scorePercent = maxScore > 0 ? (student.score / maxScore) * 100 : 0;
-
-                      return (
-                        <motion.div
-                          key={student.name}
-                          layout
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                          className={`relative group rounded-2xl p-3 ${t.card} border backdrop-blur-sm hover:bg-white/15 transition-all cursor-default`}
-                        >
-                          {/* Kick overlay on hover */}
-                          <button
-                            onClick={() => setConfirmKick(student.name)}
-                            className="absolute top-1 right-1 p-1 rounded-full bg-red-500/0 group-hover:bg-red-500/80 text-transparent group-hover:text-white transition-all z-10"
-                            title={`Remove ${student.name}`}
-                          >
-                            <X size={12} />
-                          </button>
-
-                          {/* Online indicator */}
-                          <div className={`absolute top-2 left-2 w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-400 shadow-lg shadow-green-400/50' : 'bg-gray-500'}`}>
-                            {isOnline && (
-                              <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
-                            )}
-                          </div>
-
-                          {/* Avatar */}
-                          <div className="text-center">
-                            <div className={`text-3xl sm:text-4xl mb-1 ring-2 ${rankColor} rounded-full w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mx-auto`}>
-                              {getAvatar(student.name, idx)}
-                            </div>
-                            <div className="font-bold text-xs sm:text-sm truncate mt-1">{student.name}</div>
-                            <div className="text-[10px] text-white/50 capitalize">{modeLabel}</div>
-                          </div>
-
-                          {/* Score bar */}
-                          <div className="mt-2">
-                            <div className="text-center text-sm sm:text-base font-black">
-                              {student.score}
-                              <span className="text-[10px] font-normal text-white/40 ml-0.5">pts</span>
-                            </div>
-                            <div className="w-full bg-white/10 rounded-full h-1.5 mt-1 overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${scorePercent}%` }}
-                                transition={{ duration: 0.5 }}
-                                className={`h-full rounded-full ${
-                                  idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-slate-300' : idx === 2 ? 'bg-orange-400' : 'bg-white/40'
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-white/50">
-                <motion.div
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                >
-                  <Users size={52} className="mx-auto mb-3 opacity-40" />
-                </motion.div>
-                <p className="font-bold text-lg">Waiting for players...</p>
-                <p className="text-sm text-white/40 mt-1">Share the QR code to get started</p>
-              </div>
-            )}
-          </div>
+      {/* ─── Bottom Nav Bar ────────────────────────────────────────────────── */}
+      <footer className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-4 sm:pb-6 pt-3 bg-white/90 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem]">
+        <div className={`flex flex-col items-center p-2 ${t.accent}`}>
+          <Users size={22} />
+          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Monitor</span>
         </div>
-
-        {/* ─── Words Preview ───────────────────────────────────────────────── */}
-        <div className={`${t.card} backdrop-blur-md rounded-2xl p-4 sm:p-6 border mt-4 sm:mt-6`}>
-          <h2 className="text-lg sm:text-xl font-black mb-3 flex items-center gap-2">
-            <BookOpen size={20} />
-            Words ({session.words.length})
-          </h2>
-          <div className="flex flex-wrap gap-1.5">
-            {session.words.map(word => (
-              <span key={word.id} className="px-2.5 py-1 bg-white/15 rounded-full text-xs sm:text-sm font-bold">
-                {word.english}
-              </span>
-            ))}
-          </div>
+        <div className="flex flex-col items-center text-on-surface-variant p-2 opacity-40">
+          <BookOpen size={22} />
+          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Words</span>
         </div>
-      </div>
+        <button
+          onClick={() => setEndModal(true)}
+          className={`flex flex-col items-center ${t.accentBg} text-white rounded-full p-3 sm:p-4 scale-110 -translate-y-3 shadow-lg active:scale-95 transition-all`}
+        >
+          <X size={22} />
+          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-0.5">Stop</span>
+        </button>
+      </footer>
 
       {/* ─── Enlarged QR Modal ───────────────────────────────────────────────── */}
       <AnimatePresence>
