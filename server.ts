@@ -97,21 +97,9 @@ async function startServer() {
     // Trust proxy so req.ip reflects the real client IP behind Cloudflare/Render
     app.set("trust proxy", 1);
 
-    // Security headers via helmet
+    // Security headers via helmet — CSP disabled temporarily to debug white screen
     app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com"],  // unsafe-inline required by Cloudflare Rocket Loader (injects inline bootstrap); cloudflareinsights.com for Web Analytics
-          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com"],  // explicit elem directive so helmet's script-src-attr 'none' doesn't block inline <script> tags
-          styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],  // unsafe-inline needed for motion library animation styles; fonts.googleapis.com for Google Fonts CSS
-          fontSrc: ["'self'", "fonts.gstatic.com"],  // gstatic.com serves the actual font files
-          imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", allowedOrigin],
-          frameSrc: ["https://accounts.google.com"],
-          workerSrc: ["'self'", "blob:"],
-        },
-      },
+      contentSecurityPolicy: false,
       // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure
       hsts: {
         maxAge: 31536000,
