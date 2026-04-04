@@ -1,25 +1,34 @@
-import {StrictMode, lazy, Suspense} from 'react';
+import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import './index.css';
-import { Loader2 } from 'lucide-react';
 
-// Dynamic imports — keeps the browser responsive during the ~5s module load
-const App = lazy(() => import('./App'));
-const AccessibilityWidget = lazy(() => import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget })));
-const ErrorBoundary = lazy(() => import('./ErrorBoundary'));
-
-const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-stone-100">
-    <Loader2 className="animate-spin text-blue-700" size={48} />
-  </div>
-);
+// Yield to the browser event loop so it stays responsive
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
 async function boot() {
+  // Show loading spinner immediately
+  const root = document.getElementById('root')!;
+
+  // Pre-load heavy modules sequentially, yielding between each
+  // so the browser stays responsive (each takes ~250-450ms)
+  await import('./data/vocabulary');
+  await yieldToMain();
+  await import('lucide-react');
+  await yieldToMain();
+  await import('motion/react');
+  await yieldToMain();
+
+  // Now load App — its heavy dependencies are already cached
+  const { default: App } = await import('./App');
+  await yieldToMain();
+  const { AccessibilityWidget } = await import('./components/AccessibilityWidget');
+  const { default: ErrorBoundary } = await import('./ErrorBoundary');
+
+  // PKCE code exchange
   try {
-    // Exchange PKCE auth code BEFORE React mounts
-    const { supabase } = await import('./core/supabase');
     const params = new URLSearchParams(window.location.search);
     if (params.has('code')) {
+      const { supabase } = await import('./core/supabase');
       const code = params.get('code')!;
       let succeeded = false;
       for (let attempt = 0; attempt < 2 && !succeeded; attempt++) {
@@ -48,17 +57,18 @@ async function boot() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   } catch (err) {
-    console.error('Boot error (rendering app anyway):', err);
+    console.error('Boot error:', err);
   }
 
-  createRoot(document.getElementById('root')!).render(
+  // Render the app
+  createRoot(root).render(
     <StrictMode>
-      <Suspense fallback={<LoadingScreen />}>
-        <ErrorBoundary>
+      <ErrorBoundary>
+        <>
           <App />
           <AccessibilityWidget />
-        </ErrorBoundary>
-      </Suspense>
+        </>
+      </ErrorBoundary>
     </StrictMode>,
   );
 }
