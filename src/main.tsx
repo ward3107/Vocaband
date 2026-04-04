@@ -2,47 +2,42 @@ import {createRoot} from 'react-dom/client';
 
 const root = document.getElementById('root')!;
 const log = (msg: string) => {
-  root.innerHTML += `<p style="font-family:monospace;margin:4px 16px">${new Date().toISOString().slice(11,23)} ${msg}</p>`;
+  root.innerHTML += `<p style="font-family:monospace;margin:2px 16px;font-size:13px">${new Date().toISOString().slice(11,23)} ${msg}</p>`;
 };
 
-log('Starting imports...');
+log('Testing App.tsx sub-imports...');
 
 async function testImports() {
   try {
-    log('1. Importing vocabulary...');
-    const t1 = performance.now();
-    await import('./data/vocabulary');
-    log(`   OK (${(performance.now()-t1).toFixed(0)}ms)`);
+    const t = (label: string, fn: () => Promise<any>) => async () => {
+      log(label);
+      const s = performance.now();
+      await fn();
+      log(`  OK (${(performance.now()-s).toFixed(0)}ms)`);
+    };
 
-    log('2. Importing sentence-bank...');
-    const t2 = performance.now();
-    await import('./data/sentence-bank');
-    log(`   OK (${(performance.now()-t2).toFixed(0)}ms)`);
+    await t('1. lucide-react', () => import('lucide-react'))();
+    await t('2. motion/react', () => import('motion/react'))();
+    await t('3. core/supabase', () => import('./core/supabase'))();
+    await t('4. utils/planLimits', () => import('./utils/planLimits'))();
+    await t('5. hooks/useAudio', () => import('./hooks/useAudio'))();
+    await t('6. QuickPlayMonitor', () => import('./components/QuickPlayMonitor'))();
+    await t('7. FloatingButtons', () => import('./components/FloatingButtons'))();
+    await t('8. CookieBanner', () => import('./components/CookieBanner'))();
+    await t('9. CreateAssignmentWizard', () => import('./components/CreateAssignmentWizard'))();
+    await t('10. PastePreviewModal', () => import('./components/PastePreviewModal'))();
+    await t('11. utils/wordAnalysis', () => import('./utils/wordAnalysis'))();
+    await t('12. LazyComponents', () => import('./components/LazyComponents'))();
+    await t('13. OAuthButton', () => import('./components/OAuthButton'))();
+    await t('14. errorTracking', () => import('./errorTracking'))();
+    await t('15. constants/game', () => import('./constants/game'))();
+    await t('16. TopAppBar', () => import('./components/TopAppBar'))();
+    await t('17. ClassCard', () => import('./components/ClassCard'))();
+    await t('18. ActionCard', () => import('./components/ActionCard'))();
+    await t('19. utils (shuffle etc)', () => import('./utils'))();
+    await t('20. App.tsx FULL', () => import('./App'))();
 
-    log('3. Importing vocabulary-matching...');
-    const t3 = performance.now();
-    await import('./data/vocabulary-matching');
-    log(`   OK (${(performance.now()-t3).toFixed(0)}ms)`);
-
-    log('4. Importing constants/game...');
-    const t4 = performance.now();
-    await import('./constants/game');
-    log(`   OK (${(performance.now()-t4).toFixed(0)}ms)`);
-
-    log('5. Importing supabase...');
-    const t5 = performance.now();
-    await import('./core/supabase');
-    log(`   OK (${(performance.now()-t5).toFixed(0)}ms)`);
-
-    log('6. Importing App...');
-    const t6 = performance.now();
-    await import('./App');
-    log(`   OK (${(performance.now()-t6).toFixed(0)}ms)`);
-
-    log('All imports OK. Rendering app...');
-    const { default: App } = await import('./App');
-    root.innerHTML = '';
-    createRoot(root).render(<App />);
+    log('ALL DONE - no freeze detected');
   } catch (err) {
     log(`ERROR: ${String(err)}`);
   }
