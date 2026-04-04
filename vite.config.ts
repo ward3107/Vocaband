@@ -20,8 +20,6 @@ export default defineConfig(() => {
         output: {
           manualChunks: {
             lucide: ['lucide-react'],
-            motion: ['motion', 'motion/react'],
-            vendor: ['react', 'react-dom', '@supabase/supabase-js'],
           },
         },
       },

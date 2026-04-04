@@ -2,29 +2,8 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import './index.css';
 
-// Yield to the browser event loop so it stays responsive
-const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
-
 async function boot() {
-  // Show loading spinner immediately
-  const root = document.getElementById('root')!;
-
-  // Pre-load heavy modules sequentially, yielding between each
-  // so the browser stays responsive (each takes ~250-450ms)
-  await import('./data/vocabulary');
-  await yieldToMain();
-  await import('lucide-react');
-  await yieldToMain();
-  await import('motion/react');
-  await yieldToMain();
-
-  // Now load App — its heavy dependencies are already cached
-  const { default: App } = await import('./App');
-  await yieldToMain();
-  const { AccessibilityWidget } = await import('./components/AccessibilityWidget');
-  const { default: ErrorBoundary } = await import('./ErrorBoundary');
-
-  // PKCE code exchange
+  // PKCE code exchange (if returning from OAuth)
   try {
     const params = new URLSearchParams(window.location.search);
     if (params.has('code')) {
@@ -60,8 +39,12 @@ async function boot() {
     console.error('Boot error:', err);
   }
 
-  // Render the app
-  createRoot(root).render(
+  // Load App asynchronously so the browser stays responsive
+  const { default: App } = await import('./App');
+  const { AccessibilityWidget } = await import('./components/AccessibilityWidget');
+  const { default: ErrorBoundary } = await import('./ErrorBoundary');
+
+  createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary>
         <>
