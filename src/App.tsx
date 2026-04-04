@@ -277,6 +277,7 @@ export default function App() {
   const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
   const [quickPlayKicked, setQuickPlayKicked] = useState(false);
   const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
+  const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
@@ -935,7 +936,18 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWord, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel } = useAudio();
+  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel } = useAudio();
+
+  // In Quick Play online mode, suppress ALL sounds (pronunciation, motivational, etc.)
+  const isQuickPlayGuest = !!user?.isGuest;
+  const speakWord = (...args: Parameters<typeof speakWordRaw>) => {
+    if (isQuickPlayGuest) return;
+    return speakWordRaw(...args);
+  };
+  const playMotivational = (...args: Parameters<typeof playMotivationalRaw>) => {
+    if (isQuickPlayGuest) return '';
+    return playMotivationalRaw(...args);
+  };
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -1492,6 +1504,26 @@ export default function App() {
       setView("student-dashboard");
     }
   }, [view, user, loading]);
+
+  // Quick Play guest: remove from podium on page unload/refresh
+  useEffect(() => {
+    if (!user?.isGuest || !quickPlayActiveSession) return;
+    const handleUnload = () => {
+      // Clear localStorage so name is released for re-login
+      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+      // Use sendBeacon to delete progress (fire-and-forget, works on tab close)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseKey) {
+        // Delete progress via REST API using sendBeacon
+        // sendBeacon only supports POST, so we use the PostgREST RPC approach
+        // Instead, we just clear localStorage - the teacher can manually remove stale students
+      }
+      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [user?.isGuest, quickPlayActiveSession?.id]);
 
   // Warn before leaving while a score save is in flight
   useEffect(() => {
@@ -3098,6 +3130,7 @@ export default function App() {
   }, []);
 
   const speak = (text: string) => {
+    if (isQuickPlayGuest) return; // No sounds in Quick Play online
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -3142,6 +3175,7 @@ export default function App() {
       // Delay speech 250ms so the spring animation shows the letter first
       setTimeout(() => {
         if (cancelled) return;
+        if (isQuickPlayGuest) { setTimeout(() => revealNext(idx + 1), 400); return; } // No sounds in QP
         // Cancel any ongoing speech before starting the new letter
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(word[idx]);
@@ -3203,7 +3237,7 @@ export default function App() {
         const next = sentenceIndex + 1;
         if (next >= validSentences.length) {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         } else {
           setSentenceIndex(next);
           setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
@@ -3217,6 +3251,24 @@ export default function App() {
       setSentenceFeedback("wrong");
       setTimeout(() => { setBuiltSentence([]); setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean))); setSentenceFeedback(null); }, 1200);
     }
+  };
+
+  // Remove Quick Play guest from teacher's dashboard (delete progress, clear localStorage)
+  const cleanupQuickPlayGuest = async () => {
+    if (!user?.isGuest || !quickPlayActiveSession) return;
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const authUid = authSession?.user?.id;
+      if (authUid) {
+        await supabase
+          .from('progress')
+          .delete()
+          .eq('assignment_id', quickPlayActiveSession.id)
+          .eq('student_uid', authUid);
+      }
+    } catch {}
+    try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+    setQuickPlayCompletedModes(new Set());
   };
 
   const handleExitGame = () => {
@@ -3254,7 +3306,8 @@ export default function App() {
     }
   };
 
-  const saveScore = async () => {
+  const saveScore = async (scoreOverride?: number) => {
+    const finalScore = scoreOverride !== undefined ? scoreOverride : score;
     if (!user) return;
     setIsSaving(true);
     setSaveError(null);
@@ -3270,7 +3323,7 @@ export default function App() {
           studentUid: authUid,
           assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
           classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.max(0, score),
+          score: Math.max(0, finalScore),
           mode: gameMode,
           completedAt: new Date().toISOString(),
           mistakes: mistakes,
@@ -3295,6 +3348,8 @@ export default function App() {
         if (error) {
           console.error('[Quick Play] Failed to save progress:', error);
         } else {
+          // Mark this mode as completed so it gets locked in mode selection
+          setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
         }
 
         setIsSaving(false);
@@ -3311,7 +3366,7 @@ export default function App() {
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
     const maxPossible = gameWords.length * 10;
-    const cappedScore = Math.min(Math.max(0, score), maxPossible);
+    const cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
 
     const xpEarned = cappedScore;
     const newXp = xp + xpEarned;
@@ -3442,7 +3497,7 @@ export default function App() {
         if (matchedIds.length + 1 === matchingPairs.length / 2) {
           setTimeout(() => {
             setIsFinished(true);
-            saveScore();
+            saveScore(newScore);
           }, 500);
         }
       } else {
@@ -3481,7 +3536,7 @@ export default function App() {
           setHiddenOptions([]);
         } else {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         }
       }, AUTO_SKIP_DELAY_MS);
     } else {
@@ -3540,7 +3595,7 @@ export default function App() {
           setFeedback(null);
         } else {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         }
       }, 1000);
     } else {
@@ -3553,26 +3608,27 @@ export default function App() {
   };
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
+    let currentScore = score;
     if (knewIt) {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       setTimeout(() => setMotivationalMessage(null), 1000);
-      const newScore = score + 5;
-      setScore(newScore);
+      currentScore = score + 5;
+      setScore(currentScore);
       if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: currentScore }); }, 0);
       }
     } else {
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
     }
-    
+
     if (currentIndex < gameWords.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     } else {
       setIsFinished(true);
-      saveScore();
+      saveScore(currentScore);
     }
   };
 
@@ -3597,7 +3653,7 @@ export default function App() {
           setSpellingInput("");
         } else {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         }
       }, 1000);
     } else {
@@ -4222,7 +4278,7 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={() => {
+            onClick={async () => {
               // If in game mode, go back to mode selection; otherwise go to landing
               if (view === "game" && !showModeSelection) {
                 // Go back to mode selection (not name entry)
@@ -4230,10 +4286,13 @@ export default function App() {
                 setIsFinished(false);
                 setFeedback(null);
               } else if (view === "game" && showModeSelection) {
+                // Leaving QP entirely — remove from podium
+                await cleanupQuickPlayGuest();
                 setView("public-landing");
                 setQuickPlayActiveSession(null);
                 setUser(null);
               } else {
+                // Leaving join screen — just go back
                 setView("public-landing");
               }
             }}
@@ -4354,6 +4413,19 @@ export default function App() {
                       }
 
                       // Check for duplicate name in this session
+                      const { data: { session: currentAuth } } = await supabase.auth.getSession();
+                      const currentAuthUid = currentAuth?.user?.id;
+
+                      // First, clean up any stale progress from this same device/auth UID
+                      // (e.g. student refreshed and is re-joining)
+                      if (currentAuthUid) {
+                        await supabase
+                          .from('progress')
+                          .delete()
+                          .eq('assignment_id', quickPlayActiveSession.id)
+                          .eq('student_uid', currentAuthUid);
+                      }
+
                       const { data: existingProgress } = await supabase
                         .from('progress')
                         .select('id')
@@ -5856,12 +5928,15 @@ export default function App() {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {filteredModes.map((mode, idx) => {
               const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
+              // In Quick Play: lock modes that were already completed this session
+              const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
 
               return (
                 <motion.button
                   key={mode.id}
-                  onClick={() => { setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
-                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                  onClick={() => { if (isQpLocked) return; setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
+                  disabled={isQpLocked}
+                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
@@ -5870,8 +5945,8 @@ export default function App() {
                 >
                   <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
-                    {isCompleted && (
-                      <div className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full p-1 shadow-md">
+                    {(isCompleted || isQpLocked) && (
+                      <div className={`absolute -top-2 -right-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
                         <CheckCircle2 size={16} />
                       </div>
                     )}

@@ -495,7 +495,11 @@ async function startServer() {
 
     try {
       const Tesseract = await import("tesseract.js");
-      const { data } = await Tesseract.recognize(req.file.buffer, "eng");
+      const worker = await Tesseract.createWorker("eng", undefined, {
+        cachePath: "/tmp/tesseract-cache",
+      });
+      const { data } = await worker.recognize(req.file.buffer);
+      await worker.terminate();
       const rawText = data.text || "";
 
       // Extract English words, preserve original form, deduplicate
@@ -519,11 +523,12 @@ async function startServer() {
         raw_text: rawText,
         success: true,
       });
-    } catch (error) {
-      console.error("OCR error:", error);
+    } catch (error: any) {
+      console.error("OCR error:", error?.message || error, error?.stack);
       res.status(500).json({
         error: "OCR processing failed",
-        message: "An unexpected error occurred during text recognition.",
+        message: error?.message || "An unexpected error occurred during text recognition.",
+        details: process.env.NODE_ENV !== "production" ? String(error) : undefined,
       });
     }
   });
