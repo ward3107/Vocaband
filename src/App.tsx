@@ -95,7 +95,8 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   <button
     onClick={() => onAnswer(option)}
     disabled={feedback === "show-answer" || feedback === "correct"}
-    className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
+    dir={gameMode === "reverse" ? "ltr" : "auto"}
+    className={`py-5 px-4 sm:py-7 sm:px-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black transition-all duration-300 min-h-[70px] sm:min-h-[85px] ${
       feedback === "correct" && option.id === currentWordId
         ? "bg-blue-600 text-white scale-105 shadow-xl"
         : feedback === "wrong" && option.id !== currentWordId
@@ -104,10 +105,10 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
         ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
         : feedback === "show-answer"
         ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
-        : "bg-stone-100 text-stone-800 hover:bg-stone-200"
+        : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
     }`}
   >
-    {gameMode === "reverse" ? option.english : option[targetLanguage]}
+    {gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}
   </button>
 ));
 
@@ -972,7 +973,7 @@ export default function App() {
   const [mistakes, setMistakes] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
+  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("hebrew");
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
@@ -8464,7 +8465,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans max-w-7xl mx-auto`}>
+    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -8479,14 +8480,14 @@ export default function App() {
           </button>
         </div>
       )}
-      <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-8">
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <div className="bg-white px-3 sm:px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
-            <Trophy className="text-amber-500" size={18} />
-            <span className="font-black text-stone-800">{score}</span>
+      <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
+        <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
+          <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm flex items-center gap-1.5">
+            <Trophy className="text-amber-500" size={16} />
+            <span className="font-black text-stone-800 text-sm sm:text-base">{score}</span>
           </div>
-          <div className="bg-blue-50 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2">
-            <span className="text-blue-700 font-bold text-xs uppercase tracking-widest">XP: {xp}</span>
+          <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-1.5">
+            <span className="text-blue-700 font-bold text-[10px] sm:text-xs uppercase tracking-widest">XP: {xp}</span>
           </div>
           {streak > 0 && (
             <motion.div
@@ -8500,13 +8501,13 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")} className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors">
-            <Languages size={18} /><span className="text-sm font-bold uppercase hidden sm:inline">{targetLanguage}</span>
+            <Languages size={18} /><span className="text-sm font-bold">{targetLanguage === "hebrew" ? "עברית" : "عربي"}</span>
           </button>
           <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold text-sm">Exit</button>
         </div>
       </div>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
+      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-6">
         <div className="lg:col-span-3">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
@@ -8515,7 +8516,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4"
+              className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3"
             >
               <AnimatePresence>
               {matchingPairs.filter(item => !matchedIds.includes(item.id)).map((item, idx) => {
@@ -8528,7 +8529,8 @@ export default function App() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
-                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                  dir="auto"
+                  className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
                     selectedMatch?.id === item.id && selectedMatch?.type === item.type
                       ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
@@ -8546,7 +8548,7 @@ export default function App() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-3 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-4 border-amber-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
             >
               {/* Progress Bar */}
               <progress
@@ -8574,9 +8576,9 @@ export default function App() {
                 </div>
               )}
 
-              <div className="mb-3 sm:mb-12">
-                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {gameWords.length}</span>
-                <div className="flex flex-col items-center justify-center gap-2 sm:gap-6 mb-3 sm:mb-12">
+              <div className="mb-1 sm:mb-4">
+                <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1">{currentIndex + 1} / {gameWords.length}</span>
+                <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-1 sm:mb-4">
                   {currentWord?.imageUrl && (
                     <motion.img
                       initial={{ scale: 0.8, opacity: 0 }}
@@ -8587,18 +8589,18 @@ export default function App() {
                       className="w-16 h-16 sm:w-48 sm:h-48 object-cover rounded-[16px] sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-2xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
+                  <h2 className={`text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
                     dir={(gameMode === "spelling" || gameMode === "reverse" || (gameMode === "flashcards" && isFlipped)) ? "auto" : "ltr"}>
-                    {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] :
+                    {gameMode === "spelling" || gameMode === "reverse" ? (currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew) :
                      gameMode === "scramble" ? scrambledWord :
-                     gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
+                     gameMode === "flashcards" ? (isFlipped ? (currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew) : currentWord?.english) :
                      currentWord?.english}
                   </h2>
                 </div>
-                <div className="flex justify-center gap-2 mt-1 sm:mt-0">
+                <div className="flex justify-center gap-2 mt-0.5 sm:mt-0">
                   <button
                     onClick={() => speakWord(currentWord?.id, currentWord?.english)}
-                    className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                    className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"
                   >
@@ -8647,19 +8649,19 @@ export default function App() {
               )}
 
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
                   {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
                     <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={handleAnswer} />
                   ))}
                 </div>
               ) : gameMode === "true-false" ? (
-                <div className="max-w-md mx-auto">
-                  <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-3 sm:mb-8">
-                    <p className="text-xl sm:text-3xl font-bold text-stone-800" dir="auto">{tfOption?.[targetLanguage]}</p>
+                <div className="max-w-lg mx-auto">
+                  <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-2 sm:mb-6">
+                    <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">{tfOption?.[targetLanguage] || tfOption?.arabic || tfOption?.hebrew}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">True ✓</button>
+                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">False ✗</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
@@ -8787,7 +8789,7 @@ export default function App() {
                     }`}
                   />
                   {gameMode === "spelling" && (
-                    <p className="text-stone-400 font-bold mb-4 sm:mb-8 text-sm sm:text-base">Translation: <span className="text-stone-900">{currentWord?.[targetLanguage]}</span></p>
+                    <p className="text-stone-400 font-bold mb-3 sm:mb-6 text-base sm:text-lg">Translation: <span className="text-stone-900 text-xl sm:text-2xl" dir="auto">{currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew}</span></p>
                   )}
                   {feedback === "show-answer" && (
                     <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
