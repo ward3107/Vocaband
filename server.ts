@@ -572,6 +572,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+
+    // Prevent browsers from caching the service worker — must always fetch fresh
+    app.get("/sw.js", (_req, res) => {
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Service-Worker-Allowed", "/");
+      res.sendFile(path.join(distPath, "sw.js"));
+    });
+
     app.use(express.static(distPath));
 
     // Serve sitemap.xml with explicit XML content type so search engines
