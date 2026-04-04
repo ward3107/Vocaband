@@ -76,6 +76,8 @@ export interface AppUser {
   activeTheme?: string;
   isGuest?: boolean;
   createdAt?: string;
+  plan?: 'free' | 'pro' | 'admin';
+  planExpiresAt?: string;
 }
 
 export interface ClassData {
@@ -127,6 +129,8 @@ export function mapUser(row: any): AppUser {
     unlockedThemes: row.unlocked_themes ?? [],
     powerUps: row.power_ups ?? {},
     activeTheme: row.active_theme ?? 'default',
+    plan: row.plan ?? 'pro',
+    planExpiresAt: row.plan_expires_at,
   };
 }
 
@@ -145,6 +149,8 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.unlockedThemes !== undefined && { unlocked_themes: u.unlockedThemes }),
     ...(u.powerUps !== undefined && { power_ups: u.powerUps }),
     ...(u.activeTheme !== undefined && { active_theme: u.activeTheme }),
+    ...(u.plan !== undefined && { plan: u.plan }),
+    ...(u.planExpiresAt !== undefined && { plan_expires_at: u.planExpiresAt }),
   };
 }
 
