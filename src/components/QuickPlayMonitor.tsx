@@ -43,6 +43,8 @@ const THEMES = {
     qrCard: 'from-primary to-primary-container',
     podium1: 'from-primary-container to-primary', podium2: 'from-tertiary-fixed to-tertiary', podium3: 'from-secondary-container to-secondary',
     accent: 'text-primary', accentBg: 'bg-primary', badge1: 'bg-primary text-on-primary', badge2: 'bg-tertiary text-on-tertiary', badge3: 'bg-secondary text-on-secondary',
+    headerBg: 'bg-white/80', headerText: 'text-primary', footerBg: 'bg-white/90',
+    podiumCard: 'bg-surface-container-lowest border-surface-container-highest',
   },
   neon: {
     name: 'Neon Night', icon: '\uD83C\uDF03', dot: 'bg-gray-900',
@@ -51,6 +53,8 @@ const THEMES = {
     qrCard: 'from-cyan-600 to-purple-700',
     podium1: 'from-yellow-400 to-yellow-600', podium2: 'from-cyan-400 to-cyan-600', podium3: 'from-pink-400 to-pink-600',
     accent: 'text-cyan-400', accentBg: 'bg-cyan-500', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-cyan-400 text-cyan-900', badge3: 'bg-pink-400 text-pink-900',
+    headerBg: 'bg-gray-900/90', headerText: 'text-cyan-400', footerBg: 'bg-gray-900/90',
+    podiumCard: 'bg-white/5 border-cyan-500/20',
   },
   ocean: {
     name: 'Ocean', icon: '\uD83C\uDF0A', dot: 'bg-secondary',
@@ -59,6 +63,8 @@ const THEMES = {
     qrCard: 'from-secondary to-secondary-container',
     podium1: 'from-yellow-400 to-amber-300', podium2: 'from-blue-300 to-blue-500', podium3: 'from-teal-300 to-teal-500',
     accent: 'text-secondary', accentBg: 'bg-secondary', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-blue-500 text-white', badge3: 'bg-teal-500 text-white',
+    headerBg: 'bg-white/80', headerText: 'text-secondary', footerBg: 'bg-white/90',
+    podiumCard: 'bg-surface-container-lowest border-secondary-container',
   },
   sunset: {
     name: 'Sunset', icon: '\uD83C\uDF05', dot: 'bg-error-container',
@@ -67,6 +73,38 @@ const THEMES = {
     qrCard: 'from-error-container to-error',
     podium1: 'from-yellow-300 to-amber-400', podium2: 'from-rose-300 to-rose-500', podium3: 'from-orange-300 to-orange-500',
     accent: 'text-error', accentBg: 'bg-error', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-rose-500 text-white', badge3: 'bg-orange-500 text-white',
+    headerBg: 'bg-white/80', headerText: 'text-primary', footerBg: 'bg-white/90',
+    podiumCard: 'bg-surface-container-lowest border-surface-container-highest',
+  },
+  forest: {
+    name: 'Forest', icon: '\uD83C\uDF3F', dot: 'bg-emerald-600',
+    bg: 'bg-emerald-950', text: 'text-emerald-50',
+    card: 'bg-emerald-900/50 border-emerald-700/30',
+    qrCard: 'from-emerald-600 to-green-800',
+    podium1: 'from-yellow-300 to-amber-500', podium2: 'from-emerald-300 to-emerald-500', podium3: 'from-lime-300 to-lime-500',
+    accent: 'text-emerald-300', accentBg: 'bg-emerald-600', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-emerald-400 text-emerald-900', badge3: 'bg-lime-400 text-lime-900',
+    headerBg: 'bg-emerald-900/90', headerText: 'text-emerald-300', footerBg: 'bg-emerald-900/90',
+    podiumCard: 'bg-emerald-900/50 border-emerald-700/30',
+  },
+  candy: {
+    name: 'Candy Pop', icon: '\uD83C\uDF6C', dot: 'bg-pink-400',
+    bg: 'bg-pink-50', text: 'text-pink-950',
+    card: 'bg-white border-pink-200',
+    qrCard: 'from-pink-400 to-fuchsia-500',
+    podium1: 'from-yellow-300 to-amber-400', podium2: 'from-pink-300 to-pink-500', podium3: 'from-fuchsia-300 to-fuchsia-500',
+    accent: 'text-pink-600', accentBg: 'bg-pink-500', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-pink-500 text-white', badge3: 'bg-fuchsia-500 text-white',
+    headerBg: 'bg-white/90', headerText: 'text-pink-600', footerBg: 'bg-white/90',
+    podiumCard: 'bg-white border-pink-200',
+  },
+  galaxy: {
+    name: 'Galaxy', icon: '\uD83C\uDF0C', dot: 'bg-violet-600',
+    bg: 'bg-slate-950', text: 'text-slate-50',
+    card: 'bg-white/5 border-violet-500/20',
+    qrCard: 'from-violet-600 to-indigo-800',
+    podium1: 'from-amber-300 to-yellow-500', podium2: 'from-violet-400 to-violet-600', podium3: 'from-indigo-400 to-indigo-600',
+    accent: 'text-violet-300', accentBg: 'bg-violet-600', badge1: 'bg-amber-400 text-amber-900', badge2: 'bg-violet-400 text-violet-900', badge3: 'bg-indigo-400 text-indigo-900',
+    headerBg: 'bg-slate-900/90', headerText: 'text-violet-300', footerBg: 'bg-slate-900/90',
+    podiumCard: 'bg-white/5 border-violet-500/20',
   },
 };
 
@@ -232,7 +270,7 @@ export default function QuickPlayMonitor({
       <style>{floatStyle}</style>
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
-      <header className="bg-white/80 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4">
+      <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4 transition-colors duration-500`}>
         <div className="flex items-center gap-4 sm:gap-8">
           <button
             onClick={() => {
@@ -240,15 +278,15 @@ export default function QuickPlayMonitor({
               setMusicPlaying(false);
               onBack();
             }}
-            className="font-headline font-black italic text-xl sm:text-2xl text-primary tracking-tighter hover:opacity-80 transition-opacity"
+            className={`font-headline font-black italic text-xl sm:text-2xl ${t.headerText} tracking-tighter hover:opacity-80 transition-opacity`}
           >
             Vocaband
           </button>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Theme color dots */}
-          <div className="flex items-center bg-surface-container rounded-full px-3 py-1.5 gap-2">
-            <Palette size={16} className="text-primary" />
+          <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-3 py-1.5 gap-2`}>
+            <Palette size={16} className={t.headerText} />
             <div className="flex gap-1">
               {Object.entries(THEMES).map(([key, th]) => (
                 <button
@@ -262,15 +300,25 @@ export default function QuickPlayMonitor({
               ))}
             </div>
           </div>
-          {/* Music select */}
-          <div className="flex items-center bg-surface-container rounded-full px-3 py-1.5 gap-2">
-            <button onClick={toggleMusic} className="text-primary" title={musicPlaying ? 'Pause' : 'Play'}>
+          {/* Music select + volume */}
+          <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-3 py-1.5 gap-2`}>
+            <button onClick={toggleMusic} className={t.headerText} title={musicPlaying ? 'Pause' : 'Play'}>
               {musicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={musicVolume}
+              onChange={e => setMusicVolume(parseFloat(e.target.value))}
+              className="w-16 sm:w-20 h-1.5 accent-primary cursor-pointer"
+              title={`Volume: ${Math.round(musicVolume * 100)}%`}
+            />
             <select
               value={currentTrack}
               onChange={e => changeTrack(parseInt(e.target.value))}
-              className="bg-transparent border-none text-xs sm:text-sm font-headline font-semibold focus:ring-0 text-on-surface cursor-pointer pr-6"
+              className={`bg-transparent border-none text-xs sm:text-sm font-headline font-semibold focus:ring-0 ${t.text} cursor-pointer pr-6`}
             >
               {MUSIC_TRACKS.map((track, idx) => (
                 <option key={track.file} value={idx}>{track.icon} {track.name}</option>
@@ -311,8 +359,8 @@ export default function QuickPlayMonitor({
           </div>
 
           {/* Podium Section */}
-          <div className={`lg:col-span-8 ${t.card} rounded-xl p-4 sm:p-6 flex items-end justify-center gap-3 sm:gap-6 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px]`}>
-            <div className="absolute top-3 left-4 font-label text-[10px] uppercase tracking-widest opacity-30 font-black">Current Leaders</div>
+          <div className={`lg:col-span-8 ${t.podiumCard} rounded-xl p-4 sm:p-6 flex items-end justify-center gap-3 sm:gap-6 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px]`}>
+            <div className={`absolute top-3 left-4 font-label text-[10px] uppercase tracking-widest opacity-30 font-black ${t.text}`}>Current Leaders</div>
 
             {top3.length > 0 ? (
               <>
@@ -324,7 +372,7 @@ export default function QuickPlayMonitor({
                         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm`}>2nd</div>
                       </motion.div>
-                      <p className="font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center">{top3[1].name}</p>
+                      <p className={`font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center ${t.text}`}>{top3[1].name}</p>
                       <p className={`font-label text-[10px] ${t.accent} font-bold`}>{top3[1].score} pts</p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 bg-gradient-to-b ${t.podium2} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl font-black">2</span>
@@ -341,7 +389,7 @@ export default function QuickPlayMonitor({
                         <div className={`w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl border-4 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] font-black px-2 py-0.5 rounded-full shadow-md`}>1st</div>
                       </motion.div>
-                      <p className="font-headline text-sm sm:text-lg font-black truncate max-w-[100px] text-center">{top3[0].name}</p>
+                      <p className={`font-headline text-sm sm:text-lg font-black truncate max-w-[100px] text-center ${t.text}`}>{top3[0].name}</p>
                       <p className={`font-label text-xs ${t.accent} font-black`}>{top3[0].score} pts</p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 bg-gradient-to-b ${t.podium1} rounded-t-xl flex items-center justify-center shadow-2xl overflow-hidden relative`}>
                         <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -359,7 +407,7 @@ export default function QuickPlayMonitor({
                         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm`}>3rd</div>
                       </motion.div>
-                      <p className="font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center">{top3[2].name}</p>
+                      <p className={`font-headline text-xs sm:text-sm font-bold truncate max-w-[80px] text-center ${t.text}`}>{top3[2].name}</p>
                       <p className={`font-label text-[10px] ${t.accent} font-bold`}>{top3[2].score} pts</p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 bg-gradient-to-b ${t.podium3} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl font-black">3</span>
@@ -373,8 +421,8 @@ export default function QuickPlayMonitor({
                 <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
                   <Users size={48} className="mx-auto mb-3 opacity-20" />
                 </motion.div>
-                <p className="font-headline font-bold text-on-surface-variant">Waiting for players...</p>
-                <p className="text-sm text-on-surface-variant/60 mt-1">Share the QR code to get started</p>
+                <p className={`font-headline font-bold ${t.text} opacity-60`}>Waiting for players...</p>
+                <p className={`text-sm ${t.text} opacity-40 mt-1`}>Share the QR code to get started</p>
               </div>
             )}
           </div>
@@ -425,12 +473,12 @@ export default function QuickPlayMonitor({
       </main>
 
       {/* ─── Bottom Nav Bar ────────────────────────────────────────────────── */}
-      <footer className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-4 sm:pb-6 pt-3 bg-white/90 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem]">
+      <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-4 sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
         <div className={`flex flex-col items-center p-2 ${t.accent}`}>
           <Users size={22} />
           <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Monitor</span>
         </div>
-        <div className="flex flex-col items-center text-on-surface-variant p-2 opacity-40">
+        <div className={`flex flex-col items-center ${t.text} p-2 opacity-40`}>
           <BookOpen size={22} />
           <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Words</span>
         </div>

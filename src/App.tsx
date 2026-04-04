@@ -504,6 +504,49 @@ export default function App() {
           wordIds: data.word_ids,
           words: allWords
         });
+
+        // Check if this student already joined this session (page refresh / re-scan)
+        // Force them to rejoin with the SAME name to prevent name-swapping chaos
+        try {
+          const saved = localStorage.getItem('vocaband_qp_guest');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.sessionId === data.id && parsed.name) {
+              // Verify they still have a progress record (weren't kicked)
+              const { data: { session: authSession } } = await supabase.auth.getSession();
+              const authUid = authSession?.user?.id;
+              if (authUid) {
+                const { data: existingRecord } = await supabase
+                  .from('progress')
+                  .select('id')
+                  .eq('assignment_id', data.id)
+                  .eq('student_uid', authUid)
+                  .limit(1);
+                if (existingRecord && existingRecord.length > 0) {
+                  // Auto-rejoin with same name and avatar
+                  const guestUser = createGuestUser(parsed.name, 'quickplay', parsed.avatar || '\uD83E\uDD8A');
+                  setUser(guestUser);
+                  setQuickPlayStudentName(parsed.name);
+                  setQuickPlayAvatar(parsed.avatar || '\uD83E\uDD8A');
+                  const words = allWords.map(w => ({ ...w, hebrew: w.hebrew || '', arabic: w.arabic || '' }));
+                  setAssignmentWords(words);
+                  const quickPlaySentences = generateSentencesForAssignment(words, 2);
+                  setActiveAssignment({
+                    id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
+                    title: "Quick Play",
+                    allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    sentences: quickPlaySentences, sentenceDifficulty: 2,
+                  });
+                  setView("game");
+                  setShowModeSelection(true);
+                  window.history.replaceState({}, '', window.location.pathname);
+                  return; // Skip join screen — go straight to game
+                }
+              }
+            }
+          }
+        } catch {}
+
         setView("quick-play-student");
       };
 
@@ -4239,18 +4282,44 @@ export default function App() {
 
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
-                    <input
-                      id="quick-play-name-input"
-                      type="text"
-                      inputMode="text"
-                      autoCapitalize="words"
-                      autoComplete="off"
-                      maxLength={30}
-                      defaultValue={quickPlayStudentName}
-                      placeholder="Enter your nickname..."
-                      className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      autoFocus
-                    />
+                    {(() => {
+                      // Check if student already joined this session — lock their name
+                      let lockedName = '';
+                      try {
+                        const saved = localStorage.getItem('vocaband_qp_guest');
+                        if (saved) {
+                          const parsed = JSON.parse(saved);
+                          if (parsed.sessionId === quickPlayActiveSession?.id && parsed.name) {
+                            lockedName = parsed.name;
+                          }
+                        }
+                      } catch {}
+                      return lockedName ? (
+                        <>
+                          <input
+                            id="quick-play-name-input"
+                            type="text"
+                            value={lockedName}
+                            readOnly
+                            className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
+                          />
+                          <p className="text-xs text-on-surface-variant mt-1 text-center">You already joined as <strong>{lockedName}</strong></p>
+                        </>
+                      ) : (
+                        <input
+                          id="quick-play-name-input"
+                          type="text"
+                          inputMode="text"
+                          autoCapitalize="words"
+                          autoComplete="off"
+                          maxLength={30}
+                          defaultValue={quickPlayStudentName}
+                          placeholder="Enter your nickname..."
+                          className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          autoFocus
+                        />
+                      );
+                    })()}
                   </div>
 
                   <button
@@ -7000,6 +7069,21 @@ export default function App() {
             onQuickSave={(customTranslations) => {
               // Quick Save - skip going to editor, go straight to QR generation
               handleQuickPlayPreviewConfirm(customTranslations);
+            }}
+            onRemoveMatched={(wordId) => {
+              // Remove matched word from preview
+              if (quickPlayPreviewAnalysis) {
+                const updatedAnalysis = {
+                  ...quickPlayPreviewAnalysis,
+                  matchedWords: quickPlayPreviewAnalysis.matchedWords.filter((mw: any) => mw.word.id !== wordId),
+                  stats: {
+                    ...quickPlayPreviewAnalysis.stats,
+                    matchedCount: quickPlayPreviewAnalysis.stats.matchedCount - 1,
+                    totalTerms: quickPlayPreviewAnalysis.stats.totalTerms - 1,
+                  },
+                };
+                setQuickPlayPreviewAnalysis(updatedAnalysis);
+              }
             }}
             onRemoveUnmatched={(term) => {
               // Remove unmatched term from preview
