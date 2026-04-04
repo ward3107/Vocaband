@@ -954,14 +954,11 @@ export default function App() {
 
   const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel } = useAudio();
 
-  // In Quick Play online mode, suppress ALL sounds (pronunciation, motivational, etc.)
+  // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
-  const speakWord = (...args: Parameters<typeof speakWordRaw>) => {
-    if (isQuickPlayGuest) return;
-    return speakWordRaw(...args);
-  };
+  const speakWord = speakWordRaw; // Always allow pronunciation
   const playMotivational = (...args: Parameters<typeof playMotivationalRaw>) => {
-    if (isQuickPlayGuest) return '';
+    if (isQuickPlayGuest) return ''; // Mute motivational sounds in QP
     return playMotivationalRaw(...args);
   };
 
@@ -3146,7 +3143,6 @@ export default function App() {
   }, []);
 
   const speak = (text: string) => {
-    if (isQuickPlayGuest) return; // No sounds in Quick Play online
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -3169,13 +3165,13 @@ export default function App() {
       const shuffled = shuffle(gameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
-        ...shuffled.map(w => ({ id: w.id, text: w.arabic || w.hebrew, type: 'arabic' as const }))
+        ...shuffled.map(w => ({ id: w.id, text: w[targetLanguage] || w.arabic || w.hebrew || w.english, type: 'arabic' as const }))
       ]);
       setMatchingPairs(pairs);
       setMatchedIds([]);
       setSelectedMatch(null);
     }
-  }, [view, showModeSelection, gameMode, gameWords]);
+  }, [view, showModeSelection, gameMode, gameWords, targetLanguage]);
 
   // Letter Sounds: reveal one letter at a time, speak each letter
   // Uses sequential timeouts so each letter's sound plays AFTER the letter
@@ -3191,7 +3187,6 @@ export default function App() {
       // Delay speech 250ms so the spring animation shows the letter first
       setTimeout(() => {
         if (cancelled) return;
-        if (isQuickPlayGuest) { setTimeout(() => revealNext(idx + 1), 400); return; } // No sounds in QP
         // Cancel any ongoing speech before starting the new letter
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(word[idx]);
