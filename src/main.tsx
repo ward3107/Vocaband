@@ -1,53 +1,42 @@
-import {StrictMode, lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
-import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
 
-// Lazy-load the heavy App component
-const App = lazy(() => import('./App.tsx'));
-const AccessibilityWidget = lazy(() =>
-  import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget }))
-);
+// TEST: Import vocabulary (569KB, 5156 words) and measure time
+const start = performance.now();
 
-// PKCE code exchange — runs in parallel, doesn't block render
-(async function exchangePKCE() {
-  const params = new URLSearchParams(window.location.search);
-  if (!params.has('code')) return;
-  try {
-    const { supabase } = await import('./core/supabase');
-    const code = params.get('code')!;
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error && !error.message?.includes('already used') && !error.message?.includes('expired')) {
-      await new Promise(r => setTimeout(r, 1000));
-      await supabase.auth.exchangeCodeForSession(code);
-    }
-  } catch {
-    try {
-      const { supabase } = await import('./core/supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        sessionStorage.setItem('oauth_exchange_failed', '1');
-        await supabase.auth.signOut().catch(() => {});
-      }
-    } catch {}
-  }
-  window.history.replaceState({}, '', window.location.pathname);
-})().catch(err => console.error('PKCE error:', err));
+function TestApp() {
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',background:'#f0fdf4'}}>
+      <div style={{textAlign:'center',padding:'2rem',background:'white',borderRadius:'1rem',boxShadow:'0 4px 20px rgba(0,0,0,0.1)'}}>
+        <h1 style={{color:'#16a34a',fontSize:'2rem',margin:'0 0 0.5rem'}}>Test: Loading vocabulary...</h1>
+        <p id="status" style={{color:'#666'}}>Importing 5,156 words...</p>
+        <button
+          onClick={async () => {
+            const el = document.getElementById('status')!;
+            el.textContent = 'Importing vocabulary...';
+            const t0 = performance.now();
+            const vocab = await import('./data/vocabulary');
+            const t1 = performance.now();
+            el.textContent = `Vocabulary loaded: ${vocab.ALL_WORDS.length} words in ${(t1-t0).toFixed(0)}ms`;
 
-// Loading fallback
-const Loading = () => (
-  <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>
-    Loading Vocaband...
-  </div>
-);
+            el.textContent += '\nImporting App...';
+            const t2 = performance.now();
+            try {
+              await import('./App');
+              const t3 = performance.now();
+              el.textContent += `\nApp loaded in ${(t3-t2).toFixed(0)}ms`;
+            } catch(e: any) {
+              el.textContent += `\nApp FAILED: ${e.message}`;
+            }
+          }}
+          style={{marginTop:'1rem',padding:'0.75rem 2rem',background:'#16a34a',color:'white',border:'none',borderRadius:'0.5rem',fontSize:'1rem',cursor:'pointer'}}
+        >
+          Start Test
+        </button>
+        <p style={{color:'#999',fontSize:'0.8rem',marginTop:'1rem'}}>Boot time: {(performance.now() - start).toFixed(0)}ms</p>
+      </div>
+    </div>
+  );
+}
 
-// NOTE: StrictMode disabled — it double-renders the 8900-line App component
-// which freezes the browser. Can re-enable after App is split into smaller components.
-createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <Suspense fallback={<Loading />}>
-      <App />
-      <AccessibilityWidget />
-    </Suspense>
-  </ErrorBoundary>,
-);
+createRoot(document.getElementById('root')!).render(<TestApp />);
