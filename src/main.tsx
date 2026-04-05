@@ -14,6 +14,7 @@ registerSW();
 // they fight for 5 seconds, onAuthStateChange steals the lock, and the
 // exchange is aborted (teacher session never established).
 async function boot() {
+  try {
   const params = new URLSearchParams(window.location.search);
   if (params.has('code')) {
     const code = params.get('code')!;
@@ -57,6 +58,20 @@ async function boot() {
       </ErrorBoundary>
     </StrictMode>,
   );
+  } catch (err) {
+    console.error('Boot error:', err);
+    // Ensure React mounts even if PKCE exchange fails
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <ErrorBoundary>
+          <>
+            <App />
+            <AccessibilityWidget />
+          </>
+        </ErrorBoundary>
+      </StrictMode>,
+    );
+  }
 }
 
 boot();
