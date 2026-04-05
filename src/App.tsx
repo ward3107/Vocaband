@@ -130,6 +130,7 @@ function uniqueNegativeId(offset = 0): number {
 
 
 export default function App() {
+  console.log('[App] Render start', performance.now().toFixed(0) + 'ms');
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -3839,11 +3840,16 @@ export default function App() {
     console.log('[Cookie Banner] Rendering banner - showCookieBanner:', showCookieBanner, 'user:', !!user);
   }
 
+  console.log('[App] Reached loading check', performance.now().toFixed(0) + 'ms', 'loading:', loading);
+
   if (loading && !quickPlaySessionParam) {
+    console.log('[App] Showing loading spinner');
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <RefreshCw className="animate-spin text-blue-700" size={48} />
     </div>;
   }
+
+  console.log('[App] Past loading, rendering view:', view);
 
   // Configuration error banner — shown when Supabase env vars are missing
   const configErrorBanner = !isSupabaseConfigured ? (
