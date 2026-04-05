@@ -1,4 +1,4 @@
-import { ALL_WORDS } from '../src/vocabulary'
+import { ALL_WORDS } from '../src/data/vocabulary'
 import googleTTS from 'google-tts-api'
 import * as fs from 'fs'
 import * as path from 'path'

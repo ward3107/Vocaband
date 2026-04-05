@@ -2,9 +2,18 @@
  * Word Analysis Utilities
  * Shared between CreateAssignmentWizard and Quick Play
  * for parsing pasted text, extracting words, filtering, and deduplication
+ *
+ * Enhanced with: Hebrew/Arabic matching, fuzzy matching, word family
+ * expansion, smart phrase detection, and confidence scoring.
  */
 
 import { Word } from '../data/vocabulary';
+import {
+  normalizeText,
+  levenshteinDistance,
+  isFuzzyMatch,
+  extractRootWord,
+} from '../data/vocabulary-matching';
 
 // ============================================================================
 // STOP WORDS (common words to filter out)
@@ -36,10 +45,15 @@ const STOP_WORDS = new Set([
 // TYPES
 // ============================================================================
 
+export type MatchType = 'exact' | 'starts-with' | 'fuzzy' | 'family' | 'hebrew' | 'arabic' | 'phrase';
+
 export interface WordMatch {
   word: Word;
-  matchType: 'exact' | 'starts-with';
+  matchType: MatchType;
   frequency: number;
+  confidence: number;       // 0.0-1.0 confidence score
+  matchField: 'english' | 'hebrew' | 'arabic';
+  originalTerm: string;     // the pasted term that matched
 }
 
 export interface PastedTerm {
@@ -48,9 +62,16 @@ export interface PastedTerm {
   isStopWord: boolean;
 }
 
+export interface WordFamilySuggestion {
+  rootWord: string;
+  familyMembers: Word[];
+  alreadyIncluded: number[];  // IDs already in matchedWords
+}
+
 export interface WordAnalysisResult {
   matchedWords: WordMatch[];
   unmatchedTerms: PastedTerm[];
+  wordFamilySuggestions: WordFamilySuggestion[];
   stats: {
     totalTerms: number;
     uniqueTerms: number;
@@ -58,6 +79,11 @@ export interface WordAnalysisResult {
     unmatchedCount: number;
     stopWordCount: number;
     duplicateCount: number;
+    fuzzyMatchCount: number;
+    hebrewMatchCount: number;
+    arabicMatchCount: number;
+    familyMatchCount: number;
+    phraseMatchCount: number;
   };
 }
 
@@ -68,50 +94,87 @@ export interface ExtractedWord {
 }
 
 // ============================================================================
-// PROSE EXTRACTION
+// HEBREW / ARABIC DETECTION
+// ============================================================================
+
+function isHebrew(text: string): boolean {
+  return /[\u0590-\u05FF]/.test(text);
+}
+
+function isArabic(text: string): boolean {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(text);
+}
+
+// ============================================================================
+// SMART PHRASE DETECTION
 // ============================================================================
 
 /**
- * Extract individual words from prose/sentences
- * Removes punctuation and splits by spaces
+ * Build a set of known multi-word phrases from the vocabulary database.
+ * Used to auto-detect phrases like "post office" or "fall in love" from
+ * consecutive pasted words without needing quotes.
  */
+function buildPhraseIndex(words: Word[]): Map<string, Word> {
+  const index = new Map<string, Word>();
+  for (const w of words) {
+    const lower = w.english.toLowerCase();
+    if (lower.includes(' ')) {
+      index.set(lower, w);
+    }
+  }
+  return index;
+}
+
+/**
+ * Detect multi-word phrases from an array of tokens by checking against
+ * known vocabulary phrases. Greedy longest-match-first approach.
+ */
+function detectPhrases(
+  tokens: string[],
+  phraseIndex: Map<string, Word>
+): { phrases: { phrase: string; word: Word }[]; remaining: string[] } {
+  const phrases: { phrase: string; word: Word }[] = [];
+  const used = new Set<number>();
+
+  // Try longest phrases first (up to 5 words)
+  for (let len = 5; len >= 2; len--) {
+    for (let i = 0; i <= tokens.length - len; i++) {
+      if (used.has(i)) continue;
+      const candidate = tokens.slice(i, i + len).join(' ');
+      const match = phraseIndex.get(candidate);
+      if (match) {
+        phrases.push({ phrase: candidate, word: match });
+        for (let j = i; j < i + len; j++) used.add(j);
+      }
+    }
+  }
+
+  const remaining = tokens.filter((_, i) => !used.has(i));
+  return { phrases, remaining };
+}
+
+// ============================================================================
+// PROSE EXTRACTION
+// ============================================================================
+
 export function extractWordsFromProse(text: string): ExtractedWord[] {
   if (!text.trim()) return [];
-
-  // Convert to lowercase
   const lowerText = text.toLowerCase();
-
-  // Replace punctuation with spaces, keep only letters and apostrophes
   const cleanText = lowerText
-    .replace(/[^\w\s']/g, ' ')  // Replace non-word/non-space with space
-    .replace(/\s+/g, ' ')       // Collapse multiple spaces
+    .replace(/[^\w\s'\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
-
-  // Split by space
   const words = cleanText.split(' ').filter(w => w.length > 0);
-
-  // Count frequency and identify stop words
   const wordMap = new Map<string, ExtractedWord>();
-
   words.forEach(word => {
     const count = wordMap.get(word);
     const isStop = STOP_WORDS.has(word);
-
     if (count) {
-      wordMap.set(word, {
-        word,
-        frequency: count.frequency + 1,
-        isStopWord: isStop,
-      });
+      wordMap.set(word, { word, frequency: count.frequency + 1, isStopWord: isStop });
     } else {
-      wordMap.set(word, {
-        word,
-        frequency: 1,
-        isStopWord: isStop,
-      });
+      wordMap.set(word, { word, frequency: 1, isStopWord: isStop });
     }
   });
-
   return Array.from(wordMap.values());
 }
 
@@ -120,151 +183,232 @@ export function extractWordsFromProse(text: string): ExtractedWord[] {
 // ============================================================================
 
 /**
- * Analyze pasted text and extract words
- * Handles both lists (comma/newline) and prose (sentences)
+ * Analyze pasted text and extract words with enhanced matching:
+ * - Hebrew/Arabic paste support (auto-detected)
+ * - Fuzzy matching for typos (Levenshtein distance)
+ * - Word family suggestions
+ * - Smart multi-word phrase detection
+ * - Confidence scoring per match
  */
 export function analyzePastedText(
   text: string,
   allWords: Word[]
 ): WordAnalysisResult {
-  // Filter out any undefined/null words from the input
-  // Also verify words have required properties to prevent runtime errors
   const validWords = allWords.filter(w =>
-    w != null &&
-    w.id != null &&
-    w.english != null &&
-    typeof w.english === 'string'
+    w != null && w.id != null && w.english != null && typeof w.english === 'string'
   );
 
-  if (!text.trim()) {
-    return {
-      matchedWords: [],
-      unmatchedTerms: [],
-      stats: {
-        totalTerms: 0,
-        uniqueTerms: 0,
-        matchedCount: 0,
-        unmatchedCount: 0,
-        stopWordCount: 0,
-        duplicateCount: 0,
-      },
-    };
-  }
+  const emptyResult: WordAnalysisResult = {
+    matchedWords: [],
+    unmatchedTerms: [],
+    wordFamilySuggestions: [],
+    stats: {
+      totalTerms: 0, uniqueTerms: 0, matchedCount: 0, unmatchedCount: 0,
+      stopWordCount: 0, duplicateCount: 0, fuzzyMatchCount: 0,
+      hebrewMatchCount: 0, arabicMatchCount: 0, familyMatchCount: 0, phraseMatchCount: 0,
+    },
+  };
 
-  // Extract quote-wrapped phrases first
+  if (!text.trim()) return emptyResult;
+
+  // ── Step 1: Extract quoted phrases ──────────────────────────────────────
   const quoteRegex = /(["'])(?:(?=(\\1?))\2.)*?\1/g;
   const quotedPhrases: string[] = [];
-  const quoteMatches = text.matchAll(quoteRegex);
-
-  for (const match of quoteMatches) {
+  for (const match of text.matchAll(quoteRegex)) {
     quotedPhrases.push(match[0].replace(/['"]/g, '').trim().toLowerCase());
   }
-
-  // Remove quoted phrases from remaining text
   let remainingText = text.replace(/(["'])(?:(?=(\\1?))\2.)*?\1/g, '');
 
-  // Split remaining text by delimiters AND spaces
-  // This ensures "apple banana orange" (no commas) becomes 3 separate words
+  // ── Step 2: Split by delimiters ─────────────────────────────────────────
+  // For Hebrew/Arabic text, don't split on spaces (phrases are space-separated)
+  const isRTL = isHebrew(remainingText) || isArabic(remainingText);
+  const delimiter = isRTL ? /[,\n;\t]+/ : /[,\n;\t ]+/;
   const splitTerms = remainingText
-    .split(/[,\n;\t ]+/)
+    .split(delimiter)
     .map(term => term.trim().toLowerCase())
     .filter(term => term.length > 0);
 
-  // Count frequency for split terms
+  // ── Step 3: Smart phrase detection ──────────────────────────────────────
+  const phraseIndex = buildPhraseIndex(validWords);
+  const { phrases: detectedPhrases, remaining: singleTokens } = isRTL
+    ? { phrases: [], remaining: splitTerms }  // Skip phrase detection for RTL (already split by commas)
+    : detectPhrases(splitTerms, phraseIndex);
+
+  // ── Step 4: Count frequencies ───────────────────────────────────────────
   const termMap = new Map<string, ExtractedWord>();
-  splitTerms.forEach(term => {
-    const count = termMap.get(term);
-    const isStop = STOP_WORDS.has(term);
-
-    if (count) {
-      termMap.set(term, {
-        word: term,
-        frequency: count.frequency + 1,
-        isStopWord: isStop,
-      });
-    } else {
-      termMap.set(term, {
-        word: term,
-        frequency: 1,
-        isStopWord: isStop,
-      });
-    }
-  });
-
-  let extractedTerms = Array.from(termMap.values());
-
-  // Add quoted phrases as separate terms
-  quotedPhrases.forEach(phrase => {
-    const existing = extractedTerms.find(t => t.word === phrase);
+  const addTerm = (word: string) => {
+    const isStop = STOP_WORDS.has(word) && !isRTL;
+    const existing = termMap.get(word);
     if (existing) {
       existing.frequency++;
     } else {
-      extractedTerms.push({
-        word: phrase,
-        frequency: 1,
-        isStopWord: false,
-      });
+      termMap.set(word, { word, frequency: 1, isStopWord: isStop });
     }
-  });
+  };
 
-  // Filter out stop words
+  singleTokens.forEach(addTerm);
+  quotedPhrases.forEach(addTerm);
+  // Don't add detected phrases to termMap — they're handled separately
+
+  const extractedTerms = Array.from(termMap.values());
   const contentTerms = extractedTerms.filter(t => !t.isStopWord);
 
-  // Match against database
+  // ── Step 5: Multi-tier matching ─────────────────────────────────────────
   const matchedWords: WordMatch[] = [];
   const unmatchedTerms: PastedTerm[] = [];
   const matchedWordIds = new Set<number>();
 
-  contentTerms.forEach(term => {
-    // Find ALL matches (both exact and starts-with)
-    const exactMatches = validWords.filter(w => w.english.toLowerCase() === term.word);
-    const startsWithMatches = validWords.filter(w =>
-      w.english.toLowerCase().startsWith(term.word) &&
-      !exactMatches.some(m => m.id === w.id)
-    );
-
-    // Combine ALL matches (no limit)
-    const allMatches = [...exactMatches, ...startsWithMatches];
-
-    // Deduplicate by ID
-    const uniqueMatches = allMatches.filter(w => !matchedWordIds.has(w.id));
-    uniqueMatches.forEach(w => matchedWordIds.add(w.id));
-
-    if (uniqueMatches.length > 0) {
-      uniqueMatches.forEach(w => {
-        matchedWords.push({
-          word: w,
-          matchType: w.english.toLowerCase() === term.word ? 'exact' : 'starts-with',
-          frequency: term.frequency,
-        });
+  // 5a. Add phrase matches first (highest priority)
+  for (const { phrase, word } of detectedPhrases) {
+    if (!matchedWordIds.has(word.id)) {
+      matchedWords.push({
+        word,
+        matchType: 'phrase',
+        frequency: 1,
+        confidence: 0.95,
+        matchField: 'english',
+        originalTerm: phrase,
       });
-    } else {
-      unmatchedTerms.push({
-        term: term.word,
-        frequency: term.frequency,
-        isStopWord: term.isStopWord,
+      matchedWordIds.add(word.id);
+    }
+  }
+
+  // 5b. Match each content term
+  contentTerms.forEach(term => {
+    const normalizedTerm = normalizeText(term.word);
+
+    // Tier 1: Exact English match
+    const exactMatches = validWords.filter(w =>
+      normalizeText(w.english) === normalizedTerm && !matchedWordIds.has(w.id)
+    );
+    if (exactMatches.length > 0) {
+      exactMatches.forEach(w => {
+        matchedWords.push({ word: w, matchType: 'exact', frequency: term.frequency, confidence: 1.0, matchField: 'english', originalTerm: term.word });
+        matchedWordIds.add(w.id);
+      });
+      return;
+    }
+
+    // Tier 2: Hebrew exact match
+    if (isHebrew(term.word)) {
+      const hebrewMatches = validWords.filter(w =>
+        w.hebrew && normalizeText(w.hebrew) === normalizedTerm && !matchedWordIds.has(w.id)
+      );
+      if (hebrewMatches.length > 0) {
+        hebrewMatches.forEach(w => {
+          matchedWords.push({ word: w, matchType: 'hebrew', frequency: term.frequency, confidence: 1.0, matchField: 'hebrew', originalTerm: term.word });
+          matchedWordIds.add(w.id);
+        });
+        return;
+      }
+    }
+
+    // Tier 3: Arabic exact match
+    if (isArabic(term.word)) {
+      const arabicMatches = validWords.filter(w =>
+        w.arabic && normalizeText(w.arabic) === normalizedTerm && !matchedWordIds.has(w.id)
+      );
+      if (arabicMatches.length > 0) {
+        arabicMatches.forEach(w => {
+          matchedWords.push({ word: w, matchType: 'arabic', frequency: term.frequency, confidence: 1.0, matchField: 'arabic', originalTerm: term.word });
+          matchedWordIds.add(w.id);
+        });
+        return;
+      }
+    }
+
+    // Tier 4: Starts-with English match
+    const startsWithMatches = validWords.filter(w =>
+      normalizeText(w.english).startsWith(normalizedTerm) &&
+      normalizedTerm.length >= 3 &&
+      !matchedWordIds.has(w.id)
+    ).slice(0, 5); // Limit starts-with to 5 to avoid noise
+    if (startsWithMatches.length > 0) {
+      startsWithMatches.forEach(w => {
+        matchedWords.push({ word: w, matchType: 'starts-with', frequency: term.frequency, confidence: 0.8, matchField: 'english', originalTerm: term.word });
+        matchedWordIds.add(w.id);
+      });
+      return;
+    }
+
+    // Tier 5: Fuzzy match (English only, min 4 chars to avoid false positives)
+    if (normalizedTerm.length >= 4) {
+      const fuzzyMatch = validWords.find(w =>
+        !matchedWordIds.has(w.id) &&
+        isFuzzyMatch(normalizedTerm, normalizeText(w.english), 0.25)
+      );
+      if (fuzzyMatch) {
+        matchedWords.push({ word: fuzzyMatch, matchType: 'fuzzy', frequency: term.frequency, confidence: 0.6, matchField: 'english', originalTerm: term.word });
+        matchedWordIds.add(fuzzyMatch.id);
+        return;
+      }
+    }
+
+    // Tier 6: Word family match (English only, min 4 chars)
+    if (normalizedTerm.length >= 4 && !isRTL) {
+      const root = extractRootWord(normalizedTerm);
+      if (root.length > 2) {
+        const familyMatch = validWords.find(w =>
+          !matchedWordIds.has(w.id) && extractRootWord(normalizeText(w.english)) === root
+        );
+        if (familyMatch) {
+          matchedWords.push({ word: familyMatch, matchType: 'family', frequency: term.frequency, confidence: 0.5, matchField: 'english', originalTerm: term.word });
+          matchedWordIds.add(familyMatch.id);
+          return;
+        }
+      }
+    }
+
+    // No match found
+    unmatchedTerms.push({ term: term.word, frequency: term.frequency, isStopWord: term.isStopWord });
+  });
+
+  // ── Step 6: Word family suggestions ─────────────────────────────────────
+  // For each matched word, check if there are related words not yet included
+  const wordFamilySuggestions: WordFamilySuggestion[] = [];
+  const suggestedFamilyRoots = new Set<string>();
+
+  matchedWords.forEach(m => {
+    if (m.matchField !== 'english') return;
+    const root = extractRootWord(normalizeText(m.word.english));
+    if (root.length <= 2 || suggestedFamilyRoots.has(root)) return;
+
+    const familyMembers = validWords.filter(w => {
+      if (matchedWordIds.has(w.id)) return false;
+      return extractRootWord(normalizeText(w.english)) === root;
+    });
+
+    if (familyMembers.length > 0 && familyMembers.length <= 5) {
+      suggestedFamilyRoots.add(root);
+      wordFamilySuggestions.push({
+        rootWord: root,
+        familyMembers,
+        alreadyIncluded: matchedWords.filter(mm => extractRootWord(normalizeText(mm.word.english)) === root).map(mm => mm.word.id),
       });
     }
   });
 
-  // Calculate stats
-  const totalTerms = extractedTerms.reduce((sum, t) => sum + t.frequency, 0);
-  const uniqueTerms = extractedTerms.length;
-  const matchedCount = matchedWords.reduce((sum, m) => sum + m.frequency, 0);
-  const unmatchedCount = unmatchedTerms.reduce((sum, t) => sum + t.frequency, 0);
+  // ── Step 7: Calculate stats ─────────────────────────────────────────────
+  const totalTerms = extractedTerms.reduce((sum, t) => sum + t.frequency, 0) + detectedPhrases.length;
+  const uniqueTerms = extractedTerms.length + detectedPhrases.length;
   const stopWordCount = extractedTerms.filter(t => t.isStopWord).reduce((sum, t) => sum + t.frequency, 0);
-  const duplicateCount = totalTerms - uniqueTerms;
 
   return {
     matchedWords,
     unmatchedTerms,
+    wordFamilySuggestions,
     stats: {
       totalTerms,
       uniqueTerms,
-      matchedCount,
-      unmatchedCount,
+      matchedCount: matchedWords.length,
+      unmatchedCount: unmatchedTerms.length,
       stopWordCount,
-      duplicateCount,
+      duplicateCount: totalTerms - uniqueTerms,
+      fuzzyMatchCount: matchedWords.filter(m => m.matchType === 'fuzzy').length,
+      hebrewMatchCount: matchedWords.filter(m => m.matchType === 'hebrew').length,
+      arabicMatchCount: matchedWords.filter(m => m.matchType === 'arabic').length,
+      familyMatchCount: matchedWords.filter(m => m.matchType === 'family').length,
+      phraseMatchCount: matchedWords.filter(m => m.matchType === 'phrase').length,
     },
   };
 }
@@ -273,30 +417,18 @@ export function analyzePastedText(
 // UTILITIES
 // ============================================================================
 
-/**
- * Get stop words list (for display/customization)
- */
 export function getStopWords(): string[] {
   return Array.from(STOP_WORDS).sort();
 }
 
-/**
- * Add custom stop words
- */
 export function addStopWords(words: string[]): void {
   words.forEach(word => STOP_WORDS.add(word.toLowerCase()));
 }
 
-/**
- * Remove stop words
- */
 export function removeStopWords(words: string[]): void {
   words.forEach(word => STOP_WORDS.delete(word.toLowerCase()));
 }
 
-/**
- * Check if a word is a stop word
- */
 export function isStopWord(word: string): boolean {
   return STOP_WORDS.has(word.toLowerCase());
 }

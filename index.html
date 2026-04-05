@@ -65,12 +65,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   </head>
   <body>
+    <!-- Kill any existing service workers that may be serving stale content -->
+    <script src="/sw-cleanup.js"></script>
     <!-- WCAG 2.0 AA Skip Navigation Links (2.4.1) -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#navigation" class="skip-link">Skip to navigation</a>
 
     <!-- Main application content with landmark -->
-    <div id="root"></div>
+    <div id="root"><div id="boot-debug" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;font-size:1.2rem;color:#666">Loading Vocaband...</div></div>
     <noscript>
       <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;padding:2rem;text-align:center">
         <div>

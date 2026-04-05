@@ -2,56 +2,13 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
-import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(() => {
   return {
     plugins: [
-      react(), 
+      react(),
       tailwindcss(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['icon.svg'],
-        manifest: {
-          name: 'Vocaband',
-          short_name: 'Vocaband',
-          description: 'A gamified vocabulary learning app for EFL students',
-          theme_color: '#059669',
-          background_color: '#f5f5f4',
-          display: 'standalone',
-          icons: [
-            {
-              src: 'icon.svg',
-              sizes: '192x192 512x512',
-              type: 'image/svg+xml',
-              purpose: 'any maskable'
-            }
-          ]
-        },
-        workbox: {
-          cleanupOutdatedCaches: true,
-          navigateFallbackDenylist: [/./],
-          runtimeCaching: [
-            {
-              urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'pages',
-                networkTimeoutSeconds: 3,
-              },
-            },
-            {
-              urlPattern: ({ request, url }: { request: Request, url: URL }) =>
-                ['script', 'style', 'image', 'font'].includes(request.destination) &&
-                url.origin === location.origin,
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'assets',
-                expiration: { maxEntries: 100, maxAgeSeconds: 7 * 24 * 60 * 60 },
-              },
-            },
-          ],
-        },
-      })
+      // VitePWA disabled — service worker was causing white screens from stale cache
+      // Will re-enable with proper config after cache is cleared from all devices
     ],
     resolve: {
       alias: {
@@ -61,8 +18,9 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            lucide: ['lucide-react'],
+          manualChunks(id) {
+            if (id.includes('lucide-react')) return 'lucide';
+            if (id.includes('src/data/vocabulary')) return 'vocabulary';
           },
         },
       },
