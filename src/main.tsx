@@ -60,20 +60,6 @@ async function boot() {
       </ErrorBoundary>
     </StrictMode>,
   );
-  } catch (err) {
-    console.error('Boot error:', err);
-    // Ensure React mounts even if PKCE exchange fails
-    createRoot(document.getElementById('root')!).render(
-      <StrictMode>
-        <ErrorBoundary>
-          <>
-            <App />
-            <AccessibilityWidget />
-          </>
-        </ErrorBoundary>
-      </StrictMode>,
-    );
-  }
 }
 
 boot();
