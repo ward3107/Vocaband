@@ -254,6 +254,7 @@ export default function App() {
   const [newDisplayName, setNewDisplayName] = useState("");
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);      
 
+  console.log('[App] CP-1: basic state done', performance.now().toFixed(0) + 'ms');
   // --- OAUTH STATE ---
   const [isOAuthCallback, setIsOAuthCallback] = useState(false);
   const [oauthEmail, setOauthEmail] = useState<string | null>(null);
@@ -279,6 +280,7 @@ export default function App() {
   const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
+  console.log('[App] CP-2: oauth/avatar state done', performance.now().toFixed(0) + 'ms');
   // --- QUICK PLAY STATE ---
   const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
   const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
@@ -301,6 +303,7 @@ export default function App() {
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
   const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
+  console.log('[App] CP-3: quickplay state done', performance.now().toFixed(0) + 'ms');
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
@@ -339,7 +342,7 @@ export default function App() {
   const [showWordBank, setShowWordBank] = useState(false);
   const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
-  console.log('[App] Checkpoint A: useState done', performance.now().toFixed(0) + 'ms');
+  console.log('[App] Checkpoint A: before toast/search', performance.now().toFixed(0) + 'ms');
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
