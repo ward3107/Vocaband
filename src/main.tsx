@@ -1,42 +1,71 @@
+import {lazy, Suspense, useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
 
-// TEST: Import vocabulary (569KB, 5156 words) and measure time
-const start = performance.now();
+const App = lazy(() => import('./App.tsx'));
+const AccessibilityWidget = lazy(() =>
+  import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget }))
+);
 
-function TestApp() {
-  return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',background:'#f0fdf4'}}>
-      <div style={{textAlign:'center',padding:'2rem',background:'white',borderRadius:'1rem',boxShadow:'0 4px 20px rgba(0,0,0,0.1)'}}>
-        <h1 style={{color:'#16a34a',fontSize:'2rem',margin:'0 0 0.5rem'}}>Test: Loading vocabulary...</h1>
-        <p id="status" style={{color:'#666'}}>Importing 5,156 words...</p>
-        <button
-          onClick={async () => {
-            const el = document.getElementById('status')!;
-            el.textContent = 'Importing vocabulary...';
-            const t0 = performance.now();
-            const vocab = await import('./data/vocabulary');
-            const t1 = performance.now();
-            el.textContent = `Vocabulary loaded: ${vocab.ALL_WORDS.length} words in ${(t1-t0).toFixed(0)}ms`;
+// PKCE exchange — fire and forget
+(async function() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('code')) return;
+  try {
+    const { supabase } = await import('./core/supabase');
+    const code = params.get('code')!;
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error && !error.message?.includes('already used') && !error.message?.includes('expired')) {
+      await new Promise(r => setTimeout(r, 1000));
+      await supabase.auth.exchangeCodeForSession(code);
+    }
+  } catch {
+    try {
+      const { supabase } = await import('./core/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        sessionStorage.setItem('oauth_exchange_failed', '1');
+        await supabase.auth.signOut().catch(() => {});
+      }
+    } catch {}
+  }
+  window.history.replaceState({}, '', window.location.pathname);
+})().catch(() => {});
 
-            el.textContent += '\nImporting App...';
-            const t2 = performance.now();
-            try {
-              await import('./App');
-              const t3 = performance.now();
-              el.textContent += `\nApp loaded in ${(t3-t2).toFixed(0)}ms`;
-            } catch(e: any) {
-              el.textContent += `\nApp FAILED: ${e.message}`;
-            }
-          }}
-          style={{marginTop:'1rem',padding:'0.75rem 2rem',background:'#16a34a',color:'white',border:'none',borderRadius:'0.5rem',fontSize:'1rem',cursor:'pointer'}}
-        >
-          Start Test
-        </button>
-        <p style={{color:'#999',fontSize:'0.8rem',marginTop:'1rem'}}>Boot time: {(performance.now() - start).toFixed(0)}ms</p>
+// Gate: show a button to mount App so we can see if it freezes
+function GatedApp() {
+  const [mounted, setMounted] = useState(false);
+
+  if (!mounted) {
+    return (
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',background:'#f0fdf4'}}>
+        <div style={{textAlign:'center',padding:'2rem',background:'white',borderRadius:'1rem',boxShadow:'0 4px 20px rgba(0,0,0,0.1)'}}>
+          <h1 style={{color:'#16a34a',fontSize:'1.5rem',margin:'0 0 1rem'}}>Imports OK — Ready to mount App</h1>
+          <button
+            onClick={() => {
+              console.log('[Gate] Mounting App...');
+              setMounted(true);
+            }}
+            style={{padding:'1rem 3rem',background:'#16a34a',color:'white',border:'none',borderRadius:'0.5rem',fontSize:'1.2rem',cursor:'pointer'}}
+          >
+            Mount Full App
+          </button>
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>Rendering App...</div>}>
+      <App />
+      <AccessibilityWidget />
+    </Suspense>
   );
 }
 
-createRoot(document.getElementById('root')!).render(<TestApp />);
+createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary>
+    <GatedApp />
+  </ErrorBoundary>,
+);
