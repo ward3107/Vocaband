@@ -73,6 +73,18 @@
 
     <!-- Main application content with landmark -->
     <div id="root"><div id="boot-debug" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;font-size:1.2rem;color:#666">Loading Vocaband...</div></div>
+    <script>
+      // Catch any JS errors that prevent React from mounting
+      window.addEventListener('error', function(e) {
+        var el = document.getElementById('boot-debug');
+        if (el) el.innerHTML = '<div style="text-align:center;max-width:600px"><h2 style="color:red">App Error</h2><pre style="text-align:left;background:#f5f5f5;padding:1em;border-radius:8px;overflow:auto;font-size:12px">' + (e.message || 'Unknown error') + '\n' + (e.filename || '') + ':' + (e.lineno || '') + '</pre></div>';
+      });
+      // Timeout: if React hasn't mounted in 10 seconds, show diagnostic
+      setTimeout(function() {
+        var el = document.getElementById('boot-debug');
+        if (el) el.innerHTML += '<p style="color:orange;font-size:14px;margin-top:1em">Still loading after 10s. Check browser console (F12) for errors.</p>';
+      }, 10000);
+    </script>
     <noscript>
       <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;padding:2rem;text-align:center">
         <div>
