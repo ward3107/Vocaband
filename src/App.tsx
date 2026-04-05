@@ -7413,22 +7413,38 @@ export default function App() {
                   Most Missed Words
                 </h3>
                 {classAnalytics.topMistakes.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {classAnalytics.topMistakes.map(({ wordId, count }) => {
                       const word = ALL_WORDS.find(w => w.id === wordId);
                       const pct = Math.round((count / classAnalytics.maxMistakeCount) * 100);
+                      // Find which students missed this word
+                      const studentsWhoMissed = new Set<string>();
+                      allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter)
+                        .forEach(s => { if (s.mistakes?.includes(wordId)) studentsWhoMissed.add(s.studentName); });
                       return (
-                        <div key={wordId} className="flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between text-xs mb-0.5">
-                              <span className="font-bold text-on-surface truncate">{word?.english || `#${wordId}`}</span>
-                              <span className="text-error font-bold ml-2">{count}x</span>
-                            </div>
-                            <div className="h-3 bg-surface-container rounded-full overflow-hidden">
-                              <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        <div key={wordId} className="bg-rose-50/50 rounded-xl p-3 border border-rose-100">
+                          <div className="flex items-center gap-3 mb-1">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-black text-sm text-on-surface">{word?.english || `#${wordId}`}</span>
+                                <span className="text-error font-black text-sm ml-2">{count}×</span>
+                              </div>
+                              <div className="flex gap-2 text-xs text-on-surface-variant">
+                                {word?.hebrew && <span dir="rtl">{word.hebrew}</span>}
+                                {word?.hebrew && word?.arabic && <span>•</span>}
+                                {word?.arabic && <span dir="rtl">{word.arabic}</span>}
+                              </div>
                             </div>
                           </div>
-                          {word?.hebrew && <span className="text-xs text-on-surface-variant w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
+                          <div className="h-2 bg-surface-container rounded-full overflow-hidden mb-1.5">
+                            <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.from(studentsWhoMissed).slice(0, 5).map(name => (
+                              <span key={name} className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full font-bold">{name}</span>
+                            ))}
+                            {studentsWhoMissed.size > 5 && <span className="text-[10px] text-rose-500 font-bold">+{studentsWhoMissed.size - 5} more</span>}
+                          </div>
                         </div>
                       );
                     })}
@@ -7439,6 +7455,99 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* Students Needing Attention + Weak Modes row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+            {/* Students Needing Attention */}
+            <div className="bg-white rounded-[30px] shadow-xl p-5 sm:p-6">
+              <h3 className="text-sm font-black text-on-surface mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Users className="text-amber-700" size={16} />
+                </div>
+                Students Needing Attention
+              </h3>
+              {(() => {
+                // Find students with avg < 70% or high mistake rates
+                const studentStats: {name: string, avg: number, mistakes: number, attempts: number, avatar: string}[] = [];
+                const filtered = allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter);
+                const byStudent = new Map<string, typeof filtered>();
+                filtered.forEach(s => {
+                  const key = s.studentName;
+                  if (!byStudent.has(key)) byStudent.set(key, []);
+                  byStudent.get(key)!.push(s);
+                });
+                byStudent.forEach((scores, name) => {
+                  const avg = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
+                  const totalMistakes = scores.reduce((sum, s) => sum + (s.mistakes?.length || 0), 0);
+                  const avatar = scores[0]?.avatar || '🦊';
+                  if (avg < 70 || (totalMistakes > 5 && avg < 80)) {
+                    studentStats.push({ name, avg, mistakes: totalMistakes, attempts: scores.length, avatar });
+                  }
+                });
+                studentStats.sort((a, b) => a.avg - b.avg);
+                return studentStats.length > 0 ? (
+                  <div className="space-y-2">
+                    {studentStats.slice(0, 6).map(s => (
+                      <div key={s.name} className="flex items-center gap-3 bg-amber-50/50 rounded-xl p-3 border border-amber-100 cursor-pointer hover:shadow-md transition-all" onClick={() => setSelectedStudent(s.name)}>
+                        <span className="text-xl">{s.avatar}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-stone-800 truncate">{s.name}</p>
+                          <p className="text-xs text-stone-500">{s.attempts} attempts • {s.mistakes} mistakes</p>
+                        </div>
+                        <span className={`font-black text-lg ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>{s.avg}%</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-on-surface-variant text-sm italic">All students are doing well! 🎉</p>
+                );
+              })()}
+            </div>
+
+            {/* Score by Game Mode */}
+            <div className="bg-white rounded-[30px] shadow-xl p-5 sm:p-6">
+              <h3 className="text-sm font-black text-on-surface mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Layers className="text-purple-700" size={16} />
+                </div>
+                Average Score by Mode
+              </h3>
+              {(() => {
+                const filtered = allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter);
+                const modeStats = new Map<string, {total: number, count: number, mistakes: number}>();
+                filtered.forEach(s => {
+                  if (!modeStats.has(s.mode)) modeStats.set(s.mode, {total: 0, count: 0, mistakes: 0});
+                  const m = modeStats.get(s.mode)!;
+                  m.total += s.score;
+                  m.count++;
+                  m.mistakes += (s.mistakes?.length || 0);
+                });
+                const sorted = Array.from(modeStats.entries())
+                  .map(([mode, stats]) => ({ mode, avg: Math.round(stats.total / stats.count), count: stats.count, mistakes: stats.mistakes }))
+                  .sort((a, b) => a.avg - b.avg);
+                return sorted.length > 0 ? (
+                  <div className="space-y-2">
+                    {sorted.map(({ mode, avg, count, mistakes }) => (
+                      <div key={mode} className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between text-xs mb-0.5">
+                            <span className="font-bold text-on-surface capitalize">{mode.replace('-', ' ')}</span>
+                            <span className="text-on-surface-variant">{count} plays • {mistakes} mistakes</span>
+                          </div>
+                          <div className="h-3 bg-surface-container rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-500 ${avg >= 80 ? 'bg-blue-400' : avg >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${avg}%` }} />
+                          </div>
+                        </div>
+                        <span className={`font-black text-sm w-10 text-right ${avg >= 80 ? 'text-blue-600' : avg >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>{avg}%</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-on-surface-variant text-sm italic">No data yet</p>
+                );
+              })()}
+            </div>
+          </div>
 
           {/* Explanation banner */}
           <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
@@ -7600,13 +7709,27 @@ export default function App() {
                         Words Missed ({selectedScore.mistakes.length})
                       </h3>
                       <div className="bg-stone-50 rounded-2xl p-4">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {selectedScore.mistakes.map((wordId, idx) => {
-                            const word = BAND_2_WORDS.find(w => w.id === wordId);
+                            const word = ALL_WORDS.find(w => w.id === wordId);
+                            // Count how many times this student missed this word across all attempts
+                            const totalMisses = allScores
+                              .filter(s => s.studentName === selectedScore.studentName)
+                              .reduce((sum, s) => sum + (s.mistakes?.filter(m => m === wordId).length || 0), 0);
                             return (
-                              <div key={`${selectedScore.id}-${wordId}-${idx}`} className="bg-white p-3 rounded-xl border border-stone-200">
-                                <p className="font-bold text-stone-800">{word?.english || "Unknown"}</p>
-                                <p className="text-xs text-stone-500">{word?.hebrew || ""}</p>
+                              <div key={`${selectedScore.id}-${wordId}-${idx}`} className="bg-white p-3 rounded-xl border border-rose-200">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-black text-stone-800">{word?.english || "Unknown"}</p>
+                                    <div className="flex gap-2 text-xs text-stone-500 mt-0.5">
+                                      {word?.hebrew && <span dir="rtl">{word.hebrew}</span>}
+                                      {word?.arabic && <span dir="rtl">{word.arabic}</span>}
+                                    </div>
+                                  </div>
+                                  {totalMisses > 1 && (
+                                    <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full text-[10px] font-black">{totalMisses}× total</span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -7740,7 +7863,7 @@ export default function App() {
                       <div className="bg-stone-50 rounded-2xl p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {topMistakes.map(({ wordId, count }) => {
-                            const word = BAND_2_WORDS.find(w => w.id === wordId);
+                            const word = ALL_WORDS.find(w => w.id === wordId);
                             return (
                               <div key={wordId} className="bg-white p-3 rounded-xl border border-stone-200 flex justify-between items-center">
                                 <div>
@@ -7779,9 +7902,12 @@ export default function App() {
                                 {s.score}%
                               </span>
                               <div>
-                                <p className="font-bold text-stone-800">{s.assignmentId}</p>
+                                <p className="font-bold text-stone-800">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
                                 <p className="text-xs text-stone-500">
-                                  {s.mode} • {new Date(s.completedAt).toLocaleDateString()}
+                                  <span className="capitalize">{s.mode.replace('-', ' ')}</span> • {new Date(s.completedAt).toLocaleDateString()}
+                                  {s.mistakes && s.mistakes.length > 0 && (
+                                    <span className="text-rose-500 ml-1">• {s.mistakes.length} mistake{s.mistakes.length !== 1 ? 's' : ''}</span>
+                                  )}
                                 </p>
                               </div>
                             </div>
