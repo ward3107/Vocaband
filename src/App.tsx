@@ -114,13 +114,10 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
 
 // Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
 function secureRandomInt(max: number): number {
-  if (max <= 0) return 0;
-  const limit = (0x100000000 - (0x100000000 % max)) >>> 0;
-  let r: number;
-  do {
-    r = crypto.getRandomValues(new Uint32Array(1))[0];
-  } while (r >= limit);
-  return r % max;
+  if (max <= 1) return 0;
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return arr[0] % max;
 }
 
 // Generate a unique negative ID for custom words (not security-sensitive, just needs uniqueness)
@@ -130,7 +127,6 @@ function uniqueNegativeId(offset = 0): number {
 
 
 export default function App() {
-  console.log('[App] Render start', performance.now().toFixed(0) + 'ms');
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,10 +176,8 @@ export default function App() {
   const [showCookieBanner, setShowCookieBanner] = useState(() => {
     try {
       const hasConsented = localStorage.getItem("vocaband_cookie_consent");
-      console.log('[Cookie Banner] Initial check - hasConsented:', !!hasConsented, 'value:', hasConsented);
       return !hasConsented;
     } catch (e) {
-      console.log('[Cookie Banner] localStorage error:', e);
       return true;
     }
   });
@@ -199,10 +193,8 @@ export default function App() {
         ? JSON.stringify(preferences)
         : JSON.stringify({ essential: true, analytics: true, functional: true });
       localStorage.setItem("vocaband_cookie_consent", consentData);
-      console.log('[Cookie Banner] Consent saved:', consentData);
       // Verify it was saved
       const verify = localStorage.getItem("vocaband_cookie_consent");
-      console.log('[Cookie Banner] Verification read:', verify);
     } catch (e) {
       console.error('[Cookie Banner] Failed to save consent:', e);
     }
@@ -254,7 +246,6 @@ export default function App() {
   const [newDisplayName, setNewDisplayName] = useState("");
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);      
 
-  console.log('[App] CP-1: basic state done', performance.now().toFixed(0) + 'ms');
   // --- OAUTH STATE ---
   const [isOAuthCallback, setIsOAuthCallback] = useState(false);
   const [oauthEmail, setOauthEmail] = useState<string | null>(null);
@@ -280,7 +271,6 @@ export default function App() {
   const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
-  console.log('[App] CP-2: oauth/avatar state done', performance.now().toFixed(0) + 'ms');
   // --- QUICK PLAY STATE ---
   const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
   const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
@@ -303,7 +293,6 @@ export default function App() {
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
   const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
-  console.log('[App] CP-3: quickplay state done', performance.now().toFixed(0) + 'ms');
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
@@ -342,7 +331,6 @@ export default function App() {
   const [showWordBank, setShowWordBank] = useState(false);
   const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
-  console.log('[App] Checkpoint A: before toast/search', performance.now().toFixed(0) + 'ms');
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
@@ -958,9 +946,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  console.log('[App] Checkpoint B: useMemo/useCallback done', performance.now().toFixed(0) + 'ms');
   const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel } = useAudio();
-  console.log('[App] Checkpoint C: useAudio done', performance.now().toFixed(0) + 'ms');
 
   // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
@@ -1080,7 +1066,6 @@ export default function App() {
   }, [view]);
 
   // Defer socket connection until we have a valid auth session.
-  console.log('[App] Checkpoint D: game state + early effects done', performance.now().toFixed(0) + 'ms');
   // Connecting immediately on mount (before OAuth exchange completes) would
   // always fail with "Authentication required" on the first attempt, causing
   // the console error the teacher sees before the retry succeeds.
@@ -1609,7 +1594,6 @@ export default function App() {
     }
   }, [user?.role, view]);
 
-  console.log('[App] Checkpoint E: all useEffects declared', performance.now().toFixed(0) + 'ms');
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
     if (!error && data) {
@@ -3845,19 +3829,15 @@ export default function App() {
 
   // Debug: log banner state on every render
   if (showCookieBanner && !user) {
-    console.log('[Cookie Banner] Rendering banner - showCookieBanner:', showCookieBanner, 'user:', !!user);
   }
 
-  console.log('[App] Reached loading check', performance.now().toFixed(0) + 'ms', 'loading:', loading);
 
   if (loading && !quickPlaySessionParam) {
-    console.log('[App] Showing loading spinner');
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <RefreshCw className="animate-spin text-blue-700" size={48} />
     </div>;
   }
 
-  console.log('[App] Past loading, rendering view:', view);
 
   // Configuration error banner — shown when Supabase env vars are missing
   const configErrorBanner = !isSupabaseConfigured ? (
