@@ -339,6 +339,7 @@ export default function App() {
   const [showWordBank, setShowWordBank] = useState(false);
   const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
+  console.log('[App] Checkpoint A: useState done', performance.now().toFixed(0) + 'ms');
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
@@ -954,7 +955,9 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
+  console.log('[App] Checkpoint B: useMemo/useCallback done', performance.now().toFixed(0) + 'ms');
   const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel } = useAudio();
+  console.log('[App] Checkpoint C: useAudio done', performance.now().toFixed(0) + 'ms');
 
   // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
@@ -1074,6 +1077,7 @@ export default function App() {
   }, [view]);
 
   // Defer socket connection until we have a valid auth session.
+  console.log('[App] Checkpoint D: game state + early effects done', performance.now().toFixed(0) + 'ms');
   // Connecting immediately on mount (before OAuth exchange completes) would
   // always fail with "Authentication required" on the first attempt, causing
   // the console error the teacher sees before the retry succeeds.
@@ -1602,6 +1606,7 @@ export default function App() {
     }
   }, [user?.role, view]);
 
+  console.log('[App] Checkpoint E: all useEffects declared', performance.now().toFixed(0) + 'ms');
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
     if (!error && data) {
