@@ -5373,10 +5373,5 @@ export function getTopicPacks(): { name: string; icon: string; ids: number[] }[]
   return _topicPacksCache;
 }
 
-// Backwards-compatible export (getter triggers lazy computation on first access)
-export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = new Proxy([] as any, {
-  get(target, prop, receiver) {
-    const packs = getTopicPacks();
-    return Reflect.get(packs, prop, receiver);
-  },
-});
+// Eagerly compute topic packs (runs once at import time)
+export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = getTopicPacks();
