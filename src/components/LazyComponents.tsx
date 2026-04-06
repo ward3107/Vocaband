@@ -22,6 +22,7 @@ export const LazyLandingPage = lazy(() => import('./LandingPage'));
 export const LazyTermsPage = lazy(() => import('./TermsPage'));
 export const LazyPublicPrivacyPage = lazy(() => import('./PublicPrivacyPage'));
 export const LazyDemoMode = lazy(() => import('./DemoMode'));
+export const LazyAccessibilityStatement = lazy(() => import('./AccessibilityStatement'));
 
 // Wrapper components with Suspense and Error Boundary
 export const LandingPageWrapper: ComponentType<any> = (props) => (
@@ -44,6 +45,14 @@ export const PrivacyPageWrapper: ComponentType<any> = (props) => (
   <LazyErrorBoundary fallback={<LoadingFallback message="Loading privacy policy..." />}>
     <Suspense fallback={<LoadingFallback message="Loading privacy policy..." />}>
       <LazyPublicPrivacyPage {...props} />
+    </Suspense>
+  </LazyErrorBoundary>
+);
+
+export const AccessibilityStatementWrapper: ComponentType<any> = (props) => (
+  <LazyErrorBoundary fallback={<LoadingFallback message="Loading accessibility statement..." />}>
+    <Suspense fallback={<LoadingFallback message="Loading accessibility statement..." />}>
+      <LazyAccessibilityStatement {...props} />
     </Suspense>
   </LazyErrorBoundary>
 );

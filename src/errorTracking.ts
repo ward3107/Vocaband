@@ -7,10 +7,10 @@
  * - Data persistence issues (score saving, badge updates)
  */
 
-type ErrorSeverity = 'low' | 'medium' | 'high';
-type ErrorCategory = 'database' | 'network' | 'authentication' | 'feature' | 'other';
+export type ErrorSeverity = 'low' | 'medium' | 'high';
+export type ErrorCategory = 'database' | 'network' | 'authentication' | 'feature' | 'other';
 
-interface TrackedError {
+export interface TrackedError {
   message: string;
   category: ErrorCategory;
   severity: ErrorSeverity;

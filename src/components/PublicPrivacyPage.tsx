@@ -464,12 +464,6 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               </button>
             </p>
           </div>
-          <button
-            onClick={onGetStarted}
-            className="signature-gradient px-8 py-3 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
-          >
-            {t.footer.acceptButton}
-          </button>
         </footer>
       </main>
 

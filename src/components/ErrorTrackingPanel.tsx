@@ -21,15 +21,15 @@ export function ErrorTrackingPanel() {
     const debugEnabled = urlParams.get('debug') === 'true' ||
                         localStorage.getItem('vocaband_debug') === 'true';
 
-    if (debugEnabled) {
-      setShow(true);
-      // Load errors initially and set up refresh interval
+    if (!debugEnabled) return;
+
+    setShow(true);
+    // Load errors initially and set up refresh interval
+    setErrors(getTrackedErrors());
+    const interval = setInterval(() => {
       setErrors(getTrackedErrors());
-      const interval = setInterval(() => {
-        setErrors(getTrackedErrors());
-      }, 5000);
-      return () => clearInterval(interval);
-    }
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Don't render anything if debug mode is off
