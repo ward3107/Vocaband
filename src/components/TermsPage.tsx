@@ -297,12 +297,6 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
               <Printer size={18} /> {t.footer.print}
             </button>
           </div>
-          <button
-            onClick={onGetStarted}
-            className="signature-gradient px-8 py-3 rounded-full font-black text-white shadow-lg hover:scale-105 active:scale-95 transition-all"
-          >
-            {t.footer.acceptButton}
-          </button>
         </footer>
       </main>
 
