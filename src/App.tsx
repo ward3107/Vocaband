@@ -1586,10 +1586,15 @@ export default function App() {
   useEffect(() => {
     if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
     const code = user.classCode;
+    // Cache class ID to avoid querying classes table every 30s
+    let cachedClassId: string | null = null;
     const refresh = async () => {
-      const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
-      if (!classRows || classRows.length === 0) return;
-      const { data } = await supabase.from('assignments').select('*').eq('class_id', classRows[0].id);
+      if (!cachedClassId) {
+        const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
+        if (!classRows || classRows.length === 0) return;
+        cachedClassId = classRows[0].id;
+      }
+      const { data } = await supabase.from('assignments').select('*').eq('class_id', cachedClassId);
       if (data) setStudentAssignments(data.map(mapAssignment));
     };
     const id = setInterval(refresh, 30000);
@@ -3041,6 +3046,7 @@ export default function App() {
 
     if (classes.length === 0) {
       setAllScores([]);
+      setClassStudents([]);
       return;
     }
 
@@ -3053,20 +3059,29 @@ export default function App() {
         .from('progress').select('*')
         .in('class_code', chunk)
         .order('completed_at', { ascending: false })
-        .limit(200);
+        .limit(5000);
       if (data) allRows.push(...data.map(mapProgress));
     }
 
     setAllScores(allRows);
+
+    // Derive students from the same data — avoids a separate query
+    const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
+    allRows.forEach(row => {
+      const key = `${row.studentName}-${row.classCode}`;
+      if (!studentMap[key] || new Date(row.completedAt) > new Date(studentMap[key].lastActive)) {
+        studentMap[key] = { name: row.studentName, classCode: row.classCode, lastActive: row.completedAt };
+      }
+    });
+    setClassStudents(Object.values(studentMap));
+    lastFetchRef.current.students = now;
   };
 
   const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    console.log('fetchTeacherAssignments called with classIds:', classIds);
     const { data, error } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
-    console.log('Assignments query result:', { data, error });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };
@@ -3394,9 +3409,6 @@ export default function App() {
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
-    // Persist XP and streak to database
-    await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
-
     // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
     // For regular students, we try to get the session UID
     const { data: { session } } = await supabase.auth.getSession();
@@ -3426,9 +3438,9 @@ export default function App() {
     };
 
     try {
-      // Use RPC to save progress (bypasses RLS for students)
-      const { data: progressId, error: rpcError } = await supabase
-        .rpc('save_student_progress', {
+      // Save progress + XP/streak in parallel (2 calls → 1 round-trip)
+      const [{ data: progressId, error: rpcError }] = await Promise.all([
+        supabase.rpc('save_student_progress', {
           p_student_name: user.displayName,
           p_student_uid: studentUid,
           p_assignment_id: activeAssignment.id,
@@ -3437,7 +3449,9 @@ export default function App() {
           p_mode: gameMode,
           p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
           p_avatar: user.avatar || "🦊"
-        });
+        }),
+        supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid),
+      ]);
 
       if (rpcError) throw rpcError;
 
@@ -5437,7 +5451,7 @@ export default function App() {
                   description="All students & scores"
                   buttonText="Open Gradebook"
                   buttonVariant="gradebook-amber"
-                  onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
+                  onClick={() => { fetchScores(); setView("gradebook"); }}
                 />
               </div>
             </HelpTooltip>
