@@ -43,7 +43,8 @@ import {
   GraduationCap,
   Loader2,
   QrCode,
-  Search
+  Search,
+  Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
@@ -53,6 +54,7 @@ import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
 import DashboardOnboarding from "./components/DashboardOnboarding";
+import StudentOnboarding from "./components/StudentOnboarding";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -92,26 +94,33 @@ type Socket = InstanceType<SocketIOModule['Socket']>;
 // --- Memoized game UI components (avoid re-rendering all buttons on single feedback change) ---
 const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer }: {
   option: Word; currentWordId: number; feedback: string | null; gameMode: string; targetLanguage: "hebrew" | "arabic"; onAnswer: (w: Word) => void;
-}) => (
-  <button
-    onClick={() => onAnswer(option)}
-    disabled={feedback === "show-answer" || feedback === "correct"}
-    dir={gameMode === "reverse" ? "ltr" : "auto"}
-    className={`py-5 px-4 sm:py-7 sm:px-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black transition-all duration-300 min-h-[70px] sm:min-h-[85px] ${
-      feedback === "correct" && option.id === currentWordId
-        ? "bg-blue-600 text-white scale-105 shadow-xl"
-        : feedback === "wrong" && option.id !== currentWordId
-        ? "bg-rose-100 text-rose-500 opacity-50"
-        : feedback === "show-answer" && option.id === currentWordId
-        ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
-        : feedback === "show-answer"
-        ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
-        : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
-    }`}
-  >
-    {gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}
-  </button>
-));
+}) => {
+  const isCorrect = option.id === currentWordId;
+  const showCorrect = feedback === "correct" && isCorrect;
+  const showAnswer = feedback === "show-answer" && isCorrect;
+  return (
+    <button
+      onClick={() => onAnswer(option)}
+      disabled={feedback === "show-answer" || feedback === "correct"}
+      dir={gameMode === "reverse" ? "ltr" : "auto"}
+      className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
+        showCorrect
+          ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
+          : feedback === "wrong" && !isCorrect
+          ? "bg-rose-100 text-rose-500 opacity-50"
+          : showAnswer
+          ? "bg-amber-500 text-white motion-safe:scale-105 shadow-xl ring-4 ring-amber-300"
+          : feedback === "show-answer"
+          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
+          : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
+      }`}
+    >
+      {showCorrect && <span aria-hidden="true">✓</span>}
+      {showAnswer && <span aria-hidden="true">→</span>}
+      <span>{gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}</span>
+    </button>
+  );
+});
 
 // Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
 function secureRandomInt(max: number): number {
@@ -339,7 +348,7 @@ export default function App() {
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
 
   // --- TOAST NOTIFICATIONS STATE ---
-  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
+  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -361,6 +370,9 @@ export default function App() {
   });
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem('vocaband_onboarding_done'); } catch { return true; }
+  });
+  const [showStudentOnboarding, setShowStudentOnboarding] = useState(() => {
+    try { return !localStorage.getItem('vocaband_student_onboarding_done'); } catch { return true; }
   });
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
@@ -955,7 +967,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel } = useAudio();
+  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel, playWrong } = useAudio();
 
   // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
@@ -3427,6 +3439,19 @@ export default function App() {
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
+    // Streak milestone celebrations
+    const streakMilestones = [7, 14, 30, 50, 100];
+    if (streakMilestones.includes(newStreak)) {
+      loadConfetti().then(confettiModule => {
+        const confetti = confettiModule.default || confettiModule;
+        // Big celebration burst
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
+        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.2, y: 0.5 } }), 300);
+        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.8, y: 0.5 } }), 600);
+      });
+      showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
+    }
+
     // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
     // For regular students, we try to get the session UID
     const { data: { session } } = await supabase.auth.getSession();
@@ -3614,6 +3639,7 @@ export default function App() {
       } else {
         // Show try again with attempt count
         setFeedback("wrong");
+        playWrong();
         setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
 
         // Clear any pending timeout first
@@ -3648,6 +3674,7 @@ export default function App() {
       }, 1000);
     } else {
       setFeedback("wrong");
+      playWrong();
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
@@ -4626,6 +4653,12 @@ export default function App() {
     return (
       <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
         {consentModal}
+        {showStudentOnboarding && (
+          <StudentOnboarding
+            userName={user.displayName}
+            onComplete={() => setShowStudentOnboarding(false)}
+          />
+        )}
         <div className="max-w-4xl mx-auto">
           {/* Top bar with logout */}
           <div className="flex justify-between items-center mb-4">
@@ -5731,16 +5764,46 @@ export default function App() {
                     Keep Assignment
                   </button>
                   <button
-                    onClick={async () => {
-                      const { error } = await supabase.from('assignments').delete().eq('id', deleteConfirmModal.id);
-                      if (error) {
-                        showToast("Failed to delete: " + error.message, "error");
-                        setDeleteConfirmModal(null);
-                        return;
-                      }
-                      setTeacherAssignments(prev => prev.filter(x => x.id !== deleteConfirmModal.id));
-                      showToast("Assignment deleted successfully", "success");
+                    onClick={() => {
+                      const deletedId = deleteConfirmModal.id;
+                      const deletedTitle = deleteConfirmModal.title;
+                      // Optimistically remove from UI
+                      setTeacherAssignments(prev => {
+                        const removed = prev.find(x => x.id === deletedId);
+                        if (removed) (window as any).__undoAssignment = removed;
+                        return prev.filter(x => x.id !== deletedId);
+                      });
                       setDeleteConfirmModal(null);
+                      // Delayed hard delete with undo window
+                      const undoTimeout = setTimeout(async () => {
+                        const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
+                        if (error) showToast("Failed to delete from database: " + error.message, "error");
+                        delete (window as any).__undoAssignment;
+                        delete (window as any).__undoDeleteTimeout;
+                      }, 8000);
+                      (window as any).__undoDeleteTimeout = undoTimeout;
+                      // Show undo toast
+                      const undoToastId = Date.now().toString();
+                      setToasts(prev => [...prev, {
+                        id: undoToastId,
+                        message: `"${deletedTitle}" deleted`,
+                        type: 'info' as const,
+                        action: {
+                          label: 'Undo',
+                          onClick: () => {
+                            clearTimeout((window as any).__undoDeleteTimeout);
+                            const restored = (window as any).__undoAssignment;
+                            if (restored) {
+                              setTeacherAssignments(prev => [...prev, restored]);
+                              delete (window as any).__undoAssignment;
+                            }
+                            setToasts(prev => prev.filter(t => t.id !== undoToastId));
+                            showToast("Assignment restored!", "success");
+                          }
+                        }
+                      }]);
+                      // Auto-dismiss undo toast after 8 seconds
+                      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== undoToastId)), 8000);
                     }}
                     className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
                   >
@@ -5814,7 +5877,12 @@ export default function App() {
                 {toast.type === 'success' && <CheckCircle2 size={24} />}
                 {toast.type === 'error' && <AlertTriangle size={24} />}
                 {toast.type === 'info' && <Info size={24} />}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
+                {toast.action && (
+                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -5917,6 +5985,7 @@ export default function App() {
         editingAssignment={editingAssignment}
         setEditingAssignment={setEditingAssignment}
         showToast={showToast}
+        onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
       />
     );
   }
@@ -6292,7 +6361,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-black mb-1">
                     Pending Approvals
@@ -6301,14 +6370,37 @@ export default function App() {
                     {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting
                   </p>
                 </div>
-                <button
-                  onClick={loadPendingStudents}
-                  className="px-4 py-2 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
-                  title="Refresh list"
-                >
-                  <RefreshCw size={18} />
-                  Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  {pendingStudents.length > 1 && (
+                    <button
+                      onClick={async () => {
+                        const names = pendingStudents.map(s => s.displayName);
+                        for (const student of pendingStudents) {
+                          try {
+                            await supabase.rpc('approve_student', { p_profile_id: student.id });
+                          } catch (e) {
+                            console.error('Failed to approve', student.displayName, e);
+                          }
+                        }
+                        await loadPendingStudents();
+                        showToast(`Approved ${names.length} students!`, "success");
+                      }}
+                      className="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg hover:scale-105"
+                      title="Approve all pending students at once"
+                    >
+                      <Check size={18} />
+                      Approve All ({pendingStudents.length})
+                    </button>
+                  )}
+                  <button
+                    onClick={loadPendingStudents}
+                    className="px-4 py-2.5 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
+                    title="Refresh list"
+                  >
+                    <RefreshCw size={18} />
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -8083,6 +8175,44 @@ export default function App() {
             </div>
           </div>
 
+          {/* Export CSV button */}
+          {studentEntries.length > 0 && (
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => {
+                  const rows = [['Student', 'Class Code', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date'].join(',')];
+                  for (const entry of studentEntries) {
+                    for (const s of entry.scores) {
+                      const assignmentTitle = teacherAssignments.find(a => a.id === s.assignmentId)?.title || 'Unknown';
+                      rows.push([
+                        `"${entry.studentName}"`,
+                        entry.classCode,
+                        `"${assignmentTitle}"`,
+                        s.mode,
+                        s.score,
+                        s.mistakes?.length ?? 0,
+                        new Date(s.completedAt).toLocaleDateString()
+                      ].join(','));
+                    }
+                  }
+                  const csv = rows.join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `vocaband-gradebook-${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Gradebook exported as CSV!", "success");
+                }}
+                className="px-5 py-2.5 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all text-sm"
+              >
+                <Download size={16} />
+                Export CSV
+              </button>
+            </div>
+          )}
+
           {studentEntries.length === 0 ? (
             <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-tertiary-container/30">
               <GraduationCap className="mx-auto text-on-surface-variant mb-4" size={48} />
@@ -8373,8 +8503,10 @@ export default function App() {
   }
 
   if (isFinished) {
+    const t = activeThemeConfig.colors;
+    const isDark = t.bg.includes('gray-9') || t.bg.includes('gray-950');
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+      <div className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -8382,7 +8514,7 @@ export default function App() {
         >
           <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
         </motion.div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{
+        <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>{
           [
             `Kol Hakavod, ${user?.displayName}!`,
             `Amazing work, ${user?.displayName}!`,
@@ -8394,7 +8526,7 @@ export default function App() {
             `Bravo, ${user?.displayName}!`,
           ][secureRandomInt( 8)]
         }</h1>
-        <p className="text-lg sm:text-xl mb-6">{
+        <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>{
           [
             "You finished the assignment!",
             "Another challenge conquered!",
@@ -8404,34 +8536,41 @@ export default function App() {
           ][secureRandomInt( 5)]
         }</p>
         <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
-          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
-            <p className="text-4xl sm:text-6xl font-black text-blue-700">{score}</p>
+          <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+            <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Final Score</p>
+            <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
           </div>
-          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Total XP</p>
+          <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+            <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Total XP</p>
             <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
           </div>
           {streak > 0 && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
+            <div className={`${t.card} p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
               <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">Streak</p>
               <p className="text-5xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
             </div>
           )}
         </div>
+        {/* Accuracy summary */}
+        {gameWords.length > 0 && (
+          <div className={`${t.card} rounded-2xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+            <span className="font-bold">{gameWords.length - mistakes.length}</span> / {gameWords.length} correct
+            {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">({mistakes.length} to review)</span>}
+          </div>
+        )}
         {badges.length > 0 && (
           <div className="mb-8">
-            <p className="text-xs font-black text-stone-400 uppercase mb-4 tracking-widest">Badges Earned</p>
+            <p className={`text-xs font-black ${isDark ? 'text-gray-500' : 'text-stone-400'} uppercase mb-4 tracking-widest`}>Badges Earned</p>
             <div className="flex flex-wrap justify-center gap-3">
               {badges.map(badge => (
-                <motion.div 
+                <motion.div
                   key={badge}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2"
+                  className={`${t.card} px-6 py-3 rounded-2xl shadow-sm border ${isDark ? 'border-gray-700' : 'border-stone-100'} flex items-center gap-2`}
                 >
                   <span className="text-xl">{badge.split(' ')[0]}</span>
-                  <span className="font-bold text-stone-700">{badge.split(' ').slice(1).join(' ')}</span>
+                  <span className={`font-bold ${t.text}`}>{badge.split(' ').slice(1).join(' ')}</span>
                 </motion.div>
               ))}
             </div>
@@ -8448,24 +8587,47 @@ export default function App() {
             <span className="text-sm">{saveError}</span>
           </div>
         ) : null}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+          {/* Try Again — replay same mode + words */}
+          <button
+            onClick={() => {
+              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+              setSpellingInput(""); setMotivationalMessage(null);
+            }}
+            disabled={isSaving}
+            className="w-full bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+          >Try Again</button>
+          {/* Try Again — only missed words */}
+          {mistakes.length > 0 && (
+            <button
+              onClick={() => {
+                const missedWords = gameWords.filter(w => mistakes.includes(w.id));
+                if (missedWords.length > 0) {
+                  setAssignmentWords(missedWords);
+                }
+                setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+                setSpellingInput(""); setMotivationalMessage(null);
+              }}
+              disabled={isSaving}
+              className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-stone-200 text-stone-800 hover:bg-stone-300'}`}
+            >Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}</button>
+          )}
           <button
             onClick={handleExitGame}
             disabled={isSaving}
-            className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-black text-white hover:bg-gray-800'}`}
           >Choose Another Mode</button>
           <button
             onClick={() => {
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
               if (user?.isGuest) {
-                // Quick Play guest: back to mode selection (not student dashboard)
                 setView("game");
               } else {
                 setView("student-dashboard");
               }
             }}
             disabled={isSaving}
-            className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+            className={`${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-stone-400 hover:text-stone-600'} font-bold text-sm transition-colors`}
           >Back to Dashboard</button>
         </div>
 
@@ -8487,7 +8649,12 @@ export default function App() {
                 {toast.type === 'success' && <CheckCircle2 size={24} />}
                 {toast.type === 'error' && <AlertTriangle size={24} />}
                 {toast.type === 'info' && <Info size={24} />}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
+                {toast.action && (
+                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
