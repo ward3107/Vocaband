@@ -6,7 +6,7 @@ import {
   searchWords
 } from "./data/vocabulary-matching";
 import {
-  Volume2,
+  Volume2, VolumeX,
   Languages,
   Trophy,
   RefreshCw,
@@ -307,6 +307,60 @@ export default function App() {
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
   const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
+
+  // Game music player state
+  const [gameMusicTrack, setGameMusicTrack] = useState(0);
+  const [gameMusicVolume, setGameMusicVolume] = useState(0.5);
+  const [gameMusicPlaying, setGameMusicPlaying] = useState(false);
+  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  const GAME_MUSIC_TRACKS = useMemo(() => [
+    { label: "🎯 Steady Focus", file: "/game-music/bgm-steady-focus.mp3" },
+    { label: "⚡ Upbeat Energy", file: "/game-music/bgm-upbeat-energy.mp3" },
+    { label: "🌊 Chill Vibes", file: "/game-music/bgm-chill-vibes.mp3" },
+    { label: "🗺️ Adventure Quest", file: "/game-music/bgm-adventure-quest.mp3" },
+    { label: "🎸 Funky Groove", file: "/game-music/bgm-funky-groove.mp3" },
+    { label: "🚀 Space Explorer", file: "/game-music/bgm-space-explorer.mp3" },
+    { label: "🏆 Victory March", file: "/game-music/bgm-victory-march.mp3" },
+  ], []);
+
+  // Handle music track/volume changes
+  useEffect(() => {
+    if (!gameMusicPlaying) {
+      if (gameMusicRef.current) {
+        gameMusicRef.current.pause();
+        gameMusicRef.current = null;
+      }
+      return;
+    }
+    // Create or update audio
+    if (gameMusicRef.current) {
+      gameMusicRef.current.pause();
+    }
+    const audio = new Audio(GAME_MUSIC_TRACKS[gameMusicTrack].file);
+    audio.volume = gameMusicVolume;
+    audio.loop = true;
+    audio.play().catch(() => {});
+    gameMusicRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [gameMusicPlaying, gameMusicTrack, GAME_MUSIC_TRACKS]);
+
+  // Update volume without restarting track
+  useEffect(() => {
+    if (gameMusicRef.current) {
+      gameMusicRef.current.volume = gameMusicVolume;
+    }
+  }, [gameMusicVolume]);
+
+  // Stop music when leaving the monitor view
+  useEffect(() => {
+    if (view !== "quick-play-teacher-monitor") {
+      setGameMusicPlaying(false);
+    }
+  }, [view]);
 
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
