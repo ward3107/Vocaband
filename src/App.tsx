@@ -63,7 +63,7 @@ import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import { PastePreviewModal } from "./components/PastePreviewModal";
 import { analyzePastedText, type WordAnalysisResult } from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
+import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
 import OAuthButton from "./components/OAuthButton";
 import OAuthCallback from "./components/OAuthCallback";
 import OAuthClassCode from "./components/OAuthClassCode";
@@ -139,6 +139,7 @@ export default function App() {
     | "public-landing"
     | "public-terms"
     | "public-privacy"
+    | "accessibility-statement"
     | "student-account-login"
     | "landing"
     | "game"
@@ -157,7 +158,11 @@ export default function App() {
     | "quick-play-setup"
     | "quick-play-teacher-monitor"
     | "quick-play-student"
-  >(quickPlaySessionParam ? "quick-play-student" : "public-landing");
+  >(() => {
+    if (quickPlaySessionParam) return "quick-play-student";
+    if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    return "public-landing";
+  });
   const previousViewRef = useRef<string>("public-landing");
 
   // Custom setView that tracks previous view for back navigation
@@ -3898,6 +3903,19 @@ export default function App() {
     return (
       <>
         <PrivacyPageWrapper
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("student-account-login")}
+          onBack={goBack}
+        />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "accessibility-statement") {
+    return (
+      <>
+        <AccessibilityStatementWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
