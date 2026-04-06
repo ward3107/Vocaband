@@ -109,11 +109,21 @@ async function startServer() {
     app.set("trust proxy", 1);
 
     // Security headers via helmet
-    // CSP is disabled — Cloudflare proxy injects scripts and the strict policy
-    // was blocking them, causing the app to freeze. Can be re-enabled later
-    // with proper testing against the full Cloudflare + Vite + Supabase stack.
     app.use(helmet({
-      contentSecurityPolicy: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", allowedOrigin],
+          frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
+          workerSrc: ["'self'", "blob:"],
+          mediaSrc: ["'self'", "https://*.supabase.co"],
+        },
+      },
       hsts: {
         maxAge: 31536000,
         includeSubDomains: true,
@@ -134,12 +144,12 @@ async function startServer() {
   }
 
   // Parse JSON request bodies (required for /api/translate endpoint)
-  app.use(express.json());
+  app.use(express.json({ limit: '50kb' }));
 
   // Multer for OCR image uploads (in-memory, no temp files)
   const ocrUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, cb) => {
       const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
       cb(null, allowed.includes(file.mimetype));
