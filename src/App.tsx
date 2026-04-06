@@ -92,26 +92,33 @@ type Socket = InstanceType<SocketIOModule['Socket']>;
 // --- Memoized game UI components (avoid re-rendering all buttons on single feedback change) ---
 const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer }: {
   option: Word; currentWordId: number; feedback: string | null; gameMode: string; targetLanguage: "hebrew" | "arabic"; onAnswer: (w: Word) => void;
-}) => (
-  <button
-    onClick={() => onAnswer(option)}
-    disabled={feedback === "show-answer" || feedback === "correct"}
-    dir={gameMode === "reverse" ? "ltr" : "auto"}
-    className={`py-5 px-4 sm:py-7 sm:px-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black transition-all duration-300 min-h-[70px] sm:min-h-[85px] ${
-      feedback === "correct" && option.id === currentWordId
-        ? "bg-blue-600 text-white scale-105 shadow-xl"
-        : feedback === "wrong" && option.id !== currentWordId
-        ? "bg-rose-100 text-rose-500 opacity-50"
-        : feedback === "show-answer" && option.id === currentWordId
-        ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
-        : feedback === "show-answer"
-        ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
-        : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
-    }`}
-  >
-    {gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}
-  </button>
-));
+}) => {
+  const isCorrect = option.id === currentWordId;
+  const showCorrect = feedback === "correct" && isCorrect;
+  const showAnswer = feedback === "show-answer" && isCorrect;
+  return (
+    <button
+      onClick={() => onAnswer(option)}
+      disabled={feedback === "show-answer" || feedback === "correct"}
+      dir={gameMode === "reverse" ? "ltr" : "auto"}
+      className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
+        showCorrect
+          ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
+          : feedback === "wrong" && !isCorrect
+          ? "bg-rose-100 text-rose-500 opacity-50"
+          : showAnswer
+          ? "bg-amber-500 text-white motion-safe:scale-105 shadow-xl ring-4 ring-amber-300"
+          : feedback === "show-answer"
+          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
+          : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
+      }`}
+    >
+      {showCorrect && <span aria-hidden="true">✓</span>}
+      {showAnswer && <span aria-hidden="true">→</span>}
+      <span>{gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}</span>
+    </button>
+  );
+});
 
 // Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
 function secureRandomInt(max: number): number {
@@ -8373,8 +8380,10 @@ export default function App() {
   }
 
   if (isFinished) {
+    const t = activeThemeConfig.colors;
+    const isDark = t.bg.includes('gray-9') || t.bg.includes('gray-950');
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+      <div className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -8382,7 +8391,7 @@ export default function App() {
         >
           <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
         </motion.div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{
+        <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>{
           [
             `Kol Hakavod, ${user?.displayName}!`,
             `Amazing work, ${user?.displayName}!`,
@@ -8394,7 +8403,7 @@ export default function App() {
             `Bravo, ${user?.displayName}!`,
           ][secureRandomInt( 8)]
         }</h1>
-        <p className="text-lg sm:text-xl mb-6">{
+        <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>{
           [
             "You finished the assignment!",
             "Another challenge conquered!",
@@ -8404,34 +8413,41 @@ export default function App() {
           ][secureRandomInt( 5)]
         }</p>
         <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
-          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
-            <p className="text-4xl sm:text-6xl font-black text-blue-700">{score}</p>
+          <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+            <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Final Score</p>
+            <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
           </div>
-          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Total XP</p>
+          <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+            <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Total XP</p>
             <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
           </div>
           {streak > 0 && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
+            <div className={`${t.card} p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
               <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">Streak</p>
               <p className="text-5xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
             </div>
           )}
         </div>
+        {/* Accuracy summary */}
+        {gameWords.length > 0 && (
+          <div className={`${t.card} rounded-2xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+            <span className="font-bold">{gameWords.length - mistakes.length}</span> / {gameWords.length} correct
+            {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">({mistakes.length} to review)</span>}
+          </div>
+        )}
         {badges.length > 0 && (
           <div className="mb-8">
-            <p className="text-xs font-black text-stone-400 uppercase mb-4 tracking-widest">Badges Earned</p>
+            <p className={`text-xs font-black ${isDark ? 'text-gray-500' : 'text-stone-400'} uppercase mb-4 tracking-widest`}>Badges Earned</p>
             <div className="flex flex-wrap justify-center gap-3">
               {badges.map(badge => (
-                <motion.div 
+                <motion.div
                   key={badge}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2"
+                  className={`${t.card} px-6 py-3 rounded-2xl shadow-sm border ${isDark ? 'border-gray-700' : 'border-stone-100'} flex items-center gap-2`}
                 >
                   <span className="text-xl">{badge.split(' ')[0]}</span>
-                  <span className="font-bold text-stone-700">{badge.split(' ').slice(1).join(' ')}</span>
+                  <span className={`font-bold ${t.text}`}>{badge.split(' ').slice(1).join(' ')}</span>
                 </motion.div>
               ))}
             </div>
@@ -8448,24 +8464,47 @@ export default function App() {
             <span className="text-sm">{saveError}</span>
           </div>
         ) : null}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+          {/* Try Again — replay same mode + words */}
+          <button
+            onClick={() => {
+              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+              setSpellingInput(""); setMotivationalMessage(null);
+            }}
+            disabled={isSaving}
+            className="w-full bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+          >Try Again</button>
+          {/* Try Again — only missed words */}
+          {mistakes.length > 0 && (
+            <button
+              onClick={() => {
+                const missedWords = gameWords.filter(w => mistakes.includes(w.id));
+                if (missedWords.length > 0) {
+                  setAssignmentWords(missedWords);
+                }
+                setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+                setSpellingInput(""); setMotivationalMessage(null);
+              }}
+              disabled={isSaving}
+              className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-stone-200 text-stone-800 hover:bg-stone-300'}`}
+            >Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}</button>
+          )}
           <button
             onClick={handleExitGame}
             disabled={isSaving}
-            className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-black text-white hover:bg-gray-800'}`}
           >Choose Another Mode</button>
           <button
             onClick={() => {
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
               if (user?.isGuest) {
-                // Quick Play guest: back to mode selection (not student dashboard)
                 setView("game");
               } else {
                 setView("student-dashboard");
               }
             }}
             disabled={isSaving}
-            className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+            className={`${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-stone-400 hover:text-stone-600'} font-bold text-sm transition-colors`}
           >Back to Dashboard</button>
         </div>
 
