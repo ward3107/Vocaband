@@ -811,9 +811,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                       <p className="text-white/90 text-xs sm:text-sm mb-2">
                         Search and select from our word database
                       </p>
-                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
-                        <span className="text-white text-xs font-bold">📚 {allWords.length}+ words • Curated</span>
-                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-3xl sm:text-4xl">🔍</span>
