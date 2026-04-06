@@ -400,3 +400,70 @@ export const termsTranslations: Record<Language, {
     },
   },
 };
+
+// Accessibility Statement Translations
+export const accessibilityTranslations: Record<Language, {
+  title: string; lastUpdated: string; back: string;
+  commitment: { title: string; text: string };
+  features: { title: string;
+    toolbar: { title: string; intro: string; items: string[] };
+    keyboard: { title: string; items: string[] };
+    screenReader: { title: string; items: string[] };
+    rtl: { title: string; items: string[] };
+    visual: { title: string; items: string[] };
+    audio: { title: string; items: string[] };
+  };
+  standards: { title: string; items: string[] };
+  limitations: { title: string; items: string[] };
+  testing: { title: string; intro: string; items: string[] };
+  contact: { title: string; intro: string; email: string; response: string };
+}> = {
+  en: {
+    title: "Accessibility Statement", lastUpdated: "Last updated: April 2026", back: "Back",
+    commitment: { title: "Our Commitment", text: "Vocaband is committed to ensuring digital accessibility for all users, including students, teachers, and parents with disabilities. We strive to meet WCAG 2.0 Level AA and the Israeli Standard IS 5568 for web accessibility. Our goal is to provide an inclusive learning experience where every student can practice English vocabulary effectively." },
+    features: { title: "Accessibility Features",
+      toolbar: { title: "Accessibility Toolbar", intro: "A floating accessibility button (bottom-right corner) provides 10 adjustable settings:", items: ["Font Size — Scale text from 88% to 200%", "High Contrast — Black background with gold text and cyan links", "Dyslexia Font — Switch to OpenDyslexic or Comic Sans MS", "Readable Font — Switch to Open Sans / Helvetica Neue", "Reduce Motion — Minimize all animations and transitions", "Highlight Links — Underline and add borders to all links", "Large Cursor — 32px custom cursor with 44px minimum touch targets", "Line Height — Adjust spacing between lines (1.5 to 2.0)", "Letter Spacing — Adjust spacing between letters (normal to extra-wide)", "Focus Indicators — Enhanced focus outlines on all interactive elements"] },
+      keyboard: { title: "Keyboard Navigation", items: ["Skip links at the top of every page", "All interactive elements reachable by Tab key", "Buttons respond to Enter and Space keys", "Modals trap focus and close with Escape key", "Visible focus indicators with blue outline"] },
+      screenReader: { title: "Screen Readers", items: ["ARIA landmarks for page structure", "Descriptive labels on buttons, icons, and controls", "Live regions for dynamic content updates", "Form fields with associated labels and error announcements"] },
+      rtl: { title: "Language & RTL Support", items: ["Full support for English, Hebrew, and Arabic", "Automatic right-to-left layout for Hebrew and Arabic", "Bidirectional text handling in vocabulary displays and games"] },
+      visual: { title: "Visual Design", items: ["Color contrast ratios meet WCAG AA requirements", "Information is not conveyed by color alone", "Respects prefers-reduced-motion system setting", "Text can be resized up to 200% without loss of content", "Responsive design from 320px to desktop"] },
+      audio: { title: "Audio & Pronunciation", items: ["Word pronunciation triggered by user action, not automatically", "All audio content has visual equivalents", "Volume controls available in Quick Play sessions"] },
+    },
+    standards: { title: "Standards Compliance", items: ["WCAG 2.0 Level AA — Web Content Accessibility Guidelines", "IS 5568 — Israeli Standard for Web Accessibility", "Section 508 — US federal accessibility requirements"] },
+    limitations: { title: "Known Limitations", items: ["Some game modes involve quick responses which may be challenging for users needing extra time. Flashcard mode has no time pressure.", "Quick Play join via QR code requires a camera. Students can also enter the session code manually.", "Google OAuth login and Google Fonts are loaded from external services with their own accessibility policies."] },
+    testing: { title: "Testing", intro: "We test accessibility using automated tools and manual testing:", items: ["Chrome Lighthouse accessibility audit", "Keyboard-only navigation testing", "Screen reader testing with NVDA and VoiceOver", "High contrast and reduced motion mode testing", "Mobile device testing on iOS and Android"] },
+    contact: { title: "Feedback & Contact", intro: "If you encounter any accessibility barriers, please contact us:", email: "accessibility@vocaband.com", response: "We aim to respond within 5 business days and resolve issues within 30 days." },
+  },
+  he: {
+    title: "הצהרת נגישות", lastUpdated: "עדכון אחרון: אפריל 2026", back: "חזרה",
+    commitment: { title: "המחויבות שלנו", text: "Vocaband מחויבת להבטיח נגישות דיגיטלית לכל המשתמשים, כולל תלמידים, מורים והורים עם מוגבלויות. אנו שואפים לעמוד בתקן WCAG 2.0 רמה AA ובתקן הישראלי ת\"י 5568 לנגישות אתרי אינטרנט. המטרה שלנו היא לספק חוויית למידה מכלילה שבה כל תלמיד יכול לתרגל אוצר מילים באנגלית בצורה יעילה." },
+    features: { title: "תכונות נגישות",
+      toolbar: { title: "סרגל נגישות", intro: "כפתור נגישות צף (בפינה הימנית התחתונה) מספק 10 הגדרות מתכווננות:", items: ["גודל גופן — שינוי גודל טקסט מ-88% עד 200%", "ניגודיות גבוהה — רקע שחור עם טקסט זהב וקישורים בצבע ציאן", "גופן לדיסלקציה — מעבר לגופן OpenDyslexic או Comic Sans MS", "גופן קריא — מעבר לגופן Open Sans / Helvetica Neue", "הפחתת תנועה — מזעור כל האנימציות והמעברים", "הדגשת קישורים — קו תחתון וגבולות לכל הקישורים", "סמן גדול — סמן מותאם בגודל 32px עם יעדי מגע מינימליים של 44px", "גובה שורה — כוונון ריווח בין שורות (1.5 עד 2.0)", "ריווח אותיות — כוונון ריווח בין אותיות (רגיל עד רחב במיוחד)", "מחווני מיקוד — מסגרות מיקוד משופרות על כל האלמנטים האינטראקטיביים"] },
+      keyboard: { title: "ניווט מקלדת", items: ["קישורי דילוג בראש כל עמוד", "כל האלמנטים האינטראקטיביים נגישים באמצעות מקש Tab", "כפתורים מגיבים למקשי Enter ו-Space", "חלונות קופצים לוכדים מיקוד ונסגרים עם Escape", "מחווני מיקוד גלויים עם מסגרת כחולה"] },
+      screenReader: { title: "קוראי מסך", items: ["סימוני ARIA למבנה העמוד", "תיאורים על כפתורים, סמלים ופקדים", "אזורים חיים לעדכוני תוכן דינמיים", "שדות טופס עם תוויות משויכות והודעות שגיאה"] },
+      rtl: { title: "תמיכה בשפות ו-RTL", items: ["תמיכה מלאה באנגלית, עברית וערבית", "פריסה אוטומטית מימין לשמאל לעברית ולערבית", "טיפול בטקסט דו-כיווני בתצוגות אוצר מילים ומשחקים"] },
+      visual: { title: "עיצוב חזותי", items: ["יחסי ניגודיות צבע עומדים בדרישות WCAG AA", "מידע לא מועבר באמצעות צבע בלבד", "מכבד הגדרת מערכת להפחתת תנועה", "ניתן להגדיל טקסט עד 200% ללא אובדן תוכן", "עיצוב רספונסיבי מ-320px ועד שולחן עבודה"] },
+      audio: { title: "שמע והגייה", items: ["הגיית מילים מופעלת על ידי פעולת משתמש, לא אוטומטית", "לכל תוכן שמע יש מקבילה חזותית", "פקדי עוצמת קול זמינים בסשנים של Quick Play"] },
+    },
+    standards: { title: "עמידה בתקנים", items: ["WCAG 2.0 רמה AA — הנחיות נגישות תוכן אינטרנט", "ת\"י 5568 — התקן הישראלי לנגישות אתרי אינטרנט", "Section 508 — דרישות נגישות פדרליות של ארה\"ב"] },
+    limitations: { title: "מגבלות ידועות", items: ["חלק ממצבי המשחק כוללים תגובות מהירות שעלולות להיות מאתגרות למשתמשים שזקוקים לזמן נוסף. מצב כרטיסיות ללא לחץ זמן.", "הצטרפות ל-Quick Play דרך QR דורשת מצלמה. תלמידים יכולים גם להזין קוד סשן ידנית.", "התחברות Google OAuth וגופני Google נטענים משירותים חיצוניים עם מדיניות נגישות משלהם."] },
+    testing: { title: "בדיקות", intro: "אנו בודקים נגישות באמצעות כלים אוטומטיים ובדיקות ידניות:", items: ["ביקורת נגישות Chrome Lighthouse", "בדיקת ניווט מקלדת בלבד", "בדיקת קורא מסך עם NVDA ו-VoiceOver", "בדיקת ניגודיות גבוהה ומצב הפחתת תנועה", "בדיקת מכשירים ניידים ב-iOS ו-Android"] },
+    contact: { title: "משוב ויצירת קשר", intro: "אם נתקלתם בחסמי נגישות, אנא צרו קשר:", email: "accessibility@vocaband.com", response: "אנו שואפים להגיב תוך 5 ימי עסקים ולפתור בעיות תוך 30 יום." },
+  },
+  ar: {
+    title: "بيان إمكانية الوصول", lastUpdated: "آخر تحديث: أبريل 2026", back: "رجوع",
+    commitment: { title: "التزامنا", text: "تلتزم Vocaband بضمان إمكانية الوصول الرقمي لجميع المستخدمين، بما في ذلك الطلاب والمعلمين وأولياء الأمور ذوي الإعاقة. نسعى لتلبية معيار WCAG 2.0 المستوى AA والمعيار الإسرائيلي IS 5568 لإمكانية الوصول إلى الويب. هدفنا توفير تجربة تعلم شاملة حيث يمكن لكل طالب ممارسة مفردات اللغة الإنجليزية بفعالية." },
+    features: { title: "ميزات إمكانية الوصول",
+      toolbar: { title: "شريط أدوات إمكانية الوصول", intro: "زر إمكانية الوصول العائم (في الزاوية اليمنى السفلية) يوفر 10 إعدادات قابلة للتعديل:", items: ["حجم الخط — تغيير حجم النص من 88% إلى 200%", "تباين عالٍ — خلفية سوداء مع نص ذهبي وروابط سماوية", "خط عسر القراءة — التبديل إلى OpenDyslexic أو Comic Sans MS", "خط مقروء — التبديل إلى Open Sans / Helvetica Neue", "تقليل الحركة — تقليل جميع الرسوم المتحركة والانتقالات", "تمييز الروابط — خط سفلي وحدود لجميع الروابط", "مؤشر كبير — مؤشر 32px مع أهداف لمس بحد أدنى 44px", "ارتفاع السطر — ضبط المسافة بين الأسطر (1.5 إلى 2.0)", "تباعد الأحرف — ضبط المسافة بين الأحرف (عادي إلى واسع جداً)", "مؤشرات التركيز — إطارات تركيز محسنة على جميع العناصر التفاعلية"] },
+      keyboard: { title: "التنقل بلوحة المفاتيح", items: ["روابط تخطي في أعلى كل صفحة", "جميع العناصر التفاعلية قابلة للوصول بمفتاح Tab", "الأزرار تستجيب لمفاتيح Enter و Space", "النوافذ المنبثقة تحبس التركيز وتُغلق بمفتاح Escape", "مؤشرات تركيز مرئية بإطار أزرق"] },
+      screenReader: { title: "قارئات الشاشة", items: ["علامات ARIA لهيكل الصفحة", "أوصاف على الأزرار والأيقونات وعناصر التحكم", "مناطق حية لتحديثات المحتوى الديناميكي", "حقول النموذج مع تسميات مرتبطة وإعلانات الأخطاء"] },
+      rtl: { title: "دعم اللغات و RTL", items: ["دعم كامل للإنجليزية والعبرية والعربية", "تخطيط تلقائي من اليمين لليسار للعبرية والعربية", "معالجة النص ثنائي الاتجاه في عروض المفردات والألعاب"] },
+      visual: { title: "التصميم المرئي", items: ["نسب تباين الألوان تلبي متطلبات WCAG AA", "المعلومات لا تُنقل باللون وحده", "يحترم إعداد النظام لتقليل الحركة", "يمكن تكبير النص حتى 200% دون فقدان المحتوى", "تصميم متجاوب من 320px إلى سطح المكتب"] },
+      audio: { title: "الصوت والنطق", items: ["نطق الكلمات يتم بإجراء المستخدم، وليس تلقائياً", "جميع المحتويات الصوتية لها مكافئات مرئية", "عناصر التحكم في الصوت متاحة في جلسات Quick Play"] },
+    },
+    standards: { title: "الامتثال للمعايير", items: ["WCAG 2.0 المستوى AA — إرشادات إمكانية الوصول لمحتوى الويب", "IS 5568 — المعيار الإسرائيلي لإمكانية الوصول", "القسم 508 — متطلبات إمكانية الوصول الفيدرالية الأمريكية"] },
+    limitations: { title: "القيود المعروفة", items: ["بعض أوضاع اللعبة تتضمن استجابات سريعة قد تكون صعبة لمن يحتاجون وقتاً إضافياً. وضع البطاقات بدون ضغط وقت.", "الانضمام عبر QR يتطلب كاميرا. يمكن للطلاب إدخال رمز الجلسة يدوياً.", "تسجيل الدخول عبر Google وخطوط Google تُحمّل من خدمات خارجية لها سياسات وصول خاصة."] },
+    testing: { title: "الاختبار", intro: "نختبر إمكانية الوصول باستخدام أدوات آلية واختبار يدوي:", items: ["تدقيق إمكانية الوصول من Chrome Lighthouse", "اختبار التنقل بلوحة المفاتيح فقط", "اختبار قارئ الشاشة مع NVDA و VoiceOver", "اختبار التباين العالي ووضع تقليل الحركة", "اختبار الأجهزة المحمولة على iOS و Android"] },
+    contact: { title: "الملاحظات والتواصل", intro: "إذا واجهت عوائق في إمكانية الوصول، يرجى الاتصال بنا:", email: "accessibility@vocaband.com", response: "نهدف للرد خلال 5 أيام عمل وحل المشكلات خلال 30 يوماً." },
+  },
+};
