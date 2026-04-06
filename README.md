@@ -78,7 +78,6 @@ No app store. No personal data required. Works on any device.
 | Trilingual (English / Hebrew / Arabic) | ✅ Built-in | ❌ Rarely |
 | Quick Play — QR scan, no login | ✅ Yes | ❌ No |
 | Live classroom competition | ✅ Real-time leaderboard | ❌ No |
-| Israeli curriculum aligned (Bands 1–3) | ✅ Full coverage | ❌ No |
 | No student account needed | ✅ Join by code + name | ❌ Registration required |
 | 10 game modes | ✅ All built-in | ❌ 1–2 modes max |
 | Smart word matching (paste, AI translate) | ✅ Deep | ❌ Manual only |
@@ -110,7 +109,7 @@ No app store. No personal data required. Works on any device.
 
 - **Quick Play** — Generate a QR code for instant vocabulary sessions. Students scan and play — no login required
 - **Class Management** — Create classes with shareable 6-digit codes (WhatsApp-friendly)
-- **Assignment Builder** — Search 5,156 curriculum words by English, Hebrew, or Arabic
+- **Assignment Builder** — more than 20000  words by English, Hebrew, or Arabic
 - **28 Topic Packs** — Pre-curated word groups (Family, School, Animals, Food, Travel, Sports, Technology, and 21 more). Add or remove entire packs with one click
 - **Smart Paste** — Paste words from any source. Exact matches auto-added, fuzzy/starts-with shown as click-to-add suggestions. Supports Hebrew and Arabic paste
 - **AI Translation** — Custom words automatically translated to Hebrew and Arabic via MyMemory API
@@ -153,16 +152,6 @@ Teachers select words, click "Generate QR Code", and students scan to join insta
 - All 10 game modes available
 - Real-time teacher monitor with student scores
 - Supports both curriculum words and custom teacher-added words with AI translation
-
----
-
-## Vocabulary Bank
-
-- **5,156 words** from the Israeli English curriculum
-  - Band 1 / Core I and Band 2 / Core II
-- Each word includes: English, Hebrew, Arabic
-- Multi-language search (search by any of the three languages)
-- **28 topic packs** with curated word selections (Family, Animals, Food, Nature, Travel, Sports, Technology, and more)
 
 ---
 
