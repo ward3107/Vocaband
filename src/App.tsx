@@ -8745,8 +8745,8 @@ export default function App() {
 
               {/* Motivational message - positioned at top to not block answers */}
               {motivationalMessage && (
-                <div className="absolute top-2 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
-                  <span className="text-lg sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
+                <div className="absolute top-4 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
                     {motivationalMessage}
                   </span>
                 </div>
@@ -8772,7 +8772,7 @@ export default function App() {
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-16 h-16 sm:w-48 sm:h-48 object-cover rounded-[16px] sm:rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
                   <h2 className={`text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
@@ -8877,7 +8877,7 @@ export default function App() {
                             return (
                               <div
                                 key={globalIdx}
-                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
+                                className="w-9 h-11 sm:w-12 sm:h-14 rounded-xl font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
                                 style={{ color: revealed ? color : color + "40", borderColor: revealed ? color : color + "40", background: color + "18", opacity: revealed ? 1 : 0.15, transform: revealed ? "scale(1)" : "scale(0.5)" }}
                               >
                                 {revealed ? (letter ?? "").toUpperCase() : "?"}
@@ -8967,7 +8967,7 @@ export default function App() {
                     onChange={(e) => setSpellingInput(e.target.value)}
                     disabled={feedback === "show-answer" || feedback === "correct"}
                     placeholder="Type in English..."
-                    className={`w-full p-3 sm:p-6 text-lg sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                    className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
