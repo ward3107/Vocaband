@@ -54,6 +54,7 @@ import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
 import DashboardOnboarding from "./components/DashboardOnboarding";
+import StudentOnboarding from "./components/StudentOnboarding";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -369,6 +370,9 @@ export default function App() {
   });
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem('vocaband_onboarding_done'); } catch { return true; }
+  });
+  const [showStudentOnboarding, setShowStudentOnboarding] = useState(() => {
+    try { return !localStorage.getItem('vocaband_student_onboarding_done'); } catch { return true; }
   });
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
@@ -963,7 +967,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel } = useAudio();
+  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel, playWrong } = useAudio();
 
   // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
@@ -3435,6 +3439,19 @@ export default function App() {
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
+    // Streak milestone celebrations
+    const streakMilestones = [7, 14, 30, 50, 100];
+    if (streakMilestones.includes(newStreak)) {
+      loadConfetti().then(confettiModule => {
+        const confetti = confettiModule.default || confettiModule;
+        // Big celebration burst
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
+        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.2, y: 0.5 } }), 300);
+        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.8, y: 0.5 } }), 600);
+      });
+      showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
+    }
+
     // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
     // For regular students, we try to get the session UID
     const { data: { session } } = await supabase.auth.getSession();
@@ -3622,6 +3639,7 @@ export default function App() {
       } else {
         // Show try again with attempt count
         setFeedback("wrong");
+        playWrong();
         setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
 
         // Clear any pending timeout first
@@ -3656,6 +3674,7 @@ export default function App() {
       }, 1000);
     } else {
       setFeedback("wrong");
+      playWrong();
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
@@ -4634,6 +4653,12 @@ export default function App() {
     return (
       <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
         {consentModal}
+        {showStudentOnboarding && (
+          <StudentOnboarding
+            userName={user.displayName}
+            onComplete={() => setShowStudentOnboarding(false)}
+          />
+        )}
         <div className="max-w-4xl mx-auto">
           {/* Top bar with logout */}
           <div className="flex justify-between items-center mb-4">
