@@ -1,62 +1,49 @@
-import {StrictMode} from 'react';
-import { AccessibilityWidget } from './components/AccessibilityWidget';
+import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
-import { registerSW } from 'virtual:pwa-register';
-import { supabase } from './core/supabase';
 
-registerSW();
+const App = lazy(() => import('./App.tsx'));
+const AccessibilityWidget = lazy(() =>
+  import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget }))
+);
 
-// Exchange PKCE auth code BEFORE React mounts.  We must await this so the
-// lock is released before onAuthStateChange tries to acquire it — otherwise
-// they fight for 5 seconds, onAuthStateChange steals the lock, and the
-// exchange is aborted (teacher session never established).
-async function boot() {
+// PKCE code exchange — fire and forget, doesn't block render
+(async function() {
   const params = new URLSearchParams(window.location.search);
-  if (params.has('code')) {
+  if (!params.has('code')) return;
+  try {
+    const { supabase } = await import('./core/supabase');
     const code = params.get('code')!;
-    // Exchange PKCE code for session. Retry once on transient failure.
-    let succeeded = false;
-    for (let attempt = 0; attempt < 2 && !succeeded; attempt++) {
-      try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
-          succeeded = true;
-        } else if (error.message?.includes('already used') || error.message?.includes('expired')) {
-          break;
-        } else {
-          console.warn(`OAuth exchange attempt ${attempt + 1} failed:`, error.message);
-          if (attempt < 1) await new Promise(r => setTimeout(r, 1000));
-        }
-      } catch {
-        console.warn(`OAuth exchange attempt ${attempt + 1} threw`);
-        if (attempt < 1) await new Promise(r => setTimeout(r, 1000));
-      }
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error && !error.message?.includes('already used') && !error.message?.includes('expired')) {
+      await new Promise(r => setTimeout(r, 1000));
+      await supabase.auth.exchangeCodeForSession(code);
     }
-    if (!succeeded) {
-      // Only flag as failed if no session exists at all — if a previous
-      // exchange already established the session, the user is fine.
+  } catch {
+    try {
+      const { supabase } = await import('./core/supabase');
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         sessionStorage.setItem('oauth_exchange_failed', '1');
         await supabase.auth.signOut().catch(() => {});
       }
-    }
-    window.history.replaceState({}, '', window.location.pathname);
+    } catch {}
   }
+  window.history.replaceState({}, '', window.location.pathname);
+})().catch(() => {});
 
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <ErrorBoundary>
-        <>
-          <App />
-          <AccessibilityWidget />
-        </>
-      </ErrorBoundary>
-    </StrictMode>,
-  );
-}
+const Loading = () => (
+  <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>
+    Loading Vocaband...
+  </div>
+);
 
-boot();
+createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary>
+    <Suspense fallback={<Loading />}>
+      <App />
+      <AccessibilityWidget />
+    </Suspense>
+  </ErrorBoundary>,
+);

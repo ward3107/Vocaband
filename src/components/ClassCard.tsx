@@ -3,12 +3,15 @@ import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen } from "lucide-react"
 
 interface Assignment {
   id: string;
+  classId: string;
   title: string;
-  wordIds: string[];
-  deadline: string | null;
+  wordIds: number[];
+  deadline?: string | null;
   words?: any[];
-  sentences?: any[];
+  sentences?: string[];
   allowedModes?: string[];
+  sentenceDifficulty?: number;
+  createdAt?: string;
 }
 
 interface ClassCardProps {

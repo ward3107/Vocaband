@@ -13,12 +13,12 @@ import type { TranslationCorrection } from '../utils/translationCorrections';
 
 interface PastePreviewModalProps {
   analysis: WordAnalysisResult | null;
-  onConfirm: (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => void;
+  onConfirm: (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedFamilyWordIds?: Set<number>) => void;
   onCancel: () => void;
   onToggleWord?: (term: string) => void; // For adding/removing from selection
   onRemoveUnmatched?: (term: string) => void; // For removing unmatched terms
   onRemoveMatched?: (wordId: number) => void; // For removing matched words
-  onQuickSave?: (customTranslations: Map<string, { hebrew: string; arabic: string }>) => void; // For quick save without editor
+  onQuickSave?: (customTranslations: Map<string, { hebrew: string; arabic: string }>, addedFamilyWordIds?: Set<number>) => void; // For quick save without editor
 }
 
 export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
@@ -38,6 +38,9 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   // State for custom word translations
   const [customWordTranslations, setCustomWordTranslations] = useState<Map<string, { hebrew: string; arabic: string }>>(new Map());
   const [isTranslating, setIsTranslating] = useState(false);
+
+  // Track manually added suggestion word IDs (fuzzy, starts-with matches)
+  const [addedSuggestionIds, setAddedSuggestionIds] = useState<Set<number>>(new Set());
 
   // Translation cache to avoid redundant API calls
   const translationCache = useRef<Map<string, { hebrew: string; arabic: string }>>(new Map());
@@ -147,9 +150,9 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
 
   const handleQuickSave = () => {
     if (onQuickSave) {
-      onQuickSave(customWordTranslations);
+      onQuickSave(customWordTranslations, addedSuggestionIds);
     } else {
-      onConfirm(customWordTranslations);
+      onConfirm(customWordTranslations, addedSuggestionIds);
     }
   };
 
@@ -189,19 +192,39 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                 <span className="font-black text-amber-600">{stats.duplicateCount}</span>
               </div>
             )}
+            {(stats as any).fuzzyMatchCount > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-on-surface">Fuzzy:</span>
+                <span className="font-black text-purple-600">{(stats as any).fuzzyMatchCount}</span>
+              </div>
+            )}
+            {((stats as any).hebrewMatchCount > 0 || (stats as any).arabicMatchCount > 0) && (
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-on-surface">HE/AR:</span>
+                <span className="font-black text-blue-600">{((stats as any).hebrewMatchCount || 0) + ((stats as any).arabicMatchCount || 0)}</span>
+              </div>
+            )}
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {/* Matched Words */}
-            {matchedWords.length > 0 && (
+            {/* Matched Words — split into auto-added and suggestions */}
+            {matchedWords.length > 0 && (() => {
+              const autoAddTypes = new Set(['exact', 'hebrew', 'arabic', 'phrase']);
+              const autoAdded = matchedWords.filter(mw => autoAddTypes.has(mw.matchType));
+              const suggestions = matchedWords.filter(mw => !autoAddTypes.has(mw.matchType));
+
+              return (
+              <>
+              {/* Auto-added exact matches */}
+              {autoAdded.length > 0 && (
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <Check className="text-green-600" size={16} />
-                  Matched to Database ({matchedWords.length} unique)
+                  Added Words ({autoAdded.length})
                 </h3>
                 <div className="space-y-2">
-                  {matchedWords.map((mw, index) => {
+                  {autoAdded.map((mw, index) => {
                     const corrected = applyCorrections(mw.word, corrections);
                     const isEditing = editingWordId === mw.word.id;
                     const inlineEdit = inlineEdits.get(mw.word.id);
@@ -209,12 +232,14 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                     return (
                       <div
                         key={`${mw.word.id}-${index}`}
-                        className={`p-3 rounded-xl border-2 transition-all ${
+                        className={`p-3 rounded-xl border-2 transition-all flex gap-3 ${
                           corrected.isCorrected
                             ? 'bg-indigo-50 border-indigo-200'
                             : 'bg-green-50 border-green-200'
                         }`}
                       >
+                        <span className="text-xs font-black text-stone-400 w-5 pt-1 shrink-0">{index + 1}</span>
+                        <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-on-surface text-sm">{corrected.english}</p>
@@ -225,8 +250,23 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                                 </span>
                               )}
                               <span className="text-xs text-gray-500">
-                                {mw.matchType === 'exact' ? '✓ exact' : '~ starts-with'}
+                                {mw.matchType === 'exact' ? '\u2713 exact' :
+                                 mw.matchType === 'hebrew' ? '\u2713 Hebrew' :
+                                 mw.matchType === 'arabic' ? '\u2713 Arabic' :
+                                 mw.matchType === 'phrase' ? '\u2713 phrase' :
+                                 mw.matchType === 'fuzzy' ? '\u2248 fuzzy' :
+                                 mw.matchType === 'family' ? '\u223C family' :
+                                 '~ starts-with'}
                               </span>
+                              {'confidence' in mw && typeof (mw as any).confidence === 'number' && (mw as any).confidence < 1.0 && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                  (mw as any).confidence >= 0.8 ? 'bg-green-100 text-green-700' :
+                                  (mw as any).confidence >= 0.6 ? 'bg-amber-100 text-amber-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {Math.round((mw as any).confidence * 100)}%
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -326,12 +366,52 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                             )}
                           </div>
                         )}
+                        </div>{/* close flex-1 wrapper */}
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
+              )}
+
+              {/* Suggestions — fuzzy, starts-with matches (click to add) */}
+              {suggestions.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
+                  <Sparkles className="text-amber-600" size={16} />
+                  Suggestions ({suggestions.length}) — click to add
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestions.map((mw) => {
+                    const isAdded = addedSuggestionIds.has(mw.word.id);
+                    return (
+                      <button
+                        key={mw.word.id}
+                        onClick={() => {
+                          setAddedSuggestionIds(prev => {
+                            const next = new Set(prev);
+                            if (isAdded) next.delete(mw.word.id); else next.add(mw.word.id);
+                            return next;
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          isAdded
+                            ? 'bg-green-600 text-white shadow-sm'
+                            : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 cursor-pointer'
+                        }`}
+                        title={`${mw.matchType} match — ${mw.word.hebrew || ''}`}
+                      >
+                        {isAdded ? '✓ ' : '+ '}{mw.word.english}
+                        <span className="ml-1 opacity-60">({mw.matchType})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              )}
+              </>
+              );
+            })()}
 
             {/* Unmatched Terms */}
             {unmatchedTerms.length > 0 && (
@@ -419,6 +499,44 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Word Family Suggestions */}
+            {analysis.wordFamilySuggestions && analysis.wordFamilySuggestions.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
+                  <Sparkles className="text-purple-600" size={16} />
+                  Related Words — Suggestions ({analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0)})
+                </h3>
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-3 space-y-2">
+                  {analysis.wordFamilySuggestions.map((family) => (
+                    <div key={family.rootWord} className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-purple-600 font-bold mr-1">root: {family.rootWord}</span>
+                      {family.familyMembers.map((w) => {
+                        const isAdded = addedSuggestionIds.has(w.id);
+                        return (
+                          <button
+                            key={w.id}
+                            onClick={() => {
+                              setAddedSuggestionIds(prev => {
+                                const next = new Set(prev);
+                                if (isAdded) next.delete(w.id); else next.add(w.id);
+                                return next;
+                              });
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium transition-all ${isAdded ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200 cursor-pointer'}`}
+                          >
+                            {isAdded ? '✓ ' : '+ '}{w.english}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-purple-500 mt-1">
+                    Click a word to add it to your selection. Only words you click will be included.
+                  </p>
                 </div>
               </div>
             )}

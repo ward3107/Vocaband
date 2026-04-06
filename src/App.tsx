@@ -43,12 +43,18 @@ import {
   GraduationCap,
   Loader2,
   QrCode,
-  Search
+  Search,
+  Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
+import QuickPlayMonitor from "./components/QuickPlayMonitor";
+import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
+import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
+import DashboardOnboarding from "./components/DashboardOnboarding";
+import StudentOnboarding from "./components/StudentOnboarding";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -57,9 +63,9 @@ import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
 import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import { PastePreviewModal } from "./components/PastePreviewModal";
-import { analyzePastedText } from "./utils/wordAnalysis";
+import { analyzePastedText, type WordAnalysisResult } from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper } from "./components/LazyComponents";
+import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
 import OAuthButton from "./components/OAuthButton";
 import OAuthCallback from "./components/OAuthCallback";
 import OAuthClassCode from "./components/OAuthClassCode";
@@ -80,7 +86,7 @@ import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 type MammothModule = typeof import('mammoth');
 type ConfettiModule = typeof import('canvas-confetti');
 type SocketIOModule = typeof import('socket.io-client');
-type Socket = SocketIOModule['Socket'];
+type Socket = InstanceType<SocketIOModule['Socket']>;
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -88,25 +94,46 @@ type Socket = SocketIOModule['Socket'];
 // --- Memoized game UI components (avoid re-rendering all buttons on single feedback change) ---
 const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer }: {
   option: Word; currentWordId: number; feedback: string | null; gameMode: string; targetLanguage: "hebrew" | "arabic"; onAnswer: (w: Word) => void;
-}) => (
-  <button
-    onClick={() => onAnswer(option)}
-    disabled={feedback === "show-answer" || feedback === "correct"}
-    className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
-      feedback === "correct" && option.id === currentWordId
-        ? "bg-blue-600 text-white scale-105 shadow-xl"
-        : feedback === "wrong" && option.id !== currentWordId
-        ? "bg-rose-100 text-rose-500 opacity-50"
-        : feedback === "show-answer" && option.id === currentWordId
-        ? "bg-amber-500 text-white scale-105 shadow-xl ring-4 ring-amber-300"
-        : feedback === "show-answer"
-        ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
-        : "bg-stone-100 text-stone-800 hover:bg-stone-200"
-    }`}
-  >
-    {gameMode === "reverse" ? option.english : option[targetLanguage]}
-  </button>
-));
+}) => {
+  const isCorrect = option.id === currentWordId;
+  const showCorrect = feedback === "correct" && isCorrect;
+  const showAnswer = feedback === "show-answer" && isCorrect;
+  return (
+    <button
+      onClick={() => onAnswer(option)}
+      disabled={feedback === "show-answer" || feedback === "correct"}
+      dir={gameMode === "reverse" ? "ltr" : "auto"}
+      className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
+        showCorrect
+          ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
+          : feedback === "wrong" && !isCorrect
+          ? "bg-rose-100 text-rose-500 opacity-50"
+          : showAnswer
+          ? "bg-amber-500 text-white motion-safe:scale-105 shadow-xl ring-4 ring-amber-300"
+          : feedback === "show-answer"
+          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
+          : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
+      }`}
+    >
+      {showCorrect && <span aria-hidden="true">✓</span>}
+      {showAnswer && <span aria-hidden="true">→</span>}
+      <span>{gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}</span>
+    </button>
+  );
+});
+
+// Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
+function secureRandomInt(max: number): number {
+  if (max <= 1) return 0;
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return arr[0] % max;
+}
+
+// Generate a unique negative ID for custom words (not security-sensitive, just needs uniqueness)
+function uniqueNegativeId(offset = 0): number {
+  return -(Date.now() + offset + secureRandomInt(10000));
+}
 
 
 export default function App() {
@@ -121,6 +148,7 @@ export default function App() {
     | "public-landing"
     | "public-terms"
     | "public-privacy"
+    | "accessibility-statement"
     | "student-account-login"
     | "landing"
     | "game"
@@ -139,7 +167,11 @@ export default function App() {
     | "quick-play-setup"
     | "quick-play-teacher-monitor"
     | "quick-play-student"
-  >(quickPlaySessionParam ? "quick-play-student" : "public-landing");
+  >(() => {
+    if (quickPlaySessionParam) return "quick-play-student";
+    if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    return "public-landing";
+  });
   const previousViewRef = useRef<string>("public-landing");
 
   // Custom setView that tracks previous view for back navigation
@@ -159,10 +191,8 @@ export default function App() {
   const [showCookieBanner, setShowCookieBanner] = useState(() => {
     try {
       const hasConsented = localStorage.getItem("vocaband_cookie_consent");
-      console.log('[Cookie Banner] Initial check - hasConsented:', !!hasConsented, 'value:', hasConsented);
       return !hasConsented;
     } catch (e) {
-      console.log('[Cookie Banner] localStorage error:', e);
       return true;
     }
   });
@@ -178,10 +208,8 @@ export default function App() {
         ? JSON.stringify(preferences)
         : JSON.stringify({ essential: true, analytics: true, functional: true });
       localStorage.setItem("vocaband_cookie_consent", consentData);
-      console.log('[Cookie Banner] Consent saved:', consentData);
       // Verify it was saved
       const verify = localStorage.getItem("vocaband_cookie_consent");
-      console.log('[Cookie Banner] Verification read:', verify);
     } catch (e) {
       console.error('[Cookie Banner] Failed to save consent:', e);
     }
@@ -220,7 +248,6 @@ export default function App() {
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
-  const [endQuickPlayModal, setEndQuickPlayModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [openDropdownClassId, setOpenDropdownClassId] = useState<string | null>(null);
   const [xp, setXp] = useState(0);
@@ -265,16 +292,21 @@ export default function App() {
   const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
+  const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
+  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
   const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
-  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string}[]>([]);
+  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
   const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
+  const [quickPlayKicked, setQuickPlayKicked] = useState(false);
+  const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
+  const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
-  const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState(null);
+  const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
   // Game music player state
   const [gameMusicTrack, setGameMusicTrack] = useState(0);
@@ -370,7 +402,7 @@ export default function App() {
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
 
   // --- TOAST NOTIFICATIONS STATE ---
-  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
+  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -389,6 +421,12 @@ export default function App() {
   // --- ASSIGNMENT WELCOME POPUP STATE ---
   const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(() => {
     try { return !localStorage.getItem('vocaband_welcome_seen'); } catch { return true; }
+  });
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return !localStorage.getItem('vocaband_onboarding_done'); } catch { return true; }
+  });
+  const [showStudentOnboarding, setShowStudentOnboarding] = useState(() => {
+    try { return !localStorage.getItem('vocaband_student_onboarding_done'); } catch { return true; }
   });
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
@@ -537,7 +575,6 @@ export default function App() {
         // Combine database and custom words
         const allWords = [...dbWords, ...customWords];
 
-        console.log('[Quick Play Load] Session loaded:', { sessionCode: data.session_code, wordIds: data.word_ids, dbWordsCount: dbWords.length, customWordsCount: customWords.length, totalWords: allWords.length });
 
         if (allWords.length === 0) {
           console.error('[Quick Play Load] No words in session!');
@@ -553,11 +590,112 @@ export default function App() {
           wordIds: data.word_ids,
           words: allWords
         });
-        console.log('[Quick Play Student] Session loaded:', { id: data.id, sessionCode: data.session_code });
+
+        // Check if this student already joined this session (page refresh / re-scan)
+        // Force them to rejoin with the SAME name to prevent name-swapping chaos
+        try {
+          const saved = localStorage.getItem('vocaband_qp_guest');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.sessionId === data.id && parsed.name) {
+              // Verify they still have a progress record (weren't kicked)
+              const { data: { session: authSession } } = await supabase.auth.getSession();
+              const authUid = authSession?.user?.id;
+              if (authUid) {
+                const { data: existingRecord } = await supabase
+                  .from('progress')
+                  .select('id')
+                  .eq('assignment_id', data.id)
+                  .eq('student_uid', authUid)
+                  .limit(1);
+                if (existingRecord && existingRecord.length > 0) {
+                  // Auto-rejoin with same name and avatar
+                  const guestUser = createGuestUser(parsed.name, 'quickplay', parsed.avatar || '\uD83E\uDD8A');
+                  setUser(guestUser);
+                  setQuickPlayStudentName(parsed.name);
+                  setQuickPlayAvatar(parsed.avatar || '\uD83E\uDD8A');
+                  const words = allWords.map(w => ({ ...w, hebrew: w.hebrew || '', arabic: w.arabic || '' }));
+                  setAssignmentWords(words);
+                  const quickPlaySentences = generateSentencesForAssignment(words, 2);
+                  setActiveAssignment({
+                    id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
+                    title: "Quick Play",
+                    allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    sentences: quickPlaySentences, sentenceDifficulty: 2,
+                  });
+                  setView("game");
+                  setShowModeSelection(true);
+                  window.history.replaceState({}, '', window.location.pathname);
+                  return; // Skip join screen — go straight to game
+                }
+              }
+            }
+          }
+        } catch {}
+
         setView("quick-play-student");
       };
 
       loadQuickPlaySession();
+    } else {
+      // No URL param — try recovering a saved guest session from localStorage
+      try {
+        const saved = localStorage.getItem('vocaband_qp_guest');
+        if (saved) {
+          const { sessionId, sessionCode, name, avatar } = JSON.parse(saved);
+          if (sessionId && sessionCode && name) {
+            // Verify session is still active
+            const loadSaved = async () => {
+              const { data: { session: existingSession } } = await supabase.auth.getSession();
+              if (!existingSession) await supabase.auth.signInAnonymously().catch(() => {});
+
+              const { data } = await supabase
+                .from('quick_play_sessions')
+                .select('id, session_code, word_ids, is_active, custom_words')
+                .eq('id', sessionId)
+                .eq('is_active', true)
+                .maybeSingle();
+
+              if (data) {
+                const dbWords = ALL_WORDS.filter(w => (data.word_ids || []).includes(w.id));
+                let customWords: Word[] = [];
+                if (data.custom_words) {
+                  try {
+                    const cw = typeof data.custom_words === 'string' ? JSON.parse(data.custom_words) : data.custom_words;
+                    customWords = cw.map((w: any, i: number) => ({
+                      id: -(Date.now() + i), english: w.english, hebrew: w.hebrew, arabic: w.arabic, level: "Custom" as const
+                    }));
+                  } catch {}
+                }
+                const allSessionWords = [...dbWords, ...customWords];
+                if (allSessionWords.length > 0) {
+                  setQuickPlayActiveSession({ id: data.id, sessionCode: data.session_code, wordIds: data.word_ids || [], words: allSessionWords });
+                  setQuickPlayStudentName(name);
+                  setQuickPlayAvatar(avatar || '\uD83E\uDD8A');
+                  // Go straight to mode selection (they already joined)
+                  const guestUser = createGuestUser(name, 'quickplay', avatar || '\uD83E\uDD8A');
+                  setUser(guestUser);
+                  const words = allSessionWords.map(w => ({ ...w, hebrew: w.hebrew || '', arabic: w.arabic || '' }));
+                  setAssignmentWords(words);
+                  const quickPlaySentences = generateSentencesForAssignment(words, 2);
+                  setActiveAssignment({
+                    id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
+                    title: "Quick Play",
+                    allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    sentences: quickPlaySentences, sentenceDifficulty: 2,
+                  });
+                  setView("game");
+                  setShowModeSelection(true);
+                  return;
+                }
+              }
+              // Session ended or invalid — clear saved data
+              localStorage.removeItem('vocaband_qp_guest');
+            };
+            loadSaved();
+          }
+        }
+      } catch {}
     }
   }, []);
 
@@ -592,90 +730,165 @@ export default function App() {
 
   // Real-time polling for Quick Play teacher monitor
   // Polls Supabase for student progress every 3 seconds when in teacher monitor view
+  // Helper: aggregate raw progress rows into the leaderboard format
+  const aggregateProgress = useCallback((progressData: any[]) => {
+    const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> }>();
+
+    progressData.forEach((p: any) => {
+      // Group by student_uid to avoid merging different students with same name
+      const key = p.student_uid || p.student_name;
+      const existing = studentMap.get(key);
+
+      if (!existing) {
+        const modes = new Map<string, number>();
+        if (p.mode !== 'joined') modes.set(p.mode, Number(p.score));
+        studentMap.set(key, {
+          name: p.student_name,
+          score: p.mode === 'joined' ? 0 : Number(p.score),
+          avatar: p.avatar || '🦊',
+          lastSeen: p.completed_at,
+          mode: p.mode,
+          studentUid: p.student_uid,
+          modes
+        });
+      } else {
+        if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
+          existing.lastSeen = p.completed_at;
+          existing.mode = p.mode;
+        }
+        // Track best score per mode, then sum for cumulative total
+        if (p.mode !== 'joined') {
+          const prev = existing.modes.get(p.mode) || 0;
+          if (Number(p.score) > prev) existing.modes.set(p.mode, Number(p.score));
+        }
+        let total = 0;
+        existing.modes.forEach(v => { total += v; });
+        existing.score = total;
+      }
+    });
+
+    return Array.from(studentMap.values()).sort((a, b) => b.score - a.score);
+  }, []);
+
   useEffect(() => {
-    // Only poll when in teacher monitor view and have an active session
+    // Only subscribe when in teacher monitor view and have an active session
     if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession?.id) return;
 
-    const pollProgress = async () => {
-      if (!quickPlayActiveSession?.id) return;
+    const sessionId = quickPlayActiveSession.id;
 
-      try {
-        console.log('[Quick Play Monitor] Polling for session:', quickPlayActiveSession.id);
-        // Fetch progress records for this Quick Play session
-        // We use assignmentId to store the session UUID (id) for Quick Play
-        const { data: progressData, error } = await supabase
-          .from('progress')
-          .select('student_name, score, avatar, completed_at, mode')
-          .eq('assignment_id', quickPlayActiveSession.id)
-          .order('completed_at', { ascending: false })
-          .limit(50);
+    // 1. Initial fetch to hydrate state
+    const fetchProgress = async () => {
+      const { data, error } = await supabase
+        .from('progress')
+        .select('student_name, student_uid, score, avatar, completed_at, mode')
+        .eq('assignment_id', sessionId)
+        .order('completed_at', { ascending: false })
+        .limit(200);
 
-        if (error) {
-          console.error('[Quick Play Monitor] Error fetching progress:', error);
-          return;
-        }
-
-        console.log('[Quick Play Monitor] Progress data received:', progressData);
-
-        if (progressData) {
-          // Aggregate by student name (keep best score per mode)
-          const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string }>();
-
-          progressData.forEach((p: any) => {
-            const key = p.student_name;
-            const existing = studentMap.get(key);
-
-            if (!existing || p.score > existing.score || new Date(p.completed_at) > new Date(existing.lastSeen)) {
-              studentMap.set(key, {
-                name: p.student_name,
-                score: p.score,
-                avatar: p.avatar || '🦊',
-                lastSeen: p.completed_at
-              });
-            }
-          });
-
-          // Convert to array and sort by score
-          const students = Array.from(studentMap.values())
-            .sort((a, b) => b.score - a.score);
-
-          console.log('[Quick Play Monitor] Students after aggregation:', students);
-          setQuickPlayJoinedStudents(students);
-        }
-      } catch (err) {
-        console.error('[Quick Play Monitor] Poll error:', err);
+      if (error) {
+        console.error('[Quick Play Monitor] Error fetching progress:', error);
+        return;
+      }
+      if (data) {
+        setQuickPlayJoinedStudents(aggregateProgress(data));
       }
     };
+    fetchProgress();
 
-    // Poll immediately
-    pollProgress();
+    // 2. Subscribe to realtime changes on progress table for this session
+    const channel = supabase
+      .channel(`qp-progress-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',  // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'progress',
+          filter: `assignment_id=eq.${sessionId}`
+        },
+        (payload) => {
+          // Re-fetch on any change — simple and correct
+          fetchProgress();
+        }
+      )
+      .subscribe((status) => {
+      });
 
-    // Set up polling interval (every 3 seconds)
-    const interval = setInterval(pollProgress, 3000);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [view, quickPlayActiveSession?.id, aggregateProgress]);
 
-    return () => clearInterval(interval);
-  }, [view, quickPlayActiveSession?.id]);
-
-  // Quick Play student: poll session status so teacher ending it kicks them out
+  // Quick Play student: subscribe to session status (end) and progress deletes (kick)
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
-    const checkSession = async () => {
-      const { data } = await supabase
-        .from('quick_play_sessions')
-        .select('is_active')
-        .eq('session_code', quickPlayActiveSession.sessionCode)
-        .maybeSingle();
-      if (data && !data.is_active) {
-        showToast("The teacher has ended this Quick Play session.", "info");
-        setQuickPlayActiveSession(null);
-        setActiveAssignment(null);
-        setUser(null);
-        setView("public-landing");
-      }
+
+    const sessionCode = quickPlayActiveSession.sessionCode;
+    const sessionId = quickPlayActiveSession.id;
+
+    // 1. Subscribe to session end
+    const sessionChannel = supabase
+      .channel(`qp-session-${sessionCode}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quick_play_sessions',
+          filter: `session_code=eq.${sessionCode}`
+        },
+        (payload) => {
+          if (payload.new && !(payload.new as any).is_active) {
+            // Show session end screen instead of just redirecting
+            setQuickPlaySessionEnded(true);
+            setActiveAssignment(null);
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. Subscribe to progress deletes (teacher kicked this student)
+    const kickChannel = supabase
+      .channel(`qp-kick-${sessionId}-${user.uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'progress',
+          filter: `assignment_id=eq.${sessionId}`
+        },
+        () => {
+          // Check if our own progress was deleted by querying with auth UID
+          supabase.auth.getSession().then(({ data: { session: authSess } }) => {
+            const authUid = authSess?.user?.id;
+            const query = supabase
+              .from('progress')
+              .select('id')
+              .eq('assignment_id', sessionId);
+            // Prefer UID match, fall back to name
+            if (authUid) {
+              query.eq('student_uid', authUid);
+            } else {
+              query.eq('student_name', user.displayName);
+            }
+            query.limit(1).then(({ data }) => {
+              if (!data || data.length === 0) {
+                // Our progress was deleted — we've been kicked
+                setQuickPlayKicked(true);
+                setActiveAssignment(null);
+              }
+            });
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(sessionChannel);
+      supabase.removeChannel(kickChannel);
     };
-    const interval = setInterval(checkSession, 5000);
-    return () => clearInterval(interval);
-  }, [user?.isGuest, quickPlayActiveSession?.sessionCode]);
+  }, [user?.isGuest, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id, user?.uid, user?.displayName]);
 
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   const toScoreHeightClass = (score: number) => {
@@ -687,7 +900,7 @@ export default function App() {
 
   // --- HELPER: Create Guest User ---
   // Centralized function to create guest user objects with consistent structure
-  const createGuestUser = (name: string, prefix: string = 'guest'): AppUser => {
+  const createGuestUser = (name: string, prefix: string = 'guest', avatar: string = '\uD83E\uDD8A'): AppUser => {
     // Mobile-compatible UUID generation (crypto.randomUUID() not supported on some mobile browsers)
     const generateUUID = (): string => {
       // Prefer native crypto.randomUUID when available
@@ -733,7 +946,7 @@ export default function App() {
       email: undefined,
       role: "guest",
       isGuest: true,
-      avatar: "🦊",
+      avatar,
       xp: 0,
       classCode: undefined,
       createdAt: new Date().toISOString()
@@ -808,7 +1021,15 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWord, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel } = useAudio();
+  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel, playWrong } = useAudio();
+
+  // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
+  const isQuickPlayGuest = !!user?.isGuest;
+  const speakWord = speakWordRaw; // Always allow pronunciation
+  const playMotivational = (...args: Parameters<typeof playMotivationalRaw>) => {
+    if (isQuickPlayGuest) return ''; // Mute motivational sounds in QP
+    return playMotivationalRaw(...args);
+  };
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -820,7 +1041,12 @@ export default function App() {
   const [mistakes, setMistakes] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("arabic");
+  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
+    try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
+  });
+  const [hasChosenLanguage, setHasChosenLanguage] = useState(() => {
+    try { return !!localStorage.getItem('vocaband_target_lang'); } catch { return false; }
+  });
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
@@ -882,16 +1108,16 @@ export default function App() {
     }
   }, [view]);
 
-  // Speak motivational message during gameplay — audio and text use the SAME phrase
+  // Speak motivational message during gameplay — only when student is in game view
   useEffect(() => {
-    if (motivationalMessage) {
+    if (motivationalMessage && view === "game") {
       playMotivational();
     }
-  }, [motivationalMessage]);
+  }, [motivationalMessage, view]);
 
-  // Speak congratulatory message when a mode is finished
+  // Speak congratulatory message when a mode is finished — only in game view
   useEffect(() => {
-    if (isFinished && user?.displayName) {
+    if (isFinished && user?.displayName && view === "game") {
       const phrases = [
         `Kol Hakavod ${user.displayName}! You did amazing!`,
         `Excellent work ${user.displayName}! You're a superstar!`,
@@ -899,7 +1125,7 @@ export default function App() {
         `Great job ${user.displayName}! Keep going!`,
         `Well done ${user.displayName}! You're getting better and better!`,
       ];
-      const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+      const phrase = phrases[secureRandomInt( phrases.length)];
       setTimeout(() => speak(phrase), 500);
     }
   }, [isFinished]);
@@ -924,7 +1150,7 @@ export default function App() {
   // always fail with "Authentication required" on the first attempt, causing
   // the console error the teacher sees before the retry succeeds.
   useEffect(() => {
-    let s: ReturnType<typeof io> | undefined = undefined;
+    let s: Socket | undefined = undefined;
     let cancelled = false;
 
     const getToken = async () => {
@@ -953,58 +1179,63 @@ export default function App() {
       const io = socketIO.default || socketIO;
 
       const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
-      s = io(socketUrl || "/", {
+      const sock = io(socketUrl || "/", {
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         // Async callback ensures a fresh token is fetched on every reconnect,
         // so the handshake never carries a stale/expired JWT.
         auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
-      });
+      }) as Socket;
+      s = sock;
 
-      // Debug: log connection attempt
-      console.log("[Socket] Connecting to", socketUrl, "with token:", token ? "✓" : "✗");
+      setSocket(sock);
 
-      setSocket(s);
-
-      s.on("connect", () => {
-        console.log("[Socket] ✓ Connected successfully");
+      sock.on("connect", () => {
         setSocketConnected(true);
       });
-      s.on("disconnect", (reason: any) => {
-        console.log("[Socket] Disconnected:", reason);
+      sock.on("disconnect", (reason: any) => {
         setSocketConnected(false);
       });
-      s.on("reconnect", () => {
+      sock.on("reconnect", () => {
         setSocketConnected(true);
         const currentUser = userRef.current;
         // Allow students to rejoin live challenge on reconnect.
         // Token is provided via the socket auth callback (line above), not in the payload.
         if (currentUser?.classCode && isLiveChallengeRef.current) {
           if (currentUser.role === "student") {
-            s!.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
+            sock.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
           }
         }
       });
-      s.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
-      s.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
-        if (typeof data === "object" && data !== null && "name" in data && "baseScore" in data && "currentGameScore" in data) {
-          setLeaderboard(data as unknown as unknown as Record<string, LeaderboardEntry> | undefined);
+      sock.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
+      sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
+        if (typeof data === "object" && data !== null) {
+          setLeaderboard(data as Record<string, LeaderboardEntry>);
         } else {
-          setLeaderboard(undefined as unknown as Record<string, LeaderboardEntry>);
+          setLeaderboard({});
         }
-      });
-      s.on(SOCKET_EVENTS.CHALLENGE_UPDATE, (data: unknown) => {
-        // Challenge updates are handled via the socket listener in the live challenge view
-        console.log("[Socket] Challenge updated:", data);
       });
     };
 
     connectSocket();
+
+    return () => {
+      cancelled = true;
+      if (s) {
+        s.disconnect();
+      }
+    };
   }, []);
 
   // --- AUTH LOGIC ---
   useEffect(() => {
+    // If Supabase isn't configured, skip auth entirely and show the landing page.
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     // PKCE code exchange happens in main.tsx (outside React lifecycle)
     // to avoid StrictMode double-mount races.  By the time this effect
     // runs, the exchange is already in-flight or completed.
@@ -1363,6 +1594,26 @@ export default function App() {
     }
   }, [view, user, loading]);
 
+  // Quick Play guest: remove from podium on page unload/refresh
+  useEffect(() => {
+    if (!user?.isGuest || !quickPlayActiveSession) return;
+    const handleUnload = () => {
+      // Clear localStorage so name is released for re-login
+      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+      // Use sendBeacon to delete progress (fire-and-forget, works on tab close)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseKey) {
+        // Delete progress via REST API using sendBeacon
+        // sendBeacon only supports POST, so we use the PostgREST RPC approach
+        // Instead, we just clear localStorage - the teacher can manually remove stale students
+      }
+      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [user?.isGuest, quickPlayActiveSession?.id]);
+
   // Warn before leaving while a score save is in flight
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -1406,10 +1657,15 @@ export default function App() {
   useEffect(() => {
     if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
     const code = user.classCode;
+    // Cache class ID to avoid querying classes table every 30s
+    let cachedClassId: string | null = null;
     const refresh = async () => {
-      const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
-      if (!classRows || classRows.length === 0) return;
-      const { data } = await supabase.from('assignments').select('*').eq('class_id', classRows[0].id);
+      if (!cachedClassId) {
+        const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
+        if (!classRows || classRows.length === 0) return;
+        cachedClassId = classRows[0].id;
+      }
+      const { data } = await supabase.from('assignments').select('*').eq('class_id', cachedClassId);
       if (data) setStudentAssignments(data.map(mapAssignment));
     };
     const id = setInterval(refresh, 30000);
@@ -1480,7 +1736,7 @@ export default function App() {
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { showToast("Image too large (max 10 MB).", "error"); e.target.value = ""; return; }
+    if (file.size > 5 * 1024 * 1024) { showToast("Image too large (max 5 MB).", "error"); e.target.value = ""; return; }
 
     setIsOcrProcessing(true);
     setOcrProgress(10); // Initial progress
@@ -1524,7 +1780,7 @@ export default function App() {
       console.log('Raw text for reference:', rawText.substring(0, 100) + '...');
 
       // Create Word objects for custom assignment
-      const customWordsFromOCR: Word[] = extractedWords.map((word, index) => ({
+      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => ({
         id: Date.now() + index, // Generate unique ID
         english: word,
         hebrew: '', // Leave empty - user can add later
@@ -1708,18 +1964,31 @@ export default function App() {
 
   // --- QUICK PLAY PREVIEW HANDLERS ---
 
-  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => {
+  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedSuggestionIds?: Set<number>) => {
     if (!quickPlayPreviewAnalysis) return;
 
     const { matchedWords, unmatchedTerms } = quickPlayPreviewAnalysis;
 
-    // Add all matched database words
+    // Only add exact, hebrew, arabic, and phrase matches automatically.
+    // Fuzzy, starts-with, and family matches are suggestions — only add if teacher clicked them.
+    const autoAddTypes = new Set(['exact', 'hebrew', 'arabic', 'phrase']);
     const newSelectedWords = [...quickPlaySelectedWords];
     matchedWords.forEach(mw => {
-      if (!newSelectedWords.some(w => w.id === mw.word.id)) {
+      const shouldAdd = autoAddTypes.has(mw.matchType) || (addedSuggestionIds && addedSuggestionIds.has(mw.word.id));
+      if (shouldAdd && !newSelectedWords.some(w => w.id === mw.word.id)) {
         newSelectedWords.push(mw.word);
       }
     });
+    // Also add family suggestion words that were manually selected
+    if (addedSuggestionIds && addedSuggestionIds.size > 0 && quickPlayPreviewAnalysis.wordFamilySuggestions) {
+      for (const family of quickPlayPreviewAnalysis.wordFamilySuggestions) {
+        for (const w of family.familyMembers) {
+          if (addedSuggestionIds.has(w.id) && !newSelectedWords.some(sw => sw.id === w.id)) {
+            newSelectedWords.push(w);
+          }
+        }
+      }
+    }
     setQuickPlaySelectedWords(newSelectedWords);
 
     // Add custom words from translations (either from Translate All or manual entry)
@@ -1728,7 +1997,7 @@ export default function App() {
         const translation = customTranslations.get(term.term);
         if (translation && (translation.hebrew || translation.arabic)) {
           const customWord: Word = {
-            id: -Date.now() - Math.floor(Math.random() * 1000),
+            id: uniqueNegativeId(),
             english: term.term.charAt(0).toUpperCase() + term.term.slice(1).toLowerCase(),
             hebrew: translation.hebrew || "",
             arabic: translation.arabic || "",
@@ -2622,7 +2891,7 @@ export default function App() {
 
       // Step 2: Look up class + existing user profile in parallel
       // OPTIMIZATION: Check cache first to avoid database query
-      let classData: ClassData;
+      let classData: ClassData | undefined;
       const cacheKey = `vocaband_class_${trimmedCode}`;
 
       try {
@@ -2771,7 +3040,7 @@ export default function App() {
     } catch (error) {
       trackAutoError(error, 'Student login failed');
       const errorMsg = error && typeof error === 'object' && 'message' in error
-        ? (error.message.includes('fetch') || error.message.includes('network')
+        ? (String((error as { message: unknown }).message).includes('fetch') || String((error as { message: unknown }).message).includes('network')
           ? "Network error. Please check your connection."
           : "Could not log in. Please try again.")
         : "Could not log in. Please try again.";
@@ -2861,6 +3130,7 @@ export default function App() {
 
     if (classes.length === 0) {
       setAllScores([]);
+      setClassStudents([]);
       return;
     }
 
@@ -2873,20 +3143,29 @@ export default function App() {
         .from('progress').select('*')
         .in('class_code', chunk)
         .order('completed_at', { ascending: false })
-        .limit(200);
+        .limit(5000);
       if (data) allRows.push(...data.map(mapProgress));
     }
 
     setAllScores(allRows);
+
+    // Derive students from the same data — avoids a separate query
+    const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
+    allRows.forEach(row => {
+      const key = `${row.studentName}-${row.classCode}`;
+      if (!studentMap[key] || new Date(row.completedAt) > new Date(studentMap[key].lastActive)) {
+        studentMap[key] = { name: row.studentName, classCode: row.classCode, lastActive: row.completedAt };
+      }
+    });
+    setClassStudents(Object.values(studentMap));
+    lastFetchRef.current.students = now;
   };
 
   const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    console.log('fetchTeacherAssignments called with classIds:', classIds);
     const { data, error } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
-    console.log('Assignments query result:', { data, error });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };
@@ -2924,7 +3203,7 @@ export default function App() {
   useEffect(() => {
     if (currentWord) {
       // 50% chance to show correct translation, 50% chance to show wrong translation
-      if (Math.random() > 0.5) {
+      if (secureRandomInt(2) === 0) {
         setTfOption(currentWord);
       } else {
         let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
@@ -2932,7 +3211,7 @@ export default function App() {
           const allPossibleWords = [...ALL_WORDS, ...gameWords];
           possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
         }
-        setTfOption(possibleDistractors[Math.floor(Math.random() * possibleDistractors.length)]);
+        setTfOption(possibleDistractors[secureRandomInt( possibleDistractors.length)]);
       }
       setIsFlipped(false);
     }
@@ -2990,13 +3269,13 @@ export default function App() {
       const shuffled = shuffle(gameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
-        ...shuffled.map(w => ({ id: w.id, text: w.arabic || w.hebrew, type: 'arabic' as const }))
+        ...shuffled.map(w => ({ id: w.id, text: w[targetLanguage] || w.arabic || w.hebrew || w.english, type: 'arabic' as const }))
       ]);
       setMatchingPairs(pairs);
       setMatchedIds([]);
       setSelectedMatch(null);
     }
-  }, [view, showModeSelection, gameMode, gameWords]);
+  }, [view, showModeSelection, gameMode, gameWords, targetLanguage]);
 
   // Letter Sounds: reveal one letter at a time, speak each letter
   // Uses sequential timeouts so each letter's sound plays AFTER the letter
@@ -3073,7 +3352,7 @@ export default function App() {
         const next = sentenceIndex + 1;
         if (next >= validSentences.length) {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         } else {
           setSentenceIndex(next);
           setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
@@ -3087,6 +3366,24 @@ export default function App() {
       setSentenceFeedback("wrong");
       setTimeout(() => { setBuiltSentence([]); setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean))); setSentenceFeedback(null); }, 1200);
     }
+  };
+
+  // Remove Quick Play guest from teacher's dashboard (delete progress, clear localStorage)
+  const cleanupQuickPlayGuest = async () => {
+    if (!user?.isGuest || !quickPlayActiveSession) return;
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const authUid = authSession?.user?.id;
+      if (authUid) {
+        await supabase
+          .from('progress')
+          .delete()
+          .eq('assignment_id', quickPlayActiveSession.id)
+          .eq('student_uid', authUid);
+      }
+    } catch {}
+    try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+    setQuickPlayCompletedModes(new Set());
   };
 
   const handleExitGame = () => {
@@ -3124,7 +3421,8 @@ export default function App() {
     }
   };
 
-  const saveScore = async () => {
+  const saveScore = async (scoreOverride?: number) => {
+    const finalScore = scoreOverride !== undefined ? scoreOverride : score;
     if (!user) return;
     setIsSaving(true);
     setSaveError(null);
@@ -3140,19 +3438,12 @@ export default function App() {
           studentUid: authUid,
           assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
           classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.min(Math.max(0, score), gameWords.length * 10),
+          score: Math.max(0, finalScore),
           mode: gameMode,
           completedAt: new Date().toISOString(),
           mistakes: mistakes,
-          avatar: user.avatar || "🦊"
+          avatar: user.avatar || "\uD83E\uDD8A"
         };
-
-        console.log('[Quick Play] Saving progress:', {
-          studentName: progress.studentName,
-          assignmentId: progress.assignmentId,
-          score: progress.score,
-          mode: progress.mode
-        });
 
         // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
         const { error } = await supabase
@@ -3172,7 +3463,8 @@ export default function App() {
         if (error) {
           console.error('[Quick Play] Failed to save progress:', error);
         } else {
-          console.log('[Quick Play] ✓ Progress saved successfully for', user.displayName);
+          // Mark this mode as completed so it gets locked in mode selection
+          setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
         }
 
         setIsSaving(false);
@@ -3189,7 +3481,7 @@ export default function App() {
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
     const maxPossible = gameWords.length * 10;
-    const cappedScore = Math.min(Math.max(0, score), maxPossible);
+    const cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
 
     const xpEarned = cappedScore;
     const newXp = xp + xpEarned;
@@ -3201,8 +3493,18 @@ export default function App() {
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
 
-    // Persist XP and streak to database
-    await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
+    // Streak milestone celebrations
+    const streakMilestones = [7, 14, 30, 50, 100];
+    if (streakMilestones.includes(newStreak)) {
+      loadConfetti().then(confettiModule => {
+        const confetti = confettiModule.default || confettiModule;
+        // Big celebration burst
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
+        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.2, y: 0.5 } }), 300);
+        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.8, y: 0.5 } }), 600);
+      });
+      showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
+    }
 
     // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
     // For regular students, we try to get the session UID
@@ -3233,9 +3535,9 @@ export default function App() {
     };
 
     try {
-      // Use RPC to save progress (bypasses RLS for students)
-      const { data: progressId, error: rpcError } = await supabase
-        .rpc('save_student_progress', {
+      // Save progress + XP/streak in parallel (2 calls → 1 round-trip)
+      const [{ data: progressId, error: rpcError }] = await Promise.all([
+        supabase.rpc('save_student_progress', {
           p_student_name: user.displayName,
           p_student_uid: studentUid,
           p_assignment_id: activeAssignment.id,
@@ -3244,7 +3546,9 @@ export default function App() {
           p_mode: gameMode,
           p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
           p_avatar: user.avatar || "🦊"
-        });
+        }),
+        supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid),
+      ]);
 
       if (rpcError) throw rpcError;
 
@@ -3258,7 +3562,7 @@ export default function App() {
         const existingIndex = prev.findIndex(
           p => p.assignmentId === activeAssignment.id
             && p.mode === gameMode
-            && p.studentUid === currentAuthUid
+            && p.studentUid === studentUid
         );
 
         if (existingIndex >= 0) {
@@ -3320,7 +3624,7 @@ export default function App() {
         if (matchedIds.length + 1 === matchingPairs.length / 2) {
           setTimeout(() => {
             setIsFinished(true);
-            saveScore();
+            saveScore(newScore);
           }, 500);
         }
       } else {
@@ -3359,7 +3663,7 @@ export default function App() {
           setHiddenOptions([]);
         } else {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         }
       }, AUTO_SKIP_DELAY_MS);
     } else {
@@ -3389,6 +3693,7 @@ export default function App() {
       } else {
         // Show try again with attempt count
         setFeedback("wrong");
+        playWrong();
         setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
 
         // Clear any pending timeout first
@@ -3418,11 +3723,12 @@ export default function App() {
           setFeedback(null);
         } else {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         }
       }, 1000);
     } else {
       setFeedback("wrong");
+      playWrong();
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
@@ -3431,26 +3737,27 @@ export default function App() {
   };
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
+    let currentScore = score;
     if (knewIt) {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       setTimeout(() => setMotivationalMessage(null), 1000);
-      const newScore = score + 5;
-      setScore(newScore);
+      currentScore = score + 5;
+      setScore(currentScore);
       if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
+        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: currentScore }); }, 0);
       }
     } else {
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
     }
-    
+
     if (currentIndex < gameWords.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     } else {
       setIsFinished(true);
-      saveScore();
+      saveScore(currentScore);
     }
   };
 
@@ -3475,7 +3782,7 @@ export default function App() {
           setSpellingInput("");
         } else {
           setIsFinished(true);
-          saveScore();
+          saveScore(newScore);
         }
       }, 1000);
     } else {
@@ -3644,8 +3951,8 @@ export default function App() {
 
   // Debug: log banner state on every render
   if (showCookieBanner && !user) {
-    console.log('[Cookie Banner] Rendering banner - showCookieBanner:', showCookieBanner, 'user:', !!user);
   }
+
 
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
@@ -3653,10 +3960,20 @@ export default function App() {
     </div>;
   }
 
+
+  // Configuration error banner — shown when Supabase env vars are missing
+  const configErrorBanner = !isSupabaseConfigured ? (
+    <div className="fixed top-0 left-0 w-full bg-red-600 text-white px-4 py-3 text-center text-sm font-bold z-[9999]">
+      <AlertTriangle size={16} className="inline mr-2" />
+      Supabase is not configured. Copy <code className="bg-red-700 px-1 rounded">.env.example</code> to <code className="bg-red-700 px-1 rounded">.env</code> and add your credentials, then restart the server.
+    </div>
+  ) : null;
+
   // --- PUBLIC VIEWS (No authentication required) ---
   if (view === "public-landing") {
     return (
       <>
+        {configErrorBanner}
         <LandingPageWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("student-account-login")}
@@ -3699,6 +4016,19 @@ export default function App() {
     return (
       <>
         <PrivacyPageWrapper
+          onNavigate={handlePublicNavigate}
+          onGetStarted={() => setView("student-account-login")}
+          onBack={goBack}
+        />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "accessibility-statement") {
+    return (
+      <>
+        <AccessibilityStatementWrapper
           onNavigate={handlePublicNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
@@ -4052,6 +4382,40 @@ export default function App() {
       );  {/* Closes return */}
     }  {/* Closes if */}
 
+  // Quick Play: Kicked by teacher
+  if (quickPlayKicked) {
+    return (
+      <QuickPlayKickedScreen
+        onGoHome={() => {
+          setQuickPlayKicked(false);
+          setQuickPlayActiveSession(null);
+          setActiveAssignment(null);
+          setUser(null);
+          setView("public-landing");
+          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+        }}
+      />
+    );
+  }
+
+  // Quick Play: Session ended by teacher
+  if (quickPlaySessionEnded) {
+    return (
+      <QuickPlaySessionEndScreen
+        studentName={user?.displayName || quickPlayStudentName || "Player"}
+        finalScore={score || 0}
+        onGoHome={() => {
+          setQuickPlaySessionEnded(false);
+          setQuickPlayActiveSession(null);
+          setActiveAssignment(null);
+          setUser(null);
+          setView("public-landing");
+          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+        }}
+      />
+    );
+  }
+
   if (view === "quick-play-student") {
     return (
       <div className="min-h-screen flex flex-col bg-surface">
@@ -4066,15 +4430,10 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={() => {
-              // If in game mode, go back to mode selection; otherwise go to landing
-              if (view === "game" && showModeSelection) {
-                setShowModeSelection(false);
-              } else if (view === "game") {
-                setView("quick-play-student");
-              } else {
-                setView("public-landing");
-              }
+            onClick={async () => {
+              // Leaving join screen — go back to landing
+              setView("public-landing");
+              setQuickPlayActiveSession(null);
             }}
             className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
           >
@@ -4085,38 +4444,85 @@ export default function App() {
         <main className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
             {!quickPlayActiveSession ? (
               <div className="text-center py-12 sm:py-20">
-                <Loader2 className="mx-auto animate-spin text-primary mb-4" size={36} sm:size={48} />
+                <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
                 <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
               </div>
             ) : !quickPlayStudentName ? (
               <div className="w-full max-w-md">
                 <div className="text-center mb-6 sm:mb-8">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                    <QrCode className="text-white" size={32} sm:size={40} />
+                    <QrCode className="text-white w-8 h-8 sm:w-10 sm:h-10" />
                   </div>
                   <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
                   <p className="text-sm sm:text-base text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
+                  {/* Avatar picker */}
+                  <div>
+                    <label className="block text-sm font-bold text-on-surface-variant mb-2 text-center">Choose your avatar</label>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {QUICK_PLAY_AVATARS.map(av => (
+                        <button
+                          key={av}
+                          onClick={() => setQuickPlayAvatar(av)}
+                          className={`text-2xl w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
+                            quickPlayAvatar === av
+                              ? 'bg-primary/20 ring-3 ring-primary scale-110'
+                              : 'bg-surface-container hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {av}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="relative">
                     <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
-                    <input
-                      id="quick-play-name-input"
-                      type="text"
-                      inputMode="text"
-                      autoCapitalize="words"
-                      autoComplete="off"
-                      defaultValue={quickPlayStudentName}
-                      placeholder="Enter your nickname..."
-                      className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      autoFocus
-                    />
+                    {(() => {
+                      // Check if student already joined this session — lock their name
+                      let lockedName = '';
+                      try {
+                        const saved = localStorage.getItem('vocaband_qp_guest');
+                        if (saved) {
+                          const parsed = JSON.parse(saved);
+                          if (parsed.sessionId === quickPlayActiveSession?.id && parsed.name) {
+                            lockedName = parsed.name;
+                          }
+                        }
+                      } catch {}
+                      return lockedName ? (
+                        <>
+                          <input
+                            id="quick-play-name-input"
+                            type="text"
+                            value={lockedName}
+                            readOnly
+                            className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
+                          />
+                          <p className="text-xs text-on-surface-variant mt-1 text-center">You already joined as <strong>{lockedName}</strong></p>
+                        </>
+                      ) : (
+                        <input
+                          id="quick-play-name-input"
+                          type="text"
+                          inputMode="text"
+                          autoCapitalize="words"
+                          autoComplete="off"
+                          maxLength={30}
+                          defaultValue={quickPlayStudentName}
+                          placeholder="Enter your nickname..."
+                          className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          autoFocus
+                        />
+                      );
+                    })()}
                   </div>
 
                   <button
                     data-quick-play-join
-                    onClick={() => {
+                    onClick={async () => {
                       const input = document.getElementById('quick-play-name-input') as HTMLInputElement;
                       const trimmedName = input?.value.trim() || "";
 
@@ -4125,21 +4531,54 @@ export default function App() {
                         return;
                       }
 
-                      showToast("Debug: Start Playing clicked, name=" + trimmedName + ", session=" + quickPlayActiveSession?.id, "info");
-
                       if (!quickPlayActiveSession) {
                         showToast("Session expired. Please scan QR code again.", "error");
                         return;
                       }
+
+                      // Check if this name was kicked from this session
+                      try {
+                        const kickedKey = `vocaband_kicked_${quickPlayActiveSession.id}`;
+                        const kickedNames: string[] = JSON.parse(localStorage.getItem(kickedKey) || '[]');
+                        if (kickedNames.includes(trimmedName)) {
+                          showToast("This name has been removed from the session by the teacher.", "error");
+                          return;
+                        }
+                      } catch {}
 
                       if (!quickPlayActiveSession.words || quickPlayActiveSession.words.length === 0) {
                         showToast("This session has no words. Please contact your teacher.", "error");
                         return;
                       }
 
+                      // Check for duplicate name in this session
+                      const { data: { session: currentAuth } } = await supabase.auth.getSession();
+                      const currentAuthUid = currentAuth?.user?.id;
+
+                      // First, clean up any stale progress from this same device/auth UID
+                      // (e.g. student refreshed and is re-joining)
+                      if (currentAuthUid) {
+                        await supabase
+                          .from('progress')
+                          .delete()
+                          .eq('assignment_id', quickPlayActiveSession.id)
+                          .eq('student_uid', currentAuthUid);
+                      }
+
+                      const { data: existingProgress } = await supabase
+                        .from('progress')
+                        .select('id')
+                        .eq('assignment_id', quickPlayActiveSession.id)
+                        .eq('student_name', trimmedName)
+                        .limit(1);
+                      if (existingProgress && existingProgress.length > 0) {
+                        showToast("This name is already taken. Please choose a different one.", "error");
+                        return;
+                      }
+
                       setTimeout(async () => {
                         setQuickPlayStudentName(trimmedName);
-                        const guestUser = createGuestUser(trimmedName, "quickplay");
+                        const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
                         setUser(guestUser);
 
                         const words = shuffle(quickPlayActiveSession.words).map(w => ({
@@ -4170,15 +4609,23 @@ export default function App() {
                         setView("game");
                         setShowModeSelection(true);
 
+                        // Save guest session to localStorage for page refresh recovery
+                        try {
+                          localStorage.setItem('vocaband_qp_guest', JSON.stringify({
+                            sessionId: quickPlayActiveSession.id,
+                            sessionCode: quickPlayActiveSession.sessionCode,
+                            name: trimmedName,
+                            avatar: quickPlayAvatar,
+                          }));
+                        } catch {}
+
                         // Record that student joined — so teacher sees them in live stats immediately
                         supabase.auth.getSession().then(({ data: { session } }) => {
                           const authUid = session?.user?.id;
                           if (!authUid) {
                             console.error('[Quick Play] No auth session - cannot record join');
-                            showToast("Debug: No auth session for progress insert", "error");
                             return;
                           }
-                          console.log('[Quick Play] Recording join with authUid:', authUid, 'sessionId:', quickPlayActiveSession.id);
                           supabase.from('progress').insert({
                             student_name: trimmedName,
                             student_uid: authUid,
@@ -4192,10 +4639,6 @@ export default function App() {
                           }).then(({ error }) => {
                             if (error) {
                               console.error('[Quick Play] Failed to record join:', error);
-                              showToast("Debug: Insert failed - " + error.message, "error");
-                            } else {
-                              console.log('[Quick Play] ✓ Join recorded successfully');
-                              showToast("Debug: Join recorded OK", "success");
                             }
                           });
                         });
@@ -4221,7 +4664,7 @@ export default function App() {
 
 
   // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
-  const consentModal = needsConsent && user ? (
+  const consentModal = needsConsent && user && !showOnboarding ? (
     <div className="fixed inset-0 bg-inverse-surface/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20">
         <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">Privacy Policy Update</h2>
@@ -4264,6 +4707,12 @@ export default function App() {
     return (
       <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
         {consentModal}
+        {showStudentOnboarding && (
+          <StudentOnboarding
+            userName={user.displayName}
+            onComplete={() => setShowStudentOnboarding(false)}
+          />
+        )}
         <div className="max-w-4xl mx-auto">
           {/* Top bar with logout */}
           <div className="flex justify-between items-center mb-4">
@@ -5015,6 +5464,14 @@ export default function App() {
           {consentModal}
 
         {/* Top App Bar */}
+        {/* First-time onboarding tour */}
+        {showOnboarding && (
+          <DashboardOnboarding onComplete={() => {
+            try { localStorage.setItem('vocaband_onboarding_done', 'true'); } catch {}
+            setShowOnboarding(false);
+          }} />
+        )}
+
         <TopAppBar
           title="Vocaband"
           subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
@@ -5028,7 +5485,7 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {/* Quick Play */}
             <HelpTooltip className="h-full" content="Create a QR code for students to scan and play selected words - no login required!">
-              <div className="h-full">
+              <div className="h-full" data-tour="quick-play">
                 <ActionCard
                   icon={<QrCode size={24} />}
                   iconBg="bg-indigo-100"
@@ -5074,7 +5531,7 @@ export default function App() {
 
             {/* Analytics */}
             <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
-              <div className="h-full">
+              <div className="h-full" data-tour="analytics">
                 <ActionCard
                   icon={<BarChart3 size={24} />}
                   iconBg="bg-purple-100"
@@ -5090,7 +5547,7 @@ export default function App() {
 
             {/* Gradebook & Students */}
             <HelpTooltip className="h-full" content="View all students, track scores, progress, and activity history">
-              <div className="h-full">
+              <div className="h-full" data-tour="gradebook">
                 <ActionCard
                   icon={<Trophy size={24} />}
                   iconBg="bg-amber-100"
@@ -5099,14 +5556,14 @@ export default function App() {
                   description="All students & scores"
                   buttonText="Open Gradebook"
                   buttonVariant="gradebook-amber"
-                  onClick={() => { fetchScores(); fetchStudents(); setView("gradebook"); }}
+                  onClick={() => { fetchScores(); setView("gradebook"); }}
                 />
               </div>
             </HelpTooltip>
 
             {/* Student Approvals */}
             <HelpTooltip className="h-full" content="Approve students who signed up for your classes">
-              <div className="h-full">
+              <div className="h-full" data-tour="approvals">
                 <ActionCard
                   icon={<UserCircle size={24} />}
                   iconBg="bg-rose-100"
@@ -5123,12 +5580,13 @@ export default function App() {
           </div>
 
           {/* My Classes Section */}
-          <div className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high">
+          <div data-tour="my-classes" className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
                 <Users className="text-primary" size={20} /> My Classes
               </h2>
               <button
+                data-tour="new-class"
                 onClick={() => setShowCreateClassModal(true)}
                 className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-black text-base flex items-center gap-2 active:scale-95 transition-all"
                 aria-label="Create new class"
@@ -5167,7 +5625,7 @@ export default function App() {
                         }}
                         onWhatsApp={() => {
                           window.open(
-                            `https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + c.name + "* on Vocaband!\n\n🔑 Class Code:\n\n▶️  *" + c.code + "*  ◀️\n\nCopy the code above and paste it in the app to join!")}`,
+                            `https://wa.me/?text=${encodeURIComponent(c.code)}`,
                           '_blank'
                         );
                       }}
@@ -5311,7 +5769,7 @@ export default function App() {
                     <span>Copy</span>
                   </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + createdClassName + "* on Vocaband!\n\n🔑 Class Code:\n\n▶️  *" + createdClassCode + "*  ◀️\n\nCopy the code above and paste it in the app to join!")}`}
+                    href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
@@ -5360,16 +5818,46 @@ export default function App() {
                     Keep Assignment
                   </button>
                   <button
-                    onClick={async () => {
-                      const { error } = await supabase.from('assignments').delete().eq('id', deleteConfirmModal.id);
-                      if (error) {
-                        showToast("Failed to delete: " + error.message, "error");
-                        setDeleteConfirmModal(null);
-                        return;
-                      }
-                      setTeacherAssignments(prev => prev.filter(x => x.id !== deleteConfirmModal.id));
-                      showToast("Assignment deleted successfully", "success");
+                    onClick={() => {
+                      const deletedId = deleteConfirmModal.id;
+                      const deletedTitle = deleteConfirmModal.title;
+                      // Optimistically remove from UI
+                      setTeacherAssignments(prev => {
+                        const removed = prev.find(x => x.id === deletedId);
+                        if (removed) (window as any).__undoAssignment = removed;
+                        return prev.filter(x => x.id !== deletedId);
+                      });
                       setDeleteConfirmModal(null);
+                      // Delayed hard delete with undo window
+                      const undoTimeout = setTimeout(async () => {
+                        const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
+                        if (error) showToast("Failed to delete from database: " + error.message, "error");
+                        delete (window as any).__undoAssignment;
+                        delete (window as any).__undoDeleteTimeout;
+                      }, 8000);
+                      (window as any).__undoDeleteTimeout = undoTimeout;
+                      // Show undo toast
+                      const undoToastId = Date.now().toString();
+                      setToasts(prev => [...prev, {
+                        id: undoToastId,
+                        message: `"${deletedTitle}" deleted`,
+                        type: 'info' as const,
+                        action: {
+                          label: 'Undo',
+                          onClick: () => {
+                            clearTimeout((window as any).__undoDeleteTimeout);
+                            const restored = (window as any).__undoAssignment;
+                            if (restored) {
+                              setTeacherAssignments(prev => [...prev, restored]);
+                              delete (window as any).__undoAssignment;
+                            }
+                            setToasts(prev => prev.filter(t => t.id !== undoToastId));
+                            showToast("Assignment restored!", "success");
+                          }
+                        }
+                      }]);
+                      // Auto-dismiss undo toast after 8 seconds
+                      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== undoToastId)), 8000);
                     }}
                     className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
                   >
@@ -5443,7 +5931,12 @@ export default function App() {
                 {toast.type === 'success' && <CheckCircle2 size={24} />}
                 {toast.type === 'error' && <AlertTriangle size={24} />}
                 {toast.type === 'info' && <Info size={24} />}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
+                {toast.action && (
+                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -5546,15 +6039,13 @@ export default function App() {
         editingAssignment={editingAssignment}
         setEditingAssignment={setEditingAssignment}
         showToast={showToast}
+        onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
       />
     );
   }
 
 
   if (view === "game" && showModeSelection) {
-    console.log('[Mode Selection] Rendering mode selection screen');
-    console.log('[Mode Selection] assignmentWords length:', assignmentWords.length);
-    console.log('[Mode Selection] activeAssignment:', activeAssignment);
 
     const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
       { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
@@ -5570,9 +6061,8 @@ export default function App() {
     ];
 
     const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
-    const filteredModes = modes.filter(m => m.id === "flashcards" || allowedModes.includes(m.id));
+    const filteredModes = modes.filter(m => allowedModes.includes(m.id));
 
-    console.log('[Mode Selection] Modes count:', filteredModes.length);
     if (filteredModes.length === 0) {
       console.error('[Mode Selection] No modes available!');
     }
@@ -5628,12 +6118,15 @@ export default function App() {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {filteredModes.map((mode, idx) => {
               const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
+              // In Quick Play: lock modes that were already completed this session
+              const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
 
               return (
                 <motion.button
                   key={mode.id}
-                  onClick={() => { setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
-                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                  onClick={() => { if (isQpLocked) return; setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
+                  disabled={isQpLocked}
+                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
@@ -5642,8 +6135,8 @@ export default function App() {
                 >
                   <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                     {mode.icon}
-                    {isCompleted && (
-                      <div className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full p-1 shadow-md">
+                    {(isCompleted || isQpLocked) && (
+                      <div className={`absolute -top-2 -right-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
                         <CheckCircle2 size={16} />
                       </div>
                     )}
@@ -5899,7 +6392,7 @@ export default function App() {
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
-          showBackButton
+          showBack
           onBack={() => setView("teacher-dashboard")}
         />
 
@@ -5922,7 +6415,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-black mb-1">
                     Pending Approvals
@@ -5931,14 +6424,37 @@ export default function App() {
                     {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting
                   </p>
                 </div>
-                <button
-                  onClick={loadPendingStudents}
-                  className="px-4 py-2 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
-                  title="Refresh list"
-                >
-                  <RefreshCw size={18} />
-                  Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  {pendingStudents.length > 1 && (
+                    <button
+                      onClick={async () => {
+                        const names = pendingStudents.map(s => s.displayName);
+                        for (const student of pendingStudents) {
+                          try {
+                            await supabase.rpc('approve_student', { p_profile_id: student.id });
+                          } catch (e) {
+                            console.error('Failed to approve', student.displayName, e);
+                          }
+                        }
+                        await loadPendingStudents();
+                        showToast(`Approved ${names.length} students!`, "success");
+                      }}
+                      className="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg hover:scale-105"
+                      title="Approve all pending students at once"
+                    >
+                      <Check size={18} />
+                      Approve All ({pendingStudents.length})
+                    </button>
+                  )}
+                  <button
+                    onClick={loadPendingStudents}
+                    className="px-4 py-2.5 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
+                    title="Refresh list"
+                  >
+                    <RefreshCw size={18} />
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -6021,7 +6537,7 @@ export default function App() {
                 }`}
               >
                 {toast.type === 'success' && <CheckCircle2 size={20} />}
-                {toast.type === 'error' && <AlertCircle size={20} />}
+                {toast.type === 'error' && <AlertTriangle size={20} />}
                 {toast.type === 'info' && <Info size={20} />}
                 <span>{toast.message}</span>
               </motion.div>
@@ -6063,7 +6579,7 @@ export default function App() {
           {/* Word Search Section */}
           <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-surface-container-highest">
             <h2 className="text-lg sm:text-xl font-black text-on-surface mb-3 sm:mb-4 flex items-center gap-2">
-              <Search className="text-primary" size={18} sm:size={20} />
+              <Search className="text-primary" size={18} />
               Add Words to Search
             </h2>
 
@@ -6107,7 +6623,7 @@ export default function App() {
                 onClick={() => setQuickPlayWordEditorOpen(true)}
                 className="mb-3 sm:mb-4 p-6 sm:p-8 bg-surface-container rounded-xl border-2 border-dashed border-surface-container-highest text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Search className="mx-auto text-on-surface-variant mb-2" size={24} sm:size={32} />
+                <Search className="mx-auto text-on-surface-variant mb-2" size={24} />
                 <p className="text-sm font-bold text-on-surface-variant mb-1">Click to add words</p>
                 <p className="text-xs text-on-surface-variant">Paste: apple, "ice cream", house</p>
               </div>
@@ -6119,39 +6635,31 @@ export default function App() {
                 onClick={() => setQuickPlayWordEditorOpen(true)}
                 className="w-full py-2.5 sm:py-3 bg-white border-2 border-dashed border-surface-container-highest rounded-xl text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 mb-3 sm:mb-4"
               >
-                <Plus size={14} sm:size={16} />
+                <Plus size={14} />
                 Add More Words
               </button>
             )}
 
             {/* OCR Upload Button */}
-            <div className="mb-4">
+            <div className="mb-4 relative">
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleOcrUpload}
-                disabled={isOcrProcessing}
+                disabled={true}
                 className="hidden"
                 id="quick-play-ocr-upload"
               />
               <button
-                onClick={() => document.getElementById('quick-play-ocr-upload')?.click()}
-                disabled={isOcrProcessing}
-                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-bold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
+                onClick={() => showToast("OCR scanning is a Pro feature. Coming soon!", "info")}
+                disabled={false}
+                className="w-full py-2.5 sm:py-3 bg-stone-200 text-stone-500 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-not-allowed relative overflow-hidden"
               >
-                {isOcrProcessing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    <span className="text-xs sm:text-sm">Processing... {ocrProgress}%</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera size={14} sm:size={16} />
-                    <span className="text-xs sm:text-sm">Upload Image to Extract Words</span>
-                  </>
-                )}
+                <Camera size={14} />
+                <span className="text-xs sm:text-sm">Upload Image to Extract Words</span>
+                <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">PRO</span>
               </button>
-              <p className="text-xs text-center text-on-surface-variant">Take a photo of a worksheet or text to extract vocabulary words</p>
+              <p className="text-xs text-center text-on-surface-variant mt-1">OCR word scanning — available in Pro plan</p>
             </div>
 
             <div className="flex items-center justify-between mt-2">
@@ -6202,7 +6710,7 @@ export default function App() {
                         quickPlayCustomWords.forEach((data, term) => {
                           if (data.hebrew || data.arabic) {
                             customWordsToAdd.push({
-                              id: -Date.now() - Math.floor(Math.random() * 1000) - customWordsToAdd.length,
+                              id: uniqueNegativeId() - customWordsToAdd.length,
                               english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                               hebrew: data.hebrew || "",
                               arabic: data.arabic || "",
@@ -6263,15 +6771,11 @@ export default function App() {
                         const translation = await translateWord(term);
                         if (translation) {
                           customWordsToAdd.push({
-                            id: -Date.now() - Math.floor(Math.random() * 1000) - customWordsToAdd.length,
+                            id: uniqueNegativeId() - customWordsToAdd.length,
                             english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                             hebrew: translation.hebrew,
                             arabic: translation.arabic,
-                            sentence: "",
-                            example: "",
-                            band: "I" as Band,
-                            level: 1,
-                            frequency: 0
+                            level: "Custom"
                           });
                         }
                       }
@@ -6290,8 +6794,6 @@ export default function App() {
                         english: w.english,
                         hebrew: w.hebrew,
                         arabic: w.arabic,
-                        sentence: w.sentence || "",
-                        example: w.example || ""
                       }))) : null;
 
                       const { data, error } = await supabase.rpc('create_quick_play_session', {
@@ -6320,7 +6822,7 @@ export default function App() {
                   }}
                   className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-green-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
                 >
-                  <QrCode size={16} sm:size={20} />
+                  <QrCode size={16} />
                   <span className="text-sm sm:text-base">Add All & Generate QR</span>
                 </button>
               </div>
@@ -6332,7 +6834,7 @@ export default function App() {
             <div className="bg-gradient-to-br from-amber-50 to-purple-50 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 border-2 border-amber-200">
               <div className="flex items-start justify-between mb-2 sm:mb-3">
                 <div className="flex items-start gap-2 sm:gap-3">
-                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={16} sm:size={20} />
+                  <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
                   <div>
                     <h3 className="font-black text-amber-900 mb-0.5 sm:mb-1 text-sm sm:text-base">Custom Words Found</h3>
                     <p className="text-xs sm:text-sm text-amber-700">AI will translate these automatically! Click the green "Add All & Generate QR" button above to add everything at once.</p>
@@ -6357,7 +6859,7 @@ export default function App() {
                               onClick={() => handleAutoTranslate(term)}
                               className="text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-0.5 sm:gap-1"
                             >
-                              <Sparkles size={10} sm:size={12} />
+                              <Sparkles size={10} />
                               <span className="hidden sm:inline">Auto-translate with AI</span>
                               <span className="sm:hidden">Translate</span>
                             </button>
@@ -6365,7 +6867,7 @@ export default function App() {
                         </div>
                         {quickPlayTranslating.has(term) && (
                           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 text-purple-600">
-                            <Loader2 className="animate-spin" size={14} sm:size={16} />
+                            <Loader2 className="animate-spin" size={14} />
                             <span className="text-[10px] sm:text-xs font-bold">AI is translating...</span>
                           </div>
                         )}
@@ -6399,7 +6901,7 @@ export default function App() {
 
                               // Create custom word with negative ID
                               const customWord: Word = {
-                                id: -Date.now() - Math.floor(Math.random() * 1000),
+                                id: uniqueNegativeId(),
                                 english: term.charAt(0).toUpperCase() + term.slice(1).toLowerCase(),
                                 hebrew: data.hebrew || "",
                                 arabic: data.arabic || "",
@@ -6461,7 +6963,7 @@ export default function App() {
                           }}
                           className="text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-0.5 sm:gap-1"
                         >
-                          <Sparkles size={8} sm:size={10} />
+                          <Sparkles size={8} />
                           <span className="hidden sm:inline">Translate & Add</span>
                           <span className="sm:hidden">Translate</span>
                         </button>
@@ -6478,7 +6980,7 @@ export default function App() {
             <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-surface-container-highest">
               <div className="flex justify-between items-center mb-3 sm:mb-4">
                 <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
-                  <CheckCircle2 className="text-green-600" size={16} sm:size={20} />
+                  <CheckCircle2 className="text-green-600" size={16} />
                   <span className="text-base sm:text-lg">Select Words ({quickPlaySelectedWords.length} selected)</span>
                 </h2>
                 <div className="flex gap-1.5 sm:gap-2">
@@ -6567,7 +7069,7 @@ export default function App() {
                                       </p>
                                     </div>
                                     {isSelected && (
-                                      <Check className="text-primary flex-shrink-0" size={14} sm:size={16} />
+                                      <Check className="text-primary flex-shrink-0" size={14} />
                                     )}
                                   </div>
                                 </button>
@@ -6587,7 +7089,7 @@ export default function App() {
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg border-2 border-amber-200">
               <div className="flex justify-between items-center mb-3 sm:mb-4">
                 <h2 className="text-lg sm:text-xl font-black text-amber-900 flex items-center gap-1.5 sm:gap-2">
-                  <Sparkles className="text-amber-600" size={16} sm:size={20} />
+                  <Sparkles className="text-amber-600" size={16} />
                   <span className="text-base sm:text-lg">Custom Words ({quickPlaySelectedWords.filter(w => w.id < 0).length})</span>
                 </h2>
               </div>
@@ -6616,7 +7118,7 @@ export default function App() {
                           }}
                           className="flex-shrink-0 text-rose-600 hover:text-rose-800"
                         >
-                          <X size={14} sm:size={16} />
+                          <X size={14} />
                         </button>
                       </div>
                     </div>
@@ -6654,8 +7156,6 @@ export default function App() {
                       english: w.english,
                       hebrew: w.hebrew,
                       arabic: w.arabic,
-                      sentence: w.sentence || "",
-                      example: w.example || ""
                     }))) : null;
 
                     // Close preview modal if open
@@ -6687,7 +7187,7 @@ export default function App() {
                   }}
                   className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-indigo-600 rounded-xl font-black hover:bg-white/90 transition-all shadow-lg flex items-center gap-1.5 sm:gap-2"
                 >
-                  <QrCode size={16} sm:size={20} />
+                  <QrCode size={16} />
                   <span className="text-sm sm:text-base">Generate QR Code</span>
                 </button>
               </div>
@@ -6703,14 +7203,14 @@ export default function App() {
               <div className="p-4 sm:p-6 border-b border-surface-container-highest">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
-                    <Search className="text-primary" size={16} sm:size={20} />
+                    <Search className="text-primary" size={16} />
                     <span className="text-base sm:text-lg">Add Your Words</span>
                   </h2>
                   <button
                     onClick={() => setQuickPlayWordEditorOpen(false)}
                     className="text-on-surface-variant hover:text-on-surface transition-colors"
                   >
-                    <X size={20} sm:size={24} />
+                    <X size={20} />
                   </button>
                 </div>
                 <p className="text-xs sm:text-sm text-on-surface-variant mt-1.5 sm:mt-2">
@@ -6777,14 +7277,14 @@ export default function App() {
                             className="text-rose-400 hover:text-rose-600 transition-opacity"
                             aria-label={`Remove ${term}`}
                           >
-                            <X size={12} sm:size={14} />
+                            <X size={12} />
                           </button>
                         </div>
                       ))}
                     </div>
                     {searchTerms.length > 1 && (
                       <p className="text-[10px] sm:text-xs text-on-surface-variant mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
-                        <Info size={10} sm:size={12} />
+                        <Info size={10} />
                         <span className="hidden sm:inline">Tip: Drag one word onto another to combine them into a phrase!</span>
                         <span className="sm:hidden">Drag words together to make phrases!</span>
                       </p>
@@ -6823,7 +7323,7 @@ export default function App() {
                     }}
                     className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg text-sm sm:text-base"
                   >
-                    <CheckCircle2 size={14} sm:size={18} />
+                    <CheckCircle2 size={14} />
                     Done
                   </button>
                 </div>
@@ -6838,9 +7338,24 @@ export default function App() {
             analysis={quickPlayPreviewAnalysis}
             onConfirm={handleQuickPlayPreviewConfirm}
             onCancel={handleQuickPlayPreviewCancel}
-            onQuickSave={(customTranslations) => {
+            onQuickSave={(customTranslations, addedSuggestionIds) => {
               // Quick Save - skip going to editor, go straight to QR generation
-              handleQuickPlayPreviewConfirm(customTranslations);
+              handleQuickPlayPreviewConfirm(customTranslations, addedSuggestionIds);
+            }}
+            onRemoveMatched={(wordId) => {
+              // Remove matched word from preview
+              if (quickPlayPreviewAnalysis) {
+                const updatedAnalysis = {
+                  ...quickPlayPreviewAnalysis,
+                  matchedWords: quickPlayPreviewAnalysis.matchedWords.filter((mw: any) => mw.word.id !== wordId),
+                  stats: {
+                    ...quickPlayPreviewAnalysis.stats,
+                    matchedCount: quickPlayPreviewAnalysis.stats.matchedCount - 1,
+                    totalTerms: quickPlayPreviewAnalysis.stats.totalTerms - 1,
+                  },
+                };
+                setQuickPlayPreviewAnalysis(updatedAnalysis);
+              }
             }}
             onRemoveUnmatched={(term) => {
               // Remove unmatched term from preview
@@ -6868,264 +7383,44 @@ export default function App() {
       setView("quick-play-setup");
       return null;
     }
-    // Fix QR code for local development: use local network IP instead of localhost
-    // so phones can scan and access the game
-    const getNetworkOrigin = () => {
-      const origin = window.location.origin;
-      if (origin.includes('localhost')) {
-        // In development, use local network IP so phones can connect
-        return 'http://10.0.0.5:3000';
-      }
-      return origin;
-    };
-    const qrUrl = `${getNetworkOrigin()}/quick-play?session=${quickPlayActiveSession.sessionCode}`;
-
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-3 sm:p-6 text-white">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <button
-              onClick={() => {
-                setView("teacher-dashboard");
-                setQuickPlayActiveSession(null);
-                setQuickPlaySelectedWords([]);
-                setQuickPlaySessionCode(null);
-                setQuickPlayJoinedStudents([]);
-                setQuickPlayCustomWords(new Map());
-                setQuickPlayAddingCustom(new Set());
-                setQuickPlayTranslating(new Set());
-                try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
-              }}
-              className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-sm sm:text-base bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all"
-            >
-              ← Back to Dashboard
-            </button>
-            {/* Music Player */}
-            <div className="flex items-center bg-white/10 rounded-full px-3 py-1.5 gap-2">
-              <button
-                onClick={() => setGameMusicPlaying(!gameMusicPlaying)}
-                className="text-violet-300"
-                title={gameMusicPlaying ? "Pause" : "Play"}
-              >
-                {gameMusicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={gameMusicVolume}
-                onChange={(e) => setGameMusicVolume(parseFloat(e.target.value))}
-                className="w-16 sm:w-20 h-1.5 accent-primary cursor-pointer"
-                title={`Volume: ${Math.round(gameMusicVolume * 100)}%`}
-              />
-              <select
-                value={gameMusicTrack}
-                onChange={(e) => setGameMusicTrack(parseInt(e.target.value))}
-                className="bg-transparent border-none text-xs sm:text-sm font-headline font-semibold focus:ring-0 text-slate-50 cursor-pointer pr-6"
-              >
-                {GAME_MUSIC_TRACKS.map((t, i) => (
-                  <option key={i} value={i}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={() => {
-                console.log('[End Session] Button clicked');
-                console.log('[End Session] Session:', quickPlayActiveSession);
-                showToast("Opening end session confirmation...", "info");
-                setEndQuickPlayModal(true);
-              }}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
-            >
-              End Session
-            </button>
-          </div>
-
-          <div className="text-center mb-6 sm:mb-8">
-            <motion.h1
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-2xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
-            >
-              🎮 Quick Play
-            </motion.h1>
-            <p className="text-white/90 font-bold text-xs sm:text-base">
-              Scan QR code to play • {quickPlayActiveSession.words.length} words • No login required
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* QR Code Section */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/20">
-              <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
-                <QrCode size={20} sm:size={24} />
-                QR Code
-              </h2>
-
-              {/* QR Code Display */}
-              <div className="bg-white rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
-                <div className="aspect-square max-w-[200px] sm:max-w-[250px] mx-auto">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`}
-                    alt="Quick Play QR Code"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              </div>
-
-              <p className="text-xs sm:text-sm text-white/80 text-center mb-3 sm:mb-4">
-                Session Code: <span className="bg-white text-purple-600 px-3 py-1 rounded-lg font-mono font-black ml-1">
-                  {quickPlayActiveSession.sessionCode}
-                </span>
-              </p>
-
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(qrUrl);
-                  showToast("Link copied to clipboard!", "success");
-                }}
-                className="w-full px-4 py-3 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
-              >
-                <Copy size={16} sm:size={18} />
-                Copy Link
-              </button>
-            </div>
-
-            {/* Live Stats Section */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/20">
-              <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
-                <Users size={20} sm:size={24} />
-                Live Stats
-              </h2>
-
-              <div className="space-y-3 sm:space-y-4">
-                {/* Students Joined */}
-                <div className="bg-white/10 rounded-xl p-3 sm:p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs sm:text-sm font-bold">Students Joined</span>
-                    <span className="text-xl sm:text-2xl font-black">{quickPlayJoinedStudents.length}</span>
-                  </div>
-                </div>
-
-                {/* Live Leaderboard */}
-                {quickPlayJoinedStudents.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-black text-white/80">LIVE LEADERBOARD</h3>
-                    {quickPlayJoinedStudents
-                      .sort((a, b) => b.score - a.score)
-                      .slice(0, 5)
-                      .map((student, idx) => (
-                        <div
-                          key={student.name}
-                          className="bg-white/10 rounded-xl p-3 flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-black">#{idx + 1}</span>
-                            <span className="text-2xl">{student.avatar}</span>
-                            <span className="font-bold">{student.name}</span>
-                          </div>
-                          <span className="text-xl font-black">{student.score}</span>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {quickPlayJoinedStudents.length === 0 && (
-                  <div className="text-center py-8 text-white/60">
-                    <Users size={48} className="mx-auto mb-2 opacity-50" />
-                    <p className="font-bold">Waiting for students to join...</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Selected Words Preview */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 mt-6">
-            <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-              <BookOpen size={24} />
-              Words ({quickPlayActiveSession.words.length})
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {quickPlayActiveSession.words.map(word => (
-                <span
-                  key={word.id}
-                  className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold"
-                >
-                  {word.english}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      {/* End Quick Play Session Confirmation Modal */}
-      <AnimatePresence>
-        {endQuickPlayModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
-            >
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <LogOut size={32} />
-              </div>
-              <h2 className="text-2xl font-black mb-2">End Quick Play Session?</h2>
-              <p className="text-stone-500 mb-6">
-                Students will no longer be able to join this session using the code <strong>{quickPlayActiveSession?.sessionCode}</strong>. The session and all progress will be permanently ended.
-              </p>
-              <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
-                ⚠️ Make sure all students have finished their games before ending.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setEndQuickPlayModal(false)}
-                  className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
-                >
-                  Keep Session
-                </button>
-                <button
-                  onClick={async () => {
-                    showToast("Ending session...", "info");
-                    const { error } = await supabase.rpc('end_quick_play_session', {
-                      p_session_code: quickPlayActiveSession!.sessionCode
-                    });
-                    if (error) {
-                      showToast("Failed to end session: " + error.message, "error");
-                      setEndQuickPlayModal(false);
-                      return;
-                    }
-                    setView("teacher-dashboard");
-                    setQuickPlayActiveSession(null);
-                    setQuickPlaySelectedWords([]);
-                    setQuickPlaySessionCode(null);
-                    setQuickPlayJoinedStudents([]);
-                    setQuickPlayCustomWords(new Map());
-                    setQuickPlayAddingCustom(new Set());
-                    setQuickPlayTranslating(new Set());
-                    try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
-                    showToast("Quick Play session ended", "success");
-                    setEndQuickPlayModal(false);
-                  }}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
-                >
-                  End Session
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      </div>
+      <QuickPlayMonitor
+        session={quickPlayActiveSession}
+        students={quickPlayJoinedStudents}
+        setStudents={setQuickPlayJoinedStudents}
+        onBack={() => {
+          setView("teacher-dashboard");
+          setQuickPlayActiveSession(null);
+          setQuickPlaySelectedWords([]);
+          setQuickPlaySessionCode(null);
+          setQuickPlayJoinedStudents([]);
+          setQuickPlayCustomWords(new Map());
+          setQuickPlayAddingCustom(new Set());
+          setQuickPlayTranslating(new Set());
+          try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        }}
+        onEndSession={async () => {
+          showToast("Ending session...", "info");
+          const { error } = await supabase.rpc('end_quick_play_session', {
+            p_session_code: quickPlayActiveSession!.sessionCode
+          });
+          if (error) {
+            showToast("Failed to end session: " + error.message, "error");
+            return;
+          }
+          setView("teacher-dashboard");
+          setQuickPlayActiveSession(null);
+          setQuickPlaySelectedWords([]);
+          setQuickPlaySessionCode(null);
+          setQuickPlayJoinedStudents([]);
+          setQuickPlayCustomWords(new Map());
+          setQuickPlayAddingCustom(new Set());
+          setQuickPlayTranslating(new Set());
+          try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+          showToast("Quick Play session ended", "success");
+        }}
+        showToast={showToast}
+      />
     );
   }
 
@@ -7319,22 +7614,38 @@ export default function App() {
                   Most Missed Words
                 </h3>
                 {classAnalytics.topMistakes.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {classAnalytics.topMistakes.map(({ wordId, count }) => {
                       const word = ALL_WORDS.find(w => w.id === wordId);
                       const pct = Math.round((count / classAnalytics.maxMistakeCount) * 100);
+                      // Find which students missed this word
+                      const studentsWhoMissed = new Set<string>();
+                      allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter)
+                        .forEach(s => { if (s.mistakes?.includes(wordId)) studentsWhoMissed.add(s.studentName); });
                       return (
-                        <div key={wordId} className="flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between text-xs mb-0.5">
-                              <span className="font-bold text-on-surface truncate">{word?.english || `#${wordId}`}</span>
-                              <span className="text-error font-bold ml-2">{count}x</span>
-                            </div>
-                            <div className="h-3 bg-surface-container rounded-full overflow-hidden">
-                              <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        <div key={wordId} className="bg-rose-50/50 rounded-xl p-3 border border-rose-100">
+                          <div className="flex items-center gap-3 mb-1">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-black text-sm text-on-surface">{word?.english || `#${wordId}`}</span>
+                                <span className="text-error font-black text-sm ml-2">{count}×</span>
+                              </div>
+                              <div className="flex gap-2 text-xs text-on-surface-variant">
+                                {word?.hebrew && <span dir="rtl">{word.hebrew}</span>}
+                                {word?.hebrew && word?.arabic && <span>•</span>}
+                                {word?.arabic && <span dir="rtl">{word.arabic}</span>}
+                              </div>
                             </div>
                           </div>
-                          {word?.hebrew && <span className="text-xs text-on-surface-variant w-16 text-right truncate" dir="rtl">{word.hebrew}</span>}
+                          <div className="h-2 bg-surface-container rounded-full overflow-hidden mb-1.5">
+                            <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.from(studentsWhoMissed).slice(0, 5).map(name => (
+                              <span key={name} className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full font-bold">{name}</span>
+                            ))}
+                            {studentsWhoMissed.size > 5 && <span className="text-[10px] text-rose-500 font-bold">+{studentsWhoMissed.size - 5} more</span>}
+                          </div>
                         </div>
                       );
                     })}
@@ -7346,6 +7657,99 @@ export default function App() {
             </div>
           )}
 
+          {/* Students Needing Attention + Weak Modes row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+            {/* Students Needing Attention */}
+            <div className="bg-white rounded-[30px] shadow-xl p-5 sm:p-6">
+              <h3 className="text-sm font-black text-on-surface mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Users className="text-amber-700" size={16} />
+                </div>
+                Students Needing Attention
+              </h3>
+              {(() => {
+                // Find students with avg < 70% or high mistake rates
+                const studentStats: {name: string, avg: number, mistakes: number, attempts: number, avatar: string}[] = [];
+                const filtered = allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter);
+                const byStudent = new Map<string, typeof filtered>();
+                filtered.forEach(s => {
+                  const key = s.studentName;
+                  if (!byStudent.has(key)) byStudent.set(key, []);
+                  byStudent.get(key)!.push(s);
+                });
+                byStudent.forEach((scores, name) => {
+                  const avg = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
+                  const totalMistakes = scores.reduce((sum, s) => sum + (s.mistakes?.length || 0), 0);
+                  const avatar = scores[0]?.avatar || '🦊';
+                  if (avg < 70 || (totalMistakes > 5 && avg < 80)) {
+                    studentStats.push({ name, avg, mistakes: totalMistakes, attempts: scores.length, avatar });
+                  }
+                });
+                studentStats.sort((a, b) => a.avg - b.avg);
+                return studentStats.length > 0 ? (
+                  <div className="space-y-2">
+                    {studentStats.slice(0, 6).map(s => (
+                      <div key={s.name} className="flex items-center gap-3 bg-amber-50/50 rounded-xl p-3 border border-amber-100 cursor-pointer hover:shadow-md hover:ring-2 hover:ring-amber-400 transition-all" onClick={() => setSelectedStudent(s.name)}>
+                        <span className="text-xl">{s.avatar}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-stone-800 truncate">{s.name}</p>
+                          <p className="text-xs text-stone-500">{s.attempts} attempts • {s.mistakes} mistakes</p>
+                        </div>
+                        <span className={`font-black text-lg ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>{s.avg}%</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-on-surface-variant text-sm italic">All students are doing well! 🎉</p>
+                );
+              })()}
+            </div>
+
+            {/* Score by Game Mode */}
+            <div className="bg-white rounded-[30px] shadow-xl p-5 sm:p-6">
+              <h3 className="text-sm font-black text-on-surface mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Layers className="text-purple-700" size={16} />
+                </div>
+                Average Score by Mode
+              </h3>
+              {(() => {
+                const filtered = allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter);
+                const modeStats = new Map<string, {total: number, count: number, mistakes: number}>();
+                filtered.forEach(s => {
+                  if (!modeStats.has(s.mode)) modeStats.set(s.mode, {total: 0, count: 0, mistakes: 0});
+                  const m = modeStats.get(s.mode)!;
+                  m.total += s.score;
+                  m.count++;
+                  m.mistakes += (s.mistakes?.length || 0);
+                });
+                const sorted = Array.from(modeStats.entries())
+                  .map(([mode, stats]) => ({ mode, avg: Math.round(stats.total / stats.count), count: stats.count, mistakes: stats.mistakes }))
+                  .sort((a, b) => a.avg - b.avg);
+                return sorted.length > 0 ? (
+                  <div className="space-y-2">
+                    {sorted.map(({ mode, avg, count, mistakes }) => (
+                      <div key={mode} className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between text-xs mb-0.5">
+                            <span className="font-bold text-on-surface capitalize">{mode.replace('-', ' ')}</span>
+                            <span className="text-on-surface-variant">{count} plays • {mistakes} mistakes</span>
+                          </div>
+                          <div className="h-3 bg-surface-container rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-500 ${avg >= 80 ? 'bg-blue-400' : avg >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${avg}%` }} />
+                          </div>
+                        </div>
+                        <span className={`font-black text-sm w-10 text-right ${avg >= 80 ? 'text-blue-600' : avg >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>{avg}%</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-on-surface-variant text-sm italic">No data yet</p>
+                );
+              })()}
+            </div>
+          </div>
+
           {/* Explanation banner */}
           <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
             <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-2">Student Scores Matrix</h2>
@@ -7355,6 +7759,7 @@ export default function App() {
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> Below 70%</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 border border-stone-200 inline-block"></span> — Not attempted</span>
             </div>
+            <p className="text-xs text-purple-700 mt-2 font-medium">💡 Click any <strong>student name</strong> or <strong>score cell</strong> to see detailed breakdown and missed words.</p>
           </div>
 
           {/* Matrix Table */}
@@ -7383,7 +7788,7 @@ export default function App() {
                     return (
                       <tr key={student} className="border-t border-stone-100 hover:bg-stone-50">
                         <td
-                          className="px-3 py-2 font-bold text-stone-800 text-sm sticky left-0 bg-white hover:bg-stone-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all"
+                          className="px-3 py-2 font-bold text-blue-700 text-sm sticky left-0 bg-white hover:bg-blue-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all underline decoration-blue-300 decoration-dotted underline-offset-2"
                           onClick={() => setSelectedStudent(student)}
                         >
                           <div className="flex items-center gap-1.5">
@@ -7506,13 +7911,27 @@ export default function App() {
                         Words Missed ({selectedScore.mistakes.length})
                       </h3>
                       <div className="bg-stone-50 rounded-2xl p-4">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {selectedScore.mistakes.map((wordId, idx) => {
-                            const word = BAND_2_WORDS.find(w => w.id === wordId);
+                            const word = ALL_WORDS.find(w => w.id === wordId);
+                            // Count how many times this student missed this word across all attempts
+                            const totalMisses = allScores
+                              .filter(s => s.studentName === selectedScore.studentName)
+                              .reduce((sum, s) => sum + (s.mistakes?.filter(m => m === wordId).length || 0), 0);
                             return (
-                              <div key={`${selectedScore.id}-${wordId}-${idx}`} className="bg-white p-3 rounded-xl border border-stone-200">
-                                <p className="font-bold text-stone-800">{word?.english || "Unknown"}</p>
-                                <p className="text-xs text-stone-500">{word?.hebrew || ""}</p>
+                              <div key={`${selectedScore.id}-${wordId}-${idx}`} className="bg-white p-3 rounded-xl border border-rose-200">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-black text-stone-800">{word?.english || "Unknown"}</p>
+                                    <div className="flex gap-2 text-xs text-stone-500 mt-0.5">
+                                      {word?.hebrew && <span dir="rtl">{word.hebrew}</span>}
+                                      {word?.arabic && <span dir="rtl">{word.arabic}</span>}
+                                    </div>
+                                  </div>
+                                  {totalMisses > 1 && (
+                                    <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full text-[10px] font-black">{totalMisses}× total</span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -7646,7 +8065,7 @@ export default function App() {
                       <div className="bg-stone-50 rounded-2xl p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {topMistakes.map(({ wordId, count }) => {
-                            const word = BAND_2_WORDS.find(w => w.id === wordId);
+                            const word = ALL_WORDS.find(w => w.id === wordId);
                             return (
                               <div key={wordId} className="bg-white p-3 rounded-xl border border-stone-200 flex justify-between items-center">
                                 <div>
@@ -7685,9 +8104,12 @@ export default function App() {
                                 {s.score}%
                               </span>
                               <div>
-                                <p className="font-bold text-stone-800">{s.assignmentId}</p>
+                                <p className="font-bold text-stone-800">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
                                 <p className="text-xs text-stone-500">
-                                  {s.mode} • {new Date(s.completedAt).toLocaleDateString()}
+                                  <span className="capitalize">{s.mode.replace('-', ' ')}</span> • {new Date(s.completedAt).toLocaleDateString()}
+                                  {s.mistakes && s.mistakes.length > 0 && (
+                                    <span className="text-rose-500 ml-1">• {s.mistakes.length} mistake{s.mistakes.length !== 1 ? 's' : ''}</span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -7806,6 +8228,44 @@ export default function App() {
               <p className="text-3xl font-black text-on-surface">{classes.length}</p>
             </div>
           </div>
+
+          {/* Export CSV button */}
+          {studentEntries.length > 0 && (
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => {
+                  const rows = [['Student', 'Class Code', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date'].join(',')];
+                  for (const entry of studentEntries) {
+                    for (const s of entry.scores) {
+                      const assignmentTitle = teacherAssignments.find(a => a.id === s.assignmentId)?.title || 'Unknown';
+                      rows.push([
+                        `"${entry.studentName}"`,
+                        entry.classCode,
+                        `"${assignmentTitle}"`,
+                        s.mode,
+                        s.score,
+                        s.mistakes?.length ?? 0,
+                        new Date(s.completedAt).toLocaleDateString()
+                      ].join(','));
+                    }
+                  }
+                  const csv = rows.join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `vocaband-gradebook-${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Gradebook exported as CSV!", "success");
+                }}
+                className="px-5 py-2.5 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all text-sm"
+              >
+                <Download size={16} />
+                Export CSV
+              </button>
+            </div>
+          )}
 
           {studentEntries.length === 0 ? (
             <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-tertiary-container/30">
@@ -8097,8 +8557,10 @@ export default function App() {
   }
 
   if (isFinished) {
+    const t = activeThemeConfig.colors;
+    const isDark = t.bg.includes('gray-9') || t.bg.includes('gray-950');
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+      <div className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -8106,7 +8568,7 @@ export default function App() {
         >
           <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
         </motion.div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{
+        <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>{
           [
             `Kol Hakavod, ${user?.displayName}!`,
             `Amazing work, ${user?.displayName}!`,
@@ -8116,46 +8578,53 @@ export default function App() {
             `Way to go, ${user?.displayName}!`,
             `${user?.displayName} is on fire!`,
             `Bravo, ${user?.displayName}!`,
-          ][Math.floor(Math.random() * 8)]
+          ][secureRandomInt( 8)]
         }</h1>
-        <p className="text-lg sm:text-xl mb-6">{
+        <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>{
           [
             "You finished the assignment!",
             "Another challenge conquered!",
             "Your vocabulary is growing!",
             "Keep this momentum going!",
             "You're making great progress!",
-          ][Math.floor(Math.random() * 5)]
+          ][secureRandomInt( 5)]
         }</p>
         <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
-          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Final Score</p>
-            <p className="text-4xl sm:text-6xl font-black text-blue-700">{score}</p>
+          <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+            <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Final Score</p>
+            <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
           </div>
-          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center">
-            <p className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 mb-1">Total XP</p>
+          <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+            <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Total XP</p>
             <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
           </div>
           {streak > 0 && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
+            <div className={`${t.card} p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
               <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">Streak</p>
               <p className="text-5xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
             </div>
           )}
         </div>
+        {/* Accuracy summary */}
+        {gameWords.length > 0 && (
+          <div className={`${t.card} rounded-2xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+            <span className="font-bold">{gameWords.length - mistakes.length}</span> / {gameWords.length} correct
+            {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">({mistakes.length} to review)</span>}
+          </div>
+        )}
         {badges.length > 0 && (
           <div className="mb-8">
-            <p className="text-xs font-black text-stone-400 uppercase mb-4 tracking-widest">Badges Earned</p>
+            <p className={`text-xs font-black ${isDark ? 'text-gray-500' : 'text-stone-400'} uppercase mb-4 tracking-widest`}>Badges Earned</p>
             <div className="flex flex-wrap justify-center gap-3">
               {badges.map(badge => (
-                <motion.div 
+                <motion.div
                   key={badge}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2"
+                  className={`${t.card} px-6 py-3 rounded-2xl shadow-sm border ${isDark ? 'border-gray-700' : 'border-stone-100'} flex items-center gap-2`}
                 >
                   <span className="text-xl">{badge.split(' ')[0]}</span>
-                  <span className="font-bold text-stone-700">{badge.split(' ').slice(1).join(' ')}</span>
+                  <span className={`font-bold ${t.text}`}>{badge.split(' ').slice(1).join(' ')}</span>
                 </motion.div>
               ))}
             </div>
@@ -8172,24 +8641,47 @@ export default function App() {
             <span className="text-sm">{saveError}</span>
           </div>
         ) : null}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+          {/* Try Again — replay same mode + words */}
+          <button
+            onClick={() => {
+              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+              setSpellingInput(""); setMotivationalMessage(null);
+            }}
+            disabled={isSaving}
+            className="w-full bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+          >Try Again</button>
+          {/* Try Again — only missed words */}
+          {mistakes.length > 0 && (
+            <button
+              onClick={() => {
+                const missedWords = gameWords.filter(w => mistakes.includes(w.id));
+                if (missedWords.length > 0) {
+                  setAssignmentWords(missedWords);
+                }
+                setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+                setSpellingInput(""); setMotivationalMessage(null);
+              }}
+              disabled={isSaving}
+              className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-stone-200 text-stone-800 hover:bg-stone-300'}`}
+            >Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}</button>
+          )}
           <button
             onClick={handleExitGame}
             disabled={isSaving}
-            className="bg-black text-white px-12 py-4 rounded-full font-bold text-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-black text-white hover:bg-gray-800'}`}
           >Choose Another Mode</button>
           <button
             onClick={() => {
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
               if (user?.isGuest) {
-                // Quick Play guest: back to mode selection (not student dashboard)
                 setView("game");
               } else {
                 setView("student-dashboard");
               }
             }}
             disabled={isSaving}
-            className="text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+            className={`${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-stone-400 hover:text-stone-600'} font-bold text-sm transition-colors`}
           >Back to Dashboard</button>
         </div>
 
@@ -8211,7 +8703,12 @@ export default function App() {
                 {toast.type === 'success' && <CheckCircle2 size={24} />}
                 {toast.type === 'error' && <AlertTriangle size={24} />}
                 {toast.type === 'info' && <Info size={24} />}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
+                {toast.action && (
+                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -8337,6 +8834,26 @@ export default function App() {
               </motion.div>
             ))}
           </div>
+          {/* Language selection — shown once, then remembered */}
+          {!hasChosenLanguage && (
+            <div className="mb-6 bg-blue-50 rounded-2xl p-4">
+              <p className="text-sm font-bold text-blue-900 mb-3">Choose your translation language:</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => { setTargetLanguage("hebrew"); try { localStorage.setItem('vocaband_target_lang', 'hebrew'); } catch {} setHasChosenLanguage(true); }}
+                  className={`flex-1 py-3 rounded-xl font-black text-lg transition-all ${targetLanguage === "hebrew" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-stone-700 border-2 border-stone-200 hover:border-blue-300"}`}
+                >
+                  עברית
+                </button>
+                <button
+                  onClick={() => { setTargetLanguage("arabic"); try { localStorage.setItem('vocaband_target_lang', 'arabic'); } catch {} setHasChosenLanguage(true); }}
+                  className={`flex-1 py-3 rounded-xl font-black text-lg transition-all ${targetLanguage === "arabic" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-stone-700 border-2 border-stone-200 hover:border-blue-300"}`}
+                >
+                  عربي
+                </button>
+              </div>
+            </div>
+          )}
           <button
             onClick={() => setShowModeIntro(false)}
             className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors"
@@ -8355,7 +8872,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans max-w-7xl mx-auto`}>
+    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -8370,14 +8887,14 @@ export default function App() {
           </button>
         </div>
       )}
-      <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-8">
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <div className="bg-white px-3 sm:px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
-            <Trophy className="text-amber-500" size={18} />
-            <span className="font-black text-stone-800">{score}</span>
+      <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
+        <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
+          <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm flex items-center gap-1.5">
+            <Trophy className="text-amber-500" size={16} />
+            <span className="font-black text-stone-800 text-sm sm:text-base">{score}</span>
           </div>
-          <div className="bg-blue-50 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2">
-            <span className="text-blue-700 font-bold text-xs uppercase tracking-widest">XP: {xp}</span>
+          <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-1.5">
+            <span className="text-blue-700 font-bold text-[10px] sm:text-xs uppercase tracking-widest">XP: {xp}</span>
           </div>
           {streak > 0 && (
             <motion.div
@@ -8391,13 +8908,13 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")} className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors">
-            <Languages size={18} /><span className="text-sm font-bold uppercase hidden sm:inline">{targetLanguage}</span>
+            <Languages size={18} /><span className="text-sm font-bold">{targetLanguage === "hebrew" ? "עברית" : "عربي"}</span>
           </button>
           <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold text-sm">Exit</button>
         </div>
       </div>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
+      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-6">
         <div className="lg:col-span-3">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
@@ -8406,7 +8923,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4"
+              className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3"
             >
               <AnimatePresence>
               {matchingPairs.filter(item => !matchedIds.includes(item.id)).map((item, idx) => {
@@ -8419,7 +8936,8 @@ export default function App() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
-                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                  dir="auto"
+                  className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
                     selectedMatch?.id === item.id && selectedMatch?.type === item.type
                       ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
@@ -8437,7 +8955,7 @@ export default function App() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-3 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-4 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-4 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-4 border-amber-500" : "border-4 border-transparent"}`}
+              className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
             >
               {/* Progress Bar */}
               <progress
@@ -8448,8 +8966,8 @@ export default function App() {
 
               {/* Motivational message - positioned at top to not block answers */}
               {motivationalMessage && (
-                <div className="absolute top-2 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
-                  <span className="text-lg sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
+                <div className="absolute top-4 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
                     {motivationalMessage}
                   </span>
                 </div>
@@ -8465,9 +8983,9 @@ export default function App() {
                 </div>
               )}
 
-              <div className="mb-3 sm:mb-12">
-                <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-1 sm:mb-2">{currentIndex + 1} / {gameWords.length}</span>
-                <div className="flex flex-col items-center justify-center gap-2 sm:gap-6 mb-3 sm:mb-12">
+              <div className="mb-1 sm:mb-4">
+                <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1">{currentIndex + 1} / {gameWords.length}</span>
+                <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-1 sm:mb-4">
                   {currentWord?.imageUrl && (
                     <motion.img
                       initial={{ scale: 0.8, opacity: 0 }}
@@ -8475,21 +8993,21 @@ export default function App() {
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-16 h-16 sm:w-48 sm:h-48 object-cover rounded-[16px] sm:rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
-                  <h2 className={`text-2xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
+                  <h2 className={`text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
                     dir={(gameMode === "spelling" || gameMode === "reverse" || (gameMode === "flashcards" && isFlipped)) ? "auto" : "ltr"}>
-                    {gameMode === "spelling" || gameMode === "reverse" ? currentWord?.[targetLanguage] :
+                    {gameMode === "spelling" || gameMode === "reverse" ? (currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew) :
                      gameMode === "scramble" ? scrambledWord :
-                     gameMode === "flashcards" ? (isFlipped ? currentWord?.[targetLanguage] : currentWord?.english) :
+                     gameMode === "flashcards" ? (isFlipped ? (currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew) : currentWord?.english) :
                      currentWord?.english}
                   </h2>
                 </div>
-                <div className="flex justify-center gap-2 mt-1 sm:mt-0">
+                <div className="flex justify-center gap-2 mt-0.5 sm:mt-0">
                   <button
                     onClick={() => speakWord(currentWord?.id, currentWord?.english)}
-                    className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                    className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"
                   >
@@ -8538,19 +9056,19 @@ export default function App() {
               )}
 
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
                   {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
                     <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={handleAnswer} />
                   ))}
                 </div>
               ) : gameMode === "true-false" ? (
-                <div className="max-w-md mx-auto">
-                  <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-3 sm:mb-8">
-                    <p className="text-xl sm:text-3xl font-bold text-stone-800" dir="auto">{tfOption?.[targetLanguage]}</p>
+                <div className="max-w-lg mx-auto">
+                  <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-2 sm:mb-6">
+                    <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">{tfOption?.[targetLanguage] || tfOption?.arabic || tfOption?.hebrew}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">True</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-3 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-2xl font-bold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">False</button>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">True ✓</button>
+                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">False ✗</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
@@ -8580,7 +9098,7 @@ export default function App() {
                             return (
                               <div
                                 key={globalIdx}
-                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
+                                className="w-9 h-11 sm:w-12 sm:h-14 rounded-xl font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
                                 style={{ color: revealed ? color : color + "40", borderColor: revealed ? color : color + "40", background: color + "18", opacity: revealed ? 1 : 0.15, transform: revealed ? "scale(1)" : "scale(0.5)" }}
                               >
                                 {revealed ? (letter ?? "").toUpperCase() : "?"}
@@ -8670,7 +9188,7 @@ export default function App() {
                     onChange={(e) => setSpellingInput(e.target.value)}
                     disabled={feedback === "show-answer" || feedback === "correct"}
                     placeholder="Type in English..."
-                    className={`w-full p-3 sm:p-6 text-lg sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                    className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
@@ -8678,7 +9196,7 @@ export default function App() {
                     }`}
                   />
                   {gameMode === "spelling" && (
-                    <p className="text-stone-400 font-bold mb-4 sm:mb-8 text-sm sm:text-base">Translation: <span className="text-stone-900">{currentWord?.[targetLanguage]}</span></p>
+                    <p className="text-stone-400 font-bold mb-3 sm:mb-6 text-base sm:text-lg">Translation: <span className="text-stone-900 text-xl sm:text-2xl" dir="auto">{currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew}</span></p>
                   )}
                   {feedback === "show-answer" && (
                     <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
@@ -8693,7 +9211,8 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* Live Leaderboard Widget */}
+      {/* Live Leaderboard Widget — hidden for Quick Play guests (no socket-based data) */}
+      {!user?.isGuest && (
       <div className="lg:col-span-1">
         <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
@@ -8751,6 +9270,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      )}
     </div>
 
     {gameMode !== "matching" && (

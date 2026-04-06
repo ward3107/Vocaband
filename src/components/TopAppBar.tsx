@@ -11,6 +11,23 @@ interface TopAppBarProps {
   onLogout?: () => void;
 }
 
+/**
+ * Sanitize a URL to only allow safe http/https URLs for use in img src.
+ * Returns the URL if safe, or undefined if potentially malicious.
+ */
+function sanitizeAvatarUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.href;
+    }
+  } catch {
+    // Invalid URL
+  }
+  return undefined;
+}
+
 const TopAppBar: React.FC<TopAppBarProps> = ({
   title,
   subtitle,
@@ -20,6 +37,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   userAvatar,
   onLogout,
 }) => {
+  const safeAvatarUrl = sanitizeAvatarUrl(userAvatar);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -85,8 +103,8 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           </button>
         )}
         <div className="w-10 h-10 rounded-full signature-gradient border-2 border-white overflow-hidden shadow-sm">
-          {userAvatar ? (
-            <img alt="Profile" src={userAvatar} className="w-full h-full object-cover" />
+          {safeAvatarUrl ? (
+            <img alt="Profile" src={safeAvatarUrl} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-white font-bold">
               {userName ? userName.charAt(0).toUpperCase() : title.charAt(0).toUpperCase()}

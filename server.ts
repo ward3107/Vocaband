@@ -11,20 +11,29 @@ import { createClient } from "@supabase/supabase-js";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types.js";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils.js";
 
-// Validate required environment variables before starting
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
-  process.exit(1);
+// Check if Supabase is configured — server features (auth, socket, API endpoints)
+// require these, but the frontend can still be served without them.
+const hasSupabaseConfig = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+if (!hasSupabaseConfig) {
+  console.warn(
+    "WARNING: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set.\n" +
+    "The server will start but auth, socket, and API endpoints will be disabled.\n" +
+    "Copy .env.example to .env and add your Supabase credentials."
+  );
 }
 
 // Supabase admin client — uses the service role key to verify tokens server-side
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+// Only created if credentials are available.
+const supabaseAdmin = hasSupabaseConfig
+  ? createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+  : null;
 
 async function verifyToken(token: string): Promise<string | null> {
+  if (!supabaseAdmin) return null;
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     if (error) {
@@ -45,6 +54,7 @@ async function verifyToken(token: string): Promise<string | null> {
 type UserRole = "teacher" | "student" | "admin";
 
 async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
+  if (!supabaseAdmin) return null;
   try {
     const { data, error } = await supabaseAdmin
       .from("users")
@@ -62,6 +72,7 @@ async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; class
 }
 
 async function isTeacherForClass(uid: string, classCode: string): Promise<boolean> {
+  if (!supabaseAdmin) return false;
   try {
     const { data, error } = await supabaseAdmin
       .from("classes")
@@ -102,16 +113,17 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com"],  // unsafe-inline required by Cloudflare Rocket Loader (injects inline bootstrap); cloudflareinsights.com for Web Analytics
-          styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],  // unsafe-inline needed for motion library animation styles; fonts.googleapis.com for Google Fonts CSS
-          fontSrc: ["'self'", "fonts.gstatic.com"],  // gstatic.com serves the actual font files
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", allowedOrigin],
-          frameSrc: ["https://accounts.google.com"],
+          frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
           workerSrc: ["'self'", "blob:"],
+          mediaSrc: ["'self'", "https://*.supabase.co"],
         },
       },
-      // Cloudflare handles HSTS at the edge, but set it here too as a belt-and-suspenders measure
       hsts: {
         maxAge: 31536000,
         includeSubDomains: true,
@@ -132,12 +144,12 @@ async function startServer() {
   }
 
   // Parse JSON request bodies (required for /api/translate endpoint)
-  app.use(express.json());
+  app.use(express.json({ limit: '50kb' }));
 
   // Multer for OCR image uploads (in-memory, no temp files)
   const ocrUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, cb) => {
       const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
       cb(null, allowed.includes(file.mimetype));
@@ -151,7 +163,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many OCR requests. Please wait a minute before trying again." },
-    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req) || "unknown",
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
   });
 
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).
@@ -281,6 +293,7 @@ async function startServer() {
       // much faster than fetching 1000 rows and summing in JS — critical for 200+ users)
       let totalScore = 0;
       try {
+        if (!supabaseAdmin) throw new Error("Supabase not configured");
         const { data, error } = await supabaseAdmin
           .from("progress")
           .select("score.sum()")
@@ -495,7 +508,11 @@ async function startServer() {
 
     try {
       const Tesseract = await import("tesseract.js");
-      const { data } = await Tesseract.recognize(req.file.buffer, "eng");
+      const worker = await Tesseract.createWorker("eng", undefined, {
+        cachePath: "/tmp/tesseract-cache",
+      });
+      const { data } = await worker.recognize(req.file.buffer);
+      await worker.terminate();
       const rawText = data.text || "";
 
       // Extract English words, preserve original form, deduplicate
@@ -519,11 +536,12 @@ async function startServer() {
         raw_text: rawText,
         success: true,
       });
-    } catch (error) {
-      console.error("OCR error:", error);
+    } catch (error: any) {
+      console.error("OCR error:", error?.message || error, error?.stack);
       res.status(500).json({
         error: "OCR processing failed",
-        message: "An unexpected error occurred during text recognition.",
+        message: error?.message || "An unexpected error occurred during text recognition.",
+        details: process.env.NODE_ENV !== "production" ? String(error) : undefined,
       });
     }
   });
@@ -536,6 +554,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+
+    // Prevent browsers from caching the service worker — must always fetch fresh
+    app.get("/sw.js", (_req, res) => {
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Service-Worker-Allowed", "/");
+      res.sendFile(path.join(distPath, "sw.js"));
+    });
+
     app.use(express.static(distPath));
 
     // Serve sitemap.xml with explicit XML content type so search engines

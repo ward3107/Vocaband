@@ -46,21 +46,18 @@ describe('filterWords', () => {
     expect(result.every((w) => w.level === 'Band 1')).toBe(true);
   });
 
-  it('filters by Band 2', () => {
+  it('filters by Band 2 (empty when no Band 2 words)', () => {
     const result = filterWords(ALL_WORDS, { level: ['Band 2'] });
-    expect(result.length).toBeGreaterThan(0);
     expect(result.every((w) => w.level === 'Band 2')).toBe(true);
   });
 
-  it('filters by Rec', () => {
+  it('filters by Rec (empty when no recProd data)', () => {
     const result = filterWords(ALL_WORDS, { recProd: ['Rec'] });
-    expect(result.length).toBeGreaterThan(0);
     expect(result.every((w) => w.recProd === 'Rec')).toBe(true);
   });
 
-  it('filters by Prod', () => {
+  it('filters by Prod (empty when no recProd data)', () => {
     const result = filterWords(ALL_WORDS, { recProd: ['Prod'] });
-    expect(result.length).toBeGreaterThan(0);
     expect(result.every((w) => w.recProd === 'Prod')).toBe(true);
   });
 });

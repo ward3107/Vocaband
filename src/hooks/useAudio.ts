@@ -225,11 +225,29 @@ export const useAudio = () => {
     return PHRASE_LABELS[key] || key.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')
   }
 
+  const playWrong = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'square'
+      osc.frequency.setValueAtTime(200, ctx.currentTime)
+      osc.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.15)
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.2)
+      setTimeout(() => ctx.close(), 300)
+    } catch { /* silent fail on unsupported browsers */ }
+  }
+
   const stopAll = () => {
     Object.values(wordCache).forEach(h => h.stop())
     Object.values(motivationalCache).forEach(h => h.stop())
     window.speechSynthesis?.cancel()
   }
 
-  return { speak, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, stopAll }
+  return { speak, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, playWrong, stopAll }
 }

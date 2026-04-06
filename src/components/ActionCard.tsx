@@ -7,8 +7,9 @@ interface ActionCardProps {
   title: string;
   description: string;
   buttonText: string;
-  buttonVariant: "primary" | "rose" | "orange-green" | "qr-purple" | "live-green" | "analytics-blue" | "gradebook-amber";
+  buttonVariant: "primary" | "secondary" | "rose" | "orange-green" | "qr-purple" | "live-green" | "analytics-blue" | "gradebook-amber";
   onClick: () => void;
+  badge?: number;
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({
@@ -20,9 +21,13 @@ const ActionCard: React.FC<ActionCardProps> = ({
   buttonText,
   buttonVariant,
   onClick,
+  badge,
 }) => {
   return (
     <div className="group relative overflow-hidden bg-surface-container-lowest rounded-xl p-5 shadow-xl shadow-stone-900/5 border-2 border-blue-50 hover:scale-[1.02] transition-transform duration-300">
+      {badge != null && badge > 0 && (
+        <span className="absolute top-2 right-2 bg-rose-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">{badge}</span>
+      )}
       <div className="flex flex-col h-full justify-between">
         <div className="flex items-start gap-3">
           <div className={`w-12 h-12 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
@@ -38,6 +43,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
           className={`mt-4 font-black py-2.5 rounded-full text-xs text-center uppercase tracking-wider active:scale-95 transition-all ${
             buttonVariant === "primary"
               ? "signature-gradient text-white shadow-lg shadow-blue-500/20"
+              : buttonVariant === "secondary"
+              ? "bg-gray-200 text-gray-800 shadow-lg shadow-gray-300/20 hover:bg-gray-300"
               : buttonVariant === "rose"
               ? "bg-gradient-to-r from-yellow-300 to-amber-400 text-black shadow-lg shadow-yellow-300/30 hover:from-yellow-400 hover:to-amber-500"
               : buttonVariant === "qr-purple"
