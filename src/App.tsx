@@ -5520,7 +5520,7 @@ export default function App() {
                         }}
                         onWhatsApp={() => {
                           window.open(
-                            `https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + c.name + "* on Vocaband!\n\n🔑 Class Code:\n\n▶️  *" + c.code + "*  ◀️\n\nCopy the code above and paste it in the app to join!")}`,
+                            `https://wa.me/?text=${encodeURIComponent(c.code)}`,
                           '_blank'
                         );
                       }}
@@ -5664,7 +5664,7 @@ export default function App() {
                     <span>Copy</span>
                   </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent("📚 Join my class *" + createdClassName + "* on Vocaband!\n\n🔑 Class Code:\n\n▶️  *" + createdClassCode + "*  ◀️\n\nCopy the code above and paste it in the app to join!")}`}
+                    href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
@@ -6477,33 +6477,25 @@ export default function App() {
             )}
 
             {/* OCR Upload Button */}
-            <div className="mb-4">
+            <div className="mb-4 relative">
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleOcrUpload}
-                disabled={isOcrProcessing}
+                disabled={true}
                 className="hidden"
                 id="quick-play-ocr-upload"
               />
               <button
-                onClick={() => document.getElementById('quick-play-ocr-upload')?.click()}
-                disabled={isOcrProcessing}
-                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-bold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
+                onClick={() => showToast("OCR scanning is a Pro feature. Coming soon!", "info")}
+                disabled={false}
+                className="w-full py-2.5 sm:py-3 bg-stone-200 text-stone-500 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-not-allowed relative overflow-hidden"
               >
-                {isOcrProcessing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    <span className="text-xs sm:text-sm">Processing... {ocrProgress}%</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera size={14} />
-                    <span className="text-xs sm:text-sm">Upload Image to Extract Words</span>
-                  </>
-                )}
+                <Camera size={14} />
+                <span className="text-xs sm:text-sm">Upload Image to Extract Words</span>
+                <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">PRO</span>
               </button>
-              <p className="text-xs text-center text-on-surface-variant">Take a photo of a worksheet or text to extract vocabulary words</p>
+              <p className="text-xs text-center text-on-surface-variant mt-1">OCR word scanning — available in Pro plan</p>
             </div>
 
             <div className="flex items-center justify-between mt-2">
