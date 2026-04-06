@@ -92,7 +92,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   <button
     onClick={() => onAnswer(option)}
     disabled={feedback === "show-answer" || feedback === "correct"}
-    className={`py-2.5 px-2 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${
+    className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center ${
       feedback === "correct" && option.id === currentWordId
         ? "bg-blue-600 text-white scale-105 shadow-xl"
         : feedback === "wrong" && option.id !== currentWordId
@@ -8271,7 +8271,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans max-w-7xl mx-auto`}>
+    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-8 font-sans max-w-7xl mx-auto overflow-x-hidden`}>
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -8335,7 +8335,7 @@ export default function App() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
-                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                  className={`p-3 sm:p-6 rounded-2xl shadow-sm font-bold text-sm sm:text-lg min-h-[72px] sm:h-32 flex items-center justify-center break-words text-center transition-all duration-200 ${
                     selectedMatch?.id === item.id && selectedMatch?.type === item.type
                       ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
@@ -8364,8 +8364,8 @@ export default function App() {
 
               {/* Motivational message - positioned at top to not block answers */}
               {motivationalMessage && (
-                <div className="absolute top-2 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
-                  <span className="text-lg sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
+                <div className="absolute top-4 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
                     {motivationalMessage}
                   </span>
                 </div>
@@ -8391,7 +8391,7 @@ export default function App() {
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-16 h-16 sm:w-48 sm:h-48 object-cover rounded-[16px] sm:rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
                   <h2 className={`text-2xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
@@ -8496,7 +8496,7 @@ export default function App() {
                             return (
                               <div
                                 key={globalIdx}
-                                className="w-8 h-10 sm:w-12 sm:h-14 rounded-xl font-black text-lg sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
+                                className="w-9 h-11 sm:w-12 sm:h-14 rounded-xl font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
                                 style={{ color: revealed ? color : color + "40", borderColor: revealed ? color : color + "40", background: color + "18", opacity: revealed ? 1 : 0.15, transform: revealed ? "scale(1)" : "scale(0.5)" }}
                               >
                                 {revealed ? (letter ?? "").toUpperCase() : "?"}
@@ -8586,7 +8586,7 @@ export default function App() {
                     onChange={(e) => setSpellingInput(e.target.value)}
                     disabled={feedback === "show-answer" || feedback === "correct"}
                     placeholder="Type in English..."
-                    className={`w-full p-3 sm:p-6 text-lg sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                    className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
@@ -8609,8 +8609,8 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* Live Leaderboard Widget */}
-      <div className="lg:col-span-1">
+      {/* Live Leaderboard Widget — hidden on mobile to save screen space */}
+      <div className="hidden lg:block lg:col-span-1">
         <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
           <div className="space-y-2">
