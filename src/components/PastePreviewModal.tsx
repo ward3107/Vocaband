@@ -39,8 +39,8 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   const [customWordTranslations, setCustomWordTranslations] = useState<Map<string, { hebrew: string; arabic: string }>>(new Map());
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Track manually added family suggestion word IDs
-  const [addedFamilyIds, setAddedFamilyIds] = useState<Set<number>>(new Set());
+  // Track manually added suggestion word IDs (fuzzy, starts-with matches)
+  const [addedSuggestionIds, setAddedSuggestionIds] = useState<Set<number>>(new Set());
 
   // Translation cache to avoid redundant API calls
   const translationCache = useRef<Map<string, { hebrew: string; arabic: string }>>(new Map());
@@ -150,9 +150,9 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
 
   const handleQuickSave = () => {
     if (onQuickSave) {
-      onQuickSave(customWordTranslations, addedFamilyIds);
+      onQuickSave(customWordTranslations, addedSuggestionIds);
     } else {
-      onConfirm(customWordTranslations, addedFamilyIds);
+      onConfirm(customWordTranslations, addedSuggestionIds);
     }
   };
 
@@ -208,15 +208,23 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {/* Matched Words */}
-            {matchedWords.length > 0 && (
+            {/* Matched Words — split into auto-added and suggestions */}
+            {matchedWords.length > 0 && (() => {
+              const autoAddTypes = new Set(['exact', 'hebrew', 'arabic', 'phrase']);
+              const autoAdded = matchedWords.filter(mw => autoAddTypes.has(mw.matchType));
+              const suggestions = matchedWords.filter(mw => !autoAddTypes.has(mw.matchType));
+
+              return (
+              <>
+              {/* Auto-added exact matches */}
+              {autoAdded.length > 0 && (
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <Check className="text-green-600" size={16} />
-                  Matched to Database ({matchedWords.length} unique)
+                  Added Words ({autoAdded.length})
                 </h3>
                 <div className="space-y-2">
-                  {matchedWords.map((mw, index) => {
+                  {autoAdded.map((mw, index) => {
                     const corrected = applyCorrections(mw.word, corrections);
                     const isEditing = editingWordId === mw.word.id;
                     const inlineEdit = inlineEdits.get(mw.word.id);
@@ -224,12 +232,14 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                     return (
                       <div
                         key={`${mw.word.id}-${index}`}
-                        className={`p-3 rounded-xl border-2 transition-all ${
+                        className={`p-3 rounded-xl border-2 transition-all flex gap-3 ${
                           corrected.isCorrected
                             ? 'bg-indigo-50 border-indigo-200'
                             : 'bg-green-50 border-green-200'
                         }`}
                       >
+                        <span className="text-xs font-black text-stone-400 w-5 pt-1 shrink-0">{index + 1}</span>
+                        <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-on-surface text-sm">{corrected.english}</p>
@@ -356,12 +366,52 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                             )}
                           </div>
                         )}
+                        </div>{/* close flex-1 wrapper */}
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
+              )}
+
+              {/* Suggestions — fuzzy, starts-with matches (click to add) */}
+              {suggestions.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
+                  <Sparkles className="text-amber-600" size={16} />
+                  Suggestions ({suggestions.length}) — click to add
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestions.map((mw) => {
+                    const isAdded = addedSuggestionIds.has(mw.word.id);
+                    return (
+                      <button
+                        key={mw.word.id}
+                        onClick={() => {
+                          setAddedSuggestionIds(prev => {
+                            const next = new Set(prev);
+                            if (isAdded) next.delete(mw.word.id); else next.add(mw.word.id);
+                            return next;
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          isAdded
+                            ? 'bg-green-600 text-white shadow-sm'
+                            : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 cursor-pointer'
+                        }`}
+                        title={`${mw.matchType} match — ${mw.word.hebrew || ''}`}
+                      >
+                        {isAdded ? '✓ ' : '+ '}{mw.word.english}
+                        <span className="ml-1 opacity-60">({mw.matchType})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              )}
+              </>
+              );
+            })()}
 
             {/* Unmatched Terms */}
             {unmatchedTerms.length > 0 && (
@@ -465,12 +515,12 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                     <div key={family.rootWord} className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs text-purple-600 font-bold mr-1">root: {family.rootWord}</span>
                       {family.familyMembers.map((w) => {
-                        const isAdded = addedFamilyIds.has(w.id);
+                        const isAdded = addedSuggestionIds.has(w.id);
                         return (
                           <button
                             key={w.id}
                             onClick={() => {
-                              setAddedFamilyIds(prev => {
+                              setAddedSuggestionIds(prev => {
                                 const next = new Set(prev);
                                 if (isAdded) next.delete(w.id); else next.add(w.id);
                                 return next;

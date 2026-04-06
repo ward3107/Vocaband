@@ -1898,7 +1898,7 @@ export default function App() {
 
   // --- QUICK PLAY PREVIEW HANDLERS ---
 
-  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedFamilyWordIds?: Set<number>) => {
+  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedSuggestionIds?: Set<number>) => {
     if (!quickPlayPreviewAnalysis) return;
 
     const { matchedWords, unmatchedTerms } = quickPlayPreviewAnalysis;
@@ -1908,16 +1908,16 @@ export default function App() {
     const autoAddTypes = new Set(['exact', 'hebrew', 'arabic', 'phrase']);
     const newSelectedWords = [...quickPlaySelectedWords];
     matchedWords.forEach(mw => {
-      const shouldAdd = autoAddTypes.has(mw.matchType) || (addedFamilyWordIds && addedFamilyWordIds.has(mw.word.id));
+      const shouldAdd = autoAddTypes.has(mw.matchType) || (addedSuggestionIds && addedSuggestionIds.has(mw.word.id));
       if (shouldAdd && !newSelectedWords.some(w => w.id === mw.word.id)) {
         newSelectedWords.push(mw.word);
       }
     });
     // Also add family suggestion words that were manually selected
-    if (addedFamilyWordIds && addedFamilyWordIds.size > 0 && quickPlayPreviewAnalysis.wordFamilySuggestions) {
+    if (addedSuggestionIds && addedSuggestionIds.size > 0 && quickPlayPreviewAnalysis.wordFamilySuggestions) {
       for (const family of quickPlayPreviewAnalysis.wordFamilySuggestions) {
         for (const w of family.familyMembers) {
-          if (addedFamilyWordIds.has(w.id) && !newSelectedWords.some(sw => sw.id === w.id)) {
+          if (addedSuggestionIds.has(w.id) && !newSelectedWords.some(sw => sw.id === w.id)) {
             newSelectedWords.push(w);
           }
         }
@@ -7192,9 +7192,9 @@ export default function App() {
             analysis={quickPlayPreviewAnalysis}
             onConfirm={handleQuickPlayPreviewConfirm}
             onCancel={handleQuickPlayPreviewCancel}
-            onQuickSave={(customTranslations, addedFamilyWordIds) => {
+            onQuickSave={(customTranslations, addedSuggestionIds) => {
               // Quick Save - skip going to editor, go straight to QR generation
-              handleQuickPlayPreviewConfirm(customTranslations, addedFamilyWordIds);
+              handleQuickPlayPreviewConfirm(customTranslations, addedSuggestionIds);
             }}
             onRemoveMatched={(wordId) => {
               // Remove matched word from preview

@@ -1538,17 +1538,28 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            const newIds = pack.ids.filter(id => !selectedWords.includes(id));
-                            if (newIds.length > 0) {
-                              setSelectedWords([...selectedWords, ...newIds]);
-                              if (showToast) showToast(`Added ${newIds.length} words from ${pack.name}`, 'success');
+                            if (alreadySelected === wordCount && wordCount > 0) {
+                              // Remove all words from this pack
+                              const packIdSet = new Set(pack.ids);
+                              setSelectedWords(selectedWords.filter(id => !packIdSet.has(id)));
+                              if (showToast) showToast(`Removed ${alreadySelected} words from ${pack.name}`, 'info');
                             } else {
-                              if (showToast) showToast(`All words from ${pack.name} already selected`, 'info');
+                              const newIds = pack.ids.filter(id => !selectedWords.includes(id));
+                              if (newIds.length > 0) {
+                                setSelectedWords([...selectedWords, ...newIds]);
+                                if (showToast) showToast(`Added ${newIds.length} words from ${pack.name}`, 'success');
+                              } else {
+                                if (showToast) showToast(`All words from ${pack.name} already selected`, 'info');
+                              }
                             }
                           }}
-                          className="px-3 py-1.5 text-xs font-bold rounded-full bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                          className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                            alreadySelected === wordCount && wordCount > 0
+                              ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                              : 'bg-primary text-on-primary hover:bg-primary/90'
+                          }`}
                         >
-                          {alreadySelected === wordCount ? 'Added' : '+ Add All'}
+                          {alreadySelected === wordCount && wordCount > 0 ? '✕ Remove All' : alreadySelected > 0 ? `+ Add ${wordCount - alreadySelected} more` : '+ Add All'}
                         </motion.button>
                         <motion.div
                           animate={{ rotate: isExpanded ? 90 : 0 }}
