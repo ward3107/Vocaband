@@ -123,8 +123,8 @@ const MUSIC_TRACKS = [
 
 const getMusicUrl = (file: string): string => {
   const cloudflareUrl = import.meta.env.VITE_CLOUDFLARE_URL;
-  if (cloudflareUrl) return `${cloudflareUrl}/music/${file}.wav`;
-  return `/music/${file}.wav`;
+  if (cloudflareUrl) return `${cloudflareUrl}/game-music/${file}.mp3`;
+  return `/game-music/${file}.mp3`;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
