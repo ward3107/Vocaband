@@ -43,7 +43,8 @@ import {
   GraduationCap,
   Loader2,
   QrCode,
-  Search
+  Search,
+  Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
@@ -346,7 +347,7 @@ export default function App() {
   const [enableWordFamilies, setEnableWordFamilies] = useState(false);
 
   // --- TOAST NOTIFICATIONS STATE ---
-  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info'}[]>([]);
+  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -5738,16 +5739,46 @@ export default function App() {
                     Keep Assignment
                   </button>
                   <button
-                    onClick={async () => {
-                      const { error } = await supabase.from('assignments').delete().eq('id', deleteConfirmModal.id);
-                      if (error) {
-                        showToast("Failed to delete: " + error.message, "error");
-                        setDeleteConfirmModal(null);
-                        return;
-                      }
-                      setTeacherAssignments(prev => prev.filter(x => x.id !== deleteConfirmModal.id));
-                      showToast("Assignment deleted successfully", "success");
+                    onClick={() => {
+                      const deletedId = deleteConfirmModal.id;
+                      const deletedTitle = deleteConfirmModal.title;
+                      // Optimistically remove from UI
+                      setTeacherAssignments(prev => {
+                        const removed = prev.find(x => x.id === deletedId);
+                        if (removed) (window as any).__undoAssignment = removed;
+                        return prev.filter(x => x.id !== deletedId);
+                      });
                       setDeleteConfirmModal(null);
+                      // Delayed hard delete with undo window
+                      const undoTimeout = setTimeout(async () => {
+                        const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
+                        if (error) showToast("Failed to delete from database: " + error.message, "error");
+                        delete (window as any).__undoAssignment;
+                        delete (window as any).__undoDeleteTimeout;
+                      }, 8000);
+                      (window as any).__undoDeleteTimeout = undoTimeout;
+                      // Show undo toast
+                      const undoToastId = Date.now().toString();
+                      setToasts(prev => [...prev, {
+                        id: undoToastId,
+                        message: `"${deletedTitle}" deleted`,
+                        type: 'info' as const,
+                        action: {
+                          label: 'Undo',
+                          onClick: () => {
+                            clearTimeout((window as any).__undoDeleteTimeout);
+                            const restored = (window as any).__undoAssignment;
+                            if (restored) {
+                              setTeacherAssignments(prev => [...prev, restored]);
+                              delete (window as any).__undoAssignment;
+                            }
+                            setToasts(prev => prev.filter(t => t.id !== undoToastId));
+                            showToast("Assignment restored!", "success");
+                          }
+                        }
+                      }]);
+                      // Auto-dismiss undo toast after 8 seconds
+                      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== undoToastId)), 8000);
                     }}
                     className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
                   >
@@ -5821,7 +5852,12 @@ export default function App() {
                 {toast.type === 'success' && <CheckCircle2 size={24} />}
                 {toast.type === 'error' && <AlertTriangle size={24} />}
                 {toast.type === 'info' && <Info size={24} />}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
+                {toast.action && (
+                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -5924,6 +5960,7 @@ export default function App() {
         editingAssignment={editingAssignment}
         setEditingAssignment={setEditingAssignment}
         showToast={showToast}
+        onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
       />
     );
   }
@@ -6299,7 +6336,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-black mb-1">
                     Pending Approvals
@@ -6308,14 +6345,37 @@ export default function App() {
                     {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting
                   </p>
                 </div>
-                <button
-                  onClick={loadPendingStudents}
-                  className="px-4 py-2 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
-                  title="Refresh list"
-                >
-                  <RefreshCw size={18} />
-                  Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  {pendingStudents.length > 1 && (
+                    <button
+                      onClick={async () => {
+                        const names = pendingStudents.map(s => s.displayName);
+                        for (const student of pendingStudents) {
+                          try {
+                            await supabase.rpc('approve_student', { p_profile_id: student.id });
+                          } catch (e) {
+                            console.error('Failed to approve', student.displayName, e);
+                          }
+                        }
+                        await loadPendingStudents();
+                        showToast(`Approved ${names.length} students!`, "success");
+                      }}
+                      className="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg hover:scale-105"
+                      title="Approve all pending students at once"
+                    >
+                      <Check size={18} />
+                      Approve All ({pendingStudents.length})
+                    </button>
+                  )}
+                  <button
+                    onClick={loadPendingStudents}
+                    className="px-4 py-2.5 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all"
+                    title="Refresh list"
+                  >
+                    <RefreshCw size={18} />
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -8090,6 +8150,44 @@ export default function App() {
             </div>
           </div>
 
+          {/* Export CSV button */}
+          {studentEntries.length > 0 && (
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => {
+                  const rows = [['Student', 'Class Code', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date'].join(',')];
+                  for (const entry of studentEntries) {
+                    for (const s of entry.scores) {
+                      const assignmentTitle = teacherAssignments.find(a => a.id === s.assignmentId)?.title || 'Unknown';
+                      rows.push([
+                        `"${entry.studentName}"`,
+                        entry.classCode,
+                        `"${assignmentTitle}"`,
+                        s.mode,
+                        s.score,
+                        s.mistakes?.length ?? 0,
+                        new Date(s.completedAt).toLocaleDateString()
+                      ].join(','));
+                    }
+                  }
+                  const csv = rows.join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `vocaband-gradebook-${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Gradebook exported as CSV!", "success");
+                }}
+                className="px-5 py-2.5 bg-surface-container-highest hover:bg-surface-container-high rounded-xl font-bold flex items-center gap-2 transition-all text-sm"
+              >
+                <Download size={16} />
+                Export CSV
+              </button>
+            </div>
+          )}
+
           {studentEntries.length === 0 ? (
             <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-tertiary-container/30">
               <GraduationCap className="mx-auto text-on-surface-variant mb-4" size={48} />
@@ -8526,7 +8624,12 @@ export default function App() {
                 {toast.type === 'success' && <CheckCircle2 size={24} />}
                 {toast.type === 'error' && <AlertTriangle size={24} />}
                 {toast.type === 'info' && <Info size={24} />}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
+                {toast.action && (
+                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

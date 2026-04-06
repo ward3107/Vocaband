@@ -60,6 +60,7 @@ interface CreateAssignmentWizardProps {
   editingAssignment: AssignmentData | null;
   setEditingAssignment: (assignment: AssignmentData | null) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  onPlayWord?: (wordId: number, fallbackText?: string) => void;
 }
 
 interface AssignmentData {
@@ -238,6 +239,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   editingAssignment,
   setEditingAssignment,
   showToast,
+  onPlayWord,
 }) => {
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState<SubStep>('landing');
@@ -1362,6 +1364,16 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                         )}
                       </div>
                     </div>
+                    {onPlayWord && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onPlayWord(word.id, word.english); }}
+                        className="p-1.5 rounded-full hover:bg-surface-container-highest transition-colors flex-shrink-0"
+                        aria-label={`Play pronunciation of ${word.english}`}
+                        title={`Listen to "${word.english}"`}
+                      >
+                        <Volume2 size={14} className="text-on-surface-variant" />
+                      </button>
+                    )}
                   </motion.button>
                 ))}
               </AnimatePresence>
