@@ -5195,13 +5195,34 @@ export const ALL_WORDS: Word[] = [
 let _topicPacksCache: { name: string; icon: string; ids: number[] }[] | null = null;
 
 function buildTopicPacks(): { name: string; icon: string; ids: number[] }[] {
-  // Build a lookup map once for O(1) matching
-  const englishToId = new Map<string, number>();
+  // Build lookup maps for flexible matching
+  const exactMap = new Map<string, number>();        // "family (n)" → id
+  const baseWordMap = new Map<string, number>();     // "family" → id (stripped of POS tags)
+
   for (const w of ALL_WORDS) {
-    englishToId.set(w.english.toLowerCase(), w.id);
+    const lower = w.english.toLowerCase();
+    exactMap.set(lower, w.id);
+    // Strip common POS annotations: "(n)", "(v)", "(adj)", "(adv)", "(n, v)", etc.
+    const base = lower.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    if (base && !baseWordMap.has(base)) {
+      baseWordMap.set(base, w.id);
+    }
   }
-  const byEnglish = (terms: string[]) =>
-    terms.map(t => englishToId.get(t.toLowerCase())).filter((id): id is number => id !== undefined);
+
+  const byEnglish = (terms: string[]): number[] => {
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    for (const t of terms) {
+      const lower = t.toLowerCase();
+      // Try exact match first, then base word match
+      const id = exactMap.get(lower) ?? baseWordMap.get(lower);
+      if (id !== undefined && !seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+    return ids;
+  };
 
   return [
   {
