@@ -975,7 +975,12 @@ export default function App() {
   const [mistakes, setMistakes] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">("hebrew");
+  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
+    try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
+  });
+  const [hasChosenLanguage, setHasChosenLanguage] = useState(() => {
+    try { return !!localStorage.getItem('vocaband_target_lang'); } catch { return false; }
+  });
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
@@ -1893,18 +1898,31 @@ export default function App() {
 
   // --- QUICK PLAY PREVIEW HANDLERS ---
 
-  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => {
+  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedFamilyWordIds?: Set<number>) => {
     if (!quickPlayPreviewAnalysis) return;
 
     const { matchedWords, unmatchedTerms } = quickPlayPreviewAnalysis;
 
-    // Add all matched database words
+    // Only add exact, hebrew, arabic, and phrase matches automatically.
+    // Fuzzy, starts-with, and family matches are suggestions — only add if teacher clicked them.
+    const autoAddTypes = new Set(['exact', 'hebrew', 'arabic', 'phrase']);
     const newSelectedWords = [...quickPlaySelectedWords];
     matchedWords.forEach(mw => {
-      if (!newSelectedWords.some(w => w.id === mw.word.id)) {
+      const shouldAdd = autoAddTypes.has(mw.matchType) || (addedFamilyWordIds && addedFamilyWordIds.has(mw.word.id));
+      if (shouldAdd && !newSelectedWords.some(w => w.id === mw.word.id)) {
         newSelectedWords.push(mw.word);
       }
     });
+    // Also add family suggestion words that were manually selected
+    if (addedFamilyWordIds && addedFamilyWordIds.size > 0 && quickPlayPreviewAnalysis.wordFamilySuggestions) {
+      for (const family of quickPlayPreviewAnalysis.wordFamilySuggestions) {
+        for (const w of family.familyMembers) {
+          if (addedFamilyWordIds.has(w.id) && !newSelectedWords.some(sw => sw.id === w.id)) {
+            newSelectedWords.push(w);
+          }
+        }
+      }
+    }
     setQuickPlaySelectedWords(newSelectedWords);
 
     // Add custom words from translations (either from Translate All or manual entry)
@@ -4565,7 +4583,7 @@ export default function App() {
 
 
   // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
-  const consentModal = needsConsent && user ? (
+  const consentModal = needsConsent && user && !showOnboarding ? (
     <div className="fixed inset-0 bg-inverse-surface/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20">
         <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">Privacy Policy Update</h2>
@@ -7174,9 +7192,9 @@ export default function App() {
             analysis={quickPlayPreviewAnalysis}
             onConfirm={handleQuickPlayPreviewConfirm}
             onCancel={handleQuickPlayPreviewCancel}
-            onQuickSave={(customTranslations) => {
+            onQuickSave={(customTranslations, addedFamilyWordIds) => {
               // Quick Save - skip going to editor, go straight to QR generation
-              handleQuickPlayPreviewConfirm(customTranslations);
+              handleQuickPlayPreviewConfirm(customTranslations, addedFamilyWordIds);
             }}
             onRemoveMatched={(wordId) => {
               // Remove matched word from preview
@@ -7525,7 +7543,7 @@ export default function App() {
                 return studentStats.length > 0 ? (
                   <div className="space-y-2">
                     {studentStats.slice(0, 6).map(s => (
-                      <div key={s.name} className="flex items-center gap-3 bg-amber-50/50 rounded-xl p-3 border border-amber-100 cursor-pointer hover:shadow-md transition-all" onClick={() => setSelectedStudent(s.name)}>
+                      <div key={s.name} className="flex items-center gap-3 bg-amber-50/50 rounded-xl p-3 border border-amber-100 cursor-pointer hover:shadow-md hover:ring-2 hover:ring-amber-400 transition-all" onClick={() => setSelectedStudent(s.name)}>
                         <span className="text-xl">{s.avatar}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm text-stone-800 truncate">{s.name}</p>
@@ -7595,6 +7613,7 @@ export default function App() {
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> Below 70%</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 border border-stone-200 inline-block"></span> — Not attempted</span>
             </div>
+            <p className="text-xs text-purple-700 mt-2 font-medium">💡 Click any <strong>student name</strong> or <strong>score cell</strong> to see detailed breakdown and missed words.</p>
           </div>
 
           {/* Matrix Table */}
@@ -7623,7 +7642,7 @@ export default function App() {
                     return (
                       <tr key={student} className="border-t border-stone-100 hover:bg-stone-50">
                         <td
-                          className="px-3 py-2 font-bold text-stone-800 text-sm sticky left-0 bg-white hover:bg-stone-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all"
+                          className="px-3 py-2 font-bold text-blue-700 text-sm sticky left-0 bg-white hover:bg-blue-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all underline decoration-blue-300 decoration-dotted underline-offset-2"
                           onClick={() => setSelectedStudent(student)}
                         >
                           <div className="flex items-center gap-1.5">
@@ -8594,6 +8613,26 @@ export default function App() {
               </motion.div>
             ))}
           </div>
+          {/* Language selection — shown once, then remembered */}
+          {!hasChosenLanguage && (
+            <div className="mb-6 bg-blue-50 rounded-2xl p-4">
+              <p className="text-sm font-bold text-blue-900 mb-3">Choose your translation language:</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => { setTargetLanguage("hebrew"); try { localStorage.setItem('vocaband_target_lang', 'hebrew'); } catch {} setHasChosenLanguage(true); }}
+                  className={`flex-1 py-3 rounded-xl font-black text-lg transition-all ${targetLanguage === "hebrew" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-stone-700 border-2 border-stone-200 hover:border-blue-300"}`}
+                >
+                  עברית
+                </button>
+                <button
+                  onClick={() => { setTargetLanguage("arabic"); try { localStorage.setItem('vocaband_target_lang', 'arabic'); } catch {} setHasChosenLanguage(true); }}
+                  className={`flex-1 py-3 rounded-xl font-black text-lg transition-all ${targetLanguage === "arabic" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-stone-700 border-2 border-stone-200 hover:border-blue-300"}`}
+                >
+                  عربي
+                </button>
+              </div>
+            </div>
+          )}
           <button
             onClick={() => setShowModeIntro(false)}
             className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors"

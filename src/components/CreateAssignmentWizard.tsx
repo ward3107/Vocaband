@@ -898,40 +898,28 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 </div>
               </motion.button>
 
-              {/* OCR Upload - New Option */}
+              {/* OCR Upload - PRO Feature */}
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => document.getElementById('ocr-upload-input')?.click()}
-                disabled={isOcrProcessing}
-                className="w-full group relative overflow-hidden bg-gradient-to-br from-rose-500 to-rose-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-rose-500/20 hover:shadow-2xl hover:shadow-rose-500/30 transition-all text-left"
+                whileHover={{ scale: 1.01 }}
+                onClick={() => showToast?.("OCR scanning is a Pro feature. Coming soon!", "info")}
+                className="w-full group relative overflow-hidden bg-stone-200 rounded-3xl p-4 sm:p-6 shadow-sm transition-all text-left cursor-not-allowed"
               >
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleOcrUpload}
-                  disabled={isOcrProcessing}
-                  className="hidden"
-                  id="ocr-upload-input"
-                />
+                <span className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm z-10">PRO</span>
                 <div className="relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
-                        {isOcrProcessing ? 'Processing...' : 'Upload image'}
+                      <h3 className="text-lg sm:text-xl font-black text-stone-500 mb-1">
+                        Upload image
                       </h3>
-                      <p className="text-white/90 text-xs sm:text-sm mb-2">
+                      <p className="text-stone-400 text-xs sm:text-sm mb-2">
                         Take a photo of a worksheet to extract words
                       </p>
-                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-white/20 rounded-full">
-                        <span className="text-white text-xs font-bold">
-                          {isOcrProcessing ? `${ocrProgress}%` : 'Auto-detect vocabulary'}
-                        </span>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-stone-300/50 rounded-full">
+                        <span className="text-stone-500 text-xs font-bold">Available in Pro plan</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-3xl sm:text-4xl">📷</span>
-                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
+                      <span className="text-3xl sm:text-4xl opacity-40">📷</span>
                     </div>
                   </div>
                 </div>

@@ -13,12 +13,12 @@ import type { TranslationCorrection } from '../utils/translationCorrections';
 
 interface PastePreviewModalProps {
   analysis: WordAnalysisResult | null;
-  onConfirm: (customTranslations?: Map<string, { hebrew: string; arabic: string }>) => void;
+  onConfirm: (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedFamilyWordIds?: Set<number>) => void;
   onCancel: () => void;
   onToggleWord?: (term: string) => void; // For adding/removing from selection
   onRemoveUnmatched?: (term: string) => void; // For removing unmatched terms
   onRemoveMatched?: (wordId: number) => void; // For removing matched words
-  onQuickSave?: (customTranslations: Map<string, { hebrew: string; arabic: string }>) => void; // For quick save without editor
+  onQuickSave?: (customTranslations: Map<string, { hebrew: string; arabic: string }>, addedFamilyWordIds?: Set<number>) => void; // For quick save without editor
 }
 
 export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
@@ -38,6 +38,9 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   // State for custom word translations
   const [customWordTranslations, setCustomWordTranslations] = useState<Map<string, { hebrew: string; arabic: string }>>(new Map());
   const [isTranslating, setIsTranslating] = useState(false);
+
+  // Track manually added family suggestion word IDs
+  const [addedFamilyIds, setAddedFamilyIds] = useState<Set<number>>(new Set());
 
   // Translation cache to avoid redundant API calls
   const translationCache = useRef<Map<string, { hebrew: string; arabic: string }>>(new Map());
@@ -147,9 +150,9 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
 
   const handleQuickSave = () => {
     if (onQuickSave) {
-      onQuickSave(customWordTranslations);
+      onQuickSave(customWordTranslations, addedFamilyIds);
     } else {
-      onConfirm(customWordTranslations);
+      onConfirm(customWordTranslations, addedFamilyIds);
     }
   };
 
@@ -455,24 +458,34 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <Sparkles className="text-purple-600" size={16} />
-                  Related Words ({analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0)} suggestions)
+                  Related Words — Suggestions ({analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0)})
                 </h3>
                 <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-3 space-y-2">
                   {analysis.wordFamilySuggestions.map((family) => (
                     <div key={family.rootWord} className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs text-purple-600 font-bold mr-1">root: {family.rootWord}</span>
-                      {family.familyMembers.map((w) => (
-                        <span
-                          key={w.id}
-                          className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
-                        >
-                          {w.english}
-                        </span>
-                      ))}
+                      {family.familyMembers.map((w) => {
+                        const isAdded = addedFamilyIds.has(w.id);
+                        return (
+                          <button
+                            key={w.id}
+                            onClick={() => {
+                              setAddedFamilyIds(prev => {
+                                const next = new Set(prev);
+                                if (isAdded) next.delete(w.id); else next.add(w.id);
+                                return next;
+                              });
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium transition-all ${isAdded ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200 cursor-pointer'}`}
+                          >
+                            {isAdded ? '✓ ' : '+ '}{w.english}
+                          </button>
+                        );
+                      })}
                     </div>
                   ))}
                   <p className="text-[11px] text-purple-500 mt-1">
-                    These related words share the same root as words you pasted. They will be auto-included on confirm.
+                    Click a word to add it to your selection. Only words you click will be included.
                   </p>
                 </div>
               </div>
