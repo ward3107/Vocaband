@@ -6,7 +6,7 @@ import {
   searchWords
 } from "./data/vocabulary-matching";
 import {
-  Volume2,
+  Volume2, VolumeX,
   Languages,
   Trophy,
   RefreshCw,
@@ -275,6 +275,60 @@ export default function App() {
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
   const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState(null);
+
+  // Game music player state
+  const [gameMusicTrack, setGameMusicTrack] = useState(0);
+  const [gameMusicVolume, setGameMusicVolume] = useState(0.5);
+  const [gameMusicPlaying, setGameMusicPlaying] = useState(false);
+  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  const GAME_MUSIC_TRACKS = useMemo(() => [
+    { label: "🎯 Steady Focus", file: "/game-music/bgm-steady-focus.mp3" },
+    { label: "⚡ Upbeat Energy", file: "/game-music/bgm-upbeat-energy.mp3" },
+    { label: "🌊 Chill Vibes", file: "/game-music/bgm-chill-vibes.mp3" },
+    { label: "🗺️ Adventure Quest", file: "/game-music/bgm-adventure-quest.mp3" },
+    { label: "🎸 Funky Groove", file: "/game-music/bgm-funky-groove.mp3" },
+    { label: "🚀 Space Explorer", file: "/game-music/bgm-space-explorer.mp3" },
+    { label: "🏆 Victory March", file: "/game-music/bgm-victory-march.mp3" },
+  ], []);
+
+  // Handle music track/volume changes
+  useEffect(() => {
+    if (!gameMusicPlaying) {
+      if (gameMusicRef.current) {
+        gameMusicRef.current.pause();
+        gameMusicRef.current = null;
+      }
+      return;
+    }
+    // Create or update audio
+    if (gameMusicRef.current) {
+      gameMusicRef.current.pause();
+    }
+    const audio = new Audio(GAME_MUSIC_TRACKS[gameMusicTrack].file);
+    audio.volume = gameMusicVolume;
+    audio.loop = true;
+    audio.play().catch(() => {});
+    gameMusicRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [gameMusicPlaying, gameMusicTrack, GAME_MUSIC_TRACKS]);
+
+  // Update volume without restarting track
+  useEffect(() => {
+    if (gameMusicRef.current) {
+      gameMusicRef.current.volume = gameMusicVolume;
+    }
+  }, [gameMusicVolume]);
+
+  // Stop music when leaving the monitor view
+  useEffect(() => {
+    if (view !== "quick-play-teacher-monitor") {
+      setGameMusicPlaying(false);
+    }
+  }, [view]);
 
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -6847,6 +6901,36 @@ export default function App() {
             >
               ← Back to Dashboard
             </button>
+            {/* Music Player */}
+            <div className="flex items-center bg-white/10 rounded-full px-3 py-1.5 gap-2">
+              <button
+                onClick={() => setGameMusicPlaying(!gameMusicPlaying)}
+                className="text-violet-300"
+                title={gameMusicPlaying ? "Pause" : "Play"}
+              >
+                {gameMusicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={gameMusicVolume}
+                onChange={(e) => setGameMusicVolume(parseFloat(e.target.value))}
+                className="w-16 sm:w-20 h-1.5 accent-primary cursor-pointer"
+                title={`Volume: ${Math.round(gameMusicVolume * 100)}%`}
+              />
+              <select
+                value={gameMusicTrack}
+                onChange={(e) => setGameMusicTrack(parseInt(e.target.value))}
+                className="bg-transparent border-none text-xs sm:text-sm font-headline font-semibold focus:ring-0 text-slate-50 cursor-pointer pr-6"
+              >
+                {GAME_MUSIC_TRACKS.map((t, i) => (
+                  <option key={i} value={i}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
             <button
               onClick={() => {
                 console.log('[End Session] Button clicked');
