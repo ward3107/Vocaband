@@ -52,6 +52,7 @@ import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
+import DashboardOnboarding from "./components/DashboardOnboarding";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -352,6 +353,9 @@ export default function App() {
   // --- ASSIGNMENT WELCOME POPUP STATE ---
   const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(() => {
     try { return !localStorage.getItem('vocaband_welcome_seen'); } catch { return true; }
+  });
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return !localStorage.getItem('vocaband_onboarding_done'); } catch { return true; }
   });
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
@@ -5323,6 +5327,14 @@ export default function App() {
           {consentModal}
 
         {/* Top App Bar */}
+        {/* First-time onboarding tour */}
+        {showOnboarding && (
+          <DashboardOnboarding onComplete={() => {
+            try { localStorage.setItem('vocaband_onboarding_done', 'true'); } catch {}
+            setShowOnboarding(false);
+          }} />
+        )}
+
         <TopAppBar
           title="Vocaband"
           subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
@@ -5336,7 +5348,7 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {/* Quick Play */}
             <HelpTooltip className="h-full" content="Create a QR code for students to scan and play selected words - no login required!">
-              <div className="h-full">
+              <div className="h-full" data-tour="quick-play">
                 <ActionCard
                   icon={<QrCode size={24} />}
                   iconBg="bg-indigo-100"
@@ -5382,7 +5394,7 @@ export default function App() {
 
             {/* Analytics */}
             <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
-              <div className="h-full">
+              <div className="h-full" data-tour="analytics">
                 <ActionCard
                   icon={<BarChart3 size={24} />}
                   iconBg="bg-purple-100"
@@ -5398,7 +5410,7 @@ export default function App() {
 
             {/* Gradebook & Students */}
             <HelpTooltip className="h-full" content="View all students, track scores, progress, and activity history">
-              <div className="h-full">
+              <div className="h-full" data-tour="gradebook">
                 <ActionCard
                   icon={<Trophy size={24} />}
                   iconBg="bg-amber-100"
@@ -5414,7 +5426,7 @@ export default function App() {
 
             {/* Student Approvals */}
             <HelpTooltip className="h-full" content="Approve students who signed up for your classes">
-              <div className="h-full">
+              <div className="h-full" data-tour="approvals">
                 <ActionCard
                   icon={<UserCircle size={24} />}
                   iconBg="bg-rose-100"
@@ -5431,12 +5443,13 @@ export default function App() {
           </div>
 
           {/* My Classes Section */}
-          <div className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high">
+          <div data-tour="my-classes" className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
                 <Users className="text-primary" size={20} /> My Classes
               </h2>
               <button
+                data-tour="new-class"
                 onClick={() => setShowCreateClassModal(true)}
                 className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-black text-base flex items-center gap-2 active:scale-95 transition-all"
                 aria-label="Create new class"
