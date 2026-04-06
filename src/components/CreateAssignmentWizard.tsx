@@ -795,31 +795,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 </div>
               </motion.button>
 
-              {/* Browse Vocabulary */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSubStep('browse')}
-                className="w-full group relative overflow-hidden bg-gradient-to-br from-violet-500 to-violet-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-violet-500/20 hover:shadow-2xl hover:shadow-violet-500/30 transition-all text-left"
-              >
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg sm:text-xl font-black text-white mb-1">
-                        Browse vocabulary
-                      </h3>
-                      <p className="text-white/90 text-xs sm:text-sm mb-2">
-                        Search and select from our word database
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl sm:text-4xl">🔍</span>
-                      <ChevronRight className="text-white/60 group-hover:text-white/80 transition-colors" size={20} />
-                    </div>
-                  </div>
-                </div>
-              </motion.button>
-
               {/* Load Saved Group */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
