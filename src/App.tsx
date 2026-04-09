@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
+import React, { useState, useEffect, useMemo, useRef, lazy } from "react";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
-import { searchWords } from "./data/vocabulary-matching";
 import {
   Trophy, RefreshCw, CheckCircle2, AlertTriangle, Info,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useQuickPlay } from "./hooks/useQuickPlay";
 import { useGameState } from "./hooks/useGameState";
@@ -17,14 +16,13 @@ import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION } from "./config/privacy-config";
-import { chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
 import { SuspenseWrapper } from "./components/SuspenseWrapper";
-import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
-import { trackError, trackAutoError } from "./errorTracking";
+import { loadSocketIO, loadConfetti } from "./utils/lazyLoad";
+import { trackAutoError } from "./errorTracking";
 import { THEMES, type GameMode } from "./constants/game";
 import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 const GameView = lazy(() => import("./views/GameView"));
@@ -104,20 +102,13 @@ export default function App() {
   const previousViewRef = useRef<string>("public-landing");
 
   // Custom setView that tracks previous view for back navigation
-  const handleSetView = (newView: typeof view) => {
-    // Only track previous view when navigating TO privacy/terms pages
-    if (newView === "public-privacy" || newView === "public-terms") {
-      previousViewRef.current = view;
-    }
-    setView(newView);
-  };
 
   const goBack = () => {
     setView(previousViewRef.current as any);
   };
 
   // Cookie consent state
-  const [showCookieBanner, setShowCookieBanner] = useState(() => {
+  const [_showCookieBanner, setShowCookieBanner] = useState(() => {
     try {
       const hasConsented = localStorage.getItem("vocaband_cookie_consent");
       return !hasConsented;
@@ -137,17 +128,17 @@ export default function App() {
         ? JSON.stringify(preferences)
         : JSON.stringify({ essential: true, analytics: true, functional: true });
       localStorage.setItem("vocaband_cookie_consent", consentData);
-      // Verify it was saved
-      const verify = localStorage.getItem("vocaband_cookie_consent");
+      localStorage.getItem("vocaband_cookie_consent"); // verify save
     } catch (e) {
       console.error('[Cookie Banner] Failed to save consent:', e);
     }
     setShowCookieBanner(false);
   };
 
-  const handleCookieCustomize = (preferences: CookiePreferences) => {
-    handleCookieAccept(preferences);
-  };
+  // Cookie banner overlay — shown on public pages until accepted
+  const cookieBannerOverlay = _showCookieBanner && !user ? (
+    <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieAccept} />
+  ) : null;
 
   const handlePublicNavigate = (page: "home" | "terms" | "privacy") => {
     const viewMap = {
@@ -164,7 +155,7 @@ export default function App() {
   // listener before handleStudentLogin finishes its DB queries).
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
-  const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
+  const [_landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
   const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
@@ -226,12 +217,11 @@ export default function App() {
     quickPlayKicked, setQuickPlayKicked,
     quickPlaySessionEnded, setQuickPlaySessionEnded,
     quickPlayCompletedModes, setQuickPlayCompletedModes,
-    setQuickPlayStatusMessage,
   } = qp;
 
   // Game music player state
-  const [gameMusicTrack, setGameMusicTrack] = useState(0);
-  const [gameMusicVolume, setGameMusicVolume] = useState(0.5);
+  const [gameMusicTrack, _setGameMusicTrack] = useState(0);
+  const [gameMusicVolume, _setGameMusicVolume] = useState(0.5);
   const [gameMusicPlaying, setGameMusicPlaying] = useState(false);
   const gameMusicRef = useRef<HTMLAudioElement | null>(null);
 
@@ -301,7 +291,7 @@ export default function App() {
   const [assignmentSentences, setAssignmentSentences] = useState<string[]>([]);
   const [sentenceDifficulty, setSentenceDifficulty] = useState<1 | 2 | 3 | 4>(2);
   const [sentencesAutoGenerated, setSentencesAutoGenerated] = useState(false);
-  const [assignmentStep, setAssignmentStep] = useState(1);
+  const [_assignmentStep, setAssignmentStep] = useState(1);
 
   // --- SMART PASTE STATE ---
   const [pastedText, setPastedText] = useState("");
@@ -310,17 +300,17 @@ export default function App() {
   const [pasteUnmatched, setPasteUnmatched] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [gSheetsUrl, setGSheetsUrl] = useState("");
-  const [gSheetsLoading, setGSheetsLoading] = useState(false);
+  const [_gSheetsLoading, setGSheetsLoading] = useState(false);
   const [showTopicPacks, setShowTopicPacks] = useState(false);
 
   // --- QUICK SEARCH & FILTERS STATE ---
-  const [wordSearchQuery, setWordSearchQuery] = useState("");
-  const [selectedCore, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
-  const [selectedPos, setSelectedPos] = useState<string>("");
-  const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
-  const [showWordBank, setShowWordBank] = useState(false);
-  const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
-  const [enableWordFamilies, setEnableWordFamilies] = useState(false);
+  const [, setWordSearchQuery] = useState("");
+  const [, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
+  const [, setSelectedPos] = useState<string>("");
+  const [, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
+  const [_showWordBank, _setShowWordBank] = useState(false);
+  const [, _setEnableFuzzyMatch] = useState(true);
+  const [, _setEnableWordFamilies] = useState(false);
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
@@ -618,7 +608,6 @@ export default function App() {
     handleLoginAsStudent, handleNewStudentSignup,
     handleOAuthTeacherDetected, handleOAuthStudentDetected, handleOAuthNewUser,
     handleApproveStudent, handleRejectStudent, confirmRejectStudent,
-    handleStudentLogin,
   } = useAuth({
     user, setUser, setView, setLoading, setError, showToast,
     existingStudents, setExistingStudents,
@@ -637,9 +626,9 @@ export default function App() {
   const {
     handleCreateClass, handleOcrUpload, handlePasteSubmit,
     handleAddUnmatchedAsCustom, handleSkipUnmatched, handleTagInputKeyDown,
-    handleDocxUpload, handleGSheetsImport, handleSaveAssignment,
-    handlePreviewAssignment, handleDeleteClass,
-    loadPendingStudents, fetchStudents, fetchGlobalLeaderboard,
+    handleDocxUpload, handleSaveAssignment,
+    handleDeleteClass,
+    loadPendingStudents,
     fetchScores, fetchTeacherAssignments,
   } = useTeacherActions({
     user, classes, setClasses,
@@ -680,7 +669,7 @@ export default function App() {
   // --- TEACHER STATE (not game-related) ---
   const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
-  const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
+  const [_teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
 
@@ -797,7 +786,7 @@ export default function App() {
       sock.on("connect", () => {
         setSocketConnected(true);
       });
-      sock.on("disconnect", (reason: any) => {
+      sock.on("disconnect", () => {
         setSocketConnected(false);
       });
       sock.on("reconnect", () => {
@@ -1287,90 +1276,10 @@ export default function App() {
    * Takes an image file (e.g., a photo of a word list), sends it to the
    * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
    */
-  // --- SMART PASTE FUNCTIONS ---
-
   // Extract words from pasted text - handles commas, newlines, semicolons, pipes, tabs
-  const extractWordsFromPaste = (text: string): string[] => {
-    // Strip zero-width characters from PDFs/Word documents
-    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-
-    // Split by common delimiters (added tab support for Excel/Google Sheets)
-    const words = cleaned
-      .split(/[,\n;\t\|]+/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length >= 2 && w.length <= 100); // Filter invalid
-
-    const unique = [...new Set(words)];
-
-    // Soft limit for very large pastes
-    if (unique.length > 500) {
-      console.warn(`Large paste: ${unique.length} words (processing first 500)`);
-    }
-
-    return unique.slice(0, 500);
-  };
-
   // Find matching Band 2 words (EXACT OR PARTIAL MATCH)
   // Combines duplicates and merges translations (Hebrew+Hebrew, Arabic+Arabic)
   // Also combines words with/without "(n)" suffix
-  const findMatchesInBand2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
-    const allMatches: Word[] = [];
-    const unmatched: string[] = [];
-
-    // Find ALL matches for each input word
-    for (const word of words) {
-      const matches = BAND_2_WORDS.filter(w =>
-        w.english.toLowerCase() === word ||
-        w.english.toLowerCase().startsWith(word) ||
-        w.english.toLowerCase().endsWith(word)
-      );
-      if (matches.length > 0) {
-        allMatches.push(...matches);
-      } else {
-        unmatched.push(word);
-      }
-    }
-
-    // Group matches by base English word (remove "(n)" suffix for grouping)
-    const groupedMatches = new Map<string, Word[]>();
-    for (const match of allMatches) {
-      const baseWord = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
-      if (!groupedMatches.has(baseWord)) {
-        groupedMatches.set(baseWord, []);
-      }
-      groupedMatches.get(baseWord)!.push(match);
-    }
-
-    // Combine each group into a single word with merged translations
-    const matched: Word[] = [];
-    for (const [baseWord, group] of groupedMatches) {
-      // Merge Hebrew translations (combine non-empty ones, unique)
-      const hebrewParts = group
-        .map(w => w.hebrew.trim())
-        .filter(h => h.length > 0);
-      const uniqueHebrew = [...new Set(hebrewParts)];
-      const combinedHebrew = uniqueHebrew.join(' | ');
-
-      // Merge Arabic translations (combine non-empty ones, unique)
-      const arabicParts = group
-        .map(w => w.arabic.trim())
-        .filter(a => a.length > 0);
-      const uniqueArabic = [...new Set(arabicParts)];
-      const combinedArabic = uniqueArabic.join(' | ');
-
-      // Use the base word (without "(n)") as the English word
-      const combinedWord: Word = {
-        ...group[0],
-        english: group[0].english.replace(/\(n\)$/, '').trim(),
-        hebrew: combinedHebrew,
-        arabic: combinedArabic
-      };
-      matched.push(combinedWord);
-    }
-
-    return { matched, unmatched };
-  };
-
   // Handle paste submission
   // Add unmatched as custom words
   // Skip unmatched words
@@ -1380,53 +1289,6 @@ export default function App() {
   // Word (.docx) upload — extract text then use smart paste logic
   // Google Sheets URL import
   // --- PERFORMANCE: Memoized toggle function to prevent re-renders
-  const toggleWordSelection = useCallback((wordId: number) => {
-    setSelectedWords(prev => {
-      if (prev.includes(wordId)) {
-        return prev.filter(id => id !== wordId);
-      } else {
-        return [...prev, wordId];
-      }
-    });
-  }, []);
-
-  const currentLevelWords = useMemo(() => {
-    // When searching, search ALL words (both bands + custom) regardless of selected tab
-    let words = wordSearchQuery.trim()
-      ? [...ALL_WORDS, ...customWords.filter(cw => !ALL_WORDS.some(aw => aw.id === cw.id))]
-      : selectedLevel === "Band 1" ? BAND_1_WORDS
-      : selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
-
-    // Enhanced multi-language search with fuzzy matching
-    if (wordSearchQuery.trim()) {
-      const searchResults = searchWords(wordSearchQuery, words, {
-        fuzzy: enableFuzzyMatch,
-        includeWordFamilies: enableWordFamilies,
-        maxResults: 500
-      });
-      words = searchResults.map(m => m.word);
-    }
-
-    // Core filter
-    if (selectedCore) {
-      words = words.filter(w => w.core === selectedCore);
-    }
-
-    // Part of speech filter
-    if (selectedPos) {
-      words = words.filter(w => w.pos && w.pos.includes(selectedPos));
-    }
-
-    // Rec/Prod filter
-    if (selectedRecProd) {
-      words = words.filter(w => w.recProd === selectedRecProd);
-    }
-
-    // Deduplicate by word.id to prevent React key warnings
-    const uniqueWords = Array.from(new Map(words.map(w => [w.id, w])).values());
-
-    return uniqueWords;
-  }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd, enableFuzzyMatch, enableWordFamilies]);
   // Preview the assignment with selected words and modes (for teachers)
   // Check if user needs to accept the current privacy policy version.
   // Fast path: localStorage. Fallback: DB consent_log (handles cleared storage).
@@ -1455,8 +1317,6 @@ export default function App() {
       setNeedsConsent(true);
     }
   };
-
-  const loginAttemptsRef = useRef<number[]>([]);
 
   // Student Account Login System
   // Helper function to process student profile and log them in
