@@ -90,13 +90,14 @@ async function startServer() {
   const app = express();
   const httpServer = createServer(app);
   const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
+  const allowedOrigins = allowedOrigin.split(",").map(o => o.trim());
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigin,
+      origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
     },
-    // Performance tuning for 200+ concurrent users (classroom scenario)
+    // Performance tuning for 1500 concurrent users (classroom scenario)
     transports: ["websocket", "polling"], // prefer WebSocket, fallback to polling
-    pingInterval: 15000,   // check connection every 15s (default 25s)
+    pingInterval: 30000,   // check connection every 30s (halves heartbeat traffic at scale)
     pingTimeout: 10000,    // allow 10s for pong response (mobile networks)
     maxHttpBufferSize: 64 * 1024, // 64KB max message size (leaderboard data)
   });
@@ -142,6 +143,18 @@ async function startServer() {
       skip: (req) => /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|webp|map)$/i.test(req.path),
     }));
   }
+
+  // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages)
+  app.use('/api', (req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.some(o => o === origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
 
   // Parse JSON request bodies (required for /api/translate endpoint)
   app.use(express.json({ limit: '50kb' }));
@@ -552,7 +565,9 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.SKIP_STATIC !== "true") {
+    // Serve static files from dist/ (legacy mode — when Cloudflare Pages
+    // is not yet configured). Set SKIP_STATIC=true once Pages handles static.
     const distPath = path.join(process.cwd(), "dist");
 
     // Prevent browsers from caching the service worker — must always fetch fresh

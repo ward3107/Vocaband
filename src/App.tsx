@@ -770,8 +770,8 @@ export default function App() {
       const socketIO = await loadSocketIO();
       const io = socketIO.default || socketIO;
 
-      const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
-      const sock = io(socketUrl || "/", {
+      const socketUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_SOCKET_URL || "";
+      const sock = io(socketUrl || undefined, {
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,

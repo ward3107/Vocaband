@@ -220,7 +220,8 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       formData.append('file', file);
 
       // Send to server-side OCR microservice
-      const response = await fetch('/api/ocr', {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/ocr`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`, // JWT token for teacher authentication
