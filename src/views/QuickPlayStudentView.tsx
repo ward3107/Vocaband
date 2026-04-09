@@ -1,4 +1,3 @@
-import React from "react";
 import { Loader2, QrCode } from "lucide-react";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import { type Word } from "../data/vocabulary";

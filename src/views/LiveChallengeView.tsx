@@ -1,4 +1,3 @@
-import React from "react";
 import { motion } from "motion/react";
 import type { ClassData } from "../core/supabase";
 import type { LeaderboardEntry } from "../core/types";

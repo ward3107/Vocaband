@@ -1,21 +1,23 @@
-import React, { useRef } from "react";
+import React from "react";
 import {
   supabase,
   mapClass,
   mapAssignment,
   mapProgress,
+  handleDbError,
+  OperationType,
   type AppUser,
   type ClassData,
   type AssignmentData,
   type ProgressData,
 } from "../core/supabase";
-import { ALL_WORDS, BAND_1_WORDS, Word } from "../data/vocabulary";
+import { ALL_WORDS, BAND_2_WORDS, Word } from "../data/vocabulary";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
-import { analyzePastedText } from "../utils/wordAnalysis";
-import { generateSentencesForAssignment } from "../data/sentence-bank";
-import { searchWords } from "../data/vocabulary-matching";
 import { trackAutoError } from "../errorTracking";
+
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMPORT_WORDS = 500;
 
 export interface UseTeacherActionsParams {
   user: AppUser | null;
@@ -29,11 +31,11 @@ export interface UseTeacherActionsParams {
   selectedClass: ClassData | null;
   setSelectedClass: (v: ClassData | null) => void;
   editingAssignment: AssignmentData | null;
-  setEditingAssignment: (v: AssignmentData | null) => void;
+  setEditingAssignment: React.Dispatch<React.SetStateAction<AssignmentData | null>>;
   selectedWords: number[];
-  setSelectedWords: (v: number[]) => void;
+  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
   customWords: Word[];
-  setCustomWords: (v: Word[] | ((prev: Word[]) => Word[])) => void;
+  setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
   selectedLevel: string;
   setSelectedLevel: (v: string) => void;
   assignmentTitle: string;
@@ -50,17 +52,18 @@ export interface UseTeacherActionsParams {
   pastedText: string;
   setPastedText: (v: string) => void;
   setPasteMatchedCount: (v: number) => void;
+  pasteUnmatched: string[];
   setPasteUnmatched: (v: string[]) => void;
-  setShowPasteDialog: (v: boolean) => void;
+  setShowPasteDialog: React.Dispatch<React.SetStateAction<boolean>>;
   tagInput: string;
   setTagInput: (v: string) => void;
   setIsOcrProcessing: (v: boolean) => void;
-  setOcrProgress: (v: string) => void;
+  setOcrProgress: (v: string | number) => void;
   gSheetsUrl: string;
   setGSheetsUrl: (v: string) => void;
   setGSheetsLoading: (v: boolean) => void;
   setWordSearchQuery: (v: string) => void;
-  setSelectedCore: (v: boolean) => void;
+  setSelectedCore: (v: any) => void;
   setSelectedRecProd: (v: string) => void;
   setSelectedPos: (v: string) => void;
   teacherAssignments: AssignmentData[];
@@ -90,7 +93,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     editingAssignment, setEditingAssignment,
     selectedWords, setSelectedWords,
     customWords, setCustomWords,
-    selectedLevel, setSelectedLevel,
+    setSelectedLevel,
     assignmentTitle, setAssignmentTitle,
     assignmentDeadline, setAssignmentDeadline,
     assignmentModes, setAssignmentModes,
@@ -98,19 +101,69 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     sentenceDifficulty, setSentenceDifficulty,
     setAssignmentStep,
     pastedText, setPastedText,
-    setPasteMatchedCount, setPasteUnmatched, setShowPasteDialog,
+    setPasteMatchedCount, pasteUnmatched, setPasteUnmatched, setShowPasteDialog,
     tagInput, setTagInput,
     setIsOcrProcessing, setOcrProgress,
     gSheetsUrl, setGSheetsUrl, setGSheetsLoading,
     setWordSearchQuery, setSelectedCore, setSelectedRecProd, setSelectedPos,
-    teacherAssignments, setTeacherAssignments, setTeacherAssignmentsLoading,
-    pendingStudents, setPendingStudents,
-    allScores, setAllScores,
+    setTeacherAssignments, setTeacherAssignmentsLoading,
+    setPendingStudents,
+    setAllScores,
     setClassStudents, setGlobalLeaderboard,
     setActiveAssignment, setAssignmentWords, setShowModeSelection,
     setConfirmDialog, showToast, setView,
     lastFetchRef,
   } = params;
+
+  // --- Helper: extract words from pasted text ---
+  const extractWordsFromPaste = (text: string): string[] => {
+    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+    const words = cleaned
+      .split(/[,\n;\t\|]+/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length >= 2 && w.length <= 100);
+    const unique = [...new Set(words)];
+    if (unique.length > MAX_IMPORT_WORDS) {
+      console.warn(`Large paste: ${unique.length} words (processing first ${MAX_IMPORT_WORDS})`);
+    }
+    return unique.slice(0, MAX_IMPORT_WORDS);
+  };
+
+  // --- Helper: find matching Band 2 words ---
+  const findMatchesInBand2 = (words: string[]): { matched: Word[]; unmatched: string[] } => {
+    const allMatches: Word[] = [];
+    const unmatched: string[] = [];
+    for (const word of words) {
+      const matches = BAND_2_WORDS.filter(w =>
+        w.english.toLowerCase() === word ||
+        w.english.toLowerCase().startsWith(word) ||
+        w.english.toLowerCase().endsWith(word)
+      );
+      if (matches.length > 0) {
+        allMatches.push(...matches);
+      } else {
+        unmatched.push(word);
+      }
+    }
+    const groupedMatches = new Map<string, Word[]>();
+    for (const match of allMatches) {
+      const base = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
+      if (!groupedMatches.has(base)) groupedMatches.set(base, []);
+      groupedMatches.get(base)!.push(match);
+    }
+    const matched: Word[] = [];
+    for (const [, group] of groupedMatches) {
+      const hebrewParts = group.map(w => w.hebrew.trim()).filter(h => h.length > 0);
+      const arabicParts = group.map(w => w.arabic.trim()).filter(a => a.length > 0);
+      matched.push({
+        ...group[0],
+        english: group[0].english.replace(/\(n\)$/, '').trim(),
+        hebrew: [...new Set(hebrewParts)].join(' | '),
+        arabic: [...new Set(arabicParts)].join(' | '),
+      });
+    }
+    return { matched, unmatched };
+  };
 
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
@@ -383,7 +436,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToSave = uniqueWords.filter(w => selectedWordsSet.has(w.id));
+    const wordsToSave = uniqueWords.filter(w => new Set(selectedWords).has(w.id));
 
     const assignmentData = {
       classId: selectedClass.id,
@@ -481,7 +534,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     // Get the selected words
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToPreview = uniqueWords.filter(w => selectedWordsSet.has(w.id));
+    const wordsToPreview = uniqueWords.filter(w => new Set(selectedWords).has(w.id));
 
     // Create a temporary assignment object with selected modes
     const previewAssignment: AssignmentData = {
@@ -644,7 +697,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data, error } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
+    const { data } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };

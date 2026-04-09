@@ -1,10 +1,12 @@
 import { useRef } from "react";
+import type React from "react";
 import {
   supabase,
   mapUser,
   mapClass,
   mapAssignment,
   mapProgress,
+  mapUserToDb,
   type AppUser,
   type ClassData,
   type AssignmentData,
@@ -12,6 +14,7 @@ import {
 } from "../core/supabase";
 import { trackError, trackAutoError } from "../errorTracking";
 import { PRIVACY_POLICY_VERSION } from "../config/privacy-config";
+import { SOCKET_EVENTS } from "../core/types";
 
 export interface UseAuthParams {
   user: AppUser | null;
@@ -51,6 +54,11 @@ export interface UseAuthParams {
   setConsentChecked: (v: boolean) => void;
   // Approve/reject
   setRejectStudentModal: (v: { id: string; displayName: string } | null) => void;
+  // External functions needed by handleStudentLogin
+  loadPendingStudents: () => void;
+  checkConsent: (user: AppUser) => void;
+  socket: any;
+  loading: boolean;
   // Refs
   manualLoginInProgress: React.MutableRefObject<boolean>;
   restoreInProgress: React.MutableRefObject<boolean>;
@@ -65,11 +73,14 @@ export function useAuth(params: UseAuthParams) {
     studentAvatar, setStudentAvatar, setShowNewStudentForm,
     setIsOAuthCallback, setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
     setStudentAssignments, setStudentProgress, setStudentDataLoading,
-    xp, setXp, streak, setStreak, badges, setBadges,
+    setXp, setStreak, setBadges,
     setNeedsConsent, setConsentChecked,
     setRejectStudentModal,
-    manualLoginInProgress, restoreInProgress,
+    loadPendingStudents, checkConsent, socket, loading,
+    manualLoginInProgress,
   } = params;
+
+  const loginAttemptsRef = useRef<number[]>([]);
 
   const createGuestUser = (name: string, prefix: string = 'guest', avatar: string = '\uD83E\uDD8A'): AppUser => {
     // Mobile-compatible UUID generation (crypto.randomUUID() not supported on some mobile browsers)
@@ -387,14 +398,14 @@ export function useAuth(params: UseAuthParams) {
       });
 
     // Progress still uses direct query (should work for student's own progress)
-    const { data: progressResult, error: progressError } = await supabase
+    const { data: progressResult } = await supabase
       .from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid);
 
 
     if (assignError) {
       console.error('Assignments RPC error:', assignError);
       // Fallback to direct query
-      const { data: fallbackData, error: fallbackError } = await supabase
+      const { data: fallbackData } = await supabase
         .from('assignments').select('*').eq('class_id', classData.id);
       setStudentAssignments((fallbackData ?? []).map(mapAssignment));
     } else {
@@ -561,7 +572,7 @@ export function useAuth(params: UseAuthParams) {
   const handleApproveStudent = async (studentId: string, displayName: string) => {
     try {
       // Call the approve_student function
-      const { data, error } = await supabase.rpc('approve_student', {
+      const { error } = await supabase.rpc('approve_student', {
         p_profile_id: studentId
       });
 

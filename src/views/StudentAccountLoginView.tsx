@@ -266,7 +266,7 @@ export default function StudentAccountLoginView({
 
                 {/* OAuth Sign In Button */}
                 <OAuthButton
-                  onSuccess={(email, isNewUser) => {
+                  onSuccess={(_email, _isNewUser) => {
                     // OAuth callback will handle routing
                     setIsOAuthCallback(true);
                   }}

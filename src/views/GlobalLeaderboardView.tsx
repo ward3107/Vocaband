@@ -1,4 +1,3 @@
-import React from "react";
 import { Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import type { AppUser } from "../core/supabase";
