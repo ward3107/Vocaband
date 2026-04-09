@@ -42,8 +42,6 @@ const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const ShopView = lazy(() => import("./views/ShopView"));
 
 // Types for lazy-loaded modules
-type MammothModule = typeof import('mammoth');
-type ConfettiModule = typeof import('canvas-confetti');
 type SocketIOModule = typeof import('socket.io-client');
 type Socket = InstanceType<SocketIOModule['Socket']>;
 
@@ -597,7 +595,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw } = useAudio();
+  const { speak: speakWordRaw, playMotivational: playMotivationalRaw } = useAudio();
 
   // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
@@ -647,9 +645,11 @@ export default function App() {
     score, setScore,
     mistakes, setMistakes,
     feedback, setFeedback,
-    motivationalMessage,
+    motivationalMessage, setMotivationalMessage,
     targetLanguage, setTargetLanguage,
+    hasChosenLanguage, setHasChosenLanguage,
     isFinished, setIsFinished,
+    wordAttempts: _wordAttempts, setWordAttempts,
     hiddenOptions, setHiddenOptions,
     tfOption, isFlipped, setIsFlipped,
     matchingPairs, matchedIds, selectedMatch,
@@ -663,6 +663,7 @@ export default function App() {
     handleAnswer, handleTFAnswer, handleFlashcardAnswer,
     handleSpellingSubmit, handleExitGame,
     saveError, setSaveError,
+    isSaving,
     speak,
   } = game;
 
@@ -692,6 +693,17 @@ export default function App() {
       setNeedsConsent(true);
     }
   };
+
+  // --- TEACHER STATE (not game-related) ---
+  // MUST be declared BEFORE useTeacherActions to avoid TDZ in production builds
+  const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
+  const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
+  const [_teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  // --- QUERY DEDUPLICATION ---
+  const lastFetchRef = useRef<Record<string, number>>({});
 
   // --- TEACHER ACTIONS (via custom hook) ---
   const {
@@ -759,31 +771,13 @@ export default function App() {
     return playMotivationalRaw(...args);
   };
 
-  // --- TEACHER STATE (not game-related) ---
-  const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
-  const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
-  const [_teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
-  const [socketConnected, setSocketConnected] = useState(false);
-
-  // --- QUERY DEDUPLICATION ---
-  // Track when data was last fetched to avoid redundant Supabase calls
-  const lastFetchRef = useRef<Record<string, number>>({});
-
   // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
 
   useEffect(() => { userRef.current = user; }, [user]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (feedbackTimeoutRef.current) {
-        clearTimeout(feedbackTimeoutRef.current);
-      }
-    };
-  }, []);
+  // feedbackTimeoutRef cleanup is now handled internally by useGameState
 
   // Redirect legacy "students" view to gradebook
   useEffect(() => {
@@ -912,6 +906,17 @@ export default function App() {
       }
     };
   }, []);
+
+  // --- TEACHER DATA LOADER ---
+  // Fetches teacher classes from Supabase and updates state.
+  // Used during auth session restore to populate the dashboard.
+  const fetchTeacherData = async (uid: string): Promise<ClassData[]> => {
+    const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
+    if (error) throw error;
+    const mapped = (data || []).map(mapClass);
+    setClasses(mapped);
+    return mapped;
+  };
 
   // --- AUTH LOGIC ---
   useEffect(() => {
