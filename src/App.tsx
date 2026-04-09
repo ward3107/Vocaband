@@ -602,6 +602,70 @@ export default function App() {
   const isQuickPlayGuest = !!user?.isGuest;
   const speakWord = speakWordRaw; // Always allow pronunciation
 
+  const awardBadge = async (badge: string) => {
+    if (!user || badges.includes(badge)) return;
+
+    const newBadges = [...badges, badge];
+    setBadges(newBadges);
+    // Lazy load and use confetti
+    loadConfetti().then(confettiModule => {
+      const confetti = confettiModule.default || confettiModule;
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.3 }
+      });
+    });
+
+    try {
+      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error saving badge:", error);
+      setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
+    }
+  };
+
+
+  // --- GAME STATE (via custom hook) ---
+  const game = useGameState({
+    view, user, setUser, setView, socket,
+    assignmentWords, activeAssignment,
+    speakWord: speakWordRaw,
+    showToast, xp, setXp, streak, setStreak,
+    awardBadge, studentProgress, setStudentProgress,
+    quickPlayActiveSession, quickPlayCompletedModes, setQuickPlayCompletedModes,
+    isLiveChallenge,
+  });
+  const {
+    gameMode, setGameMode,
+    showModeSelection, setShowModeSelection,
+    showModeIntro, setShowModeIntro,
+    spellingInput, setSpellingInput,
+    currentIndex, setCurrentIndex,
+    score, setScore,
+    mistakes, setMistakes,
+    feedback, setFeedback,
+    motivationalMessage,
+    targetLanguage, setTargetLanguage,
+    isFinished, setIsFinished,
+    hiddenOptions, setHiddenOptions,
+    tfOption, isFlipped, setIsFlipped,
+    matchingPairs, matchedIds, selectedMatch,
+    handleMatchClick,
+    revealedLetters,
+    sentenceIndex, builtSentence, setBuiltSentence,
+    availableWords, setAvailableWords,
+    sentenceFeedback,
+    handleSentenceWordTap, handleSentenceCheck,
+    scrambledWord, options, gameWords, currentWord,
+    handleAnswer, handleTFAnswer, handleFlashcardAnswer,
+    handleSpellingSubmit, handleExitGame,
+    saveError, setSaveError,
+    speak,
+  } = game;
+
+
   // --- AUTH HANDLERS (via custom hook) ---
   const {
     createGuestUser, recordConsent, loadStudentsInClass,
@@ -1323,67 +1387,6 @@ export default function App() {
   // Helper to load assignments for a class
   // --- OAUTH HANDLERS ---
   // Teacher Approval System
-  const awardBadge = async (badge: string) => {
-    if (!user || badges.includes(badge)) return;
-
-    const newBadges = [...badges, badge];
-    setBadges(newBadges);
-    // Lazy load and use confetti
-    loadConfetti().then(confettiModule => {
-      const confetti = confettiModule.default || confettiModule;
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.3 }
-      });
-    });
-
-    try {
-      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error saving badge:", error);
-      setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
-    }
-  };
-
-  // --- GAME STATE (via custom hook) ---
-  const game = useGameState({
-    view, user, setUser, setView, socket,
-    assignmentWords, activeAssignment,
-    speakWord: speakWordRaw,
-    showToast, xp, setXp, streak, setStreak,
-    awardBadge, studentProgress, setStudentProgress,
-    quickPlayActiveSession, quickPlayCompletedModes, setQuickPlayCompletedModes,
-    isLiveChallenge,
-  });
-  const {
-    gameMode, setGameMode,
-    showModeSelection, setShowModeSelection,
-    showModeIntro, setShowModeIntro,
-    spellingInput, setSpellingInput,
-    currentIndex, setCurrentIndex,
-    score, setScore,
-    mistakes, setMistakes,
-    feedback, setFeedback,
-    motivationalMessage,
-    targetLanguage, setTargetLanguage,
-    isFinished, setIsFinished,
-    hiddenOptions, setHiddenOptions,
-    tfOption, isFlipped, setIsFlipped,
-    matchingPairs, matchedIds, selectedMatch,
-    handleMatchClick,
-    revealedLetters,
-    sentenceIndex, builtSentence, setBuiltSentence,
-    availableWords, setAvailableWords,
-    sentenceFeedback,
-    handleSentenceWordTap, handleSentenceCheck,
-    scrambledWord, options, gameWords, currentWord,
-    handleAnswer, handleTFAnswer, handleFlashcardAnswer,
-    handleSpellingSubmit, handleExitGame,
-    saveError, setSaveError,
-    speak,
-  } = game;
 
   // Configuration error banner — shown when Supabase env vars are missing
   const configErrorBanner = !isSupabaseConfigured ? (
