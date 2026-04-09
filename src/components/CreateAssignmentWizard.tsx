@@ -13,7 +13,7 @@ import { supabase } from '../core/supabase';
 import { analyzePastedText, type WordAnalysisResult } from '../utils/wordAnalysis';
 import { PastePreviewModal } from './PastePreviewModal';
 
-interface CreateAssignmentWizardProps {
+export interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number };
   allWords: Word[];
   band1Words: Word[];

@@ -60,7 +60,6 @@ import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import TopAppBar from "./components/TopAppBar";
 import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
-import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
 import { PastePreviewModal } from "./components/PastePreviewModal";
 import { analyzePastedText, type WordAnalysisResult } from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
@@ -78,6 +77,7 @@ const AnalyticsView = lazy(() => import("./views/AnalyticsView"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
+const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
@@ -5842,58 +5842,60 @@ export default function App() {
 
   if (view === "create-assignment" && selectedClass) {
     return (
-      <CreateAssignmentWizard
-        selectedClass={selectedClass}
-        allWords={ALL_WORDS}
-        band1Words={BAND_1_WORDS}
-        band2Words={BAND_2_WORDS}
-        customWords={customWords}
-        assignmentTitle={assignmentTitle}
-        setCustomWords={setCustomWords}
-        setAssignmentTitle={setAssignmentTitle}
-        assignmentDeadline={assignmentDeadline}
-        setAssignmentDeadline={setAssignmentDeadline}
-        assignmentModes={assignmentModes}
-        setAssignmentModes={setAssignmentModes}
-        selectedWords={selectedWords}
-        setSelectedWords={setSelectedWords}
-        selectedLevel={selectedLevel}
-        setSelectedLevel={setSelectedLevel}
-        tagInput={tagInput}
-        setTagInput={setTagInput}
-        pastedText={pastedText}
-        setPastedText={setPastedText}
-        showPasteDialog={showPasteDialog}
-        setShowPasteDialog={setShowPasteDialog}
-        pasteMatchedCount={pasteMatchedCount}
-        pasteUnmatched={pasteUnmatched}
-        handlePasteSubmit={handlePasteSubmit}
-        handleAddUnmatchedAsCustom={handleAddUnmatchedAsCustom}
-        handleSkipUnmatched={handleSkipUnmatched}
-        handleTagInputKeyDown={handleTagInputKeyDown}
-        handleDocxUpload={handleDocxUpload}
-        handleOcrUpload={handleOcrUpload}
-        handleSaveAssignment={handleSaveAssignment}
-        assignmentSentences={assignmentSentences}
-        setAssignmentSentences={setAssignmentSentences}
-        sentenceDifficulty={sentenceDifficulty}
-        setSentenceDifficulty={setSentenceDifficulty}
-        isOcrProcessing={isOcrProcessing}
-        ocrProgress={ocrProgress}
-        showTopicPacks={showTopicPacks}
-        setShowTopicPacks={setShowTopicPacks}
-        showAssignmentWelcome={showAssignmentWelcome}
-        setShowAssignmentWelcome={setShowAssignmentWelcome}
-        TOPIC_PACKS={TOPIC_PACKS}
-        onBack={() => {
-          setEditingAssignment(null);
-          setView("teacher-dashboard");
-        }}
-        editingAssignment={editingAssignment}
-        setEditingAssignment={setEditingAssignment}
-        showToast={showToast}
-        onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
-      />
+      <LazyWrapper loadingMessage="Loading assignment editor...">
+        <CreateAssignmentView
+          selectedClass={selectedClass}
+          allWords={ALL_WORDS}
+          band1Words={BAND_1_WORDS}
+          band2Words={BAND_2_WORDS}
+          customWords={customWords}
+          assignmentTitle={assignmentTitle}
+          setCustomWords={setCustomWords}
+          setAssignmentTitle={setAssignmentTitle}
+          assignmentDeadline={assignmentDeadline}
+          setAssignmentDeadline={setAssignmentDeadline}
+          assignmentModes={assignmentModes}
+          setAssignmentModes={setAssignmentModes}
+          selectedWords={selectedWords}
+          setSelectedWords={setSelectedWords}
+          selectedLevel={selectedLevel}
+          setSelectedLevel={setSelectedLevel}
+          tagInput={tagInput}
+          setTagInput={setTagInput}
+          pastedText={pastedText}
+          setPastedText={setPastedText}
+          showPasteDialog={showPasteDialog}
+          setShowPasteDialog={setShowPasteDialog}
+          pasteMatchedCount={pasteMatchedCount}
+          pasteUnmatched={pasteUnmatched}
+          handlePasteSubmit={handlePasteSubmit}
+          handleAddUnmatchedAsCustom={handleAddUnmatchedAsCustom}
+          handleSkipUnmatched={handleSkipUnmatched}
+          handleTagInputKeyDown={handleTagInputKeyDown}
+          handleDocxUpload={handleDocxUpload}
+          handleOcrUpload={handleOcrUpload}
+          handleSaveAssignment={handleSaveAssignment}
+          assignmentSentences={assignmentSentences}
+          setAssignmentSentences={setAssignmentSentences}
+          sentenceDifficulty={sentenceDifficulty}
+          setSentenceDifficulty={setSentenceDifficulty}
+          isOcrProcessing={isOcrProcessing}
+          ocrProgress={ocrProgress}
+          showTopicPacks={showTopicPacks}
+          setShowTopicPacks={setShowTopicPacks}
+          showAssignmentWelcome={showAssignmentWelcome}
+          setShowAssignmentWelcome={setShowAssignmentWelcome}
+          TOPIC_PACKS={TOPIC_PACKS}
+          onBack={() => {
+            setEditingAssignment(null);
+            setView("teacher-dashboard");
+          }}
+          editingAssignment={editingAssignment}
+          setEditingAssignment={setEditingAssignment}
+          showToast={showToast}
+          onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
+        />
+      </LazyWrapper>
     );
   }
 
