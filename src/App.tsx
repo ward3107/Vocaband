@@ -50,6 +50,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useQuickPlay } from "./hooks/useQuickPlay";
+import { useGameState } from "./hooks/useGameState";
 import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
@@ -214,7 +215,6 @@ export default function App() {
   };
   const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
   const [showDemo, setShowDemo] = useState(false);
-  const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
   // listener before handleStudentLogin finishes its DB queries).
@@ -726,50 +726,11 @@ export default function App() {
     return playMotivationalRaw(...args);
   };
 
-  // --- GAME STATE ---
-  const [gameMode, setGameMode] = useState<GameMode>("classic");
-  const [showModeSelection, setShowModeSelection] = useState(true);
-  const [showModeIntro, setShowModeIntro] = useState(false);
-  const [spellingInput, setSpellingInput] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [mistakes, setMistakes] = useState<number[]>([]);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
-  const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
-    try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
-  });
-  const [hasChosenLanguage, setHasChosenLanguage] = useState(() => {
-    try { return !!localStorage.getItem('vocaband_target_lang'); } catch { return false; }
-  });
-  const [isFinished, setIsFinished] = useState(false);
-  const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
-
-  // --- NEW MODES STATE ---
-  const [tfOption, setTfOption] = useState<Word | null>(null);
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  // --- MATCHING MODE STATE ---
-  const [matchingPairs, setMatchingPairs] = useState<{id: number, text: string, type: 'english' | 'arabic'}[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'arabic'} | null>(null);
-  const [matchedIds, setMatchedIds] = useState<number[]>([]);
-
-  // --- LETTER SOUNDS MODE STATE ---
-  const [revealedLetters, setRevealedLetters] = useState(0);
-  // --- SENTENCE BUILDER MODE STATE ---
-  const [sentenceIndex, setSentenceIndex] = useState(0);
-  const [availableWords, setAvailableWords] = useState<string[]>([]);
-  const [builtSentence, setBuiltSentence] = useState<string[]>([]);
-  const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
+  // --- TEACHER STATE (not game-related) ---
   const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
   const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
-
-
-  // --- RELIABILITY STATE ---
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
 
   // --- QUERY DEDUPLICATION ---
@@ -780,11 +741,7 @@ export default function App() {
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
 
-  // Timeout ref for cleanup (prevents memory leaks on unmount)
-  const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
   useEffect(() => { userRef.current = user; }, [user]);
-  useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -2715,6 +2672,45 @@ export default function App() {
       setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
     }
   };
+
+  // --- GAME STATE (via custom hook) ---
+  const game = useGameState({
+    view, user, setUser, setView, socket,
+    assignmentWords, activeAssignment,
+    speakWord: speakWordRaw,
+    showToast, xp, setXp, streak, setStreak,
+    awardBadge, studentProgress, setStudentProgress,
+    quickPlayActiveSession, quickPlayCompletedModes, setQuickPlayCompletedModes,
+    isLiveChallenge,
+  });
+  const {
+    gameMode, setGameMode,
+    showModeSelection, setShowModeSelection,
+    showModeIntro, setShowModeIntro,
+    spellingInput, setSpellingInput,
+    currentIndex, setCurrentIndex,
+    score, setScore,
+    mistakes, setMistakes,
+    feedback, setFeedback,
+    motivationalMessage,
+    targetLanguage, setTargetLanguage,
+    isFinished, setIsFinished,
+    hiddenOptions, setHiddenOptions,
+    tfOption, isFlipped, setIsFlipped,
+    matchingPairs, matchedIds, selectedMatch,
+    handleMatchClick,
+    revealedLetters,
+    sentenceIndex, builtSentence, setBuiltSentence,
+    availableWords, setAvailableWords,
+    sentenceFeedback,
+    handleSentenceWordTap, handleSentenceCheck,
+    scrambledWord, options, gameWords, currentWord,
+    handleAnswer, handleTFAnswer, handleFlashcardAnswer,
+    handleSpellingSubmit, handleExitGame,
+    saveError, setSaveError,
+    speak, saveScore,
+  } = game;
+
   const fetchStudents = async () => {
     if (!user || user.role !== "teacher" || classes.length === 0) return;
     const now = Date.now();
@@ -2808,647 +2804,6 @@ export default function App() {
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };
-
-  // --- GAME LOGIC ---
-  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
-  const currentWord = gameWords[currentIndex];
-  // Debug: verify word count in game
-  if (view === "game" && activeAssignment) {
-  }
-
-  // Debug: log state when in game view
-  if (view === "game") {
-    console.log('[Game View Debug] view:', view, 'showModeSelection:', showModeSelection, 'assignmentWords.length:', assignmentWords.length);
-  }
-
-  const options = useMemo(() => {
-    if (!currentWord) return [];
-    const correct = currentWord;
-    
-    // Try to use ONLY the assigned gameWords for distractors so students only see what they are learning
-    let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
-    
-    // If the teacher assigned fewer than 4 words, we have to borrow from ALL_WORDS to fill the 4 buttons
-    if (possibleDistractors.length < 3) {
-      const allPossibleWords = [...ALL_WORDS, ...gameWords];
-      const uniqueOthers = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== correct.id);
-      possibleDistractors = uniqueOthers;
-    }
-    
-    const shuffledOthers = shuffle(possibleDistractors).slice(0, 3);
-    return shuffle([...shuffledOthers, correct]);
-  }, [currentWord, gameWords]);
-
-  useEffect(() => {
-    if (currentWord) {
-      // 50% chance to show correct translation, 50% chance to show wrong translation
-      if (secureRandomInt(2) === 0) {
-        setTfOption(currentWord);
-      } else {
-        let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
-        if (possibleDistractors.length === 0) {
-          const allPossibleWords = [...ALL_WORDS, ...gameWords];
-          possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
-        }
-        setTfOption(possibleDistractors[secureRandomInt( possibleDistractors.length)]);
-      }
-      setIsFlipped(false);
-    }
-  }, [currentIndex, currentWord, gameWords]);
-
-  const scrambledWord = useMemo(() => {
-    if (!currentWord) return "";
-    let scrambled = shuffle(currentWord.english.split('')).join('');
-    // Ensure it's actually scrambled if length > 1
-    while (scrambled === currentWord.english && currentWord.english.length > 1) {
-      scrambled = shuffle(currentWord.english.split('')).join('');
-    }
-    return scrambled;
-  }, [currentWord]);
-
-  // Cache the selected voice so the same voice is used consistently
-  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const getVoice = () => {
-    if (cachedVoiceRef.current) return cachedVoiceRef.current;
-    const voices = window.speechSynthesis.getVoices();
-    const picked = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
-      || voices.find(v => v.lang.startsWith("en-US"));
-    if (picked) cachedVoiceRef.current = picked;
-    return picked ?? null;
-  };
-  // Re-cache when voices load (they load asynchronously in some browsers)
-  useEffect(() => {
-    if (!("speechSynthesis" in window)) return;
-    const onVoicesChanged = () => { cachedVoiceRef.current = null; getVoice(); };
-    window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
-    getVoice();
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
-  }, []);
-
-  const speak = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-    const voice = getVoice();
-    if (voice) utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
-  };
-
-  useEffect(() => {
-    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder") {
-      speakWord(currentWord.id, currentWord.english);
-    }
-  }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
-
-  useEffect(() => {
-    if (view === "game" && !showModeSelection && gameMode === "matching") {
-      const shuffled = shuffle(gameWords).slice(0, 6);
-      const pairs = shuffle([
-        ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
-        ...shuffled.map(w => ({ id: w.id, text: w[targetLanguage] || w.arabic || w.hebrew || w.english, type: 'arabic' as const }))
-      ]);
-      setMatchingPairs(pairs);
-      setMatchedIds([]);
-      setSelectedMatch(null);
-    }
-  }, [view, showModeSelection, gameMode, gameWords, targetLanguage]);
-
-  // Letter Sounds: reveal one letter at a time, speak each letter
-  // Uses sequential timeouts so each letter's sound plays AFTER the letter
-  // is visually revealed (300ms spring delay) and previous speech finishes.
-  useEffect(() => {
-    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "letter-sounds" || !currentWord || isFinished) return;
-    setRevealedLetters(0);
-    const word = currentWord.english;
-    let cancelled = false;
-    const revealNext = (idx: number) => {
-      if (cancelled || idx >= word.length) return;
-      setRevealedLetters(idx + 1);
-      // Delay speech 250ms so the spring animation shows the letter first
-      setTimeout(() => {
-        if (cancelled) return;
-        // Cancel any ongoing speech before starting the new letter
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(word[idx]);
-        utter.rate = 0.8;
-        utter.onend = () => {
-          if (!cancelled) setTimeout(() => revealNext(idx + 1), 200);
-        };
-        // Fallback if onend doesn't fire (some browsers)
-        const fallbackTimer = setTimeout(() => {
-          if (!cancelled) revealNext(idx + 1);
-        }, 1500);
-        utter.onend = () => { clearTimeout(fallbackTimer); if (!cancelled) setTimeout(() => revealNext(idx + 1), 200); };
-        window.speechSynthesis.speak(utter);
-      }, 250);
-    };
-    // Start after a short initial delay
-    const startTimer = setTimeout(() => revealNext(0), 400);
-    return () => { cancelled = true; clearTimeout(startTimer); window.speechSynthesis.cancel(); };
-  }, [currentIndex, view, showModeSelection, showModeIntro, gameMode, currentWord, isFinished]);
-
-  // Sentence Builder: load sentences from active assignment
-  useEffect(() => {
-    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "sentence-builder" || !activeAssignment) return;
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    if (validSentences.length > 0) {
-      setSentenceIndex(0);
-      const words = shuffle(validSentences[0].split(" ").filter(Boolean));
-      setAvailableWords(words);
-      setBuiltSentence([]);
-      setSentenceFeedback(null);
-      // Speak the target sentence so students know what to build
-      setTimeout(() => speak(validSentences[0]), 400);
-    }
-  }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
-
-  const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
-    if (fromAvailable) {
-      setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setBuiltSentence(prev => [...prev, word]);
-    } else {
-      setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setAvailableWords(prev => [...prev, word]);
-    }
-  };
-
-  const handleSentenceCheck = () => {
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    const target = validSentences[sentenceIndex]?.trim().toLowerCase();
-    const built = builtSentence.join(" ").toLowerCase();
-    if (built === target) {
-      setSentenceFeedback("correct");
-      speak(validSentences[sentenceIndex]);
-      const newScore = score + 20;
-      setScore(newScore);
-      if (socket && user?.classCode) setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      setTimeout(() => {
-        const next = sentenceIndex + 1;
-        if (next >= validSentences.length) {
-          setIsFinished(true);
-          saveScore(newScore);
-        } else {
-          setSentenceIndex(next);
-          setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
-          setBuiltSentence([]);
-          setSentenceFeedback(null);
-          // Speak the next sentence so students know what to build
-          setTimeout(() => speak(validSentences[next]), 400);
-        }
-      }, 1800);
-    } else {
-      setSentenceFeedback("wrong");
-      setTimeout(() => { setBuiltSentence([]); setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean))); setSentenceFeedback(null); }, 1200);
-    }
-  };
-
-  // Remove Quick Play guest from teacher's dashboard (delete progress, clear localStorage)
-  const cleanupQuickPlayGuest = async () => {
-    if (!user?.isGuest || !quickPlayActiveSession) return;
-    try {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      const authUid = authSession?.user?.id;
-      if (authUid) {
-        await supabase
-          .from('progress')
-          .delete()
-          .eq('assignment_id', quickPlayActiveSession.id)
-          .eq('student_uid', authUid);
-      }
-    } catch {}
-    try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-    setQuickPlayCompletedModes(new Set());
-  };
-
-  const handleExitGame = () => {
-    setIsFinished(false);
-    setCurrentIndex(0);
-    setScore(0);
-    setMistakes([]);
-    setFeedback(null);
-    setSpellingInput("");
-    setMatchedIds([]);
-    setSelectedMatch(null);
-    setIsFlipped(false);
-    setTfOption(null);
-    setRevealedLetters(0);
-    setSentenceIndex(0);
-    setAvailableWords([]);
-    setBuiltSentence([]);
-    setSentenceFeedback(null);
-    setHiddenOptions([]);
-
-    if (user?.role === "teacher") {
-      setView("teacher-dashboard");
-    } else if (user?.role === "student") {
-      if (showModeSelection) {
-        setView("student-dashboard");
-      } else {
-        setShowModeSelection(true);
-      }
-    } else if (user?.isGuest) {
-      // Quick Play guest: go back to mode selection so they can pick another mode
-      setShowModeSelection(true);
-    } else {
-      setUser(null);
-      setView("public-landing");
-    }
-  };
-
-  const saveScore = async (scoreOverride?: number) => {
-    const finalScore = scoreOverride !== undefined ? scoreOverride : score;
-    if (!user) return;
-    setIsSaving(true);
-    setSaveError(null);
-
-    // Quick Play (guest) mode - save progress with session UUID as identifier
-    if (user.isGuest && quickPlayActiveSession) {
-      try {
-        // Use the actual Supabase auth UID (not the guest app UID) so RLS allows the insert
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        const authUid = authSession?.user?.id || user.uid;
-        const progress: Omit<ProgressData, "id"> = {
-          studentName: user.displayName,
-          studentUid: authUid,
-          assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
-          classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.max(0, finalScore),
-          mode: gameMode,
-          completedAt: new Date().toISOString(),
-          mistakes: mistakes,
-          avatar: user.avatar || "\uD83E\uDD8A"
-        };
-
-        // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
-        const { error } = await supabase
-          .from('progress')
-          .insert({
-            student_name: progress.studentName,
-            student_uid: progress.studentUid,
-            assignment_id: progress.assignmentId,
-            class_code: progress.classCode,
-            score: progress.score,
-            mode: progress.mode,
-            completed_at: progress.completedAt,
-            mistakes: Array.isArray(mistakes) ? mistakes : [],
-            avatar: progress.avatar
-          });
-
-        if (error) {
-          console.error('[Quick Play] Failed to save progress:', error);
-        } else {
-          // Mark this mode as completed so it gets locked in mode selection
-          setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-        }
-
-        setIsSaving(false);
-        return;
-      } catch (err) {
-        console.error('[Quick Play] Error saving progress:', err);
-        setIsSaving(false);
-        return;
-      }
-    }
-
-    // Regular assignment mode
-    if (!activeAssignment) return;
-
-    // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = gameWords.length * 10;
-    const cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
-
-    const xpEarned = cappedScore;
-    const newXp = xp + xpEarned;
-    const newStreak = cappedScore >= 80 ? streak + 1 : 0;
-    setXp(newXp);
-    setStreak(newStreak);
-
-    if (cappedScore === 100) await awardBadge("🎯 Perfect Score");
-    if (newStreak >= 5) await awardBadge("🔥 Streak Master");
-    if (newXp >= 500) await awardBadge("💎 XP Hunter");
-
-    // Streak milestone celebrations
-    const streakMilestones = [7, 14, 30, 50, 100];
-    if (streakMilestones.includes(newStreak)) {
-      loadConfetti().then(confettiModule => {
-        const confetti = confettiModule.default || confettiModule;
-        // Big celebration burst
-        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
-        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.2, y: 0.5 } }), 300);
-        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.8, y: 0.5 } }), 600);
-      });
-      showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
-    }
-
-    // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
-    // For regular students, we try to get the session UID
-    const { data: { session } } = await supabase.auth.getSession();
-    const sessionUid = session?.user?.id;
-
-    // Determine the student UID to use for progress tracking
-    // If we have a session, check for a mapped profile UID (for anonymous sessions)
-    // Otherwise, use user.uid directly (which is profile.auth_uid for approved students)
-    let studentUid: string;
-    if (sessionUid) {
-      const mappedUid = localStorage.getItem(`vocaband_student_${sessionUid}`);
-      studentUid = mappedUid || sessionUid;
-    } else {
-      studentUid = user.uid;
-    }
-
-    const progress: Omit<ProgressData, "id"> = {
-      studentName: user.displayName,
-      studentUid: studentUid,
-      assignmentId: activeAssignment.id,
-      classCode: user.classCode || "",
-      score: cappedScore,
-      mode: gameMode,
-      completedAt: new Date().toISOString(),
-      mistakes: mistakes,
-      avatar: user.avatar || "🦊"
-    };
-
-    try {
-      // Save progress + XP/streak in parallel (2 calls → 1 round-trip)
-      const [{ data: progressId, error: rpcError }] = await Promise.all([
-        supabase.rpc('save_student_progress', {
-          p_student_name: user.displayName,
-          p_student_uid: studentUid,
-          p_assignment_id: activeAssignment.id,
-          p_class_code: user.classCode || "",
-          p_score: cappedScore,
-          p_mode: gameMode,
-          p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-          p_avatar: user.avatar || "🦊"
-        }),
-        supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid),
-      ]);
-
-      if (rpcError) throw rpcError;
-
-      // Update local state with the saved progress
-      const newProgress = {
-        id: progressId,
-        ...progress
-      };
-
-      setStudentProgress(prev => {
-        const existingIndex = prev.findIndex(
-          p => p.assignmentId === activeAssignment.id
-            && p.mode === gameMode
-            && p.studentUid === studentUid
-        );
-
-        if (existingIndex >= 0) {
-          // Update existing if found
-          const updated = [...prev];
-          updated[existingIndex] = newProgress;
-          return updated;
-        } else {
-          // Add new progress
-          return [...prev, newProgress];
-        }
-      });
-
-      // Clear any queued retry for this assignment+mode
-      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.removeItem(retryKey);
-
-      // Lazy load and use confetti
-      loadConfetti().then(confettiModule => {
-        const confetti = confettiModule.default || confettiModule;
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-      });
-    } catch (error) {
-      console.error("Error saving score:", error);
-      // Log detailed error for debugging
-      if (error && typeof error === 'object' && 'message' in error) {
-        console.error("Supabase error details:", error);
-      }
-      // Queue for retry on next load
-      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.setItem(retryKey, JSON.stringify(mapProgressToDb(progress)));
-      setSaveError(`Your score couldn't be saved. Check your connection — it will retry automatically.`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
-    if (matchedIds.includes(item.id)) return;
-
-    // Pronounce the word when clicking any card (deferred to not block paint)
-    const matchWord = gameWords.find(w => w.id === item.id);
-    setTimeout(() => { speakWord(item.id, matchWord?.english); }, 0);
-
-    if (!selectedMatch) {
-      setSelectedMatch(item);
-    } else {
-      if (selectedMatch.type !== item.type && selectedMatch.id === item.id) {
-        setMatchedIds([...matchedIds, item.id]);
-        const newScore = score + 15;
-        setScore(newScore);
-
-        if (socket && user?.classCode) {
-          setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-        }
-
-        setSelectedMatch(null);
-
-        if (matchedIds.length + 1 === matchingPairs.length / 2) {
-          setTimeout(() => {
-            setIsFinished(true);
-            saveScore(newScore);
-          }, 500);
-        }
-      } else {
-        setSelectedMatch(item);
-      }
-    }
-  };
-
-  const handleAnswer = (selectedWord: Word) => {
-    if (feedback) return;
-
-    if (selectedWord.id === currentWord.id) {
-      setFeedback("correct");
-      const mKey = playMotivational();
-      setMotivationalMessage(getMotivationalLabel(mKey));
-      const newScore = score + 10;
-      setScore(newScore);
-
-      // Clear attempts for this word since they got it right
-      setWordAttempts(prev => {
-        const newState = { ...prev };
-        delete newState[currentWord.id];
-        return newState;
-      });
-
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      }
-
-      // Auto-skip quickly after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setHiddenOptions([]);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      // Track attempts for this word
-      const currentAttempts = (wordAttempts[currentWord.id] || 0) + 1;
-      setWordAttempts(prev => ({ ...prev, [currentWord.id]: currentAttempts }));
-
-      if (currentAttempts >= MAX_ATTEMPTS_PER_WORD) {
-        // Show the right answer after max attempts
-        setFeedback("show-answer");
-        setMistakes(prev => addUnique(prev, currentWord.id));
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          if (currentIndex < gameWords.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            setFeedback(null);
-            setHiddenOptions([]);
-            // Clear attempts for next word
-            setWordAttempts(prev => removeKey(prev, currentWord.id));
-          } else {
-            setIsFinished(true);
-            saveScore();
-          }
-        }, SHOW_ANSWER_DELAY_MS);
-      } else {
-        // Show try again with attempt count
-        setFeedback("wrong");
-        playWrong();
-        setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
-      }
-    }
-  };
-
-  const handleTFAnswer = (isTrue: boolean) => {
-    if (feedback) return;
-    const isActuallyTrue = tfOption?.id === currentWord.id;
-    
-    if (isTrue === isActuallyTrue) {
-      setFeedback("correct");
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
-      const newScore = score + 15;
-      setScore(newScore);
-
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      }
-
-      setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, 1000);
-    } else {
-      setFeedback("wrong");
-      playWrong();
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-      setTimeout(() => setFeedback(null), 1000);
-    }
-  };
-
-  const handleFlashcardAnswer = (knewIt: boolean) => {
-    let currentScore = score;
-    if (knewIt) {
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
-      setTimeout(() => setMotivationalMessage(null), 1000);
-      currentScore = score + 5;
-      setScore(currentScore);
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: currentScore }); }, 0);
-      }
-    } else {
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-    }
-
-    if (currentIndex < gameWords.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsFlipped(false);
-    } else {
-      setIsFinished(true);
-      saveScore(currentScore);
-    }
-  };
-
-  const handleSpellingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (feedback) return;
-
-    if (spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase()) {
-      setFeedback("correct");
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
-      const newScore = score + 20;
-      setScore(newScore);
-
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      }
-
-      setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setSpellingInput("");
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, 1000);
-    } else {
-      setFeedback("wrong");
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-      setTimeout(() => setFeedback(null), 1000);
-    }
-  };
-
-  // Global cookie banner — renders on top of ANY view until accepted
-  // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
-  const cookieBannerOverlay = showCookieBanner && !user ? (
-    <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
-  ) : null;
-
-  // Debug: log banner state on every render
-  if (showCookieBanner && !user) {
-  }
-
-
-  if (loading && !quickPlaySessionParam) {
-    return <div className="min-h-screen flex items-center justify-center bg-stone-100">
-      <RefreshCw className="animate-spin text-blue-700" size={48} />
-    </div>;
-  }
 
 
   // Configuration error banner — shown when Supabase env vars are missing
