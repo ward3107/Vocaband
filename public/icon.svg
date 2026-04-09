@@ -6,8 +6,9 @@
       <stop offset="100%" stop-color="#ec4899"/>
     </linearGradient>
   </defs>
-  <!-- Fill entire square with gradient (no transparent corners) -->
+  <!-- Fill entire canvas with gradient first (covers corners) -->
   <rect width="512" height="512" fill="url(#bg)"/>
-  <!-- White italic V -->
+  <!-- Rounded rect on top with same gradient (visually rounded, no white corners) -->
+  <rect width="512" height="512" rx="102" fill="url(#bg)"/>
   <text x="256" y="375" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="340" font-style="italic" fill="white">V</text>
 </svg>
