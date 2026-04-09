@@ -13,3 +13,6 @@ export const AVATAR_CATEGORIES = {
 } as const;
 
 export type AvatarCategory = keyof typeof AVATAR_CATEGORIES;
+
+// Smaller curated avatar set used by the Quick Play join screen (guest students).
+export const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'] as const;
