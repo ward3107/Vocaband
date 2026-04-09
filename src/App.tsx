@@ -203,6 +203,12 @@ export default function App() {
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
   // --- QUICK PLAY STATE (via custom hook) ---
+  // --- STUDENT DATA STATE ---
+  const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
+  const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
+  const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
+  const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+
   const qp = useQuickPlay(view, user, setActiveAssignment);
   const {
     setQuickPlaySessionCode,
@@ -584,11 +590,6 @@ export default function App() {
     }
   };
 
-  // --- STUDENT DATA STATE ---
-  const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
-  const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
-  const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
-  const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
 
   // --- THEME ---
   const activeThemeConfig = useMemo(() => {
