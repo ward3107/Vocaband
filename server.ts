@@ -119,7 +119,7 @@ async function startServer() {
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", allowedOrigin],
+          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", ...allowedOrigins],
           frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
           workerSrc: ["'self'", "blob:"],
           mediaSrc: ["'self'", "https://*.supabase.co"],
