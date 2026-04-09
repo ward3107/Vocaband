@@ -5,7 +5,12 @@
       <stop offset="50%" stop-color="#9333ea"/>
       <stop offset="100%" stop-color="#ec4899"/>
     </linearGradient>
+    <clipPath id="rounded">
+      <rect width="512" height="512" rx="102"/>
+    </clipPath>
   </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <text x="256" y="375" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="340" font-style="italic" fill="white">V</text>
+  <g clip-path="url(#rounded)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <text x="256" y="375" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="340" font-style="italic" fill="white">V</text>
+  </g>
 </svg>
