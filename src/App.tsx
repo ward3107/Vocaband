@@ -666,25 +666,31 @@ export default function App() {
   } = game;
 
 
-  // --- AUTH HANDLERS (via custom hook) ---
-  const {
-    createGuestUser, recordConsent, loadStudentsInClass,
-    handleLoginAsStudent, handleNewStudentSignup,
-    handleOAuthTeacherDetected, handleOAuthStudentDetected, handleOAuthNewUser,
-    handleApproveStudent, handleRejectStudent, confirmRejectStudent,
-  } = useAuth({
-    user, setUser, setView, setLoading, setError, showToast,
-    existingStudents, setExistingStudents,
-    studentLoginClassCode, setStudentLoginClassCode,
-    studentLoginName, setStudentLoginName,
-    studentAvatar, setStudentAvatar, setShowNewStudentForm,
-    setIsOAuthCallback, setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
-    setStudentAssignments, setStudentProgress, setStudentDataLoading,
-    xp, setXp, streak, setStreak, badges, setBadges,
-    setNeedsConsent, setConsentChecked,
-    setRejectStudentModal,
-    manualLoginInProgress, restoreInProgress,
-  });
+  const checkConsent = (userData: AppUser) => {
+    const accepted = localStorage.getItem('vocaband_consent_version');
+    if (accepted === PRIVACY_POLICY_VERSION) return;
+
+    // localStorage missing — check DB before showing the banner
+    if (userData.uid) {
+      supabase
+        .from('consent_log')
+        .select('policy_version')
+        .eq('uid', userData.uid)
+        .eq('action', 'accept')
+        .eq('policy_version', PRIVACY_POLICY_VERSION)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            // Valid consent found in DB — restore localStorage and skip banner
+            try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
+          } else {
+            setNeedsConsent(true);
+          }
+        });
+    } else {
+      setNeedsConsent(true);
+    }
+  };
 
   // --- TEACHER ACTIONS (via custom hook) ---
   const {
@@ -723,6 +729,28 @@ export default function App() {
     setConfirmDialog, showToast, setView,
     lastFetchRef,
   });
+
+  // --- AUTH HANDLERS (via custom hook) ---
+  const {
+    createGuestUser, recordConsent, loadStudentsInClass,
+    handleLoginAsStudent, handleNewStudentSignup,
+    handleOAuthTeacherDetected, handleOAuthStudentDetected, handleOAuthNewUser,
+    handleApproveStudent, handleRejectStudent, confirmRejectStudent,
+  } = useAuth({
+    user, setUser, setView, setLoading, setError, showToast,
+    existingStudents, setExistingStudents,
+    studentLoginClassCode, setStudentLoginClassCode,
+    studentLoginName, setStudentLoginName,
+    studentAvatar, setStudentAvatar, setShowNewStudentForm,
+    setIsOAuthCallback, setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
+    setStudentAssignments, setStudentProgress, setStudentDataLoading,
+    xp, setXp, streak, setStreak, badges, setBadges,
+    setNeedsConsent, setConsentChecked,
+    setRejectStudentModal,
+    loadPendingStudents, checkConsent,
+    manualLoginInProgress, restoreInProgress,
+  });
+
 
 
   const playMotivational = (...args: Parameters<typeof playMotivationalRaw>) => {
@@ -1356,31 +1384,6 @@ export default function App() {
   // Preview the assignment with selected words and modes (for teachers)
   // Check if user needs to accept the current privacy policy version.
   // Fast path: localStorage. Fallback: DB consent_log (handles cleared storage).
-  const checkConsent = (userData: AppUser) => {
-    const accepted = localStorage.getItem('vocaband_consent_version');
-    if (accepted === PRIVACY_POLICY_VERSION) return;
-
-    // localStorage missing — check DB before showing the banner
-    if (userData.uid) {
-      supabase
-        .from('consent_log')
-        .select('policy_version')
-        .eq('uid', userData.uid)
-        .eq('action', 'accept')
-        .eq('policy_version', PRIVACY_POLICY_VERSION)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            // Valid consent found in DB — restore localStorage and skip banner
-            try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
-          } else {
-            setNeedsConsent(true);
-          }
-        });
-    } else {
-      setNeedsConsent(true);
-    }
-  };
 
   // Student Account Login System
   // Helper function to process student profile and log them in
