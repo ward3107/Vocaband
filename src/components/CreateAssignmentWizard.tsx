@@ -27,8 +27,8 @@ export interface AssignmentDataCompat extends AssignmentData {
 interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number; id?: string };
   allWords: Word[];
-  band1Words: Word[];
-  band2Words: Word[];
+  set1Words: Word[];
+  set2Words: Word[];
   customWords: Word[];
   setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
   assignmentTitle: string;
@@ -40,7 +40,7 @@ interface CreateAssignmentWizardProps {
   selectedWords: number[];
   setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
   selectedLevel: string;
-  setSelectedLevel: (level: "Band 1" | "Band 2" | "Custom") => void;
+  setSelectedLevel: (level: "Set 1" | "Set 2" | "Custom") => void;
   tagInput: string;
   setTagInput: (input: string) => void;
   pastedText: string;
@@ -77,8 +77,8 @@ interface CreateAssignmentWizardProps {
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   selectedClass,
   allWords,
-  band1Words,
-  band2Words,
+  set1Words,
+  set2Words,
   customWords,
   setCustomWords,
   assignmentTitle,
@@ -137,15 +137,25 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   }, [allWords, customWords, selectedWordsIds]);
 
   // ── Handle SetupWizard completion ───────────────────────────────────────────
-  const handleWizardComplete = (result: { words: Word[]; modes: string[] }) => {
+  const handleWizardComplete = async (result: { words: Word[]; modes: string[] }) => {
+    console.log('[handleWizardComplete] START', {
+      wordsCount: result.words.length,
+      modesCount: result.modes.length,
+      words: result.words.map(w => w.id),
+      modes: result.modes,
+    });
+
     // Update parent state with the final selections
     const wordIds = result.words.map(w => w.id);
+    console.log('[handleWizardComplete] Updating state', { wordIds });
     setSelectedWords(wordIds);
     setAssignmentModes(result.modes);
 
-    // Call the original save handler
-    handleSaveAssignment();
+    console.log('[handleWizardComplete] Calling handleSaveAssignment with data');
+    // Pass words and modes directly to avoid timing issues with async state updates
+    await handleSaveAssignment(wordIds, result.modes);
 
+    console.log('[handleWizardComplete] Showing success screen');
     // Show success screen
     setShowSuccess(true);
   };
@@ -307,8 +317,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     <SetupWizard
       mode="assignment"
       allWords={allWords}
-      band1Words={band1Words}
-      band2Words={band2Words}
+      set1Words={set1Words}
+      set2Words={set2Words}
       onComplete={handleWizardComplete}
       onBack={handleWizardBack}
       autoMatchPartial={true}

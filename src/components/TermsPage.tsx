@@ -14,7 +14,7 @@ interface TermsPageProps {
 }
 
 const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack }) => {
-  const { language, isRTL } = useLanguage();
+  const { language, isRTL, dir } = useLanguage();
   const t = termsTranslations[language];
   const ui = uiTranslations[language];
 
@@ -23,7 +23,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
   };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface" dir={dir}>
       <PublicNav
         currentPage="terms"
         onNavigate={onNavigate}

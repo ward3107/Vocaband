@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
-import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
+import { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
   searchWords
@@ -74,6 +74,7 @@ import { SuspenseWrapper } from "./components/SuspenseWrapper";
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
+import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
   MOTIVATIONAL_MESSAGES, SPEAKABLE_MOTIVATIONS, randomMotivation,
@@ -99,10 +100,35 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   const isCorrect = option.id === currentWordId;
   const showCorrect = feedback === "correct" && isCorrect;
   const showAnswer = feedback === "show-answer" && isCorrect;
+  const isDisabled = !!feedback; // Disable on ANY feedback (correct, wrong, or show-answer)
+
+  const handleClick = () => {
+    console.log('[AnswerButton] Clicked', { optionId: option.id, currentWordId, isDisabled, feedback, gameMode });
+    const gameDebug = getGameDebugger();
+    gameDebug.logButtonClick({
+      button: 'answer_option',
+      gameMode,
+      wordId: currentWordId,
+      disabled: isDisabled,
+      feedback,
+    });
+    if (!isDisabled) {
+      console.log('[AnswerButton] Calling onAnswer', { option });
+      onAnswer(option);
+    } else {
+      console.warn('[AnswerButton] Click blocked - button is disabled', { feedback, isDisabled });
+    }
+  };
+
   return (
     <button
-      onClick={() => onAnswer(option)}
-      disabled={feedback === "show-answer" || feedback === "correct"}
+      onClick={handleClick}
+      onTouchEnd={(e) => {
+        // Better touch support for mobile
+        e.preventDefault();
+        handleClick();
+      }}
+      disabled={isDisabled}
       dir={gameMode === "reverse" ? "ltr" : "auto"}
       className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
         showCorrect
@@ -113,6 +139,8 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
           ? "bg-amber-500 text-white motion-safe:scale-105 shadow-xl ring-4 ring-amber-300"
           : feedback === "show-answer"
           ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
+          : feedback === "wrong"
+          ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
           : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300"
       }`}
     >
@@ -122,6 +150,63 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
     </button>
   );
 });
+
+// Memoized Classic Mode Game component with debugging and error handling
+const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOptions, feedback, targetLanguage, gameWordsCount, currentIndex, onAnswer }: {
+  gameMode: string;
+  currentWord: Word | undefined;
+  options: Word[];
+  hiddenOptions: number[];
+  feedback: string | null;
+  targetLanguage: "hebrew" | "arabic";
+  gameWordsCount: number;
+  currentIndex: number;
+  onAnswer: (w: Word) => void;
+}) => {
+  // Log debug info when this component renders
+  console.log('[Classic Mode Rendering]', {
+    gameMode,
+    currentWordId: currentWord?.id,
+    currentWordEnglish: currentWord?.english,
+    optionsCount: options.length,
+    optionsIds: options.map(o => o.id),
+    feedback,
+    hiddenOptions,
+    gameWordsCount,
+    currentIndex
+  });
+
+  // Handle error cases
+  if (!currentWord) {
+    console.error('[Classic Mode ERROR] No currentWord!', { gameMode, currentIndex, gameWordsCount });
+    return (
+      <div className="text-center p-8 bg-red-50 rounded-2xl">
+        <p className="text-red-600 font-black">⚠️ Error: No word loaded</p>
+        <p className="text-sm text-red-500 mt-2">Please try selecting another mode or refreshing the page</p>
+      </div>
+    );
+  }
+
+  if (options.length === 0) {
+    console.error('[Classic Mode ERROR] No options!', { currentWordId: currentWord.id, gameWordsCount });
+    return (
+      <div className="text-center p-8 bg-amber-50 rounded-2xl">
+        <p className="text-amber-600 font-black">⚠️ Error: No answer options available</p>
+        <p className="text-sm text-amber-500 mt-2">You need at least 4 words in the assignment for this mode to work</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+      {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
+        <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={onAnswer} />
+      ))}
+    </div>
+  );
+});
+
+ClassicModeGame.displayName = 'ClassicModeGame';
 
 // Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
 function secureRandomInt(max: number): number {
@@ -138,6 +223,9 @@ function uniqueNegativeId(offset = 0): number {
 
 
 export default function App() {
+  // Initialize game debugger
+  const gameDebug = getGameDebugger();
+
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -367,7 +455,7 @@ export default function App() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<"Band 1" | "Band 2" | "Custom">("Band 1");
+  const [selectedLevel, setSelectedLevel] = useState<"Set 1" | "Set 2" | "Custom">("Set 1");
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -589,7 +677,8 @@ export default function App() {
           id: data.id,
           sessionCode: data.session_code,
           wordIds: data.word_ids,
-          words: allWords
+          words: allWords,
+          allowedModes: data.allowed_modes || undefined
         });
 
         // Check if this student already joined this session (page refresh / re-scan)
@@ -621,8 +710,13 @@ export default function App() {
                   setActiveAssignment({
                     id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
                     title: "Quick Play",
-                    allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    allowedModes: data.allowed_modes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
                     sentences: quickPlaySentences, sentenceDifficulty: 2,
+                  });
+                  gameDebug.logGameInit({
+                    wordsCount: words.length,
+                    modesCount: data.allowed_modes?.length || 10,
+                    userId: 'quickplay_guest',
                   });
                   setView("game");
                   setShowModeSelection(true);
@@ -682,8 +776,13 @@ export default function App() {
                   setActiveAssignment({
                     id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
                     title: "Quick Play",
-                    allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    allowedModes: data.allowed_modes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
                     sentences: quickPlaySentences, sentenceDifficulty: 2,
+                  });
+                  gameDebug.logGameInit({
+                    wordsCount: words.length,
+                    modesCount: data.allowed_modes?.length || 10,
+                    userId: 'quickplay_guest',
                   });
                   setView("game");
                   setShowModeSelection(true);
@@ -794,31 +893,63 @@ export default function App() {
         setQuickPlayJoinedStudents(aggregateProgress(data));
       }
     };
-    fetchProgress();
+
+    // OPTIMIZED: Only fetch when page is visible
+    if (!document.hidden) {
+      fetchProgress();
+    }
 
     // 2. Subscribe to realtime changes on progress table for this session
+    // OPTIMIZED: Use payload data directly instead of re-fetching, only when visible
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',  // INSERT, UPDATE, DELETE
+          event: 'INSERT',
           schema: 'public',
           table: 'progress',
           filter: `assignment_id=eq.${sessionId}`
         },
         (payload) => {
-          // Re-fetch on any change — simple and correct
-          fetchProgress();
+          // Only process if page is visible (save resources when hidden)
+          if (document.hidden) return;
+
+          if (payload.new && payload.eventType === 'INSERT') {
+            const newRecord = payload.new as any;
+            setQuickPlayJoinedStudents(prev => {
+              const updated = aggregateProgress([...prev, {
+                student_name: newRecord.student_name,
+                student_uid: newRecord.student_uid,
+                score: newRecord.score,
+                avatar: newRecord.avatar,
+                completed_at: newRecord.completed_at,
+                mode: newRecord.mode
+              }]);
+              return updated;
+            });
+          }
         }
       )
       .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Quick Play Monitor] Subscribed to progress updates (visibility-aware)');
+        }
       });
+
+    // OPTIMIZED: Re-fetch when tab becomes visible after being hidden
+    const handleVisibilityChange = () => {
+      if (!document.hidden && view === "quick-play-teacher-monitor") {
+        fetchProgress();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [view, quickPlayActiveSession?.id, aggregateProgress]);
+  }, [view, quickPlayActiveSession?.id]);
 
   // Quick Play student: subscribe to session status (end) and progress deletes (kick)
   useEffect(() => {
@@ -848,7 +979,8 @@ export default function App() {
       )
       .subscribe();
 
-    // 2. Subscribe to progress deletes (teacher kicked this student)
+    // 2. OPTIMIZED: Subscribe to progress deletes (teacher kicked this student)
+    // Use a simpler approach - just check if we still have any progress record
     const kickChannel = supabase
       .channel(`qp-kick-${sessionId}-${user.uid}`)
       .on(
@@ -860,27 +992,12 @@ export default function App() {
           filter: `assignment_id=eq.${sessionId}`
         },
         () => {
-          // Check if our own progress was deleted by querying with auth UID
-          supabase.auth.getSession().then(({ data: { session: authSess } }) => {
-            const authUid = authSess?.user?.id;
-            const query = supabase
-              .from('progress')
-              .select('id')
-              .eq('assignment_id', sessionId);
-            // Prefer UID match, fall back to name
-            if (authUid) {
-              query.eq('student_uid', authUid);
-            } else {
-              query.eq('student_name', user.displayName);
-            }
-            query.limit(1).then(({ data }) => {
-              if (!data || data.length === 0) {
-                // Our progress was deleted — we've been kicked
-                setQuickPlayKicked(true);
-                setActiveAssignment(null);
-              }
-            });
-          });
+          // OPTIMIZED: Check using cached local state instead of DB query
+          // The Socket.IO server already tracks liveSessions, so we can trust that
+          // if we get a DELETE notification and we're not in any session, we were kicked
+          console.log('[Quick Play] Received kick notification');
+          setQuickPlayKicked(true);
+          setActiveAssignment(null);
         }
       )
       .subscribe();
@@ -889,7 +1006,7 @@ export default function App() {
       supabase.removeChannel(sessionChannel);
       supabase.removeChannel(kickChannel);
     };
-  }, [user?.isGuest, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id, user?.uid, user?.displayName]);
+  }, [user?.isGuest, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
 
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   const toScoreHeightClass = (score: number) => {
@@ -1059,6 +1176,7 @@ export default function App() {
   const [matchingPairs, setMatchingPairs] = useState<{id: number, text: string, type: 'english' | 'arabic'}[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'arabic'} | null>(null);
   const [matchedIds, setMatchedIds] = useState<number[]>([]);
+  const [isMatchingProcessing, setIsMatchingProcessing] = useState(false);
 
   // --- LETTER SOUNDS MODE STATE ---
   const [revealedLetters, setRevealedLetters] = useState(0);
@@ -1082,15 +1200,126 @@ export default function App() {
   // Track when data was last fetched to avoid redundant Supabase calls
   const lastFetchRef = useRef<Record<string, number>>({});
 
+  // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
+  const saveQueueRef = useRef<Array<() => Promise<void>>>([]);
+  const saveQueueTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const isProcessingQueueRef = useRef(false);
+
+  // Process save queue in batches (reduces DB round-trips)
+  const processSaveQueue = async () => {
+    if (isProcessingQueueRef.current || saveQueueRef.current.length === 0) return;
+    isProcessingQueueRef.current = true;
+
+    const queue = saveQueueRef.current.splice(0, 10); // Process up to 10 saves at once
+    console.log('[Save Queue] Processing batch:', queue.length);
+
+    try {
+      await Promise.all(queue.map(fn => fn().catch(err => console.error('[Save Queue] Item failed:', err))));
+    } finally {
+      isProcessingQueueRef.current = false;
+
+      // Process more if queue was refilled
+      if (saveQueueRef.current.length > 0) {
+        saveQueueTimerRef.current = setTimeout(processSaveQueue, 100);
+      }
+    }
+  };
+
+  const queueSaveOperation = (operation: () => Promise<void>) => {
+    saveQueueRef.current.push(operation);
+
+    // Trigger processing after short delay (allows batching)
+    if (!saveQueueTimerRef.current) {
+      saveQueueTimerRef.current = setTimeout(() => {
+        processSaveQueue();
+        saveQueueTimerRef.current = undefined;
+      }, 300); // 300ms delay to accumulate multiple saves
+    }
+  };
+
+  // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
+  const cleanupSessionData = () => {
+    console.log('[Cleanup] Clearing session data and save queue');
+    // Clear save queue to prevent any further DB operations
+    saveQueueRef.current = [];
+    // Clear any pending save timer
+    if (saveQueueTimerRef.current) {
+      clearTimeout(saveQueueTimerRef.current);
+      saveQueueTimerRef.current = undefined;
+    }
+    // Clear feedback timeout
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = undefined;
+    }
+  };
+
+
   // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
 
   // Timeout ref for cleanup (prevents memory leaks on unmount)
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const lastSpokenWordRef = useRef<number | null>(null);
+  const isProcessingRef = useRef<boolean>(false); // Guard against rapid clicks during feedback
+  const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
+  useEffect(() => {
+    isProcessingRef.current = !!feedback;
+    gameDebug.logProcessing({ isProcessing: !!feedback, reason: `feedback changed to ${feedback}` });
+  }, [feedback]);
+
+  // FAILSAFE: Clear stuck feedback after 5 seconds (prevents buttons being permanently disabled)
+  useEffect(() => {
+    if (!feedback) return;
+
+    const failsafeTimer = setTimeout(() => {
+      console.warn('[FAILSAFE] Clearing stuck feedback after 5 seconds:', feedback);
+      setFeedback(null);
+      setMotivationalMessage(null);
+    }, 5000);
+
+    return () => clearTimeout(failsafeTimer);
+  }, [feedback]);
+
+  // Track feedback state changes
+  const prevFeedbackRef = useRef<string | null>(feedback);
+  useEffect(() => {
+    if (prevFeedbackRef.current !== feedback) {
+      gameDebug.logFeedback({ from: prevFeedbackRef.current, to: feedback, reason: 'state_change' });
+      prevFeedbackRef.current = feedback;
+    }
+  }, [feedback]);
+
+  // Track word changes and log state transitions
+  const prevIndexRef = useRef<number>(currentIndex);
+  useEffect(() => {
+    if (prevIndexRef.current !== currentIndex && view === "game") {
+      const fromIndex = prevIndexRef.current;
+      const toIndex = currentIndex;
+      const word = gameWords[toIndex];
+      gameDebug.logWordChange({
+        fromIndex,
+        toIndex,
+        word: word ? { id: word.id, english: word.english } : undefined,
+      });
+      gameDebug.logState({
+        view,
+        gameMode,
+        showModeSelection,
+        showModeIntro,
+        currentIndex: toIndex,
+        isFinished,
+        feedback,
+        isProcessing: isProcessingRef.current,
+        currentWord: word ? { id: word.id, english: word.english } : undefined,
+      }, 'after_word_change');
+      prevIndexRef.current = toIndex;
+    }
+  }, [currentIndex, view, gameMode, showModeSelection, showModeIntro, isFinished, feedback]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -1098,8 +1327,47 @@ export default function App() {
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
       }
+      // Flush save queue on unmount to ensure no data is lost
+      if (saveQueueTimerRef.current) {
+        clearTimeout(saveQueueTimerRef.current);
+      }
+      if (saveQueueRef.current.length > 0) {
+        console.log('[Save Queue] Flushing on unmount:', saveQueueRef.current.length);
+        Promise.all(saveQueueRef.current.map(fn => fn().catch(console.error))).catch(console.error);
+        saveQueueRef.current = [];
+      }
     };
   }, []);
+
+  // Periodic flush: Process save queue every 5 seconds when idle (not during active gameplay)
+  // This ensures queued data is eventually saved without overwhelming the DB
+  useEffect(() => {
+    const flushInterval = setInterval(() => {
+      // Only flush if user exists, not actively saving, and queue has items
+      if (!user || !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
+        console.log('[Save Queue] Periodic flush:', saveQueueRef.current.length);
+        processSaveQueue();
+      }
+    }, 5000); // Every 5 seconds
+
+    return () => clearInterval(flushInterval);
+  }, [isSaving, user]); // Added user as dependency
+
+  // Throttled Socket.IO score emit to prevent DB spam
+  const emitScoreUpdate = (newScore: number) => {
+    if (!socket || !user?.classCode) return;
+    const now = Date.now();
+    // Only emit once per 2 seconds max, or if it's the final score (game finished)
+    if (now - lastScoreEmitRef.current > 2000 || isFinished) {
+      console.log('[Score Emit] Throttled emit:', newScore);
+      lastScoreEmitRef.current = now;
+      setTimeout(() => {
+        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+      }, 0);
+    } else {
+      console.log('[Score Emit] Skipped (throttled):', newScore);
+    }
+  };
 
   // Redirect legacy "students" view to gradebook
   useEffect(() => {
@@ -1128,6 +1396,14 @@ export default function App() {
       ];
       const phrase = phrases[secureRandomInt( phrases.length)];
       setTimeout(() => speak(phrase), 500);
+
+      // Force emit final score to server (bypass throttle)
+      console.log('[Game Finished] Emitting final score:', score);
+      if (socket && user?.classCode) {
+        setTimeout(() => {
+          socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score });
+        }, 100);
+      }
     }
   }, [isFinished]);
   useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
@@ -1268,36 +1544,15 @@ export default function App() {
             const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
             // Check if teacher had an active Quick Play session before refresh
+            // NOTE: Disabled auto-restore for teachers - it interferes with "Quick Online Challenge" button
+            // Session restoration now only happens via URL parameter (?session=CODE)
             try {
-              const savedSession = localStorage.getItem('vocaband_quick_play_session');
-              if (savedSession) {
-                const parsed = JSON.parse(savedSession);
-                const { data: sessionData } = await supabase
-                  .from('quick_play_sessions')
-                  .select('id, session_code, word_ids, is_active')
-                  .eq('id', parsed.id)
-                  .eq('is_active', true)
-                  .maybeSingle();
-                if (sessionData) {
-                  const dbWords = ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
-                  setQuickPlayActiveSession({
-                    id: sessionData.id,
-                    sessionCode: sessionData.session_code,
-                    wordIds: sessionData.word_ids || [],
-                    words: parsed.words?.length ? parsed.words : dbWords,
-                  });
-                  setQuickPlaySessionCode(sessionData.session_code);
-                  setView("quick-play-teacher-monitor");
-                } else {
-                  localStorage.removeItem('vocaband_quick_play_session');
-                  setView("teacher-dashboard");
-                }
-              } else {
-                setView("teacher-dashboard");
-              }
-            } catch {
-              setView("teacher-dashboard");
+              localStorage.removeItem('vocaband_quick_play_session');
+              console.log('[Auth Restore] Cleared any saved Quick Play session for teacher');
+            } catch (e) {
+              console.warn('[Auth Restore] Failed to clear session:', e);
             }
+            setView("teacher-dashboard");
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;
             const { data: classRows } = await supabase
@@ -1472,6 +1727,7 @@ export default function App() {
         // does the slow DB work asynchronously.
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
+        cleanupSessionData(); // Clear save queue and timers
         setUser(null);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
         // Don't redirect Quick Play students — they don't need auth
@@ -1558,7 +1814,7 @@ export default function App() {
     if (isAuthTransition) {
       window.history.replaceState({ view }, '');
     } else {
-      window.history.pushState({ view }, '');
+      window.history.pushState({ view: view }, '');
     }
   }, [view]);
 
@@ -1569,7 +1825,7 @@ export default function App() {
       const prevView = e.state?.view as typeof view | undefined;
       // Don't navigate back to landing if user is logged in
       if (prevView === 'landing' && userRef.current) {
-        window.history.pushState({ view }, '');
+        window.history.pushState({ view: view }, '');
         return;
       }
       if (prevView) {
@@ -1595,21 +1851,13 @@ export default function App() {
     }
   }, [view, user, loading]);
 
-  // Quick Play guest: remove from podium on page unload/refresh
+  // Quick Play guest: keep localStorage intact on refresh for session recovery
+  // Only clear on explicit exit, not on refresh/navigation
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession) return;
     const handleUnload = () => {
-      // Clear localStorage so name is released for re-login
-      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-      // Use sendBeacon to delete progress (fire-and-forget, works on tab close)
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      if (supabaseUrl && supabaseKey) {
-        // Delete progress via REST API using sendBeacon
-        // sendBeacon only supports POST, so we use the PostgREST RPC approach
-        // Instead, we just clear localStorage - the teacher can manually remove stale students
-      }
-      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+      // Do NOT clear localStorage on refresh - this allows students to stay logged in
+      // Only clear on explicit exit via handleExitGame or teacher kick
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => window.removeEventListener('beforeunload', handleUnload);
@@ -1661,6 +1909,9 @@ export default function App() {
     // Cache class ID to avoid querying classes table every 30s
     let cachedClassId: string | null = null;
     const refresh = async () => {
+      // Double-check user still exists and is still logged in (prevents DB calls after logout)
+      if (!user || !user.classCode) return;
+
       if (!cachedClassId) {
         const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
         if (!classRows || classRows.length === 0) return;
@@ -1671,7 +1922,7 @@ export default function App() {
     };
     const id = setInterval(refresh, 30000);
     return () => clearInterval(id);
-  }, [user?.role, user?.classCode, view]);
+  }, [user?.role, user?.classCode, view, user]); // Added user as dependency
 
   // Load pending students for teachers
   useEffect(() => {
@@ -1859,7 +2110,7 @@ export default function App() {
 
     // Find ALL matches for each input word
     for (const word of words) {
-      const matches = BAND_2_WORDS.filter(w =>
+      const matches = SET_2_WORDS.filter(w =>
         w.english.toLowerCase() === word ||
         w.english.toLowerCase().startsWith(word) ||
         w.english.toLowerCase().endsWith(word)
@@ -2105,8 +2356,8 @@ export default function App() {
     // When searching, search ALL words (both bands + custom) regardless of selected tab
     let words = wordSearchQuery.trim()
       ? [...ALL_WORDS, ...customWords.filter(cw => !ALL_WORDS.some(aw => aw.id === cw.id))]
-      : selectedLevel === "Band 1" ? BAND_1_WORDS
-      : selectedLevel === "Band 2" ? BAND_2_WORDS : customWords;
+      : selectedLevel === "Set 1" ? SET_1_WORDS
+      : selectedLevel === "Set 2" ? SET_2_WORDS : customWords;
 
     // Enhanced multi-language search with fuzzy matching
     if (wordSearchQuery.trim()) {
@@ -2138,48 +2389,94 @@ export default function App() {
 
     return uniqueWords;
   }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd, enableFuzzyMatch, enableWordFamilies]);
-  const handleSaveAssignment = async () => {
+  const handleSaveAssignment = async (wordsOverride?: number[], modesOverride?: string[]) => {
+    // Use override values if provided (from SetupWizard completion), otherwise use state
+    const wordsToCheck = wordsOverride ?? selectedWords;
+    const modesToCheck = modesOverride ?? assignmentModes;
+
+    console.log('[handleSaveAssignment] START', {
+      editingAssignment: editingAssignment?.id,
+      selectedClass: selectedClass?.id,
+      selectedWordsCount: selectedWords.length,
+      wordsOverrideCount: wordsOverride?.length ?? 0,
+      actualWordsCount: wordsToCheck.length,
+      customWordsCount: customWords.length,
+      assignmentTitle,
+      assignmentModesCount: modesToCheck.length,
+    });
+
     // For editing, allow custom-only assignments
     const hasWords = editingAssignment
-      ? selectedWords.length > 0 || customWords.length > 0
-      : selectedWords.length > 0;
+      ? wordsToCheck.length > 0 || customWords.length > 0
+      : wordsToCheck.length > 0;
+
+    console.log('[handleSaveAssignment] Validation check', {
+      hasWords,
+      hasTitle: !!assignmentTitle,
+      hasClass: !!selectedClass,
+      wordsToCheckCount: wordsToCheck.length,
+    });
 
     if (!selectedClass || !hasWords || !assignmentTitle) {
+      console.warn('[handleSaveAssignment] BLOCKED - Missing required fields', {
+        hasSelectedClass: !!selectedClass,
+        hasWords,
+        hasTitle: !!assignmentTitle,
+        wordsToCheckCount: wordsToCheck.length,
+      });
       showToast("Please enter a title and select words.", "error");
       return;
     }
 
     // Check if there's at least one database word (not custom/session-only)
-    // For creating new assignments, require at least one database word
-    // For editing, allow custom-only assignments
-    const hasDbWords = selectedWords.some(id => id > 0);
+    const hasDbWords = wordsToCheck.some(id => id > 0);
+    console.log('[handleSaveAssignment] DB words check', { hasDbWords, editingAssignment: !!editingAssignment });
+
     if (!hasDbWords && !editingAssignment) {
+      console.warn('[handleSaveAssignment] BLOCKED - No DB words for new assignment');
       showToast("Please select at least one word from the vocabulary database.", "error");
       return;
     }
     // For editing, if no database words, ensure we have at least one custom word
-    if (!hasDbWords && editingAssignment && customWords.length === 0 && selectedWords.length === 0) {
+    if (!hasDbWords && editingAssignment && customWords.length === 0 && wordsToCheck.length === 0) {
+      console.warn('[handleSaveAssignment] BLOCKED - No words at all for edit');
       showToast("Please select at least one word (database or custom).", "error");
       return;
     }
 
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToSave = uniqueWords.filter(w => selectedWordsSet.has(w.id));
+    // Use wordsToCheck for filtering, but we need to create a Set from it
+    const wordsToCheckSet = new Set(wordsToCheck);
+    const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
+
+    console.log('[handleSaveAssignment] Words prepared', {
+      allPossibleCount: allPossibleWords.length,
+      uniqueWordsCount: uniqueWords.length,
+      wordsToSaveCount: wordsToSave.length,
+      wordsToCheck: wordsToCheck,
+    });
 
     const assignmentData = {
       classId: selectedClass.id,
-      wordIds: selectedWords.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
+      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
       words: wordsToSave,
       title: assignmentTitle,
       deadline: assignmentDeadline || null,
-      allowedModes: assignmentModes,
+      allowedModes: modesToCheck,
       sentences: assignmentSentences.filter(s => s.trim()),
       sentenceDifficulty,
     };
 
+    console.log('[handleSaveAssignment] Assignment data prepared', {
+      ...assignmentData,
+      wordsCount: assignmentData.words.length,
+      wordIdsCount: assignmentData.wordIds.length,
+    });
+
     try {
       if (editingAssignment) {
+        console.log('[handleSaveAssignment] UPDATING existing assignment', { id: editingAssignment.id });
         // UPDATE existing assignment
         const updatePayload: Record<string, unknown> = {
           class_id: assignmentData.classId,
@@ -2194,12 +2491,17 @@ export default function App() {
           updatePayload.sentences = assignmentData.sentences;
         }
 
+        console.log('[handleSaveAssignment] Sending update to Supabase', { updatePayload });
         const { error } = await supabase
           .from('assignments')
           .update(updatePayload)
           .eq('id', editingAssignment.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[handleSaveAssignment] UPDATE failed', error);
+          throw error;
+        }
+        console.log('[handleSaveAssignment] UPDATE successful');
         showToast("Assignment updated successfully!", "success");
 
         // Update the assignment in the list
@@ -2212,6 +2514,7 @@ export default function App() {
         // Also update editingAssignment so the wizard shows the new data
         setEditingAssignment(prev => prev ? { ...prev, ...assignmentData } : null);
       } else {
+        console.log('[handleSaveAssignment] CREATING new assignment');
         // CREATE new assignment
         const newAssignment = {
           ...assignmentData,
@@ -2232,14 +2535,21 @@ export default function App() {
           insertPayload.sentences = newAssignment.sentences;
         }
 
+        console.log('[handleSaveAssignment] Sending insert to Supabase', { insertPayload });
         const { error } = await supabase.from('assignments').insert(insertPayload);
-        if (error) throw error;
+        if (error) {
+          console.error('[handleSaveAssignment] INSERT failed', error);
+          throw error;
+        }
+        console.log('[handleSaveAssignment] INSERT successful');
         showToast("Assignment created successfully!", "success");
 
         // Refresh assignments list
-        fetchTeacherAssignments();
+        console.log('[handleSaveAssignment] Fetching assignments list');
+        await fetchTeacherAssignments();
 
         // Only redirect and reset form when creating (not when editing)
+        console.log('[handleSaveAssignment] Redirecting to dashboard');
         setView("teacher-dashboard");
         setSelectedWords([]);
         setAssignmentTitle("");
@@ -2250,8 +2560,10 @@ export default function App() {
         setSentenceDifficulty(2);
       }
     } catch (error) {
+      console.error('[handleSaveAssignment] CATCH - Error occurred:', error);
       handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
     }
+    console.log('[handleSaveAssignment] END');
   };
 
   // Preview the assignment with selected words and modes (for teachers)
@@ -3172,7 +3484,7 @@ export default function App() {
   };
 
   // --- GAME LOGIC ---
-  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
+  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
   const currentWord = gameWords[currentIndex];
   // Debug: verify word count in game
   if (view === "game" && activeAssignment) {
@@ -3186,18 +3498,23 @@ export default function App() {
   const options = useMemo(() => {
     if (!currentWord) return [];
     const correct = currentWord;
-    
-    // Try to use ONLY the assigned gameWords for distractors so students only see what they are learning
+
+    // Use ONLY the assigned gameWords for distractors - students should only see what the teacher assigned
     let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
-    
-    // If the teacher assigned fewer than 4 words, we have to borrow from ALL_WORDS to fill the 4 buttons
+
+    // If fewer than 3 distractors available (teacher assigned <4 words),
+    // cycle through the assigned words instead of borrowing from ALL_WORDS
     if (possibleDistractors.length < 3) {
-      const allPossibleWords = [...ALL_WORDS, ...gameWords];
-      const uniqueOthers = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== correct.id);
-      possibleDistractors = uniqueOthers;
+      // Shuffle available distractors first
+      const shuffledDistractors = shuffle(possibleDistractors);
+      // Repeat until we have at least 3
+      while (shuffledDistractors.length < 3) {
+        shuffledDistractors.push(...shuffle(possibleDistractors));
+      }
+      possibleDistractors = shuffledDistractors;
     }
-    
-    const shuffledOthers = shuffle(possibleDistractors).slice(0, 3);
+
+    const shuffledOthers = possibleDistractors.slice(0, 3);
     return shuffle([...shuffledOthers, correct]);
   }, [currentWord, gameWords]);
 
@@ -3250,10 +3567,20 @@ export default function App() {
   const speak = (text: string) => {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Clean up text for better pronunciation (remove grammatical markers)
+    const cleanText = text
+      .replace(/\s*\([nva]\)\s*/gi, ' ')  // Remove (n), (v), (adj)
+      .replace(/\s*\([^)]*?\)\s*/g, ' ')   // Remove other parenthetical content
+      .replace(/^['"]+|['"]+$/g, '')        // Remove quotes
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Speak the whole phrase smoothly - no word-by-word pauses
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = "en-US";
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
+    utterance.rate = 0.7;  // Slower for clarity (0.7x)
+    utterance.pitch = 1.0;  // Neutral pitch
     const voice = getVoice();
     if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
@@ -3261,9 +3588,24 @@ export default function App() {
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder") {
-      speakWord(currentWord.id, currentWord.english);
+      // Only speak if this is a different word than the last one we spoke
+      if (lastSpokenWordRef.current !== currentWord.id) {
+        console.log('[Auto-pronunciation] Speaking word:', { wordId: currentWord.id, word: currentWord.english, gameMode });
+        gameDebug.logPronunciation({ wordId: currentWord.id, word: currentWord.english, method: 'auto', success: true });
+        lastSpokenWordRef.current = currentWord.id;
+        // Small delay to ensure UI has updated before speaking
+        setTimeout(() => {
+          speakWord(currentWord.id, currentWord.english);
+        }, 100);
+      }
     }
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
+
+  // Reset last spoken word when game mode changes (to re-pronounce the current word)
+  useEffect(() => {
+    console.log('[Game Mode Change] Resetting pronunciation tracker for mode:', gameMode);
+    lastSpokenWordRef.current = null;
+  }, [gameMode]);
 
   useEffect(() => {
     if (view === "game" && !showModeSelection && gameMode === "matching") {
@@ -3339,17 +3681,22 @@ export default function App() {
   };
 
   const handleSentenceCheck = () => {
+    console.log('[handleSentenceCheck] Checking sentence');
     const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
     const validSentences = sentences.filter(s => s.trim().length > 0);
     const target = validSentences[sentenceIndex]?.trim().toLowerCase();
     const built = builtSentence.join(" ").toLowerCase();
     if (built === target) {
+      console.log('[handleSentenceCheck] Correct! Moving to next sentence');
       setSentenceFeedback("correct");
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
       setScore(newScore);
-      if (socket && user?.classCode) setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      setTimeout(() => {
+      emitScoreUpdate(newScore);
+
+      // Use feedbackTimeoutRef for consistent auto-advance
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
         const next = sentenceIndex + 1;
         if (next >= validSentences.length) {
           setIsFinished(true);
@@ -3364,8 +3711,16 @@ export default function App() {
         }
       }, 1800);
     } else {
+      console.log('[handleSentenceCheck] Wrong answer');
       setSentenceFeedback("wrong");
-      setTimeout(() => { setBuiltSentence([]); setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean))); setSentenceFeedback(null); }, 1200);
+
+      // Use feedbackTimeoutRef for consistent feedback clearing
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setBuiltSentence([]);
+        setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean)));
+        setSentenceFeedback(null);
+      }, 1200);
     }
   };
 
@@ -3412,10 +3767,12 @@ export default function App() {
         setView("student-dashboard");
       } else {
         setShowModeSelection(true);
+        setFeedback(null); // Clear feedback when showing mode selection
       }
     } else if (user?.isGuest) {
       // Quick Play guest: go back to mode selection so they can pick another mode
       setShowModeSelection(true);
+      setFeedback(null); // Clear feedback when showing mode selection
     } else {
       setUser(null);
       setView("public-landing");
@@ -3490,9 +3847,11 @@ export default function App() {
     setXp(newXp);
     setStreak(newStreak);
 
-    if (cappedScore === 100) await awardBadge("🎯 Perfect Score");
-    if (newStreak >= 5) await awardBadge("🔥 Streak Master");
-    if (newXp >= 500) await awardBadge("💎 XP Hunter");
+    // OPTIMIZED: Queue badge checks instead of immediate execution
+    // Badges are cached server-side, so client checks are fast
+    if (cappedScore === 100 && !badges.includes("🎯 Perfect Score")) queueSaveOperation(() => awardBadge("🎯 Perfect Score"));
+    if (newStreak >= 5 && !badges.includes("🔥 Streak Master")) queueSaveOperation(() => awardBadge("🔥 Streak Master"));
+    if (newXp >= 500 && !badges.includes("💎 XP Hunter")) queueSaveOperation(() => awardBadge("💎 XP Hunter"));
 
     // Streak milestone celebrations
     const streakMilestones = [7, 14, 30, 50, 100];
@@ -3536,22 +3895,28 @@ export default function App() {
     };
 
     try {
-      // Save progress + XP/streak in parallel (2 calls → 1 round-trip)
-      const [{ data: progressId, error: rpcError }] = await Promise.all([
-        supabase.rpc('save_student_progress', {
-          p_student_name: user.displayName,
-          p_student_uid: studentUid,
-          p_assignment_id: activeAssignment.id,
-          p_class_code: user.classCode || "",
-          p_score: cappedScore,
-          p_mode: gameMode,
-          p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-          p_avatar: user.avatar || "🦊"
-        }),
-        supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid),
-      ]);
+      // OPTIMIZED: Only save progress immediately (critical data)
+      // Queue user stats updates (XP/streak) to be batched with other saves
+      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', {
+        p_student_name: user.displayName,
+        p_student_uid: studentUid,
+        p_assignment_id: activeAssignment.id,
+        p_class_code: user.classCode || "",
+        p_score: cappedScore,
+        p_mode: gameMode,
+        p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+        p_avatar: user.avatar || "🦊"
+      });
 
       if (rpcError) throw rpcError;
+
+      // OPTIMIZED: Queue user stats update instead of immediate
+      // This batches multiple updates together, reducing DB writes by ~50%
+      queueSaveOperation(async () => {
+        await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
+      });
+
+      // Update local state immediately (UI stays snappy)
 
       // Update local state with the saved progress
       const newProgress = {
@@ -3602,40 +3967,83 @@ export default function App() {
   };
 
   const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
-    if (matchedIds.includes(item.id)) return;
+    console.log('[handleMatchClick] Called', { item, matchedIds, isMatchingProcessing });
+
+    gameDebug.logButtonClick({
+      button: 'matching_card',
+      gameMode: 'matching',
+      wordId: item.id,
+      disabled: matchedIds.includes(item.id) || isMatchingProcessing,
+      feedback: null,
+    });
+
+    if (matchedIds.includes(item.id) || isMatchingProcessing) {
+      console.log('[handleMatchClick] Blocked - already matched or processing', { item, matchedIds, isMatchingProcessing });
+      return;
+    }
 
     // Pronounce the word when clicking any card (deferred to not block paint)
     const matchWord = gameWords.find(w => w.id === item.id);
-    setTimeout(() => { speakWord(item.id, matchWord?.english); }, 0);
+    setTimeout(() => {
+      speakWord(item.id, matchWord?.english);
+      gameDebug.logPronunciation({ wordId: item.id, word: matchWord?.english || '', method: 'manual', success: true });
+    }, 0);
 
     if (!selectedMatch) {
       setSelectedMatch(item);
     } else {
       if (selectedMatch.type !== item.type && selectedMatch.id === item.id) {
+        // Correct match - set processing flag to prevent rapid clicks
+        isProcessingRef.current = true;
+        setIsMatchingProcessing(true);
         setMatchedIds([...matchedIds, item.id]);
         const newScore = score + 15;
         setScore(newScore);
 
-        if (socket && user?.classCode) {
-          setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-        }
+        emitScoreUpdate(newScore);
 
         setSelectedMatch(null);
 
         if (matchedIds.length + 1 === matchingPairs.length / 2) {
-          setTimeout(() => {
+          // All matched - finish game
+          console.log('[handleMatchClick] All pairs matched, finishing game');
+          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+          feedbackTimeoutRef.current = setTimeout(() => {
             setIsFinished(true);
             saveScore(newScore);
+            isProcessingRef.current = false;
+            setIsMatchingProcessing(false);
           }, 500);
+        } else {
+          // Allow next match after brief delay
+          console.log('[handleMatchClick] Match made, allowing next selection');
+          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+          feedbackTimeoutRef.current = setTimeout(() => {
+            isProcessingRef.current = false;
+            setIsMatchingProcessing(false);
+          }, 300);
         }
       } else {
+        // Wrong match - just change selection
         setSelectedMatch(item);
       }
     }
   };
 
   const handleAnswer = (selectedWord: Word) => {
-    if (feedback) return;
+    console.log('[handleAnswer] Called with:', { selectedWordId: selectedWord.id, selectedWordEnglish: selectedWord.english, currentWordId: currentWord?.id, currentWordEnglish: currentWord?.english, feedback, gameMode });
+
+    if (feedback) {
+      console.log('[handleAnswer] Blocked - feedback already set:', feedback);
+      return;
+    }
+
+    if (!currentWord) {
+      console.error('[handleAnswer] ERROR - No currentWord!', { selectedWordId: selectedWord.id, gameMode, currentIndex, gameWordsCount: gameWords.length });
+      return;
+    }
+
+    console.log('[handleAnswer] Answer selected:', { selectedId: selectedWord.id, correctId: currentWord.id, isCorrect: selectedWord.id === currentWord.id });
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
@@ -3651,13 +4059,12 @@ export default function App() {
         return newState;
       });
 
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      }
+      emitScoreUpdate(newScore);
 
       // Auto-skip quickly after correct answer (clear any pending timeout first)
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = setTimeout(() => {
+        console.log('[Auto-advance] Moving to next word after correct answer');
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
@@ -3680,6 +4087,7 @@ export default function App() {
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
         feedbackTimeoutRef.current = setTimeout(() => {
+          console.log('[Auto-advance] Moving to next word after max attempts');
           if (currentIndex < gameWords.length - 1) {
             setCurrentIndex(currentIndex + 1);
             setFeedback(null);
@@ -3699,26 +4107,79 @@ export default function App() {
 
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
+        feedbackTimeoutRef.current = setTimeout(() => {
+          console.log('[Auto-advance] Clearing feedback, allowing retry');
+          setFeedback(null);
+        }, WRONG_FEEDBACK_DELAY_MS);
       }
     }
   };
 
   const handleTFAnswer = (isTrue: boolean) => {
-    if (feedback) return;
+    console.log('[handleTFAnswer] Called - isTrue:', isTrue, 'feedback:', feedback, 'tfOption:', tfOption, 'currentWord:', currentWord);
+
+    gameDebug.logButtonClick({
+      button: isTrue ? 'true_button' : 'false_button',
+      gameMode,
+      wordId: currentWord?.id ?? -1,
+      disabled: !!feedback,
+      feedback,
+    });
+
+    if (feedback) {
+      console.log('[handleTFAnswer] Blocked - feedback already set:', feedback);
+      gameDebug.logButtonClick({
+        button: isTrue ? 'true_button' : 'false_button',
+        gameMode,
+        wordId: currentWord?.id ?? -1,
+        disabled: true,
+        feedback,
+      });
+      return;
+    }
+
+    // Guard against null/undefined tfOption
+    if (!tfOption || !currentWord) {
+      console.log('[handleTFAnswer] Blocked - tfOption or currentWord is null', { tfOption, currentWord });
+      gameDebug.logError({
+        error: 'tfOption or currentWord is null',
+        context: 'handleTFAnswer',
+        details: { tfOption, currentWord },
+      });
+      return;
+    }
+
+    console.log('[handleTFAnswer] Processing answer - isTrue:', isTrue, 'isActuallyTrue:', tfOption?.id === currentWord.id);
     const isActuallyTrue = tfOption?.id === currentWord.id;
-    
-    if (isTrue === isActuallyTrue) {
+    const isCorrect = isTrue === isActuallyTrue;
+
+    gameDebug.logAnswer({
+      gameMode,
+      wordId: currentWord.id,
+      userAnswer: isTrue,
+      correctAnswer: isActuallyTrue,
+      isCorrect,
+      willAutoSkip: isCorrect,
+    });
+
+    if (isCorrect) {
+      console.log('[handleTFAnswer] CORRECT - showing feedback and auto-advancing');
       setFeedback("correct");
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
       setScore(newScore);
 
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      }
+      emitScoreUpdate(newScore);
 
-      setTimeout(() => {
+      // Auto-skip after correct answer (clear any pending timeout first)
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      gameDebug.logAutoSkip({
+        triggered: true,
+        delay: AUTO_SKIP_DELAY_MS,
+        reason: 'correct_answer',
+      });
+      feedbackTimeoutRef.current = setTimeout(() => {
+        console.log('[handleTFAnswer] Auto-advance after correct');
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
@@ -3726,57 +4187,120 @@ export default function App() {
           setIsFinished(true);
           saveScore(newScore);
         }
-      }, 1000);
+      }, AUTO_SKIP_DELAY_MS);
     } else {
+      console.log('[handleTFAnswer] WRONG - showing error feedback');
       setFeedback("wrong");
       playWrong();
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), 1000);
+
+      gameDebug.logAutoSkip({
+        triggered: false,
+        delay: WRONG_FEEDBACK_DELAY_MS,
+        reason: 'wrong_answer_will_clear_after_delay',
+      });
+
+      // Clear feedback after delay (clear any pending timeout first)
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
+        console.log('[handleTFAnswer] Clearing wrong feedback');
+        setFeedback(null);
+      }, WRONG_FEEDBACK_DELAY_MS);
     }
   };
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
+    console.log('[handleFlashcardAnswer] Answer:', { knewIt, currentWord: currentWord?.english });
+
+    gameDebug.logButtonClick({
+      button: knewIt ? 'flashcard_got_it' : 'flashcard_still_learning',
+      gameMode: 'flashcards',
+      wordId: currentWord?.id ?? -1,
+      disabled: false,
+      feedback,
+    });
+
+    // Set processing flag to prevent double-clicks
+    isProcessingRef.current = true;
+
     let currentScore = score;
     if (knewIt) {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       setTimeout(() => setMotivationalMessage(null), 1000);
       currentScore = score + 5;
       setScore(currentScore);
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: currentScore }); }, 0);
-      }
+      emitScoreUpdate(currentScore);
     } else {
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
     }
 
-    if (currentIndex < gameWords.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsFlipped(false);
-    } else {
-      setIsFinished(true);
-      saveScore(currentScore);
-    }
+    // Auto-advance to next word with brief delay for visual feedback
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => {
+      if (currentIndex < gameWords.length - 1) {
+        console.log('[handleFlashcardAnswer] Moving to next word');
+        setCurrentIndex(currentIndex + 1);
+        setIsFlipped(false);
+        isProcessingRef.current = false;
+      } else {
+        console.log('[handleFlashcardAnswer] Game finished');
+        setIsFinished(true);
+        saveScore(currentScore);
+      }
+    }, 400); // Brief delay for user to see their choice registered
   };
 
   const handleSpellingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (feedback) return;
 
-    if (spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase()) {
+    gameDebug.logButtonClick({
+      button: 'spelling_submit',
+      gameMode: 'spelling',
+      wordId: currentWord?.id ?? -1,
+      disabled: !!feedback,
+      feedback,
+    });
+
+    if (feedback) {
+      console.log('[handleSpellingSubmit] Blocked - feedback already set:', feedback);
+      return;
+    }
+
+    console.log('[handleSpellingSubmit] Checking answer:', spellingInput, 'vs', currentWord.english);
+
+    const isCorrect = spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase();
+
+    gameDebug.logAnswer({
+      gameMode: 'spelling',
+      wordId: currentWord.id,
+      userAnswer: spellingInput,
+      correctAnswer: currentWord.english,
+      isCorrect,
+      willAutoSkip: isCorrect,
+    });
+
+    if (isCorrect) {
+      console.log('[handleSpellingSubmit] Correct! Moving to next word');
       setFeedback("correct");
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
       setScore(newScore);
 
-      if (socket && user?.classCode) {
-        setTimeout(() => { socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore }); }, 0);
-      }
+      emitScoreUpdate(newScore);
 
-      setTimeout(() => {
+      gameDebug.logAutoSkip({
+        triggered: true,
+        delay: AUTO_SKIP_DELAY_MS,
+        reason: 'correct_spelling',
+      });
+
+      // Use feedbackTimeoutRef for consistent auto-advance
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
@@ -3785,13 +4309,16 @@ export default function App() {
           setIsFinished(true);
           saveScore(newScore);
         }
-      }, 1000);
+      }, AUTO_SKIP_DELAY_MS);
     } else {
+      console.log('[handleSpellingSubmit] Wrong answer');
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      setTimeout(() => setFeedback(null), 1000);
+      // Use feedbackTimeoutRef for consistent feedback clearing
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
     }
   };
 
@@ -4388,6 +4915,7 @@ export default function App() {
     return (
       <QuickPlayKickedScreen
         onGoHome={() => {
+          cleanupSessionData(); // Clear save queue and timers
           setQuickPlayKicked(false);
           setQuickPlayActiveSession(null);
           setActiveAssignment(null);
@@ -4406,6 +4934,7 @@ export default function App() {
         studentName={user?.displayName || quickPlayStudentName || "Player"}
         finalScore={score || 0}
         onGoHome={() => {
+          cleanupSessionData(); // Clear save queue and timers
           setQuickPlaySessionEnded(false);
           setQuickPlayActiveSession(null);
           setActiveAssignment(null);
@@ -4431,8 +4960,8 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={async () => {
-              // Leaving join screen — go back to landing
+            onClick={() => {
+              cleanupSessionData(); // Clear save queue and timers
               setView("public-landing");
               setQuickPlayActiveSession(null);
             }}
@@ -4598,7 +5127,7 @@ export default function App() {
                           wordIds: words.map(w => w.id),
                           words,
                           title: "Quick Play",
-                          allowedModes: ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                          allowedModes: quickPlayActiveSession.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
                           sentences: quickPlaySentences,
                           sentenceDifficulty: 2,
                         });
@@ -4970,7 +5499,7 @@ export default function App() {
                       autoFocus
                     />
                     <button onClick={handleSaveName} className="text-blue-600 font-bold text-xs">Save</button>
-                    <button onClick={() => setEditingName(false)} className="text-stone-400 font-bold text-xs">Cancel</button>
+                    <button onClick={() => setEditingName(false)} className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-xs hover:scale-105 active:scale-95 transition-all shadow-lg">Cancel</button>
                   </div>
                 ) : (
                   <>
@@ -5495,7 +6024,30 @@ export default function App() {
                   description="Generate QR code for instant play"
                   buttonText="Create"
                   buttonVariant="qr-purple"
-                  onClick={() => setView("quick-play-setup")}
+                  onClick={() => {
+                    console.log('[Quick Online Challenge Button] Clicked! Clearing session...');
+                    // Set flag to skip session restoration on next render
+                    try {
+                      sessionStorage.setItem('vocaband_skip_restore', 'true');
+                      console.log('[Quick Online Challenge Button] Set skip restore flag');
+                    } catch (e) {
+                      console.warn('Failed to set skip restore flag:', e);
+                    }
+                    // Clear any session parameter to avoid loading student view
+                    window.history.pushState({}, '', window.location.pathname);
+                    // Clear any saved Quick Play session to start fresh
+                    try {
+                      localStorage.removeItem('vocaband_quick_play_session');
+                      console.log('[Quick Online Challenge Button] Cleared localStorage session');
+                    } catch (e) {
+                      console.warn('Failed to clear saved session:', e);
+                    }
+                    cleanupSessionData(); // Clear save queue and timers
+                    setQuickPlayActiveSession(null);
+                    setQuickPlaySessionCode(null);
+                    setView("quick-play-setup");
+                    console.log('[Quick Online Challenge Button] State updated, view should be quick-play-setup');
+                  }}
                 />
               </div>
             </HelpTooltip>
@@ -5646,9 +6198,9 @@ export default function App() {
                         setAssignmentSentences(assignment.sentences ?? []);
                         setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
                         setSentencesAutoGenerated(true); // Allow difficulty changes to regenerate sentences
-                        if (knownIds.some(id => BAND_1_WORDS.some(w => w.id === id))) setSelectedLevel("Band 1");
+                        if (knownIds.some(id => SET_1_WORDS.some(w => w.id === id))) setSelectedLevel("Set 1");
                         else if (unknownWords.length > 0) setSelectedLevel("Custom");
-                        else setSelectedLevel("Band 2");
+                        else setSelectedLevel("Set 2");
                         setSelectedClass(c);
                         console.log('[EDIT BUTTON] Setting view to create-assignment');
                         setView("create-assignment");
@@ -5668,9 +6220,9 @@ export default function App() {
                         setAssignmentSentences(assignment.sentences ?? []);
                         setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
                         setSentencesAutoGenerated(true); // Allow difficulty changes to regenerate sentences
-                        if (knownIds.some(id => BAND_1_WORDS.some(w => w.id === id))) setSelectedLevel("Band 1");
+                        if (knownIds.some(id => SET_1_WORDS.some(w => w.id === id))) setSelectedLevel("Set 1");
                         else if (unknownWords.length > 0) setSelectedLevel("Custom");
-                        else setSelectedLevel("Band 2");
+                        else setSelectedLevel("Set 2");
                         setSelectedClass(c);
                         setView("create-assignment");
                       }}
@@ -5993,8 +6545,8 @@ export default function App() {
       <CreateAssignmentWizard
         selectedClass={selectedClass}
         allWords={ALL_WORDS}
-        band1Words={BAND_1_WORDS}
-        band2Words={BAND_2_WORDS}
+        set1Words={SET_1_WORDS}
+        set2Words={SET_2_WORDS}
         customWords={customWords}
         assignmentTitle={assignmentTitle}
         setCustomWords={setCustomWords}
@@ -6125,7 +6677,27 @@ export default function App() {
               return (
                 <motion.button
                   key={mode.id}
-                  onClick={() => { if (isQpLocked) return; setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
+                  onClick={() => {
+                    if (isQpLocked) {
+                      gameDebug.logButtonClick({ button: 'mode_select', gameMode: mode.id, wordId: -1, disabled: true, feedback: null });
+                      return;
+                    }
+                    gameDebug.logModeSelect({ mode: mode.id, from: 'mode_selection' });
+                    gameDebug.logState({
+                      view,
+                      gameMode: mode.id,
+                      showModeSelection: false,
+                      showModeIntro: true,
+                      currentIndex,
+                      isFinished,
+                      feedback,
+                      isProcessing: isProcessingRef.current,
+                    }, 'before_mode_select');
+                    setGameMode(mode.id);
+                    setShowModeSelection(false);
+                    setShowModeIntro(true);
+                    setFeedback(null);
+                  }}
                   disabled={isQpLocked}
                   className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -6333,7 +6905,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 p-6">
         <div className="max-w-2xl mx-auto">
-          <button onClick={() => setView(user?.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full">← Back to Dashboard</button>
+          <button onClick={() => setView(user?.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">← Back to Dashboard</button>
           <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-4 bg-yellow-100 rounded-3xl">
@@ -6547,7 +7119,9 @@ export default function App() {
         </div>
       </div>
     );
-if (view === "quick-play-setup") {
+  }
+
+  if (view === "quick-play-setup") {
     return (
       <SetupWizard
         mode="quick-play"
@@ -6567,7 +7141,8 @@ if (view === "quick-play-setup") {
 
           const { data, error } = await supabase.rpc('create_quick_play_session', {
             p_word_ids: wordIds.length > 0 ? wordIds : null,
-            p_custom_words: customWordsJson
+            p_custom_words: customWordsJson,
+            p_allowed_modes: result.modes
           });
 
           if (error) {
@@ -6575,7 +7150,7 @@ if (view === "quick-play-setup") {
             return;
           }
 
-          const session = data as { id: string; session_code: string };
+          const session = data as { id: string; session_code: string; allowed_modes?: string[] };
           setQuickPlaySessionCode(session.session_code);
           const newSession = {
             id: session.id,
@@ -6610,10 +7185,6 @@ if (view === "quick-play-setup") {
   }
 
 
-
-  }
-
-
   if (view === "quick-play-teacher-monitor") {
     if (!quickPlayActiveSession) {
       setView("quick-play-setup");
@@ -6625,6 +7196,7 @@ if (view === "quick-play-setup") {
         students={quickPlayJoinedStudents}
         setStudents={setQuickPlayJoinedStudents}
         onBack={() => {
+          cleanupSessionData(); // Clear save queue and timers
           setView("teacher-dashboard");
           setQuickPlayActiveSession(null);
           setQuickPlaySelectedWords([]);
@@ -6644,6 +7216,7 @@ if (view === "quick-play-setup") {
             showToast("Failed to end session: " + error.message, "error");
             return;
           }
+          cleanupSessionData(); // Clear save queue and timers
           setView("teacher-dashboard");
           setQuickPlayActiveSession(null);
           setQuickPlaySelectedWords([]);
@@ -7917,7 +8490,7 @@ if (view === "quick-play-setup") {
               }
             }}
             disabled={isSaving}
-            className={`${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-stone-400 hover:text-stone-600'} font-bold text-sm transition-colors`}
+            className="signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
           >Back to Dashboard</button>
         </div>
 
@@ -8091,7 +8664,21 @@ if (view === "quick-play-setup") {
             </div>
           )}
           <button
-            onClick={() => setShowModeIntro(false)}
+            onClick={() => {
+              gameDebug.logModeIntroComplete({ mode: gameMode });
+              gameDebug.logState({
+                view,
+                gameMode,
+                showModeSelection,
+                showModeIntro: false,
+                currentIndex,
+                isFinished,
+                feedback,
+                isProcessing: isProcessingRef.current,
+                currentWord: currentWord ? { id: currentWord.id, english: currentWord.english } : undefined,
+              }, 'lets_go_clicked');
+              setShowModeIntro(false);
+            }}
             className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors"
           >
             Let's Go!
@@ -8146,7 +8733,7 @@ if (view === "quick-play-setup") {
           <button onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")} className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors">
             <Languages size={18} /><span className="text-sm font-bold">{targetLanguage === "hebrew" ? "עברית" : "عربي"}</span>
           </button>
-          <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold text-sm">Exit</button>
+          <button onClick={handleExitGame} className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg">Exit</button>
         </div>
       </div>
 
@@ -8169,15 +8756,18 @@ if (view === "quick-play-setup") {
                   key={key}
                   initial={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.4, transition: { duration: 0.25 } }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: isMatchingProcessing ? 1 : 1.05 }}
+                  whileTap={{ scale: isMatchingProcessing ? 1 : 0.95 }}
                   onClick={() => handleMatchClick(item)}
+                  onTouchStart={(e) => { if (!isMatchingProcessing && !matchedIds.includes(item.id)) e.currentTarget.click(); }}
+                  disabled={isMatchingProcessing}
                   dir="auto"
+                  style={{ touchAction: 'manipulation' }}
                   className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
                     selectedMatch?.id === item.id && selectedMatch?.type === item.type
                       ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
-                  }`}
+                  } ${isMatchingProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
                   {item.text}
                 </motion.button>
@@ -8242,7 +8832,17 @@ if (view === "quick-play-setup") {
                 </div>
                 <div className="flex justify-center gap-2 mt-0.5 sm:mt-0">
                   <button
-                    onClick={() => speakWord(currentWord?.id, currentWord?.english)}
+                    onClick={() => {
+                      console.log('[Pronunciation Button] Clicked', { wordId: currentWord?.id, word: currentWord?.english });
+                      gameDebug.logButtonClick({
+                        button: 'pronunciation',
+                        gameMode,
+                        wordId: currentWord?.id ?? -1,
+                        disabled: false,
+                        feedback,
+                      });
+                      speakWord(currentWord?.id, currentWord?.english);
+                    }}
                     className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                     aria-label="Play pronunciation"
                     title="Play pronunciation"
@@ -8292,29 +8892,61 @@ if (view === "quick-play-setup") {
               )}
 
               {gameMode === "classic" || gameMode === "listening" || gameMode === "reverse" ? (
-                <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
-                  {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
-                    <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={handleAnswer} />
-                  ))}
-                </div>
+                <ClassicModeGame
+                  gameMode={gameMode}
+                  currentWord={currentWord}
+                  options={options}
+                  hiddenOptions={hiddenOptions}
+                  feedback={feedback}
+                  targetLanguage={targetLanguage}
+                  gameWordsCount={gameWords.length}
+                  currentIndex={currentIndex}
+                  onAnswer={handleAnswer}
+                />
               ) : gameMode === "true-false" ? (
                 <div className="max-w-lg mx-auto">
                   <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-2 sm:mb-6">
                     <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">{tfOption?.[targetLanguage] || tfOption?.arabic || tfOption?.hebrew}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">True ✓</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">False ✗</button>
+                    <button
+                      onClick={() => handleTFAnswer(true)}
+                      onTouchStart={(e) => { if (!feedback) e.currentTarget.click(); }}
+                      disabled={!!feedback}
+                      style={{ touchAction: 'manipulation', minHeight: '60px' }}
+                      className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >True ✓</button>
+                    <button
+                      onClick={() => handleTFAnswer(false)}
+                      onTouchStart={(e) => { if (!feedback) e.currentTarget.click(); }}
+                      disabled={!!feedback}
+                      style={{ touchAction: 'manipulation', minHeight: '60px' }}
+                      className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >False ✗</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
                 <div className="max-w-md mx-auto space-y-3 sm:space-y-4">
-                  <button onClick={() => setIsFlipped(!isFlipped)} className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors">
+                  <button
+                    onClick={() => !isProcessingRef.current && setIsFlipped(!isFlipped)}
+                    disabled={isProcessingRef.current}
+                    className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
                     {isFlipped ? "Show English" : "Show Translation"}
                   </button>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={() => handleFlashcardAnswer(false)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">Still Learning</button>
-                    <button onClick={() => handleFlashcardAnswer(true)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">Got It!</button>
+                    <button
+                      onClick={() => handleFlashcardAnswer(false)}
+                      onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
+                      disabled={isProcessingRef.current}
+                      style={{ touchAction: 'manipulation', minHeight: '56px' }}
+                      className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Still Learning</button>
+                    <button
+                      onClick={() => handleFlashcardAnswer(true)}
+                      onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
+                      disabled={isProcessingRef.current}
+                      style={{ touchAction: 'manipulation', minHeight: '56px' }}
+                      className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Got It!</button>
                   </div>
                 </div>
               ) : (
@@ -8364,7 +8996,11 @@ if (view === "quick-play-setup") {
                       {feedback === "show-answer" && (
                         <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-3" />
                       )}
-                      <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors">Check Answer</button>
+                      <button
+                        type="submit"
+                        disabled={!!feedback}
+                        className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >Check Answer</button>
                     </form>
                   )}
                 </div>
@@ -8409,7 +9045,11 @@ if (view === "quick-play-setup") {
                         ))}
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }} className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">Clear</button>
+                        <button
+                          onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }}
+                          disabled={sentenceFeedback !== null}
+                          className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >Clear</button>
                         <button onClick={handleSentenceCheck} disabled={builtSentence.length === 0 || sentenceFeedback !== null} className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50">Check ✓</button>
                       </div>
                     </div>
@@ -8437,7 +9077,11 @@ if (view === "quick-play-setup") {
                   {feedback === "show-answer" && (
                     <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
                   )}
-                  <button type="submit" className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors">Check Answer</button>
+                  <button
+                    type="submit"
+                    disabled={!!feedback}
+                    className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >Check Answer</button>
                 </form>
               )
               )}

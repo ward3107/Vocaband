@@ -6,10 +6,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, Check, ChevronRight, Search, Plus, Trash2, Edit2,
+  X, Check, ChevronRight, ChevronDown, Search, Plus, Trash2, Edit2,
   Clipboard, ArrowRight, ArrowLeft, Sparkles, Save,
   Volume2, Loader2, Languages, Camera, Info, BookOpen,
-  FolderOpen, Copy, Share2, Filter,
+  FolderOpen, Copy, Share2, Filter, Lock,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
@@ -66,8 +66,8 @@ function parseSearchTerms(query: string): string[] {
 export interface WordInputStepProps {
   mode: WizardMode;
   allWords: Word[];
-  band1Words?: Word[];
-  band2Words?: Word[];
+  set1Words?: Word[];
+  set2Words?: Word[];
   selectedWords: Word[];
   onSelectedWordsChange: (words: Word[]) => void;
   onNext: () => void;
@@ -92,8 +92,8 @@ export interface WordInputStepProps {
 export const WordInputStep: React.FC<WordInputStepProps> = ({
   mode,
   allWords,
-  band1Words,
-  band2Words,
+  set1Words,
+  set2Words,
   selectedWords,
   onSelectedWordsChange,
   onNext,
@@ -138,11 +138,168 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const [showSaveGroup, setShowSaveGroup] = useState(false);
   
   // ── Level filter state (Assignment only) ─────────────────────────────────────
-  const [selectedLevel, setSelectedLevel] = useState<'Band 1' | 'Band 2' | 'Custom'>('Band 1');
+  const [selectedLevel, setSelectedLevel] = useState<'Set 1' | 'Set 2' | 'Set 3' | 'Custom'>('Set 1');
   
   // ── Topic packs state ────────────────────────────────────────────────────────
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
-  
+
+  // ── Selected words collapse state ─────────────────────────────────────────────
+  const [selectedWordsCollapsed, setSelectedWordsCollapsed] = useState(false);
+
+  // ── Autocomplete state ────────────────────────────────────────────────────────
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+
+  // ── Calculate word difficulty ───────────────────────────────────────────────────
+  const getDifficultyLevel = (word: Word): 'easy' | 'medium' | 'hard' => {
+    const len = word.english.length;
+    if (len <= 5) return 'easy';
+    if (len <= 10) return 'medium';
+    return 'hard';
+  };
+
+  // ── Extract part of speech from word ───────────────────────────────────────────────
+  const getPartOfSpeech = (word: Word): string | null => {
+    // Check if word has explicit POS field
+    if (word.pos) return word.pos;
+
+    // Extract from word text (e.g., "word (n)", "word (v)")
+    const posMatch = word.english.match(/\((n|v|adj|adv|prep|pron|conj|interj|article|det)\)$/i);
+    if (posMatch) {
+      const posMap: Record<string, string> = {
+        'n': 'Noun',
+        'v': 'Verb',
+        'adj': 'Adjective',
+        'adv': 'Adverb',
+        'prep': 'Preposition',
+        'pron': 'Pronoun',
+        'conj': 'Conjunction',
+        'interj': 'Interjection',
+        'article': 'Article',
+        'det': 'Determiner'
+      };
+      return posMap[posMatch[1].toLowerCase()] || posMatch[1].toUpperCase();
+    }
+
+    return null;
+  };
+
+  // ── Copy selected words to clipboard ───────────────────────────────────────────────
+  const copyWordsToClipboard = async () => {
+    if (selectedWords.length === 0) {
+      showToast?.('No words to copy', 'info');
+      return;
+    }
+
+    const text = selectedWords.map(w =>
+      `${w.english}${w.hebrew ? ` | ${w.hebrew}` : ''}${w.arabic ? ` | ${w.arabic}` : ''}`
+    ).join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast?.(`Copied ${selectedWords.length} word${selectedWords.length !== 1 ? 's' : ''} to clipboard`, 'success');
+    } catch {
+      showToast?.('Failed to copy to clipboard', 'error');
+    }
+  };
+
+  // ── Get autocomplete suggestions ────────────────────────────────────────────────
+  const autocompleteSuggestions = useMemo(() => {
+    if (!searchQuery.trim() || !showAutocomplete) return [];
+
+    const query = searchQuery.toLowerCase().trim();
+    const currentWord = query.split(/[,\n]+/).pop()?.trim() || query;
+
+    if (!currentWord) return [];
+
+    // Get matching words from vocabulary
+    const matches = allWords.filter(word => {
+      const englishLower = word.english.toLowerCase();
+      return englishLower.includes(currentWord) || currentWord.includes(englishLower);
+    });
+
+    // Deduplicate by ID
+    const uniqueMatches = Array.from(
+      new Map(matches.map(w => [w.id, w])).values()
+    );
+
+    // Sort by relevance (exact match first, then starts with, then contains)
+    const sorted = uniqueMatches.sort((a, b) => {
+      const aLower = a.english.toLowerCase();
+      const bLower = b.english.toLowerCase();
+
+      // Exact match first
+      if (aLower === currentWord) return -1;
+      if (bLower === currentWord) return 1;
+
+      // Starts with current word
+      const aStarts = aLower.startsWith(currentWord);
+      const bStarts = bLower.startsWith(currentWord);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
+      // By length (shorter first)
+      return a.english.length - b.english.length;
+    });
+
+    // Return top 8 suggestions
+    return sorted.slice(0, 8);
+  }, [searchQuery, allWords, showAutocomplete]);
+
+  // ── Check if word is duplicate ───────────────────────────────────────────────────
+  const isDuplicateWord = (word: Word): boolean => {
+    return selectedWords.some(w => w.id === word.id);
+  };
+
+  // ── Add suggestion to selection ────────────────────────────────────────────────
+  const addSuggestion = (word: Word) => {
+    if (isDuplicateWord(word)) {
+      showToast?.(`"${word.english}" is already in your list`, 'info');
+      return;
+    }
+    onSelectedWordsChange([...selectedWords, word]);
+  };
+
+  // ── Add all selected suggestions ─────────────────────────────────────────────────
+  const addSelectedSuggestions = () => {
+    const newWords = autocompleteSuggestions.filter(w =>
+      selectedSuggestions.has(w.id) && !isDuplicateWord(w)
+    );
+    if (newWords.length > 0) {
+      onSelectedWordsChange([...selectedWords, ...newWords]);
+      setSelectedSuggestions(new Set());
+    }
+  };
+
+  // ── Auto-scroll refs ─────────────────────────────────────────────────────────────
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const pasteButtonRef = useRef<HTMLButtonElement>(null);
+  const browseButtonRef = useRef<HTMLButtonElement>(null);
+  const topicPacksButtonRef = useRef<HTMLButtonElement>(null);
+
+  // ── Auto-scroll to next button when words are selected ────────────────────────
+  useEffect(() => {
+    if (selectedWords.length > 0 && nextButtonRef.current) {
+      // Small delay to allow UI to update
+      setTimeout(() => {
+        nextButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [selectedWords.length]);
+
+  // ── Auto-collapse selected words section after selection ──────────────────────
+  useEffect(() => {
+    if (selectedWords.length > 0) {
+      // Auto-collapse after 2 seconds to show action buttons
+      const timer = setTimeout(() => {
+        setSelectedWordsCollapsed(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedWords.length]);
+
   // ── Load saved groups from localStorage on mount ─────────────────────────────
   useEffect(() => {
     try {
@@ -162,25 +319,32 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   // ── Filter words based on level and search ───────────────────────────────────
   const filteredWords = useMemo(() => {
     let pool = allWords;
-    
+
     if (showLevelFilter) {
-      if (selectedLevel === 'Band 1' && band1Words) {
-        pool = band1Words;
-      } else if (selectedLevel === 'Band 2' && band2Words) {
-        pool = band2Words;
+      if (selectedLevel === 'Set 1' && set1Words) {
+        pool = set1Words;
+      } else if (selectedLevel === 'Set 2' && set2Words) {
+        pool = set2Words;
       }
       // Custom shows all words
     }
-    
+
     if (!searchQuery.trim()) return pool;
-    
+
     const lowerQuery = searchQuery.toLowerCase().trim();
-    return pool.filter(w => 
+    const filtered = pool.filter(w =>
       w.english.toLowerCase().includes(lowerQuery) ||
       w.hebrew?.toLowerCase().includes(lowerQuery) ||
       w.arabic?.toLowerCase().includes(lowerQuery)
     );
-  }, [allWords, band1Words, band2Words, searchQuery, showLevelFilter, selectedLevel]);
+
+    // Deduplicate by ID
+    const uniqueWords = Array.from(
+      new Map(filtered.map(w => [w.id, w])).values()
+    );
+
+    return uniqueWords;
+  }, [allWords, set1Words, set2Words, searchQuery, showLevelFilter, selectedLevel]);
   
   // ── Search results - maps search term to matching words ───────────────────────
   const searchResults = useMemo(() => {
@@ -312,10 +476,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-6"
     >
       <div className="text-center mb-8">
-        <h2 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
+        <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-2">
           {isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         </h2>
-        <p className="text-on-surface-variant">Choose how you'd like to add words</p>
+        <p className="text-stone-600">Choose how you'd like to add words</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
@@ -342,28 +506,31 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           </div>
         </motion.button>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => isQuickPlay ? setWordEditorOpen(true) : setSubStep('browse')}
-          className="w-full group relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-emerald-500/20 hover:shadow-2xl hover:shadow-emerald-500/30 transition-all text-left"
-        >
-          <div className="relative z-10">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-black text-white mb-1">{isQuickPlay ? 'Type words' : 'Browse vocabulary'}</h3>
-                <p className="text-white/90 text-xs sm:text-sm mb-2">{isQuickPlay ? 'Search by typing' : 'Search from database'}</p>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                  <span className="text-white text-xs font-bold">{isQuickPlay ? '⌨️ Quick' : allWords.length + '+ words'}</span>
+        {!isQuickPlay && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            disabled
+            className="w-full group relative overflow-hidden bg-gradient-to-br from-stone-400 to-stone-500 rounded-3xl p-4 sm:p-6 shadow-xl opacity-60 cursor-not-allowed transition-all text-left"
+          >
+            <span className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm z-10">PRO</span>
+            <div className="relative z-10">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg sm:text-xl font-black text-white mb-1">Books library</h3>
+                  <p className="text-white/90 text-xs sm:text-sm mb-2">Pro version • Coming soon</p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
+                    <span className="text-white text-xs font-bold">🔒 Future feature</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl">📖</span>
+                  <Lock className="text-white/60" size={20} />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl">{isQuickPlay ? '⌨️' : '📚'}</span>
-                <ChevronRight className="text-white/60" size={20} />
-              </div>
             </div>
-          </div>
-        </motion.button>
+          </motion.button>
+        )}
 
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -438,7 +605,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
       <button
         onClick={onBack}
-        className="w-full py-3 text-on-surface-variant font-bold flex items-center justify-center gap-2 hover:text-on-surface bg-surface-container-lowest px-6 py-3 rounded-full shadow-sm border-2 border-outline-variant/20 hover:border-outline-variant transition-all"
+        className="w-full py-3 text-white font-bold flex items-center justify-center gap-2 signature-gradient px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
       >
         ← Cancel
       </button>
@@ -453,48 +620,256 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       exit={{ opacity: 0, x: -20 }}
       className="space-y-6"
     >
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold">
-          <ArrowLeft size={20} /> Back
+        <button
+          onClick={() => setSubStep('landing')}
+          className="text-stone-600 hover:text-stone-900 font-medium flex items-center gap-2 transition-colors"
+        >
+          <ArrowLeft size={18} /> Back
         </button>
-        <div className="text-sm font-bold text-on-surface-variant">Step 1 of 3</div>
+        <div className="text-sm font-medium text-stone-500">Step 1 of 3</div>
       </div>
 
-      <div className="text-center">
-        <h2 className="text-2xl font-black text-on-surface mb-2">Paste your words</h2>
-        <p className="text-on-surface-variant">Type or paste words below. One per line, or separated by commas.</p>
+      {/* Title */}
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-black text-stone-900 tracking-tight">Add words</h2>
+        <p className="text-stone-500 max-w-md mx-auto">
+          {selectedWords.length > 0
+            ? `${selectedWords.length} word${selectedWords.length !== 1 ? 's' : ''} selected`
+            : 'Search, type, or paste words to add'
+          }
+        </p>
       </div>
 
-      <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="relative">
         <div className="relative">
-          <textarea
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="apple, banana, orange, grape, mango"
-            className="w-full p-4 sm:p-6 rounded-2xl border-2 border-outline-variant/30 text-base resize-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all min-h-[120px]"
-            rows={4}
-          />
-          {searchQuery && (
-            <div className="absolute bottom-3 right-3 text-xs text-primary font-medium bg-primary-container/20 px-2 py-1 rounded-full">
-              {searchTerms.length} words
-            </div>
-          )}
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+        <input
+          type="text"
+          ref={autocompleteRef}
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setShowAutocomplete(true);
+            setAutocompleteIndex(0);
+          }}
+          onFocus={() => setShowAutocomplete(true)}
+          placeholder="Search or type a word..."
+          className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-stone-200 text-lg focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white text-stone-900 placeholder:text-stone-400 transition-all shadow-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setShowAutocomplete(false);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-stone-100 transition-colors"
+          >
+            <X size={16} className="text-stone-400" />
+          </button>
+        )}
         </div>
 
+        {/* Autocomplete Dropdown */}
+        {showAutocomplete && autocompleteSuggestions.length > 0 && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-40 bg-transparent"
+              onClick={() => setShowAutocomplete(false)}
+            />
+
+            {/* Dropdown */}
+            <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[320px] overflow-y-auto">
+              {autocompleteSuggestions.map((word, index) => {
+                const isSelected = index === autocompleteIndex;
+                const isDuplicate = isDuplicateWord(word);
+                const level = word.level || 'Custom';
+
+                return (
+                  <div
+                    key={word.id}
+                    onClick={() => !isDuplicate && addSuggestion(word)}
+                    onMouseEnter={() => setAutocompleteIndex(index)}
+                    className={`w-full text-left p-4 border-b border-stone-100 last:border-b-0 transition-all ${
+                      isSelected
+                        ? 'bg-blue-50'
+                        : 'hover:bg-stone-50'
+                    } ${isDuplicate ? 'opacity-40 cursor-not-allowed bg-stone-50' : 'cursor-pointer'}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (!isDuplicate) addSuggestion(word);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <span className={`font-semibold text-stone-900 ${
+                            isSelected ? 'text-primary' : isDuplicate ? 'text-stone-400' : ''
+                          }`}>
+                            {word.english}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            level === 'Set 1'
+                              ? 'bg-blue-100 text-blue-700'
+                              : level === 'Set 2'
+                              ? 'bg-purple-100 text-purple-700'
+                              : level === 'Set 3'
+                              ? 'bg-pink-100 text-pink-700'
+                              : 'bg-stone-100 text-stone-600'
+                          }`}>
+                            {level}
+                          </span>
+                        </div>
+                        {(word.hebrew || word.arabic) && (
+                          <div className="text-sm text-stone-500 mt-1 truncate">
+                            {word.hebrew && <span>{word.hebrew}</span>}
+                            {word.hebrew && word.arabic && <span> • </span>}
+                            {word.arabic && <span>{word.arabic}</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      {onPlayWord && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPlayWord(word.id, word.english);
+                          }}
+                          className="p-2 rounded-full hover:bg-stone-100 transition-colors ml-2"
+                          aria-label="Play pronunciation"
+                        >
+                          <Volume2 size={18} className="text-stone-500" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Footer hint */}
+              <div className="px-4 py-2 bg-stone-50 border-t border-stone-200 text-xs text-stone-500 flex items-center justify-between">
+                <span>Click to add • Press Esc to close</span>
+                <span>{autocompleteSuggestions.length} results</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={async () => { try { const text = await navigator.clipboard.readText(); if (text) setSearchQuery(text); } catch {} }}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-surface-container text-on-surface rounded-2xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
+          onClick={async () => {
+            try {
+              const text = await navigator.clipboard.readText();
+              if (text) setSearchQuery(text);
+            } catch {}
+          }}
+          className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-stone-300 hover:border-primary hover:bg-blue-50/50 transition-all group bg-white"
         >
-          <Clipboard size={18} /> Paste from clipboard 📋
+          <Clipboard size={20} className="text-stone-400 group-hover:text-primary transition-colors" />
+          <span className="font-semibold text-stone-600 group-hover:text-stone-900">Paste from clipboard</span>
+        </button>
+
+        <button
+          disabled
+          className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-stone-200 bg-stone-100 cursor-not-allowed opacity-60"
+          title="Pro feature - Coming soon"
+        >
+          <Lock size={18} className="text-stone-400" />
+          <span className="font-semibold text-stone-400">Browse library</span>
+        </button>
+      </div>
+
+      {/* Selected Words */}
+      {selectedWords.length > 0 && (
+        <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border-2 border-primary/20 overflow-hidden">
+          {/* Header - always visible */}
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <h3 className="font-bold text-stone-900">Selected ({selectedWords.length})</h3>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    {selectedWords.filter(w => w.hebrew || w.arabic).length} with translation
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                    {selectedWords.filter(w => !w.hebrew && !w.arabic).length} need translation
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedWordsCollapsed(!selectedWordsCollapsed)}
+                  className="p-1 rounded-full hover:bg-white/50 transition-colors"
+                  title={selectedWordsCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {selectedWordsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                </button>
+                <button onClick={() => onSelectedWordsChange([])} className="text-sm text-rose-600 font-bold hover:text-rose-700">
+                  Clear all
+                </button>
+              </div>
+            </div>
+
+            {/* Collapsible word list */}
+            {!selectedWordsCollapsed && (
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto mt-2">
+                {selectedWords.map(word => {
+                  const hasTranslation = word.hebrew || word.arabic;
+                  return (
+                    <button
+                      key={word.id}
+                      onClick={() => toggleWordSelection(word)}
+                      className="px-3 py-1.5 bg-white rounded-full text-sm font-bold flex items-center gap-2 hover:opacity-80 transition-all shadow-sm border-2 border-primary/20"
+                      title={hasTranslation ? 'Has translations' : 'Needs translation'}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${hasTranslation ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      {word.english}
+                      <X size={12} className="text-rose-500" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-4 border-t border-stone-200">
+        <button
+          onClick={() => setSubStep('landing')}
+          className="px-6 py-3 rounded-xl border-2 border-stone-300 text-stone-600 font-semibold hover:bg-stone-50 transition-all"
+        >
+          Cancel
         </button>
 
         <button
           onClick={handlePasteAndAnalyze}
           disabled={!searchQuery.trim()}
-          className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          className="px-6 py-3 rounded-xl border-2 border-primary bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
         >
-          Analyze Words <ArrowRight size={20} />
+          <Sparkles size={18} /> Analyze text
         </button>
+
+        {selectedWords.length > 0 && (
+          <button
+            onClick={onNext}
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          >
+            Continue <ArrowRight size={18} />
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -508,27 +883,27 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-4"
     >
       <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold">
-          <ArrowLeft size={20} /> Back
+        <button onClick={() => setSubStep('landing')} className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
+          <ArrowLeft size={18} /> Back
         </button>
-        <div className="text-sm font-bold text-on-surface-variant">Step 1 of 3</div>
+        <div className="text-sm font-bold text-stone-600">Step 1 of 3</div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-black text-on-surface mb-2">Browse vocabulary</h2>
-        <p className="text-on-surface-variant">Search and select words from the database</p>
+        <h2 className="text-2xl font-black text-stone-900 mb-2">Browse vocabulary</h2>
+        <p className="text-stone-600">Search and select words from the database</p>
       </div>
 
       {showLevelFilter && (
         <div className="flex gap-2">
-          {(['Band 1', 'Band 2', 'Custom'] as const).map((level) => (
+          {(['Set 1', 'Set 2', 'Set 3', 'Custom'] as const).map((level) => (
             <button
               key={level}
               onClick={() => setSelectedLevel(level)}
               className={`px-4 py-2 rounded-xl font-bold transition-all ${
                 selectedLevel === level
                   ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border-2 border-outline-variant/20'
+                  : 'bg-stone-200 text-stone-600 hover:bg-stone-200-high border-2 border-stone-300/20'
               }`}
             >
               {level}
@@ -538,18 +913,18 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       )}
 
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-600" size={20} />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search words..."
-          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all"
+          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 placeholder:text-stone-600/50 transition-all"
         />
       </div>
 
       <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
-        {filteredWords.slice(0, 80).map((word) => {
+        {filteredWords.map((word) => {
           const isSelected = selectedWords.some(w => w.id === word.id);
           return (
             <button
@@ -557,53 +932,34 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               onClick={() => toggleWordSelection(word)}
               className={`w-full flex items-center gap-2 p-2 rounded-xl border-2 text-left transition-all ${
                 isSelected
-                  ? 'border-primary bg-primary-container/10'
-                  : 'border-outline-variant/20 bg-surface-container-lowest hover:border-primary/30'
+                  ? 'border-primary bg-blue-100/10'
+                  : 'border-stone-300/20 bg-stone-200-lowest hover:border-primary/30'
               }`}
             >
               <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center ${
-                isSelected ? 'border-primary bg-primary' : 'border-outline-variant/40'
+                isSelected ? 'border-primary bg-primary' : 'border-stone-300/40'
               }`}>
                 {isSelected && <Check size={12} className="text-white" />}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-on-surface truncate">{word.english}</div>
-                <div className="text-xs text-on-surface-variant truncate">
+                <div className="font-bold text-sm text-stone-900 truncate">{word.english}</div>
+                <div className="text-xs text-stone-600 truncate">
                   {word.hebrew && <span>{word.hebrew}</span>}
                   {word.hebrew && word.arabic && <span> • </span>}
                   {word.arabic && <span>{word.arabic}</span>}
                 </div>
               </div>
               {onPlayWord && (
-                <button
+                <div
                   onClick={(e) => { e.stopPropagation(); onPlayWord(word.id, word.english); }}
-                  className="p-1.5 rounded-full hover:bg-surface-container-highest transition-colors"
+                  className="p-1.5 rounded-full hover:bg-stone-200-highest transition-colors cursor-pointer"
                 >
-                  <Volume2 size={14} className="text-on-surface-variant" />
-                </button>
+                  <Volume2 size={14} className="text-stone-600" />
+                </div>
               )}
             </button>
           );
         })}
-      </div>
-
-      <div className="space-y-3 pt-3 border-t border-outline-variant/10">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-bold text-on-surface-variant">Selected: {selectedWords.length} words</span>
-          {selectedWords.length > 0 && (
-            <button onClick={() => onSelectedWordsChange([])} className="text-primary hover:text-primary-dim font-bold">
-              Clear selection
-            </button>
-          )}
-        </div>
-
-        <button
-          onClick={onNext}
-          disabled={selectedWords.length === 0}
-          className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center justify-center gap-2"
-        >
-          Continue to Step 2 <ArrowRight size={20} />
-        </button>
       </div>
     </motion.div>
   );
@@ -617,38 +973,38 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-4"
     >
       <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold">
-          <ArrowLeft size={20} /> Back
+        <button onClick={() => setSubStep('landing')} className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
+          <ArrowLeft size={18} /> Back
         </button>
-        <div className="text-sm font-bold text-on-surface-variant">Step 1 of 3</div>
+        <div className="text-sm font-bold text-stone-600">Step 1 of 3</div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-black text-on-surface mb-2">Topic Packs</h2>
-        <p className="text-on-surface-variant">Select a themed pack to add words instantly</p>
+        <h2 className="text-2xl font-black text-stone-900 mb-2">Topic Packs</h2>
+        <p className="text-stone-600">Select a themed pack to add words instantly</p>
       </div>
 
-      <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1">
+      <div className={`space-y-1.5 transition-all duration-300 ${expandedPack ? 'max-h-[280px] overflow-y-auto pr-1' : 'max-h-[450px] overflow-y-auto pr-1'}`}>
         {topicPacks.map((pack) => {
           const wordCount = pack.ids.length;
           const isExpanded = expandedPack === pack.name;
           const alreadySelected = pack.ids.filter(id => selectedWords.some(w => w.id === id)).length;
 
           return (
-            <div key={pack.name} className="rounded-2xl border-2 border-outline-variant/20 bg-surface-container-lowest overflow-hidden">
-              <button
+            <div key={pack.name} className={`rounded-xl border-2 border-stone-300/20 bg-stone-200-lowest overflow-hidden transition-all ${isExpanded ? 'border-primary/50 shadow-lg' : ''}`}>
+              <div
                 onClick={() => setExpandedPack(isExpanded ? null : pack.name)}
-                className="w-full flex items-center gap-3 p-3 sm:p-4 hover:bg-primary-container/5 transition-all text-left"
+                className="w-full flex items-center gap-2 p-2 hover:bg-blue-100/5 transition-all cursor-pointer"
               >
-                <span className="text-2xl sm:text-3xl">{pack.icon}</span>
+                <span className="text-xl sm:text-2xl">{pack.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-on-surface">{pack.name}</div>
-                  <div className="text-xs text-on-surface-variant">
+                  <div className="font-bold text-sm sm:text-base text-stone-900">{pack.name}</div>
+                  <div className="text-[10px] sm:text-xs text-stone-600">
                     {wordCount} word{wordCount !== 1 ? 's' : ''}
                     {alreadySelected > 0 && <span className="ml-1 text-primary font-bold">({alreadySelected} selected)</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -664,19 +1020,19 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                         }
                       }
                     }}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                    className={`px-2 py-1 text-[10px] sm:text-xs font-bold rounded-full transition-colors ${
                       alreadySelected === wordCount && wordCount > 0
                         ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
                         : 'bg-primary text-on-primary hover:bg-primary/90'
                     }`}
                   >
-                    {alreadySelected === wordCount && wordCount > 0 ? '✕ Remove All' : alreadySelected > 0 ? `+ Add ${wordCount - alreadySelected} more` : '+ Add All'}
+                    {alreadySelected === wordCount && wordCount > 0 ? '✕ Remove' : alreadySelected > 0 ? `+ Add ${wordCount - alreadySelected} more` : '+ Add All'}
                   </button>
                   <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                    <ChevronRight className="text-on-surface-variant" size={18} />
+                    <ChevronRight className="text-stone-600" size={16} />
                   </motion.div>
                 </div>
-              </button>
+              </div>
 
               <AnimatePresence>
                 {isExpanded && (
@@ -687,9 +1043,23 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-outline-variant/10">
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {allWords.filter(w => pack.ids.includes(w.id)).slice(0, 20).map(word => {
+                    <div className="p-6 sm:p-8 bg-white border-t-2 border-stone-300/20 min-h-[600px] max-h-[80vh] overflow-y-auto">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-2xl sm:text-3xl font-black text-stone-900">{pack.name}</p>
+                          <p className="text-sm sm:text-base text-stone-500">
+                            {pack.ids.filter(id => selectedWords.some(w => w.id === id)).length} / {pack.ids.length} selected
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setExpandedPack(null)}
+                          className="p-2 rounded-full hover:bg-stone-100 transition-colors"
+                        >
+                          <X size={20} className="text-stone-600" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-3 sm:gap-4">
+                        {allWords.filter(w => pack.ids.includes(w.id)).map(word => {
                           const isSelected = selectedWords.some(w => w.id === word.id);
                           return (
                             <button
@@ -698,21 +1068,16 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                                 e.stopPropagation();
                                 toggleWordSelection(word);
                               }}
-                              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                              className={`px-4 py-3 sm:px-6 sm:py-4 rounded-xl text-base sm:text-lg font-bold transition-all shadow-sm ${
                                 isSelected
-                                  ? 'bg-primary text-white'
-                                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                                  ? 'bg-primary text-white scale-105 shadow-md ring-2 ring-primary/30'
+                                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200 hover:scale-102 border-2 border-stone-300'
                               }`}
                             >
                               {word.english}
                             </button>
                           );
                         })}
-                        {pack.ids.length > 20 && (
-                          <span className="px-2 py-1 text-xs text-on-surface-variant italic">
-                            +{pack.ids.length - 20} more...
-                          </span>
-                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -734,21 +1099,21 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-4"
     >
       <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold">
-          <ArrowLeft size={20} /> Back
+        <button onClick={() => setSubStep('landing')} className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
+          <ArrowLeft size={18} /> Back
         </button>
-        <div className="text-sm font-bold text-on-surface-variant">Step 1 of 3</div>
+        <div className="text-sm font-bold text-stone-600">Step 1 of 3</div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-black text-on-surface mb-2">Saved word groups</h2>
-        <p className="text-on-surface-variant">Quick access to your previous word lists</p>
+        <h2 className="text-2xl font-black text-stone-900 mb-2">Saved word groups</h2>
+        <p className="text-stone-600">Quick access to your previous word lists</p>
       </div>
 
       {savedGroups.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-4xl mb-3">💾</div>
-          <p className="text-on-surface-variant mb-4">No saved groups yet. Create your first one!</p>
+          <p className="text-stone-600 mb-4">No saved groups yet. Create your first one!</p>
           <button onClick={() => setSubStep('paste')} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20">
             Create Word Group
           </button>
@@ -765,14 +1130,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 onSelectedWordsChange([...selectedWords, ...groupWords.filter(w => !selectedWords.some(sw => sw.id === w.id))]);
                 showToast?.(`Added ${group.words.length} words from ${group.name}`, 'success');
               }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-outline-variant/20 bg-surface-container-lowest hover:border-primary/50 hover:bg-primary-container/5 transition-all text-left"
+              className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-stone-300/20 bg-stone-200-lowest hover:border-primary/50 hover:bg-blue-100/5 transition-all text-left"
             >
               <div className="text-3xl">📁</div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-on-surface truncate">{group.name}</div>
-                <div className="text-sm text-on-surface-variant">{group.words.length} word{group.words.length !== 1 ? 's' : ''}</div>
+                <div className="font-bold text-stone-900 truncate">{group.name}</div>
+                <div className="text-sm text-stone-600">{group.words.length} word{group.words.length !== 1 ? 's' : ''}</div>
               </div>
-              <ChevronRight className="text-on-surface-variant" size={20} />
+              <ChevronRight className="text-stone-600" size={20} />
             </motion.button>
           ))}
         </div>
@@ -784,18 +1149,18 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const renderWordEditorModal = () => (
     wordEditorOpen && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-        <div className="bg-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col">
+        <div className="bg-stone-100 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col">
           <div className="p-4 sm:p-6 border-b border-surface-container-highest">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg sm:text-xl font-black text-on-surface flex items-center gap-1.5 sm:gap-2">
+              <h2 className="text-lg sm:text-xl font-black text-stone-900 flex items-center gap-1.5 sm:gap-2">
                 <Search className="text-primary" size={16} />
                 <span className="text-base sm:text-lg">Add Your Words</span>
               </h2>
-              <button onClick={() => setWordEditorOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+              <button onClick={() => setWordEditorOpen(false)} className="text-stone-600 hover:text-stone-900">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs sm:text-sm text-on-surface-variant mt-1.5 sm:mt-2">
+            <p className="text-xs sm:text-sm text-stone-600 mt-1.5 sm:mt-2">
               Type or paste words below. Use <span className="font-bold">commas</span> to separate words, or put each word on a <span className="font-bold">new line</span>.
             </p>
           </div>
@@ -805,14 +1170,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               placeholder="Examples:\\napple, ice cream, house, book\\n\\nOr each word on a new line:\\napple\\nice cream\\nhouse\\nbook"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-20 sm:h-24 px-3 sm:px-4 py-2 sm:py-3 bg-surface-container border-2 border-surface-container-highest text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none text-sm sm:text-base"
+              className="w-full h-20 sm:h-24 px-3 sm:px-4 py-2 sm:py-3 bg-stone-200 border-2 border-surface-container-highest text-stone-900 placeholder:text-stone-600 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none text-sm sm:text-base"
               autoFocus
             />
 
             {searchTerms.length > 0 && (
               <div className="mt-3 sm:mt-4">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                  <p className="text-xs sm:text-sm font-bold text-on-surface">
+                  <p className="text-xs sm:text-sm font-bold text-stone-900">
                     {searchTerms.length} word{searchTerms.length !== 1 ? 's' : ''} detected
                   </p>
                   <button onClick={() => setSearchQuery('')} className="text-[10px] sm:text-xs text-rose-600 font-bold hover:text-rose-700">
@@ -843,7 +1208,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                       }`}
                       title={draggedWord && draggedWord !== term ? `Drop "${draggedWord}" here to make "${draggedWord} ${term}"` : term}
                     >
-                      <span className="text-xs sm:text-sm font-bold text-on-surface">{term}</span>
+                      <span className="text-xs sm:text-sm font-bold text-stone-900">{term}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -858,7 +1223,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   ))}
                 </div>
                 {searchTerms.length > 1 && (
-                  <p className="text-[10px] sm:text-xs text-on-surface-variant mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
+                  <p className="text-[10px] sm:text-xs text-stone-600 mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
                     <Info size={10} />
                     <span className="hidden sm:inline">Tip: Drag one word onto another to combine them into a phrase!</span>
                     <span className="sm:hidden">Drag words together to make phrases!</span>
@@ -869,7 +1234,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           </div>
 
           <div className="p-4 sm:p-6 border-t border-surface-container-highest flex items-center justify-between gap-2">
-            <button onClick={() => setWordEditorOpen(false)} className="px-4 sm:px-6 py-2.5 sm:py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-highest transition-colors text-sm sm:text-base">
+            <button onClick={() => setWordEditorOpen(false)} className="px-4 sm:px-6 py-2.5 sm:py-3 bg-stone-200 text-stone-900 rounded-xl font-bold hover:bg-stone-200-highest transition-colors text-sm sm:text-base">
               Cancel
             </button>
             <div className="flex gap-2">
@@ -898,7 +1263,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
   // ── MAIN RENDER ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-stone-100">
       <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-6">
         <AnimatePresence mode="wait">
           {subStep === 'landing' && <div key="landing">{renderLanding()}</div>}
@@ -939,29 +1304,9 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
         {renderWordEditorModal()}
 
-        {selectedWords.length > 0 && (
-          <div className="mt-6 bg-surface-container-lowest rounded-2xl p-4 shadow-lg border-2 border-surface-container-highest">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-on-surface">Selected Words ({selectedWords.length})</h3>
-              <button onClick={() => onSelectedWordsChange([])} className="text-sm text-rose-600 font-bold hover:text-rose-700">
-                Clear All
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-              {selectedWords.map(word => (
-                <span key={word.id} className="px-3 py-1 bg-primary text-on-primary rounded-full text-sm font-bold flex items-center gap-2">
-                  {word.english}
-                  <button onClick={() => toggleWordSelection(word)} className="hover:bg-white/20 rounded-full p-0.5">
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedWords.length > 0 && (
+        {selectedWords.length > 0 && subStep === 'landing' && (
           <button
+            ref={nextButtonRef}
             onClick={onNext}
             className="w-full mt-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
           >

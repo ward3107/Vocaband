@@ -5,7 +5,7 @@
  * Both Quick Play and Assignment use this shell with different props.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
 import { Word } from '../../data/vocabulary';
@@ -15,11 +15,60 @@ import { WordInputStep } from './WordInputStep';
 import { ConfigureStep } from './ConfigureStep';
 import { ReviewStep } from './ReviewStep';
 
+// Memoized Stepper component (defined outside to prevent re-creation)
+interface StepperProps {
+  currentStep: 1 | 2 | 3;
+  mode: WizardMode;
+}
+
+const Stepper = memo(({ currentStep, mode }: StepperProps) => {
+  return (
+    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6">
+      {[1, 2, 3].map((step) => {
+        const stepNum = step as 1 | 2 | 3;
+        const isCompleted = stepNum < currentStep;
+        const isCurrent = stepNum === currentStep;
+        const isOptional = mode === 'quick-play' && stepNum === 2;
+
+        return (
+          <React.Fragment key={step}>
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                  isCompleted
+                    ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-lg shadow-green-500/30'
+                    : isCurrent
+                    ? 'bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-110'
+                    : 'bg-stone-200 text-stone-600 border-2 border-stone-300/40'
+                }`}
+              >
+                {isCompleted ? '✓' : step}
+              </div>
+              {isOptional && !isCompleted && !isCurrent && (
+                <span className="text-[10px] text-stone-600 mt-1">(Optional)</span>
+              )}
+            </div>
+            {step < 3 && (
+              <div
+                className={`w-8 sm:w-12 h-0.5 ${
+                  step < currentStep ? 'bg-green-400' : 'bg-stone-300/40'
+                }`}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+});
+
+Stepper.displayName = 'Stepper';
+
 export interface SetupWizardProps {
   mode: WizardMode;
   allWords: Word[];
-  band1Words?: Word[];
-  band2Words?: Word[];
+  set1Words?: Word[];
+  set2Words?: Word[];
   onComplete: (result: { words: Word[]; modes: string[] }) => void;
   onBack: () => void;
 
@@ -67,8 +116,8 @@ export interface SetupWizardProps {
 export const SetupWizard: React.FC<SetupWizardProps> = ({
   mode,
   allWords,
-  band1Words,
-  band2Words,
+  set1Words,
+  set2Words,
   onComplete,
   onBack,
   autoMatchPartial,
@@ -137,7 +186,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   };
 
   const handleLaunch = () => {
+    console.log('[SetupWizard handleLaunch] START', {
+      mode,
+      selectedWordsCount: selectedWords.length,
+      selectedModesCount: selectedModes.length,
+      selectedWords: selectedWords.map(w => ({ id: w.id, english: w.english })),
+      selectedModes,
+    });
     onComplete({ words: selectedWords, modes: selectedModes });
+    console.log('[SetupWizard handleLaunch] END - called onComplete');
   };
 
   const handleQuickStart = () => {
@@ -146,59 +203,19 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
     }
   };
 
-  // ── Stepper Component ────────────────────────────────────────────────────────
-  const Stepper = () => (
-    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6">
-      {[1, 2, 3].map((step) => {
-        const stepNum = step as 1 | 2 | 3;
-        const isCompleted = stepNum < currentStep;
-        const isCurrent = stepNum === currentStep;
-        const isOptional = mode === 'quick-play' && stepNum === 2;
-
-        return (
-          <React.Fragment key={step}>
-            <div className="flex flex-col items-center">
-              <div
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  isCompleted
-                    ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-lg shadow-green-500/30'
-                    : isCurrent
-                    ? 'bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-110'
-                    : 'bg-surface-container text-on-surface-variant border-2 border-outline-variant/40'
-                }`}
-              >
-                {isCompleted ? '✓' : step}
-              </div>
-              {isOptional && !isCompleted && !isCurrent && (
-                <span className="text-[10px] text-on-surface-variant mt-1">(Optional)</span>
-              )}
-            </div>
-            {step < 3 && (
-              <div
-                className={`w-8 sm:w-12 h-0.5 ${
-                  step < currentStep ? 'bg-green-400' : 'bg-outline-variant/40'
-                }`}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
-
-  // ── Step Labels ───────────────────────────────────────────────────────────────
-  const stepLabels: Record<1 | 2 | 3, string> = {
+  // Memoize step labels to prevent re-creation
+  const stepLabels = useMemo<Record<1 | 2 | 3, string>>(() => ({
     1: 'Select Words',
     2: mode === 'quick-play' ? 'Choose Modes (Optional)' : 'Configure',
     3: 'Review',
-  };
+  }), [mode]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   const isQuickPlay = mode === 'quick-play';
   const isAssignment = mode === 'assignment';
 
   return (
-    <div className="min-h-screen bg-surface pt-16 sm:pt-24 pb-6 sm:pb-8 px-3 sm:px-4 md:px-6">
+    <div className="min-h-screen bg-stone-100 pt-16 sm:pt-24 pb-6 sm:pb-8 px-3 sm:px-4 md:px-6">
       <TopAppBar
         title={isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}
@@ -218,8 +235,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               key="step1"
               mode={mode}
               allWords={allWords}
-              band1Words={band1Words}
-              band2Words={band2Words}
+              set1Words={set1Words}
+              set2Words={set2Words}
               selectedWords={selectedWords}
               onSelectedWordsChange={setSelectedWords}
               onNext={handleNext}
@@ -272,6 +289,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               onBack={handleBack}
               onLaunch={handleLaunch}
               onQuickStart={handleQuickStart}
+              onEditWords={() => setCurrentStep(1)}
+              onEditModes={() => setCurrentStep(2)}
               assignmentTitle={assignmentTitle}
               assignmentDeadline={assignmentDeadline}
               assignmentInstructions={assignmentInstructions}

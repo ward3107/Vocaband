@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap } from "lucide-react";
 
 interface Assignment {
   id: string;
@@ -65,9 +65,14 @@ const ClassCard: React.FC<ClassCardProps> = ({
       <div className="p-4">
         <div className="flex justify-between items-start mb-4 gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-black text-on-surface leading-tight truncate">{name}</h3>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="px-3 py-1 bg-primary text-white text-xs font-black rounded-full uppercase tracking-wide shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <GraduationCap size={16} className="text-white" />
+              </div>
+              <h3 className="text-2xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight truncate">{name}</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-yellow-300 text-stone-900 text-xs font-black rounded-full uppercase tracking-wide shadow-md border-2 border-yellow-400">
                 {code}
               </span>
               {studentCount !== undefined && (
@@ -98,7 +103,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onAssign}
-            className="signature-gradient text-white py-2 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="bg-blue-600 text-white py-2 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all"
           >
             <Zap size={14} /> Assign
           </button>

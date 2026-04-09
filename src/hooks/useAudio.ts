@@ -1,9 +1,84 @@
+// Audio hook for playing word pronunciation and motivational sounds
 import { Howl } from 'howler'
 
 const MAX_WORD_CACHE_SIZE = 100
 const wordCache: Record<number, Howl> = {}
 const wordCacheOrder: number[] = [] // LRU tracking
 const motivationalCache: Record<string, Howl> = {}
+const failedWordIds = new Set<number>() // Track words that failed to load
+
+// ── Voice Selection for High-Quality TTS ──────────────────────────────────────
+// Cache the selected voice so the same voice is used consistently
+let cachedVoice: SpeechSynthesisVoice | null = null
+
+const getHighQualityEnglishVoice = (): SpeechSynthesisVoice | null => {
+  if (cachedVoice) return cachedVoice;
+
+  if (!('speechSynthesis' in window)) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  // Prefer high-quality voices in order: Google US English, Samantha, Natural, Neural
+  const picked =
+    voices.find(v => v.name.includes('Google US English') && v.lang === 'en-US') ||
+    voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google'))) ||
+    voices.find(v => v.lang.startsWith('en') && (v.name.includes('Samantha'))) ||
+    voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural'))) ||
+    voices.find(v => v.lang.startsWith('en') && (v.name.includes('Neural'))) ||
+    voices.find(v => v.lang === 'en-US') ||
+    voices.find(v => v.lang.startsWith('en'));
+
+  if (picked) cachedVoice = picked;
+  return picked ?? null;
+};
+
+// Initialize voice listener - voices load asynchronously in some browsers
+if ('speechSynthesis' in window) {
+  const onVoicesChanged = () => {
+    cachedVoice = null;
+    getHighQualityEnglishVoice();
+  };
+  window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+  // Initial voice loading
+  getHighQualityEnglishVoice();
+}
+
+// Speak text using high-quality TTS voice with enhanced pronunciation
+const speakWithTTS = (text: string): void => {
+  if (!('speechSynthesis' in window)) return;
+
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel();
+
+  let speakText = text;
+
+  // Clean up the text for better pronunciation if enabled
+  if (ttsSettings.cleanText) {
+    speakText = text
+      // Remove "(n)", "(v)", "(adj)" grammatical markers - pronounce naturally
+      .replace(/\s*\([nva]\)\s*/gi, ' ')
+      // Remove extra parentheses content that might confuse TTS
+      .replace(/\s*\([^)]*?\)\s*/g, ' ')
+      // Remove leading quotes
+      .replace(/^['"]+|['"]+$/g, '')
+      // Clean up extra whitespace
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  const voice = getHighQualityEnglishVoice();
+
+  // Speak the whole phrase smoothly (no word-by-word pauses)
+  const utterance = new SpeechSynthesisUtterance(speakText);
+  utterance.lang = 'en-US';
+  utterance.rate = ttsSettings.rate;  // Slower rate (0.7) makes it clear naturally
+  utterance.pitch = ttsSettings.pitch;
+  utterance.volume = ttsSettings.volume;
+  if (voice) utterance.voice = voice;
+
+  window.speechSynthesis.speak(utterance);
+};
 
 const getAudioUrl = (wordId: number): string => {
   const base = import.meta.env.VITE_SUPABASE_URL
@@ -122,9 +197,39 @@ const PHRASE_LABELS: Record<string, string> = {
   "pure-talent": "Pure Talent! 🎨",
 };
 
+// Global flag to force TTS for all words (for testing or if MP3 files have issues)
+// Use a window property to ensure the toggle can access it
+// Set to true to use TTS by default instead of MP3 files
+if (typeof window !== 'undefined') {
+  (window as any).__forceTTSMode = true;  // ← Changed to true for TTS by default
+}
+
+let forceTTSMode = true;  // ← Changed to true for TTS by default
+
+export const setForceTTSMode = (force: boolean) => {
+  forceTTSMode = force;
+  if (typeof window !== 'undefined') {
+    (window as any).__forceTTSMode = force;
+  }
+  console.log(`[Audio] Force TTS mode: ${force ? 'ENABLED' : 'disabled'}`);
+};
+
+// Export getter to read current state
+export const getForceTTSMode = () => forceTTSMode;
+
 export const useAudio = () => {
 
   const preload = (wordId: number) => {
+    // Guard against undefined wordId
+    if (wordId === undefined || wordId === null) {
+      return
+    }
+
+    // Skip preloading if this word failed before
+    if (failedWordIds.has(wordId)) {
+      return
+    }
+
     if (!wordCache[wordId]) {
       // Evict oldest entry if cache is full
       if (wordCacheOrder.length >= MAX_WORD_CACHE_SIZE) {
@@ -135,24 +240,65 @@ export const useAudio = () => {
       wordCache[wordId] = new Howl({
         src: [getAudioUrl(wordId)],
         preload: true,
-        onloaderror: () => { console.warn(`Audio load failed for wordId ${wordId}`) }
+        onloaderror: () => {
+          console.warn(`Audio load failed for wordId ${wordId}`)
+          failedWordIds.add(wordId)
+          // Clean up the failed cache entry
+          delete wordCache[wordId]
+          const idx = wordCacheOrder.indexOf(wordId)
+          if (idx > -1) {
+            wordCacheOrder.splice(idx, 1)
+          }
+        },
+        onplayerror: () => {
+          console.warn(`Audio playback failed for wordId ${wordId}`)
+          failedWordIds.add(wordId)
+        }
       })
       wordCacheOrder.push(wordId)
     }
   }
 
   const speak = (wordId: number, fallbackText?: string) => {
+    // Guard against undefined wordId
+    if (wordId === undefined || wordId === null) {
+      console.warn('speak() called with undefined wordId')
+      return
+    }
+
+    // Check both the local variable and window object (for console commands)
+    const currentForceTTSMode = forceTTSMode || (typeof window !== 'undefined' && (window as any).__forceTTSMode);
+
+    // Debug: Show current TTS mode state
+    console.log(`[Audio Debug] speak() called - forceTTSMode: ${currentForceTTSMode}, wordId: ${wordId}, text: ${fallbackText}`);
+
+    // Force TTS mode - use text-to-speech for all words
+    if (currentForceTTSMode) {
+      console.log(`[Audio] Force TTS mode: Using TTS for wordId ${wordId}:`, fallbackText)
+      if (fallbackText) {
+        speakWithTTS(fallbackText)
+      }
+      return
+    }
+
     // Stop any currently playing audio first
     Object.values(wordCache).forEach(h => h.stop())
     window.speechSynthesis?.cancel()
 
+    // If this word failed to load before, use TTS immediately
+    if (failedWordIds.has(wordId)) {
+      console.log(`[Audio] Using TTS fallback for failed wordId ${wordId}:`, fallbackText)
+      if (fallbackText) {
+        speakWithTTS(fallbackText)
+      }
+      return
+    }
+
     // Custom words (negative IDs) don't have audio files — use browser TTS
     if (wordId < 0) {
-      if (fallbackText && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(fallbackText)
-        utterance.lang = 'en-US'
-        utterance.rate = 0.95
-        window.speechSynthesis.speak(utterance)
+      console.log(`[Audio] Using TTS for custom wordId ${wordId}:`, fallbackText)
+      if (fallbackText) {
+        speakWithTTS(fallbackText)
       }
       return
     }
@@ -161,6 +307,35 @@ export const useAudio = () => {
 
     // Play immediately if already loaded, otherwise wait for load
     const sound = wordCache[wordId]
+    if (!sound) {
+      // Should not happen, but fallback to TTS just in case
+      console.warn(`[Audio] No sound found for wordId ${wordId}, using TTS fallback:`, fallbackText)
+      if (fallbackText) {
+        speakWithTTS(fallbackText)
+      }
+      return
+    }
+
+    // Remove old event handlers before adding new ones (prevents duplicates)
+    sound.off('playerror')
+    sound.off('play')
+
+    // Add error handler for playback failures - fall back to TTS
+    const handleAudioError = () => {
+      console.warn(`[Audio] Playback failed for wordId ${wordId}, using TTS fallback:`, fallbackText)
+      if (fallbackText) {
+        speakWithTTS(fallbackText)
+      }
+    }
+
+    // Log successful audio playback for debugging (MP3 files don't use TTS voices)
+    const handleAudioPlay = () => {
+      console.log(`[Audio] Playing MP3 audio for wordId ${wordId}:`, fallbackText)
+    }
+
+    sound.on('playerror', handleAudioError)
+    sound.on('play', handleAudioPlay)
+
     if (sound.state() === 'loaded') {
       sound.play()
     } else {
@@ -249,5 +424,91 @@ export const useAudio = () => {
     window.speechSynthesis?.cancel()
   }
 
-  return { speak, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, playWrong, stopAll }
+  return { speak, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, playWrong, stopAll, setForceTTSMode }
+}
+
+// ── TTS Settings (adjustable via console) ───────────────────────────────────
+let ttsSettings = {
+  rate: 0.7,           // Slower for clarity (0.5 = very slow, 1.0 = normal)
+  pitch: 1.0,          // Pitch (0 to 2, 1 = normal)
+  volume: 1.0,         // Volume (0 to 1)
+  cleanText: true,     // Remove grammatical markers like (n), (v)
+};
+
+// Add to window for easy console access during development/debugging
+if (typeof window !== 'undefined') {
+  // Store the state on window object for cross-module access
+  (window as any).__forceTTSMode = false;
+  (window as any).__ttsSettings = ttsSettings;
+
+  (window as any).togglePronunciationMode = () => {
+    const newValue = !(window as any).__forceTTSMode;
+    (window as any).__forceTTSMode = newValue;
+    forceTTSMode = newValue;
+    console.log(`%c[Pronunciation Mode] ${newValue ? 'TTS (Text-to-Speech)' : 'MP3 Audio Files'}`, `color: ${newValue ? 'blue' : 'green'}; font-weight: bold; font-size: 14px`);
+    console.log(`[Audio Debug] forceTTSMode is now: ${newValue}`);
+    return newValue;
+  };
+
+  (window as any).forceTTS = () => {
+    (window as any).__forceTTSMode = true;
+    forceTTSMode = true;
+    console.log(`%c[Pronunciation Mode] FORCED TO TTS (Text-to-Speech)`, `color: blue; font-weight: bold; font-size: 14px`);
+    console.log(`[Audio Debug] forceTTSMode is now: true`);
+  };
+
+  (window as any).useMP3 = () => {
+    (window as any).__forceTTSMode = false;
+    forceTTSMode = false;
+    console.log(`%c[Pronunciation Mode] USING MP3 AUDIO FILES`, `color: green; font-weight: bold; font-size: 14px`);
+    console.log(`[Audio Debug] forceTTSMode is now: false`);
+  };
+
+  // TTS Settings controls
+  (window as any).ttsSettings = (newSettings?: Partial<typeof ttsSettings>) => {
+    if (newSettings) {
+      Object.assign(ttsSettings, newSettings);
+      console.log('%c[TTS Settings Updated]', 'color: blue; font-weight: bold');
+      console.table(ttsSettings);
+    } else {
+      console.table(ttsSettings);
+    }
+    return ttsSettings;
+  };
+
+  // Convenience functions for common settings
+  (window as any).ttsSlow = () => ttsSettings({ rate: 0.5 });
+  (window as any).ttsNormal = () => ttsSettings({ rate: 0.7 });
+  (window as any).ttsFast = () => ttsSettings({ rate: 1.0 });
+  (window as any).ttsDeep = () => ttsSettings({ pitch: 0.85 });
+  (window as any).ttsHigh = () => ttsSettings({ pitch: 1.15 });
+
+  console.log('%c╔══════════════════════════════════════════════════╗', 'color: #888; font-weight: bold');
+  console.log('%c║   Vocaband TTS Pronunciation Controls              ║', 'color: #888; font-weight: bold');
+  console.log('%c╚══════════════════════════════════════════════════╝', 'color: #888; font-weight: bold');
+  console.log('');
+  console.log('%cBasic Commands:', 'color: #888; font-weight: bold');
+  console.log('  forceTTS()              - Enable TTS mode');
+  console.log('  useMP3()                 - Use MP3 audio files');
+  console.log('  togglePronunciationMode()  - Toggle between modes');
+  console.log('');
+  console.log('%cSpeed Controls (smooth, flowing speech):', 'color: #888; font-weight: bold');
+  console.log('  ttsSlow()               - Very slow (rate: 0.5) ⭐ Best for learning');
+  console.log('  ttsNormal()             - Normal (rate: 0.7) ⭐ Default');
+  console.log('  ttsFast()               - Faster (rate: 1.0)');
+  console.log('');
+  console.log('%cVoice Controls:', 'color: #888; font-weight: bold');
+  console.log('  ttsDeep()               - Lower pitch');
+  console.log('  ttsHigh()               - Higher pitch');
+  console.log('');
+  console.log('%cCustom:', 'color: #888; font-weight: bold');
+  console.log('  ttsSettings()           - Show all settings');
+  console.log('  ttsSettings({rate: 0.5}) - Customize any setting');
+  console.log('');
+  console.log('%cCurrent TTS Settings:', 'color: #888; font-weight: bold');
+  console.table(ttsSettings);
+  console.log('');
+  console.log('%c💡 Tips:', 'color: #4ade80; font-style: italic');
+  console.log('  - ttsSlow() for best clarity with English learners');
+  console.log('  - Phrases flow smoothly, no choppy word-by-word pauses');
 }

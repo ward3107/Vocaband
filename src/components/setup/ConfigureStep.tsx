@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Plus, X,
+  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
@@ -84,6 +84,33 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 }) => {
   void _selectedWords;
   void _editingAssignment;
+
+  // Ref for template selector (for auto-scroll)
+  const templateSelectorRef = useRef<HTMLSelectElement>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-scroll to template selector when component mounts (especially for Quick Play)
+  useEffect(() => {
+    if (templateSelectorRef.current) {
+      setTimeout(() => {
+        templateSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        templateSelectorRef.current?.focus();
+      }, 300);
+    }
+  }, []);
+
+  // Auto-scroll to Next button when user can proceed (using existing canProceed from line 146)
+  useEffect(() => {
+    // This will run after the component is fully rendered and canProceed is defined
+    setTimeout(() => {
+      // We need to compute canProceed the same way as line 146
+      const canProceed = mode === 'quick-play' || (mode === 'assignment' && !!assignmentTitle);
+      if (canProceed && nextButtonRef.current && selectedModes.length > 0) {
+        nextButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 500);
+  }, [mode, assignmentTitle, selectedModes.length]);
+
   // Sentence builder local state
   const [customSentenceInput, setCustomSentenceInput] = useState('');
   const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
@@ -133,22 +160,22 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface font-bold transition-colors"
+          className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} />
           Back
         </button>
-        <div className="text-sm font-bold text-on-surface-variant">
+        <div className="text-sm font-bold text-stone-600">
           Step 2 of 3
         </div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-black text-on-surface mb-2">
+        <h2 className="text-2xl font-black text-stone-900 mb-2">
           {isAssignment ? 'Configure assignment' : 'Choose game modes (optional)'}
         </h2>
         {isAssignment && (
-          <p className="text-on-surface-variant">
+          <p className="text-stone-600">
             Add details and choose game modes
           </p>
         )}
@@ -159,15 +186,17 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="space-y-4">
           {/* Combined Template Selector */}
           <div>
-            <label className="block text-sm font-bold text-on-surface mb-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-stone-900 mb-2">
+              <Sparkles size={16} className="text-amber-500" />
               Quick template
             </label>
             <select
+              ref={templateSelectorRef}
               value=""
               onChange={(e) => applyTemplate(e.target.value)}
-              className="w-full p-3 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-high text-on-surface mb-4 cursor-pointer appearance-none"
+              className="w-full p-3 sm:p-4 rounded-2xl border-3 border-amber-400/50 bg-gradient-to-r from-amber-50 to-yellow-50 text-stone-900 mb-4 cursor-pointer appearance-none shadow-lg shadow-amber-200/50 hover:shadow-xl hover:border-amber-400 transition-all outline-none focus:ring-4 focus:ring-amber-400/30 font-bold text-base"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4l5 5 5-5z'/%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%23f59e0b' d='M6 9L1 4l5 5 5-5z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'right 0.75rem center',
                 paddingRight: '2.5rem',
@@ -188,7 +217,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 
             {/* Editable Title Field */}
             <div className="mb-4">
-              <label className="block text-sm font-bold text-on-surface mb-2">
+              <label className="block text-sm font-bold text-stone-900 mb-2">
                 Assignment title <span className="text-error">*</span>
               </label>
               <input
@@ -196,13 +225,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 value={assignmentTitle}
                 onChange={(e) => onTitleChange?.(e.target.value)}
                 placeholder="e.g., Fruits Vocabulary - Unit 5"
-                className="w-full p-4 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all"
+                className="w-full p-4 rounded-2xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 placeholder:text-stone-600/50 transition-all"
               />
             </div>
 
             {/* Editable Instructions Field */}
             <div>
-              <label className="block text-sm font-bold text-on-surface mb-2">
+              <label className="block text-sm font-bold text-stone-900 mb-2">
                 Instructions for students (optional)
               </label>
               <textarea
@@ -212,7 +241,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 onFocus={(e) => e.target.select()}
                 placeholder="Add a note for your students... or choose a template above"
                 rows={2}
-                className="w-full p-4 rounded-2xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 transition-all resize-none"
+                className="w-full p-4 rounded-2xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 placeholder:text-stone-600/50 transition-all resize-none"
               />
             </div>
           </div>
@@ -222,7 +251,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       {/* ── Game Modes by Level ───────────────────────────────────────────── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-bold text-on-surface">
+          <label className="block text-sm font-bold text-stone-900">
             Game modes
           </label>
           <button
@@ -238,29 +267,56 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {Object.values(GAME_MODE_LEVELS).flat().map((gameMode) => {
             const isSelected = selectedModes.includes(gameMode.id);
             return (
-              <button
+              <motion.button
                 key={gameMode.id}
                 onClick={() => toggleGameMode(gameMode.id)}
-                className={`relative p-3 rounded-2xl border-2 transition-all duration-300 text-center ${
+                whileHover={{ scale: isSelected ? 1.05 : 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center overflow-hidden ${
                   isSelected
-                    ? 'border-primary bg-primary shadow-xl shadow-primary/40 scale-105'
-                    : 'border-outline/20 bg-surface-container hover:border-outline/40 hover:bg-surface-container-high hover:shadow-md hover:scale-[1.02]'
+                    ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
+                    : 'border-outline/20 bg-stone-200 hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
                 }`}
               >
-                <div className={`text-2xl mb-1.5 transition-transform duration-300 ${isSelected ? 'scale-110' : 'scale-100'}`}>{gameMode.emoji}</div>
-                <div className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{gameMode.name}</div>
+                {/* Animated emoji with float animation */}
+                <motion.div
+                  className={`text-3xl sm:text-4xl mb-2 ${isSelected ? 'drop-shadow-lg' : ''}`}
+                  animate={isSelected ? 'bounce' : 'float'}
+                  transition={{ duration: 0.3 }}
+                >
+                  {gameMode.emoji}
+                </motion.div>
+                <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-stone-600'}`}>
+                  {gameMode.name}
+                </div>
                 {isSelected && (
-                  <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-primary animate-bounce-in">
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                    className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-primary"
+                  >
                     <Check size={14} className="text-primary" strokeWidth={3} />
-                  </div>
+                  </motion.div>
                 )}
-              </button>
+                {/* Subtle glow effect for selected modes */}
+                {isSelected && (
+                  <motion.div
+                    className="absolute inset-0 bg-white/20 rounded-2xl"
+                    animate={{
+                      scale: [1, 1.05, 1],
+                      opacity: [0.3, 0.1, 0.3],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+              </motion.button>
             );
           })}
         </div>
 
         {/* Difficulty indicators (compact legend) */}
-        <div className="flex flex-wrap gap-4 text-xs text-on-surface-variant pt-1">
+        <div className="flex flex-wrap gap-4 text-xs text-stone-600 pt-1">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
             <span>Beginner</span>
@@ -283,7 +339,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       {/* ── Sentence Difficulty — only when sentence-builder is selected ──── */}
       {selectedModes.includes('sentence-builder') && (
         <div className="space-y-3">
-          <label className="block text-sm font-bold text-on-surface">
+          <label className="block text-sm font-bold text-stone-900">
             Sentence Difficulty Level
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -298,12 +354,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   className={`relative p-3 rounded-lg border-2 transition-all duration-300 text-center ${
                     isSelected
                       ? 'border-primary bg-primary shadow-md scale-105'
-                      : 'border-outline/20 bg-surface-container hover:border-outline/40 hover:bg-surface-container-high'
+                      : 'border-outline/20 bg-stone-200 hover:border-outline/40 hover:bg-stone-200-high'
                   }`}
                 >
                   <div className="text-lg mb-1">{config.emoji}</div>
-                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-on-surface-variant'}`}>{config.label}</div>
-                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-on-surface-variant'}`}>{config.description}</div>
+                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-stone-600'}`}>{config.label}</div>
+                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-stone-600'}`}>{config.description}</div>
                   {isSelected && (
                     <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-white flex items-center justify-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
@@ -316,7 +372,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 
           {/* Add Custom Sentence */}
           <div className="mt-4 space-y-2">
-            <label className="block text-xs font-bold text-on-surface-variant">
+            <label className="block text-xs font-bold text-stone-600">
               Add Your Own Sentences
             </label>
             <div className="flex gap-2">
@@ -325,7 +381,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
                 placeholder="Write or paste your sentence here..."
                 rows={2}
-                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-stone-900 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
               />
               <button
                 onClick={() => {
@@ -346,7 +402,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {/* Sentence Preview & Editor */}
           {assignmentSentences.length > 0 && (
             <div className="mt-3">
-              <label className="block text-xs font-bold text-on-surface-variant mb-2">
+              <label className="block text-xs font-bold text-stone-600 mb-2">
                 Generated Sentences ({assignmentSentences.length}) — hover to preview, click to edit
               </label>
               <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
@@ -356,17 +412,17 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     <div
                       key={idx}
                       onClick={() => setEditingSentenceIndex(idx)}
-                      className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50 hover:bg-surface-container-high cursor-pointer transition-all group"
+                      className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-300/30 bg-stone-200-lowest hover:border-primary/50 hover:bg-stone-200-high cursor-pointer transition-all group"
                     >
-                      <span className="text-xs text-on-surface-variant font-mono w-5 shrink-0">{idx + 1}</span>
-                      <span className="flex-1 text-sm text-on-surface truncate group-hover:text-primary transition-colors">
+                      <span className="text-xs text-stone-600 font-mono w-5 shrink-0">{idx + 1}</span>
+                      <span className="flex-1 text-sm text-stone-900 truncate group-hover:text-primary transition-colors">
                         {sentence}
                       </span>
                       {/* Hover preview tooltip — smart positioning */}
-                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-surface rounded-xl shadow-xl border-2 border-outline-variant/30 p-3 pointer-events-none ${
+                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-stone-100 rounded-xl shadow-xl border-2 border-stone-300/30 p-3 pointer-events-none ${
                         isInFirstHalf ? 'absolute top-full left-0 mt-2' : 'absolute bottom-full left-0 mb-2'
                       }`}>
-                        <div className="text-sm text-on-surface break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <div className="text-sm text-stone-900 break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                           {sentence}
                         </div>
                         <div className={`absolute ${isInFirstHalf ? 'bottom-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-surface -mt-px' : 'top-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-surface -mt-px'}`} />
@@ -378,7 +434,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                           const updated = assignmentSentences.filter((_, i) => i !== idx);
                           onSentencesChange?.(updated);
                         }}
-                        className="text-on-surface-variant hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        className="text-stone-600 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         title="Remove sentence"
                       >
                         <X size={14} />
@@ -393,8 +449,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {/* Sentence Edit Modal */}
           {editingSentenceIndex !== null && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingSentenceIndex(null)}>
-              <div className="bg-surface rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-bold text-on-surface mb-4">
+              <div className="bg-stone-100 rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-stone-900 mb-4">
                   Edit Sentence #{editingSentenceIndex + 1}
                 </h3>
                 <textarea
@@ -406,13 +462,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onSentencesChange?.(updated);
                   }}
                   rows={3}
-                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-stone-900 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3 mt-4">
                   <button
                     onClick={() => setEditingSentenceIndex(null)}
-                    className="flex-1 py-3 bg-surface-container text-on-surface rounded-xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
+                    className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
                   >
                     Cancel
                   </button>
@@ -432,17 +488,17 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       {/* ── Schedule (Assignment-only) ────────────────────────────────────── */}
       {isAssignment && (
         <div className="space-y-3">
-          <label className="block text-sm font-bold text-on-surface">
+          <label className="block text-sm font-bold text-stone-900">
             Schedule (optional)
           </label>
           <div>
-            <label className="block text-xs text-on-surface-variant mb-1">Deadline</label>
+            <label className="block text-xs text-stone-600 mb-1">Deadline</label>
             <input
               type="date"
               value={assignmentDeadline}
               onChange={(e) => onDeadlineChange?.(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full p-3 rounded-xl border-2 border-outline-variant/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-surface-container-lowest text-on-surface transition-all cursor-pointer"
+              className="w-full p-3 rounded-xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 transition-all cursor-pointer"
             />
           </div>
         </div>
@@ -452,11 +508,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       <div className="flex gap-3 pt-4">
         <button
           onClick={onBack}
-          className="flex-1 py-4 bg-surface-container text-on-surface rounded-2xl font-bold hover:bg-surface-container-high border-2 border-outline-variant/20 transition-all"
+          className="flex-1 py-3 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           ← Back
         </button>
         <button
+          ref={nextButtonRef}
           onClick={onNext}
           disabled={!canProceed}
           className="flex-1 py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center justify-center gap-2"
