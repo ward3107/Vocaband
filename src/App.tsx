@@ -1,53 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
-import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
+import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
 import { ALL_WORDS, BAND_1_WORDS, BAND_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
+import { searchWords } from "./data/vocabulary-matching";
 import {
-  searchWords
-} from "./data/vocabulary-matching";
-import {
-  Volume2, VolumeX,
-  Languages,
-  Trophy,
-  RefreshCw,
-  LogIn,
-  LogOut,
-  UserCircle,
-  Users,
-  CheckCircle2,
-  BookOpen,
-  BarChart3,
-  ChevronRight,
-  ArrowRight,
-  ArrowLeft,
-  Upload,
-  AlertTriangle,
-  Lightbulb,
-  Sparkles,
-  Camera,
-  Trash2,
-  PenTool,
-  Zap,
-  Layers,
-  Shuffle,
-  Repeat,
-  Copy,
-  Check,
-  MessageCircle,
-  History,
-  Info,
-  ChevronDown,
-  Plus,
-  X,
-  TrendingUp,
-  GraduationCap,
-  Loader2,
-  QrCode,
-  Search,
-  Download
+  Trophy, RefreshCw, CheckCircle2, AlertTriangle, Info,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useQuickPlay } from "./hooks/useQuickPlay";
 import { useGameState } from "./hooks/useGameState";
@@ -55,33 +14,16 @@ import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
-import DashboardOnboarding from "./components/DashboardOnboarding";
-import StudentOnboarding from "./components/StudentOnboarding";
-import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
-import { shuffle, chunkArray, addUnique, removeKey } from './utils';
+import { PRIVACY_POLICY_VERSION } from "./config/privacy-config";
+import { chunkArray } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
-import TopAppBar from "./components/TopAppBar";
-import ActionCard from "./components/ActionCard";
-import ClassCard from "./components/ClassCard";
 import { CreateAssignmentWizard } from "./components/CreateAssignmentWizard";
-import { PastePreviewModal } from "./components/PastePreviewModal";
-import { analyzePastedText, type WordAnalysisResult } from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
-import OAuthButton from "./components/OAuthButton";
-import OAuthCallback from "./components/OAuthCallback";
-import OAuthClassCode from "./components/OAuthClassCode";
 import { SuspenseWrapper } from "./components/SuspenseWrapper";
-import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
-import {
-  MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
-  MOTIVATIONAL_MESSAGES, SPEAKABLE_MOTIVATIONS, randomMotivation,
-  XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
-  THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES, LETTER_COLORS,
-  type GameMode,
-} from "./constants/game";
+import { THEMES, type GameMode } from "./constants/game";
 import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 const GameView = lazy(() => import("./views/GameView"));
 const AnalyticsView = lazy(() => import("./views/AnalyticsView"));
@@ -270,7 +212,7 @@ export default function App() {
   // --- QUICK PLAY STATE (via custom hook) ---
   const qp = useQuickPlay(view, user, setActiveAssignment);
   const {
-    quickPlaySessionCode, setQuickPlaySessionCode,
+    setQuickPlaySessionCode,
     quickPlaySelectedWords, setQuickPlaySelectedWords,
     quickPlayActiveSession, setQuickPlayActiveSession,
     quickPlayStudentName, setQuickPlayStudentName,
@@ -282,8 +224,7 @@ export default function App() {
     quickPlayKicked, setQuickPlayKicked,
     quickPlaySessionEnded, setQuickPlaySessionEnded,
     quickPlayCompletedModes, setQuickPlayCompletedModes,
-    quickPlayStatusMessage, setQuickPlayStatusMessage,
-    quickPlayNameInputRef,
+    setQuickPlayStatusMessage,
   } = qp;
 
   // Game music player state
@@ -716,7 +657,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel, playWrong } = useAudio();
+  const { speak: speakWordRaw } = useAudio();
 
   // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
   const isQuickPlayGuest = !!user?.isGuest;
@@ -2708,7 +2649,7 @@ export default function App() {
     handleAnswer, handleTFAnswer, handleFlashcardAnswer,
     handleSpellingSubmit, handleExitGame,
     saveError, setSaveError,
-    speak, saveScore,
+    speak,
   } = game;
 
   const fetchStudents = async () => {
