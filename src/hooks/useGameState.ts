@@ -50,6 +50,8 @@ export interface UseGameStateParams {
   streak: number;
   setStreak: (v: number) => void;
   awardBadge: (badge: string) => Promise<void>;
+  badges: string[];
+  setBadges: (v: string[]) => void;
   studentProgress: ProgressData[];
   setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
   quickPlayActiveSession: { id: string; sessionCode: string; wordIds: number[]; words: Word[] } | null;
