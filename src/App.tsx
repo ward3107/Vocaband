@@ -49,6 +49,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
+import { useQuickPlay } from "./hooks/useQuickPlay";
 import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
@@ -266,22 +267,24 @@ export default function App() {
   const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
-  // --- QUICK PLAY STATE ---
-  const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
-  const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
-  const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
-  const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
-  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
-  const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
-  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
-  const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
-  const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
-  const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
-  const [quickPlayKicked, setQuickPlayKicked] = useState(false);
-  const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
-  const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
-  const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
+  // --- QUICK PLAY STATE (via custom hook) ---
+  const qp = useQuickPlay(view, user, setActiveAssignment);
+  const {
+    quickPlaySessionCode, setQuickPlaySessionCode,
+    quickPlaySelectedWords, setQuickPlaySelectedWords,
+    quickPlayActiveSession, setQuickPlayActiveSession,
+    quickPlayStudentName, setQuickPlayStudentName,
+    quickPlayAvatar, setQuickPlayAvatar,
+    quickPlayJoinedStudents, setQuickPlayJoinedStudents,
+    quickPlayCustomWords, setQuickPlayCustomWords,
+    quickPlayAddingCustom, setQuickPlayAddingCustom,
+    quickPlayTranslating, setQuickPlayTranslating,
+    quickPlayKicked, setQuickPlayKicked,
+    quickPlaySessionEnded, setQuickPlaySessionEnded,
+    quickPlayCompletedModes, setQuickPlayCompletedModes,
+    quickPlayStatusMessage, setQuickPlayStatusMessage,
+    quickPlayNameInputRef,
+  } = qp;
 
   // Game music player state
   const [gameMusicTrack, setGameMusicTrack] = useState(0);
@@ -608,169 +611,6 @@ export default function App() {
     }
   }, []);
 
-  // Auto-add EXACT matches found in database to Quick Play selection
-  // Only words that match exactly what the teacher typed are auto-added
-  // Real-time polling for Quick Play teacher monitor
-  // Polls Supabase for student progress every 3 seconds when in teacher monitor view
-  // Helper: aggregate raw progress rows into the leaderboard format
-  const aggregateProgress = useCallback((progressData: any[]) => {
-    const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> }>();
-
-    progressData.forEach((p: any) => {
-      // Group by student_uid to avoid merging different students with same name
-      const key = p.student_uid || p.student_name;
-      const existing = studentMap.get(key);
-
-      if (!existing) {
-        const modes = new Map<string, number>();
-        if (p.mode !== 'joined') modes.set(p.mode, Number(p.score));
-        studentMap.set(key, {
-          name: p.student_name,
-          score: p.mode === 'joined' ? 0 : Number(p.score),
-          avatar: p.avatar || '🦊',
-          lastSeen: p.completed_at,
-          mode: p.mode,
-          studentUid: p.student_uid,
-          modes
-        });
-      } else {
-        if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
-          existing.lastSeen = p.completed_at;
-          existing.mode = p.mode;
-        }
-        // Track best score per mode, then sum for cumulative total
-        if (p.mode !== 'joined') {
-          const prev = existing.modes.get(p.mode) || 0;
-          if (Number(p.score) > prev) existing.modes.set(p.mode, Number(p.score));
-        }
-        let total = 0;
-        existing.modes.forEach(v => { total += v; });
-        existing.score = total;
-      }
-    });
-
-    return Array.from(studentMap.values()).sort((a, b) => b.score - a.score);
-  }, []);
-
-  useEffect(() => {
-    // Only subscribe when in teacher monitor view and have an active session
-    if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession?.id) return;
-
-    const sessionId = quickPlayActiveSession.id;
-
-    // 1. Initial fetch to hydrate state
-    const fetchProgress = async () => {
-      const { data, error } = await supabase
-        .from('progress')
-        .select('student_name, student_uid, score, avatar, completed_at, mode')
-        .eq('assignment_id', sessionId)
-        .order('completed_at', { ascending: false })
-        .limit(200);
-
-      if (error) {
-        console.error('[Quick Play Monitor] Error fetching progress:', error);
-        return;
-      }
-      if (data) {
-        setQuickPlayJoinedStudents(aggregateProgress(data));
-      }
-    };
-    fetchProgress();
-
-    // 2. Subscribe to realtime changes on progress table for this session
-    const channel = supabase
-      .channel(`qp-progress-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',  // INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`
-        },
-        (payload) => {
-          // Re-fetch on any change — simple and correct
-          fetchProgress();
-        }
-      )
-      .subscribe((status) => {
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [view, quickPlayActiveSession?.id, aggregateProgress]);
-
-  // Quick Play student: subscribe to session status (end) and progress deletes (kick)
-  useEffect(() => {
-    if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
-
-    const sessionCode = quickPlayActiveSession.sessionCode;
-    const sessionId = quickPlayActiveSession.id;
-
-    // 1. Subscribe to session end
-    const sessionChannel = supabase
-      .channel(`qp-session-${sessionCode}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'quick_play_sessions',
-          filter: `session_code=eq.${sessionCode}`
-        },
-        (payload) => {
-          if (payload.new && !(payload.new as any).is_active) {
-            // Show session end screen instead of just redirecting
-            setQuickPlaySessionEnded(true);
-            setActiveAssignment(null);
-          }
-        }
-      )
-      .subscribe();
-
-    // 2. Subscribe to progress deletes (teacher kicked this student)
-    const kickChannel = supabase
-      .channel(`qp-kick-${sessionId}-${user.uid}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`
-        },
-        () => {
-          // Check if our own progress was deleted by querying with auth UID
-          supabase.auth.getSession().then(({ data: { session: authSess } }) => {
-            const authUid = authSess?.user?.id;
-            const query = supabase
-              .from('progress')
-              .select('id')
-              .eq('assignment_id', sessionId);
-            // Prefer UID match, fall back to name
-            if (authUid) {
-              query.eq('student_uid', authUid);
-            } else {
-              query.eq('student_name', user.displayName);
-            }
-            query.limit(1).then(({ data }) => {
-              if (!data || data.length === 0) {
-                // Our progress was deleted — we've been kicked
-                setQuickPlayKicked(true);
-                setActiveAssignment(null);
-              }
-            });
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(sessionChannel);
-      supabase.removeChannel(kickChannel);
-    };
-  }, [user?.isGuest, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id, user?.uid, user?.displayName]);
 
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   // --- HELPER: Create Guest User ---
