@@ -2,13 +2,15 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import { cloudflare } from "@cloudflare/vite-plugin";
 export default defineConfig(() => {
   return {
     plugins: [
       react(),
-      tailwindcss(),
       // VitePWA disabled — service worker was causing white screens from stale cache
       // Will re-enable with proper config after cache is cleared from all devices
+      tailwindcss(),
+      cloudflare()
     ],
     resolve: {
       alias: {
