@@ -14,6 +14,8 @@ firestore.rules
 # Dev tool artifacts
 .playwright-mcp/
 .superpowers/
+.wrangler/
+test-results/
 
 # Backup files
 *.backup
