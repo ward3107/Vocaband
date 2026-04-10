@@ -3420,7 +3420,7 @@ export default function App() {
     const allRows: any[] = [];
 
     for (const chunk of chunks) {
-      const { data } = await supabase.from('progress').select('*').in('class_code', chunk).limit(5000);
+      const { data } = await supabase.from('progress').select('student_name, class_code, completed_at').in('class_code', chunk).limit(500);
       if (data) allRows.push(...data);
     }
 
@@ -3473,10 +3473,10 @@ export default function App() {
 
     for (const chunk of chunks) {
       const { data } = await supabase
-        .from('progress').select('*')
+        .from('progress').select('id, student_name, student_uid, assignment_id, class_code, score, mode, completed_at, mistakes, avatar')
         .in('class_code', chunk)
         .order('completed_at', { ascending: false })
-        .limit(5000);
+        .limit(1000);
       if (data) allRows.push(...data.map(mapProgress));
     }
 
