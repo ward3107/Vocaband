@@ -5,9 +5,8 @@ export const TEST_SUPABASE_URL = 'https://test-project.supabase.co';
 export const TEST_CLASS = {
   id: 'class-001',
   code: 'TEST01',
-  title: 'Test English Class',
+  name: 'Test English Class',  // DB column is 'name', not 'title'
   teacher_uid: 'teacher-uid-001',
-  created_at: '2026-01-01T00:00:00Z',
 };
 
 export const TEST_TEACHER = {
@@ -15,10 +14,14 @@ export const TEST_TEACHER = {
   email: 'teacher@test.com',
   display_name: 'Ms. Teacher',
   role: 'teacher',
+  class_code: null,
+  avatar: null,
+  badges: [],
   xp: 0,
   streak: 0,
-  badges: [],
-  avatar: null,
+  unlocked_avatars: [],
+  unlocked_themes: [],
+  power_ups: {},
   active_theme: 'default',
 };
 
@@ -34,10 +37,13 @@ export const TEST_STUDENT_USER = {
   display_name: 'Alice',
   role: 'student',
   class_code: 'TEST01',
+  avatar: '🦊',
+  badges: ['🌟 First Steps'],
   xp: 150,
   streak: 3,
-  badges: ['🌟 First Steps'],
-  avatar: '🦊',
+  unlocked_avatars: [],
+  unlocked_themes: [],
+  power_ups: {},
   active_theme: 'default',
 };
 
@@ -46,10 +52,11 @@ export const TEST_ASSIGNMENT = {
   class_id: 'class-001',
   title: 'Week 1 Vocabulary',
   word_ids: [1, 2, 3, 4, 5],
+  words: null,
   deadline: '2026-12-31T23:59:59Z',
   allowed_modes: ['classic', 'spelling', 'matching', 'true-false', 'flashcards'],
-  sentences: [],
-  sentence_difficulty: 2,
+  sentences: [],              // DB column: TEXT[] DEFAULT '{}'
+  sentence_difficulty: 2,      // DB column: INTEGER DEFAULT 2
   created_at: '2026-01-01T00:00:00Z',
 };
 
