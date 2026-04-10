@@ -85,8 +85,6 @@ import {
 import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 
 // Types for lazy-loaded modules
-type MammothModule = typeof import('mammoth');
-type ConfettiModule = typeof import('canvas-confetti');
 type SocketIOModule = typeof import('socket.io-client');
 type Socket = InstanceType<SocketIOModule['Socket']>;
 
