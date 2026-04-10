@@ -260,6 +260,25 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [joinedWords, setJoinedWords] = useState<number[]>([]);
   const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
   const [customSentenceInput, setCustomSentenceInput] = useState('');
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  // Check if AI sentence generation is available for this teacher
+  useEffect(() => {
+    const checkAI = async () => {
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/features`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setAiEnabled(data.aiSentences === true);
+      } catch { /* AI not available — fine */ }
+    };
+    checkAI();
+  }, []);
 
   // Preview modal state for paste analysis
   const [showPreview, setShowPreview] = useState(false);
@@ -1829,6 +1848,28 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             })}
           </div>
 
+          {/* AI Generate Button — only shown if teacher has AI access */}
+          {aiEnabled && selectedWords.length > 0 && (
+            <button
+              type="button"
+              onClick={generateAISentences}
+              disabled={isGeneratingAI}
+              className="mt-3 w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg"
+            >
+              {isGeneratingAI ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Generating AI sentences...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  Generate with AI
+                </>
+              )}
+            </button>
+          )}
+
           {/* Add Custom Sentence */}
           <div className="mt-4 space-y-2">
             <label className="block text-xs font-bold text-on-surface-variant">
@@ -2247,6 +2288,35 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       </motion.div>
     );
   }
+
+  // AI sentence generation handler
+  const generateAISentences = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error("No auth token");
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || '';
+      const allPossibleWords = [...allWords, ...(customWords || [])];
+      const uniqueWordsMap = new Map(allPossibleWords.map(w => [w.id, w]));
+      const selectedWordTexts = selectedWords
+        .map(id => uniqueWordsMap.get(id)?.english)
+        .filter((w): w is string => !!w);
+      if (selectedWordTexts.length === 0) return;
+      const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ words: selectedWordTexts, difficulty: sentenceDifficulty }),
+      });
+      if (!res.ok) throw new Error("AI generation failed");
+      const { sentences } = await res.json();
+      setAssignmentSentences(sentences);
+      showToast?.("AI sentences generated!", "success");
+    } catch {
+      showToast?.("AI unavailable — using template sentences", "info");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   // Main render
   return (

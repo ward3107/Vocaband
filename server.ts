@@ -8,6 +8,7 @@ import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
+import Anthropic from "@anthropic-ai/sdk";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types.js";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils.js";
 
@@ -47,6 +48,17 @@ async function verifyToken(token: string): Promise<string | null> {
     return user.id;
   } catch (err) {
     console.error("Token verification exception:", err);
+    return null;
+  }
+}
+
+async function verifyTokenWithEmail(token: string): Promise<{ uid: string; email: string } | null> {
+  if (!supabaseAdmin) return null;
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user?.id || !user?.email) return null;
+    return { uid: user.id, email: user.email };
+  } catch {
     return null;
   }
 }
@@ -556,6 +568,136 @@ async function startServer() {
         message: error?.message || "An unexpected error occurred during text recognition.",
         details: process.env.NODE_ENV !== "production" ? String(error) : undefined,
       });
+    }
+  });
+
+  // AI feature gate — checks if the authenticated teacher has AI access
+  // Two layers: ANTHROPIC_API_KEY must be set AND teacher email in ai_allowlist
+  app.get("/api/features", async (req, res) => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.json({ aiSentences: false });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.json({ aiSentences: false });
+    }
+    const authData = await verifyTokenWithEmail(authHeader.substring(7));
+    if (!authData) return res.json({ aiSentences: false });
+    const userData = await getUserRoleAndClass(authData.uid);
+    if (!userData || userData.role !== "teacher") return res.json({ aiSentences: false });
+    const { data } = await supabaseAdmin!.from("ai_allowlist").select("email").eq("email", authData.email).maybeSingle();
+    res.json({ aiSentences: !!data });
+  });
+
+  // AI sentence generation — rate limited per teacher
+  const aiRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many AI requests. Please wait a minute before trying again." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  const DIFFICULTY_DESCRIPTIONS: Record<number, string> = {
+    1: "Simple 3-5 word sentences. Present tense. Basic SVO structure.",
+    2: "5-7 word sentences. Past/present tense. Common vocabulary.",
+    3: "7-10 word sentences. Relative clauses. Mixed tenses.",
+    4: "10-15 word sentences. Complex grammar. Conditionals.",
+  };
+
+  app.post("/api/generate-sentences", aiRateLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can generate sentences" });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "AI sentence generation not configured" });
+    }
+
+    const { words, difficulty } = req.body;
+    if (!Array.isArray(words) || words.length === 0) {
+      return res.status(400).json({ error: "words array required" });
+    }
+    if (words.length > 50) {
+      return res.status(400).json({ error: "Maximum 50 words per request" });
+    }
+    const validWords = words.filter((w: string) => typeof w === "string" && w.trim().length > 0 && w.length <= 500);
+    if (validWords.length === 0) {
+      return res.status(400).json({ error: "No valid words provided" });
+    }
+    const diff = [1, 2, 3, 4].includes(difficulty) ? difficulty : 2;
+
+    try {
+      // Check cache first
+      const cached: Record<string, string> = {};
+      const uncachedWords: string[] = [];
+
+      if (supabaseAdmin) {
+        const { data: cacheHits } = await supabaseAdmin
+          .from("sentence_cache")
+          .select("word, sentence")
+          .in("word", validWords.map((w: string) => w.toLowerCase()))
+          .eq("difficulty", diff);
+        if (cacheHits) {
+          for (const hit of cacheHits) {
+            cached[hit.word] = hit.sentence;
+          }
+        }
+      }
+
+      for (const w of validWords) {
+        if (!cached[w.toLowerCase()]) {
+          uncachedWords.push(w);
+        }
+      }
+
+      // Call AI for uncached words
+      if (uncachedWords.length > 0) {
+        const anthropic = new Anthropic({ apiKey });
+        const response = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 1024,
+          system: `You generate English sentences for Israeli EFL students (grades 4-9).
+Difficulty: ${DIFFICULTY_DESCRIPTIONS[diff]}
+Each sentence MUST contain the target word exactly as given. Output one sentence per line, no numbering, no extra text.`,
+          messages: [{ role: "user", content: `Generate one sentence for each word:\n${uncachedWords.join("\n")}` }],
+        });
+
+        const text = response.content[0].type === "text" ? response.content[0].text : "";
+        const lines = text.split("\n").filter(l => l.trim());
+
+        for (let i = 0; i < uncachedWords.length; i++) {
+          const sentence = lines[i]?.trim() || `I like the word ${uncachedWords[i]}.`;
+          cached[uncachedWords[i].toLowerCase()] = sentence;
+
+          // Store in cache (fire and forget)
+          if (supabaseAdmin) {
+            supabaseAdmin
+              .from("sentence_cache")
+              .upsert({ word: uncachedWords[i].toLowerCase(), difficulty: diff, sentence }, { onConflict: "word,difficulty" })
+              .then(() => {});
+          }
+        }
+      }
+
+      // Return sentences in the same order as input
+      const sentences = validWords.map((w: string) => cached[w.toLowerCase()] || `I like the word ${w}.`);
+      res.json({ sentences });
+    } catch (error: any) {
+      console.error("AI generation error:", error?.message || error);
+      res.status(500).json({ error: "AI sentence generation failed" });
     }
   });
 
