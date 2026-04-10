@@ -21,7 +21,7 @@ type GameState = {
 };
 
 class GameDebugger {
-  private enabled = true;
+  private enabled = false; // Disabled in production — set to true for local debugging
   private sessionId: string;
   private startTime: number;
 

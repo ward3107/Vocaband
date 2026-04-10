@@ -101,7 +101,6 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   const isDisabled = !!feedback; // Disable on ANY feedback (correct, wrong, or show-answer)
 
   const handleClick = () => {
-    console.log('[AnswerButton] Clicked', { optionId: option.id, currentWordId, isDisabled, feedback, gameMode });
     const gameDebug = getGameDebugger();
     gameDebug.logButtonClick({
       button: 'answer_option',
@@ -111,7 +110,6 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
       feedback,
     });
     if (!isDisabled) {
-      console.log('[AnswerButton] Calling onAnswer', { option });
       onAnswer(option);
     } else {
       console.warn('[AnswerButton] Click blocked - button is disabled', { feedback, isDisabled });
@@ -156,19 +154,6 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
   currentIndex: number;
   onAnswer: (w: Word) => void;
 }) => {
-  // Log debug info when this component renders
-  console.log('[Classic Mode Rendering]', {
-    gameMode,
-    currentWordId: currentWord?.id,
-    currentWordEnglish: currentWord?.english,
-    optionsCount: options.length,
-    optionsIds: options.map(o => o.id),
-    feedback,
-    hiddenOptions,
-    gameWordsCount,
-    currentIndex
-  });
-
   // Handle error cases
   if (!currentWord) {
     console.error('[Classic Mode ERROR] No currentWord!', { gameMode, currentIndex, gameWordsCount });
@@ -926,7 +911,6 @@ export default function App() {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Quick Play Monitor] Subscribed to progress updates (visibility-aware)');
         }
       });
 
@@ -986,7 +970,6 @@ export default function App() {
         (payload) => {
           // Only kick if the deleted row belongs to THIS student
           if (payload.old && (payload.old as any).student_uid === user.uid) {
-            console.log('[Quick Play] Received kick notification for this student');
             setQuickPlayKicked(true);
             setActiveAssignment(null);
           }
@@ -1203,7 +1186,6 @@ export default function App() {
     isProcessingQueueRef.current = true;
 
     const queue = saveQueueRef.current.splice(0, 10); // Process up to 10 saves at once
-    console.log('[Save Queue] Processing batch:', queue.length);
 
     try {
       await Promise.all(queue.map(fn => fn().catch(err => console.error('[Save Queue] Item failed:', err))));
@@ -1231,7 +1213,6 @@ export default function App() {
 
   // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
   const cleanupSessionData = () => {
-    console.log('[Cleanup] Clearing session data and save queue');
     // Clear save queue to prevent any further DB operations
     saveQueueRef.current = [];
     // Clear any pending save timer
@@ -1323,7 +1304,6 @@ export default function App() {
         clearTimeout(saveQueueTimerRef.current);
       }
       if (saveQueueRef.current.length > 0) {
-        console.log('[Save Queue] Flushing on unmount:', saveQueueRef.current.length);
         Promise.all(saveQueueRef.current.map(fn => fn().catch(console.error))).catch(console.error);
         saveQueueRef.current = [];
       }
@@ -1336,7 +1316,6 @@ export default function App() {
     const flushInterval = setInterval(() => {
       // Only flush if user exists, not actively saving, and queue has items
       if (user && !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
-        console.log('[Save Queue] Periodic flush:', saveQueueRef.current.length);
         processSaveQueue();
       }
     }, 5000); // Every 5 seconds
@@ -1350,13 +1329,11 @@ export default function App() {
     const now = Date.now();
     // Only emit once per 2 seconds max, or if it's the final score (game finished)
     if (now - lastScoreEmitRef.current > 2000 || isFinished) {
-      console.log('[Score Emit] Throttled emit:', newScore);
       lastScoreEmitRef.current = now;
       setTimeout(() => {
         socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
       }, 0);
     } else {
-      console.log('[Score Emit] Skipped (throttled):', newScore);
     }
   };
 
@@ -1389,7 +1366,6 @@ export default function App() {
       setTimeout(() => speak(phrase), 500);
 
       // Force emit final score to server (bypass throttle)
-      console.log('[Game Finished] Emitting final score:', score);
       if (socket && user?.classCode) {
         setTimeout(() => {
           socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score });
@@ -2047,9 +2023,6 @@ export default function App() {
       const extractedWords = ocrData.words || [];
       const rawText = ocrData.raw_text || '';
 
-      console.log('OCR service response:', ocrData);
-      console.log('Extracted English words:', extractedWords);
-      console.log('Raw text for reference:', rawText.substring(0, 100) + '...');
 
       // Create Word objects for custom assignment
       const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => ({
@@ -2061,9 +2034,7 @@ export default function App() {
         recProd: 'Prod'
       }));
 
-      console.log('Created custom words count:', customWordsFromOCR.length);
       if (customWordsFromOCR.length > 0) {
-        console.log('Custom words:', customWordsFromOCR.map(w => w.english));
       }
 
       if (customWordsFromOCR.length === 0) {
@@ -2414,43 +2385,18 @@ export default function App() {
     const wordsToCheck = wordsOverride ?? selectedWords;
     const modesToCheck = modesOverride ?? assignmentModes;
 
-    console.log('[handleSaveAssignment] START', {
-      editingAssignment: editingAssignment?.id,
-      selectedClass: selectedClass?.id,
-      selectedWordsCount: selectedWords.length,
-      wordsOverrideCount: wordsOverride?.length ?? 0,
-      actualWordsCount: wordsToCheck.length,
-      customWordsCount: customWords.length,
-      assignmentTitle,
-      assignmentModesCount: modesToCheck.length,
-    });
-
     // For editing, allow custom-only assignments
     const hasWords = editingAssignment
       ? wordsToCheck.length > 0 || customWords.length > 0
       : wordsToCheck.length > 0;
 
-    console.log('[handleSaveAssignment] Validation check', {
-      hasWords,
-      hasTitle: !!assignmentTitle,
-      hasClass: !!selectedClass,
-      wordsToCheckCount: wordsToCheck.length,
-    });
-
     if (!selectedClass || !hasWords || !assignmentTitle) {
-      console.warn('[handleSaveAssignment] BLOCKED - Missing required fields', {
-        hasSelectedClass: !!selectedClass,
-        hasWords,
-        hasTitle: !!assignmentTitle,
-        wordsToCheckCount: wordsToCheck.length,
-      });
       showToast("Please enter a title and select words.", "error");
       return;
     }
 
     // Check if there's at least one database word (not custom/session-only)
     const hasDbWords = wordsToCheck.some(id => id > 0);
-    console.log('[handleSaveAssignment] DB words check', { hasDbWords, editingAssignment: !!editingAssignment });
 
     if (!hasDbWords && !editingAssignment) {
       console.warn('[handleSaveAssignment] BLOCKED - No DB words for new assignment');
@@ -2470,13 +2416,6 @@ export default function App() {
     const wordsToCheckSet = new Set(wordsToCheck);
     const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
 
-    console.log('[handleSaveAssignment] Words prepared', {
-      allPossibleCount: allPossibleWords.length,
-      uniqueWordsCount: uniqueWords.length,
-      wordsToSaveCount: wordsToSave.length,
-      wordsToCheck: wordsToCheck,
-    });
-
     const assignmentData = {
       classId: selectedClass.id,
       wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
@@ -2488,15 +2427,8 @@ export default function App() {
       sentenceDifficulty,
     };
 
-    console.log('[handleSaveAssignment] Assignment data prepared', {
-      ...assignmentData,
-      wordsCount: assignmentData.words.length,
-      wordIdsCount: assignmentData.wordIds.length,
-    });
-
     try {
       if (editingAssignment) {
-        console.log('[handleSaveAssignment] UPDATING existing assignment', { id: editingAssignment.id });
         // UPDATE existing assignment
         const updatePayload: Record<string, unknown> = {
           class_id: assignmentData.classId,
@@ -2511,7 +2443,6 @@ export default function App() {
           updatePayload.sentences = assignmentData.sentences;
         }
 
-        console.log('[handleSaveAssignment] Sending update to Supabase', { updatePayload });
         const { error } = await supabase
           .from('assignments')
           .update(updatePayload)
@@ -2521,7 +2452,6 @@ export default function App() {
           console.error('[handleSaveAssignment] UPDATE failed', error);
           throw error;
         }
-        console.log('[handleSaveAssignment] UPDATE successful');
         showToast("Assignment updated successfully!", "success");
 
         // Update the assignment in the list
@@ -2534,7 +2464,6 @@ export default function App() {
         // Also update editingAssignment so the wizard shows the new data
         setEditingAssignment(prev => prev ? { ...prev, ...assignmentData } : null);
       } else {
-        console.log('[handleSaveAssignment] CREATING new assignment');
         // CREATE new assignment
         const newAssignment = {
           ...assignmentData,
@@ -2555,21 +2484,17 @@ export default function App() {
           insertPayload.sentences = newAssignment.sentences;
         }
 
-        console.log('[handleSaveAssignment] Sending insert to Supabase', { insertPayload });
         const { error } = await supabase.from('assignments').insert(insertPayload);
         if (error) {
           console.error('[handleSaveAssignment] INSERT failed', error);
           throw error;
         }
-        console.log('[handleSaveAssignment] INSERT successful');
         showToast("Assignment created successfully!", "success");
 
         // Refresh assignments list
-        console.log('[handleSaveAssignment] Fetching assignments list');
         await fetchTeacherAssignments();
 
         // Only redirect and reset form when creating (not when editing)
-        console.log('[handleSaveAssignment] Redirecting to dashboard');
         setView("teacher-dashboard");
         setSelectedWords([]);
         setAssignmentTitle("");
@@ -2583,7 +2508,6 @@ export default function App() {
       console.error('[handleSaveAssignment] CATCH - Error occurred:', error);
       handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
     }
-    console.log('[handleSaveAssignment] END');
   };
 
   // Preview the assignment with selected words and modes (for teachers)
@@ -3512,7 +3436,6 @@ export default function App() {
 
   // Debug: log state when in game view
   if (view === "game") {
-    console.log('[Game View Debug] view:', view, 'showModeSelection:', showModeSelection, 'assignmentWords.length:', assignmentWords.length);
   }
 
   const options = useMemo(() => {
@@ -3610,7 +3533,6 @@ export default function App() {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder") {
       // Only speak if this is a different word than the last one we spoke
       if (lastSpokenWordRef.current !== currentWord.id) {
-        console.log('[Auto-pronunciation] Speaking word:', { wordId: currentWord.id, word: currentWord.english, gameMode });
         gameDebug.logPronunciation({ wordId: currentWord.id, word: currentWord.english, method: 'auto', success: true });
         lastSpokenWordRef.current = currentWord.id;
         // Small delay to ensure UI has updated before speaking
@@ -3623,7 +3545,6 @@ export default function App() {
 
   // Reset last spoken word when game mode changes (to re-pronounce the current word)
   useEffect(() => {
-    console.log('[Game Mode Change] Resetting pronunciation tracker for mode:', gameMode);
     lastSpokenWordRef.current = null;
   }, [gameMode]);
 
@@ -3701,13 +3622,11 @@ export default function App() {
   };
 
   const handleSentenceCheck = () => {
-    console.log('[handleSentenceCheck] Checking sentence');
     const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
     const validSentences = sentences.filter(s => s.trim().length > 0);
     const target = validSentences[sentenceIndex]?.trim().toLowerCase();
     const built = builtSentence.join(" ").toLowerCase();
     if (built === target) {
-      console.log('[handleSentenceCheck] Correct! Moving to next sentence');
       setSentenceFeedback("correct");
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
@@ -3731,7 +3650,6 @@ export default function App() {
         }
       }, 1800);
     } else {
-      console.log('[handleSentenceCheck] Wrong answer');
       setSentenceFeedback("wrong");
 
       // Use feedbackTimeoutRef for consistent feedback clearing
@@ -3987,7 +3905,6 @@ export default function App() {
   };
 
   const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
-    console.log('[handleMatchClick] Called', { item, matchedIds, isMatchingProcessing });
 
     gameDebug.logButtonClick({
       button: 'matching_card',
@@ -3998,7 +3915,6 @@ export default function App() {
     });
 
     if (matchedIds.includes(item.id) || isMatchingProcessing) {
-      console.log('[handleMatchClick] Blocked - already matched or processing', { item, matchedIds, isMatchingProcessing });
       return;
     }
 
@@ -4026,7 +3942,6 @@ export default function App() {
 
         if (matchedIds.length + 1 === matchingPairs.length / 2) {
           // All matched - finish game
-          console.log('[handleMatchClick] All pairs matched, finishing game');
           if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
           feedbackTimeoutRef.current = setTimeout(() => {
             setIsFinished(true);
@@ -4036,7 +3951,6 @@ export default function App() {
           }, 500);
         } else {
           // Allow next match after brief delay
-          console.log('[handleMatchClick] Match made, allowing next selection');
           if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
           feedbackTimeoutRef.current = setTimeout(() => {
             isProcessingRef.current = false;
@@ -4051,10 +3965,8 @@ export default function App() {
   };
 
   const handleAnswer = (selectedWord: Word) => {
-    console.log('[handleAnswer] Called with:', { selectedWordId: selectedWord.id, selectedWordEnglish: selectedWord.english, currentWordId: currentWord?.id, currentWordEnglish: currentWord?.english, feedback, gameMode });
 
     if (feedback) {
-      console.log('[handleAnswer] Blocked - feedback already set:', feedback);
       return;
     }
 
@@ -4063,7 +3975,6 @@ export default function App() {
       return;
     }
 
-    console.log('[handleAnswer] Answer selected:', { selectedId: selectedWord.id, correctId: currentWord.id, isCorrect: selectedWord.id === currentWord.id });
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
@@ -4084,7 +3995,6 @@ export default function App() {
       // Auto-skip quickly after correct answer (clear any pending timeout first)
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = setTimeout(() => {
-        console.log('[Auto-advance] Moving to next word after correct answer');
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
@@ -4107,7 +4017,6 @@ export default function App() {
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
         feedbackTimeoutRef.current = setTimeout(() => {
-          console.log('[Auto-advance] Moving to next word after max attempts');
           if (currentIndex < gameWords.length - 1) {
             setCurrentIndex(currentIndex + 1);
             setFeedback(null);
@@ -4128,7 +4037,6 @@ export default function App() {
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
         feedbackTimeoutRef.current = setTimeout(() => {
-          console.log('[Auto-advance] Clearing feedback, allowing retry');
           setFeedback(null);
         }, WRONG_FEEDBACK_DELAY_MS);
       }
@@ -4136,7 +4044,6 @@ export default function App() {
   };
 
   const handleTFAnswer = (isTrue: boolean) => {
-    console.log('[handleTFAnswer] Called - isTrue:', isTrue, 'feedback:', feedback, 'tfOption:', tfOption, 'currentWord:', currentWord);
 
     gameDebug.logButtonClick({
       button: isTrue ? 'true_button' : 'false_button',
@@ -4147,7 +4054,6 @@ export default function App() {
     });
 
     if (feedback) {
-      console.log('[handleTFAnswer] Blocked - feedback already set:', feedback);
       gameDebug.logButtonClick({
         button: isTrue ? 'true_button' : 'false_button',
         gameMode,
@@ -4160,7 +4066,6 @@ export default function App() {
 
     // Guard against null/undefined tfOption
     if (!tfOption || !currentWord) {
-      console.log('[handleTFAnswer] Blocked - tfOption or currentWord is null', { tfOption, currentWord });
       gameDebug.logError({
         error: 'tfOption or currentWord is null',
         context: 'handleTFAnswer',
@@ -4169,7 +4074,6 @@ export default function App() {
       return;
     }
 
-    console.log('[handleTFAnswer] Processing answer - isTrue:', isTrue, 'isActuallyTrue:', tfOption?.id === currentWord.id);
     const isActuallyTrue = tfOption?.id === currentWord.id;
     const isCorrect = isTrue === isActuallyTrue;
 
@@ -4183,7 +4087,6 @@ export default function App() {
     });
 
     if (isCorrect) {
-      console.log('[handleTFAnswer] CORRECT - showing feedback and auto-advancing');
       setFeedback("correct");
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
@@ -4199,7 +4102,6 @@ export default function App() {
         reason: 'correct_answer',
       });
       feedbackTimeoutRef.current = setTimeout(() => {
-        console.log('[handleTFAnswer] Auto-advance after correct');
         if (currentIndex < gameWords.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setFeedback(null);
@@ -4209,7 +4111,6 @@ export default function App() {
         }
       }, AUTO_SKIP_DELAY_MS);
     } else {
-      console.log('[handleTFAnswer] WRONG - showing error feedback');
       setFeedback("wrong");
       playWrong();
       if (!mistakes.includes(currentWord.id)) {
@@ -4225,14 +4126,12 @@ export default function App() {
       // Clear feedback after delay (clear any pending timeout first)
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = setTimeout(() => {
-        console.log('[handleTFAnswer] Clearing wrong feedback');
         setFeedback(null);
       }, WRONG_FEEDBACK_DELAY_MS);
     }
   };
 
   const handleFlashcardAnswer = (knewIt: boolean) => {
-    console.log('[handleFlashcardAnswer] Answer:', { knewIt, currentWord: currentWord?.english });
 
     gameDebug.logButtonClick({
       button: knewIt ? 'flashcard_got_it' : 'flashcard_still_learning',
@@ -4262,12 +4161,10 @@ export default function App() {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     feedbackTimeoutRef.current = setTimeout(() => {
       if (currentIndex < gameWords.length - 1) {
-        console.log('[handleFlashcardAnswer] Moving to next word');
         setCurrentIndex(currentIndex + 1);
         setIsFlipped(false);
         isProcessingRef.current = false;
       } else {
-        console.log('[handleFlashcardAnswer] Game finished');
         setIsFinished(true);
         saveScore(currentScore);
       }
@@ -4286,11 +4183,9 @@ export default function App() {
     });
 
     if (feedback) {
-      console.log('[handleSpellingSubmit] Blocked - feedback already set:', feedback);
       return;
     }
 
-    console.log('[handleSpellingSubmit] Checking answer:', spellingInput, 'vs', currentWord.english);
 
     const isCorrect = spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase();
 
@@ -4304,7 +4199,6 @@ export default function App() {
     });
 
     if (isCorrect) {
-      console.log('[handleSpellingSubmit] Correct! Moving to next word');
       setFeedback("correct");
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
@@ -4331,7 +4225,6 @@ export default function App() {
         }
       }, AUTO_SKIP_DELAY_MS);
     } else {
-      console.log('[handleSpellingSubmit] Wrong answer');
       setFeedback("wrong");
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
@@ -6045,28 +5938,22 @@ export default function App() {
                   buttonText="Create"
                   buttonVariant="qr-purple"
                   onClick={() => {
-                    console.log('[Quick Online Challenge Button] Clicked! Clearing session...');
                     // Set flag to skip session restoration on next render
                     try {
                       sessionStorage.setItem('vocaband_skip_restore', 'true');
-                      console.log('[Quick Online Challenge Button] Set skip restore flag');
                     } catch (e) {
-                      console.warn('Failed to set skip restore flag:', e);
                     }
                     // Clear any session parameter to avoid loading student view
                     window.history.pushState({}, '', window.location.pathname);
                     // Clear any saved Quick Play session to start fresh
                     try {
                       localStorage.removeItem('vocaband_quick_play_session');
-                      console.log('[Quick Online Challenge Button] Cleared localStorage session');
                     } catch (e) {
-                      console.warn('Failed to clear saved session:', e);
                     }
                     cleanupSessionData(); // Clear save queue and timers
                     setQuickPlayActiveSession(null);
                     setQuickPlaySessionCode(null);
                     setView("quick-play-setup");
-                    console.log('[Quick Online Challenge Button] State updated, view should be quick-play-setup');
                   }}
                 />
               </div>
@@ -6204,8 +6091,6 @@ export default function App() {
                       }}
                       onDelete={() => handleDeleteClass(c.id)}
                       onEditAssignment={(assignment) => {
-                        console.log('[EDIT BUTTON] Clicked! Assignment:', assignment);
-                        console.log('[EDIT BUTTON] Current view before:', view);
                         setEditingAssignment(assignment);
                         const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
                         const unknownWords: Word[] = (assignment.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
@@ -6222,12 +6107,9 @@ export default function App() {
                         else if (unknownWords.length > 0) setSelectedLevel("Custom");
                         else setSelectedLevel("Set 2");
                         setSelectedClass(c);
-                        console.log('[EDIT BUTTON] Setting view to create-assignment');
                         setView("create-assignment");
-                        console.log('[EDIT BUTTON] State updates queued');
                       }}
                       onDuplicateAssignment={(assignment) => {
-                        console.log('[DUPLICATE BUTTON] Clicked! Assignment:', assignment);
                         setEditingAssignment(assignment);
                         const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
                         const unknownWords: Word[] = (assignment.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
@@ -7186,7 +7068,6 @@ export default function App() {
               words: result.words
             }));
           } catch (e) {
-            console.warn('Failed to save session to localStorage:', e);
           }
 
           setView("quick-play-teacher-monitor");
@@ -8853,7 +8734,6 @@ export default function App() {
                 <div className="flex justify-center gap-2 mt-0.5 sm:mt-0">
                   <button
                     onClick={() => {
-                      console.log('[Pronunciation Button] Clicked', { wordId: currentWord?.id, word: currentWord?.english });
                       gameDebug.logButtonClick({
                         button: 'pronunciation',
                         gameMode,
