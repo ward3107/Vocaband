@@ -24,3 +24,4 @@ test-ocr-flow.js
 venv_ocr/
 __pycache__/
 .wrangler/
+test-results/
