@@ -22,9 +22,8 @@ if (typeof window !== 'undefined') {
   globalLanguage = getInitialLanguage();
   // Set initial lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
   document.documentElement.setAttribute('lang', globalLanguage);
-  // Set initial dir attribute for RTL languages
-  const initialDir = globalLanguage === 'he' || globalLanguage === 'ar' ? 'rtl' : 'ltr';
-  document.documentElement.setAttribute('dir', initialDir);
+  // Note: dir is NOT set on <html> globally — each page manages its own dir
+  // to prevent RTL leaking into the landing page which must always be LTR.
 }
 
 const setGlobalLanguage = (lang: Language) => {
@@ -33,9 +32,8 @@ const setGlobalLanguage = (lang: Language) => {
     localStorage.setItem(LANGUAGE_KEY, lang);
     // Set lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
     document.documentElement.setAttribute('lang', lang);
-    // Set dir attribute for RTL languages (WCAG 2.0 AA 1.3.4)
-    const dir = lang === 'he' || lang === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.setAttribute('dir', dir);
+    // Note: dir is NOT set on <html> globally — each page manages its own dir
+    // to prevent RTL leaking into the landing page which must always be LTR.
   }
   // Notify all listeners
   listeners.forEach(listener => listener(lang));

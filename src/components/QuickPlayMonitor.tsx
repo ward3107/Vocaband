@@ -23,6 +23,7 @@ interface QuickPlaySession {
   sessionCode: string;
   wordIds: number[];
   words: Word[];
+  allowedModes?: string[];
 }
 
 interface QuickPlayMonitorProps {
@@ -123,8 +124,8 @@ const MUSIC_TRACKS = [
 
 const getMusicUrl = (file: string): string => {
   const cloudflareUrl = import.meta.env.VITE_CLOUDFLARE_URL;
-  if (cloudflareUrl) return `${cloudflareUrl}/music/${file}.wav`;
-  return `/music/${file}.wav`;
+  if (cloudflareUrl) return `${cloudflareUrl}/game-music/${file}.mp3`;
+  return `/game-music/${file}.mp3`;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -138,6 +139,7 @@ export default function QuickPlayMonitor({
 }: QuickPlayMonitorProps) {
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [endModal, setEndModal] = useState(false);
+  const [showWordsModal, setShowWordsModal] = useState(false);
   const [theme, setTheme] = useState<ThemeKey>('classic');
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
@@ -153,9 +155,22 @@ export default function QuickPlayMonitor({
 
   const t = THEMES[theme];
 
-  // QR URL
+  // QR URL - Use local IP instead of localhost for mobile scanning
   const getNetworkOrigin = () => {
-    return window.location.origin;
+    const origin = window.location.origin;
+    // If running on localhost, try to use the local network IP for QR code scanning
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // Check if we have a stored local IP from previous detection
+      try {
+        const storedIp = localStorage.getItem('vocaband_local_ip');
+        if (storedIp) {
+          return `http://${storedIp}:3000`;
+        }
+      } catch (e) {}
+      // Fallback: use localhost (teacher can set vocaband_local_ip in localStorage)
+      return 'http://localhost:3000';
+    }
+    return origin;
   };
   const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
 
@@ -478,10 +493,13 @@ export default function QuickPlayMonitor({
           <Users size={22} />
           <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Monitor</span>
         </div>
-        <div className={`flex flex-col items-center ${t.text} p-2 opacity-40`}>
+        <button
+          onClick={() => setShowWordsModal(true)}
+          className={`flex flex-col items-center ${t.text} p-2 hover:opacity-60 transition-opacity`}
+        >
           <BookOpen size={22} />
           <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Words</span>
-        </div>
+        </button>
         <button
           onClick={() => setEndModal(true)}
           className={`flex flex-col items-center ${t.accentBg} text-white rounded-full p-3 sm:p-4 scale-110 -translate-y-3 shadow-lg active:scale-95 transition-all`}
@@ -615,6 +633,65 @@ export default function QuickPlayMonitor({
                   End Session
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Words Modal ────────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showWordsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                    <BookOpen size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900">Selected Words</h2>
+                    <p className="text-sm text-gray-500">{session.words.length} words in this session</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowWordsModal(false)}
+                  className="w-10 h-10 bg-stone-100 hover:bg-stone-200 rounded-full flex items-center justify-center transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {session.words.map((word, index) => (
+                    <div
+                      key={word.id}
+                      className="bg-stone-50 border-2 border-stone-200 rounded-2xl p-3 text-center hover:border-blue-300 transition-colors"
+                    >
+                      <div className="text-xs text-stone-400 font-bold mb-1">#{index + 1}</div>
+                      <div className="text-base font-black text-stone-900">{word.english}</div>
+                      <div className="text-sm text-stone-600 mt-1">{word.hebrew || word.arabic || '—'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowWordsModal(false)}
+                className="mt-6 w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         )}

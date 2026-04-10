@@ -45,7 +45,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               transition={{ duration: 0.6, ease: "easeOut" }}
               className="text-xs md:text-sm font-black tracking-widest uppercase opacity-90 mb-2 md:mb-4"
             >
-              Israeli English Curriculum • Bands Vocabulary
+              Israeli English Curriculum • Vocabulary Sets
             </motion.p>
 
             {/* Headline */}
@@ -64,7 +64,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
               className="text-base md:text-xl font-bold opacity-90 mb-6 md:mb-12 max-w-2xl leading-relaxed px-2"
             >
-              The digital playground for Israeli EFL students. Master your bands vocabulary through play.
+              The digital playground for Israeli EFL students. Master vocabulary through play.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -131,34 +131,76 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </p>
               </div>
               {/* Game Modes - Two columns, animate from both sides */}
-              <div className="mt-12 grid grid-cols-2 gap-3">
+              <div className="mt-12 grid grid-cols-2 gap-4">
                 {/* Left column - slide from left */}
-                <div className="flex flex-col gap-3">
-                  {["📝 Classic", "🎧 Listening", "✍️ Spelling", "🔗 Matching", "✓ True-false"].map((mode, i) => (
+                <div className="flex flex-col gap-4">
+                  {[
+                    { emoji: "📝", name: "Classic" },
+                    { emoji: "🎧", name: "Listening" },
+                    { emoji: "✍️", name: "Spelling" },
+                    { emoji: "🔗", name: "Matching" },
+                    { emoji: "✓", name: "True-false" }
+                  ].map((mode, i) => (
                     <motion.div
-                      key={mode}
+                      key={mode.name}
                       initial={{ opacity: 0, x: -50 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
+                      whileHover={{ scale: 1.05 }}
                       transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-                      className="px-4 py-2 bg-surface-container-lowest rounded-full font-black text-sm shadow-sm text-center"
+                      className="px-4 py-3 bg-surface-container-lowest rounded-2xl font-black shadow-sm flex items-center gap-3"
                     >
-                      {mode}
+                      <motion.span
+                        className="text-3xl"
+                        animate={{
+                          y: [0, -5, 0],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          delay: i * 0.2,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        {mode.emoji}
+                      </motion.span>
+                      <span className="text-sm">{mode.name}</span>
                     </motion.div>
                   ))}
                 </div>
                 {/* Right column - slide from right */}
-                <div className="flex flex-col gap-3">
-                  {["🎴 Flashcards", "🔤 Scramble", "🔄 Reverse", "🔡 Letter-sounds", "🧩 Sentence-builder"].map((mode, i) => (
+                <div className="flex flex-col gap-4">
+                  {[
+                    { emoji: "🎴", name: "Flashcards" },
+                    { emoji: "🔤", name: "Scramble" },
+                    { emoji: "🔄", name: "Reverse" },
+                    { emoji: "🔡", name: "Letter-sounds" },
+                    { emoji: "🧩", name: "Sentence-builder" }
+                  ].map((mode, i) => (
                     <motion.div
-                      key={mode}
+                      key={mode.name}
                       initial={{ opacity: 0, x: 50 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
+                      whileHover={{ scale: 1.05 }}
                       transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-                      className="px-4 py-2 bg-surface-container-lowest rounded-full font-black text-sm shadow-sm text-center"
+                      className="px-4 py-3 bg-surface-container-lowest rounded-2xl font-black shadow-sm flex items-center gap-3"
                     >
-                      {mode}
+                      <motion.span
+                        className="text-3xl"
+                        animate={{
+                          y: [0, -5, 0],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          delay: i * 0.2 + 0.3,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        {mode.emoji}
+                      </motion.span>
+                      <span className="text-sm">{mode.name}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -387,14 +429,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             className="max-w-4xl mx-auto text-center mb-16"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline tracking-tighter mb-4">
-              Master Your Band Levels
+              Master Your Vocabulary Sets
             </h2>
             <p className="text-xl font-bold text-on-surface-variant">
-              We align perfectly with the Israeli EFL curriculum for Bands I, II, and III.
+              We align perfectly with the Israeli English curriculum across three comprehensive vocabulary sets.
             </p>
           </motion.div>
           <div className="max-w-5xl mx-auto space-y-12">
-            {/* Band I */}
+            {/* Set 1 */}
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
@@ -402,7 +444,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               className="space-y-4"
             >
               <div className="flex justify-between items-end font-black">
-                <span className="text-2xl">Band I (Foundation)</span>
+                <span className="text-2xl">Set 1 (Foundation)</span>
                 <span className="text-primary">75% Complete</span>
               </div>
               <div className="relative h-8">
@@ -428,7 +470,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </div>
             </motion.div>
 
-            {/* Band II */}
+            {/* Set 2 */}
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
@@ -437,7 +479,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               className="space-y-4"
             >
               <div className="flex justify-between items-end font-black">
-                <span className="text-2xl">Band II (Intermediate)</span>
+                <span className="text-2xl">Set 2 (Intermediate)</span>
                 <span className="text-secondary">45% Complete</span>
               </div>
               <div className="relative h-8">
@@ -463,7 +505,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </div>
             </motion.div>
 
-            {/* Band III */}
+            {/* Set 3 */}
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
@@ -472,7 +514,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               className="space-y-4"
             >
               <div className="flex justify-between items-end font-black">
-                <span className="text-2xl">Band III (Academic)</span>
+                <span className="text-2xl">Set 3 (Academic)</span>
                 <span className="text-tertiary">20% Complete</span>
               </div>
               <div className="relative h-8">

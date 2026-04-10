@@ -17,6 +17,8 @@
     "format:check": "prettier --check src",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npx playwright test --config e2e/playwright.config.ts",
+    "test:e2e:ui": "npx playwright test --config e2e/playwright.config.ts --ui",
     "audit": "npm audit",
     "install:prod": "npm install --legacy-peer-deps"
   },
@@ -44,14 +46,15 @@
     "recharts": "^3.8.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "tesseract.js": "^7.0.0",
-    "vite": "^6.2.0"
+    "tesseract.js": "^7.0.0"
   },
   "overrides": {
     "serialize-javascript": "^7.0.4"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.31.2",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.59.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -76,8 +79,9 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
+    "vite": "^6.4.2",
     "vite-plugin-pwa": "^0.19.8",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "xlsx": "^0.18.5"
   }
 }

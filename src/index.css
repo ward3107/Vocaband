@@ -105,6 +105,38 @@ h1, h2, h3, h4, h5, h6, .font-headline {
    Utility Classes
    ============================================================================= */
 
+/* Stone-200 variant utilities for word selection UI */
+.bg-stone-200-lowest { background-color: #ffffff; }
+.bg-stone-200 { background-color: #f5f5f4; }
+.bg-stone-200-high { background-color: #e7e5e4; }
+.bg-stone-200-highest { background-color: #d6d3d1; }
+.bg-blue-100\/10 { background-color: rgba(219, 234, 254, 0.1); }
+.bg-blue-100\/5 { background-color: rgba(219, 234, 254, 0.05); }
+.bg-blue-100\/20 { background-color: rgba(219, 234, 254, 0.2); }
+
+/* Hover variants for stone-200 utilities */
+.hover\:bg-stone-200-high:hover { background-color: #e7e5e4; }
+.hover\:bg-stone-200-highest:hover { background-color: #d6d3d1; }
+
+/* Text color utilities */
+.text-primary-dim { color: #0046bb; }
+.hover\:text-primary-dim:hover { color: #0046bb; }
+
+/* Border color utilities */
+.border-surface-container-highest { border-color: #e6dbd3; }
+.border-stone-300\/10 { border-color: rgba(214, 211, 209, 0.1); }
+.border-stone-300\/20 { border-color: rgba(214, 211, 209, 0.2); }
+.border-stone-300\/30 { border-color: rgba(214, 211, 209, 0.3); }
+.border-stone-300\/40 { border-color: rgba(214, 211, 209, 0.4); }
+.hover\:border-stone-300:hover { border-color: #d6d3d1; }
+
+/* Additional utilities */
+.hover\:border-primary\/30:hover { border-color: rgba(0, 80, 212, 0.3); }
+.hover\:border-primary\/50:hover { border-color: rgba(0, 80, 212, 0.5); }
+.border-primary\/30 { border-color: rgba(0, 80, 212, 0.3); }
+.bg-stone-100 { background-color: #f5f5f4; }
+.text-stone-600\/50 { color: rgba(87, 83, 78, 0.5); }
+
 /* Signature gradient for primary actions */
 .signature-gradient {
   background: linear-gradient(135deg, #2563eb 0%, #9333ea 50%, #ec4899 100%);

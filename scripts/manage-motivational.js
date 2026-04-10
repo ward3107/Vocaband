@@ -14,11 +14,11 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: '.env.local' });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Error: Missing Supabase credentials');
-  console.error('Please ensure VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY are set in .env.local');
+  console.error('Please ensure VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in .env.local');
   process.exit(1);
 }
 
