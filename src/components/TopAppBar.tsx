@@ -70,10 +70,10 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         {showBack && (
           <button
             onClick={onBack}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-high text-on-surface hover:scale-105 transition-transform"
+            className="w-10 h-10 flex items-center justify-center rounded-full signature-gradient shadow-lg shadow-blue-500/20 text-white hover:scale-105 active:scale-95 transition-transform"
             aria-label="Go back"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </button>
         )}
         <div className="flex flex-col">
