@@ -227,7 +227,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
       />
 
       <div className="max-w-2xl mx-auto">
-        <Stepper />
+        <Stepper currentStep={currentStep} mode={mode} />
 
         <AnimatePresence mode="wait">
           {currentStep === 1 && (

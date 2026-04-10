@@ -201,10 +201,10 @@ const PHRASE_LABELS: Record<string, string> = {
 // Use a window property to ensure the toggle can access it
 // Set to true to use TTS by default instead of MP3 files
 if (typeof window !== 'undefined') {
-  (window as any).__forceTTSMode = true;  // ← Changed to true for TTS by default
+  (window as any).__forceTTSMode = false;
 }
 
-let forceTTSMode = true;  // ← Changed to true for TTS by default
+let forceTTSMode = false;
 
 export const setForceTTSMode = (force: boolean) => {
   forceTTSMode = force;

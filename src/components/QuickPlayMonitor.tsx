@@ -167,8 +167,8 @@ export default function QuickPlayMonitor({
           return `http://${storedIp}:3000`;
         }
       } catch (e) {}
-      // Default to common local IP for this network
-      return 'http://10.0.0.6:3000';
+      // Fallback: use localhost (teacher can set vocaband_local_ip in localStorage)
+      return 'http://localhost:3000';
     }
     return origin;
   };

@@ -979,8 +979,7 @@ export default function App() {
       )
       .subscribe();
 
-    // 2. OPTIMIZED: Subscribe to progress deletes (teacher kicked this student)
-    // Use a simpler approach - just check if we still have any progress record
+    // 2. Subscribe to progress deletes for THIS student only (teacher kicked)
     const kickChannel = supabase
       .channel(`qp-kick-${sessionId}-${user.uid}`)
       .on(
@@ -991,13 +990,13 @@ export default function App() {
           table: 'progress',
           filter: `assignment_id=eq.${sessionId}`
         },
-        () => {
-          // OPTIMIZED: Check using cached local state instead of DB query
-          // The Socket.IO server already tracks liveSessions, so we can trust that
-          // if we get a DELETE notification and we're not in any session, we were kicked
-          console.log('[Quick Play] Received kick notification');
-          setQuickPlayKicked(true);
-          setActiveAssignment(null);
+        (payload) => {
+          // Only kick if the deleted row belongs to THIS student
+          if (payload.old && (payload.old as any).student_uid === user.uid) {
+            console.log('[Quick Play] Received kick notification for this student');
+            setQuickPlayKicked(true);
+            setActiveAssignment(null);
+          }
         }
       )
       .subscribe();
@@ -1344,7 +1343,7 @@ export default function App() {
   useEffect(() => {
     const flushInterval = setInterval(() => {
       // Only flush if user exists, not actively saving, and queue has items
-      if (!user || !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
+      if (user && !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
         console.log('[Save Queue] Periodic flush:', saveQueueRef.current.length);
         processSaveQueue();
       }
