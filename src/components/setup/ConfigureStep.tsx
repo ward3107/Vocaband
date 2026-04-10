@@ -115,6 +115,11 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   const [customSentenceInput, setCustomSentenceInput] = useState('');
   const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
 
+  // Cleanup on unmount: close any open modals/overlays
+  useEffect(() => {
+    return () => { setEditingSentenceIndex(null); };
+  }, []);
+
   const isAssignment = mode === 'assignment';
 
   // Toggle a single game mode on/off

@@ -9,6 +9,7 @@ export interface Word {
   imageUrl?: string;
   level?: "Set 1" | "Set 2" | "Set 3" | "Custom";
   core?: "Core I" | "Core II";
+  isCore?: boolean;
   pos?: string; // Part of Speech
   recProd?: "Rec" | "Prod" | "Rec/Prod"; // Receptive or Productive or Both
   sentences?: string[]; // Pre-written example sentences for Sentence Builder
