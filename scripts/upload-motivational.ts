@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename)
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 const AUDIO_DIR = path.join(__dirname, '../temp-motivational')
