@@ -670,13 +670,23 @@ export default function App() {
               const { data: { session: authSession } } = await supabase.auth.getSession();
               const authUid = authSession?.user?.id;
               if (authUid) {
+                // Check by uid OR by name to handle auth session refresh
                 const { data: existingRecord } = await supabase
                   .from('progress')
-                  .select('id')
+                  .select('id, student_uid')
                   .eq('assignment_id', data.id)
-                  .eq('student_uid', authUid)
+                  .or(`student_uid.eq.${authUid},student_name.eq.${parsed.name}`)
                   .limit(1);
                 if (existingRecord && existingRecord.length > 0) {
+                  // Migrate old progress rows to current uid if they differ
+                  const oldRecord = existingRecord[0];
+                  if (oldRecord.student_uid !== authUid) {
+                    await supabase
+                      .from('progress')
+                      .update({ student_uid: authUid })
+                      .eq('assignment_id', data.id)
+                      .eq('student_name', parsed.name);
+                  }
                   // Auto-rejoin with same name and avatar
                   const guestUser = createGuestUser(parsed.name, 'quickplay', parsed.avatar || '\uD83E\uDD8A');
                   setUser(guestUser);
@@ -1048,9 +1058,9 @@ export default function App() {
 
   // --- AI TRANSLATION FOR QUICK PLAY ---
   // Cache for translated words to avoid redundant API calls
-  const translationCache = useRef<Map<string, {hebrew: string, arabic: string}>>(new Map());
+  const translationCache = useRef<Map<string, {hebrew: string, arabic: string, match: number}>>(new Map());
 
-  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string} | null> => {
+  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
     // Check cache first
     const cached = translationCache.current.get(englishWord.toLowerCase());
     if (cached) return cached;
@@ -1066,9 +1076,15 @@ export default function App() {
       const arabicData = await arabicRes.json();
 
       if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
+        // MyMemory returns match score 0-1 for each translation
+        const heMatch = parseFloat(hebrewData.responseData.match) || 0;
+        const arMatch = parseFloat(arabicData.responseData.match) || 0;
+        const match = Math.min(heMatch, arMatch); // Use the lower score
+
         const result = {
           hebrew: hebrewData.responseData.translatedText,
-          arabic: arabicData.responseData.translatedText
+          arabic: arabicData.responseData.translatedText,
+          match,
         };
         // Cache the result
         translationCache.current.set(englishWord.toLowerCase(), result);
@@ -4998,14 +5014,22 @@ export default function App() {
                       const { data: { session: currentAuth } } = await supabase.auth.getSession();
                       const currentAuthUid = currentAuth?.user?.id;
 
-                      // First, clean up any stale progress from this same device/auth UID
-                      // (e.g. student refreshed and is re-joining)
+                      // Clean up any stale progress for this student:
+                      // 1. By uid (same device refresh)
+                      // 2. By name (re-joining with same name from any device)
                       if (currentAuthUid) {
                         await supabase
                           .from('progress')
                           .delete()
                           .eq('assignment_id', quickPlayActiveSession.id)
-                          .eq('student_uid', currentAuthUid);
+                          .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
+                      } else {
+                        // No auth uid — clean up by name only
+                        await supabase
+                          .from('progress')
+                          .delete()
+                          .eq('assignment_id', quickPlayActiveSession.id)
+                          .eq('student_name', trimmedName);
                       }
 
                       const { data: existingProgress } = await supabase

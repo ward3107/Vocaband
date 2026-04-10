@@ -97,7 +97,7 @@ export interface SetupWizardProps {
   // External services
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
-  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string } | null>;
+  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
   onOcrUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isOcrProcessing?: boolean;
@@ -243,6 +243,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               onBack={handleBack}
               autoMatchPartial={autoMatchPartial}
               showLevelFilter={showLevelFilter}
+              classId={selectedClass?.id}
+              showSuggestedWords={mode === 'assignment' && !!selectedClass?.id}
               onTranslateWord={onTranslateWord}
               onOcrUpload={onOcrUpload}
               isOcrProcessing={isOcrProcessing}

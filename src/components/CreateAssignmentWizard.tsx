@@ -348,9 +348,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
           const hebrewData = await hebrewRes.json();
           const arabicData = await arabicRes.json();
           if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
+            const heMatch = parseFloat(hebrewData.responseData.match) || 0;
+            const arMatch = parseFloat(arabicData.responseData.match) || 0;
             return {
               hebrew: hebrewData.responseData.translatedText,
-              arabic: arabicData.responseData.translatedText
+              arabic: arabicData.responseData.translatedText,
+              match: Math.min(heMatch, arMatch)
             };
           }
           return null;
