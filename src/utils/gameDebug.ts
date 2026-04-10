@@ -26,7 +26,10 @@ class GameDebugger {
   private startTime: number;
 
   constructor() {
-    this.sessionId = `debug-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const arr = new Uint8Array(5);
+    crypto.getRandomValues(arr);
+    const rand = Array.from(arr, b => b.toString(36)).join('').slice(0, 7);
+    this.sessionId = `debug-${Date.now()}-${rand}`;
     this.startTime = Date.now();
     this.log('GameDebugger initialized', { sessionId: this.sessionId });
   }
