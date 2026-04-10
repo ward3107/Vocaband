@@ -4,13 +4,15 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import { cloudflare } from "@cloudflare/vite-plugin";
 export default defineConfig(() => {
+  const isTest = process.env.PLAYWRIGHT_TEST === 'true';
   return {
     plugins: [
       react(),
       // VitePWA disabled — service worker was causing white screens from stale cache
       // Will re-enable with proper config after cache is cleared from all devices
       tailwindcss(),
-      cloudflare()
+      // Skip Cloudflare plugin in E2E tests (miniflare has DNS issues in test env)
+      ...(!isTest ? [cloudflare()] : []),
     ],
     resolve: {
       alias: {
