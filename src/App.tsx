@@ -123,11 +123,6 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   return (
     <button
       onClick={handleClick}
-      onTouchEnd={(e) => {
-        // Better touch support for mobile
-        e.preventDefault();
-        handleClick();
-      }}
       disabled={isDisabled}
       dir={gameMode === "reverse" ? "ltr" : "auto"}
       className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
@@ -949,7 +944,7 @@ export default function App() {
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [view, quickPlayActiveSession?.id]);
+  }, [view, quickPlayActiveSession?.id, aggregateProgress]);
 
   // Quick Play student: subscribe to session status (end) and progress deletes (kick)
   useEffect(() => {
@@ -1276,7 +1271,6 @@ export default function App() {
     if (!feedback) return;
 
     const failsafeTimer = setTimeout(() => {
-      console.warn('[FAILSAFE] Clearing stuck feedback after 5 seconds:', feedback);
       setFeedback(null);
       setMotivationalMessage(null);
     }, 5000);
@@ -1542,16 +1536,45 @@ export default function App() {
             // the "empty dashboard until refresh" bug.
             const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
-            // Check if teacher had an active Quick Play session before refresh
-            // NOTE: Disabled auto-restore for teachers - it interferes with "Quick Online Challenge" button
-            // Session restoration now only happens via URL parameter (?session=CODE)
-            try {
-              localStorage.removeItem('vocaband_quick_play_session');
-              console.log('[Auth Restore] Cleared any saved Quick Play session for teacher');
-            } catch (e) {
-              console.warn('[Auth Restore] Failed to clear session:', e);
+            // Restore Quick Play session if teacher was monitoring one before refresh
+            // Skip if the "Quick Online Challenge" button set the skip flag
+            const skipRestore = sessionStorage.getItem('vocaband_skip_restore');
+            if (skipRestore) {
+              sessionStorage.removeItem('vocaband_skip_restore');
+              try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+              setView("teacher-dashboard");
+            } else {
+              try {
+                const savedSession = localStorage.getItem('vocaband_quick_play_session');
+                if (savedSession) {
+                  const parsed = JSON.parse(savedSession);
+                  const { data: sessionData } = await supabase
+                    .from('quick_play_sessions')
+                    .select('id, session_code, word_ids, is_active')
+                    .eq('id', parsed.id)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                  if (sessionData) {
+                    const dbWords = ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
+                    setQuickPlayActiveSession({
+                      id: sessionData.id,
+                      sessionCode: sessionData.session_code,
+                      wordIds: sessionData.word_ids || [],
+                      words: parsed.words?.length ? parsed.words : dbWords,
+                    });
+                    setQuickPlaySessionCode(sessionData.session_code);
+                    setView("quick-play-teacher-monitor");
+                  } else {
+                    localStorage.removeItem('vocaband_quick_play_session');
+                    setView("teacher-dashboard");
+                  }
+                } else {
+                  setView("teacher-dashboard");
+                }
+              } catch {
+                setView("teacher-dashboard");
+              }
             }
-            setView("teacher-dashboard");
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;
             const { data: classRows } = await supabase
