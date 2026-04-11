@@ -537,12 +537,34 @@ async function startServer() {
 
     try {
       const Tesseract = await import("tesseract.js");
+      // Pin langPath to the bundled @tesseract.js-data/eng package so Tesseract
+      // reads eng.traineddata.gz from local disk instead of fetching from a CDN.
+      // Without this, Tesseract.js v7 hard-codes a fetch to cdn.jsdelivr.net
+      // which fails silently inside a Worker thread, bypassing the try/catch
+      // here and leaving the endpoint to return {success: true, words: []}.
+      const langPath = path.resolve(
+        process.cwd(),
+        "node_modules/@tesseract.js-data/eng/4.0.0"
+      );
       const worker = await Tesseract.createWorker("eng", undefined, {
+        langPath,
         cachePath: "/tmp/tesseract-cache",
+        errorHandler: (e: unknown) => console.error("[OCR] Tesseract worker error:", e),
       });
       const { data } = await worker.recognize(req.file.buffer);
       await worker.terminate();
       const rawText = data.text || "";
+
+      // Sanity check: empty rawText on a valid image usually means the worker
+      // failed to initialize (traineddata missing, corrupted, or wrong OEM).
+      // Fail loudly instead of silently returning {words: [], success: true}.
+      if (rawText.trim().length === 0) {
+        console.error("[OCR] Tesseract returned empty text — possible worker init failure");
+        return res.status(500).json({
+          error: "OCR engine returned no text",
+          message: "Tesseract recognized zero characters. If this persists, check server logs for [OCR] entries.",
+        });
+      }
 
       // Extract English words, preserve original form, deduplicate
       const allWords = rawText.split(/[\s\n\r.,;:!?'"()\[\]{}<>\/\\|@#$%^&*+=~`_\-0-9]+/);

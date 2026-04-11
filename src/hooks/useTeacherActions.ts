@@ -264,10 +264,20 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       }
 
       if (customWordsFromOCR.length === 0) {
-        showToast(
-          `No English words found. OCR recognized: "${rawText.substring(0, 100)}${rawText.length > 100 ? '...' : ''}"`,
-          "info"
-        );
+        if (rawText.trim().length === 0) {
+          showToast(
+            "OCR couldn't read any text. Make sure the photo is clear, well-lit, and the page is flat.",
+            "error"
+          );
+        } else {
+          showToast(
+            `OCR found text but no English words. Read: "${rawText.substring(0, 80)}${rawText.length > 80 ? '…' : ''}"`,
+            "info"
+          );
+        }
+        trackAutoError(new Error("OCR returned no words"), "OCR empty result", {
+          rawTextLength: rawText.length,
+        });
       } else {
         // Add all detected words to the Custom tab and select them
         setCustomWords(customWordsFromOCR);
