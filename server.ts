@@ -268,21 +268,25 @@ async function startServer() {
   }
 
   // Socket.IO connection-level auth middleware — reject unauthenticated connections early
+  // Verbose socket logging only in dev — at 1500 concurrent users, logging
+  // every connection attempt is both noisy and a mild PII concern (raw IPs).
+  const isDev = process.env.NODE_ENV !== "production";
+
   io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
-    console.log("[Socket] Connection attempt from", socket.handshake.address, "with token:", token ? "✓" : "✗");
+    if (isDev) console.log("[Socket] Connection attempt from", socket.handshake.address, "with token:", token ? "✓" : "✗");
 
     if (typeof token !== "string" || token.length === 0) {
-      console.warn("[Socket] Rejected: No token provided");
+      if (isDev) console.warn("[Socket] Rejected: No token provided");
       return next(new Error("Authentication required"));
     }
     const uid = await verifyToken(token);
     if (!uid) {
-      console.warn("[Socket] Rejected: Invalid token");
+      if (isDev) console.warn("[Socket] Rejected: Invalid token");
       return next(new Error("Invalid token"));
     }
 
-    console.log("[Socket] Authenticated successfully for uid:", uid);
+    if (isDev) console.log("[Socket] Authenticated successfully for uid:", uid);
     // Attach verified uid to socket data for use in event handlers
     (socket.data as { uid: string }).uid = uid;
     next();
@@ -291,7 +295,7 @@ async function startServer() {
   io.on("connection", (socket) => {
     const uid = (socket.data as { uid: string }).uid;
     const clientIp = getSocketIp(socket);
-    console.log(`[Socket] Client connected: uid=${uid}, ip=${clientIp}, socket=${socket.id}`);
+    if (isDev) console.log(`[Socket] Client connected: uid=${uid}, ip=${clientIp}, socket=${socket.id}`);
 
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid }: JoinChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid)) return;

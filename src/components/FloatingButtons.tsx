@@ -75,6 +75,15 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   const [buttonColor, setButtonColor] = useState({ r: 245, g: 245, b: 244 });
   const shareRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the "copied" reset timer on unmount so it can't fire on an
+  // unmounted component (React would log a state-on-unmounted warning).
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   const detectBackgroundColor = useCallback(() => {
     if (!containerRef.current) return;
@@ -178,7 +187,11 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       action: () => {
         navigator.clipboard.writeText(shareUrl);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = setTimeout(() => {
+          setCopied(false);
+          copiedTimerRef.current = null;
+        }, 2000);
       },
     },
   ], [shareUrl, copied]);
