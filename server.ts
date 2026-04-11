@@ -645,35 +645,68 @@ async function startServer() {
   // Two layers: ANTHROPIC_API_KEY must be set AND teacher email in ai_allowlist.
   // Logs the exact reason for aiSentences=false so Render logs can diagnose
   // "why doesn't the AI button show up" without needing devtools access.
+  //
+  // Additionally, when the query param ?debug=1 is passed, the response body
+  // includes a `reason` field so the user can see the failure mode in the
+  // browser DevTools Network tab without having to check Render logs at all.
+  // Safe to expose because the reasons are generic enum-like strings that
+  // don't leak user data beyond what the allowlist admin already knows.
   app.get("/api/features", async (req, res) => {
+    const debug = req.query.debug === "1";
+    const reply = (aiSentences: boolean, reason?: string, extra?: Record<string, unknown>) =>
+      res.json(debug ? { aiSentences, reason, ...extra } : { aiSentences });
+
     if (!process.env.ANTHROPIC_API_KEY) {
       console.log("[features] aiSentences=false: ANTHROPIC_API_KEY env var not set on the server");
-      return res.json({ aiSentences: false });
+      return reply(false, "no_anthropic_key");
     }
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       console.log("[features] aiSentences=false: request missing Authorization: Bearer header");
-      return res.json({ aiSentences: false });
+      return reply(false, "no_auth_header");
     }
     const authData = await verifyTokenWithEmail(authHeader.substring(7));
     if (!authData) {
       console.log("[features] aiSentences=false: token verification failed (invalid or expired)");
-      return res.json({ aiSentences: false });
+      return reply(false, "invalid_token");
     }
     const userData = await getUserRoleAndClass(authData.uid);
     if (!userData || userData.role !== "teacher") {
       console.log(`[features] aiSentences=false: user is not a teacher (role=${userData?.role ?? "none"}, email=${authData.email})`);
-      return res.json({ aiSentences: false });
+      return reply(false, "not_teacher", { role: userData?.role ?? null, email: authData.email });
     }
     const { allowed, error } = await isPremiumTeacher(authData.email);
     if (error) {
       console.error(`[features] ai_allowlist check error for ${authData.email}: ${error}`);
-    } else if (!allowed) {
-      console.log(`[features] aiSentences=false: ${authData.email} is not in ai_allowlist (run: INSERT INTO public.ai_allowlist (email) VALUES ('${authData.email}');)`);
-    } else {
-      console.log(`[features] aiSentences=true for ${authData.email}`);
+      return reply(false, "allowlist_error", { email: authData.email, error });
     }
-    res.json({ aiSentences: allowed });
+    if (!allowed) {
+      console.log(`[features] aiSentences=false: ${authData.email} is not in ai_allowlist (run: INSERT INTO public.ai_allowlist (email) VALUES ('${authData.email}');)`);
+      return reply(false, "not_in_allowlist", { email: authData.email });
+    }
+    console.log(`[features] aiSentences=true for ${authData.email}`);
+    return reply(true, "ok", { email: authData.email });
+  });
+
+  // Diagnostic endpoint: reports which environment variables are set on the
+  // running Render instance (boolean only, never the values). Use this to
+  // verify a Render deploy has actually picked up an env var change.
+  // Curl it from anywhere: `curl https://vocaband.com/api/version`.
+  app.get("/api/version", (_req, res) => {
+    res.json({
+      commit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || "unknown",
+      branch: process.env.RENDER_GIT_BRANCH || "unknown",
+      nodeEnv: process.env.NODE_ENV || "unknown",
+      env: {
+        hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
+        hasSupabaseUrl: !!process.env.SUPABASE_URL,
+        hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        hasAllowedOrigin: !!process.env.ALLOWED_ORIGIN,
+        allowedOrigin: process.env.ALLOWED_ORIGIN || null,
+      },
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // AI sentence generation — rate limited per teacher
