@@ -115,48 +115,10 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   const [customSentenceInput, setCustomSentenceInput] = useState('');
   const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
 
-  // AI sentence generation state — gated by ANTHROPIC_API_KEY + ai_allowlist
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-
+  // Cleanup on unmount: close any open modals/overlays
   useEffect(() => {
-    const checkAI = async () => {
-      try {
-        const token = (await supabase.auth.getSession()).data.session?.access_token;
-        if (!token) return;
-        const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
-        const res = await fetch(`${apiUrl}/api/features`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setAiEnabled(data.aiSentences === true);
-      } catch { /* AI not available — fine, button just stays hidden */ }
-    };
-    checkAI();
+    return () => { setEditingSentenceIndex(null); };
   }, []);
-
-  const generateAISentences = async () => {
-    if (selectedWords.length === 0) return;
-    setIsGeneratingAI(true);
-    try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) throw new Error('No auth token');
-      const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
-      const words = selectedWords.map(w => w.english).filter(Boolean);
-      const res = await fetch(`${apiUrl}/api/generate-sentences`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ words, difficulty: sentenceDifficulty }),
-      });
-      if (!res.ok) throw new Error('AI generation failed');
-      const { sentences } = await res.json();
-      onSentencesChange?.(sentences);
-    } catch {
-      /* fallback: caller already has template sentences, just keep them */
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
 
   const isAssignment = mode === 'assignment';
 
