@@ -65,6 +65,8 @@ async function verifyTokenWithEmail(token: string): Promise<{ uid: string; email
 
 // Shared gate for premium features (AI sentence generation, OCR, etc.).
 // Returns { allowed: true } only if the email is in the ai_allowlist table.
+// Case-insensitive: uses ilike so admins can INSERT 'Teacher@Gmail.com'
+// and the teacher still matches when their auth email is 'teacher@gmail.com'.
 // On table-missing errors (code 42P01), returns a helpful message so the
 // admin can see they need to run the 20260417_ai_sentence_builder.sql migration.
 async function isPremiumTeacher(email: string): Promise<{ allowed: boolean; error?: string }> {
@@ -73,7 +75,7 @@ async function isPremiumTeacher(email: string): Promise<{ allowed: boolean; erro
     const { data, error } = await supabaseAdmin
       .from("ai_allowlist")
       .select("email")
-      .eq("email", email)
+      .ilike("email", email)
       .maybeSingle();
     if (error) {
       if ((error as { code?: string }).code === "42P01") {
