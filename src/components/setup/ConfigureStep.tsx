@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles,
+  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
+import { supabase } from '../../core/supabase';
 import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData } from './types';
 
 // ── Assignment Templates ────────────────────────────────────────────────────
@@ -79,10 +80,9 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   onSentencesChange,
   sentenceDifficulty = 1,
   onSentenceDifficultyChange,
-  selectedWords: _selectedWords = [],
+  selectedWords = [],
   editingAssignment: _editingAssignment = null,
 }) => {
-  void _selectedWords;
   void _editingAssignment;
 
   // Ref for template selector (for auto-scroll)
@@ -114,6 +114,49 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   // Sentence builder local state
   const [customSentenceInput, setCustomSentenceInput] = useState('');
   const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
+
+  // AI sentence generation state — gated by ANTHROPIC_API_KEY + ai_allowlist
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  useEffect(() => {
+    const checkAI = async () => {
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/features`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setAiEnabled(data.aiSentences === true);
+      } catch { /* AI not available — fine, button just stays hidden */ }
+    };
+    checkAI();
+  }, []);
+
+  const generateAISentences = async () => {
+    if (selectedWords.length === 0) return;
+    setIsGeneratingAI(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error('No auth token');
+      const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+      const words = selectedWords.map(w => w.english).filter(Boolean);
+      const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ words, difficulty: sentenceDifficulty }),
+      });
+      if (!res.ok) throw new Error('AI generation failed');
+      const { sentences } = await res.json();
+      onSentencesChange?.(sentences);
+    } catch {
+      /* fallback: caller already has template sentences, just keep them */
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   const isAssignment = mode === 'assignment';
 
@@ -369,6 +412,28 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               );
             })}
           </div>
+
+          {/* AI Generate Button — only shown if teacher has AI access (env var + ai_allowlist) */}
+          {aiEnabled && selectedWords.length > 0 && (
+            <button
+              type="button"
+              onClick={generateAISentences}
+              disabled={isGeneratingAI}
+              className="mt-3 w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg"
+            >
+              {isGeneratingAI ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Generating AI sentences...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  Generate with AI
+                </>
+              )}
+            </button>
+          )}
 
           {/* Add Custom Sentence */}
           <div className="mt-4 space-y-2">

@@ -245,7 +245,7 @@ export function searchWords(
 
 export interface WordFilters {
   core?: ('Core I' | 'Core II')[];
-  level?: ('Band 1' | 'Band 2' | 'Band 3' | 'Custom')[];
+  level?: ('Set 1' | 'Set 2' | 'Set 3' | 'Custom')[];
   pos?: string[];
   recProd?: ('Rec' | 'Prod' | 'Rec/Prod')[];
   searchQuery?: string;
@@ -257,7 +257,7 @@ export interface WordFilters {
 export function filterWords(allWords: Word[], filters: WordFilters): Word[] {
   let filtered = [...allWords];
 
-  // Filter by Level (Band 1, Band 2, etc.)
+  // Filter by Level (Set 1, Set 2, Set 3, Custom)
   if (filters.level && filters.level.length > 0) {
     filtered = filtered.filter(w => w.level && filters.level.includes(w.level));
   }

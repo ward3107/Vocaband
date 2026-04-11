@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   ALL_WORDS,
-  BAND_1_WORDS,
-  BAND_2_WORDS,
+  SET_1_WORDS,
+  SET_2_WORDS,
+  SET_3_WORDS,
 } from '../data/vocabulary';
 import { searchWords, filterWords } from '../data/vocabulary-matching';
 
@@ -13,8 +14,8 @@ describe('vocabulary data', () => {
     expect(ALL_WORDS.length).toBeGreaterThan(0);
   });
 
-  it('BAND_1_WORDS + BAND_2_WORDS equals ALL_WORDS', () => {
-    expect(BAND_1_WORDS.length + BAND_2_WORDS.length).toBe(ALL_WORDS.length);
+  it('SET_1_WORDS + SET_2_WORDS + SET_3_WORDS equals ALL_WORDS', () => {
+    expect(SET_1_WORDS.length + SET_2_WORDS.length + SET_3_WORDS.length).toBe(ALL_WORDS.length);
   });
 
   it('every word has id, english, hebrew, and arabic fields', () => {
@@ -32,23 +33,23 @@ describe('vocabulary data', () => {
     }
   });
 
-  it('BAND_1_WORDS and BAND_2_WORDS together equal ALL_WORDS length', () => {
-    expect(BAND_1_WORDS.length + BAND_2_WORDS.length).toBe(ALL_WORDS.length);
+  it('SET_1_WORDS, SET_2_WORDS, and SET_3_WORDS together equal ALL_WORDS length', () => {
+    expect(SET_1_WORDS.length + SET_2_WORDS.length + SET_3_WORDS.length).toBe(ALL_WORDS.length);
   });
 });
 
 // ─── filterWords ───────────────────────────────────────────────────────────────
 
 describe('filterWords', () => {
-  it('filters by Band 1', () => {
-    const result = filterWords(ALL_WORDS, { level: ['Band 1'] });
+  it('filters by Set 1', () => {
+    const result = filterWords(ALL_WORDS, { level: ['Set 1'] });
     expect(result.length).toBeGreaterThan(0);
-    expect(result.every((w) => w.level === 'Band 1')).toBe(true);
+    expect(result.every((w) => w.level === 'Set 1')).toBe(true);
   });
 
-  it('filters by Band 2 (empty when no Band 2 words)', () => {
-    const result = filterWords(ALL_WORDS, { level: ['Band 2'] });
-    expect(result.every((w) => w.level === 'Band 2')).toBe(true);
+  it('filters by Set 2 (empty when no Set 2 words)', () => {
+    const result = filterWords(ALL_WORDS, { level: ['Set 2'] });
+    expect(result.every((w) => w.level === 'Set 2')).toBe(true);
   });
 
   it('filters by Rec (empty when no recProd data)', () => {
