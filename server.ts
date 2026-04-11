@@ -63,6 +63,30 @@ async function verifyTokenWithEmail(token: string): Promise<{ uid: string; email
   }
 }
 
+// Shared gate for premium features (AI sentence generation, OCR, etc.).
+// Returns { allowed: true } only if the email is in the ai_allowlist table.
+// On table-missing errors (code 42P01), returns a helpful message so the
+// admin can see they need to run the 20260417_ai_sentence_builder.sql migration.
+async function isPremiumTeacher(email: string): Promise<{ allowed: boolean; error?: string }> {
+  if (!supabaseAdmin) return { allowed: false, error: "Supabase not configured" };
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("ai_allowlist")
+      .select("email")
+      .eq("email", email)
+      .maybeSingle();
+    if (error) {
+      if ((error as { code?: string }).code === "42P01") {
+        return { allowed: false, error: "ai_allowlist table missing — run supabase/migrations/20260417_ai_sentence_builder.sql in Supabase SQL Editor" };
+      }
+      return { allowed: false, error: error.message };
+    }
+    return { allowed: !!data };
+  } catch (err) {
+    return { allowed: false, error: String(err) };
+  }
+}
+
 type UserRole = "teacher" | "student" | "admin";
 
 async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
@@ -519,16 +543,34 @@ async function startServer() {
     }
 
     const token = authHeader.substring(7);
-    const uid = await verifyToken(token);
-    if (!uid) {
+    const authData = await verifyTokenWithEmail(token);
+    if (!authData) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
     // Verify user is a teacher
-    const userData = await getUserRoleAndClass(uid);
+    const userData = await getUserRoleAndClass(authData.uid);
     if (!userData || userData.role !== "teacher") {
-      console.warn(`[OCR] Access denied for uid=${uid}, role=${userData?.role ?? "not found"}`);
+      console.warn(`[OCR] Access denied for uid=${authData.uid}, role=${userData?.role ?? "not found"}`);
       return res.status(403).json({ error: "Only teachers can use OCR" });
+    }
+
+    // Premium gate: OCR is limited to teachers in the ai_allowlist.
+    // Same allowlist as AI sentence generation — one list, both features.
+    const { allowed, error: gateErr } = await isPremiumTeacher(authData.email);
+    if (gateErr) {
+      console.error(`[OCR] allowlist check error for ${authData.email}: ${gateErr}`);
+      return res.status(503).json({
+        error: "Feature gate check failed",
+        message: gateErr,
+      });
+    }
+    if (!allowed) {
+      console.log(`[OCR] access denied: ${authData.email} is not in ai_allowlist`);
+      return res.status(403).json({
+        error: "OCR is a premium feature",
+        message: "Ask the admin to approve your account for OCR access.",
+      });
     }
 
     if (!req.file) {
@@ -597,22 +639,39 @@ async function startServer() {
     }
   });
 
-  // AI feature gate — checks if the authenticated teacher has AI access
-  // Two layers: ANTHROPIC_API_KEY must be set AND teacher email in ai_allowlist
+  // AI feature gate — checks if the authenticated teacher has AI access.
+  // Two layers: ANTHROPIC_API_KEY must be set AND teacher email in ai_allowlist.
+  // Logs the exact reason for aiSentences=false so Render logs can diagnose
+  // "why doesn't the AI button show up" without needing devtools access.
   app.get("/api/features", async (req, res) => {
     if (!process.env.ANTHROPIC_API_KEY) {
+      console.log("[features] aiSentences=false: ANTHROPIC_API_KEY env var not set on the server");
       return res.json({ aiSentences: false });
     }
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[features] aiSentences=false: request missing Authorization: Bearer header");
       return res.json({ aiSentences: false });
     }
     const authData = await verifyTokenWithEmail(authHeader.substring(7));
-    if (!authData) return res.json({ aiSentences: false });
+    if (!authData) {
+      console.log("[features] aiSentences=false: token verification failed (invalid or expired)");
+      return res.json({ aiSentences: false });
+    }
     const userData = await getUserRoleAndClass(authData.uid);
-    if (!userData || userData.role !== "teacher") return res.json({ aiSentences: false });
-    const { data } = await supabaseAdmin!.from("ai_allowlist").select("email").eq("email", authData.email).maybeSingle();
-    res.json({ aiSentences: !!data });
+    if (!userData || userData.role !== "teacher") {
+      console.log(`[features] aiSentences=false: user is not a teacher (role=${userData?.role ?? "none"}, email=${authData.email})`);
+      return res.json({ aiSentences: false });
+    }
+    const { allowed, error } = await isPremiumTeacher(authData.email);
+    if (error) {
+      console.error(`[features] ai_allowlist check error for ${authData.email}: ${error}`);
+    } else if (!allowed) {
+      console.log(`[features] aiSentences=false: ${authData.email} is not in ai_allowlist (run: INSERT INTO public.ai_allowlist (email) VALUES ('${authData.email}');)`);
+    } else {
+      console.log(`[features] aiSentences=true for ${authData.email}`);
+    }
+    res.json({ aiSentences: allowed });
   });
 
   // AI sentence generation — rate limited per teacher
