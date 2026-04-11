@@ -1730,6 +1730,23 @@ export default function App() {
     //
     // Instead, we synchronously read the event/session, then fire-and-forget
     // the async restore work.  The lock is released immediately.
+    //
+    // BELT-AND-SUSPENDERS: proactively check getSession() on mount.  The
+    // INITIAL_SESSION event should fire with the current session, but there
+    // have been cases where it fires with null on the first mount after an
+    // OAuth redirect (the "teacher logs in twice" bug).  By also calling
+    // getSession() directly, we guarantee the session is restored even if
+    // the event fails to deliver correctly.  restoreInProgress guards against
+    // double-firing if INITIAL_SESSION also comes through.
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && !manualLoginInProgress.current && !restoreInProgress.current) {
+          restoreSession(session.user);
+        }
+      } catch { /* getSession failed — let onAuthStateChange handle it */ }
+    })();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // If handleStudentLogin is running, it owns loading/view — don't interfere.
       if (manualLoginInProgress.current) return;
