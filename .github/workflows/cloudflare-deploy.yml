@@ -1,0 +1,65 @@
+# Cloudflare Workers deploy — triggered on every push to main.
+#
+# Runs in parallel with Cloudflare's native git integration as a backup
+# path. If one fails, the other still lands. Both deploy the same commit
+# so last-write-wins is fine — no divergence possible.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — token with "Edit Cloudflare Workers" permission
+#                            Create at: https://dash.cloudflare.com/profile/api-tokens
+#                            Template: "Edit Cloudflare Workers"
+#   CLOUDFLARE_ACCOUNT_ID  — your account ID
+#                            Find at: https://dash.cloudflare.com → right sidebar
+#                            → "Account ID" (starts with a long hex string)
+#
+# Once both secrets are added, every push to main will:
+#   1. install deps
+#   2. run vitest (gate: 151 tests must pass)
+#   3. run vite build (produces dist/client + dist/vocaband via @cloudflare/vite-plugin)
+#   4. run wrangler deploy (reads .wrangler/deploy/config.json → dist/vocaband/wrangler.json)
+#   5. Cloudflare Workers is updated ~30s after push
+
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # manual trigger from Actions tab as an escape hatch
+
+concurrency:
+  # Cancel any in-progress deploy when a new push lands. Prevents two
+  # deploys from racing and overwriting each other.
+  group: cloudflare-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build (vite + @cloudflare/vite-plugin)
+        run: npm run build
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # No `command` arg → defaults to `wrangler deploy`, which follows
+          # .wrangler/deploy/config.json → dist/vocaband/wrangler.json.
