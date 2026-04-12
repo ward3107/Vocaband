@@ -196,7 +196,45 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   editingAssignment = null,
 }) => {
   // ── Sub-step state ─────────────────────────────────────────────────────────
-  const [subStep, setSubStep] = useState<WordInputSubStep>('landing');
+  const [subStep, setSubStepRaw] = useState<WordInputSubStep>('landing');
+
+  // Sync sub-step navigation with browser history so the mobile back button
+  // goes back to the card selection instead of jumping to teacher dashboard.
+  const setSubStep = useCallback((newSubStep: WordInputSubStep) => {
+    setSubStepRaw(prev => {
+      if (prev !== 'landing' && newSubStep === 'landing') {
+        // Going BACK to landing — don't push, the popstate handler does this
+      } else if (prev === 'landing' && newSubStep !== 'landing') {
+        // Going INTO a sub-step — push a history entry so back returns here
+        window.history.pushState(
+          { ...window.history.state, subStep: newSubStep },
+          ''
+        );
+      }
+      return newSubStep;
+    });
+  }, []);
+
+  // Handle mobile back button: if in a sub-step, go back to landing
+  // instead of letting the default popstate handler exit the wizard.
+  useEffect(() => {
+    const handlePopState = () => {
+      setSubStepRaw(current => {
+        if (current !== 'landing') {
+          // We're in a sub-step — go back to landing instead of exiting
+          // Re-push the current view so the wizard doesn't close
+          window.history.pushState(
+            { ...window.history.state, subStep: undefined },
+            ''
+          );
+          return 'landing';
+        }
+        return current;
+      });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   
   // ── Search/query state ──────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
