@@ -3,6 +3,7 @@ import { Check, Copy, Zap, Trophy, BookOpen, RefreshCw } from "lucide-react";
 import { supabase, type AppUser, type AssignmentData, type ProgressData } from "../core/supabase";
 import { ALL_WORDS } from "../data/vocabulary";
 import { getXpTitle } from "../constants/game";
+import { getGameModeDef } from "../components/setup/types";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentOnboarding from "../components/StudentOnboarding";
 
@@ -146,11 +147,12 @@ export default function StudentDashboardView({
                 const allowedModes = (assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]).filter(m => m !== "flashcards");
                 const totalModes = allowedModes.length;
 
-                const completedModes = new Set(
+                const completedModeSet = new Set(
                   studentProgress
                     .filter(p => p.assignmentId === assignment.id && p.mode !== "flashcards")
                     .map(p => p.mode)
-                ).size;
+                );
+                const completedModes = completedModeSet.size;
 
                 const progressPercentage = Math.min(100, Math.round((completedModes / Math.max(totalModes, 1)) * 100));
                 const isComplete = completedModes >= totalModes;
@@ -168,7 +170,7 @@ export default function StudentDashboardView({
                 return (
                   <div key={assignment.id} className={`${accent.bg} p-5 sm:p-6 rounded-3xl border-2 ${accent.border} ${accent.hoverBorder} transition-colors relative overflow-hidden`}>
                     <div className={`absolute top-0 left-0 w-1.5 h-full ${accent.strip} rounded-l-3xl`} />
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                       <div className="flex-1">
                         <h3 className="text-xl sm:text-xl font-bold text-stone-800">{assignment.title}</h3>
                         <p className="text-stone-500 text-base sm:text-sm font-medium mt-2 sm:mt-1">
@@ -192,20 +194,43 @@ export default function StudentDashboardView({
                       </button>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div>
-                      <div className="flex justify-between text-sm sm:text-xs font-bold mb-3 sm:mb-2">
+                    {/* Per-mode progress indicators */}
+                    <div className="mb-3">
+                      <div className="flex justify-between text-sm sm:text-xs font-bold mb-2">
                         <span className="text-stone-500 uppercase tracking-widest">Progress</span>
-                        <span className={isComplete ? "text-blue-700" : "text-stone-500"}>
-                          {completedModes} / {totalModes} Modes ({progressPercentage}%)
+                        <span className={isComplete ? "text-green-600" : "text-stone-500"}>
+                          {completedModes} / {totalModes} ({progressPercentage}%)
                         </span>
                       </div>
-                      <progress
-                        className={`h-4 sm:h-3 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${accent.bar}`}
-                        max={100}
-                        value={toProgressValue(progressPercentage)}
-                      />
+                      <div className="flex flex-wrap gap-1.5">
+                        {allowedModes.map(modeId => {
+                          const done = completedModeSet.has(modeId);
+                          const modeDef = getGameModeDef(modeId);
+                          return (
+                            <span
+                              key={modeId}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all ${
+                                done
+                                  ? 'bg-green-100 text-green-700 ring-1 ring-green-300'
+                                  : 'bg-stone-100 text-stone-400'
+                              }`}
+                              title={modeDef ? modeDef.name : modeId}
+                            >
+                              <span>{modeDef?.emoji || '🎮'}</span>
+                              <span className="hidden sm:inline">{modeDef?.name || modeId}</span>
+                              {done && <Check size={12} className="text-green-600" />}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    {/* Progress Bar */}
+                    <progress
+                      className={`h-3 sm:h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${accent.bar}`}
+                      max={100}
+                      value={toProgressValue(progressPercentage)}
+                    />
                   </div>
                 );
               })}
