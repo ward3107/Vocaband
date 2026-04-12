@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { ALL_WORDS, BAND_2_WORDS, Word } from "../data/vocabulary";
+import { ALL_WORDS, SET_2_WORDS, Word } from "../data/vocabulary";
 import { shuffle, addUnique, removeKey } from "../utils";
 import { SOCKET_EVENTS } from "../core/types";
 import {
@@ -162,7 +162,7 @@ export function useGameState(params: UseGameStateParams) {
   // -------------------------------------------------------------------------
   // Derived / computed values
   // -------------------------------------------------------------------------
-  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : BAND_2_WORDS;
+  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
   const currentWord = gameWords[currentIndex];
 
   const options = useMemo(() => {
@@ -272,6 +272,8 @@ export function useGameState(params: UseGameStateParams) {
   }, [currentIndex, currentWord, gameWords]);
 
   // Auto-speak word when entering a new card (classic / spelling / etc.)
+  // Excluded: matching (12 cards at once, no single "current word") and
+  // sentence-builder (sentences, not individual words).
   useEffect(() => {
     if (
       view === "game" &&
@@ -279,7 +281,8 @@ export function useGameState(params: UseGameStateParams) {
       currentWord &&
       !showModeSelection &&
       !showModeIntro &&
-      gameMode !== "sentence-builder"
+      gameMode !== "sentence-builder" &&
+      gameMode !== "matching"
     ) {
       params.speakWord(currentWord.id, currentWord.english);
     }
@@ -679,10 +682,14 @@ export function useGameState(params: UseGameStateParams) {
   const handleMatchClick = (item: { id: number; type: "english" | "arabic" }) => {
     if (matchedIds.includes(item.id)) return;
 
-    const matchWord = gameWords.find((w) => w.id === item.id);
-    setTimeout(() => {
-      params.speakWord(item.id, matchWord?.english);
-    }, 0);
+    // Only pronounce when clicking English cards — clicking Hebrew/Arabic
+    // cards should not trigger English audio (confusing for students)
+    if (item.type === "english") {
+      const matchWord = gameWords.find((w) => w.id === item.id);
+      setTimeout(() => {
+        params.speakWord(item.id, matchWord?.english);
+      }, 0);
+    }
 
     if (!selectedMatch) {
       setSelectedMatch(item);
