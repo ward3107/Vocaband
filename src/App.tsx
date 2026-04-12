@@ -218,6 +218,7 @@ export default function App() {
     | "public-privacy"
     | "accessibility-statement"
     | "student-account-login"
+    | "student-pending-approval"
     | "landing"
     | "game"
     | "teacher-dashboard"
@@ -310,6 +311,7 @@ export default function App() {
   const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
   const [showNewStudentForm, setShowNewStudentForm] = useState(false);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
+  const [pendingApprovalInfo, setPendingApprovalInfo] = useState<{ name: string; classCode: string; profileId?: string } | null>(null);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
@@ -1679,8 +1681,13 @@ export default function App() {
               setView("student-dashboard");
               return;
             } else if (studentProfile && studentProfile.status === 'pending_approval') {
-              setError("Your account is pending approval. Please ask your teacher to approve it.");
-              await supabase.auth.signOut();
+              setPendingApprovalInfo({
+                name: studentProfile.display_name || '',
+                classCode: studentProfile.class_code || '',
+                profileId: studentProfile.id,
+              });
+              setView("student-pending-approval");
+              setLoading(false);
               return;
             }
 
@@ -1855,7 +1862,7 @@ export default function App() {
   // If popstate would navigate to one of these, we block it.
   const AUTH_VIEWS = new Set([
     'landing', 'public-landing', 'student-account-login',
-    'oauth-class-code', 'oauth-callback',
+    'student-pending-approval', 'oauth-class-code', 'oauth-callback',
   ]);
 
   // The "home" view for each role — back button cannot go past this.
@@ -2846,9 +2853,15 @@ export default function App() {
   // Helper function to process student profile and log them in
   const processStudentProfile = async (profile: any) => {
 
-    // Check approval status
+    // Check approval status — show the waiting screen instead of a generic error
     if (profile.status === 'pending_approval') {
-      setError("Your account is pending approval from your teacher. Please check back later!");
+      setPendingApprovalInfo({
+        name: profile.display_name || '',
+        classCode: profile.class_code || '',
+        profileId: profile.id,
+      });
+      setView("student-pending-approval");
+      setLoading(false);
       return;
     }
     if (profile.status === 'rejected') {
@@ -3033,21 +3046,21 @@ export default function App() {
         handleLoginAsStudent(profile.id);
         return;
       } else if (profile.status === 'pending_approval') {
-        const message = isNew
-          ? `Account created! Tell your teacher to approve "${trimmedName}" in class ${trimmedCode}. Once approved, you can log in and start earning XP!`
-          : `Your account is pending approval. Please ask your teacher to approve it!`;
+        // Navigate to a dedicated waiting screen instead of just a toast.
+        // The student needs to understand what's happening and what to do next.
+        setPendingApprovalInfo({
+          name: trimmedName,
+          classCode: trimmedCode,
+          profileId: profile.id,
+        });
+        setView("student-pending-approval");
 
-
-        // Clear form if new account
-        if (isNew) {
-          setStudentLoginName("");
-          setStudentLoginClassCode("");
-          setStudentAvatar("🦊");
-          setExistingStudents([]);
-          setShowNewStudentForm(false);
-        }
-
-        showToast(message, "success");
+        // Clear form
+        setStudentLoginName("");
+        setStudentLoginClassCode("");
+        setStudentAvatar("🦊");
+        setExistingStudents([]);
+        setShowNewStudentForm(false);
       }
     } catch (error) {
       console.error('Signup error:', error);
@@ -3086,7 +3099,12 @@ export default function App() {
       }
 
       if (studentData.status !== 'active' && studentData.status !== 'approved') {
-        setError('Your account is pending approval. Please ask your teacher to approve it.');
+        setPendingApprovalInfo({
+          name: studentData.display_name || '',
+          classCode: studentData.class_code || '',
+          profileId: studentData.id,
+        });
+        setView("student-pending-approval");
         return;
       }
 
@@ -3329,7 +3347,12 @@ export default function App() {
         console.error('Error checking student approval:', profileError);
       } else if (studentProfile) {
         if (studentProfile.status === 'pending_approval') {
-          setError("Your account is pending approval from your teacher. Please check back later!");
+          setPendingApprovalInfo({
+            name: studentProfile.display_name || '',
+            classCode: studentProfile.class_code || '',
+            profileId: studentProfile.id,
+          });
+          setView("student-pending-approval");
           return;
         }
         if (studentProfile.status === 'rejected') {
@@ -4595,6 +4618,117 @@ export default function App() {
         {cookieBannerOverlay}
       </>
     );
+  }
+
+  // ── Student Pending Approval Screen ────────────────────────────────────────
+  if (view === "student-pending-approval" && pendingApprovalInfo) {
+    // Auto-check approval status every 10 seconds
+    const PendingApprovalScreen = () => {
+      const [checking, setChecking] = React.useState(false);
+      const [dots, setDots] = React.useState('');
+
+      // Animated dots
+      React.useEffect(() => {
+        const id = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 600);
+        return () => clearInterval(id);
+      }, []);
+
+      // Auto-poll every 10 seconds
+      React.useEffect(() => {
+        const checkStatus = async () => {
+          try {
+            const { data } = await supabase
+              .from('student_profiles')
+              .select('status, id, auth_uid')
+              .eq('class_code', pendingApprovalInfo.classCode)
+              .eq('display_name', pendingApprovalInfo.name)
+              .order('joined_at', { ascending: false })
+              .limit(1);
+
+            if (data && data.length > 0 && data[0].status === 'approved') {
+              showToast("You've been approved! Logging in...", "success");
+              handleLoginAsStudent(data[0].id);
+            }
+          } catch { /* silent retry */ }
+        };
+
+        const id = setInterval(checkStatus, 10_000);
+        return () => clearInterval(id);
+      }, []);
+
+      const handleManualCheck = async () => {
+        setChecking(true);
+        try {
+          const { data } = await supabase
+            .from('student_profiles')
+            .select('status, id, auth_uid')
+            .eq('class_code', pendingApprovalInfo.classCode)
+            .eq('display_name', pendingApprovalInfo.name)
+            .order('joined_at', { ascending: false })
+            .limit(1);
+
+          if (data && data.length > 0 && data[0].status === 'approved') {
+            showToast("You've been approved! Logging in...", "success");
+            handleLoginAsStudent(data[0].id);
+          } else {
+            showToast("Not approved yet. Ask your teacher!", "info");
+          }
+        } catch {
+          showToast("Could not check. Try again.", "error");
+        } finally {
+          setChecking(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
+          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+            <div className="text-6xl mb-4">
+              <span className="inline-block animate-bounce">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </span>
+            </div>
+            <h2 className="text-2xl font-black text-stone-800 mb-2">
+              Waiting for approval{dots}
+            </h2>
+            <p className="text-stone-500 mb-6">
+              Your teacher needs to approve <strong>"{pendingApprovalInfo.name}"</strong> in class <strong>{pendingApprovalInfo.classCode}</strong> before you can play.
+            </p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
+              <p className="text-sm font-bold text-amber-800 mb-2">What to do:</p>
+              <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
+                <li>Tell your teacher you signed up</li>
+                <li>They'll approve you from their dashboard</li>
+                <li>This screen will update automatically</li>
+              </ol>
+            </div>
+
+            <button
+              onClick={handleManualCheck}
+              disabled={checking}
+              className="w-full py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 mb-3"
+            >
+              {checking ? "Checking..." : "Check now"}
+            </button>
+
+            <button
+              onClick={() => {
+                setPendingApprovalInfo(null);
+                setView("student-account-login");
+              }}
+              className="text-stone-400 text-sm hover:text-stone-600 transition-colors"
+            >
+              Use a different account
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    return <PendingApprovalScreen />;
   }
 
   if (view === "student-account-login") {
