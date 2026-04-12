@@ -1,5 +1,6 @@
 import React from "react";
-import { Check, Copy, Zap, Trophy, BookOpen, RefreshCw } from "lucide-react";
+import { motion } from "motion/react";
+import { Check, Copy, Zap, Trophy, BookOpen, RefreshCw, Play, Star } from "lucide-react";
 import { supabase, type AppUser, type AssignmentData, type ProgressData } from "../core/supabase";
 import { ALL_WORDS } from "../data/vocabulary";
 import { getXpTitle } from "../constants/game";
@@ -142,7 +143,7 @@ export default function StudentDashboardView({
           {studentAssignments.length === 0 && !studentDataLoading ? (
             <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">No assignments yet. Check back later!</p>
           ) : (
-            <div className="space-y-5 sm:space-y-4">
+            <div className="space-y-6 sm:space-y-4">
               {studentAssignments.map((assignment, assignmentIdx) => {
                 const allowedModes = (assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]).filter(m => m !== "flashcards");
                 const totalModes = allowedModes.length;
@@ -158,66 +159,76 @@ export default function StudentDashboardView({
                 const isComplete = completedModes >= totalModes;
 
                 const accentColors = [
-                  { bg: "bg-blue-50", border: "border-blue-100", hoverBorder: "hover:border-blue-300", bar: "[&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600", btn: "bg-blue-700 hover:bg-blue-800", strip: "bg-blue-500" },
-                  { bg: "bg-purple-50", border: "border-purple-100", hoverBorder: "hover:border-purple-300", bar: "[&::-webkit-progress-value]:bg-purple-600 [&::-moz-progress-bar]:bg-purple-600", btn: "bg-purple-700 hover:bg-purple-800", strip: "bg-purple-500" },
-                  { bg: "bg-emerald-50", border: "border-emerald-100", hoverBorder: "hover:border-emerald-300", bar: "[&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:bg-emerald-600", btn: "bg-emerald-700 hover:bg-emerald-800", strip: "bg-emerald-500" },
-                  { bg: "bg-amber-50", border: "border-amber-100", hoverBorder: "hover:border-amber-300", bar: "[&::-webkit-progress-value]:bg-amber-600 [&::-moz-progress-bar]:bg-amber-600", btn: "bg-amber-700 hover:bg-amber-800", strip: "bg-amber-500" },
-                  { bg: "bg-rose-50", border: "border-rose-100", hoverBorder: "hover:border-rose-300", bar: "[&::-webkit-progress-value]:bg-rose-600 [&::-moz-progress-bar]:bg-rose-600", btn: "bg-rose-700 hover:bg-rose-800", strip: "bg-rose-500" },
-                  { bg: "bg-cyan-50", border: "border-cyan-100", hoverBorder: "hover:border-cyan-300", bar: "[&::-webkit-progress-value]:bg-cyan-600 [&::-moz-progress-bar]:bg-cyan-600", btn: "bg-cyan-700 hover:bg-cyan-800", strip: "bg-cyan-500" },
+                  { gradient: "from-blue-50 to-indigo-50", border: "border-blue-200/60", bar: "[&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600", btn: "from-blue-600 to-blue-700", btnShadow: "shadow-blue-500/30", strip: "from-blue-400 to-blue-600", glow: "bg-blue-400/20" },
+                  { gradient: "from-purple-50 to-fuchsia-50", border: "border-purple-200/60", bar: "[&::-webkit-progress-value]:bg-purple-600 [&::-moz-progress-bar]:bg-purple-600", btn: "from-purple-600 to-purple-700", btnShadow: "shadow-purple-500/30", strip: "from-purple-400 to-purple-600", glow: "bg-purple-400/20" },
+                  { gradient: "from-emerald-50 to-teal-50", border: "border-emerald-200/60", bar: "[&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:bg-emerald-600", btn: "from-emerald-600 to-emerald-700", btnShadow: "shadow-emerald-500/30", strip: "from-emerald-400 to-emerald-600", glow: "bg-emerald-400/20" },
+                  { gradient: "from-amber-50 to-orange-50", border: "border-amber-200/60", bar: "[&::-webkit-progress-value]:bg-amber-600 [&::-moz-progress-bar]:bg-amber-600", btn: "from-amber-600 to-amber-700", btnShadow: "shadow-amber-500/30", strip: "from-amber-400 to-amber-600", glow: "bg-amber-400/20" },
+                  { gradient: "from-rose-50 to-pink-50", border: "border-rose-200/60", bar: "[&::-webkit-progress-value]:bg-rose-600 [&::-moz-progress-bar]:bg-rose-600", btn: "from-rose-600 to-rose-700", btnShadow: "shadow-rose-500/30", strip: "from-rose-400 to-rose-600", glow: "bg-rose-400/20" },
+                  { gradient: "from-cyan-50 to-sky-50", border: "border-cyan-200/60", bar: "[&::-webkit-progress-value]:bg-cyan-600 [&::-moz-progress-bar]:bg-cyan-600", btn: "from-cyan-600 to-cyan-700", btnShadow: "shadow-cyan-500/30", strip: "from-cyan-400 to-cyan-600", glow: "bg-cyan-400/20" },
                 ];
                 const accent = accentColors[assignmentIdx % accentColors.length];
 
                 return (
-                  <div key={assignment.id} className={`${accent.bg} p-5 sm:p-6 rounded-3xl border-2 ${accent.border} ${accent.hoverBorder} transition-colors relative overflow-hidden`}>
-                    <div className={`absolute top-0 left-0 w-1.5 h-full ${accent.strip} rounded-l-3xl`} />
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl sm:text-xl font-bold text-stone-800">{assignment.title}</h3>
-                        <p className="text-stone-500 text-base sm:text-sm font-medium mt-2 sm:mt-1">
-                          {assignment.wordIds.length} Vocabulary Words
-                          {assignment.deadline && ` • Due: ${new Date(assignment.deadline).toLocaleDateString()}`}
-                        </p>
+                  <motion.div
+                    key={assignment.id}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: assignmentIdx * 0.1, duration: 0.4, ease: "easeOut" }}
+                    className={`bg-gradient-to-br ${accent.gradient} p-6 sm:p-6 rounded-3xl border-2 ${accent.border} relative overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
+                  >
+                    {/* Decorative gradient strip */}
+                    <div className={`absolute top-0 left-0 w-2 h-full bg-gradient-to-b ${accent.strip} rounded-l-3xl`} />
+                    {/* Decorative glow circle */}
+                    <div className={`absolute -top-12 -right-12 w-40 h-40 ${accent.glow} rounded-full blur-3xl pointer-events-none`} />
+
+                    {/* Completion badge */}
+                    {isComplete && (
+                      <div className="absolute top-4 right-4 z-10">
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white text-xs font-black rounded-full shadow-lg shadow-green-500/30">
+                          <Star size={12} fill="currentColor" /> All Done!
+                        </span>
                       </div>
-                      <button
-                        onClick={() => {
-                          const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
-                          setActiveAssignment(assignment);
-                          setAssignmentWords(filteredWords);
-                          React.startTransition(() => {
-                            setView("game");
-                            setShowModeSelection(true);
-                          });
-                        }}
-                        className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
-                      >
-                        {isComplete ? "Play Again" : "Start Learning"}
-                      </button>
+                    )}
+
+                    {/* Title + meta */}
+                    <div className="relative z-10 mb-5">
+                      <h3 className="text-2xl sm:text-xl font-black text-stone-800 leading-tight pr-20">
+                        {assignment.title}
+                      </h3>
+                      <p className="text-stone-500 text-sm font-semibold mt-2 flex items-center gap-2">
+                        <BookOpen size={14} className="shrink-0" />
+                        {assignment.wordIds.length} words
+                        {assignment.deadline && (
+                          <span className="text-stone-400">
+                            &bull; Due {new Date(assignment.deadline).toLocaleDateString()}
+                          </span>
+                        )}
+                      </p>
                     </div>
 
                     {/* Per-mode progress indicators */}
-                    <div className="mb-3">
-                      <div className="flex justify-between text-sm sm:text-xs font-bold mb-2">
-                        <span className="text-stone-500 uppercase tracking-widest">Progress</span>
-                        <span className={isComplete ? "text-green-600" : "text-stone-500"}>
-                          {completedModes} / {totalModes} ({progressPercentage}%)
+                    <div className="relative z-10 mb-4">
+                      <div className="flex justify-between text-xs font-bold mb-2">
+                        <span className="text-stone-400 uppercase tracking-widest">Modes</span>
+                        <span className={isComplete ? "text-green-600 font-black" : "text-stone-400"}>
+                          {completedModes}/{totalModes}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {allowedModes.map(modeId => {
                           const done = completedModeSet.has(modeId);
                           const modeDef = getGameModeDef(modeId);
                           return (
                             <span
                               key={modeId}
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                                 done
-                                  ? 'bg-green-100 text-green-700 ring-1 ring-green-300'
-                                  : 'bg-stone-100 text-stone-400'
+                                  ? 'bg-green-100 text-green-700 ring-1 ring-green-300 shadow-sm'
+                                  : 'bg-white/60 text-stone-400 ring-1 ring-stone-200/60'
                               }`}
-                              title={modeDef ? modeDef.name : modeId}
                             >
-                              <span>{modeDef?.emoji || '🎮'}</span>
-                              <span className="hidden sm:inline">{modeDef?.name || modeId}</span>
+                              <span className="text-sm">{modeDef?.emoji || '🎮'}</span>
+                              <span>{modeDef?.name || modeId}</span>
                               {done && <Check size={12} className="text-green-600" />}
                             </span>
                           );
@@ -226,12 +237,34 @@ export default function StudentDashboardView({
                     </div>
 
                     {/* Progress Bar */}
-                    <progress
-                      className={`h-3 sm:h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${accent.bar}`}
-                      max={100}
-                      value={toProgressValue(progressPercentage)}
-                    />
-                  </div>
+                    <div className="relative z-10 mb-5">
+                      <progress
+                        className={`h-3 sm:h-2.5 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-white/50 ${accent.bar}`}
+                        max={100}
+                        value={toProgressValue(progressPercentage)}
+                      />
+                    </div>
+
+                    {/* CTA Button */}
+                    <button
+                      onClick={() => {
+                        const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
+                        setActiveAssignment(assignment);
+                        setAssignmentWords(filteredWords);
+                        React.startTransition(() => {
+                          setView("game");
+                          setShowModeSelection(true);
+                        });
+                      }}
+                      className={`relative z-10 w-full px-6 py-4 sm:py-3.5 bg-gradient-to-r ${accent.btn} text-white rounded-2xl font-black text-lg sm:text-base shadow-lg ${accent.btnShadow} active:scale-[0.97] transition-all flex items-center justify-center gap-2`}
+                    >
+                      {isComplete ? (
+                        <><Trophy size={18} /> Play Again</>
+                      ) : (
+                        <><Play size={18} fill="currentColor" /> Start Learning</>
+                      )}
+                    </button>
+                  </motion.div>
                 );
               })}
             </div>
