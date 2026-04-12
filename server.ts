@@ -659,6 +659,8 @@ async function startServer() {
         }
       }
 
+      console.log(`[OCR] ${authData.email}: Tesseract found ${allWords.length} tokens, ${uniqueWords.length} unique English words, raw text length ${rawText.length}`);
+
       res.json({
         words: uniqueWords,
         raw_text: rawText,
