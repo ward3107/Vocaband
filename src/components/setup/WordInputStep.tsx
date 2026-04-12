@@ -234,6 +234,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const [autocompleteIndex, setAutocompleteIndex] = useState(0);
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
   const autocompleteRef = useRef<HTMLDivElement>(null);
+  const ocrInputRef = useRef<HTMLInputElement>(null);
 
   // ── Undo state (multi-step stack, max 10) ────────────────────────────────────
   const [undoStack, setUndoStack] = useState<Word[][]>([]);
@@ -1322,27 +1323,80 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           </motion.button>
         )}
 
-        <motion.button
-          whileHover={{ scale: 1.01 }}
-          onClick={() => showToast?.('OCR is a Pro feature', 'info')}
-          className="w-full group relative overflow-hidden bg-stone-200 rounded-3xl p-4 sm:p-6 shadow-sm text-left cursor-not-allowed"
-        >
-          <span className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm z-10">PRO</span>
-          <div className="relative z-10">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-black text-stone-500 mb-1">Upload image</h3>
-                <p className="text-stone-400 text-xs sm:text-sm mb-2">Take a photo to extract words</p>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-stone-300/50 rounded-full">
-                  <span className="text-stone-500 text-xs font-bold">Pro feature</span>
+        {onOcrUpload ? (
+          <motion.button
+            whileHover={{ scale: isOcrProcessing ? 1 : 1.02 }}
+            whileTap={{ scale: isOcrProcessing ? 1 : 0.98 }}
+            onClick={() => ocrInputRef.current?.click()}
+            disabled={isOcrProcessing}
+            className={`w-full group relative overflow-hidden rounded-3xl p-4 sm:p-6 shadow-md text-left transition-all ${
+              isOcrProcessing
+                ? 'bg-stone-300 cursor-wait'
+                : 'bg-gradient-to-br from-emerald-500 to-teal-600 hover:shadow-lg cursor-pointer'
+            }`}
+          >
+            <input
+              ref={ocrInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onOcrUpload}
+              className="hidden"
+            />
+            <div className="relative z-10">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className={`text-lg sm:text-xl font-black mb-1 ${isOcrProcessing ? 'text-stone-600' : 'text-white'}`}>
+                    {isOcrProcessing ? 'Scanning...' : 'Upload image'}
+                  </h3>
+                  <p className={`text-xs sm:text-sm mb-2 ${isOcrProcessing ? 'text-stone-500' : 'text-white/80'}`}>
+                    {isOcrProcessing
+                      ? `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`
+                      : 'Take a photo or choose image to extract words'}
+                  </p>
+                  {!isOcrProcessing && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
+                      <span className="text-white text-xs font-bold">OCR word scanning</span>
+                    </div>
+                  )}
+                  {isOcrProcessing && ocrProgress > 0 && (
+                    <div className="w-full bg-stone-400/30 rounded-full h-2 mt-1">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(ocrProgress, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-3xl ${isOcrProcessing ? 'animate-pulse opacity-60' : ''}`}>📷</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl opacity-40">📷</span>
+            </div>
+          </motion.button>
+        ) : (
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            onClick={() => showToast?.('OCR is a Pro feature', 'info')}
+            className="w-full group relative overflow-hidden bg-stone-200 rounded-3xl p-4 sm:p-6 shadow-sm text-left cursor-not-allowed"
+          >
+            <span className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm z-10">PRO</span>
+            <div className="relative z-10">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg sm:text-xl font-black text-stone-500 mb-1">Upload image</h3>
+                  <p className="text-stone-400 text-xs sm:text-sm mb-2">Take a photo to extract words</p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-stone-300/50 rounded-full">
+                    <span className="text-stone-500 text-xs font-bold">Pro feature</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl opacity-40">📷</span>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.button>
+          </motion.button>
+        )}
       </div>
 
       <button
