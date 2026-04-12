@@ -198,9 +198,11 @@ async function startServer() {
   app.use(express.json({ limit: '50kb' }));
 
   // Multer for OCR image uploads (in-memory, no temp files)
+  // 15 MB limit: mobile photos are typically 3-8 MB, and the client compresses
+  // before upload, but we keep a generous server limit as a safety net.
   const ocrUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 15 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, cb) => {
       const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
       cb(null, allowed.includes(file.mimetype));

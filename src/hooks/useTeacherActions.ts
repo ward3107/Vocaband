@@ -15,6 +15,7 @@ import { ALL_WORDS, BAND_2_WORDS, Word } from "../data/vocabulary";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
+import { compressImageForUpload } from "../utils/compressImage";
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_IMPORT_WORDS = 500;
@@ -202,20 +203,24 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   };
 
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showToast("Image too large (max 5 MB).", "error"); e.target.value = ""; return; }
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+    if (rawFile.size > 15 * 1024 * 1024) { showToast("Image too large (max 15 MB).", "error"); e.target.value = ""; return; }
 
     setIsOcrProcessing(true);
-    setOcrProgress(10); // Initial progress
+    setOcrProgress(5); // Starting compression
 
     try {
+      // Compress large mobile photos (3-8 MB → ~1-2 MB) before upload
+      const file = await compressImageForUpload(rawFile);
+      setOcrProgress(10);
+
       // Get auth token for teacher authentication
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { showToast("Please sign in again.", "error"); return; }
 
-      // Create FormData with the image file
+      // Create FormData with the (possibly compressed) image file
       const formData = new FormData();
       formData.append('file', file);
 
