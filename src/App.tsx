@@ -1949,11 +1949,14 @@ export default function App() {
         cachedClassId = classRows[0].id;
       }
       const { data } = await supabase.rpc('get_assignments_for_class', { p_class_id: cachedClassId });
-      if (data) setStudentAssignments(data.map(mapAssignment));
+      setStudentAssignments((data ?? []).map(mapAssignment));
     };
+    // Fetch immediately on mount (so new assignments appear as soon as the
+    // student navigates to the dashboard), then refresh every 30 seconds.
+    refresh();
     const id = setInterval(refresh, 30000);
     return () => clearInterval(id);
-  }, [user?.role, user?.classCode, view, user]); // Added user as dependency
+  }, [user?.role, user?.classCode, view, user]);
 
   // Load pending students for teachers
   useEffect(() => {
@@ -2038,14 +2041,23 @@ export default function App() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Send to server-side OCR microservice
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`, // JWT token for teacher authentication
-        },
-        body: formData,
-      });
+      // Send to server-side OCR microservice.
+      // 60s timeout: Tesseract recognition can take 10-30s for complex images.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+      let response: Response;
+      try {
+        response = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       setOcrProgress(50); // Upload complete
 
