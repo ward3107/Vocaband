@@ -24,11 +24,16 @@ async function bootstrap() {
       const { supabase } = await import('./core/supabase');
       const code = params.get('code')!;
       const { error } = await supabase.auth.exchangeCodeForSession(code);
-      // PKCE codes are single-use, so retrying the exchange with the same
-      // code always fails. If the exchange failed, flag it so App.tsx can
-      // show a toast and let the teacher retry from a fresh OAuth redirect.
       if (error && !error.message?.includes('already used') && !error.message?.includes('expired')) {
         sessionStorage.setItem('oauth_exchange_failed', '1');
+      } else if (!error) {
+        // Signal to App.tsx that the PKCE exchange just succeeded.
+        // App.tsx will see this flag and keep the loading spinner instead
+        // of flashing the landing page while the session propagates.
+        // Without this, the race between history.replaceState (which
+        // strips ?code=) and INITIAL_SESSION (which checks for ?code=)
+        // causes the teacher to see the landing page on every first login.
+        sessionStorage.setItem('oauth_session_ready', '1');
       }
     } catch {
       sessionStorage.setItem('oauth_exchange_failed', '1');
