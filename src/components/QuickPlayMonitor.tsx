@@ -280,65 +280,64 @@ export default function QuickPlayMonitor({
   const floatStyle = `@keyframes qp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`;
 
   return (
-    <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-auto transition-colors duration-500`}>
+    <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}>
       <style>{floatStyle}</style>
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
-      <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4 transition-colors duration-500`}>
-        <div className="flex items-center gap-4 sm:gap-8">
+      <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>
+        {/* Top row: logo + theme dots */}
+        <div className="flex justify-between items-center">
           <button
             onClick={() => {
               if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }
               setMusicPlaying(false);
               onBack();
             }}
-            className={`font-headline font-black italic text-xl sm:text-2xl ${t.headerText} tracking-tighter hover:opacity-80 transition-opacity`}
+            className={`font-headline font-black italic text-xl sm:text-2xl ${t.headerText} tracking-tighter hover:opacity-80 transition-opacity shrink-0`}
           >
             Vocaband
           </button>
-        </div>
-        <div className="flex items-center gap-3 sm:gap-4">
           {/* Theme color dots */}
-          <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-3 py-1.5 gap-2`}>
-            <Palette size={16} className={t.headerText} />
+          <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-2 sm:px-3 py-1.5 gap-1.5`}>
+            <Palette size={14} className={t.headerText} />
             <div className="flex gap-1">
               {Object.entries(THEMES).map(([key, th]) => (
                 <button
                   key={key}
                   onClick={() => setTheme(key as ThemeKey)}
-                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${th.dot} transition-all ${
-                    theme === key ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'opacity-60 hover:opacity-100'
+                  className={`w-4 h-4 sm:w-6 sm:h-6 rounded-full ${th.dot} transition-all ${
+                    theme === key ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'opacity-60 hover:opacity-100'
                   }`}
                   title={th.name}
                 />
               ))}
             </div>
           </div>
-          {/* Music select + volume */}
-          <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-3 py-1.5 gap-2`}>
-            <button onClick={toggleMusic} className={t.headerText} title={musicPlaying ? 'Pause' : 'Play'}>
-              {musicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={musicVolume}
-              onChange={e => setMusicVolume(parseFloat(e.target.value))}
-              className="w-16 sm:w-20 h-1.5 accent-primary cursor-pointer"
-              title={`Volume: ${Math.round(musicVolume * 100)}%`}
-            />
-            <select
-              value={currentTrack}
-              onChange={e => changeTrack(parseInt(e.target.value))}
-              className={`bg-transparent border-none text-xs sm:text-sm font-headline font-semibold focus:ring-0 ${t.text} cursor-pointer pr-6`}
-            >
-              {MUSIC_TRACKS.map((track, idx) => (
-                <option key={track.file} value={idx}>{track.icon} {track.name}</option>
-              ))}
-            </select>
-          </div>
+        </div>
+        {/* Bottom row: music controls (own line on mobile) */}
+        <div className={`flex items-center mt-2 sm:mt-0 ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-3 py-1.5 gap-2 w-full sm:w-auto`}>
+          <button onClick={toggleMusic} className={`${t.headerText} shrink-0`} title={musicPlaying ? 'Pause' : 'Play'}>
+            {musicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={musicVolume}
+            onChange={e => setMusicVolume(parseFloat(e.target.value))}
+            className="w-16 sm:w-20 h-1.5 accent-primary cursor-pointer shrink-0"
+            title={`Volume: ${Math.round(musicVolume * 100)}%`}
+          />
+          <select
+            value={currentTrack}
+            onChange={e => changeTrack(parseInt(e.target.value))}
+            className={`bg-transparent border-none text-xs font-headline font-semibold focus:ring-0 ${t.text} cursor-pointer min-w-0 truncate`}
+          >
+            {MUSIC_TRACKS.map((track, idx) => (
+              <option key={track.file} value={idx}>{track.icon} {track.name}</option>
+            ))}
+          </select>
         </div>
       </header>
 
