@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
-  ChevronDown, Music, Palette
+  ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause
 } from 'lucide-react';
 import { Howl } from 'howler';
 import { Word } from '../data/vocabulary';
@@ -314,30 +314,64 @@ export default function QuickPlayMonitor({
             </div>
           </div>
         </div>
-        {/* Bottom row: music controls (own line on mobile) */}
-        <div className={`flex items-center mt-2 sm:mt-0 ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-3 py-1.5 gap-2 w-full sm:w-auto`}>
-          <button onClick={toggleMusic} className={`${t.headerText} shrink-0`} title={musicPlaying ? 'Pause' : 'Play'}>
-            {musicPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={musicVolume}
-            onChange={e => setMusicVolume(parseFloat(e.target.value))}
-            className="w-16 sm:w-20 h-1.5 accent-primary cursor-pointer shrink-0"
-            title={`Volume: ${Math.round(musicVolume * 100)}%`}
-          />
-          <select
-            value={currentTrack}
-            onChange={e => changeTrack(parseInt(e.target.value))}
-            className={`bg-transparent border-none text-xs font-headline font-semibold focus:ring-0 ${t.text} cursor-pointer min-w-0 truncate`}
-          >
-            {MUSIC_TRACKS.map((track, idx) => (
-              <option key={track.file} value={idx}>{track.icon} {track.name}</option>
-            ))}
-          </select>
+        {/* Bottom row: music player (own line on mobile) */}
+        <div className={`flex items-center mt-2 gap-2 w-full rounded-2xl px-3 py-2 ${
+          theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-stone-100'
+        }`}>
+          {/* Now playing info */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-lg shrink-0">{MUSIC_TRACKS[currentTrack].icon}</span>
+            <div className="min-w-0">
+              <p className={`text-[11px] font-bold truncate ${t.headerText}`}>{MUSIC_TRACKS[currentTrack].name}</p>
+              <p className={`text-[9px] ${t.headerText} opacity-50`}>Background Music</p>
+            </div>
+          </div>
+
+          {/* Transport controls */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => changeTrack((currentTrack - 1 + MUSIC_TRACKS.length) % MUSIC_TRACKS.length)}
+              className={`p-1.5 rounded-full ${t.headerText} opacity-60 hover:opacity-100 transition-opacity`}
+              title="Previous track"
+            >
+              <SkipBack size={14} fill="currentColor" />
+            </button>
+            <button
+              onClick={toggleMusic}
+              className={`p-2 rounded-full ${
+                musicPlaying
+                  ? 'bg-white/20 shadow-inner'
+                  : 'bg-gradient-to-br from-primary to-primary-dim shadow-md'
+              } ${t.headerText} transition-all active:scale-90`}
+              title={musicPlaying ? 'Pause' : 'Play'}
+            >
+              {musicPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+            </button>
+            <button
+              onClick={() => changeTrack((currentTrack + 1) % MUSIC_TRACKS.length)}
+              className={`p-1.5 rounded-full ${t.headerText} opacity-60 hover:opacity-100 transition-opacity`}
+              title="Next track"
+            >
+              <SkipForward size={14} fill="currentColor" />
+            </button>
+          </div>
+
+          {/* Volume slider */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button onClick={toggleMusic} className={`${t.headerText} opacity-60`}>
+              {musicVolume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={musicVolume}
+              onChange={e => setMusicVolume(parseFloat(e.target.value))}
+              className="w-14 sm:w-20 h-1.5 accent-primary cursor-pointer"
+              title={`Volume: ${Math.round(musicVolume * 100)}%`}
+            />
+          </div>
         </div>
       </header>
 
