@@ -1820,54 +1820,95 @@ export default function App() {
   }, []);
 
   // --- BACK BUTTON (History API) ---
-  // Track whether a view change was triggered by the browser back/forward button
-  // so we don't double-push the same entry.
+  //
+  // Goal: mobile back button navigates between in-app pages, but NEVER
+  // logs out and NEVER exits the app.  The user's dashboard (teacher or
+  // student) is the "floor" — pressing back at the dashboard is a no-op.
+  //
+  // How it works:
+  //   1. Every view change pushes a history entry (so back walks backward).
+  //   2. Login transitions REPLACE the landing entry (so back can't reach
+  //      the login screen while logged in).
+  //   3. On popstate, we check: is the destination view "safe"?  If not
+  //      (it's a login/auth view, or there's no state at all), we block
+  //      it and re-push the current view to keep the history stack alive.
+  //   4. Two extra "padding" entries are pushed on login so the browser
+  //      never runs out of history and exits the tab/PWA.
+
   const isPopStateNavRef = useRef(false);
 
-  // On first mount, seed the history stack with the initial view so the browser
-  // has something to pop back to.
+  // Views that a logged-in user should never land on via back button.
+  // If popstate would navigate to one of these, we block it.
+  const AUTH_VIEWS = new Set([
+    'landing', 'public-landing', 'student-account-login',
+    'oauth-class-code', 'oauth-callback',
+  ]);
+
+  // The "home" view for each role — back button cannot go past this.
+  const getHomeView = () =>
+    userRef.current?.role === 'teacher' ? 'teacher-dashboard' : 'student-dashboard';
+
+  // On first mount, seed the history stack.
   useEffect(() => {
     window.history.replaceState({ view: 'landing' }, '');
   }, []);
 
-  // Whenever the app navigates to a new view, push a history entry so the
-  // Android/iOS back button can walk back through them.
+  // Whenever the app navigates to a new view, push a history entry.
   useEffect(() => {
     if (isPopStateNavRef.current) {
-      // This change came from popstate — don't push another entry.
       isPopStateNavRef.current = false;
       return;
     }
-    // When an authenticated user transitions from landing to their dashboard,
-    // replace the landing entry instead of pushing so back doesn't go to login.
-    const isAuthTransition = userRef.current && (view === 'teacher-dashboard' || view === 'student-dashboard')
-      && window.history.state?.view === 'landing';
-    if (isAuthTransition) {
-      window.history.replaceState({ view }, '');
+    const isDashboard = view === 'teacher-dashboard' || view === 'student-dashboard';
+
+    // When transitioning to the dashboard after login, REPLACE the
+    // landing entry AND push an extra padding entry before it.  This
+    // ensures the history stack always has entries below the dashboard,
+    // so the browser can't exit when the user presses back at home.
+    if (userRef.current && isDashboard && AUTH_VIEWS.has(window.history.state?.view ?? '')) {
+      // Stack: [padding] [dashboard]
+      // The padding entry has the dashboard view too, so if popstate
+      // fires on it, the user just stays on the dashboard.
+      window.history.replaceState({ view, _pad: true }, '');
+      window.history.pushState({ view }, '');
     } else {
-      window.history.pushState({ view: view }, '');
+      window.history.pushState({ view }, '');
     }
   }, [view]);
 
-  // Handle the physical back button (popstate fires on Android hardware back
-  // and browser back gesture on iOS).
+  // Handle the physical back button / swipe gesture.
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      const prevView = e.state?.view as typeof view | undefined;
-      // Don't navigate back to landing if user is logged in
-      if (prevView === 'landing' && userRef.current) {
-        window.history.pushState({ view: view }, '');
+      const prevView = e.state?.view as string | undefined;
+      const currentUser = userRef.current;
+
+      // CASE 1: User is logged in and back would go to a login/auth view.
+      //         Block it — stay on current view.
+      if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
+        window.history.pushState({ view }, '');
         return;
       }
+
+      // CASE 2: User is at the dashboard and presses back again.
+      //         Block it — dashboard is the floor.
+      const home = currentUser ? getHomeView() : null;
+      if (currentUser && view === home && (prevView === home || (e.state as any)?._pad)) {
+        window.history.pushState({ view }, '');
+        return;
+      }
+
+      // CASE 3: Normal back navigation between in-app pages.
       if (prevView) {
         isPopStateNavRef.current = true;
-        setView(prevView);
+        setView(prevView as typeof view);
+      } else {
+        // No state at all — could exit the app.  Block it.
+        window.history.pushState({ view }, '');
       }
-      // If no state, the browser will naturally close/go to the previous page.
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [view]);
 
   // Redirect orphaned "landing" view — logged-out users go to student login,
   // logged-in users go to their dashboard (teacher or student).
