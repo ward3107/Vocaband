@@ -419,8 +419,9 @@ export default function GameView(props: GameViewProps) {
         </AnimatePresence>
       </div>
 
-      {/* Live Leaderboard Widget — hidden for Quick Play guests (no socket-based data) */}
-      {!user?.isGuest && (
+      {/* Live Leaderboard Widget — only shown during live challenges (has leaderboard data).
+          Hidden for solo assignments and Quick Play guests. */}
+      {!user?.isGuest && Object.keys(leaderboard).length > 0 && (
       <div className="lg:col-span-1">
         <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
