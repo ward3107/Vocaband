@@ -538,49 +538,24 @@ async function startServer() {
     }
   });
 
-  // ── Pre-initialized Tesseract worker ──────────────────────────────────────
-  // Creating a Tesseract worker on every OCR request adds 10-20s of cold start
-  // (downloading traineddata, initializing WASM). Instead, create one warm
-  // worker at server startup and reuse it across requests. The worker is
-  // thread-safe for sequential use (serialize with a mutex-like queue below).
-  let tesseractWorker: any = null;
-  let tesseractReady = false;
-  let tesseractInitPromise: Promise<void> | null = null;
-
-  const initTesseract = async () => {
-    if (tesseractReady) return;
-    if (tesseractInitPromise) { await tesseractInitPromise; return; }
-    tesseractInitPromise = (async () => {
-      try {
-        const Tesseract = await import("tesseract.js");
-        const langPath = path.resolve(
-          process.cwd(),
-          "node_modules/@tesseract.js-data/eng/4.0.0"
-        );
-        tesseractWorker = await Tesseract.createWorker("eng", undefined, {
-          langPath,
-          cachePath: "/tmp/tesseract-cache",
-          errorHandler: (e: unknown) => console.error("[OCR] Tesseract worker error:", e),
-        });
-        tesseractReady = true;
-        console.log("[OCR] Tesseract worker pre-initialized successfully");
-      } catch (err) {
-        console.error("[OCR] Failed to pre-initialize Tesseract:", err);
-        tesseractInitPromise = null; // allow retry
-      }
-    })();
-    await tesseractInitPromise;
-  };
-
-  // Start Tesseract initialization in the background (don't block server start)
-  initTesseract();
+  // ── Tesseract OCR — on-demand worker (created per request, then terminated)
+  // Pre-initializing a persistent worker consumed ~300-500 MB of RAM, which
+  // exceeded Render's free-tier 512 MB limit and caused the service to crash
+  // with "exceeded its memory limit". Instead, we create the worker fresh for
+  // each OCR request and terminate it immediately after. This trades ~10-15s
+  // of cold-start latency per request for ~0 MB baseline memory usage.
+  // Combined with the direct-to-Render client URL (bypasses Cloudflare Worker
+  // 30s timeout), the 10-15s is acceptable.
+  const tesseractLangPath = path.resolve(
+    process.cwd(),
+    "node_modules/@tesseract.js-data/eng/4.0.0"
+  );
 
   // OCR health check — unauthenticated, for diagnosing "OCR stuck at 10%"
   app.get("/api/ocr/status", (_req, res) => {
     res.json({
-      tesseractReady,
-      tesseractWorkerExists: !!tesseractWorker,
-      initInProgress: !!tesseractInitPromise && !tesseractReady,
+      mode: "on-demand",
+      langPathExists: require("fs").existsSync(tesseractLangPath),
     });
   });
 
@@ -628,17 +603,17 @@ async function startServer() {
     }
 
     try {
-      // Ensure Tesseract worker is ready (pre-initialized at startup, but
-      // may need a retry if the first init failed).
-      await initTesseract();
-      if (!tesseractWorker) {
-        return res.status(503).json({
-          error: "OCR engine not ready",
-          message: "Tesseract worker failed to initialize. Try again in a few seconds.",
-        });
-      }
-
-      const { data } = await tesseractWorker.recognize(req.file.buffer);
+      // Create a fresh Tesseract worker for this request, then terminate it
+      // immediately after to free ~300 MB of WASM memory. This avoids the
+      // persistent memory usage that crashed Render's free tier.
+      const Tesseract = await import("tesseract.js");
+      const worker = await Tesseract.createWorker("eng", undefined, {
+        langPath: tesseractLangPath,
+        cachePath: "/tmp/tesseract-cache",
+        errorHandler: (e: unknown) => console.error("[OCR] Tesseract worker error:", e),
+      });
+      const { data } = await worker.recognize(req.file.buffer);
+      await worker.terminate();
       const rawText = data.text || "";
 
       // Sanity check: empty rawText on a valid image usually means the worker
