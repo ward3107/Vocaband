@@ -185,6 +185,7 @@ export function mapAssignment(row: any): AssignmentData {
     allowedModes: row.allowed_modes,
     sentences: row.sentences ?? [],
     sentenceDifficulty: row.sentence_difficulty ?? 2,
+    createdAt: row.created_at,
   };
 }
 

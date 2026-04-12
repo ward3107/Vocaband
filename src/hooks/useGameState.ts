@@ -503,7 +503,7 @@ export function useGameState(params: UseGameStateParams) {
           p_class_code: user.classCode || "",
           p_score: cappedScore,
           p_mode: gameMode,
-          p_mistakes: Array.isArray(mistakes) ? mistakes.length : mistakes || 0,
+          p_mistakes: Array.isArray(mistakes) ? mistakes.length : (typeof mistakes === 'number' ? mistakes : 0),
           p_avatar: user.avatar || "🦊",
         }),
         supabase.from("users").update({ xp: newXp, streak: newStreak }).eq("uid", user.uid),
