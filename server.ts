@@ -538,29 +538,22 @@ async function startServer() {
     }
   });
 
-  // ── Tesseract OCR — on-demand worker (created per request, then terminated)
-  // Pre-initializing a persistent worker consumed ~300-500 MB of RAM, which
-  // exceeded Render's free-tier 512 MB limit and caused the service to crash
-  // with "exceeded its memory limit". Instead, we create the worker fresh for
-  // each OCR request and terminate it immediately after. This trades ~10-15s
-  // of cold-start latency per request for ~0 MB baseline memory usage.
-  // Combined with the direct-to-Render client URL (bypasses Cloudflare Worker
-  // 30s timeout), the 10-15s is acceptable.
-  const tesseractLangPath = path.resolve(
-    process.cwd(),
-    "node_modules/@tesseract.js-data/eng/4.0.0"
-  );
+  // ── OCR via Claude Haiku Vision ───────────────────────────────────────────
+  // Replaces Tesseract.js entirely. Tesseract had three problems:
+  //   1. ~300 MB RAM per worker → crashed Render's 512 MB free tier
+  //   2. 10-15s per request (cold start + recognition)
+  //   3. Poor accuracy on phone photos (angles, shadows, blur)
+  //
+  // Claude Haiku Vision: 2-3s, excellent accuracy, ~$0.002/image, 0 MB RAM.
+  // Uses the same ANTHROPIC_API_KEY already configured for AI sentences.
 
-  // OCR health check — unauthenticated, for diagnosing "OCR stuck at 10%"
   app.get("/api/ocr/status", (_req, res) => {
     res.json({
-      mode: "on-demand",
-      langPathExists: require("fs").existsSync(tesseractLangPath),
+      engine: "claude-haiku-vision",
+      apiKeySet: !!process.env.ANTHROPIC_API_KEY,
     });
   });
 
-  // OCR endpoint — uses Tesseract.js to extract English words from uploaded images
-  // Only authenticated teachers can access this
   app.post("/api/ocr", ocrRateLimiter, ocrUpload.single("file"), async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
@@ -573,89 +566,96 @@ async function startServer() {
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    // Verify user is a teacher
     const userData = await getUserRoleAndClass(authData.uid);
     if (!userData || userData.role !== "teacher") {
-      console.warn(`[OCR] Access denied for uid=${authData.uid}, role=${userData?.role ?? "not found"}`);
       return res.status(403).json({ error: "Only teachers can use OCR" });
     }
 
-    // Premium gate: OCR is limited to teachers in the ai_allowlist.
-    // Same allowlist as AI sentence generation — one list, both features.
     const { allowed, error: gateErr } = await isPremiumTeacher(authData.email);
     if (gateErr) {
-      console.error(`[OCR] allowlist check error for ${authData.email}: ${gateErr}`);
-      return res.status(503).json({
-        error: "Feature gate check failed",
-        message: gateErr,
-      });
+      return res.status(503).json({ error: "Feature gate check failed", message: gateErr });
     }
     if (!allowed) {
-      console.log(`[OCR] access denied: ${authData.email} is not in ai_allowlist`);
-      return res.status(403).json({
-        error: "OCR is a premium feature",
-        message: "Ask the admin to approve your account for OCR access.",
-      });
+      return res.status(403).json({ error: "OCR is a premium feature", message: "Ask the admin to approve your account." });
     }
 
     if (!req.file) {
       return res.status(400).json({ error: "No image file uploaded, or invalid file type." });
     }
 
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "OCR not configured", message: "ANTHROPIC_API_KEY is not set." });
+    }
+
     try {
-      // Create a fresh Tesseract worker for this request, then terminate it
-      // immediately after to free ~300 MB of WASM memory. This avoids the
-      // persistent memory usage that crashed Render's free tier.
-      const Tesseract = await import("tesseract.js");
-      const worker = await Tesseract.createWorker("eng", undefined, {
-        langPath: tesseractLangPath,
-        cachePath: "/tmp/tesseract-cache",
-        errorHandler: (e: unknown) => console.error("[OCR] Tesseract worker error:", e),
+      const anthropic = new Anthropic({ apiKey });
+      const base64Image = req.file.buffer.toString("base64");
+      const mediaType = (req.file.mimetype || "image/jpeg") as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+
+      const message = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: mediaType, data: base64Image },
+            },
+            {
+              type: "text",
+              text: `Extract ALL English words from this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
+
+Rules:
+- Include every English word you can read, no matter how small
+- Lowercase all words
+- Remove duplicates
+- Skip numbers, symbols, and non-English text (Hebrew, Arabic, etc.)
+- Include words even if partially obscured or blurry
+- If you cannot read any English words, return []`,
+            },
+          ],
+        }],
       });
-      const { data } = await worker.recognize(req.file.buffer);
-      await worker.terminate();
-      const rawText = data.text || "";
 
-      // Sanity check: empty rawText on a valid image usually means the worker
-      // failed to initialize (traineddata missing, corrupted, or wrong OEM).
-      // Fail loudly instead of silently returning {words: [], success: true}.
-      if (rawText.trim().length === 0) {
-        console.error("[OCR] Tesseract returned empty text — possible worker init failure");
-        return res.status(500).json({
-          error: "OCR engine returned no text",
-          message: "Tesseract recognized zero characters. If this persists, check server logs for [OCR] entries.",
-        });
-      }
+      const responseText = message.content[0].type === "text" ? message.content[0].text : "";
 
-      // Extract English words, preserve original form, deduplicate
-      const allWords = rawText.split(/[\s\n\r.,;:!?'"()\[\]{}<>\/\\|@#$%^&*+=~`_\-0-9]+/);
-      const englishWordPattern = /^[a-zA-Z]{2,}$/;
-      const seen = new Set<string>();
-      const uniqueWords: string[] = [];
-
-      for (const word of allWords) {
-        if (englishWordPattern.test(word)) {
-          const lower = word.toLowerCase();
-          if (!seen.has(lower)) {
-            seen.add(lower);
-            uniqueWords.push(lower);
-          }
+      // Parse the JSON array from Claude's response
+      let words: string[] = [];
+      try {
+        // Claude might wrap the array in markdown code blocks
+        const cleaned = responseText.replace(/```json?\s*|\s*```/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) {
+          words = parsed
+            .filter((w: unknown): w is string => typeof w === "string" && w.length >= 2)
+            .map((w: string) => w.toLowerCase().trim());
         }
+      } catch {
+        // If JSON parse fails, fall back to splitting by common delimiters
+        words = responseText
+          .replace(/[\[\]"`,]/g, " ")
+          .split(/\s+/)
+          .filter(w => /^[a-zA-Z]{2,}$/.test(w))
+          .map(w => w.toLowerCase());
       }
 
-      console.log(`[OCR] ${authData.email}: Tesseract found ${allWords.length} tokens, ${uniqueWords.length} unique English words, raw text length ${rawText.length}`);
+      // Deduplicate
+      const uniqueWords = [...new Set(words)];
+
+      console.log(`[OCR] ${authData.email}: Claude Vision found ${uniqueWords.length} English words (input tokens: ${message.usage.input_tokens}, output tokens: ${message.usage.output_tokens})`);
 
       res.json({
         words: uniqueWords,
-        raw_text: rawText,
+        raw_text: responseText,
         success: true,
       });
     } catch (error: any) {
-      console.error("OCR error:", error?.message || error, error?.stack);
+      console.error("[OCR] Claude Vision error:", error?.message || error);
       res.status(500).json({
         error: "OCR processing failed",
-        message: error?.message || "An unexpected error occurred during text recognition.",
-        details: process.env.NODE_ENV !== "production" ? String(error) : undefined,
+        message: error?.message || "An unexpected error occurred.",
       });
     }
   });
