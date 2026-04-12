@@ -1571,9 +1571,10 @@ export default function App() {
               .from('classes').select('*').eq('code', code);
             if (classRows && classRows.length > 0) {
               const classData = mapClass(classRows[0]);
-              // Fetch assignments + progress in parallel for faster restore
+              // Fetch assignments + progress in parallel for faster restore.
+              // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
               const [assignResult, progressResult] = await Promise.all([
-                supabase.from('assignments').select('*').eq('class_id', classData.id),
+                supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
                 supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', supabaseUser.id),
               ]);
               setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
@@ -1613,7 +1614,7 @@ export default function App() {
                       if (classRows && classRows.length > 0) {
                         const c = mapClass(classRows[0]);
                         const [a, p] = await Promise.all([
-                          supabase.from('assignments').select('*').eq('class_id', c.id),
+                          supabase.rpc('get_assignments_for_class', { p_class_id: c.id }),
                           supabase.from('progress').select('*').eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
                         ]);
                         setStudentAssignments((a.data ?? []).map(mapAssignment));
@@ -1667,7 +1668,7 @@ export default function App() {
                 if (classRows && classRows.length > 0) {
                   const classData = mapClass(classRows[0]);
                   const [assignResult, progressResult] = await Promise.all([
-                    supabase.from('assignments').select('*').eq('class_id', classData.id),
+                    supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
                     supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
                   ]);
                   setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
@@ -1946,7 +1947,7 @@ export default function App() {
         if (!classRows || classRows.length === 0) return;
         cachedClassId = classRows[0].id;
       }
-      const { data } = await supabase.from('assignments').select('*').eq('class_id', cachedClassId);
+      const { data } = await supabase.rpc('get_assignments_for_class', { p_class_id: cachedClassId });
       if (data) setStudentAssignments(data.map(mapAssignment));
     };
     const id = setInterval(refresh, 30000);
@@ -3035,7 +3036,7 @@ export default function App() {
         if (classRows && classRows.length > 0) {
           const classData = mapClass(classRows[0]);
           const [assignResult, progressResult] = await Promise.all([
-            supabase.from('assignments').select('*').eq('class_id', classData.id),
+            supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
             supabase.from('progress').select('*').eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
           ]);
           setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
@@ -3295,9 +3296,10 @@ export default function App() {
 
       // BACKGROUND: Fetch assignments + progress after UI is visible
       // This makes the login feel much faster!
+      // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
       setStudentDataLoading(true);
       Promise.all([
-        supabase.from('assignments').select('*').eq('class_id', classData.id),
+        supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
         supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
       ]).then(([assignResult, progressResult]) => {
         if (assignResult.error) {
