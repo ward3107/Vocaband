@@ -106,7 +106,7 @@ export default function StudentDashboardView({
                 className="flex-1 h-5 sm:h-4 [&::-webkit-progress-bar]:bg-stone-100 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600 rounded-full overflow-hidden"
                 max={100}
                 value={toProgressValue((studentAssignments.filter(a => {
-                  const allowedModes = (a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]).filter(m => m !== "flashcards");
+                  const allowedModes = (a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]).filter(m => m !== "flashcards");
                   const completedModes = new Set(
                     studentProgress.filter(p => p.assignmentId === a.id && p.mode !== "flashcards").map(p => p.mode)
                   ).size;
@@ -115,7 +115,7 @@ export default function StudentDashboardView({
               />
               <span className="font-bold text-stone-500 text-sm sm:text-sm">
                 {studentAssignments.filter(a => {
-                  const allowedModes = (a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]).filter(m => m !== "flashcards");
+                  const allowedModes = (a.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]).filter(m => m !== "flashcards");
                   const completedModes = new Set(
                     studentProgress.filter(p => p.assignmentId === a.id && p.mode !== "flashcards").map(p => p.mode)
                   ).size;
@@ -143,7 +143,7 @@ export default function StudentDashboardView({
           ) : (
             <div className="space-y-5 sm:space-y-4">
               {studentAssignments.map((assignment, assignmentIdx) => {
-                const allowedModes = (assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"]).filter(m => m !== "flashcards");
+                const allowedModes = (assignment.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"]).filter(m => m !== "flashcards");
                 const totalModes = allowedModes.length;
 
                 const completedModes = new Set(
