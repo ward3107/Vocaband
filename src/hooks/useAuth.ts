@@ -535,14 +535,17 @@ export function useAuth(params: UseAuthParams) {
       setUser(studentUser);
       setIsOAuthCallback(false);
 
-      // Load class assignments and progress
+      // Load class assignments and progress.
+      // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
+      // Direct queries on assignments fail for student sessions because
+      // the RLS policy subquery can't resolve the user row reliably.
       if (studentData.class_code) {
         const { data: classRows } = await supabase
           .from('classes').select('*').eq('code', studentData.class_code);
         if (classRows && classRows.length > 0) {
           const classData = mapClass(classRows[0]);
           const [assignResult, progressResult] = await Promise.all([
-            supabase.from('assignments').select('*').eq('class_id', classData.id),
+            supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
             supabase.from('progress').select('*').eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
           ]);
           setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
@@ -770,9 +773,13 @@ export function useAuth(params: UseAuthParams) {
 
       // BACKGROUND: Fetch assignments + progress after UI is visible
       // This makes the login feel much faster!
+      // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
+      // Direct queries on the assignments table fail for anonymous/student
+      // sessions because the RLS policy subquery can't resolve the user row
+      // fast enough or at all for anonymous auth.
       setStudentDataLoading(true);
       Promise.all([
-        supabase.from('assignments').select('*').eq('class_id', classData.id),
+        supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
         supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
       ]).then(([assignResult, progressResult]) => {
         if (assignResult.error) {
