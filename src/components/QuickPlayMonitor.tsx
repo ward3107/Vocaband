@@ -280,7 +280,7 @@ export default function QuickPlayMonitor({
   const floatStyle = `@keyframes qp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`;
 
   return (
-    <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-hidden transition-colors duration-500`}>
+    <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-auto transition-colors duration-500`}>
       <style>{floatStyle}</style>
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
@@ -487,7 +487,7 @@ export default function QuickPlayMonitor({
       </main>
 
       {/* ─── Bottom Nav Bar ────────────────────────────────────────────────── */}
-      <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-4 sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
+      <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
         <div className={`flex flex-col items-center p-2 ${t.accent}`}>
           <Users size={22} />
           <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Monitor</span>

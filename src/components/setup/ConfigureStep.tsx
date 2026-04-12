@@ -588,7 +588,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       )}
 
       {/* ── Navigation ───────────────────────────────────────────────────── */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 pb-6 sm:pb-2">
         <button
           onClick={onBack}
           className="flex-1 py-3 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"

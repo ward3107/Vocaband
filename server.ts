@@ -575,6 +575,15 @@ async function startServer() {
   // Start Tesseract initialization in the background (don't block server start)
   initTesseract();
 
+  // OCR health check — unauthenticated, for diagnosing "OCR stuck at 10%"
+  app.get("/api/ocr/status", (_req, res) => {
+    res.json({
+      tesseractReady,
+      tesseractWorkerExists: !!tesseractWorker,
+      initInProgress: !!tesseractInitPromise && !tesseractReady,
+    });
+  });
+
   // OCR endpoint — uses Tesseract.js to extract English words from uploaded images
   // Only authenticated teachers can access this
   app.post("/api/ocr", ocrRateLimiter, ocrUpload.single("file"), async (req, res) => {
