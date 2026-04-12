@@ -205,13 +205,14 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
-    if (rawFile.size > 15 * 1024 * 1024) { showToast("Image too large (max 15 MB).", "error"); e.target.value = ""; return; }
 
     setIsOcrProcessing(true);
     setOcrProgress(5); // Starting compression
 
     try {
-      // Compress large mobile photos (3-8 MB → ~1-2 MB) before upload
+      // Compress large mobile photos (3-12 MB → ~1-2 MB) before upload.
+      // No client-side size check — compression handles all sizes, and
+      // the server's multer limit (15 MB) is the real safety net.
       const file = await compressImageForUpload(rawFile);
       setOcrProgress(10);
 
