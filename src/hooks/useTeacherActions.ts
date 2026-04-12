@@ -224,14 +224,19 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Send to server-side OCR microservice.
-      // 60s timeout: Tesseract recognition can take 10-30s for complex images.
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || '';
+      // Send OCR request DIRECTLY to Render (api.vocaband.com), bypassing the
+      // Cloudflare Worker proxy. Tesseract recognition takes 5-30 seconds,
+      // which exceeds the Worker's 30-second wall-clock limit. Going direct
+      // avoids the proxy timeout. CORS is configured on Render to accept
+      // requests from vocaband.com.
+      const ocrUrl = import.meta.env?.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL}/api/ocr`
+        : 'https://api.vocaband.com/api/ocr';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+      const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s for OCR
       let response: Response;
       try {
-        response = await fetch(`${apiUrl}/api/ocr`, {
+        response = await fetch(ocrUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -307,10 +312,14 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
         showToast(`Found ${customWordsFromOCR.length} words from the image!`, "success");
       }
     } catch (err) {
-      trackAutoError(err, 'OCR processing failed');
-      const errorMessage = err instanceof Error ? err.message : 'Error processing image';
-      console.error('OCR error:', errorMessage);
-      showToast(`${errorMessage}. Please try again.`, "error");
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        showToast("OCR timed out — the image may be too complex. Try a clearer photo or a smaller area.", "error");
+      } else {
+        trackAutoError(err, 'OCR processing failed');
+        const errorMessage = err instanceof Error ? err.message : 'Error processing image';
+        console.error('OCR error:', errorMessage);
+        showToast(`${errorMessage}. Please try again.`, "error");
+      }
     } finally {
       setIsOcrProcessing(false);
       setOcrProgress(0);
