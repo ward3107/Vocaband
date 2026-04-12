@@ -224,15 +224,24 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Send to server-side OCR microservice
+      // Send to server-side OCR microservice.
+      // 60s timeout: Tesseract recognition can take 10-30s for complex images.
       const apiUrl = (import.meta as any).env?.VITE_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/ocr`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`, // JWT token for teacher authentication
-        },
-        body: formData,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+      let response: Response;
+      try {
+        response = await fetch(`${apiUrl}/api/ocr`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       setOcrProgress(50); // Upload complete
 
