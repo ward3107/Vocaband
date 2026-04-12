@@ -11,7 +11,7 @@ import {
   type AssignmentData,
   type ProgressData,
 } from "../core/supabase";
-import { ALL_WORDS, BAND_2_WORDS, Word } from "../data/vocabulary";
+import { ALL_WORDS, SET_2_WORDS, Word } from "../data/vocabulary";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
@@ -135,7 +135,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     const allMatches: Word[] = [];
     const unmatched: string[] = [];
     for (const word of words) {
-      const matches = BAND_2_WORDS.filter(w =>
+      const matches = SET_2_WORDS.filter(w =>
         w.english.toLowerCase() === word ||
         w.english.toLowerCase().startsWith(word) ||
         w.english.toLowerCase().endsWith(word)
@@ -235,6 +235,14 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
         : 'https://api.vocaband.com/api/ocr';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s for OCR
+
+      // Simulate smooth progress during the API call (10% → 85%)
+      let simProgress = 10;
+      const progressInterval = setInterval(() => {
+        simProgress += (85 - simProgress) * 0.08;
+        setOcrProgress(Math.round(simProgress));
+      }, 400);
+
       let response: Response;
       try {
         response = await fetch(ocrUrl, {
@@ -247,9 +255,10 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
         });
       } finally {
         clearTimeout(timeoutId);
+        clearInterval(progressInterval);
       }
 
-      setOcrProgress(50); // Upload complete
+      setOcrProgress(88);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -257,7 +266,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       }
 
       const ocrData = await response.json();
-      setOcrProgress(90); // Processing complete
+      setOcrProgress(95); // Processing complete
 
       // Extract words from the OCR service response
       // The service already returns English-only words (filtered by regex on server)

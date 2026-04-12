@@ -85,6 +85,7 @@ export function useQuickPlay(
         if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
           existing.lastSeen = p.completed_at;
           existing.mode = p.mode;
+          if (p.avatar) existing.avatar = p.avatar;
         }
         if (p.mode !== 'joined') {
           const prev = existing.modes.get(p.mode) || 0;

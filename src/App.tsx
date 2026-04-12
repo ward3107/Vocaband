@@ -846,6 +846,8 @@ export default function App() {
         if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
           existing.lastSeen = p.completed_at;
           existing.mode = p.mode;
+          // Update avatar from the most recent entry
+          if (p.avatar) existing.avatar = p.avatar;
         }
         // Track best score per mode, then sum for cumulative total
         if (p.mode !== 'joined') {
@@ -2147,6 +2149,15 @@ export default function App() {
         : 'https://api.vocaband.com/api/ocr';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s for OCR
+
+      // Simulate smooth progress during the API call (10% → 85%) so the
+      // user sees movement instead of a stuck bar. Clears when fetch completes.
+      let simProgress = 10;
+      const progressInterval = setInterval(() => {
+        simProgress += (85 - simProgress) * 0.08; // ease-out curve
+        setOcrProgress(Math.round(simProgress));
+      }, 400);
+
       let response: Response;
       try {
         response = await fetch(ocrUrl, {
@@ -2159,9 +2170,10 @@ export default function App() {
         });
       } finally {
         clearTimeout(timeoutId);
+        clearInterval(progressInterval);
       }
 
-      setOcrProgress(50); // Upload complete
+      setOcrProgress(88);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -2169,7 +2181,7 @@ export default function App() {
       }
 
       const ocrData = await response.json();
-      setOcrProgress(90); // Processing complete
+      setOcrProgress(95); // Processing complete
 
       // Extract words from the OCR service response
       // The service already returns English-only words (filtered by regex on server)
@@ -3704,7 +3716,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder") {
+    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder" && gameMode !== "matching") {
       // Only speak if this is a different word than the last one we spoke
       if (lastSpokenWordRef.current !== currentWord.id) {
         gameDebug.logPronunciation({ wordId: currentWord.id, word: currentWord.english, method: 'auto', success: true });
@@ -4092,12 +4104,15 @@ export default function App() {
       return;
     }
 
-    // Pronounce the word when clicking any card (deferred to not block paint)
-    const matchWord = gameWords.find(w => w.id === item.id);
-    setTimeout(() => {
-      speakWord(item.id, matchWord?.english);
-      gameDebug.logPronunciation({ wordId: item.id, word: matchWord?.english || '', method: 'manual', success: true });
-    }, 0);
+    // Only pronounce when clicking English cards — Hebrew/Arabic cards
+    // should not trigger English audio (confusing for students)
+    if (item.type === 'english') {
+      const matchWord = gameWords.find(w => w.id === item.id);
+      setTimeout(() => {
+        speakWord(item.id, matchWord?.english);
+        gameDebug.logPronunciation({ wordId: item.id, word: matchWord?.english || '', method: 'manual', success: true });
+      }, 0);
+    }
 
     if (!selectedMatch) {
       setSelectedMatch(item);
