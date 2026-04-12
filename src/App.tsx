@@ -1777,6 +1777,20 @@ export default function App() {
           window.location.search.includes("code=") ||
           window.location.hash.includes("access_token=");
 
+        // Check if bootstrap() just completed a successful PKCE exchange.
+        // The ?code= param is already stripped by the time React renders,
+        // so we use a sessionStorage flag as a bridge. If set, keep the
+        // spinner — the SIGNED_IN event will arrive in a moment.
+        const justExchanged = sessionStorage.getItem('oauth_session_ready');
+        if (justExchanged) {
+          sessionStorage.removeItem('oauth_session_ready');
+          // Don't setLoading(false) — wait for SIGNED_IN to fire with
+          // the session, which will call restoreSession → setLoading(false).
+          // The 5-second safety timeout handles the edge case where the
+          // event never arrives.
+          return;
+        }
+
         // If the PKCE exchange failed in boot(), show a toast and let the
         // teacher try again immediately instead of silently showing landing.
         const exchangeFailed = sessionStorage.getItem('oauth_exchange_failed');
