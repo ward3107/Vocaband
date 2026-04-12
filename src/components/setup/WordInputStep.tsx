@@ -273,6 +273,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const ocrInputRef = useRef<HTMLInputElement>(null);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
 
   // ── Undo state (multi-step stack, max 10) ────────────────────────────────────
   const [undoStack, setUndoStack] = useState<Word[][]>([]);
@@ -2678,6 +2679,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                         if (newWords.length > 0) {
                           onSelectedWordsChange([...selectedWords, ...newWords]);
                           showToast?.(`Added ${newWords.length} words from ${pack.name}`, 'success');
+                          // Scroll to the Continue button so the user knows what's next
+                          setTimeout(() => {
+                            continueButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 150);
                         }
                       }
                     }}
@@ -2794,6 +2799,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       {/* Continue button — appears when words are selected */}
       {selectedWords.length > 0 && !expandedPack && (
         <motion.button
+          ref={continueButtonRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={onNext}
