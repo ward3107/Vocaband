@@ -333,7 +333,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 onClick={() => toggleGameMode(gameMode.id)}
                 whileHover={{ scale: isSelected ? 1.05 : 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center overflow-hidden ${
+                className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center ${
                   isSelected
                     ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
                     : 'border-outline/20 bg-stone-200 hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
