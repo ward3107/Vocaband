@@ -1520,7 +1520,40 @@ export default function App() {
       if (restoreInProgress.current) return;
       restoreInProgress.current = true;
       try {
-        const userData = await fetchUserProfile(supabaseUser.id);
+        // For anonymous students: RLS blocks SELECT on users table
+        // (is_anonymous IS FALSE). Instead of querying the DB, restore
+        // directly from localStorage which was saved on login.
+        const isAnonymous = supabaseUser.is_anonymous || supabaseUser.app_metadata?.provider === 'anonymous';
+        let userData = await fetchUserProfile(supabaseUser.id);
+
+        if (!userData && isAnonymous) {
+          try {
+            const savedRaw = localStorage.getItem('vocaband_student_login');
+            if (savedRaw) {
+              const saved = JSON.parse(savedRaw);
+              if (saved.classCode && saved.displayName) {
+                // Restore from localStorage without DB read
+                userData = {
+                  uid: supabaseUser.id,
+                  displayName: saved.displayName,
+                  email: supabaseUser.email || '',
+                  role: 'student' as const,
+                  classCode: saved.classCode,
+                  avatar: saved.avatar || '🦊',
+                  badges: [],
+                  xp: 0,
+                  streak: 0,
+                };
+                // Update localStorage with the current auth UID
+                localStorage.setItem('vocaband_student_login', JSON.stringify({
+                  ...saved,
+                  uid: supabaseUser.id,
+                }));
+              }
+            }
+          } catch { /* localStorage unavailable */ }
+        }
+
         if (userData) {
           setUser(userData);
           checkConsent(userData);
