@@ -293,26 +293,24 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
     } catch {}
   }, []);
 
-  // On mount: check clipboard for 2+ words
-  useEffect(() => {
-    const checkClipboard = async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (!text || !text.trim()) return;
-
-        // Count words (split by space, comma, newline)
-        const words = text.trim().split(/[\s,\n]+/).filter(w => w.length > 0);
-        if (words.length >= 2) {
-          setClipboardBanner({ wordCount: words.length, text });
-        }
-      } catch (error) {
-        // Permission denied or not available - silently ignore
-        console.debug('Clipboard access denied or unavailable');
-      }
-    };
-
-    checkClipboard();
-  }, []);
+  // Automatic clipboard detection disabled — teachers reported the
+  // "📋 Clipboard has N words" banner as annoying on every page load.
+  // Manual "Paste from clipboard" button is still available below.
+  // useEffect(() => {
+  //   const checkClipboard = async () => {
+  //     try {
+  //       const text = await navigator.clipboard.readText();
+  //       if (!text || !text.trim()) return;
+  //       const words = text.trim().split(/[\s,\n]+/).filter(w => w.length > 0);
+  //       if (words.length >= 2) {
+  //         setClipboardBanner({ wordCount: words.length, text });
+  //       }
+  //     } catch (error) {
+  //       console.debug('Clipboard access denied or unavailable');
+  //     }
+  //   };
+  //   checkClipboard();
+  // }, []);
 
   // Load worst-performing words from spaced repetition data
   useEffect(() => {
@@ -1482,11 +1480,11 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       )}
 
       {/* Recently Used Words */}
-      {recentlyUsedWords.length > 0 && selectedWords.length === 0 && (
+      {recentlyUsedWords.length > 0 && (
         <div className="bg-stone-50 rounded-2xl border border-stone-200 p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Recently used</span>
-            <span className="text-[10px] text-stone-400">Click to re-add</span>
+            <span className="text-[10px] text-stone-400">Click words one by one to add</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {recentlyUsedWords.slice(0, 12).map(word => {

@@ -140,10 +140,11 @@ export default function QuickPlayMonitor({
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [endModal, setEndModal] = useState(false);
   const [showWordsModal, setShowWordsModal] = useState(false);
-  const [theme, setTheme] = useState<ThemeKey>('classic');
+  const [theme, setTheme] = useState<ThemeKey>('galaxy');
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
+  const [confirmKick, setConfirmKick] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState(() => {
     try { return parseInt(localStorage.getItem('vocaband-music-track') || '0') || 0; } catch { return 0; }
   });
@@ -242,8 +243,6 @@ export default function QuickPlayMonitor({
   }, []);
 
   // ─── Remove student ───────────────────────────────────────────────────────
-  const [confirmKick, setConfirmKick] = useState<string | null>(null);
-
   const removeStudent = async (name: string) => {
     const { error } = await supabase
       .from('progress')
