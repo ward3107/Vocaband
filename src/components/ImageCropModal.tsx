@@ -35,9 +35,10 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
   >(null);
   const dragStart = useRef({ px: 0, py: 0, crop: { x: 0, y: 0, w: 100, h: 100 } });
 
-  // Load image
+  // Load image — only allow blob: URLs (from createObjectURL) to prevent XSS
   useEffect(() => {
     const url = URL.createObjectURL(file);
+    if (!url.startsWith("blob:")) return; // safety: reject non-blob URLs
     setImgSrc(url);
     const img = new Image();
     img.onload = () => {
