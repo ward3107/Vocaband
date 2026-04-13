@@ -2196,11 +2196,21 @@ export default function App() {
       setOcrProgress(88);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'OCR service error');
+        // The server may return HTML (e.g. Render 502) instead of JSON
+        let errorMessage = `OCR failed (${response.status})`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch { /* response wasn't JSON — use status-based message */ }
+        throw new Error(errorMessage);
       }
 
-      const ocrData = await response.json();
+      let ocrData: any;
+      try {
+        ocrData = await response.json();
+      } catch {
+        throw new Error('Server returned an invalid response. Please try again.');
+      }
       setOcrProgress(95); // Processing complete
 
       // Extract words from the OCR service response

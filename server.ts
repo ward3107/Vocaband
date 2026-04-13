@@ -204,8 +204,12 @@ async function startServer() {
     storage: multer.memoryStorage(),
     limits: { fileSize: 15 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, cb) => {
-      const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-      cb(null, allowed.includes(file.mimetype));
+      const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp", "image/heic", "image/heif"];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Unsupported image type: ${file.mimetype}. Use JPEG, PNG, or WebP.`));
+      }
     },
   });
 
@@ -554,7 +558,17 @@ async function startServer() {
     });
   });
 
-  app.post("/api/ocr", ocrRateLimiter, ocrUpload.single("file"), async (req, res) => {
+  app.post("/api/ocr", ocrRateLimiter, (req: any, res: any, next: any) => {
+    ocrUpload.single("file")(req, res, (err: any) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ error: "Image too large (max 15 MB)" });
+        }
+        return res.status(400).json({ error: err.message || "File upload failed" });
+      }
+      next();
+    });
+  }, async (req: any, res: any) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Authentication required" });
@@ -591,7 +605,11 @@ async function startServer() {
     try {
       const anthropic = new Anthropic({ apiKey });
       const base64Image = req.file.buffer.toString("base64");
-      const mediaType = (req.file.mimetype || "image/jpeg") as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+      // Anthropic Vision API only accepts jpeg/png/gif/webp.
+      // HEIC/HEIF (from iPhones) must be mapped to jpeg — the client
+      // compresses to JPEG before upload, but the MIME type may not update.
+      const rawMime = req.file.mimetype || "image/jpeg";
+      const mediaType = (rawMime === "image/heic" || rawMime === "image/heif" ? "image/jpeg" : rawMime) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
       const message = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
