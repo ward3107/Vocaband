@@ -2190,8 +2190,9 @@ export default function App() {
 
     try {
       const file = await compressImageForUpload(fileToProcess);
+      const fileSizeKB = Math.round(file.size / 1024);
       setOcrProgress(10);
-      setOcrStatus("Connecting to server...");
+      setOcrStatus(`Connecting to server... (${fileSizeKB} KB)`);
 
       // Get auth token for teacher authentication
       const { data: { session } } = await supabase.auth.getSession();
@@ -2304,8 +2305,10 @@ export default function App() {
 
       if (customWordsFromOCR.length === 0) {
         showToast(
-          `No English words found. OCR recognized: "${rawText.substring(0, 100)}${rawText.length > 100 ? '...' : ''}"`,
-          "info"
+          rawText
+            ? `No English words found. AI saw: "${rawText.substring(0, 120)}${rawText.length > 120 ? '...' : ''}"`
+            : "No words found — the image may be unclear. Try a closer photo with better lighting.",
+          "error"
         );
       } else {
         // Add all detected words to the Custom tab and select them
