@@ -1,20 +1,21 @@
 /**
  * Compress an image file using the Canvas API before upload.
  *
- * Mobile camera photos are typically 3-8 MB, which exceeds OCR upload limits.
- * This resizes to a max dimension (default 2048px) and re-encodes as JPEG at
- * quality 0.85, which keeps OCR accuracy high while bringing most photos under
- * 1-2 MB. Falls back to the original file if compression fails (e.g. in a
+ * Anthropic's Vision API has a 5 MB base64 limit (~3.7 MB raw file).
+ * Mobile camera photos are typically 3-12 MB, so we ALWAYS resize to
+ * max 1500px and re-encode as JPEG at quality 0.80. This keeps OCR
+ * accuracy high while ensuring the file stays well under the API limit.
+ *
+ * Falls back to the original file if compression fails (e.g. in a
  * browser without Canvas support).
  */
 export async function compressImageForUpload(
   file: File,
-  maxDimension = 2048,
-  quality = 0.85,
+  maxDimension = 1500,
+  quality = 0.80,
 ): Promise<File> {
-  // Skip if already small enough (under 3 MB)
-  if (file.size <= 3 * 1024 * 1024) return file;
-
+  // Always compress — even "small" files may exceed the 5MB base64 limit
+  // when encoded. A 3MB JPEG becomes ~4MB base64.
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -37,8 +38,11 @@ export async function compressImageForUpload(
         ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob(
           (blob) => {
-            if (!blob) { resolve(file); return; }
-            // Return compressed file with the same name
+            if (!blob || blob.size >= file.size) {
+              // Compression made it bigger (rare) — use original
+              resolve(file);
+              return;
+            }
             resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
               type: 'image/jpeg',
               lastModified: Date.now(),
