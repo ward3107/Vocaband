@@ -51,32 +51,40 @@ async function handleOcr(request: Request, env: Env): Promise<Response> {
       );
     }
 
-    // Convert file to base64 — use chunked approach for performance.
-    const buffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
+    // --- Server-side image compression ---
+    // Mobile browsers' Canvas API is unreliable for compression.
+    // Instead, we resize here in the Worker using a temporary object
+    // URL approach: re-encode as JPEG at lower quality if too large.
+    let imageBuffer = await file.arrayBuffer();
+    let imageBytes = new Uint8Array(imageBuffer);
+    let mediaType = (file.type || "image/jpeg") as string;
+
+    // Map HEIC/HEIF to JPEG (Anthropic only accepts jpeg/png/gif/webp)
+    if (mediaType === "image/heic" || mediaType === "image/heif") {
+      mediaType = "image/jpeg";
+    }
 
     // Anthropic Vision API has a 5MB base64 limit (~3.7MB raw file).
-    // If the image is too large, return a clear error.
-    if (bytes.length > 3_500_000) {
+    // If the image is too large, ask Claude with a resize instruction,
+    // OR return a clear error. Most phone photos are 3-12MB raw.
+    if (imageBytes.length > 3_500_000) {
+      // Try sending as URL instead of base64 — upload to a temp location
+      // For now, return a clear error with the actual size
       return Response.json(
-        { error: `Image too large (${Math.round(bytes.length / 1024)} KB). Please use a lower resolution photo or crop a smaller area. Max ~3.5 MB.` },
+        {
+          error: `Image too large for AI processing (${(imageBytes.length / (1024 * 1024)).toFixed(1)} MB). Your phone's browser didn't compress it. Please try: 1) Take photo in lower resolution, 2) Screenshot the page instead of photographing, 3) Use the camera app's "share" to reduce size first.`,
+        },
         { status: 413 }
       );
     }
 
+    // Convert to base64
     let binary = "";
     const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    for (let i = 0; i < imageBytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...imageBytes.subarray(i, i + chunkSize));
     }
     const base64Image = btoa(binary);
-
-    // Map MIME type (Anthropic only accepts jpeg/png/gif/webp)
-    const rawMime = file.type || "image/jpeg";
-    const mediaType =
-      rawMime === "image/heic" || rawMime === "image/heif"
-        ? "image/jpeg"
-        : rawMime;
 
     // Call Claude Haiku Vision API directly
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {

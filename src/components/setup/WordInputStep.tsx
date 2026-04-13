@@ -1283,52 +1283,87 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   );
 
   // ── OCR TAB PANEL ─────────────────────────────────────────────────────────
+  const ocrGalleryRef = useRef<HTMLInputElement>(null);
+
   const renderOcr = () => (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="space-y-6"
+      className="space-y-4"
     >
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-          <span className="text-3xl">📷</span>
-        </div>
-        <h3 className="text-xl font-black text-stone-900 mb-2">Scan a Page</h3>
-        <p className="text-stone-500 text-sm mb-6">
-          Take a photo of a textbook page or word list to automatically extract English words
-        </p>
-
-        <input
-          ref={ocrInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onOcrUpload}
-          className="hidden"
-        />
-
-        {isOcrProcessing ? (
-          <div className="space-y-3">
-            <p className="text-stone-600 font-bold text-sm">
-              {ocrStatus || `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`}
-            </p>
-            <div className="w-full bg-stone-100 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(ocrProgress, 100)}%` }}
-              />
-            </div>
+      {isOcrProcessing ? (
+        <div className="bg-white rounded-3xl p-6 shadow-sm text-center">
+          <div className="w-14 h-14 mx-auto mb-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center animate-pulse">
+            <span className="text-2xl">📷</span>
           </div>
-        ) : (
+          <p className="text-stone-700 font-bold text-sm mb-3">
+            {ocrStatus || `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`}
+          </p>
+          <div className="w-full bg-stone-100 rounded-full h-3">
+            <div
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(ocrProgress, 100)}%` }}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Hidden file inputs */}
+          <input
+            ref={ocrInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onOcrUpload}
+            className="hidden"
+          />
+          <input
+            ref={ocrGalleryRef}
+            type="file"
+            accept="image/*"
+            onChange={onOcrUpload}
+            className="hidden"
+          />
+
+          {/* Option 1: Screenshot — most reliable, always small */}
+          <button
+            onClick={() => ocrGalleryRef.current?.click()}
+            className="w-full bg-white rounded-2xl p-5 shadow-sm text-left hover:shadow-md active:scale-[0.98] transition-all border-2 border-emerald-100"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-2xl">🖼️</span>
+              </div>
+              <div>
+                <h3 className="font-black text-stone-900 text-base">Choose from Gallery</h3>
+                <p className="text-stone-400 text-xs">Pick a screenshot or saved image</p>
+              </div>
+            </div>
+          </button>
+
+          {/* Option 2: Camera */}
           <button
             onClick={() => ocrInputRef.current?.click()}
-            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-black text-base shadow-lg shadow-emerald-500/20 hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-white rounded-2xl p-5 shadow-sm text-left hover:shadow-md active:scale-[0.98] transition-all"
           >
-            📷 Take Photo or Choose Image
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-2xl">📷</span>
+              </div>
+              <div>
+                <h3 className="font-black text-stone-900 text-base">Take a Photo</h3>
+                <p className="text-stone-400 text-xs">Open camera to photograph a page</p>
+              </div>
+            </div>
           </button>
-        )}
-      </div>
+
+          {/* Tip */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+            <strong>Tip:</strong> For best results, take a <strong>screenshot</strong> of a digital textbook page. Screenshots are small and always work perfectly.
+          </div>
+        </>
+      )}
     </motion.div>
   );
 
