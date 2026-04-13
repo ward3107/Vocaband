@@ -56,7 +56,7 @@ export interface AssignmentData {
 }
 
 // --- Sub-steps for word input ---
-export type WordInputSubStep = 'landing' | 'paste' | 'editor' | 'browse' | 'saved-groups' | 'topic-packs';
+export type WordInputSubStep = 'paste' | 'editor' | 'browse' | 'saved-groups' | 'topic-packs' | 'ocr';
 
 // --- Helper: look up game mode display config by ID ---
 export function getGameModeConfig(modeId: string): GameModeDef | undefined {

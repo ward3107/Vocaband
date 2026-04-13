@@ -197,47 +197,15 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   onCustomWordsChange,
   editingAssignment = null,
 }) => {
-  // ── Sub-step state ─────────────────────────────────────────────────────────
-  const [subStep, setSubStepRaw] = useState<WordInputSubStep>('landing');
+  // ── Tab state (replaces old card-based sub-step navigation) ─────────────────
+  const [subStep, setSubStepRaw] = useState<WordInputSubStep>('paste');
 
-  // Sync sub-step navigation with browser history so the mobile back button
-  // goes back to the card selection instead of jumping to teacher dashboard.
+  // Simple tab switching — no history manipulation needed since tabs
+  // are always visible (no "back to landing" concept anymore).
   const setSubStep = useCallback((newSubStep: WordInputSubStep) => {
-    setSubStepRaw(prev => {
-      if (prev !== 'landing' && newSubStep === 'landing') {
-        // Going BACK to landing — don't push, the popstate handler does this
-      } else if (prev === 'landing' && newSubStep !== 'landing') {
-        // Going INTO a sub-step — push a history entry so back returns here
-        window.history.pushState(
-          { ...window.history.state, subStep: newSubStep },
-          ''
-        );
-      }
-      return newSubStep;
-    });
+    setSubStepRaw(newSubStep);
   }, []);
 
-  // Handle mobile back button: if in a sub-step, go back to landing
-  // instead of letting the default popstate handler exit the wizard.
-  useEffect(() => {
-    const handlePopState = () => {
-      setSubStepRaw(current => {
-        if (current !== 'landing') {
-          // We're in a sub-step — go back to landing instead of exiting
-          // Re-push the current view so the wizard doesn't close
-          window.history.pushState(
-            { ...window.history.state, subStep: undefined },
-            ''
-          );
-          return 'landing';
-        }
-        return current;
-      });
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-  
   // ── Search/query state ──────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTerms, setSearchTerms] = useState<string[]>([]);
@@ -1251,201 +1219,116 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const canProceed = selectedWords.length > 0;
   const isQuickPlay = mode === 'quick-play';
 
-  // ── LANDING SUB-STEP ───────────────────────────────────────────────────────
-  const renderLanding = () => (
+  // ── TAB DEFINITIONS ─────────────────────────────────────────────────────────
+  const tabs: Array<{ id: WordInputSubStep; emoji: string; label: string; badge?: string | number; hidden?: boolean }> = [
+    { id: 'paste', emoji: '📋', label: 'Paste' },
+    { id: 'topic-packs', emoji: '🧩', label: 'Topics', badge: topicPacks.length || undefined },
+    ...(!isQuickPlay ? [{ id: 'saved-groups' as const, emoji: '💾', label: 'Saved', badge: savedGroups.length }] : []),
+    ...(onOcrUpload ? [{ id: 'ocr' as const, emoji: '📷', label: 'OCR' }] : []),
+    { id: 'browse', emoji: '🔍', label: 'Browse' },
+  ];
+
+  // ── TAB BAR COMPONENT ─────────────────────────────────────────────────────
+  const renderTabBar = () => (
+    <div className="mb-4 sm:mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onBack} className="text-stone-400 hover:text-stone-600 font-bold text-sm flex items-center gap-1 transition-colors">
+          <ArrowLeft size={16} /> Back
+        </button>
+        <h2 className="text-lg sm:text-xl font-black text-stone-900">
+          {isQuickPlay ? 'Add Words' : editingAssignment ? 'Edit Words' : 'Add Words'}
+        </h2>
+        <div className="text-xs font-bold text-stone-400">Step 1/3</div>
+      </div>
+
+      {/* Tab strip */}
+      <div className="bg-white rounded-2xl shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-1" style={{ scrollSnapType: 'x mandatory' }}>
+        {tabs.map(tab => {
+          const isActive = subStep === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setSubStep(tab.id)}
+              className={`relative flex-1 min-w-[70px] flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl text-center transition-all duration-200 ${
+                isActive
+                  ? 'bg-stone-900 text-white shadow-md'
+                  : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'
+              }`}
+              style={{ scrollSnapAlign: 'center' }}
+            >
+              <span className="text-lg leading-none">{tab.emoji}</span>
+              <span className={`text-[10px] sm:text-xs font-black leading-tight ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+              {tab.badge !== undefined && (
+                <span className={`absolute -top-1 -right-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                  isActive ? 'bg-white text-stone-900' : 'bg-stone-200 text-stone-500'
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected count */}
+      {selectedWords.length > 0 && (
+        <div className="mt-3 text-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+            <Check size={12} /> {selectedWords.length} word{selectedWords.length !== 1 ? 's' : ''} selected
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── OCR TAB PANEL ─────────────────────────────────────────────────────────
+  const renderOcr = () => (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="space-y-6"
     >
-      <div className="text-center mb-8">
-        <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-2">
-          {isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
-        </h2>
-        <p className="text-stone-600">Choose how you'd like to add words</p>
-      </div>
+      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm text-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+          <span className="text-3xl">📷</span>
+        </div>
+        <h3 className="text-xl font-black text-stone-900 mb-2">Scan a Page</h3>
+        <p className="text-stone-500 text-sm mb-6">
+          Take a photo of a textbook page or word list to automatically extract English words
+        </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setSubStep('paste')}
-          className="w-full group relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-indigo-500/20 hover:shadow-2xl hover:shadow-indigo-500/30 transition-all text-left"
-        >
-          <div className="relative z-10">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-black text-white mb-1">Paste from anywhere</h3>
-                <p className="text-white/90 text-xs sm:text-sm mb-2">Copy words from PDF, book, or document</p>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                  <span className="text-white text-xs font-bold">⚡ Fastest</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl">📋</span>
-                <ChevronRight className="text-white/60" size={20} />
-              </div>
+        <input
+          ref={ocrInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onOcrUpload}
+          className="hidden"
+        />
+
+        {isOcrProcessing ? (
+          <div className="space-y-3">
+            <p className="text-stone-600 font-bold text-sm">
+              {ocrStatus || `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`}
+            </p>
+            <div className="w-full bg-stone-100 rounded-full h-3">
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(ocrProgress, 100)}%` }}
+              />
             </div>
           </div>
-        </motion.button>
-
-        {!isQuickPlay && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            disabled
-            className="w-full group relative overflow-hidden bg-gradient-to-br from-stone-400 to-stone-500 rounded-3xl p-4 sm:p-6 shadow-xl opacity-60 cursor-not-allowed transition-all text-left"
-          >
-            <span className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm z-10">PRO</span>
-            <div className="relative z-10">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg sm:text-xl font-black text-white mb-1">Books library</h3>
-                  <p className="text-white/90 text-xs sm:text-sm mb-2">Pro version • Coming soon</p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                    <span className="text-white text-xs font-bold">🔒 Future feature</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl">📖</span>
-                  <Lock className="text-white/60" size={20} />
-                </div>
-              </div>
-            </div>
-          </motion.button>
-        )}
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setSubStep('topic-packs')}
-          className="w-full group relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-amber-500/20 hover:shadow-2xl hover:shadow-amber-500/30 transition-all text-left"
-        >
-          <div className="relative z-10">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-black text-white mb-1">Topic Packs</h3>
-                <p className="text-white/90 text-xs sm:text-sm mb-2">Ready-made themed collections</p>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                  <span className="text-white text-xs font-bold">{topicPacks.length} packs</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl">🧩</span>
-                <ChevronRight className="text-white/60" size={20} />
-              </div>
-            </div>
-          </div>
-        </motion.button>
-
-        {!isQuickPlay && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSubStep('saved-groups')}
-            className="w-full group relative overflow-hidden bg-gradient-to-br from-teal-500 to-cyan-600 rounded-3xl p-4 sm:p-6 shadow-xl shadow-teal-500/20 hover:shadow-2xl hover:shadow-teal-500/30 transition-all text-left"
-          >
-            <div className="relative z-10">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg sm:text-xl font-black text-white mb-1">Saved groups</h3>
-                  <p className="text-white/90 text-xs sm:text-sm mb-2">Your previous word lists</p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                    <span className="text-white text-xs font-bold">{savedGroups.length} saved</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl">💾</span>
-                  <ChevronRight className="text-white/60" size={20} />
-                </div>
-              </div>
-            </div>
-          </motion.button>
-        )}
-
-        {onOcrUpload ? (
-          <motion.button
-            whileHover={{ scale: isOcrProcessing ? 1 : 1.02 }}
-            whileTap={{ scale: isOcrProcessing ? 1 : 0.98 }}
-            onClick={() => ocrInputRef.current?.click()}
-            disabled={isOcrProcessing}
-            className={`w-full group relative overflow-hidden rounded-3xl p-4 sm:p-6 shadow-md text-left transition-all ${
-              isOcrProcessing
-                ? 'bg-stone-300 cursor-wait'
-                : 'bg-gradient-to-br from-emerald-500 to-teal-600 hover:shadow-lg cursor-pointer'
-            }`}
-          >
-            <input
-              ref={ocrInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={onOcrUpload}
-              className="hidden"
-            />
-            <div className="relative z-10">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className={`text-lg sm:text-xl font-black mb-1 ${isOcrProcessing ? 'text-stone-600' : 'text-white'}`}>
-                    {isOcrProcessing ? 'Scanning...' : 'Upload image'}
-                  </h3>
-                  <p className={`text-xs sm:text-sm mb-2 ${isOcrProcessing ? 'text-stone-500' : 'text-white/80'}`}>
-                    {isOcrProcessing
-                      ? (ocrStatus || `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`)
-                      : 'Take a photo or choose image to extract words'}
-                  </p>
-                  {!isOcrProcessing && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                      <span className="text-white text-xs font-bold">OCR word scanning</span>
-                    </div>
-                  )}
-                  {isOcrProcessing && ocrProgress > 0 && (
-                    <div className="w-full bg-stone-400/30 rounded-full h-2 mt-1">
-                      <div
-                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(ocrProgress, 100)}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-3xl ${isOcrProcessing ? 'animate-pulse opacity-60' : ''}`}>📷</span>
-                </div>
-              </div>
-            </div>
-          </motion.button>
         ) : (
-          <motion.button
-            whileHover={{ scale: 1.01 }}
-            onClick={() => showToast?.('OCR is a Pro feature', 'info')}
-            className="w-full group relative overflow-hidden bg-stone-200 rounded-3xl p-4 sm:p-6 shadow-sm text-left cursor-not-allowed"
+          <button
+            onClick={() => ocrInputRef.current?.click()}
+            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-black text-base shadow-lg shadow-emerald-500/20 hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <span className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm z-10">PRO</span>
-            <div className="relative z-10">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg sm:text-xl font-black text-stone-500 mb-1">Upload image</h3>
-                  <p className="text-stone-400 text-xs sm:text-sm mb-2">Take a photo to extract words</p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-stone-300/50 rounded-full">
-                    <span className="text-stone-500 text-xs font-bold">Pro feature</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl opacity-40">📷</span>
-                </div>
-              </div>
-            </div>
-          </motion.button>
+            📷 Take Photo or Choose Image
+          </button>
         )}
       </div>
-
-      <button
-        onClick={onBack}
-        className="w-full py-3 text-white font-bold flex items-center justify-center gap-2 signature-gradient px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
-      >
-        ← Cancel
-      </button>
     </motion.div>
   );
 
@@ -1457,27 +1340,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       exit={{ opacity: 0, x: -20 }}
       className="space-y-6"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => setSubStep('landing')}
-          className="text-stone-600 hover:text-stone-900 font-medium flex items-center gap-2 transition-colors"
-        >
-          <ArrowLeft size={18} /> Back
-        </button>
-        <div className="text-sm font-medium text-stone-500">Step 1 of 3</div>
-      </div>
-
-      {/* Title */}
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-black text-stone-900 tracking-tight">Add words</h2>
-        <p className="text-stone-500 max-w-md mx-auto">
-          {selectedWords.length > 0
-            ? `${selectedWords.length} word${selectedWords.length !== 1 ? 's' : ''} selected`
-            : 'Type, paste, or search for words to add'
-          }
-        </p>
-      </div>
+      {/* Search hint */}
+      <p className="text-stone-500 text-sm text-center">
+        Type, paste, or search for words to add
+      </p>
 
       {/* Assignment Name */}
       {/* Draft Resume Banner */}
@@ -2510,32 +2376,17 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 pt-4 border-t border-stone-200">
-        <button
-          onClick={() => setSubStep('landing')}
-          className="px-6 py-3 rounded-xl border-2 border-stone-300 text-stone-600 font-semibold hover:bg-stone-50 transition-all"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={handlePasteAndAnalyze}
-          disabled={!searchQuery.trim()}
-          className="px-6 py-3 rounded-xl border-2 border-primary bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-        >
-          <Sparkles size={18} /> Analyze text
-        </button>
-
-        {selectedWords.length > 0 && (
+      {/* Analyze button */}
+      {searchQuery.trim() && (
+        <div className="pt-4 border-t border-stone-200">
           <button
-            onClick={handleNextAndClearDraft}
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            onClick={handlePasteAndAnalyze}
+            className="w-full px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
           >
-            Continue <ArrowRight size={18} />
+            <Sparkles size={18} /> Analyze text
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </motion.div>
   );
 
@@ -2547,16 +2398,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       exit={{ opacity: 0, x: -20 }}
       className="space-y-4"
     >
-      <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
-          <ArrowLeft size={18} /> Back
-        </button>
-        <div className="text-sm font-bold text-stone-600">Step 1 of 3</div>
-      </div>
-
       <div className="text-center">
-        <h2 className="text-2xl font-black text-stone-900 mb-2">Browse vocabulary</h2>
-        <p className="text-stone-600">Search and select words from the database</p>
+        <p className="text-stone-500 text-sm">Search and select words from the database</p>
       </div>
 
       {showLevelFilter && (
@@ -2637,16 +2480,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       exit={{ opacity: 0, x: -20 }}
       className="space-y-4"
     >
-      <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
-          <ArrowLeft size={18} /> Back
-        </button>
-        <div className="text-sm font-bold text-stone-600">Step 1 of 3</div>
-      </div>
-
       <div className="text-center">
-        <h2 className="text-2xl font-black text-stone-900 mb-2">Topic Packs</h2>
-        <p className="text-stone-600">Select a themed pack to add words instantly</p>
+        <p className="text-stone-500 text-sm">Select a themed pack to add words instantly</p>
       </div>
 
       <div className="space-y-1.5 max-h-[450px] overflow-y-auto pr-1">
@@ -2798,18 +2633,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
         );
       })()}
 
-      {/* Continue button — appears when words are selected */}
-      {selectedWords.length > 0 && !expandedPack && (
-        <motion.button
-          ref={continueButtonRef}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onNext}
-          className="w-full mt-4 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-base shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          Continue to Step 2 ({selectedWords.length} word{selectedWords.length !== 1 ? 's' : ''}) <ArrowRight size={20} />
-        </motion.button>
-      )}
+      {/* Continue button removed — global one at bottom handles it */}
     </motion.div>
   );
 
@@ -2821,16 +2645,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       exit={{ opacity: 0, x: -20 }}
       className="space-y-4"
     >
-      <div className="flex items-center justify-between">
-        <button onClick={() => setSubStep('landing')} className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
-          <ArrowLeft size={18} /> Back
-        </button>
-        <div className="text-sm font-bold text-stone-600">Step 1 of 3</div>
-      </div>
-
       <div className="text-center">
-        <h2 className="text-2xl font-black text-stone-900 mb-2">Saved word groups</h2>
-        <p className="text-stone-600">Quick access to your previous word lists</p>
+        <p className="text-stone-500 text-sm">Quick access to your previous word lists</p>
       </div>
 
       {savedGroups.length === 0 ? (
@@ -2867,16 +2683,6 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       )}
 
       {/* Continue button — appears when words are selected */}
-      {selectedWords.length > 0 && (
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onNext}
-          className="w-full mt-4 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-base shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          Continue to Step 2 ({selectedWords.length} word{selectedWords.length !== 1 ? 's' : ''}) <ArrowRight size={20} />
-        </motion.button>
-      )}
     </motion.div>
   );
 
@@ -3080,24 +2886,28 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   // ── MAIN RENDER ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-stone-100">
-      <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-6">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+        {/* Tab bar — always visible */}
+        {renderTabBar()}
+
+        {/* Active tab content */}
         <AnimatePresence mode="wait">
-          {subStep === 'landing' && <div key="landing">{renderLanding()}</div>}
           {subStep === 'paste' && <div key="paste">{renderPaste()}</div>}
           {subStep === 'browse' && <div key="browse">{renderBrowse()}</div>}
           {subStep === 'topic-packs' && <div key="topic-packs">{renderTopicPacks()}</div>}
           {subStep === 'saved-groups' && <div key="saved-groups">{renderSavedGroups()}</div>}
+          {subStep === 'ocr' && <div key="ocr">{renderOcr()}</div>}
         </AnimatePresence>
 
         {renderWordEditorModal()}
-
         {renderReviewModal()}
 
-        {selectedWords.length > 0 && subStep === 'landing' && (
+        {/* Continue button — visible from any tab when words are selected */}
+        {selectedWords.length > 0 && (
           <button
             ref={nextButtonRef}
             onClick={handleNextAndClearDraft}
-            className="w-full mt-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            className="w-full mt-6 py-4 signature-gradient text-white rounded-2xl font-black text-base shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             Continue to Step 2 <ArrowRight size={20} />
           </button>
