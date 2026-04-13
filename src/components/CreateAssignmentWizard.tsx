@@ -62,6 +62,7 @@ interface CreateAssignmentWizardProps {
   setSentenceDifficulty: (level: SentenceDifficulty) => void;
   isOcrProcessing?: boolean;
   ocrProgress?: number;
+  ocrStatus?: string;
   showTopicPacks: boolean;
   setShowTopicPacks: (show: boolean) => void;
   showAssignmentWelcome: boolean;
@@ -112,6 +113,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setSentenceDifficulty,
   isOcrProcessing = false,
   ocrProgress = 0,
+  ocrStatus = "",
   showTopicPacks,
   setShowTopicPacks,
   showAssignmentWelcome,
@@ -365,6 +367,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       onOcrUpload={handleOcrUpload}
       isOcrProcessing={isOcrProcessing}
       ocrProgress={ocrProgress}
+      ocrStatus={ocrStatus}
       onDocxUpload={handleDocxUpload}
       customWords={customWords}
       onCustomWordsChange={setCustomWords}

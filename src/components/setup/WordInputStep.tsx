@@ -158,6 +158,7 @@ export interface WordInputStepProps {
   onOcrUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isOcrProcessing?: boolean;
   ocrProgress?: number;
+  ocrStatus?: string;
   onDocxUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -187,6 +188,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   onOcrUpload,
   isOcrProcessing = false,
   ocrProgress = 0,
+  ocrStatus = "",
   onDocxUpload,
   onPlayWord,
   showToast,
@@ -1390,7 +1392,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   </h3>
                   <p className={`text-xs sm:text-sm mb-2 ${isOcrProcessing ? 'text-stone-500' : 'text-white/80'}`}>
                     {isOcrProcessing
-                      ? `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`
+                      ? (ocrStatus || `Processing image${ocrProgress > 0 ? ` (${Math.round(ocrProgress)}%)` : '...'}`)
                       : 'Take a photo or choose image to extract words'}
                   </p>
                   {!isOcrProcessing && (
