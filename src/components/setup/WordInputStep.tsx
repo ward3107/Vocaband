@@ -1230,35 +1230,35 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
   // ── TAB BAR COMPONENT ─────────────────────────────────────────────────────
   const renderTabBar = () => (
-    <div className="mb-4 sm:mb-6">
+    <div className="mb-3 sm:mb-5 sticky top-0 z-30 bg-stone-100 pb-2 -mx-3 px-3 sm:-mx-4 sm:px-4 pt-2">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <button onClick={onBack} className="text-stone-400 hover:text-stone-600 font-bold text-sm flex items-center gap-1 transition-colors">
           <ArrowLeft size={16} /> Back
         </button>
-        <h2 className="text-lg sm:text-xl font-black text-stone-900">
+        <h2 className="text-base sm:text-xl font-black text-stone-900">
           {isQuickPlay ? 'Add Words' : editingAssignment ? 'Edit Words' : 'Add Words'}
         </h2>
         <div className="text-xs font-bold text-stone-400">Step 1/3</div>
       </div>
 
       {/* Tab strip */}
-      <div className="bg-white rounded-2xl shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-1" style={{ scrollSnapType: 'x mandatory' }}>
+      <div className="bg-white rounded-2xl shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5" style={{ scrollSnapType: 'x mandatory' }}>
         {tabs.map(tab => {
           const isActive = subStep === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setSubStep(tab.id)}
-              className={`relative flex-1 min-w-[70px] flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl text-center transition-all duration-200 ${
+              className={`relative flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 px-1.5 sm:px-3 rounded-xl text-center transition-all duration-200 ${
                 isActive
                   ? 'bg-stone-900 text-white shadow-md'
                   : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'
               }`}
               style={{ scrollSnapAlign: 'center' }}
             >
-              <span className="text-lg leading-none">{tab.emoji}</span>
-              <span className={`text-[10px] sm:text-xs font-black leading-tight ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+              <span className="text-base sm:text-lg leading-none">{tab.emoji}</span>
+              <span className={`text-[9px] sm:text-xs font-black leading-tight truncate w-full ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
               {tab.badge !== undefined && (
                 <span className={`absolute -top-1 -right-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
                   isActive ? 'bg-white text-stone-900' : 'bg-stone-200 text-stone-500'
@@ -1338,12 +1338,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="space-y-6"
+      className="space-y-3 sm:space-y-5"
     >
-      {/* Search hint */}
-      <p className="text-stone-500 text-sm text-center">
-        Type, paste, or search for words to add
-      </p>
 
       {/* Assignment Name */}
       {/* Draft Resume Banner */}

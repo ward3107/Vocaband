@@ -51,11 +51,16 @@ async function handleOcr(request: Request, env: Env): Promise<Response> {
       );
     }
 
-    // Convert file to base64
+    // Convert file to base64 — use chunked approach for performance.
+    // The naive btoa(reduce(...)) is O(n²) and hits CPU limits on large images.
     const buffer = await file.arrayBuffer();
-    const base64Image = btoa(
-      new Uint8Array(buffer).reduce((s, b) => s + String.fromCharCode(b), "")
-    );
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    const base64Image = btoa(binary);
 
     // Map MIME type (Anthropic only accepts jpeg/png/gif/webp)
     const rawMime = file.type || "image/jpeg";
