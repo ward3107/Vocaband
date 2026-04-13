@@ -168,6 +168,15 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
 
   // Confirm — export cropped region
   const handleConfirm = () => {
+    // If crop is the default (full image) and no rotation, skip canvas
+    // manipulation entirely — send the original file as-is. This avoids
+    // mobile canvas size limits and EXIF orientation bugs.
+    const isFullImage = crop.x === 0 && crop.y === 0 && crop.w === 100 && crop.h === 100;
+    if (isFullImage && rotation === 0) {
+      onConfirm(file);
+      return;
+    }
+
     const img = imgRef.current;
     if (!img) { onConfirm(file); return; }
 
@@ -184,25 +193,35 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
     const fullW = isRotated ? nh : nw;
     const fullH = isRotated ? nw : nh;
 
+    // Limit temp canvas to avoid mobile memory crashes (max 4096px)
+    const maxCanvas = 4096;
+    const canvasScale = Math.min(1, maxCanvas / Math.max(fullW, fullH));
+    const scaledW = Math.round(fullW * canvasScale);
+    const scaledH = Math.round(fullH * canvasScale);
+
     const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = fullW;
-    tempCanvas.height = fullH;
-    const tctx = tempCanvas.getContext("2d")!;
-    tctx.translate(fullW / 2, fullH / 2);
+    tempCanvas.width = scaledW;
+    tempCanvas.height = scaledH;
+    const tctx = tempCanvas.getContext("2d");
+    if (!tctx) { onConfirm(file); return; }
+
+    tctx.translate(scaledW / 2, scaledH / 2);
     tctx.rotate((rotation * Math.PI) / 180);
-    tctx.drawImage(img, -nw / 2, -nh / 2);
+    const drawW = nw * canvasScale;
+    const drawH = nh * canvasScale;
+    tctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
 
     // Extract crop region from the rotated image
-    const sx = (crop.x / 100) * fullW;
-    const sy = (crop.y / 100) * fullH;
-    const sw = (crop.w / 100) * fullW;
-    const sh = (crop.h / 100) * fullH;
+    const sx = (crop.x / 100) * scaledW;
+    const sy = (crop.y / 100) * scaledH;
+    const sw = (crop.w / 100) * scaledW;
+    const sh = (crop.h / 100) * scaledH;
 
-    // Limit output to 2048px max dimension for OCR
+    // Output canvas — max 2048px for OCR
     const maxDim = 2048;
     const outScale = Math.min(1, maxDim / Math.max(sw, sh));
-    canvas.width = Math.round(sw * outScale);
-    canvas.height = Math.round(sh * outScale);
+    canvas.width = Math.max(1, Math.round(sw * outScale));
+    canvas.height = Math.max(1, Math.round(sh * outScale));
 
     ctx.drawImage(tempCanvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 

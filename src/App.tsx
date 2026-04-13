@@ -2172,13 +2172,13 @@ export default function App() {
    * Takes an image file (e.g., a photo of a word list), sends it to the
    * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
    */
-  // Step 1: User picks/takes a photo → show preview modal
+  // OCR upload — send photo directly to the Worker (no crop modal).
+  // The crop modal's canvas export was corrupting images on mobile.
+  // The Cloudflare Worker OCR works perfectly with raw photos.
   const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
-    // Show the image crop/edit modal. When the user confirms,
-    // processOcrFile() runs the actual OCR pipeline.
-    setOcrPendingFile({ file: rawFile, inputRef: e });
+    processOcrFile(rawFile, e);
   };
 
   // Step 2: User confirms from the preview → run OCR
