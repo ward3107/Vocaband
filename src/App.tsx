@@ -2192,40 +2192,20 @@ export default function App() {
       const file = await compressImageForUpload(fileToProcess);
       const fileSizeKB = Math.round(file.size / 1024);
       setOcrProgress(10);
-      setOcrStatus(`Connecting to server... (${fileSizeKB} KB)`);
+      setOcrStatus(`Uploading image... (${fileSizeKB} KB)`);
 
       // Get auth token for teacher authentication
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { showToast("Please sign in again.", "error"); return; }
 
-      // Warmup ping: confirm the backend is reachable before uploading
-      // the (potentially large) image file. Also checks API key config.
-      const directUrl = 'https://api.vocaband.com/api/ocr';
-      let ocrUrl = '/api/ocr'; // prefer same-origin (no CORS)
-      try {
-        const warmup = await fetch('/api/ocr/status', { signal: AbortSignal.timeout(10000) });
-        if (warmup.ok) {
-          const status = await warmup.json();
-          if (!status.apiKeySet) {
-            throw new Error("OCR is not configured on the server (API key missing). Contact admin.");
-          }
-        } else {
-          // Worker proxy might be broken — try direct
-          ocrUrl = directUrl;
-        }
-      } catch (warmErr: any) {
-        if (warmErr?.message?.includes('not configured')) throw warmErr;
-        // Worker proxy unreachable — fall back to direct URL
-        ocrUrl = directUrl;
-      }
-
-      setOcrStatus("Uploading image...");
+      // OCR runs directly in the Cloudflare Worker (same-origin, no Render,
+      // no CORS, no cold starts). The Worker calls Claude Vision API.
       const formData = new FormData();
       formData.append('file', file);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90_000);
+      const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s
 
       // Simulate smooth progress during the API call (10% → 85%)
       let simProgress = 15;
@@ -2236,27 +2216,17 @@ export default function App() {
       }, 400);
 
       // Update status while waiting
-      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 3000);
-      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 8000);
+      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 2000);
+      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 6000);
 
       let response: Response;
       try {
-        response = await fetch(ocrUrl, {
+        response = await fetch('/api/ocr', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData,
           signal: controller.signal,
         });
-
-        // If the primary URL failed, retry with the other URL
-        if (!response.ok && ocrUrl !== directUrl) {
-          response = await fetch(directUrl, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData,
-            signal: controller.signal,
-          });
-        }
       } finally {
         clearTimeout(timeoutId);
         clearTimeout(statusTimer1);
