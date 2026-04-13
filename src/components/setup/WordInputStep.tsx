@@ -1225,7 +1225,6 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
     { id: 'topic-packs', emoji: '🧩', label: 'Topics', badge: topicPacks.length || undefined },
     ...(!isQuickPlay ? [{ id: 'saved-groups' as const, emoji: '💾', label: 'Saved', badge: savedGroups.length }] : []),
     ...(onOcrUpload ? [{ id: 'ocr' as const, emoji: '📷', label: 'OCR' }] : []),
-    { id: 'browse', emoji: '🔍', label: 'Browse' },
   ];
 
   // ── TAB BAR COMPONENT ─────────────────────────────────────────────────────
@@ -1563,7 +1562,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       {/* Search Bar */}
       <div className="relative">
         <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
         <input
           type="text"
           ref={autocompleteRef}
@@ -1577,7 +1576,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           onPaste={handlePaste}
           onFocus={() => setShowAutocomplete(true)}
           placeholder={selectedWords.length > 0 ? "Add more words..." : "Type words... (space or comma separated)"}
-          className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-stone-200 text-lg focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white text-stone-900 placeholder:text-stone-400 transition-all shadow-sm"
+          className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 rounded-2xl border-2 border-stone-200 text-base sm:text-lg focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white text-stone-900 placeholder:text-stone-400 transition-all shadow-sm"
         />
         {searchQuery && (
           <button
@@ -2916,15 +2915,13 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
   // ── MAIN RENDER ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-stone-100">
-      <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+    <div className="pb-8">
         {/* Tab bar — always visible */}
         {renderTabBar()}
 
         {/* Active tab content */}
         <AnimatePresence mode="wait">
           {subStep === 'paste' && <div key="paste">{renderPaste()}</div>}
-          {subStep === 'browse' && <div key="browse">{renderBrowse()}</div>}
           {subStep === 'topic-packs' && <div key="topic-packs">{renderTopicPacks()}</div>}
           {subStep === 'saved-groups' && <div key="saved-groups">{renderSavedGroups()}</div>}
           {subStep === 'ocr' && <div key="ocr">{renderOcr()}</div>}
@@ -2943,7 +2940,6 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
             Continue to Step 2 <ArrowRight size={20} />
           </button>
         )}
-      </div>
     </div>
   );
 };

@@ -215,7 +215,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const isAssignment = mode === 'assignment';
 
   return (
-    <div className="min-h-screen bg-stone-100 pt-16 sm:pt-24 pb-20 sm:pb-8 px-3 sm:px-4 md:px-6">
+    <div className="min-h-screen bg-stone-100 pt-32 pb-20 sm:pb-8 px-3 sm:px-4 md:px-6">
       <TopAppBar
         title={isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}
