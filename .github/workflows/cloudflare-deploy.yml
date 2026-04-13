@@ -21,11 +21,17 @@
 
 name: Deploy to Cloudflare Workers
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch: # manual trigger from Actions tab as an escape hatch
+# Disabled: Cloudflare's native git integration (Workers Builds) handles
+# deploys automatically on every push to main. This GitHub Actions
+# workflow was a backup, but it requires CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID secrets. Re-enable by uncommenting below.
+#
+# on:
+#   push:
+#     branches:
+#       - main
+#   workflow_dispatch:
+on: workflow_dispatch # manual-only — use Actions tab if needed
 
 permissions:
   contents: read
@@ -64,5 +70,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # No `command` arg → defaults to `wrangler deploy`, which follows
-          # .wrangler/deploy/config.json → dist/vocaband/wrangler.json.
+          # After `npm run build`, the @cloudflare/vite-plugin bundles the
+          # Worker + assets into dist/vocaband/. Point wrangler at the
+          # bundled config so it doesn't try to re-build from source.
+          command: deploy --config dist/vocaband/wrangler.json
