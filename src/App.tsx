@@ -75,6 +75,7 @@ import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
+import ImageCropModal from "./components/ImageCropModal";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -441,6 +442,7 @@ export default function App() {
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatus, setOcrStatus] = useState("");
+  const [ocrPendingFile, setOcrPendingFile] = useState<{ file: File; inputRef: React.ChangeEvent<HTMLInputElement> | null } | null>(null);
   const [allScores, setAllScores] = useState<ProgressData[]>([]);
   const [classStudents, setClassStudents] = useState<{name: string, classCode: string, lastActive: string}[]>([]);
   const [globalLeaderboard, setGlobalLeaderboard] = useState<{name: string, score: number, avatar: string}[]>([]);
@@ -2170,41 +2172,36 @@ export default function App() {
    * Takes an image file (e.g., a photo of a word list), sends it to the
    * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
    */
-  const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: User picks/takes a photo → show preview modal
+  const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
+    // Show the image crop/edit modal. When the user confirms,
+    // processOcrFile() runs the actual OCR pipeline.
+    setOcrPendingFile({ file: rawFile, inputRef: e });
+  };
 
+  // Step 2: User confirms from the preview → run OCR
+  const processOcrFile = async (fileToProcess: File, originalEvent?: React.ChangeEvent<HTMLInputElement> | null) => {
+    setOcrPendingFile(null);
     setIsOcrProcessing(true);
     setOcrProgress(5);
     setOcrStatus("Compressing image...");
 
     try {
-      const file = await compressImageForUpload(rawFile);
+      const file = await compressImageForUpload(fileToProcess);
       setOcrProgress(10);
-      setOcrStatus("Checking server...");
+      setOcrStatus("Preparing upload...");
 
       // Get auth token for teacher authentication
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { showToast("Please sign in again.", "error"); return; }
 
-      // Pre-flight: verify OCR server is reachable before uploading
-      const ocrUrl = import.meta.env?.VITE_API_URL
-        ? `${import.meta.env.VITE_API_URL}/api/ocr`
-        : 'https://api.vocaband.com/api/ocr';
-      const statusUrl = ocrUrl.replace('/api/ocr', '/api/ocr/status');
-      try {
-        const statusRes = await fetch(statusUrl, { signal: AbortSignal.timeout(8000) });
-        if (statusRes.ok) {
-          const statusData = await statusRes.json();
-          if (!statusData.apiKeySet) {
-            throw new Error("OCR is not configured on the server (missing API key). Contact admin.");
-          }
-        }
-      } catch (prefErr: any) {
-        if (prefErr?.message?.includes('not configured')) throw prefErr;
-        // Server unreachable — still try the upload (might be a CORS preflight issue)
-      }
+      // Use same-origin /api/ocr (proxied through Cloudflare Worker → Render).
+      // This avoids CORS issues that occurred when calling api.vocaband.com
+      // directly. Claude Vision OCR takes 2-5s, well within Worker timeout.
+      const ocrUrl = '/api/ocr';
 
       setOcrStatus("Uploading image...");
       const formData = new FormData();
@@ -2221,8 +2218,8 @@ export default function App() {
       }, 400);
 
       // Update status while waiting
-      setTimeout(() => setOcrStatus("Analyzing with AI..."), 3000);
-      setTimeout(() => setOcrStatus("Extracting words..."), 8000);
+      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 3000);
+      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 8000);
 
       let response: Response;
       try {
@@ -2234,6 +2231,8 @@ export default function App() {
         });
       } finally {
         clearTimeout(timeoutId);
+        clearTimeout(statusTimer1);
+        clearTimeout(statusTimer2);
         clearInterval(progressInterval);
       }
 
@@ -2309,7 +2308,7 @@ export default function App() {
       setOcrProgress(0);
       setOcrStatus("");
       // Reset the file input so the same file can be uploaded again if needed
-      e.target.value = '';
+      if (originalEvent?.target) originalEvent.target.value = '';
     }
   };
 
@@ -4663,10 +4662,17 @@ export default function App() {
     <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
   ) : null;
 
-  // Debug: log banner state on every render
-  if (showCookieBanner && !user) {
-  }
-
+  // Image crop modal for OCR — shown when user picks a photo, before uploading
+  const ocrCropModal = ocrPendingFile ? (
+    <ImageCropModal
+      file={ocrPendingFile.file}
+      onConfirm={(croppedFile) => processOcrFile(croppedFile, ocrPendingFile.inputRef)}
+      onCancel={() => {
+        if (ocrPendingFile.inputRef?.target) ocrPendingFile.inputRef.target.value = '';
+        setOcrPendingFile(null);
+      }}
+    />
+  ) : null;
 
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
@@ -6762,6 +6768,9 @@ export default function App() {
         </AnimatePresence>
 
         {/* End Quick Play Session Modal moved to quick-play-teacher-monitor view */}
+
+        {/* OCR Image Crop Modal */}
+        {ocrCropModal}
 
         {/* Toast Notifications */}
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
