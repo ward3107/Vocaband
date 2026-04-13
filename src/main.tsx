@@ -24,15 +24,17 @@ async function bootstrap() {
       const { supabase } = await import('./core/supabase');
       const code = params.get('code')!;
       const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error && !error.message?.includes('already used') && !error.message?.includes('expired')) {
-        sessionStorage.setItem('oauth_exchange_failed', '1');
-      } else if (!error) {
-        // Signal to App.tsx that the PKCE exchange just succeeded.
-        // App.tsx will see this flag and keep the loading spinner instead
-        // of flashing the landing page while the session propagates.
-        // Without this, the race between history.replaceState (which
-        // strips ?code=) and INITIAL_SESSION (which checks for ?code=)
-        // causes the teacher to see the landing page on every first login.
+      if (error) {
+        // "already used" / "expired" means the code was consumed by a
+        // previous call (e.g. StrictMode double-mount, or the client's
+        // internal handler).  The session likely exists — check for it.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          sessionStorage.setItem('oauth_session_ready', '1');
+        } else {
+          sessionStorage.setItem('oauth_exchange_failed', '1');
+        }
+      } else {
         sessionStorage.setItem('oauth_session_ready', '1');
       }
     } catch {

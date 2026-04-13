@@ -1493,6 +1493,13 @@ export default function App() {
     };
   }, []);
 
+  // Helper: set pending approval info and persist to sessionStorage
+  const showPendingApproval = (info: { name: string; classCode: string; profileId?: string }) => {
+    setPendingApprovalInfo(info);
+    setView("student-pending-approval");
+    try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
+  };
+
   // --- AUTH LOGIC ---
   useEffect(() => {
     // If Supabase isn't configured, skip auth entirely and show the landing page.
@@ -1716,12 +1723,11 @@ export default function App() {
               setView("student-dashboard");
               return;
             } else if (studentProfile && studentProfile.status === 'pending_approval') {
-              setPendingApprovalInfo({
+              showPendingApproval({
                 name: studentProfile.display_name || '',
                 classCode: studentProfile.class_code || '',
                 profileId: studentProfile.id,
               });
-              setView("student-pending-approval");
               setLoading(false);
               return;
             }
@@ -1842,6 +1848,20 @@ export default function App() {
           setLandingTab("teacher");
           setLoading(false);
         } else if (!isOAuthCallback) {
+          // Check if a student was waiting for teacher approval before refresh
+          try {
+            const savedPending = sessionStorage.getItem('vocaband_pending_approval');
+            if (savedPending) {
+              const info = JSON.parse(savedPending);
+              if (info.name && info.classCode) {
+                setPendingApprovalInfo(info);
+                setView("student-pending-approval");
+                setLoading(false);
+                return;
+              }
+            }
+          } catch {}
+
           // Before showing the landing page, check if a student session was
           // persisted — if so, silently re-authenticate.
           // signInAnonymously() will trigger onAuthStateChange → SIGNED_IN,
@@ -2900,12 +2920,11 @@ export default function App() {
 
     // Check approval status — show the waiting screen instead of a generic error
     if (profile.status === 'pending_approval') {
-      setPendingApprovalInfo({
+      showPendingApproval({
         name: profile.display_name || '',
         classCode: profile.class_code || '',
         profileId: profile.id,
       });
-      setView("student-pending-approval");
       setLoading(false);
       return;
     }
@@ -3058,6 +3077,12 @@ export default function App() {
       return;
     }
 
+    // Guard: prevent onAuthStateChange → restoreSession from interfering
+    // while this function owns the login flow.  signInAnonymously() fires
+    // SIGNED_IN, and without this guard restoreSession would run (can't
+    // find the user row yet) and redirect to landing.
+    manualLoginInProgress.current = true;
+
     try {
       // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
       const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
@@ -3093,12 +3118,16 @@ export default function App() {
       } else if (profile.status === 'pending_approval') {
         // Navigate to a dedicated waiting screen instead of just a toast.
         // The student needs to understand what's happening and what to do next.
-        setPendingApprovalInfo({
+        const info = {
           name: trimmedName,
           classCode: trimmedCode,
           profileId: profile.id,
-        });
+        };
+        setPendingApprovalInfo(info);
         setView("student-pending-approval");
+
+        // Persist so the pending screen survives page refresh
+        try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
 
         // Clear form
         setStudentLoginName("");
@@ -3110,6 +3139,8 @@ export default function App() {
     } catch (error) {
       console.error('Signup error:', error);
       setError("Could not create account. Please try again.");
+    } finally {
+      manualLoginInProgress.current = false;
     }
   };
 
@@ -3144,12 +3175,11 @@ export default function App() {
       }
 
       if (studentData.status !== 'active' && studentData.status !== 'approved') {
-        setPendingApprovalInfo({
+        showPendingApproval({
           name: studentData.display_name || '',
           classCode: studentData.class_code || '',
           profileId: studentData.id,
         });
-        setView("student-pending-approval");
         return;
       }
 
@@ -3392,12 +3422,11 @@ export default function App() {
         console.error('Error checking student approval:', profileError);
       } else if (studentProfile) {
         if (studentProfile.status === 'pending_approval') {
-          setPendingApprovalInfo({
+          showPendingApproval({
             name: studentProfile.display_name || '',
             classCode: studentProfile.class_code || '',
             profileId: studentProfile.id,
           });
-          setView("student-pending-approval");
           return;
         }
         if (studentProfile.status === 'rejected') {
@@ -4694,6 +4723,7 @@ export default function App() {
               .limit(1);
 
             if (data && data.length > 0 && data[0].status === 'approved') {
+              try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
               showToast("You've been approved! Logging in...", "success");
               handleLoginAsStudent(data[0].id);
             }
@@ -4716,6 +4746,7 @@ export default function App() {
             .limit(1);
 
           if (data && data.length > 0 && data[0].status === 'approved') {
+            try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
             showToast("You've been approved! Logging in...", "success");
             handleLoginAsStudent(data[0].id);
           } else {
@@ -4765,6 +4796,7 @@ export default function App() {
             <button
               onClick={() => {
                 setPendingApprovalInfo(null);
+                try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
                 setView("student-account-login");
               }}
               className="text-stone-400 text-sm hover:text-stone-600 transition-colors"
