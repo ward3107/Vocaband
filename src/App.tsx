@@ -1736,9 +1736,13 @@ export default function App() {
             }
 
             // Not a known student — check teacher allowlist
-            const { data: isAllowed } = await supabase.rpc('is_teacher_allowed', {
+            const { data: isAllowed, error: allowErr } = await supabase.rpc('is_teacher_allowed', {
               check_email: supabaseUser.email ?? ""
             });
+            if (allowErr) {
+              // RPC failed (cold start, function missing) — throw so retry handles it
+              throw new Error(`Teacher allowlist check failed: ${allowErr.message}`);
+            }
             if (!isAllowed) {
               // Not a teacher either — this is a new OAuth student who hasn't
               // entered a class code yet.  Show the class code entry form.
@@ -1768,11 +1772,38 @@ export default function App() {
         }
       } catch (err) {
         console.error("Session restore error:", err);
+        // If restoreSession fails (network glitch, Render cold start, RLS
+        // error), the teacher lands on the landing page with no explanation.
+        // Fix: retry once after a short delay. If that also fails, show the
+        // error so the teacher knows to retry manually.
+        if (!restoreSession._retried) {
+          restoreSession._retried = true;
+          restoreInProgress.current = false;
+          // Retry after 1.5s — gives Render time to wake up from cold start
+          setTimeout(async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user) {
+                await restoreSession(session.user);
+              } else {
+                showToast("Could not restore session. Please sign in again.", "error");
+                setLoading(false);
+              }
+            } catch {
+              showToast("Sign-in failed. Please try again.", "error");
+              setLoading(false);
+            }
+          }, 1500);
+          return; // Don't setLoading(false) yet — the retry will handle it
+        }
+        showToast("Sign-in failed. Please try again.", "error");
       } finally {
         restoreInProgress.current = false;
         setLoading(false);
       }
     };
+    // Track whether we've already retried (reset on each new session)
+    (restoreSession as any)._retried = false;
 
     // CRITICAL: This callback must NOT be async.
     // Supabase runs it inside an exclusive Navigator Lock. If the callback
