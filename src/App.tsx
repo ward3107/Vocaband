@@ -440,6 +440,7 @@ export default function App() {
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrStatus, setOcrStatus] = useState("");
   const [allScores, setAllScores] = useState<ProgressData[]>([]);
   const [classStudents, setClassStudents] = useState<{name: string, classCode: string, lastActive: string}[]>([]);
   const [globalLeaderboard, setGlobalLeaderboard] = useState<{name: string, score: number, avatar: string}[]>([]);
@@ -476,9 +477,11 @@ export default function App() {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
+    // Errors stay longer so users can read them on mobile
+    const duration = type === 'error' ? 6000 : 3000;
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
+    }, duration);
   };
 
   // --- CONFIRMATION DIALOG STATE ---
@@ -2141,50 +2144,60 @@ export default function App() {
     if (!rawFile) return;
 
     setIsOcrProcessing(true);
-    setOcrProgress(5); // Starting compression
+    setOcrProgress(5);
+    setOcrStatus("Compressing image...");
 
     try {
-      // Compress large mobile photos (3-12 MB → ~1-2 MB) before upload.
-      // No client-side size check — compression handles all sizes, and
-      // the server's multer limit (15 MB) is the real safety net.
       const file = await compressImageForUpload(rawFile);
       setOcrProgress(10);
+      setOcrStatus("Checking server...");
 
       // Get auth token for teacher authentication
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { showToast("Please sign in again.", "error"); return; }
 
-      // Create FormData with the (possibly compressed) image file
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Send OCR request DIRECTLY to Render (api.vocaband.com), bypassing the
-      // Cloudflare Worker proxy. Tesseract recognition takes 5-30 seconds,
-      // which exceeds the Worker's 30-second wall-clock limit. Going direct
-      // avoids the proxy timeout. CORS is configured on Render to accept
-      // requests from vocaband.com.
+      // Pre-flight: verify OCR server is reachable before uploading
       const ocrUrl = import.meta.env?.VITE_API_URL
         ? `${import.meta.env.VITE_API_URL}/api/ocr`
         : 'https://api.vocaband.com/api/ocr';
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s for OCR
+      const statusUrl = ocrUrl.replace('/api/ocr', '/api/ocr/status');
+      try {
+        const statusRes = await fetch(statusUrl, { signal: AbortSignal.timeout(8000) });
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (!statusData.apiKeySet) {
+            throw new Error("OCR is not configured on the server (missing API key). Contact admin.");
+          }
+        }
+      } catch (prefErr: any) {
+        if (prefErr?.message?.includes('not configured')) throw prefErr;
+        // Server unreachable — still try the upload (might be a CORS preflight issue)
+      }
 
-      // Simulate smooth progress during the API call (10% → 85%) so the
-      // user sees movement instead of a stuck bar. Clears when fetch completes.
+      setOcrStatus("Uploading image...");
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
+      // Simulate smooth progress during the API call (10% → 85%)
       let simProgress = 10;
       const progressInterval = setInterval(() => {
-        simProgress += (85 - simProgress) * 0.08; // ease-out curve
+        simProgress += (85 - simProgress) * 0.08;
         setOcrProgress(Math.round(simProgress));
       }, 400);
+
+      // Update status while waiting
+      setTimeout(() => setOcrStatus("Analyzing with AI..."), 3000);
+      setTimeout(() => setOcrStatus("Extracting words..."), 8000);
 
       let response: Response;
       try {
         response = await fetch(ocrUrl, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Authorization': `Bearer ${token}` },
           body: formData,
           signal: controller.signal,
         });
@@ -2194,14 +2207,14 @@ export default function App() {
       }
 
       setOcrProgress(88);
+      setOcrStatus("Processing results...");
 
       if (!response.ok) {
-        // The server may return HTML (e.g. Render 502) instead of JSON
         let errorMessage = `OCR failed (${response.status})`;
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch { /* response wasn't JSON — use status-based message */ }
+        } catch { /* response wasn't JSON */ }
         throw new Error(errorMessage);
       }
 
@@ -2211,7 +2224,7 @@ export default function App() {
       } catch {
         throw new Error('Server returned an invalid response. Please try again.');
       }
-      setOcrProgress(95); // Processing complete
+      setOcrProgress(95);
 
       // Extract words from the OCR service response
       // The service already returns English-only words (filtered by regex on server)
@@ -2263,6 +2276,7 @@ export default function App() {
     } finally {
       setIsOcrProcessing(false);
       setOcrProgress(0);
+      setOcrStatus("");
       // Reset the file input so the same file can be uploaded again if needed
       e.target.value = '';
     }
@@ -6832,6 +6846,7 @@ export default function App() {
         setSentenceDifficulty={setSentenceDifficulty}
         isOcrProcessing={isOcrProcessing}
         ocrProgress={ocrProgress}
+        ocrStatus={ocrStatus}
         showTopicPacks={showTopicPacks}
         setShowTopicPacks={setShowTopicPacks}
         showAssignmentWelcome={showAssignmentWelcome}
