@@ -8786,11 +8786,6 @@ export default function App() {
             >Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}</button>
           )}
           <button
-            onClick={handleExitGame}
-            disabled={isSaving}
-            className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-black text-white hover:bg-gray-800'}`}
-          >Choose Another Mode</button>
-          <button
             onClick={() => {
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
               if (user?.isGuest) {
