@@ -2924,10 +2924,6 @@ export default function App() {
   };
 
   const handleLoginAsStudent = async (studentId: string) => {
-    const student = existingStudents.find(s => s.id === studentId);
-    if (!student) return;
-
-
     // Look up the student's full profile including auth_uid
     try {
       // Use RPC to bypass RLS for login
