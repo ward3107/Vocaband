@@ -7,6 +7,8 @@ import {
   AUTO_SKIP_DELAY_MS,
   SHOW_ANSWER_DELAY_MS,
   WRONG_FEEDBACK_DELAY_MS,
+  FIRST_COMPLETION_BONUS,
+  STREAK_XP_MULTIPLIER,
   type GameMode,
 } from "../constants/game";
 import {
@@ -451,15 +453,37 @@ export function useGameState(params: UseGameStateParams) {
     const maxPossible = gameWords.length * 10;
     const cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
 
-    const xpEarned = cappedScore;
+    // --- XP Calculation with bonuses ---
+    let xpEarned = cappedScore;
+
+    // Streak bonus: streak × 5 XP (rewards daily play)
+    const streakBonus = streak * STREAK_XP_MULTIPLIER;
+    if (streakBonus > 0) xpEarned += streakBonus;
+
+    // First-completion bonus: +50 XP for completing a mode on this
+    // assignment for the first time (encourages trying all modes)
+    const alreadyCompleted = params.studentProgress.some(
+      p => p.assignmentId === activeAssignment.id && p.mode === gameMode
+    );
+    if (!alreadyCompleted) xpEarned += FIRST_COMPLETION_BONUS;
+
     const newXp = xp + xpEarned;
     const newStreak = cappedScore >= 80 ? streak + 1 : 0;
     setXp(newXp);
     setStreak(newStreak);
 
+    // Show bonus breakdown in toast
+    const bonusParts: string[] = [];
+    if (streakBonus > 0) bonusParts.push(`+${streakBonus} streak`);
+    if (!alreadyCompleted) bonusParts.push(`+${FIRST_COMPLETION_BONUS} first clear`);
+    if (bonusParts.length > 0) {
+      showToast(`${xpEarned} XP earned! (${cappedScore} base ${bonusParts.join(', ')})`, "success");
+    }
+
     if (cappedScore === 100) await awardBadge("🎯 Perfect Score");
     if (newStreak >= 5) await awardBadge("🔥 Streak Master");
     if (newXp >= 500) await awardBadge("💎 XP Hunter");
+    if (newXp >= 1000) await awardBadge("🏆 XP Champion");
 
     const streakMilestones = [7, 14, 30, 50, 100];
     if (streakMilestones.includes(newStreak)) {

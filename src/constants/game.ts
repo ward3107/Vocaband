@@ -18,6 +18,11 @@ export const randomMotivation = () =>
   MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
 
 // --- XP REWARD SYSTEM ---
+// Bonus XP for completing a mode for the first time on an assignment
+export const FIRST_COMPLETION_BONUS = 50;
+// Streak bonus: streak × this value added to each game's XP
+export const STREAK_XP_MULTIPLIER = 5;
+
 export const XP_TITLES = [
   { min: 0, title: 'Beginner', emoji: '🌱' },
   { min: 100, title: 'Learner', emoji: '📚' },
@@ -54,9 +59,9 @@ export const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label
   Nature: { xpRequired: 100, label: '100 XP' },
   Sports: { xpRequired: 200, label: '200 XP' },
   Objects: { xpRequired: 400, label: '400 XP' },
-  Vehicles: { xpRequired: 600, label: '600 XP' },
-  Fantasy: { xpRequired: 1000, label: '1000 XP' },
-  Space: { xpRequired: 1500, label: '1500 XP' },
+  Vehicles: { xpRequired: 500, label: '500 XP' },
+  Fantasy: { xpRequired: 700, label: '700 XP' },
+  Space: { xpRequired: 1000, label: '1000 XP' },
 };
 
 // --- SHOP: THEMES ---
@@ -87,10 +92,10 @@ export const BOOSTERS_DEFS = [
 export const NAME_FRAMES = [
   { id: 'gold', name: 'Gold Frame', preview: '🥇', border: 'ring-4 ring-yellow-400', cost: 200 },
   { id: 'fire', name: 'Fire Frame', preview: '🔥', border: 'ring-4 ring-orange-500', cost: 300 },
-  { id: 'diamond', name: 'Diamond Frame', preview: '💎', border: 'ring-4 ring-cyan-400', cost: 500 },
-  { id: 'rainbow', name: 'Rainbow Frame', preview: '🌈', border: 'ring-4 ring-purple-400 ring-offset-2 ring-offset-pink-200', cost: 400 },
-  { id: 'lightning', name: 'Lightning Frame', preview: '⚡', border: 'ring-4 ring-amber-300 shadow-lg shadow-amber-200', cost: 350 },
-  { id: 'crown', name: 'Crown Frame', preview: '👑', border: 'ring-4 ring-yellow-500 shadow-lg shadow-yellow-200', cost: 750 },
+  { id: 'diamond', name: 'Diamond Frame', preview: '💎', border: 'ring-4 ring-cyan-400', cost: 400 },
+  { id: 'rainbow', name: 'Rainbow Frame', preview: '🌈', border: 'ring-4 ring-purple-400 ring-offset-2 ring-offset-pink-200', cost: 350 },
+  { id: 'lightning', name: 'Lightning Frame', preview: '⚡', border: 'ring-4 ring-amber-300 shadow-lg shadow-amber-200', cost: 300 },
+  { id: 'crown', name: 'Crown Frame', preview: '👑', border: 'ring-4 ring-yellow-500 shadow-lg shadow-yellow-200', cost: 500 },
 ];
 
 export const NAME_TITLES = [
@@ -99,9 +104,9 @@ export const NAME_TITLES = [
   { id: 'word_wizard', name: 'Word Wizard', display: 'Word Wizard', cost: 300 },
   { id: 'vocab_king', name: 'Vocab King', display: 'Vocab King', cost: 250 },
   { id: 'vocab_queen', name: 'Vocab Queen', display: 'Vocab Queen', cost: 250 },
-  { id: 'speed_demon', name: 'Speed Demon', display: 'Speed Demon', cost: 400 },
-  { id: 'legend', name: 'Living Legend', display: 'Living Legend', cost: 500 },
-  { id: 'brain', name: 'Big Brain', display: 'Big Brain', cost: 350 },
+  { id: 'speed_demon', name: 'Speed Demon', display: 'Speed Demon', cost: 350 },
+  { id: 'legend', name: 'Living Legend', display: 'Living Legend', cost: 400 },
+  { id: 'brain', name: 'Big Brain', display: 'Big Brain', cost: 300 },
 ];
 
 // --- GAME: LETTER COLORS ---
