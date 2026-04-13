@@ -52,9 +52,18 @@ async function handleOcr(request: Request, env: Env): Promise<Response> {
     }
 
     // Convert file to base64 — use chunked approach for performance.
-    // The naive btoa(reduce(...)) is O(n²) and hits CPU limits on large images.
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);
+
+    // Anthropic Vision API has a 5MB base64 limit (~3.7MB raw file).
+    // If the image is too large, return a clear error.
+    if (bytes.length > 3_500_000) {
+      return Response.json(
+        { error: `Image too large (${Math.round(bytes.length / 1024)} KB). Please use a lower resolution photo or crop a smaller area. Max ~3.5 MB.` },
+        { status: 413 }
+      );
+    }
+
     let binary = "";
     const chunkSize = 8192;
     for (let i = 0; i < bytes.length; i += chunkSize) {
