@@ -2191,17 +2191,33 @@ export default function App() {
     try {
       const file = await compressImageForUpload(fileToProcess);
       setOcrProgress(10);
-      setOcrStatus("Preparing upload...");
+      setOcrStatus("Connecting to server...");
 
       // Get auth token for teacher authentication
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { showToast("Please sign in again.", "error"); return; }
 
-      // Use same-origin /api/ocr (proxied through Cloudflare Worker → Render).
-      // This avoids CORS issues that occurred when calling api.vocaband.com
-      // directly. Claude Vision OCR takes 2-5s, well within Worker timeout.
-      const ocrUrl = '/api/ocr';
+      // Warmup ping: confirm the backend is reachable before uploading
+      // the (potentially large) image file. Also checks API key config.
+      const directUrl = 'https://api.vocaband.com/api/ocr';
+      let ocrUrl = '/api/ocr'; // prefer same-origin (no CORS)
+      try {
+        const warmup = await fetch('/api/ocr/status', { signal: AbortSignal.timeout(10000) });
+        if (warmup.ok) {
+          const status = await warmup.json();
+          if (!status.apiKeySet) {
+            throw new Error("OCR is not configured on the server (API key missing). Contact admin.");
+          }
+        } else {
+          // Worker proxy might be broken — try direct
+          ocrUrl = directUrl;
+        }
+      } catch (warmErr: any) {
+        if (warmErr?.message?.includes('not configured')) throw warmErr;
+        // Worker proxy unreachable — fall back to direct URL
+        ocrUrl = directUrl;
+      }
 
       setOcrStatus("Uploading image...");
       const formData = new FormData();
@@ -2211,7 +2227,8 @@ export default function App() {
       const timeoutId = setTimeout(() => controller.abort(), 90_000);
 
       // Simulate smooth progress during the API call (10% → 85%)
-      let simProgress = 10;
+      let simProgress = 15;
+      setOcrProgress(15);
       const progressInterval = setInterval(() => {
         simProgress += (85 - simProgress) * 0.08;
         setOcrProgress(Math.round(simProgress));
@@ -2229,6 +2246,16 @@ export default function App() {
           body: formData,
           signal: controller.signal,
         });
+
+        // If the primary URL failed, retry with the other URL
+        if (!response.ok && ocrUrl !== directUrl) {
+          response = await fetch(directUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData,
+            signal: controller.signal,
+          });
+        }
       } finally {
         clearTimeout(timeoutId);
         clearTimeout(statusTimer1);
