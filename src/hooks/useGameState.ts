@@ -522,19 +522,27 @@ export function useGameState(params: UseGameStateParams) {
     };
 
     try {
-      const [{ data: progressId, error: rpcError }] = await Promise.all([
-        supabase.rpc("save_student_progress", {
-          p_student_name: user.displayName,
-          p_student_uid: studentUid,
-          p_assignment_id: activeAssignment.id,
-          p_class_code: user.classCode || "",
-          p_score: cappedScore,
-          p_mode: gameMode,
-          p_mistakes: Array.isArray(mistakes) ? mistakes.length : (typeof mistakes === 'number' ? mistakes : 0),
-          p_avatar: user.avatar || "🦊",
-        }),
-        supabase.from("users").update({ xp: newXp, streak: newStreak }).eq("uid", user.uid),
-      ]);
+      // Save XP/streak FIRST (idempotent update) so the student's XP is
+      // never lost even if progress RPC fails afterwards. If the progress
+      // RPC fails, we can retry — but we won't lose the XP they earned.
+      const { error: xpError } = await supabase
+        .from("users")
+        .update({ xp: newXp, streak: newStreak })
+        .eq("uid", user.uid);
+      if (xpError) {
+        console.warn("XP update failed (non-fatal):", xpError);
+      }
+
+      const { data: progressId, error: rpcError } = await supabase.rpc("save_student_progress", {
+        p_student_name: user.displayName,
+        p_student_uid: studentUid,
+        p_assignment_id: activeAssignment.id,
+        p_class_code: user.classCode || "",
+        p_score: cappedScore,
+        p_mode: gameMode,
+        p_mistakes: Array.isArray(mistakes) ? mistakes.length : (typeof mistakes === 'number' ? mistakes : 0),
+        p_avatar: user.avatar || "🦊",
+      });
 
       if (rpcError) throw rpcError;
 

@@ -306,6 +306,7 @@ export default function App() {
   // listener before handleStudentLogin finishes its DB queries).
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
+  const restoreRetried = useRef(false);
   const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
@@ -1778,8 +1779,8 @@ export default function App() {
         // error), the teacher lands on the landing page with no explanation.
         // Fix: retry once after a short delay. If that also fails, show the
         // error so the teacher knows to retry manually.
-        if (!restoreSession._retried) {
-          restoreSession._retried = true;
+        if (!restoreRetried.current) {
+          restoreRetried.current = true;
           restoreInProgress.current = false;
           // Retry after 1.5s — gives Render time to wake up from cold start
           setTimeout(async () => {
@@ -1804,8 +1805,7 @@ export default function App() {
         setLoading(false);
       }
     };
-    // Track whether we've already retried (reset on each new session)
-    (restoreSession as any)._retried = false;
+    // Retry flag managed via useRef (restoreRetried) — see declaration above
 
     // CRITICAL: This callback must NOT be async.
     // Supabase runs it inside an exclusive Navigator Lock. If the callback
@@ -3481,9 +3481,11 @@ export default function App() {
       const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
 
       // Check both new and legacy formats in parallel - much faster!
+      // Select all fields we need (status, id, display_name, class_code)
+      // because the pending_approval path uses them.
       const [newFormatResult, legacyFormatResult] = await Promise.all([
-        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdNew).maybeSingle(),
-        supabase.from('student_profiles').select('status').eq('unique_id', studentUniqueIdLegacy).maybeSingle(),
+        supabase.from('student_profiles').select('status, id, display_name, class_code').eq('unique_id', studentUniqueIdNew).maybeSingle(),
+        supabase.from('student_profiles').select('status, id, display_name, class_code').eq('unique_id', studentUniqueIdLegacy).maybeSingle(),
       ]);
 
       // Use new format result if found, otherwise fall back to legacy
