@@ -593,7 +593,6 @@ async function startServer() {
       return res.status(500).json({ ok: false, error: err?.message });
     }
   });
-  });
 
   app.post("/api/ocr", ocrRateLimiter, (req: any, res: any, next: any) => {
     ocrUpload.single("file")(req, res, (err: any) => {
