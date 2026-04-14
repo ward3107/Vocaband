@@ -611,7 +611,9 @@ async function startServer() {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      // gemini-1.5-flash is the stable production model with generous free tier.
+      // It supports images up to 20MB and handles most image formats.
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       // Gemini accepts the raw image buffer directly via inlineData.
       // MIME type normalisation: HEIC/HEIF → JPEG (Gemini may still accept
@@ -674,10 +676,27 @@ Rules:
         success: true,
       });
     } catch (error: any) {
-      console.error("[OCR] Gemini error:", error?.message || error);
+      // Log full error for debugging (Gemini errors can have status, details, etc.)
+      console.error("[OCR] Gemini error:", {
+        message: error?.message,
+        status: error?.status,
+        statusText: error?.statusText,
+        errorDetails: error?.errorDetails,
+        stack: error?.stack?.split('\n').slice(0, 5).join('\n'),
+      });
+
+      // Return the specific error message so the teacher can see it on mobile
+      const userMessage = error?.message?.includes('quota') || error?.message?.includes('rate')
+        ? "OCR quota exceeded. Please try again in a minute."
+        : error?.message?.includes('API key')
+        ? "Server is not configured correctly. Contact admin."
+        : error?.message?.includes('SAFETY') || error?.message?.includes('safety')
+        ? "The image couldn't be processed. Try a different photo."
+        : error?.message || "OCR processing failed. Please try again.";
+
       res.status(500).json({
-        error: "OCR processing failed",
-        message: error?.message || "An unexpected error occurred.",
+        error: "OCR failed",
+        message: userMessage,
       });
     }
   });
