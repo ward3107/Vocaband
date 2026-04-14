@@ -123,6 +123,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
       onClick={handleClick}
       disabled={isDisabled}
       dir={gameMode === "reverse" ? "ltr" : "auto"}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
       className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
         showCorrect
           ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
