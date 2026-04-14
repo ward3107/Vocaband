@@ -553,10 +553,46 @@ async function startServer() {
   // Uses the same ANTHROPIC_API_KEY already configured for AI sentences.
 
   app.get("/api/ocr/status", (_req, res) => {
+    const key = process.env.GOOGLE_AI_API_KEY || "";
     res.json({
       engine: "gemini-flash",
-      apiKeySet: !!process.env.GOOGLE_AI_API_KEY,
+      apiKeySet: !!key,
+      keyLength: key.length,
+      keyStartsCorrectly: key.startsWith("AIza"),
+      keyHasWhitespace: /\s/.test(key),
+      keyPreview: key ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : null,
     });
+  });
+
+  // Diagnostic: test the Gemini API key with a minimal call
+  app.get("/api/ocr/diagnostic", async (_req, res) => {
+    const key = process.env.GOOGLE_AI_API_KEY;
+    if (!key) return res.status(503).json({ ok: false, reason: "GOOGLE_AI_API_KEY not set" });
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key.trim())}`,
+        { method: "GET" }
+      );
+      const body = await response.json();
+      if (!response.ok) {
+        return res.json({
+          ok: false,
+          status: response.status,
+          error: body?.error?.message || body,
+          hint: body?.error?.message?.includes("API key not valid")
+            ? "The key doesn't match any Google project. Create a new one at aistudio.google.com/apikey and paste it without quotes or spaces."
+            : body?.error?.message?.includes("API has not been used")
+            ? "The Generative Language API isn't enabled on this project. Enable it at console.cloud.google.com/apis/library/generativelanguage.googleapis.com"
+            : null,
+        });
+      }
+      const modelCount = Array.isArray(body?.models) ? body.models.length : 0;
+      return res.json({ ok: true, modelCount, keyLength: key.length });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err?.message });
+    }
+  });
   });
 
   app.post("/api/ocr", ocrRateLimiter, (req: any, res: any, next: any) => {
@@ -610,7 +646,8 @@ async function startServer() {
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
+      // Trim whitespace — common paste error in env var consoles
+      const genAI = new GoogleGenerativeAI(apiKey.trim());
       // gemini-1.5-flash is the stable production model with generous free tier.
       // It supports images up to 20MB and handles most image formats.
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
