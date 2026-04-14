@@ -676,7 +676,7 @@ Rules:
         success: true,
       });
     } catch (error: any) {
-      // Log full error for debugging (Gemini errors can have status, details, etc.)
+      // Log full error for debugging
       console.error("[OCR] Gemini error:", {
         message: error?.message,
         status: error?.status,
@@ -685,18 +685,14 @@ Rules:
         stack: error?.stack?.split('\n').slice(0, 5).join('\n'),
       });
 
-      // Return the specific error message so the teacher can see it on mobile
-      const userMessage = error?.message?.includes('quota') || error?.message?.includes('rate')
-        ? "OCR quota exceeded. Please try again in a minute."
-        : error?.message?.includes('API key')
-        ? "Server is not configured correctly. Contact admin."
-        : error?.message?.includes('SAFETY') || error?.message?.includes('safety')
-        ? "The image couldn't be processed. Try a different photo."
-        : error?.message || "OCR processing failed. Please try again.";
+      // Pass the RAW Gemini error message through to the client so we can
+      // see the actual cause on mobile (no heuristic guessing that misleads).
+      // Truncate to 200 chars to avoid dumping huge stack traces.
+      const rawMessage = (error?.message || "Unknown error").toString().substring(0, 200);
 
       res.status(500).json({
         error: "OCR failed",
-        message: userMessage,
+        message: `Gemini: ${rawMessage}`,
       });
     }
   });
