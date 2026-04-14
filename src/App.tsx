@@ -2261,7 +2261,9 @@ export default function App() {
         let errorMessage = `OCR failed (${response.status})`;
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
+          // Prefer the detailed 'message' field (which has the actual
+          // Gemini error reason) over the generic 'error' field.
+          errorMessage = errorData.message || errorData.error || errorMessage;
         } catch { /* response wasn't JSON */ }
         throw new Error(errorMessage);
       }
