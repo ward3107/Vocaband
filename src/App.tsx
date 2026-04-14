@@ -2191,14 +2191,6 @@ export default function App() {
     try {
       const file = await compressImageForUpload(fileToProcess);
       const fileSizeKB = Math.round(file.size / 1024);
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-
-      // Check if compression worked — the API limit is ~3.5 MB
-      if (file.size > 3_500_000) {
-        showToast(`Image still too large after compression (${fileSizeMB} MB). Try taking a closer photo of just the words.`, "error");
-        return;
-      }
-
       setOcrProgress(10);
       setOcrStatus(`Uploading image... (${fileSizeKB} KB)`);
 

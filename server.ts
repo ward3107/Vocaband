@@ -9,6 +9,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
 
@@ -553,8 +554,8 @@ async function startServer() {
 
   app.get("/api/ocr/status", (_req, res) => {
     res.json({
-      engine: "claude-haiku-vision",
-      apiKeySet: !!process.env.ANTHROPIC_API_KEY,
+      engine: "gemini-flash",
+      apiKeySet: !!process.env.GOOGLE_AI_API_KEY,
     });
   });
 
@@ -597,33 +598,31 @@ async function startServer() {
       return res.status(400).json({ error: "No image file uploaded, or invalid file type." });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // OCR powered by Google Gemini Flash (free tier: 1500 requests/day).
+    // Gemini accepts images up to 20MB and handles HEIC/HEIF natively —
+    // no base64 encoding, no size limits, no browser compression needed.
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
-      return res.status(503).json({ error: "OCR not configured", message: "ANTHROPIC_API_KEY is not set." });
+      return res.status(503).json({
+        error: "OCR not configured",
+        message: "GOOGLE_AI_API_KEY is not set. Get a free key from https://aistudio.google.com/apikey",
+      });
     }
 
     try {
-      const anthropic = new Anthropic({ apiKey });
-      const base64Image = req.file.buffer.toString("base64");
-      // Anthropic Vision API only accepts jpeg/png/gif/webp.
-      // HEIC/HEIF (from iPhones) must be mapped to jpeg — the client
-      // compresses to JPEG before upload, but the MIME type may not update.
-      const rawMime = req.file.mimetype || "image/jpeg";
-      const mediaType = (rawMime === "image/heic" || rawMime === "image/heif" ? "image/jpeg" : rawMime) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-      const message = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 2048,
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: mediaType, data: base64Image },
-            },
-            {
-              type: "text",
-              text: `Extract ALL English words from this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
+      // Gemini accepts the raw image buffer directly via inlineData.
+      // MIME type normalisation: HEIC/HEIF → JPEG (Gemini may still accept
+      // HEIC on some deployments, but JPEG is universally supported).
+      const rawMime = req.file.mimetype || "image/jpeg";
+      const mimeType =
+        rawMime === "image/heic" || rawMime === "image/heif"
+          ? "image/jpeg"
+          : rawMime;
+
+      const prompt = `Extract ALL English words from this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
 
 Rules:
 - Include every English word you can read, no matter how small
@@ -631,18 +630,23 @@ Rules:
 - Remove duplicates
 - Skip numbers, symbols, and non-English text (Hebrew, Arabic, etc.)
 - Include words even if partially obscured or blurry
-- If you cannot read any English words, return []`,
-            },
-          ],
-        }],
-      });
+- If you cannot read any English words, return []`;
 
-      const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: req.file.buffer.toString("base64"),
+            mimeType,
+          },
+        },
+      ]);
 
-      // Parse the JSON array from Claude's response
+      const responseText = result.response.text();
+
+      // Parse the JSON array from Gemini's response
       let words: string[] = [];
       try {
-        // Claude might wrap the array in markdown code blocks
         const cleaned = responseText.replace(/```json?\s*|\s*```/g, "").trim();
         const parsed = JSON.parse(cleaned);
         if (Array.isArray(parsed)) {
@@ -651,18 +655,18 @@ Rules:
             .map((w: string) => w.toLowerCase().trim());
         }
       } catch {
-        // If JSON parse fails, fall back to splitting by common delimiters
+        // Fallback: split by common delimiters
         words = responseText
           .replace(/[\[\]"`,]/g, " ")
           .split(/\s+/)
-          .filter(w => /^[a-zA-Z]{2,}$/.test(w))
-          .map(w => w.toLowerCase());
+          .filter((w) => /^[a-zA-Z]{2,}$/.test(w))
+          .map((w) => w.toLowerCase());
       }
 
-      // Deduplicate
       const uniqueWords = [...new Set(words)];
 
-      console.log(`[OCR] ${authData.email}: Claude Vision found ${uniqueWords.length} English words (input tokens: ${message.usage.input_tokens}, output tokens: ${message.usage.output_tokens})`);
+      const sizeKB = Math.round(req.file.size / 1024);
+      console.log(`[OCR] ${authData.email}: Gemini Flash found ${uniqueWords.length} English words (image: ${sizeKB} KB, ${mimeType})`);
 
       res.json({
         words: uniqueWords,
@@ -670,7 +674,7 @@ Rules:
         success: true,
       });
     } catch (error: any) {
-      console.error("[OCR] Claude Vision error:", error?.message || error);
+      console.error("[OCR] Gemini error:", error?.message || error);
       res.status(500).json({
         error: "OCR processing failed",
         message: error?.message || "An unexpected error occurred.",

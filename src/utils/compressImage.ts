@@ -1,70 +1,46 @@
 /**
- * Compress an image file using the Canvas API before upload.
+ * Optional image compression before upload.
  *
- * Anthropic's Vision API has a 5 MB base64 limit (~3.5 MB raw file).
- * Mobile camera photos are typically 3-12 MB, so we ALWAYS resize and
- * re-encode as JPEG. If the first pass is still too large, we try again
- * with lower quality and smaller dimensions.
- *
- * Falls back to the original file ONLY if Canvas API is unavailable.
+ * With Gemini Flash OCR, the server accepts images up to 20MB natively —
+ * so compression is NO LONGER required for the API to work. This function
+ * just speeds up uploads on slow mobile connections by compressing files
+ * over 4MB. Always falls back to the original file if compression fails.
  */
-export async function compressImageForUpload(
-  file: File,
-  maxDimension = 1500,
-  quality = 0.75,
-): Promise<File> {
-  const result = await compressOnce(file, maxDimension, quality);
+export async function compressImageForUpload(file: File): Promise<File> {
+  // Skip compression for files under 4MB — upload time is fine
+  if (file.size <= 4 * 1024 * 1024) return file;
 
-  // If still over 3MB, try harder (smaller + lower quality)
-  if (result.size > 3 * 1024 * 1024) {
-    return compressOnce(result, 1000, 0.6);
+  // Try modern createImageBitmap API (handles large photos reliably)
+  try {
+    if (typeof createImageBitmap === "function") {
+      const bitmap = await createImageBitmap(file);
+      const maxDim = 1800;
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const w = Math.round(bitmap.width * scale);
+      const h = Math.round(bitmap.height * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { bitmap.close?.(); return file; }
+
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      bitmap.close?.();
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.85)
+      );
+      if (blob && blob.size < file.size) {
+        return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
+      }
+    }
+  } catch {
+    // Fall through to original file — Gemini will handle it
   }
 
-  return result;
-}
-
-function compressOnce(file: File, maxDim: number, quality: number): Promise<File> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        let { width, height } = img;
-
-        // Always scale down — even if dimensions are under maxDim,
-        // the file might still be large due to high JPEG quality
-        if (width > maxDim || height > maxDim) {
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { resolve(file); return; }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) { resolve(file); return; }
-            resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            }));
-          },
-          'image/jpeg',
-          quality,
-        );
-      } catch {
-        resolve(file);
-      }
-    };
-    img.onerror = () => resolve(file);
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    // Clean up blob URL after load
-    img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
-    img.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
-  });
+  return file;
 }
