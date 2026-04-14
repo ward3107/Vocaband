@@ -648,9 +648,9 @@ async function startServer() {
     try {
       // Trim whitespace — common paste error in env var consoles
       const genAI = new GoogleGenerativeAI(apiKey.trim());
-      // gemini-1.5-flash is the stable production model with generous free tier.
-      // It supports images up to 20MB and handles most image formats.
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      // gemini-2.5-flash: current stable production model with generous free tier.
+      // Supports up to 1M tokens context and multimodal (image) input.
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
       // Gemini accepts the raw image buffer directly via inlineData.
       // MIME type normalisation: HEIC/HEIF → JPEG (Gemini may still accept
