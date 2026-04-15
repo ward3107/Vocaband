@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
@@ -6,71 +6,24 @@ import {
   searchWords
 } from "./data/vocabulary-matching";
 import {
-  Volume2, VolumeX,
-  Languages,
-  Trophy,
   RefreshCw,
-  LogIn,
-  LogOut,
-  UserCircle,
-  Users,
-  CheckCircle2,
-  BookOpen,
-  BarChart3,
-  ChevronRight,
-  ArrowRight,
-  ArrowLeft,
-  Upload,
   AlertTriangle,
-  Lightbulb,
-  Sparkles,
-  Camera,
-  Trash2,
-  PenTool,
-  Zap,
-  Layers,
-  Shuffle,
-  Repeat,
-  Copy,
-  Check,
-  MessageCircle,
-  History,
-  Info,
-  ChevronDown,
-  Plus,
-  X,
-  TrendingUp,
-  GraduationCap,
-  Loader2,
-  QrCode,
-  Search,
-  Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
-import QuickPlayMonitor from "./components/QuickPlayMonitor";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
-import DashboardOnboarding from "./components/DashboardOnboarding";
-import StudentOnboarding from "./components/StudentOnboarding";
-import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "./config/privacy-config";
+import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
-import TopAppBar from "./components/TopAppBar";
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
-import ActionCard from "./components/ActionCard";
-import ClassCard from "./components/ClassCard";
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
-import { PastePreviewModal } from "./components/PastePreviewModal";
-import { analyzePastedText, type WordAnalysisResult } from "./utils/wordAnalysis";
+import { type WordAnalysisResult} from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
-import OAuthButton from "./components/OAuthButton";
-import OAuthCallback from "./components/OAuthCallback";
-import OAuthClassCode from "./components/OAuthClassCode";
-import { SuspenseWrapper, LazyWrapper } from "./components/SuspenseWrapper";
+import { LazyWrapper} from "./components/SuspenseWrapper";
 
 // Lazy-loaded views (code-split into separate chunks)
 const ShopView = lazy(() => import("./views/ShopView"));
@@ -92,7 +45,6 @@ const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
-import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
@@ -100,12 +52,9 @@ import ImageCropModal from "./components/ImageCropModal";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
-  MOTIVATIONAL_MESSAGES, SPEAKABLE_MOTIVATIONS, randomMotivation,
-  XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
-  THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES, LETTER_COLORS,
+  THEMES,
   type GameMode,
 } from "./constants/game";
-import { ErrorTrackingPanel } from "./components/ErrorTrackingPanel";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
