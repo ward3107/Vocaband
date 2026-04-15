@@ -1,15 +1,7 @@
-import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  CheckCircle2,
-  RefreshCw,
-  Check,
-  X,
-  AlertTriangle,
-  Info,
-} from "lucide-react";
-import { supabase, type AppUser } from "../core/supabase";
+import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
+import { supabase } from "../core/supabase";
 
 interface PendingStudent {
   id: string;
@@ -27,36 +19,39 @@ interface Toast {
 }
 
 interface TeacherApprovalsViewProps {
-  user: AppUser | null;
-  consentModal: React.ReactNode;
+  user: { displayName?: string; avatar?: string } | null;
   pendingStudents: PendingStudent[];
-  loadPendingStudents: () => Promise<void> | void;
-  handleApproveStudent: (studentId: string, displayName: string) => void;
-  handleRejectStudent: (studentId: string, displayName: string) => void;
-  showToast: (message: string, type: "success" | "error" | "info") => void;
-  setView: (view: string) => void;
   toasts: Toast[];
+  consentModal: React.ReactNode;
+  exitConfirmModal: React.ReactNode;
+  setView: (view: string) => void;
+  loadPendingStudents: () => Promise<void> | void;
+  handleApproveStudent: (id: string, displayName: string) => void;
+  handleRejectStudent: (id: string, displayName: string) => void;
+  showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 
 export default function TeacherApprovalsView({
   user,
-  consentModal,
   pendingStudents,
+  toasts,
+  consentModal,
+  exitConfirmModal,
+  setView,
   loadPendingStudents,
   handleApproveStudent,
   handleRejectStudent,
   showToast,
-  setView,
-  toasts,
 }: TeacherApprovalsViewProps) {
   return (
     <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
       {consentModal}
+      {exitConfirmModal}
 
       {/* Top App Bar */}
       <TopAppBar
         title="Student Approvals"
-        subtitle="Review and approve student signups"
+        subtitle={`Review and approve student signups`}
         userName={user?.displayName}
         userAvatar={user?.avatar}
         onLogout={() => supabase.auth.signOut()}
