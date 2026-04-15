@@ -91,6 +91,7 @@ const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView")
 const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
+const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
@@ -4964,549 +4965,159 @@ export default function App() {
   }
   if (user?.role === "teacher" && view === "teacher-dashboard") {
     return (
-      <>
-      <div className="min-h-screen bg-surface pt-24 pb-8" style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', paddingLeft: '1rem', paddingRight: '1rem' }}>
-          {consentModal}
-          {exitConfirmModal}
-
-        {/* Top App Bar */}
-        {/* First-time onboarding tour */}
-        {showOnboarding && (
-          <DashboardOnboarding onComplete={() => {
-            try { localStorage.setItem('vocaband_onboarding_done', 'true'); } catch {}
-            setShowOnboarding(false);
-          }} />
-        )}
-
-        <TopAppBar
-          title="Vocaband"
-          subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
-          userName={user?.displayName}
-          userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+      <LazyWrapper loadingMessage="Loading dashboard...">
+        <TeacherDashboardView
+          user={user}
+          consentModal={consentModal}
+          exitConfirmModal={exitConfirmModal}
+          ocrCropModal={ocrCropModal}
+          showOnboarding={showOnboarding}
+          setShowOnboarding={setShowOnboarding}
+          classes={classes}
+          teacherAssignments={teacherAssignments}
+          pendingStudentsCount={pendingStudents.length}
+          copiedCode={copiedCode}
+          setCopiedCode={setCopiedCode}
+          openDropdownClassId={openDropdownClassId}
+          setOpenDropdownClassId={setOpenDropdownClassId}
+          showCreateClassModal={showCreateClassModal}
+          setShowCreateClassModal={setShowCreateClassModal}
+          newClassName={newClassName}
+          setNewClassName={setNewClassName}
+          handleCreateClass={handleCreateClass}
+          createdClassCode={createdClassCode}
+          createdClassName={createdClassName}
+          setCreatedClassCode={setCreatedClassCode}
+          deleteConfirmModal={deleteConfirmModal}
+          setDeleteConfirmModal={setDeleteConfirmModal}
+          onConfirmDeleteAssignment={(deletedId, deletedTitle) => {
+            setTeacherAssignments(prev => {
+              const removed = prev.find(x => x.id === deletedId);
+              if (removed) (window as any).__undoAssignment = removed;
+              return prev.filter(x => x.id !== deletedId);
+            });
+            setDeleteConfirmModal(null);
+            const undoTimeout = setTimeout(async () => {
+              const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
+              if (error) showToast("Failed to delete from database: " + error.message, "error");
+              delete (window as any).__undoAssignment;
+              delete (window as any).__undoDeleteTimeout;
+            }, 8000);
+            (window as any).__undoDeleteTimeout = undoTimeout;
+            const undoToastId = Date.now().toString();
+            setToasts(prev => [...prev, {
+              id: undoToastId,
+              message: `"${deletedTitle}" deleted`,
+              type: 'info' as const,
+              action: {
+                label: 'Undo',
+                onClick: () => {
+                  clearTimeout((window as any).__undoDeleteTimeout);
+                  const restored = (window as any).__undoAssignment;
+                  if (restored) {
+                    setTeacherAssignments(prev => [...prev, restored]);
+                    delete (window as any).__undoAssignment;
+                  }
+                  setToasts(prev => prev.filter(t => t.id !== undoToastId));
+                  showToast("Assignment restored!", "success");
+                }
+              }
+            }]);
+            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== undoToastId)), 8000);
+          }}
+          rejectStudentModal={rejectStudentModal}
+          setRejectStudentModal={setRejectStudentModal}
+          confirmRejectStudent={confirmRejectStudent}
+          toasts={toasts}
+          confirmDialog={confirmDialog}
+          setConfirmDialog={setConfirmDialog}
+          onQuickPlayClick={() => {
+            try { sessionStorage.setItem('vocaband_skip_restore', 'true'); } catch (e) { /* ignore */ }
+            window.history.replaceState({ view: 'quick-play-setup' }, '', window.location.pathname);
+            try { localStorage.removeItem('vocaband_quick_play_session'); } catch (e) { /* ignore */ }
+            cleanupSessionData();
+            setQuickPlayActiveSession(null);
+            setQuickPlaySessionCode(null);
+            setView("quick-play-setup");
+          }}
+          onLiveChallengeClick={() => {
+            if (classes.length === 0) showToast("Create a class first!", "error");
+            else if (classes.length === 1) {
+              setSelectedClass(classes[0]);
+              setView("live-challenge");
+              setIsLiveChallenge(true);
+              if (socket) {
+                socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
+              }
+            } else {
+              setView("live-challenge-class-select");
+            }
+          }}
+          onAnalyticsClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
+          onGradebookClick={() => { fetchScores(); setView("gradebook"); }}
+          onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
+          onNewClass={() => setShowCreateClassModal(true)}
+          onAssignClass={(c) => {
+            setSelectedClass(c);
+            setView("create-assignment");
+            setAssignmentStep(1);
+            setSelectedWords([]);
+            setAssignmentTitle("");
+            setAssignmentDeadline("");
+            setAssignmentModes([]);
+            setAssignmentSentences([]);
+            setEditingAssignment(null);
+          }}
+          onDeleteClass={(classId) => handleDeleteClass(classId)}
+          onEditAssignment={(assignment, c) => {
+            setEditingAssignment(assignment);
+            const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
+            const unknownWords: Word[] = (assignment.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
+            const customIds = unknownWords.map(w => w.id);
+            setSelectedWords([...assignment.wordIds, ...customIds]);
+            setCustomWords(unknownWords);
+            setAssignmentTitle(assignment.title);
+            setAssignmentDeadline(assignment.deadline || '');
+            setAssignmentModes(assignment.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+            setAssignmentSentences(assignment.sentences ?? []);
+            setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
+            setSentencesAutoGenerated(true);
+            if (knownIds.some(id => SET_1_WORDS.some(w => w.id === id))) setSelectedLevel("Set 1");
+            else if (unknownWords.length > 0) setSelectedLevel("Custom");
+            else setSelectedLevel("Set 2");
+            setSelectedClass(c);
+            setView("create-assignment");
+          }}
+          onDuplicateAssignment={(assignment, c) => {
+            setEditingAssignment(assignment);
+            const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
+            const unknownWords: Word[] = (assignment.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
+            const customIds = unknownWords.map(w => w.id);
+            setSelectedWords([...assignment.wordIds, ...customIds]);
+            setCustomWords(unknownWords);
+            setAssignmentTitle(assignment.title + ' (copy)');
+            setAssignmentDeadline(assignment.deadline || '');
+            setAssignmentModes(assignment.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+            setAssignmentSentences(assignment.sentences ?? []);
+            setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
+            setSentencesAutoGenerated(true);
+            if (knownIds.some(id => SET_1_WORDS.some(w => w.id === id))) setSelectedLevel("Set 1");
+            else if (unknownWords.length > 0) setSelectedLevel("Custom");
+            else setSelectedLevel("Set 2");
+            setSelectedClass(c);
+            setView("create-assignment");
+          }}
+          onDeleteAssignment={async (assignment) => {
+            const { error } = await supabase.from('assignments').delete().eq('id', assignment.id);
+            if (error) {
+              showToast("Failed to delete assignment: " + error.message, "error");
+              return;
+            }
+            setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
+            showToast("Assignment deleted successfully", "success");
+          }}
         />
-
-        <div className="" style={{ maxWidth: '72rem', marginLeft: 'auto', marginRight: 'auto' }}>
-          {/* Quick Action Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            {/* Quick Play */}
-            <HelpTooltip className="h-full" content="Create a QR code for students to scan and play selected words - no login required!">
-              <div className="h-full" data-tour="quick-play">
-                <ActionCard
-                  icon={<QrCode size={24} />}
-                  iconBg="bg-indigo-100"
-                  iconColor="text-indigo-600"
-                  title="Quick Online Challenge"
-                  description="Generate QR code for instant play"
-                  buttonText="Create"
-                  buttonVariant="qr-purple"
-                  onClick={() => {
-                    // Set flag to skip session restoration on next render
-                    try {
-                      sessionStorage.setItem('vocaband_skip_restore', 'true');
-                    } catch (e) {
-                    }
-                    // Clear any session parameter to avoid loading student view.
-                    // Use replaceState with a tagged view so the popstate
-                    // handler doesn't misread an empty state object.
-                    window.history.replaceState({ view: 'quick-play-setup' }, '', window.location.pathname);
-                    // Clear any saved Quick Play session to start fresh
-                    try {
-                      localStorage.removeItem('vocaband_quick_play_session');
-                    } catch (e) {
-                    }
-                    cleanupSessionData(); // Clear save queue and timers
-                    setQuickPlayActiveSession(null);
-                    setQuickPlaySessionCode(null);
-                    setView("quick-play-setup");
-                  }}
-                />
-              </div>
-            </HelpTooltip>
-
-            {/* Live Challenge - Hidden */}
-            {false && (
-            <HelpTooltip className="h-full" content="Start a real-time vocabulary competition - students race to answer correctly!">
-              <div className="h-full">
-                <ActionCard
-                  icon={<RefreshCw size={24} />}
-                  iconBg="bg-blue-100"
-                  iconColor="text-blue-600"
-                  title="Live Mode for Classes"
-                  description="Start a real-time vocabulary competition"
-                  buttonText="Start"
-                  buttonVariant="live-green"
-                  onClick={() => {
-                    if (classes.length === 0) showToast("Create a class first!", "error");
-                    else if (classes.length === 1) {
-                      setSelectedClass(classes[0]);
-                      setView("live-challenge");
-                      setIsLiveChallenge(true);
-                      if (socket) {
-                        socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
-                      }
-                    } else {
-                      setView("live-challenge-class-select");
-                    }
-                  }}
-                />
-              </div>
-            </HelpTooltip>
-            )}
-
-            {/* Analytics */}
-            <HelpTooltip className="h-full" content="See every student's scores across all assignments, identify struggling students, track trends, and find the most-missed words">
-              <div className="h-full" data-tour="analytics">
-                <ActionCard
-                  icon={<BarChart3 size={24} />}
-                  iconBg="bg-purple-100"
-                  iconColor="text-purple-600"
-                  title="Classroom Analytics"
-                  description="Scores, trends & weak words"
-                  buttonText="View Insights"
-                  buttonVariant="analytics-blue"
-                  onClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
-                />
-              </div>
-            </HelpTooltip>
-
-            {/* Gradebook & Students */}
-            <HelpTooltip className="h-full" content="View all students, track scores, progress, and activity history">
-              <div className="h-full" data-tour="gradebook">
-                <ActionCard
-                  icon={<Trophy size={24} />}
-                  iconBg="bg-amber-100"
-                  iconColor="text-amber-600"
-                  title="Students & Grades"
-                  description="All students & scores"
-                  buttonText="Open Gradebook"
-                  buttonVariant="gradebook-amber"
-                  onClick={() => { fetchScores(); setView("gradebook"); }}
-                />
-              </div>
-            </HelpTooltip>
-
-            {/* Student Approvals */}
-            <HelpTooltip className="h-full" content="Approve students who signed up for your classes">
-              <div className="h-full" data-tour="approvals">
-                <ActionCard
-                  icon={<UserCircle size={24} />}
-                  iconBg="bg-rose-100"
-                  iconColor="text-rose-600"
-                  title="Student Approvals"
-                  description={pendingStudents.length > 0 ? `${pendingStudents.length} waiting` : "No pending approvals"}
-                  buttonText={pendingStudents.length > 0 ? `Review (${pendingStudents.length})` : "Check"}
-                  buttonVariant={pendingStudents.length > 0 ? "secondary" : "rose"}
-                  onClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
-                  badge={pendingStudents.length > 0 ? pendingStudents.length : undefined}
-                />
-              </div>
-            </HelpTooltip>
-          </div>
-
-          {/* My Classes Section */}
-          <div data-tour="my-classes" className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
-                <Users className="text-primary" size={20} /> My Classes
-              </h2>
-              <button
-                data-tour="new-class"
-                onClick={() => setShowCreateClassModal(true)}
-                className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-black text-base flex items-center gap-2 active:scale-95 transition-all"
-                aria-label="Create new class"
-              >
-                <Plus size={16} /> New Class
-              </button>
-            </div>
-
-            {classes.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users size={32} className="text-on-surface-variant" />
-                </div>
-                <p className="text-on-surface-variant font-medium">No classes yet. Create one to get a code!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-                {[...classes].reverse().map(c => {
-                  // Get assignments for this class
-                  const classAssignments = teacherAssignments.filter(a => a.classId === c.id);
-
-                  return (
-                    <div key={c.id} style={{ minWidth: '300px' }}>
-                      <ClassCard
-                        name={c.name}
-                        code={c.code}
-                        copiedCode={copiedCode}
-                        assignments={classAssignments}
-                        openDropdownClassId={openDropdownClassId}
-                        onToggleDropdown={setOpenDropdownClassId}
-                        onAssign={() => { setSelectedClass(c); setView("create-assignment"); setAssignmentStep(1); setSelectedWords([]); setAssignmentTitle(""); setAssignmentDeadline(""); setAssignmentModes([]); setAssignmentSentences([]); setEditingAssignment(null); }}
-                        onCopyCode={() => {
-                          navigator.clipboard.writeText(c.code);
-                          setCopiedCode(c.code);
-                          setTimeout(() => setCopiedCode(null), 2000);
-                        }}
-                        onWhatsApp={() => {
-                          window.open(
-                            `https://wa.me/?text=${encodeURIComponent(c.code)}`,
-                          '_blank'
-                        );
-                      }}
-                      onDelete={() => handleDeleteClass(c.id)}
-                      onEditAssignment={(assignment) => {
-                        setEditingAssignment(assignment);
-                        const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
-                        const unknownWords: Word[] = (assignment.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
-                        const customIds = unknownWords.map(w => w.id);
-                        setSelectedWords([...assignment.wordIds, ...customIds]);
-                        setCustomWords(unknownWords);
-                        setAssignmentTitle(assignment.title);
-                        setAssignmentDeadline(assignment.deadline || '');
-                        setAssignmentModes(assignment.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
-                        setAssignmentSentences(assignment.sentences ?? []);
-                        setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
-                        setSentencesAutoGenerated(true); // Allow difficulty changes to regenerate sentences
-                        if (knownIds.some(id => SET_1_WORDS.some(w => w.id === id))) setSelectedLevel("Set 1");
-                        else if (unknownWords.length > 0) setSelectedLevel("Custom");
-                        else setSelectedLevel("Set 2");
-                        setSelectedClass(c);
-                        setView("create-assignment");
-                      }}
-                      onDuplicateAssignment={(assignment) => {
-                        setEditingAssignment(assignment);
-                        const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
-                        const unknownWords: Word[] = (assignment.words ?? []).filter((w: Word) => !ALL_WORDS.some(aw => aw.id === w.id));
-                        const customIds = unknownWords.map(w => w.id);
-                        setSelectedWords([...assignment.wordIds, ...customIds]);
-                        setCustomWords(unknownWords);
-                        setAssignmentTitle(assignment.title + ' (copy)');
-                        setAssignmentDeadline(assignment.deadline || '');
-                        setAssignmentModes(assignment.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
-                        setAssignmentSentences(assignment.sentences ?? []);
-                        setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
-                        setSentencesAutoGenerated(true); // Allow difficulty changes to regenerate sentences
-                        if (knownIds.some(id => SET_1_WORDS.some(w => w.id === id))) setSelectedLevel("Set 1");
-                        else if (unknownWords.length > 0) setSelectedLevel("Custom");
-                        else setSelectedLevel("Set 2");
-                        setSelectedClass(c);
-                        setView("create-assignment");
-                      }}
-                      onDeleteAssignment={async (assignment) => {
-                        const { error } = await supabase.from('assignments').delete().eq('id', assignment.id);
-                        if (error) {
-                          showToast("Failed to delete assignment: " + error.message, "error");
-                          return;
-                        }
-                        setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
-                        showToast("Assignment deleted successfully", "success");
-                      }}
-                    />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-        </div>
-        </div>
-
-        {/* Overlay Components - Modals, Toasts, and Panels */}
-        {/* Create Class Modal */}
-        <AnimatePresence>
-          {showCreateClassModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto"
-              >
-                <h2 className="text-2xl font-black mb-2">Create New Class</h2>
-                <p className="text-stone-500 mb-6">Enter a name for your class (e.g. Grade 8-B)</p>
-                <input 
-                  autoFocus
-                  type="text" 
-                  value={newClassName}
-                  onChange={(e) => setNewClassName(e.target.value)}
-                  placeholder="Class Name"
-                  maxLength={50}
-                  className="w-full px-6 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-600 outline-none mb-6 font-bold"
-                />
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setShowCreateClassModal(false)}
-                    className="flex-1 py-4 rounded-2xl font-bold text-stone-400 hover:bg-stone-50 transition-colors border-2 border-stone-200"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleCreateClass}
-                    className="flex-1 py-4 bg-blue-700 text-white rounded-2xl font-bold hover:bg-blue-800 transition-colors shadow-lg shadow-blue-100"
-                  >
-                    Create
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Class Created Success Modal */}
-        <AnimatePresence>
-          {createdClassCode && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
-              >
-                <div className="w-16 h-16 bg-blue-50 text-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 size={32} />
-                </div>
-                <h2 className="text-2xl font-black mb-2">Class Created!</h2>
-                <p className="text-stone-500 mb-6">Share this code with your students so they can join.</p>
-                
-                <div className="bg-gradient-to-br from-blue-50 to-stone-50 p-6 rounded-3xl border-2 border-blue-100 mb-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 opacity-50"></div>
-                  <div className="absolute bottom-0 left-0 w-16 h-16 bg-stone-100 rounded-full -ml-8 -mb-8 opacity-50"></div>
-                  <p className="text-5xl font-mono font-black text-blue-700 tracking-widest relative z-10">{createdClassCode}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${createdClassName} - Class Code: ${createdClassCode}`);
-                      setCopiedCode(createdClassCode);
-                      setTimeout(() => setCopiedCode(null), 2000);
-                    }}
-                    className="py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2 border-blue-200"
-                  >
-                    {copiedCode === createdClassCode ? <Check size={20} className="text-blue-700" /> : <Copy size={20} />}
-                    <span>Copy</span>
-                  </button>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
-                  >
-                    <MessageCircle size={20} />
-                    <span>WhatsApp</span>
-                  </a>
-                </div>
-
-                <button
-                  onClick={() => setCreatedClassCode(null)}
-                  className="w-full py-4 text-stone-500 font-bold hover:text-stone-700 hover:bg-stone-50 rounded-2xl transition-all"
-                >
-                  Done
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Delete Assignment Confirmation Modal */}
-        <AnimatePresence>
-          {deleteConfirmModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
-              >
-                <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle size={32} />
-                </div>
-                <h2 className="text-2xl font-black mb-2">Delete Assignment?</h2>
-                <p className="text-stone-500 mb-6">
-                  You're about to delete <strong>"{deleteConfirmModal.title}"</strong>. This action cannot be undone — all student progress and data for this assignment will be permanently removed.
-                </p>
-                <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
-                  ⚠️ Make sure you want to delete this assignment before continuing.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setDeleteConfirmModal(null)}
-                    className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-colors border-2 border-stone-200"
-                  >
-                    Keep Assignment
-                  </button>
-                  <button
-                    onClick={() => {
-                      const deletedId = deleteConfirmModal.id;
-                      const deletedTitle = deleteConfirmModal.title;
-                      // Optimistically remove from UI
-                      setTeacherAssignments(prev => {
-                        const removed = prev.find(x => x.id === deletedId);
-                        if (removed) (window as any).__undoAssignment = removed;
-                        return prev.filter(x => x.id !== deletedId);
-                      });
-                      setDeleteConfirmModal(null);
-                      // Delayed hard delete with undo window
-                      const undoTimeout = setTimeout(async () => {
-                        const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
-                        if (error) showToast("Failed to delete from database: " + error.message, "error");
-                        delete (window as any).__undoAssignment;
-                        delete (window as any).__undoDeleteTimeout;
-                      }, 8000);
-                      (window as any).__undoDeleteTimeout = undoTimeout;
-                      // Show undo toast
-                      const undoToastId = Date.now().toString();
-                      setToasts(prev => [...prev, {
-                        id: undoToastId,
-                        message: `"${deletedTitle}" deleted`,
-                        type: 'info' as const,
-                        action: {
-                          label: 'Undo',
-                          onClick: () => {
-                            clearTimeout((window as any).__undoDeleteTimeout);
-                            const restored = (window as any).__undoAssignment;
-                            if (restored) {
-                              setTeacherAssignments(prev => [...prev, restored]);
-                              delete (window as any).__undoAssignment;
-                            }
-                            setToasts(prev => prev.filter(t => t.id !== undoToastId));
-                            showToast("Assignment restored!", "success");
-                          }
-                        }
-                      }]);
-                      // Auto-dismiss undo toast after 8 seconds
-                      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== undoToastId)), 8000);
-                    }}
-                    className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
-                  >
-                    Delete Assignment
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Reject Student Confirmation Modal */}
-        <AnimatePresence>
-          {rejectStudentModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
-              >
-                <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle size={32} />
-                </div>
-                <h2 className="text-2xl font-black mb-2">Reject Student?</h2>
-                <p className="text-stone-500 mb-6">
-                  You're about to reject <strong>"{rejectStudentModal.displayName}"</strong>. They will need to sign up again with a new class code to join your class.
-                </p>
-                <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
-                  ⚠️ This action cannot be undone. The student's profile will be marked as rejected.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setRejectStudentModal(null)}
-                    className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
-                  >
-                    Keep Student
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await confirmRejectStudent(rejectStudentModal.id);
-                      setRejectStudentModal(null);
-                    }}
-                    className="flex-1 py-4 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-200"
-                  >
-                    Reject Student
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* End Quick Play Session Modal moved to quick-play-teacher-monitor view */}
-
-        {/* OCR Image Crop Modal */}
-        {ocrCropModal}
-
-        {/* Toast Notifications */}
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
-          <AnimatePresence>
-            {toasts.map(toast => (
-              <motion.div
-                key={toast.id}
-                initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                className={`px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
-                  toast.type === 'success' ? 'bg-green-600 text-white' :
-                  toast.type === 'error' ? 'bg-red-600 text-white' :
-                  'bg-blue-600 text-white'
-                }`}
-              >
-                {toast.type === 'success' && <CheckCircle2 size={24} />}
-                {toast.type === 'error' && <AlertTriangle size={24} />}
-                {toast.type === 'info' && <Info size={24} />}
-                <span className="flex-1">{toast.message}</span>
-                {toast.action && (
-                  <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
-                    {toast.action.label}
-                  </button>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {/* Error Tracking Panel (Debug Mode) */}
-        <ErrorTrackingPanel />
-
-        {/* Confirmation Dialog */}
-        <AnimatePresence>
-          {confirmDialog.show && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50"
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
-              >
-                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle size={32} />
-                </div>
-                <h3 className="text-2xl font-black mb-3 text-stone-900">Confirm Action</h3>
-                <p className="text-stone-600 mb-8">{confirmDialog.message}</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                    className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmDialog.onConfirm}
-                    className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        </>
+      </LazyWrapper>
     );
   }
 
