@@ -67,6 +67,8 @@ export default function StudentAssignmentCard({
         </div>
         <button
           onClick={handleStart}
+          onTouchStart={() => { /* hint to mobile browsers that this is tappable — matches the answer-button touch fix */ }}
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
         >
           {isComplete ? "Play Again" : "Start Learning"}
