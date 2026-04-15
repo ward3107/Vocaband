@@ -1975,6 +1975,10 @@ export default function App() {
 
   const isPopStateNavRef = useRef(false);
 
+  // When the user taps "Leave" in the exit-confirm modal we want to
+  // actually leave — so popstate should NOT re-trap during that window.
+  const exitIntentRef = useRef(false);
+
   // Views that a logged-in user should never land on via back button.
   // If popstate would navigate to one of these, we block it.
   const AUTH_VIEWS = new Set([
@@ -1990,9 +1994,10 @@ export default function App() {
   // browsers (especially Android Chrome) the edge-swipe gesture can pop
   // faster than popstate can re-trap, so a single padding entry is not
   // enough: the user escapes into external URLs (Google OAuth, Supabase
-  // callback) that are still present in history above the pads.  Five
-  // pads give popstate enough of a buffer to re-trap reliably.
-  const PAD_COUNT = 5;
+  // callback) or into stale pre-login entries (student-account-login)
+  // that were pushed before the OAuth redirect.  Ten pads + aggressive
+  // re-trapping on every popstate keeps the user pinned at the dashboard.
+  const PAD_COUNT = 10;
 
   // Keep a ref to `view` so the popstate handler (attached once on
   // mount) always sees the latest value without a closure re-attach.
@@ -2011,12 +2016,13 @@ export default function App() {
     window.history.pushState({ view: v }, '');
   };
 
-  // On first mount, seed the history stack.
+  // On first mount, seed the history stack with the real current view
+  // (usually 'public-landing').  We purposely do NOT pushState here —
+  // the view-change effect below runs on first render and handles any
+  // pushState needed for non-trivial initial views.
   useEffect(() => {
-    window.history.replaceState({ view: 'landing' }, '');
-    // NOTE: do NOT pushState on initial mount — the view-change effect
-    // below runs after hydration for non-landing views, and pushing
-    // here would duplicate the landing entry for no benefit.
+    window.history.replaceState({ view }, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Whenever the app navigates to a new view, push a history entry.
@@ -2052,7 +2058,13 @@ export default function App() {
       const currentUser = userRef.current;
       const currentView = viewRef.current;
 
-      // Guard: auth is still being restored.  Treat as "user present"
+      // Guard 0: the user tapped "Leave" — let the browser actually
+      // navigate out.  Do not re-trap.
+      if (exitIntentRef.current) {
+        return;
+      }
+
+      // Guard 1: auth is still being restored.  Treat as "user present"
       // and re-push so the back button doesn't accidentally escape
       // during the ~500ms restore window after a fresh mount.
       if (restoreInProgress.current) {
@@ -2063,29 +2075,27 @@ export default function App() {
       const home = currentUser ? getHomeView() : null;
       const atDashboardFloor = !!currentUser && currentView === home;
 
-      // CASE A: logged-in user, back would escape to an auth/OAuth view
-      //         (either by prevView or by missing state entirely).
-      //         At the dashboard floor: re-trap + show exit confirmation.
-      //         Elsewhere: just re-push to block.
-      if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
-        if (atDashboardFloor) {
-          pushDashboardTrap();
-          setShowExitConfirmModal(true);
-        } else {
-          window.history.pushState({ view: currentView }, '');
-        }
-        return;
-      }
-
-      // CASE B: popped a pad entry at the dashboard floor.  Refill the
-      //         buffer and prompt for exit confirmation.
-      if (atDashboardFloor && isPad) {
+      // CASE A: at dashboard floor, ANY back press re-traps and shows
+      //         the exit confirmation.  We never navigate away from
+      //         the dashboard via popstate — it's an absolute floor.
+      //         This also handles the case where rapid back presses
+      //         pop past the pad buffer into pre-login entries like
+      //         {view:'student-account-login'} or external URLs.
+      if (atDashboardFloor) {
         pushDashboardTrap();
         setShowExitConfirmModal(true);
         return;
       }
 
-      // CASE C: normal in-app back navigation between real views.
+      // CASE B: logged-in user NOT at dashboard, but back would go to
+      //         a login/auth view — block it (re-push current view).
+      if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
+        window.history.pushState({ view: currentView }, '');
+        return;
+      }
+
+      // CASE C: normal in-app back navigation between real views
+      //         (e.g., create-assignment → teacher-dashboard).
       if (prevView && !isPad) {
         isPopStateNavRef.current = true;
         setView(prevView as typeof view);
@@ -5646,12 +5656,16 @@ export default function App() {
           <button
             onClick={() => {
               setShowExitConfirmModal(false);
-              // Pop past all pads + dashboard entry in one go.  If history
-              // still has external URLs below, the next back press from
-              // the user will exit the tab naturally.  If history.go
-              // lands on an external URL it triggers a full-page nav
-              // (leaving the app), which is what the user asked for.
-              window.history.go(-(PAD_COUNT + 1));
+              // Signal that the next popstate should NOT re-trap.
+              // Then sign out and reset history so the logged-out
+              // public-landing renders cleanly.  The user can then
+              // press back once more to exit the tab naturally.
+              exitIntentRef.current = true;
+              supabase.auth.signOut().catch(() => {});
+              try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
+              // Give SIGNED_OUT a tick to fire, then release the
+              // exit-intent guard so normal navigation resumes.
+              setTimeout(() => { exitIntentRef.current = false; }, 500);
             }}
             className="flex-1 py-4 rounded-2xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
           >
