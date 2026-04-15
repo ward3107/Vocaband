@@ -20,26 +20,41 @@ const Loading = () => (
 async function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   if (params.has('code')) {
+    const { supabase } = await import('./core/supabase');
+    const code = params.get('code')!;
+    let sessionReady = false;
     try {
-      const { supabase } = await import('./core/supabase');
-      const code = params.get('code')!;
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        // "already used" / "expired" means the code was consumed by a
-        // previous call (e.g. StrictMode double-mount, or the client's
-        // internal handler).  The session likely exists — check for it.
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          sessionStorage.setItem('oauth_session_ready', '1');
-        } else {
-          sessionStorage.setItem('oauth_exchange_failed', '1');
-        }
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error && data?.session?.user) {
+        sessionReady = true;
       } else {
-        sessionStorage.setItem('oauth_session_ready', '1');
+        // Exchange returned an error or no session in response.  Common
+        // causes: "already used" (code consumed by a previous mount),
+        // slow storage sync on mobile.  Poll getSession() briefly to
+        // see if the session materialises anyway — often it does.
+        for (let i = 0; i < 10; i++) {
+          await new Promise(r => setTimeout(r, 150));
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) { sessionReady = true; break; }
+          } catch { /* retry */ }
+        }
       }
     } catch {
-      sessionStorage.setItem('oauth_exchange_failed', '1');
+      // Network/exchange threw — still try to find an existing session
+      // before declaring the login failed.
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 150));
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) { sessionReady = true; break; }
+        } catch { /* retry */ }
+      }
     }
+    sessionStorage.setItem(
+      sessionReady ? 'oauth_session_ready' : 'oauth_exchange_failed',
+      '1'
+    );
     // Clear the ?code= query param so a page refresh doesn't re-trigger
     // the (now-consumed) exchange and so routing logic doesn't see it.
     window.history.replaceState({}, '', window.location.pathname);
