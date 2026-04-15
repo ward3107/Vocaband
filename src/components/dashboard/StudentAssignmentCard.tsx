@@ -55,7 +55,14 @@ export default function StudentAssignmentCard({
   };
 
   return (
-    <div className={`${accent.bg} p-5 sm:p-6 rounded-3xl border-2 ${accent.border} ${accent.hoverBorder} transition-colors relative overflow-hidden`}>
+    <div
+      onClick={handleStart}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStart(); }}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}
+      className={`${accent.bg} p-5 sm:p-6 rounded-3xl border-2 ${accent.border} ${accent.hoverBorder} transition-colors relative overflow-hidden active:scale-[0.99]`}
+    >
       <div className={`absolute top-0 left-0 w-1.5 h-full ${accent.strip} rounded-l-3xl`} />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
         <div className="flex-1">
@@ -66,8 +73,7 @@ export default function StudentAssignmentCard({
           </p>
         </div>
         <button
-          onClick={handleStart}
-          onTouchStart={() => { /* hint to mobile browsers that this is tappable — matches the answer-button touch fix */ }}
+          onClick={(e) => { e.stopPropagation(); handleStart(); }}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
         >
