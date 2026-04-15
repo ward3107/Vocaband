@@ -1,28 +1,39 @@
-import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy, GraduationCap, Users, UserCircle, ChevronDown } from "lucide-react";
-import { supabase, type AppUser, type AssignmentData, type ClassData, type ProgressData } from "../core/supabase";
-import { HelpTooltip } from "../components/HelpTooltip";
+import { Users, Trophy, GraduationCap, ChevronDown, Download, UserCircle } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
+import { HelpTooltip } from "../components/HelpTooltip";
+import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
+import type { View } from "../core/views";
 
-// Lucide Download icon (not in the main imports)
-import { Download } from "lucide-react";
+interface ClassStudent {
+  name: string;
+  classCode: string;
+  lastActive: string;
+}
 
 interface GradebookViewProps {
-  user: AppUser | null;
+  user: { displayName?: string; avatar?: string } | null;
   allScores: ProgressData[];
-  classes: ClassData[];
-  classStudents: { name: string; classCode: string; lastActive: string }[];
   teacherAssignments: AssignmentData[];
+  classStudents: ClassStudent[];
+  classes: ClassData[];
+  expandedStudent: string | null;
+  setExpandedStudent: (key: string | null) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
-  setView: (view: string) => void;
 }
 
 export default function GradebookView({
-  user, allScores, classes, classStudents, teacherAssignments, showToast, setView,
+  user,
+  allScores,
+  teacherAssignments,
+  classStudents,
+  classes,
+  expandedStudent,
+  setExpandedStudent,
+  setView,
+  showToast,
 }: GradebookViewProps) {
-  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
-
   // Group scores by student
   const groupedByStudent = allScores.reduce((acc, score) => {
     const key = `${score.studentName}-${score.classCode}`;
@@ -46,7 +57,7 @@ export default function GradebookView({
   }, {} as Record<string, {
     studentName: string;
     classCode: string;
-    scores: ProgressData[];
+    scores: typeof allScores;
     totalScore: number;
     bestScore: number;
     lastDate: string;
@@ -54,6 +65,7 @@ export default function GradebookView({
 
   const studentEntries = Object.values(groupedByStudent);
 
+  // Score badge with color based on performance
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'bg-gradient-to-br from-green-400 to-green-500 text-white';
     if (score >= 70) return 'bg-gradient-to-br from-blue-400 to-blue-500 text-white';
@@ -61,6 +73,7 @@ export default function GradebookView({
     return 'bg-gradient-to-br from-red-400 to-red-500 text-white';
   };
 
+  // Mode icon and color
   const getModeInfo = (mode: string) => {
     const modeMap: Record<string, { icon: string; color: string; label: string; name: string }> = {
       classic: { icon: '📝', color: 'from-blue-400 to-blue-500', label: 'Multiple Choice', name: 'Classic' },
@@ -180,11 +193,13 @@ export default function GradebookView({
                     transition={{ delay: idx * 0.03 }}
                     className="bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden border-2 border-surface-container"
                   >
+                    {/* Summary Row - Always Visible */}
                     <div
                       onClick={() => setExpandedStudent(isExpanded ? null : entryKey)}
                       className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-container-low transition-colors"
                     >
                       <div className="flex items-center gap-4 flex-1">
+                        {/* Expand/Collapse Icon */}
                         <motion.div
                           animate={{ rotate: isExpanded ? 180 : 0 }}
                           transition={{ duration: 0.2 }}
@@ -192,9 +207,13 @@ export default function GradebookView({
                         >
                           <ChevronDown size={20} />
                         </motion.div>
+
+                        {/* Avatar */}
                         <div className="w-12 h-12 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-black text-lg shadow-md">
                           {entry.studentName.charAt(0)}
                         </div>
+
+                        {/* Name and Class */}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-black text-on-surface text-lg truncate">{entry.studentName}</h3>
                           <div className="flex items-center gap-2">
@@ -207,6 +226,8 @@ export default function GradebookView({
                           </div>
                         </div>
                       </div>
+
+                      {/* Quick Stats */}
                       <div className="flex items-center gap-3 sm:gap-6">
                         <div className="text-center">
                           <div className="text-[10px] text-on-surface-variant font-bold uppercase">Avg</div>
@@ -234,6 +255,7 @@ export default function GradebookView({
                       </div>
                     </div>
 
+                    {/* Expanded Details */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -244,13 +266,17 @@ export default function GradebookView({
                           className="overflow-hidden"
                         >
                           <div className="px-4 pb-4 border-t border-surface-container">
+                            {/* Detailed Stats Header */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                               <HelpTooltip content={`Average Score: ${avgScore}% - Mean performance across all attempts`}>
                                 <div className="text-center p-3 bg-surface-container rounded-xl cursor-help hover:bg-surface-container-high transition-colors">
                                   <div className="text-xs text-on-surface-variant font-bold uppercase">Average</div>
-                                  <div className={`text-2xl font-black ${getScoreColor(avgScore)}`}>{avgScore}%</div>
+                                  <div className={`text-2xl font-black ${getScoreColor(avgScore)}`}>
+                                    {avgScore}%
+                                  </div>
                                 </div>
                               </HelpTooltip>
+
                               <HelpTooltip content={`Best Score: ${entry.bestScore}% - Highest score achieved`}>
                                 <div className="text-center p-3 bg-tertiary-container/30 rounded-xl cursor-help hover:bg-tertiary-container/50 transition-colors">
                                   <div className="flex items-center gap-1 justify-center">
@@ -260,23 +286,28 @@ export default function GradebookView({
                                   <div className="text-2xl font-black text-tertiary">{entry.bestScore}%</div>
                                 </div>
                               </HelpTooltip>
+
                               <HelpTooltip content={`Total Points: ${entry.totalScore} - Sum of all scores earned`}>
                                 <div className="text-center p-3 bg-secondary-container/30 rounded-xl cursor-help hover:bg-secondary-container/50 transition-colors">
                                   <div className="text-xs text-secondary font-bold uppercase">Total</div>
                                   <div className="text-2xl font-black text-secondary">{entry.totalScore}</div>
                                 </div>
                               </HelpTooltip>
+
                               <HelpTooltip content={`Last Activity: ${new Date(entry.lastDate).toLocaleString()} - Most recent attempt`}>
                                 <div className="text-center p-3 bg-green-50 rounded-xl cursor-help hover:bg-green-100 transition-colors">
                                   <div className="flex items-center gap-1 justify-center">
                                     <span className="text-xs text-green-600 font-bold uppercase">Last</span>
                                     <span>🕐</span>
                                   </div>
-                                  <div className="text-sm font-bold text-green-600">{new Date(entry.lastDate).toLocaleDateString()}</div>
+                                  <div className="text-sm font-bold text-green-600">
+                                    {new Date(entry.lastDate).toLocaleDateString()}
+                                  </div>
                                 </div>
                               </HelpTooltip>
                             </div>
 
+                            {/* All Scores */}
                             <div className="mt-4">
                               <div className="flex items-center gap-2 mb-3">
                                 <HelpTooltip content="Individual scores for each attempt with detailed information">

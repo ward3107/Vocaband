@@ -1,74 +1,85 @@
-import React from "react";
+import type React from "react";
 import { motion } from "motion/react";
 import {
-  BookOpen, Volume2, PenTool, Zap, CheckCircle2,
-  Layers, Shuffle, Repeat, X,
+  BookOpen,
+  Volume2,
+  PenTool,
+  Zap,
+  CheckCircle2,
+  Layers,
+  Shuffle,
+  Repeat,
+  X,
 } from "lucide-react";
-import type { AssignmentData, ProgressData } from "../core/supabase";
 import type { GameMode } from "../constants/game";
+import type { AssignmentData, ProgressData } from "../core/supabase";
 
 interface GameModeSelectionViewProps {
   activeAssignment: AssignmentData | null;
   studentProgress: ProgressData[];
   isQuickPlayGuest: boolean;
   quickPlayCompletedModes: Set<string>;
-  handleExitGame: () => void;
   setGameMode: (mode: GameMode) => void;
   setShowModeSelection: (v: boolean) => void;
   setShowModeIntro: (v: boolean) => void;
+  handleExitGame: () => void;
 }
-
-const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
-  { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
-  { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
-  { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
-  { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
-  { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} />, tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"] },
-  { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} />, tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"] },
-  { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
-  { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
-  { id: "letter-sounds", name: "Letter Sounds", desc: "Watch each letter light up and hear its sound.", color: "violet", icon: <span className="text-2xl">🔡</span>, tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"] },
-  { id: "sentence-builder", name: "Sentence Builder", desc: "Tap words in the right order to build the sentence.", color: "teal", icon: <span className="text-2xl">🧩</span>, tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"] },
-];
-
-const colorClasses: Record<string, string> = {
-  emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
-  blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
-  purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
-  amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
-  rose: "bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700",
-  cyan: "bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700",
-  indigo: "bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700",
-  fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
-  violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
-  teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
-};
-
-const iconColorClasses: Record<string, string> = {
-  emerald: "text-blue-700",
-  blue: "text-blue-600",
-  purple: "text-purple-600",
-  amber: "text-amber-600",
-  rose: "text-rose-600",
-  cyan: "text-cyan-600",
-  indigo: "text-indigo-600",
-  fuchsia: "text-fuchsia-600",
-  violet: "text-violet-600",
-  teal: "text-teal-600",
-};
 
 export default function GameModeSelectionView({
   activeAssignment,
   studentProgress,
   isQuickPlayGuest,
   quickPlayCompletedModes,
-  handleExitGame,
   setGameMode,
   setShowModeSelection,
   setShowModeIntro,
+  handleExitGame,
 }: GameModeSelectionViewProps) {
+  const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
+    { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
+    { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
+    { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
+    { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
+    { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} />, tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"] },
+    { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} />, tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"] },
+    { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
+    { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
+    { id: "letter-sounds", name: "Letter Sounds", desc: "Watch each letter light up and hear its sound.", color: "violet", icon: <span className="text-2xl">🔡</span>, tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"] },
+    { id: "sentence-builder", name: "Sentence Builder", desc: "Tap words in the right order to build the sentence.", color: "teal", icon: <span className="text-2xl">🧩</span>, tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"] },
+  ];
+
   const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
   const filteredModes = modes.filter(m => allowedModes.includes(m.id));
+
+  if (filteredModes.length === 0) {
+    console.error('[Mode Selection] No modes available!');
+  }
+
+  const colorClasses: Record<string, string> = {
+    emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
+    blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
+    purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
+    amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
+    rose: "bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700",
+    cyan: "bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700",
+    indigo: "bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700",
+    fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
+    violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
+    teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
+  };
+
+  const iconColorClasses: Record<string, string> = {
+    emerald: "text-blue-700",
+    blue: "text-blue-600",
+    purple: "text-purple-600",
+    amber: "text-amber-600",
+    rose: "text-rose-600",
+    cyan: "text-cyan-600",
+    indigo: "text-indigo-600",
+    fuchsia: "text-fuchsia-600",
+    violet: "text-violet-600",
+    teal: "text-teal-600",
+  };
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
@@ -95,6 +106,7 @@ export default function GameModeSelectionView({
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {filteredModes.map((mode, idx) => {
             const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
+            // In Quick Play: lock modes that were already completed this session
             const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
 
             return (

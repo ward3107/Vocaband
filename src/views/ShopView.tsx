@@ -1,52 +1,26 @@
-import React from "react";
-import { Zap, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, Zap } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
-import {
-  PREMIUM_AVATARS,
-  AVATAR_CATEGORY_UNLOCKS,
-  THEMES,
-  POWER_UP_DEFS,
-  BOOSTERS_DEFS,
-  NAME_FRAMES,
-  NAME_TITLES,
-  XP_TITLES,
-  getXpTitle,
-} from "../constants/game";
 import FloatingButtons from "../components/FloatingButtons";
-
-const AVATAR_CATEGORIES = {
-  Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜", "🐶", "🐱", "🦈", "🐬", "🦅", "🐝", "🦉"],
-  Faces: ["😎", "🤓", "🥳", "😊", "🤩", "🥹", "😜", "🤗", "🥰", "😇", "🧐", "🤠", "😈", "🤡", "👻", "🤖", "👽", "💀"],
-  Fantasy: ["🧙", "🧛", "🧜", "🧚", "🦸", "🦹", "🧝", "👸", "🤴", "🥷", "🦖", "🐉", "🧞", "🧟", "🎃"],
-  Sports: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🏉", "🎱", "🏓", "🏸", "🥊", "⛳", "🏊", "🚴", "🏄"],
-  Food: ["🍕", "🍔", "🍟", "🌭", "🍿", "🧁", "🥨", "🍦", "🍩", "🍪", "🎂", "🍰", "🍉", "🍇", "🥑"],
-  Objects: ["🎸", "🎹", "🎺", "🎷", "🪕", "🎻", "🎤", "🎧", "📷", "🎮", "🕹️", "💎", "🎨", "🔮", "🏆"],
-  Vehicles: ["🚗", "🚕", "🏎️", "🚓", "🚑", "🚒", "✈️", "🚀", "🛶", "🚲", "🛸", "🚁", "🚂", "⛵", "🛵"],
-  Nature: ["🌸", "🌺", "🌻", "🌷", "🌹", "🍀", "🌲", "🌳", "🌵", "🌴", "🍄", "🌾", "🌈", "❄️", "🌊"],
-  Space: ["🚀", "🛸", "🌙", "⭐", "🌟", "💫", "✨", "☄️", "🪐", "🌍", "🔥", "💧", "🌕", "🌑", "🌌"],
-};
+import {
+  XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
+  THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES,
+} from "../constants/game";
+import { AVATAR_CATEGORIES } from "../constants/avatars";
+import type { View } from "../core/views";
 
 interface ShopViewProps {
   user: AppUser;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   xp: number;
-  setXp: (v: number) => void;
-  shopTab: string;
-  setShopTab: (v: string) => void;
-  showToast: (message: string, type: "success" | "error" | "info") => void;
-  setView: (view: string) => void;
+  setXp: (xp: number) => void;
+  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  setView: React.Dispatch<React.SetStateAction<View>>;
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function ShopView({
-  user,
-  setUser,
-  xp,
-  setXp,
-  shopTab,
-  setShopTab,
-  showToast,
-  setView,
-}: ShopViewProps) {
+export default function ShopView({ user, xp, setXp, setUser, setView, showToast }: ShopViewProps) {
+  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
+
   const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
     if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: avatar.emoji, item_cost: avatar.cost });
@@ -290,7 +264,7 @@ export default function ShopView({
           </div>
         )}
 
-        {/* Name Frames Shop */}
+        {/* Avatar Frames Shop */}
         {shopTab === "frames" && (
           <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
             <h2 className="text-xl font-black mb-2">Avatar Frames</h2>
@@ -334,7 +308,7 @@ export default function ShopView({
           </div>
         )}
 
-        {/* Boosters Shop — High-demand items */}
+        {/* Boosters Shop */}
         {shopTab === "boosters" && (
           <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-3xl p-6 shadow-md border-2 border-pink-200">
             <h2 className="text-xl font-black mb-2 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">🔥 Hot Boosters</h2>

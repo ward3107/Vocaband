@@ -21,7 +21,8 @@
     "test:e2e": "npx playwright test --config e2e/playwright.config.ts",
     "test:e2e:ui": "npx playwright test --config e2e/playwright.config.ts --ui",
     "audit": "npm audit",
-    "install:prod": "npm install --legacy-peer-deps"
+    "install:prod": "npm install --legacy-peer-deps",
+    "deploy:preview": "npm run build && wrangler deploy --config dist/vocaband/wrangler.json --name vocaband-preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",

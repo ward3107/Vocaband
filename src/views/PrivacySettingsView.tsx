@@ -2,29 +2,35 @@ import React, { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "../config/privacy-config";
+import type { View } from "../core/views";
+
+type ToastType = "success" | "error" | "info";
+
+interface ConfirmDialogState {
+  show: boolean;
+  message: string;
+  onConfirm: () => void;
+}
 
 interface PrivacySettingsViewProps {
   user: AppUser;
   consentModal: React.ReactNode;
+  exitConfirmModal: React.ReactNode;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-  setConfirmDialog: (v: { show: boolean; message: string; onConfirm: () => void }) => void;
-  showToast: (message: string, type: "success" | "error" | "info") => void;
-  setView: (view: string) => void;
+  setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
+  showToast: (message: string, type?: ToastType) => void;
 }
 
 export default function PrivacySettingsView({
-  user,
-  consentModal,
-  setUser,
-  setConfirmDialog,
-  showToast,
-  setView,
+  user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast,
 }: PrivacySettingsViewProps) {
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
 
   const handleExportData = async () => {
     try {
+      // Client-side data export — fetch user's own data via RLS-protected queries
       const [userResult, progressResult] = await Promise.all([
         supabase.from('users').select('*').eq('uid', user.uid).maybeSingle(),
         supabase.from('progress').select('*').eq('student_uid', user.uid),
@@ -54,6 +60,7 @@ export default function PrivacySettingsView({
       message: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
       onConfirm: async () => {
         try {
+          // Delete user's progress and profile
           await supabase.from('progress').delete().eq('student_uid', user.uid);
           await supabase.from('users').delete().eq('uid', user.uid);
           localStorage.removeItem('vocaband_consent_version');
@@ -85,6 +92,7 @@ export default function PrivacySettingsView({
   return (
     <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
       {consentModal}
+      {exitConfirmModal}
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView(user.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
@@ -93,7 +101,7 @@ export default function PrivacySettingsView({
           <h1 className="text-2xl font-black text-stone-900">Privacy & Data Settings</h1>
         </div>
 
-        {/* Profile Info */}
+        {/* Profile Info (editable name) */}
         <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
           <h2 className="font-bold text-stone-800 mb-3">Your Profile</h2>
           <div className="space-y-2 text-sm text-stone-600">
@@ -111,7 +119,7 @@ export default function PrivacySettingsView({
                     autoFocus
                   />
                   <button onClick={handleSaveName} className="text-blue-600 font-bold text-xs">Save</button>
-                  <button onClick={() => setEditingName(false)} className="text-stone-400 font-bold text-xs">Cancel</button>
+                  <button onClick={() => setEditingName(false)} className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-xs hover:scale-105 active:scale-95 transition-all shadow-lg">Cancel</button>
                 </div>
               ) : (
                 <>
@@ -183,7 +191,7 @@ export default function PrivacySettingsView({
                           terms_version: PRIVACY_POLICY_VERSION,
                           action: 'withdraw',
                         });
-                      } catch { /* non-critical */ }
+                      } catch { /* non-critical — sign out regardless */ }
                     }
                     await supabase.auth.signOut();
                     setConfirmDialog({ show: false, message: '', onConfirm: () => {} });

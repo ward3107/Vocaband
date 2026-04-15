@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ShowAnswerFeedbackProps {
-  answer: string;
+  answer: string | undefined;
   dir?: "ltr" | "auto";
   className?: string;
 }

@@ -1,23 +1,28 @@
-import { Trophy } from "lucide-react";
 import { motion } from "motion/react";
-import type { AppUser } from "../core/supabase";
+import { Trophy } from "lucide-react";
+import type { View } from "../core/views";
 
-interface GlobalLeaderboardViewProps {
-  user: AppUser | null;
-  globalLeaderboard: { name: string; score: number; avatar: string }[];
-  setView: (view: string) => void;
+interface GlobalLeaderboardEntry {
+  name: string;
+  score: number;
+  avatar: string;
 }
 
-const GlobalLeaderboardView = ({ user, globalLeaderboard, setView }: GlobalLeaderboardViewProps) => {
+interface GlobalLeaderboardViewProps {
+  userRole: "teacher" | "student" | "admin" | "guest" | undefined;
+  setView: React.Dispatch<React.SetStateAction<View>>;
+  globalLeaderboard: GlobalLeaderboardEntry[];
+}
+
+export default function GlobalLeaderboardView({
+  userRole,
+  setView,
+  globalLeaderboard,
+}: GlobalLeaderboardViewProps) {
   return (
     <div className="min-h-screen bg-stone-100 p-6">
       <div className="max-w-2xl mx-auto">
-        <button
-          onClick={() => setView(user?.role === "teacher" ? "teacher-dashboard" : "student-dashboard")}
-          className="mb-6 text-stone-500 font-bold flex items-center gap-1 hover:text-stone-900 bg-white px-3 py-2 rounded-full"
-        >
-          ← Back to Dashboard
-        </button>
+        <button onClick={() => setView(userRole === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">← Back to Dashboard</button>
         <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 bg-yellow-100 rounded-3xl">
@@ -39,12 +44,7 @@ const GlobalLeaderboardView = ({ user, globalLeaderboard, setView }: GlobalLeade
                 className="flex justify-between items-center p-5 bg-stone-50 rounded-2xl border border-stone-100"
               >
                 <div className="flex items-center gap-4">
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-black text-sm ${
-                    idx === 0 ? "bg-yellow-400 text-white" :
-                    idx === 1 ? "bg-stone-300 text-white" :
-                    idx === 2 ? "bg-orange-300 text-white" :
-                    "bg-stone-200 text-stone-500"
-                  }`}>
+                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-black text-sm ${idx === 0 ? "bg-yellow-400 text-white" : idx === 1 ? "bg-stone-300 text-white" : idx === 2 ? "bg-orange-300 text-white" : "bg-stone-200 text-stone-500"}`}>
                     {idx + 1}
                   </span>
                   <span className="text-3xl">{entry.avatar}</span>
@@ -61,6 +61,4 @@ const GlobalLeaderboardView = ({ user, globalLeaderboard, setView }: GlobalLeade
       </div>
     </div>
   );
-};
-
-export default GlobalLeaderboardView;
+}
