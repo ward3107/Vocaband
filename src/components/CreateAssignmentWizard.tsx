@@ -24,7 +24,7 @@ export interface AssignmentDataCompat extends AssignmentData {
   // Extended if needed for compatibility
 }
 
-interface CreateAssignmentWizardProps {
+export interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number; id?: string };
   allWords: Word[];
   set1Words: Word[];
