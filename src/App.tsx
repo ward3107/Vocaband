@@ -1870,15 +1870,18 @@ export default function App() {
         // Check if bootstrap() just completed a successful PKCE exchange.
         // The ?code= param is already stripped by the time React renders,
         // so we use a sessionStorage flag as a bridge. If set, actively
-        // poll getSession() for up to 8 seconds to find the session —
-        // Supabase v2 may not fire a SIGNED_IN event after INITIAL_SESSION,
-        // so passive waiting can leave the user stuck on landing.
+        // poll getSession() to find the session — Supabase v2 may not
+        // fire a SIGNED_IN event after INITIAL_SESSION, so passive
+        // waiting can leave the user stuck on landing.
         const justExchanged = sessionStorage.getItem('oauth_session_ready');
         if (justExchanged) {
           sessionStorage.removeItem('oauth_session_ready');
-          // Poll for session — 500ms intervals, up to 8 seconds
+          // Poll for session — 250ms intervals, up to 16 seconds.  Tight
+          // intervals close the window where loading=false might let the
+          // landing page flash into view and make the teacher click Login
+          // a second time.
           let pollCount = 0;
-          const maxPolls = 16;
+          const maxPolls = 64;
           const pollForSession = async () => {
             pollCount++;
             try {
@@ -1889,14 +1892,15 @@ export default function App() {
               }
             } catch { /* retry */ }
             if (pollCount < maxPolls) {
-              setTimeout(pollForSession, 500);
+              setTimeout(pollForSession, 250);
             } else {
               // Session never materialised — show landing with error
               showToast("Sign-in is taking too long. Please try again.", "error");
               setLoading(false);
             }
           };
-          setTimeout(pollForSession, 200);
+          // Start immediately — no initial delay.
+          pollForSession();
           return;
         }
 
@@ -1949,11 +1953,11 @@ export default function App() {
   // stop the spinner so the app doesn't hang forever.  Skip if a manual
   // login (handleStudentLogin) or session restore (restoreSession) is in
   // progress — they manage their own loading state.
-  // Extended to 12s so OAuth polling has time to find the session.
+  // 20s so the new 16s OAuth polling window has time to finish.
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!manualLoginInProgress.current && !restoreInProgress.current) setLoading(false);
-    }, 12000);
+    }, 20000);
     return () => clearTimeout(timeout);
   }, []);
 
