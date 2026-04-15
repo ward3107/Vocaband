@@ -14,6 +14,30 @@ const Loading = () => (
   </div>
 );
 
+// Supabase's auth URL whitelist contains `https://vocaband.com/**` but not
+// the `www.` host, and the Site URL is the apex.  If OAuth is started from
+// `www.vocaband.com`, Supabase silently rewrites `redirectTo` to the apex
+// Site URL, so the `?code=` returns to a different origin than the one that
+// wrote the PKCE `code_verifier` into localStorage.  The exchange then fails
+// silently and the teacher has to click "Teacher Login" a second time — the
+// "login twice on mobile" bug.
+//
+// Canonicalizing www → apex before bootstrap runs keeps the entire OAuth
+// flow on a single origin so localStorage (and the PKCE verifier) stays
+// consistent across the round-trip to Google.
+function canonicalizeHost(): boolean {
+  if (window.location.hostname === 'www.vocaband.com') {
+    window.location.replace(
+      'https://vocaband.com' +
+        window.location.pathname +
+        window.location.search +
+        window.location.hash,
+    );
+    return true;
+  }
+  return false;
+}
+
 // PKCE code exchange — MUST complete before React renders, otherwise the
 // onAuthStateChange INITIAL_SESSION event fires with no session and the
 // teacher sees the landing page again (the infamous "login twice" bug).
@@ -70,4 +94,9 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+// If we're redirecting to the canonical host, let the navigation tear the
+// page down — do not kick off bootstrap (it would race the redirect and
+// potentially consume the `?code=` on the wrong origin).
+if (!canonicalizeHost()) {
+  bootstrap();
+}
