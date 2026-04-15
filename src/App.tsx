@@ -1469,6 +1469,20 @@ export default function App() {
             setXp(userData.xp ?? 0);
             setStreak(userData.streak ?? 0);
             setView("student-dashboard");
+          } else {
+            // users row exists but is in a broken state — most commonly an
+            // OAuth student whose previous sign-in didn't complete class-code
+            // entry, leaving role="student" with class_code=null.  Without
+            // this branch, neither the teacher nor the populated-student
+            // branch fires, so setView is never called and the user is
+            // stranded on the landing page after OAuth redirect.
+            //
+            // Route them back to the OAuth class-code entry form so they
+            // can finish signup. Also covers any unexpected role values.
+            setOauthEmail(supabaseUser.email || "");
+            setOauthAuthUid(supabaseUser.id);
+            setShowOAuthClassCode(true);
+            setView("student-account-login");
           }
         } else {
           // No user row found for this anonymous UID.  Before giving up,
