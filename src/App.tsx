@@ -84,6 +84,10 @@ const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginVi
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
+const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
+const LiveChallengeView = lazy(() => import("./views/LiveChallengeView"));
+const GameModeIntroView = lazy(() => import("./views/GameModeIntroView"));
+const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView"));
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
@@ -1184,7 +1188,6 @@ export default function App() {
   const [availableWords, setAvailableWords] = useState<string[]>([]);
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
   const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
@@ -5810,305 +5813,33 @@ export default function App() {
 
 
   if (view === "game" && showModeSelection) {
-
-    const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
-      { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
-      { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
-      { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
-      { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
-      { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} />, tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"] },
-      { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} />, tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"] },
-      { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
-      { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
-      { id: "letter-sounds", name: "Letter Sounds", desc: "Watch each letter light up and hear its sound.", color: "violet", icon: <span className="text-2xl">🔡</span>, tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"] },
-      { id: "sentence-builder", name: "Sentence Builder", desc: "Tap words in the right order to build the sentence.", color: "teal", icon: <span className="text-2xl">🧩</span>, tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"] },
-    ];
-
-    const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
-    const filteredModes = modes.filter(m => allowedModes.includes(m.id));
-
-    if (filteredModes.length === 0) {
-      console.error('[Mode Selection] No modes available!');
-    }
-
-    const colorClasses: Record<string, string> = {
-      emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
-      blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
-      purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
-      amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
-      rose: "bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700",
-      cyan: "bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700",
-      indigo: "bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700",
-      fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
-      violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
-      teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
-    };
-
-    const iconColorClasses: Record<string, string> = {
-      emerald: "text-blue-700",
-      blue: "text-blue-600",
-      purple: "text-purple-600",
-      amber: "text-amber-600",
-      rose: "text-rose-600",
-      cyan: "text-cyan-600",
-      indigo: "text-indigo-600",
-      fuchsia: "text-fuchsia-600",
-      violet: "text-violet-600",
-      teal: "text-teal-600",
-    };
-
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-4xl bg-white rounded-[48px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
-          <button
-            onClick={handleExitGame}
-            className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
-            aria-label="Close mode selection"
-            title="Close mode selection"
-          >
-            <X size={28} />
-          </button>
-
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 sm:mb-12 mt-4 sm:mt-0"
-          >
-            <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">Choose Your Mode</h2>
-            <p className="text-stone-500 text-base sm:text-xl font-medium">How do you want to learn today?</p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-            {filteredModes.map((mode, idx) => {
-              const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
-              // In Quick Play: lock modes that were already completed this session
-              const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
-
-              return (
-                <motion.button
-                  key={mode.id}
-                  onClick={() => {
-                    if (isQpLocked) {
-                      gameDebug.logButtonClick({ button: 'mode_select', gameMode: mode.id, wordId: -1, disabled: true, feedback: null });
-                      return;
-                    }
-                    gameDebug.logModeSelect({ mode: mode.id, from: 'mode_selection' });
-                    gameDebug.logState({
-                      view,
-                      gameMode: mode.id,
-                      showModeSelection: false,
-                      showModeIntro: true,
-                      currentIndex,
-                      isFinished,
-                      feedback,
-                      isProcessing: isProcessingRef.current,
-                    }, 'before_mode_select');
-                    setGameMode(mode.id);
-                    setShowModeSelection(false);
-                    setShowModeIntro(true);
-                    setFeedback(null);
-                  }}
-                  disabled={isQpLocked}
-                  className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  whileHover={{ scale: 1.05, translateY: -8 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
-                    {mode.icon}
-                    {(isCompleted || isQpLocked) && (
-                      <div className={`absolute -top-2 -right-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
-                        <CheckCircle2 size={16} />
-                      </div>
-                    )}
-                  </div>
-                  <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
-                  <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
-
-                  <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Zap size={20} className="animate-pulse" />
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <LazyWrapper loadingMessage="Loading game modes...">
+        <GameModeSelectionView
+          activeAssignment={activeAssignment}
+          studentProgress={studentProgress}
+          isQuickPlayGuest={isQuickPlayGuest}
+          quickPlayCompletedModes={quickPlayCompletedModes}
+          setGameMode={setGameMode}
+          setShowModeSelection={setShowModeSelection}
+          setShowModeIntro={setShowModeIntro}
+          handleExitGame={handleExitGame}
+        />
+      </LazyWrapper>
     );
   }
 
   if (view === "live-challenge" && selectedClass) {
-    // Calculate total scores (baseScore + currentGameScore) for each student
-    const sortedLeaderboard = (Object.entries(leaderboard) as [string, LeaderboardEntry][])
-      .map(([uid, entry]) => ({
-        uid,
-        name: entry.name,
-        totalScore: entry.baseScore + entry.currentGameScore,
-        isGuest: entry.isGuest || false
-      }))
-      .sort((a, b) => b.totalScore - a.totalScore);
-
-    const top3 = sortedLeaderboard.slice(0, 3);
-    const rest = sortedLeaderboard.slice(3);
-
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
-            <button onClick={() => { setView("live-challenge-class-select"); setIsLiveChallenge(false); }} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Class Selection</button>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
-                <span className={`w-3 h-3 rounded-full ${socketConnected ? "bg-green-400 shadow-lg shadow-green-400/50" : "bg-red-400 animate-pulse"}`} />
-                <span className="font-bold">{socketConnected ? "🔴 LIVE" : "Reconnecting..."}</span>
-              </div>
-              <button onClick={() => { setView("live-challenge-class-select"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105">End Challenge</button>
-            </div>
-          </div>
-
-          <div className="text-center mb-6 sm:mb-10">
-            <motion.h1
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-3xl sm:text-5xl font-black mb-2 drop-shadow-2xl"
-            >
-              🏆 Live Challenge: {selectedClass.name}
-            </motion.h1>
-            <p className="text-white/90 font-bold text-sm sm:text-base">Class Code: <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg">{selectedClass.code}</span></p>
-          </div>
-
-          {/* Winner's Podium for Top 3 */}
-          {top3.length > 0 && (
-            <div className="mb-8">
-              <div className="flex items-end justify-center gap-2 sm:gap-4 mb-6">
-                {/* 2nd Place */}
-                {top3[1] && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="relative">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-3xl sm:text-4xl shadow-xl shadow-slate-400/30 border-4 border-white">
-                        🥈
-                      </div>
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">2ND</div>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36">
-                      <p className="font-bold text-sm sm:text-base truncate">{top3[1].name}{top3[1].isGuest && <span className="ml-1">🎭</span>}</p>
-                      <p className="text-2xl sm:text-3xl font-black">{top3[1].totalScore}</p>
-                      <p className="text-[10px] text-white/70 font-bold">POINTS</p>
-                    </div>
-                    <div className="h-16 sm:h-24 w-full bg-gradient-to-t from-slate-400/30 to-transparent rounded-t-lg mt-2"></div>
-                  </motion.div>
-                )}
-
-                {/* 1st Place - Center and tallest */}
-                {top3[0] && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="flex flex-col items-center relative"
-                  >
-                    {/* Crown animation */}
-                    <motion.div
-                      animate={{ y: [0, -10, 0] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      className="text-4xl sm:text-5xl mb-2 drop-shadow-lg"
-                    >
-                      👑
-                    </motion.div>
-                    <div className="relative">
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-4xl sm:text-5xl shadow-2xl shadow-yellow-400/50 border-4 border-white animate-pulse">
-                        🥇
-                      </div>
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">1ST</div>
-                      {/* Sparkle effects */}
-                      <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
-                      <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 shadow-2xl shadow-yellow-400/20">
-                      <p className="font-bold text-base sm:text-lg truncate">{top3[0].name}{top3[0].isGuest && <span className="ml-1">🎭</span>}</p>
-                      <p className="text-3xl sm:text-4xl font-black">{top3[0].totalScore}</p>
-                      <p className="text-[10px] text-white/80 font-bold">POINTS</p>
-                    </div>
-                    <div className="h-24 sm:h-32 w-full bg-gradient-to-t from-yellow-400/40 to-transparent rounded-t-lg mt-2"></div>
-                  </motion.div>
-                )}
-
-                {/* 3rd Place */}
-                {top3[2] && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="relative">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl sm:text-4xl shadow-xl shadow-orange-400/30 border-4 border-white">
-                        🥉
-                      </div>
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">3RD</div>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36">
-                      <p className="font-bold text-sm sm:text-base truncate">{top3[2].name}{top3[2].isGuest && <span className="ml-1">🎭</span>}</p>
-                      <p className="text-2xl sm:text-3xl font-black">{top3[2].totalScore}</p>
-                      <p className="text-[10px] text-white/70 font-bold">POINTS</p>
-                    </div>
-                    <div className="h-12 sm:h-20 w-full bg-gradient-to-t from-orange-400/30 to-transparent rounded-t-lg mt-2"></div>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Rest of Leaderboard */}
-          <div className="bg-white/10 backdrop-blur-md rounded-[40px] p-6 sm:p-8 border border-white/20 shadow-2xl">
-            <h2 className="text-xl sm:text-2xl font-black mb-4 sm:mb-6 flex items-center gap-2">
-              <span className="text-2xl">📊</span> Full Leaderboard
-              {sortedLeaderboard.length > 0 && (
-                <span className="ml-auto text-sm font-normal bg-white/20 px-3 py-1 rounded-full">
-                  {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'Player' : 'Players'}
-                </span>
-              )}
-            </h2>
-            <div className="space-y-2 sm:space-y-3">
-              {rest.map((entry, idx) => (
-                <motion.div
-                  key={`${entry.uid}-${idx}`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (idx + 3) * 0.05 }}
-                  className="flex justify-between items-center p-3 sm:p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 hover:scale-[1.02] transition-all"
-                >
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base">{idx + 4}</span>
-                    <span className="font-bold text-base sm:text-lg">{entry.name}{entry.isGuest && <span className="ml-1">🎭</span>}</span>
-                  </div>
-                  <span className="text-xl sm:text-2xl font-black">{entry.totalScore}</span>
-                </motion.div>
-              ))}
-              {sortedLeaderboard.length === 0 && (
-                <div className="text-center py-12">
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="text-6xl mb-4"
-                  >
-                    ⏳
-                  </motion.div>
-                  <p className="text-white/80 font-bold text-lg">Waiting for students to join...</p>
-                  <p className="text-white/60 text-sm mt-2">Share the class code to start the competition!</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <LazyWrapper loadingMessage="Loading live challenge...">
+        <LiveChallengeView
+          selectedClass={selectedClass}
+          leaderboard={leaderboard}
+          socketConnected={socketConnected}
+          setView={setView}
+          setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
     );
   }
 
@@ -6273,70 +6004,16 @@ export default function App() {
 
   if (view === "live-challenge-class-select") {
     return (
-      <div className="min-h-screen bg-background pb-8">
-        <TopAppBar
-          title="Live Mode for Classes"
-          subtitle="SELECT A CLASS TO START"
-          showBack
-          onBack={() => setView("teacher-dashboard")}
-          userName={user?.displayName}
-          userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+      <LazyWrapper loadingMessage="Loading classes...">
+        <LiveChallengeClassSelectView
+          user={user}
+          classes={classes}
+          socket={socket}
+          setView={setView}
+          setSelectedClass={setSelectedClass}
+          setIsLiveChallenge={setIsLiveChallenge}
         />
-
-        <main className="pt-24 px-6 max-w-2xl mx-auto">
-          {/* Header Card */}
-          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 mb-8 text-center shadow-xl">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="flex flex-col items-center"
-            >
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 shadow-lg">
-                <Zap className="text-white" size={32} />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Select a Class</h2>
-              <p className="text-white/90 font-medium">Choose which class to start the Live Challenge for</p>
-            </motion.div>
-          </div>
-
-          {/* Class Selection */}
-          <div className="grid gap-4">
-            {classes.map((cls, idx) => (
-              <motion.button
-                key={cls.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1 }}
-                onClick={() => {
-                  setSelectedClass(cls);
-                  setView("live-challenge");
-                  setIsLiveChallenge(true);
-                  if (socket) {
-                    socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code });
-                  }
-                }}
-                className="bg-surface-container-lowest rounded-xl p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
-                      <Zap className="text-on-primary-container" size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-black text-on-surface">{cls.name}</h3>
-                      <p className="text-on-surface-variant text-sm font-medium">
-                        Code: <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ml-1">{cls.code}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-1 transition-all" size={24} />
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </main>
-      </div>
+      </LazyWrapper>
     );
   }
 
@@ -6539,128 +6216,34 @@ export default function App() {
   }
 
   // Mode intro instructions with translations
-  const modeInstructionsAll: Record<string, Record<GameMode, { title: string; steps: string[]; icon: string }>> = {
-    en: {
-      classic: { title: "Classic Mode", icon: "📖", steps: ["See the English word", "Listen to pronunciation", "Pick the correct translation"] },
-      listening: { title: "Listening Mode", icon: "🎧", steps: ["Listen carefully to the word", "The text is hidden!", "Choose the correct translation"] },
-      spelling: { title: "Spelling Mode", icon: "✏️", steps: ["See the translation", "Type the English word", "Spelling must be exact!"] },
-      matching: { title: "Matching Mode", icon: "⚡", steps: ["Find matching pairs", "Tap English then translation", "Match all pairs to finish!"] },
-      "true-false": { title: "True / False", icon: "✅", steps: ["See a word and translation", "Decide if the pair is correct", "Think fast!"] },
-      flashcards: { title: "Flashcards", icon: "🃏", steps: ["Review words at your pace", "Flip to see the answer", "No pressure — just learn!"] },
-      scramble: { title: "Word Scramble", icon: "🔤", steps: ["Letters are scrambled", "Type the correct English word", "Unscramble them all!"] },
-      reverse: { title: "Reverse Mode", icon: "🔄", steps: ["See the Hebrew/Arabic word", "Pick the English translation", "Reverse of classic!"] },
-      "letter-sounds": { title: "Letter Sounds", icon: "🔡", steps: ["Each letter appears in a color", "Listen to each letter sound", "Type the full word when ready"] },
-      "sentence-builder": { title: "Sentence Builder", icon: "🧩", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
-    },
-    ar: {
-      classic: { title: "الوضع الكلاسيكي", icon: "📖", steps: ["شاهد الكلمة بالإنجليزية", "استمع إلى النطق", "اختر الترجمة الصحيحة"] },
-      listening: { title: "وضع الاستماع", icon: "🎧", steps: ["استمع جيداً للكلمة", "النص مخفي!", "اختر الترجمة الصحيحة"] },
-      spelling: { title: "وضع التهجئة", icon: "✏️", steps: ["شاهد الترجمة", "اكتب الكلمة بالإنجليزية", "التهجئة يجب أن تكون دقيقة!"] },
-      matching: { title: "وضع المطابقة", icon: "⚡", steps: ["ابحث عن الأزواج المتطابقة", "اضغط الإنجليزية ثم الترجمة", "طابق كل الأزواج!"] },
-      "true-false": { title: "صح أو خطأ", icon: "✅", steps: ["شاهد كلمة وترجمتها", "قرر إذا كانت صحيحة", "فكر بسرعة!"] },
-      flashcards: { title: "البطاقات", icon: "🃏", steps: ["راجع الكلمات بسرعتك", "اقلب لترى الإجابة", "بدون ضغط - فقط تعلم!"] },
-      scramble: { title: "خلط الحروف", icon: "🔤", steps: ["الحروف مخلوطة", "اكتب الكلمة الصحيحة", "رتب كل الكلمات!"] },
-      reverse: { title: "الوضع العكسي", icon: "🔄", steps: ["شاهد الكلمة بالعربية/العبرية", "اختر الترجمة بالإنجليزية", "عكس الكلاسيكي!"] },
-      "letter-sounds": { title: "أصوات الحروف", icon: "🔡", steps: ["كل حرف يظهر بلون", "استمع لصوت كل حرف", "اكتب الكلمة كاملة عندما تكون جاهزاً"] },
-      "sentence-builder": { title: "بناء الجمل", icon: "🧩", steps: ["الكلمات مخلوطة في الأسفل", "اضغط الكلمات بالترتيب الصحيح", "ابنِ الجملة لتنتهي!"] },
-    },
-    he: {
-      classic: { title: "מצב קלאסי", icon: "📖", steps: ["ראה את המילה באנגלית", "הקשב להגייה", "בחר את התרגום הנכון"] },
-      listening: { title: "מצב הקשבה", icon: "🎧", steps: ["הקשב היטב למילה", "הטקסט מוסתר!", "בחר את התרגום הנכון"] },
-      spelling: { title: "מצב איות", icon: "✏️", steps: ["ראה את התרגום", "הקלד את המילה באנגלית", "האיות חייב להיות מדויק!"] },
-      matching: { title: "מצב התאמה", icon: "⚡", steps: ["מצא זוגות תואמים", "לחץ אנגלית ואז תרגום", "התאם את כל הזוגות!"] },
-      "true-false": { title: "נכון / לא נכון", icon: "✅", steps: ["ראה מילה ותרגום", "החלט אם הזוג נכון", "חשוב מהר!"] },
-      flashcards: { title: "כרטיסיות", icon: "🃏", steps: ["חזור על מילים בקצב שלך", "הפוך לראות תשובה", "בלי לחץ - רק ללמוד!"] },
-      scramble: { title: "ערבוב מילים", icon: "🔤", steps: ["האותיות מעורבבות", "הקלד את המילה הנכונה", "פתור את כולן!"] },
-      reverse: { title: "מצב הפוך", icon: "🔄", steps: ["ראה את המילה בעברית/ערבית", "בחר את התרגום באנגלית", "הפוך מקלאסי!"] },
-      "letter-sounds": { title: "צלילי אותיות", icon: "🔡", steps: ["כל אות מופיעה בצבע", "הקשב לצליל כל אות", "הקלד את המילה כשמוכן"] },
-      "sentence-builder": { title: "בניית משפטים", icon: "🧩", steps: ["המילים מעורבבות למטה", "לחץ על מילים בסדר הנכון", "בנה את המשפט!"] },
-    },
-  };
-  const modeInstructions = modeInstructionsAll[introLang];
-
   if (showModeIntro) {
-    const info = modeInstructions[gameMode];
     return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[32px] shadow-2xl p-8 sm:p-12 max-w-md w-full text-center"
-        >
-          {/* Language toggle */}
-          <div className="flex justify-center gap-2 mb-4">
-            {([["en", "EN"], ["ar", "عربي"], ["he", "עברית"]] as const).map(([code, label]) => (
-              <button key={code} onClick={() => setIntroLang(code as "en" | "ar" | "he")}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${introLang === code ? "bg-blue-600 text-white" : "bg-stone-100 text-stone-500 hover:bg-stone-200"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="text-5xl mb-4">{info.icon}</div>
-          <h2 className={`text-2xl sm:text-3xl font-black text-stone-900 mb-6 ${introLang !== "en" ? "dir-rtl" : ""}`} dir={introLang !== "en" ? "rtl" : "ltr"}>{info.title}</h2>
-          <div className="space-y-3 mb-8">
-            {info.steps.map((step, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.15 }}
-                className="flex items-center gap-3 text-left bg-stone-50 p-3 rounded-xl"
-              >
-                <span className="w-7 h-7 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">{i + 1}</span>
-                <span className="text-stone-700 font-medium text-sm sm:text-base" dir={introLang !== "en" ? "rtl" : "ltr"}>{step}</span>
-              </motion.div>
-            ))}
-          </div>
-          {/* Language selection — shown once, then remembered */}
-          {!hasChosenLanguage && (
-            <div className="mb-6 bg-blue-50 rounded-2xl p-4">
-              <p className="text-sm font-bold text-blue-900 mb-3">Choose your translation language:</p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => { setTargetLanguage("hebrew"); try { localStorage.setItem('vocaband_target_lang', 'hebrew'); } catch {} setHasChosenLanguage(true); }}
-                  className={`flex-1 py-3 rounded-xl font-black text-lg transition-all ${targetLanguage === "hebrew" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-stone-700 border-2 border-stone-200 hover:border-blue-300"}`}
-                >
-                  עברית
-                </button>
-                <button
-                  onClick={() => { setTargetLanguage("arabic"); try { localStorage.setItem('vocaband_target_lang', 'arabic'); } catch {} setHasChosenLanguage(true); }}
-                  className={`flex-1 py-3 rounded-xl font-black text-lg transition-all ${targetLanguage === "arabic" ? "bg-blue-600 text-white shadow-lg" : "bg-white text-stone-700 border-2 border-stone-200 hover:border-blue-300"}`}
-                >
-                  عربي
-                </button>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={() => {
-              gameDebug.logModeIntroComplete({ mode: gameMode });
-              gameDebug.logState({
-                view,
-                gameMode,
-                showModeSelection,
-                showModeIntro: false,
-                currentIndex,
-                isFinished,
-                feedback,
-                isProcessing: isProcessingRef.current,
-                currentWord: currentWord ? { id: currentWord.id, english: currentWord.english } : undefined,
-              }, 'lets_go_clicked');
-              setShowModeIntro(false);
-            }}
-            className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors"
-          >
-            Let's Go!
-          </button>
-          <button
-            onClick={() => { setShowModeIntro(false); setShowModeSelection(true); }}
-            className="w-full mt-2 py-2 text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
-          >
-            ← Back to Modes
-          </button>
-        </motion.div>
-      </div>
+      <LazyWrapper loadingMessage="Loading...">
+        <GameModeIntroView
+          gameMode={gameMode}
+          hasChosenLanguage={hasChosenLanguage}
+          setHasChosenLanguage={setHasChosenLanguage}
+          targetLanguage={targetLanguage}
+          setTargetLanguage={setTargetLanguage}
+          setShowModeIntro={setShowModeIntro}
+          setShowModeSelection={setShowModeSelection}
+          onLetsGo={() => {
+            gameDebug.logModeIntroComplete({ mode: gameMode });
+            gameDebug.logState({
+              view,
+              gameMode,
+              showModeSelection,
+              showModeIntro: false,
+              currentIndex,
+              isFinished,
+              feedback,
+              isProcessing: isProcessingRef.current,
+              currentWord: currentWord ? { id: currentWord.id, english: currentWord.english } : undefined,
+            }, 'lets_go_clicked');
+            setShowModeIntro(false);
+          }}
+        />
+      </LazyWrapper>
     );
   }
 

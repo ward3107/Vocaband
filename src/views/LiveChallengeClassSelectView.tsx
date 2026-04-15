@@ -1,22 +1,26 @@
 import { motion } from "motion/react";
 import { Zap, ChevronRight } from "lucide-react";
-import { supabase, type AppUser, type ClassData } from "../core/supabase";
-import { SOCKET_EVENTS } from "../core/types";
+import type { Socket } from "socket.io-client";
 import TopAppBar from "../components/TopAppBar";
-
-type Socket = import("socket.io-client").Socket;
+import { supabase, type ClassData } from "../core/supabase";
+import { SOCKET_EVENTS } from "../core/types";
 
 interface LiveChallengeClassSelectViewProps {
-  user: AppUser | null;
+  user: { displayName?: string; avatar?: string } | null;
   classes: ClassData[];
+  socket: Socket | null;
   setView: (view: string) => void;
   setSelectedClass: (cls: ClassData) => void;
-  setIsLiveChallenge: (v: boolean) => void;
-  socket: Socket | null;
+  setIsLiveChallenge: (val: boolean) => void;
 }
 
 export default function LiveChallengeClassSelectView({
-  user, classes, setView, setSelectedClass, setIsLiveChallenge, socket,
+  user,
+  classes,
+  socket,
+  setView,
+  setSelectedClass,
+  setIsLiveChallenge,
 }: LiveChallengeClassSelectViewProps) {
   return (
     <div className="min-h-screen bg-background pb-8">

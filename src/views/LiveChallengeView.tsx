@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
-import type { ClassData } from "../core/supabase";
 import type { LeaderboardEntry } from "../core/types";
+import type { ClassData } from "../core/supabase";
 
 interface LiveChallengeViewProps {
   selectedClass: ClassData;
@@ -17,12 +17,13 @@ export default function LiveChallengeView({
   setView,
   setIsLiveChallenge,
 }: LiveChallengeViewProps) {
+  // Calculate total scores (baseScore + currentGameScore) for each student
   const sortedLeaderboard = (Object.entries(leaderboard) as [string, LeaderboardEntry][])
     .map(([uid, entry]) => ({
       uid,
       name: entry.name,
       totalScore: entry.baseScore + entry.currentGameScore,
-      isGuest: entry.isGuest || false
+      isGuest: entry.isGuest || false,
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -81,7 +82,7 @@ export default function LiveChallengeView({
                 </motion.div>
               )}
 
-              {/* 1st Place */}
+              {/* 1st Place - Center and tallest */}
               {top3[0] && (
                 <motion.div
                   initial={{ opacity: 0, y: 50 }}
@@ -89,6 +90,7 @@ export default function LiveChallengeView({
                   transition={{ delay: 0.1 }}
                   className="flex flex-col items-center relative"
                 >
+                  {/* Crown animation */}
                   <motion.div
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -101,6 +103,7 @@ export default function LiveChallengeView({
                       🥇
                     </div>
                     <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">1ST</div>
+                    {/* Sparkle effects */}
                     <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
                     <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
                   </div>
