@@ -1477,8 +1477,55 @@ export default function App() {
             // branch fires, so setView is never called and the user is
             // stranded on the landing page after OAuth redirect.
             //
-            // Route them back to the OAuth class-code entry form so they
-            // can finish signup. Also covers any unexpected role values.
+            // Check if a completed student_profiles row already exists (e.g.
+            // the user entered a class code in a later session).  If so,
+            // adopt it — otherwise prompt for class-code entry.
+            const { data: studentProfile } = await supabase
+              .from('student_profiles')
+              .select('*')
+              .eq('email', supabaseUser.email ?? "")
+              .maybeSingle();
+            if (studentProfile && (studentProfile.status === 'active' || studentProfile.status === 'approved')) {
+              const studentUser: AppUser = {
+                uid: supabaseUser.id,
+                email: studentProfile.email,
+                displayName: studentProfile.display_name || (supabaseUser.user_metadata?.full_name as string) || "Student",
+                role: "student",
+                classCode: studentProfile.class_code,
+                xp: studentProfile.xp || 0,
+                avatar: studentProfile.avatar,
+              };
+              // Repair the broken users row so subsequent logins take the
+              // fast path at line 1453 instead of re-entering this branch.
+              await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
+              setUser(studentUser);
+              if (studentProfile.class_code) {
+                const { data: classRows } = await supabase
+                  .from('classes').select('*').eq('code', studentProfile.class_code);
+                if (classRows && classRows.length > 0) {
+                  const classData = mapClass(classRows[0]);
+                  const [assignResult, progressResult] = await Promise.all([
+                    supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+                    supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
+                  ]);
+                  setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+                  setStudentProgress((progressResult.data ?? []).map(mapProgress));
+                }
+              }
+              setView("student-dashboard");
+              return;
+            }
+            if (studentProfile && studentProfile.status === 'pending_approval') {
+              showPendingApproval({
+                name: studentProfile.display_name || '',
+                classCode: studentProfile.class_code || '',
+                profileId: studentProfile.id,
+              });
+              return;
+            }
+
+            // No student_profiles row — route to OAuth class-code entry form
+            // so they can finish signup. Also covers unexpected role values.
             setOauthEmail(supabaseUser.email || "");
             setOauthAuthUid(supabaseUser.id);
             setShowOAuthClassCode(true);
