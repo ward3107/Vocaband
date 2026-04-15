@@ -321,6 +321,7 @@ export default function App() {
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [openDropdownClassId, setOpenDropdownClassId] = useState<string | null>(null);
   const [xp, setXp] = useState(0);
@@ -1846,6 +1847,10 @@ export default function App() {
         cleanupSessionData(); // Clear save queue and timers
         setUser(null);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
+        // Reset history state so the back-button trap doesn't persist
+        // into the logged-out experience (otherwise pad entries from
+        // the previous session would still block navigation).
+        try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
         // Don't redirect Quick Play students — they don't need auth
         if (!quickPlaySessionParam) setView("public-landing");
         setLoading(false);
@@ -1981,9 +1986,37 @@ export default function App() {
   const getHomeView = () =>
     userRef.current?.role === 'teacher' ? 'teacher-dashboard' : 'student-dashboard';
 
+  // Number of padding entries pushed beneath the dashboard.  On mobile
+  // browsers (especially Android Chrome) the edge-swipe gesture can pop
+  // faster than popstate can re-trap, so a single padding entry is not
+  // enough: the user escapes into external URLs (Google OAuth, Supabase
+  // callback) that are still present in history above the pads.  Five
+  // pads give popstate enough of a buffer to re-trap reliably.
+  const PAD_COUNT = 5;
+
+  // Keep a ref to `view` so the popstate handler (attached once on
+  // mount) always sees the latest value without a closure re-attach.
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  // Push a full dashboard trap: refill the pad buffer, then push the
+  // dashboard on top.  Called on login transitions and whenever a pad
+  // entry is popped so the buffer is always replenished.
+  const pushDashboardTrap = () => {
+    const v = viewRef.current;
+    window.history.replaceState({ view: v, _pad: true }, '');
+    for (let i = 1; i < PAD_COUNT; i++) {
+      window.history.pushState({ view: v, _pad: true }, '');
+    }
+    window.history.pushState({ view: v }, '');
+  };
+
   // On first mount, seed the history stack.
   useEffect(() => {
     window.history.replaceState({ view: 'landing' }, '');
+    // NOTE: do NOT pushState on initial mount — the view-change effect
+    // below runs after hydration for non-landing views, and pushing
+    // here would duplicate the landing entry for no benefit.
   }, []);
 
   // Whenever the app navigates to a new view, push a history entry.
@@ -1993,55 +2026,80 @@ export default function App() {
       return;
     }
     const isDashboard = view === 'teacher-dashboard' || view === 'student-dashboard';
+    const currentStateView = window.history.state?.view ?? '';
+    const comingFromAuth = AUTH_VIEWS.has(currentStateView);
 
-    // When transitioning to the dashboard after login, REPLACE the
-    // landing entry AND push an extra padding entry before it.  This
-    // ensures the history stack always has entries below the dashboard,
-    // so the browser can't exit when the user presses back at home.
-    if (userRef.current && isDashboard && AUTH_VIEWS.has(window.history.state?.view ?? '')) {
-      // Stack: [padding] [dashboard]
-      // The padding entry has the dashboard view too, so if popstate
-      // fires on it, the user just stays on the dashboard.
-      window.history.replaceState({ view, _pad: true }, '');
-      window.history.pushState({ view }, '');
-    } else {
-      window.history.pushState({ view }, '');
+    // Login transition: replace the landing/auth entry with a pad buffer,
+    // then push the dashboard on top.
+    if (userRef.current && isDashboard && comingFromAuth) {
+      pushDashboardTrap();
+      return;
     }
+
+    // Normal in-app navigation — single pushState so the back button
+    // walks naturally between pages (dashboard ← wizard, etc.).
+    window.history.pushState({ view }, '');
   }, [view]);
 
-  // Handle the physical back button / swipe gesture.
+  // Handle the physical back button / swipe gesture.  Attached once
+  // on mount (empty deps) — we read the latest view/user via refs
+  // to avoid stale closures during rapid back presses.
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      const prevView = e.state?.view as string | undefined;
+      const state = e.state as { view?: string; _pad?: boolean } | null;
+      const prevView = state?.view;
+      const isPad = state?._pad === true;
       const currentUser = userRef.current;
+      const currentView = viewRef.current;
 
-      // CASE 1: User is logged in and back would go to a login/auth view.
-      //         Block it — stay on current view.
-      if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
-        window.history.pushState({ view }, '');
+      // Guard: auth is still being restored.  Treat as "user present"
+      // and re-push so the back button doesn't accidentally escape
+      // during the ~500ms restore window after a fresh mount.
+      if (restoreInProgress.current) {
+        window.history.pushState({ view: currentView }, '');
         return;
       }
 
-      // CASE 2: User is at the dashboard and presses back again.
-      //         Block it — dashboard is the floor.
       const home = currentUser ? getHomeView() : null;
-      if (currentUser && view === home && (prevView === home || (e.state as any)?._pad)) {
-        window.history.pushState({ view }, '');
+      const atDashboardFloor = !!currentUser && currentView === home;
+
+      // CASE A: logged-in user, back would escape to an auth/OAuth view
+      //         (either by prevView or by missing state entirely).
+      //         At the dashboard floor: re-trap + show exit confirmation.
+      //         Elsewhere: just re-push to block.
+      if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
+        if (atDashboardFloor) {
+          pushDashboardTrap();
+          setShowExitConfirmModal(true);
+        } else {
+          window.history.pushState({ view: currentView }, '');
+        }
         return;
       }
 
-      // CASE 3: Normal back navigation between in-app pages.
-      if (prevView) {
+      // CASE B: popped a pad entry at the dashboard floor.  Refill the
+      //         buffer and prompt for exit confirmation.
+      if (atDashboardFloor && isPad) {
+        pushDashboardTrap();
+        setShowExitConfirmModal(true);
+        return;
+      }
+
+      // CASE C: normal in-app back navigation between real views.
+      if (prevView && !isPad) {
         isPopStateNavRef.current = true;
         setView(prevView as typeof view);
-      } else {
-        // No state at all — could exit the app.  Block it.
-        window.history.pushState({ view }, '');
+        return;
       }
+
+      // CASE D: defensive block (no state, or pad below a non-dashboard
+      //         view — shouldn't happen, but re-push to stay safe).
+      window.history.pushState({ view: currentView }, '');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [view]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Redirect orphaned "landing" view — logged-out users go to student login,
   // logged-in users go to their dashboard (teacher or student).
@@ -5568,10 +5626,47 @@ export default function App() {
     </div>
   ) : null;
 
+  // Shown when a logged-in user presses the hardware back button at the
+  // dashboard floor.  Tapping "Leave" exits the app by popping past the
+  // pad buffer; "Stay" dismisses the modal and keeps the user in place.
+  const exitConfirmModal = showExitConfirmModal ? (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl">
+        <h2 className="text-2xl font-black mb-2">Leave Vocaband?</h2>
+        <p className="text-stone-500 mb-6">
+          You'll need to sign in again next time.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowExitConfirmModal(false)}
+            className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
+          >
+            Stay
+          </button>
+          <button
+            onClick={() => {
+              setShowExitConfirmModal(false);
+              // Pop past all pads + dashboard entry in one go.  If history
+              // still has external URLs below, the next back press from
+              // the user will exit the tab naturally.  If history.go
+              // lands on an external URL it triggers a full-page nav
+              // (leaving the app), which is what the user asked for.
+              window.history.go(-(PAD_COUNT + 1));
+            }}
+            className="flex-1 py-4 rounded-2xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
+          >
+            Leave
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   if (user?.role === "student" && view === "student-dashboard") {
     return (
       <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
         {consentModal}
+        {exitConfirmModal}
         {showStudentOnboarding && (
           <StudentOnboarding
             userName={user.displayName}
@@ -5808,6 +5903,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-100 p-4 sm:p-6">
         {consentModal}
+        {exitConfirmModal}
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <button onClick={() => setView(user.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
@@ -6327,6 +6423,7 @@ export default function App() {
       <>
       <div className="min-h-screen bg-surface pt-24 pb-8" style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', paddingLeft: '1rem', paddingRight: '1rem' }}>
           {consentModal}
+          {exitConfirmModal}
 
         {/* Top App Bar */}
         {/* First-time onboarding tour */}
@@ -6365,8 +6462,10 @@ export default function App() {
                       sessionStorage.setItem('vocaband_skip_restore', 'true');
                     } catch (e) {
                     }
-                    // Clear any session parameter to avoid loading student view
-                    window.history.pushState({}, '', window.location.pathname);
+                    // Clear any session parameter to avoid loading student view.
+                    // Use replaceState with a tagged view so the popstate
+                    // handler doesn't misread an empty state object.
+                    window.history.replaceState({ view: 'quick-play-setup' }, '', window.location.pathname);
                     // Clear any saved Quick Play session to start fresh
                     try {
                       localStorage.removeItem('vocaband_quick_play_session');
@@ -7285,6 +7384,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-surface pt-24 pb-8 px-4 sm:px-6">
         {consentModal}
+        {exitConfirmModal}
 
         {/* Top App Bar */}
         <TopAppBar
