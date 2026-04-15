@@ -59,7 +59,7 @@ import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import TopAppBar from "./components/TopAppBar";
-import SetupWizard from "./components/setup/SetupWizard";
+// SetupWizard is now lazy-loaded via QuickPlaySetupView
 import ActionCard from "./components/ActionCard";
 import ClassCard from "./components/ClassCard";
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
@@ -80,6 +80,10 @@ const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
 const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 const GradebookView = lazy(() => import("./views/GradebookView"));
 const AnalyticsView = lazy(() => import("./views/AnalyticsView"));
+const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
+const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
+const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
+const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 import { ShowAnswerFeedback } from "./components/ShowAnswerFeedback";
 import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
 import { trackError, trackAutoError } from "./errorTracking";
@@ -350,19 +354,8 @@ export default function App() {
   const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
   const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
 
-  const AVATAR_CATEGORIES = {
-    Animals: ["🦊", "🦁", "🐯", "🐨", "🐼", "🐸", "🐵", "🦄", "🐻", "🐰", "🦋", "🐙", "🦜", "🐶", "🐱", "🦈", "🐬", "🦅", "🐝", "🦉"],
-    Faces: ["😎", "🤓", "🥳", "😊", "🤩", "🥹", "😜", "🤗", "🥰", "😇", "🧐", "🤠", "😈", "🤡", "👻", "🤖", "👽", "💀"],
-    Fantasy: ["🧙", "🧛", "🧜", "🧚", "🦸", "🦹", "🧝", "👸", "🤴", "🥷", "🦖", "🐉", "🧞", "🧟", "🎃"],
-    Sports: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🏉", "🎱", "🏓", "🏸", "🥊", "⛳", "🏊", "🚴", "🏄"],
-    Food: ["🍕", "🍔", "🍟", "🌭", "🍿", "🧁", "🥨", "🍦", "🍩", "🍪", "🎂", "🍰", "🍉", "🍇", "🥑"],
-    Objects: ["🎸", "🎹", "🎺", "🎷", "🪕", "🎻", "🎤", "🎧", "📷", "🎮", "🕹️", "💎", "🎨", "🔮", "🏆"],
-    Vehicles: ["🚗", "🚕", "🏎️", "🚓", "🚑", "🚒", "✈️", "🚀", "🛶", "🚲", "🛸", "🚁", "🚂", "⛵", "🛵"],
-    Nature: ["🌸", "🌺", "🌻", "🌷", "🌹", "🍀", "🌲", "🌳", "🌵", "🌴", "🍄", "🌾", "🌈", "❄️", "🌊"],
-    Space: ["🚀", "🛸", "🌙", "⭐", "🌟", "💫", "✨", "☄️", "🪐", "🌍", "🔥", "💧", "🌕", "🌑", "🌌"]
-  };
-
-  const [selectedAvatarCategory, setSelectedAvatarCategory] = useState<keyof typeof AVATAR_CATEGORIES>("Animals");
+  // AVATAR_CATEGORIES + selectedAvatarCategory moved into StudentAccountLoginView
+  // (see src/views/StudentAccountLoginView.tsx; constants live in src/constants/avatars.ts)
 
   // --- LIVE CHALLENGE STATE ---
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -4820,347 +4813,40 @@ export default function App() {
 
   if (view === "student-account-login") {
     return (
-      <>
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-tertiary/10 to-secondary/10">
-        {/* OAuth Callback Handler */}
-        {isOAuthCallback && (
-          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md"
-            >
-              <OAuthCallback
-                onTeacherDetected={handleOAuthTeacherDetected}
-                onStudentDetected={handleOAuthStudentDetected}
-                onNewUser={handleOAuthNewUser}
-              />
-            </motion.div>
-          </div>
-        )}
-
-        {/* OAuth Class Code Entry */}
-        {showOAuthClassCode && oauthEmail && oauthAuthUid && (
-          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md"
-            >
-              <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
-                <div className="mb-4">
-                  <button
-                    onClick={() => {
-                      setShowOAuthClassCode(false);
-                      setOauthEmail(null);
-                      setOauthAuthUid(null);
-                    }}
-                    className="text-sm text-primary hover:underline flex items-center gap-1"
-                  >
-                    <ArrowLeft size={16} />
-                    Back
-                  </button>
-                </div>
-                <OAuthClassCode
-                  email={oauthEmail}
-                  authUid={oauthAuthUid}
-                  onSuccess={async () => {
-                    setShowOAuthClassCode(false);
-                    setOauthEmail(null);
-                    setOauthAuthUid(null);
-                    // After class code entry, load the student profile and log them in
-                    await handleOAuthStudentDetected(oauthEmail!);
-                  }}
-                  onError={setError}
-                />
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Normal Student Login (only show if not in OAuth flow) */}
-        {!isOAuthCallback && !showOAuthClassCode && (
-          <>
-        {/* Header */}
-        <header className="w-full bg-white/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-3 shadow-sm">
-          <button
-            onClick={() => {
-              setView("public-landing");
-              setStudentLoginClassCode("");
-              setStudentLoginName("");
-              setExistingStudents([]);
-              setShowNewStudentForm(false);
-            }}
-            className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-lg">arrow_back</span>
-            Back
-          </button>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg">
-              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
-            </div>
-            <span className="text-lg sm:text-xl font-black signature-gradient-text hidden sm:block">Vocaband</span>
-          </div>
-        </header>
-
-        {/* Main Content - centered and fits in viewport */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 md:py-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-lg"
-          >
-            {/* Student Login Card */}
-            <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10">
-              <div className="text-center mb-4 md:mb-8">
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-container text-on-primary-container rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
-                  <span className="text-3xl md:text-4xl">👤</span>
-                </div>
-                <h1 className="text-2xl md:text-4xl font-black font-headline mb-1 md:mb-2">
-                  Student Login
-                </h1>
-                <p className="text-base md:text-lg font-bold text-on-surface-variant">
-                  Join your class and save your progress!
-                </p>
-              </div>
-
-              {!showNewStudentForm ? (
-                <>
-                  {/* Class Code Input */}
-                  <div className="space-y-3 mb-4 md:mb-6">
-                    <div>
-                      <label
-                        htmlFor="student-class-code-input"
-                        className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
-                      >
-                        Class Code
-                      </label>
-                      <input
-                        id="student-class-code-input"
-                        type="text"
-                        value={studentLoginClassCode}
-                        onChange={(e) => {
-                          setStudentLoginClassCode(e.target.value.toUpperCase());
-                          if (e.target.value.length >= 3) {
-                            loadStudentsInClass(e.target.value);
-                          }
-                        }}
-                        placeholder="MATH101"
-                        maxLength={20}
-                        autoFocus
-                        aria-describedby={error ? "student-login-error" : undefined}
-                        className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
-                      />
-                    </div>
-
-                    {error && (
-                      <motion.div
-                        id="student-login-error"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
-                        role="alert"
-                      >
-                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                        <span>{error}</span>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Existing Students List */}
-                  {studentLoginClassCode && existingStudents.length > 0 && (
-                    <div className="mb-6">
-                      <p className="text-sm font-bold mb-3 text-on-surface-variant uppercase tracking-wide">
-                        Select your name:
-                      </p>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {existingStudents.map((student) => (
-                          <button
-                            key={student.id}
-                            onClick={() => handleLoginAsStudent(student.id)}
-                            className="w-full px-6 py-4 bg-surface-container-lowest hover:bg-primary-container hover:text-on-primary-container rounded-xl text-left font-bold transition-all flex items-center justify-between group border-2 border-surface-container-highest hover:border-primary"
-                          >
-                            <span className="flex items-center gap-3">
-                              <span className="text-2xl">{student.avatar || '🦊'}</span>
-                              <span className="text-lg">{student.displayName}</span>
-                            </span>
-                            <span className="text-sm font-bold text-on-surface-variant group-hover:text-on-primary-container">
-                              {student.xp} XP
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* No Students Found */}
-                  {studentLoginClassCode && existingStudents.length === 0 && (
-                    <div className="mb-6 p-4 bg-surface-container-highest rounded-xl text-center">
-                      <p className="text-sm font-bold text-on-surface-variant">
-                        No students found in this class yet.
-                      </p>
-                      <p className="text-xs text-on-surface-variant mt-1">
-                        Be the first to join! 👇
-                      </p>
-                    </div>
-                  )}
-
-                  {/* OAuth Sign In Button */}
-                  <OAuthButton
-                    onSuccess={(email, isNewUser) => {
-                      // OAuth callback will handle routing
-                      setIsOAuthCallback(true);
-                    }}
-                    onError={(errorMessage) => {
-                      setError(errorMessage);
-                    }}
-                  />
-                </>
-              ) : (
-                <>
-                  {/* New Student Form */}
-                  <div className="space-y-4 mb-6">
-                    <div className="p-4 bg-surface-container-highest rounded-xl">
-                      <p className="text-sm font-bold text-on-surface-variant mb-1">
-                        Class: <span className="text-primary font-black">{studentLoginClassCode}</span>
-                      </p>
-                      <button
-                        onClick={() => {
-                          setShowNewStudentForm(false);
-                          setStudentLoginClassCode("");
-                        }}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Change class code
-                      </button>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="new-student-name-input"
-                        className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
-                      >
-                        Your Full Name
-                      </label>
-                      <input
-                        id="new-student-name-input"
-                        type="text"
-                        value={studentLoginName}
-                        onChange={(e) => setStudentLoginName(e.target.value)}
-                        onKeyPress={(e) => e.key === "Enter" && handleNewStudentSignup()}
-                        placeholder="Sarah Johnson"
-                        maxLength={30}
-                        aria-describedby={error ? "new-student-error" : undefined}
-                        className="w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50"
-                      />
-                    </div>
-
-                    {/* Avatar Selection */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
-                        Choose Your Avatar
-                      </label>
-                      <div className="mb-3 flex flex-wrap gap-1">
-                        {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map((category) => (
-                          <button
-                            key={category}
-                            onClick={() => setSelectedAvatarCategory(category)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                              selectedAvatarCategory === category
-                                ? "bg-primary text-white"
-                                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
-                            }`}
-                          >
-                            {category}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-2 bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest">
-                        {AVATAR_CATEGORIES[selectedAvatarCategory].map((avatar) => (
-                          <button
-                            key={avatar}
-                            onClick={() => setStudentAvatar(avatar)}
-                            className={`text-3xl p-2 rounded-lg transition-all hover:scale-110 ${
-                              studentAvatar === avatar
-                                ? "bg-primary/20 ring-2 ring-primary"
-                                : "hover:bg-surface-container"
-                            }`}
-                            aria-label={`Choose ${avatar} avatar`}
-                          >
-                            {avatar}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {error && (
-                      <motion.div
-                        id="new-student-error"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
-                        role="alert"
-                      >
-                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                        <span>{error}</span>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    onClick={handleNewStudentSignup}
-                    className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 mb-4"
-                  >
-                    Request Account
-                    <Check size={24} />
-                  </button>
-
-                  {/* Info Notice */}
-                  <div className="p-4 bg-tertiary-container text-on-tertiary-container rounded-xl">
-                    <p className="text-sm font-bold text-center">
-                      ⏳ <strong>Teacher Approval Required</strong>
-                    </p>
-                    <p className="text-xs text-center mt-1">
-                      Tell your teacher to approve your account. Once approved, you can log in and start earning XP!
-                    </p>
-                  </div>
-
-                  {/* Back Button */}
-                  <button
-                    onClick={() => setShowNewStudentForm(false)}
-                    className="w-full mt-4 py-3 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
-                  >
-                    ← Back to student list
-                  </button>
-                </>
-              )}
-
-            </div>
-
-            {/* Feature Pills */}
-            {!showNewStudentForm && (
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {["✅ Save Progress", "✅ Earn XP", "✅ Assignments", "✅ Live Challenge"].map((feature, i) => (
-                  <span
-                    key={i}
-                    className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-xs font-bold text-on-surface-variant shadow-sm"
-                  >
-                    {feature}
-                  </span>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </>
-        )}  {/* Closes conditional from line 3499 */}
-        {cookieBannerOverlay}
-      </div>  {/* Closes main div from line 3443 */}
-      </>
-      );  {/* Closes return */}
-    }  {/* Closes if */}
+      <LazyWrapper loadingMessage="Loading login...">
+        <StudentAccountLoginView
+          setView={setView}
+          error={error}
+          setError={setError}
+          studentLoginClassCode={studentLoginClassCode}
+          setStudentLoginClassCode={setStudentLoginClassCode}
+          studentLoginName={studentLoginName}
+          setStudentLoginName={setStudentLoginName}
+          existingStudents={existingStudents}
+          setExistingStudents={setExistingStudents}
+          showNewStudentForm={showNewStudentForm}
+          setShowNewStudentForm={setShowNewStudentForm}
+          studentAvatar={studentAvatar}
+          setStudentAvatar={setStudentAvatar}
+          isOAuthCallback={isOAuthCallback}
+          setIsOAuthCallback={setIsOAuthCallback}
+          showOAuthClassCode={showOAuthClassCode}
+          setShowOAuthClassCode={setShowOAuthClassCode}
+          oauthEmail={oauthEmail}
+          setOauthEmail={setOauthEmail}
+          oauthAuthUid={oauthAuthUid}
+          setOauthAuthUid={setOauthAuthUid}
+          handleOAuthTeacherDetected={handleOAuthTeacherDetected}
+          handleOAuthStudentDetected={handleOAuthStudentDetected}
+          handleOAuthNewUser={handleOAuthNewUser}
+          handleLoginAsStudent={handleLoginAsStudent}
+          handleNewStudentSignup={handleNewStudentSignup}
+          loadStudentsInClass={loadStudentsInClass}
+          cookieBannerOverlay={cookieBannerOverlay}
+        />
+      </LazyWrapper>
+    );
+  }
 
   // Quick Play: Kicked by teacher
   if (quickPlayKicked) {
@@ -5200,255 +4886,29 @@ export default function App() {
 
   if (view === "quick-play-student") {
     return (
-      <div className="min-h-screen flex flex-col bg-surface">
-        <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 z-50">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Quick Play</span>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              cleanupSessionData(); // Clear save queue and timers
-              setView("public-landing");
-              setQuickPlayActiveSession(null);
-            }}
-            className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
-          >
-            ← Back
-          </button>
-        </header>
-
-        <main className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
-            {!quickPlayActiveSession ? (
-              <div className="text-center py-12 sm:py-20">
-                <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
-                <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
-              </div>
-            ) : !quickPlayStudentName ? (
-              <div className="w-full max-w-md">
-                <div className="text-center mb-6 sm:mb-8">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                    <QrCode className="text-white w-8 h-8 sm:w-10 sm:h-10" />
-                  </div>
-                  <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
-                  <p className="text-sm sm:text-base text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  {/* Avatar picker */}
-                  <div>
-                    <label className="block text-sm font-bold text-on-surface-variant mb-2 text-center">Choose your avatar</label>
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {QUICK_PLAY_AVATARS.map(av => (
-                        <button
-                          key={av}
-                          onClick={() => setQuickPlayAvatar(av)}
-                          className={`text-2xl w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
-                            quickPlayAvatar === av
-                              ? 'bg-primary/20 ring-3 ring-primary scale-110'
-                              : 'bg-surface-container hover:bg-surface-container-high'
-                          }`}
-                        >
-                          {av}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
-                    {(() => {
-                      // Check if student already joined this session — lock their name
-                      let lockedName = '';
-                      try {
-                        const saved = localStorage.getItem('vocaband_qp_guest');
-                        if (saved) {
-                          const parsed = JSON.parse(saved);
-                          if (parsed.sessionId === quickPlayActiveSession?.id && parsed.name) {
-                            lockedName = parsed.name;
-                          }
-                        }
-                      } catch {}
-                      return lockedName ? (
-                        <>
-                          <input
-                            id="quick-play-name-input"
-                            type="text"
-                            value={lockedName}
-                            readOnly
-                            className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
-                          />
-                          <p className="text-xs text-on-surface-variant mt-1 text-center">You already joined as <strong>{lockedName}</strong></p>
-                        </>
-                      ) : (
-                        <input
-                          id="quick-play-name-input"
-                          type="text"
-                          inputMode="text"
-                          autoCapitalize="words"
-                          autoComplete="off"
-                          maxLength={30}
-                          defaultValue={quickPlayStudentName}
-                          placeholder="Enter your nickname..."
-                          className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          autoFocus
-                        />
-                      );
-                    })()}
-                  </div>
-
-                  <button
-                    data-quick-play-join
-                    onClick={async () => {
-                      const input = document.getElementById('quick-play-name-input') as HTMLInputElement;
-                      const trimmedName = input?.value.trim() || "";
-
-                      if (!trimmedName) {
-                        showToast("Please enter your name first", "error");
-                        return;
-                      }
-
-                      if (!quickPlayActiveSession) {
-                        showToast("Session expired. Please scan QR code again.", "error");
-                        return;
-                      }
-
-                      // Check if this name was kicked from this session
-                      try {
-                        const kickedKey = `vocaband_kicked_${quickPlayActiveSession.id}`;
-                        const kickedNames: string[] = JSON.parse(localStorage.getItem(kickedKey) || '[]');
-                        if (kickedNames.includes(trimmedName)) {
-                          showToast("This name has been removed from the session by the teacher.", "error");
-                          return;
-                        }
-                      } catch {}
-
-                      if (!quickPlayActiveSession.words || quickPlayActiveSession.words.length === 0) {
-                        showToast("This session has no words. Please contact your teacher.", "error");
-                        return;
-                      }
-
-                      // Check for duplicate name in this session
-                      const { data: { session: currentAuth } } = await supabase.auth.getSession();
-                      const currentAuthUid = currentAuth?.user?.id;
-
-                      // Clean up any stale progress for this student:
-                      // 1. By uid (same device refresh)
-                      // 2. By name (re-joining with same name from any device)
-                      if (currentAuthUid) {
-                        await supabase
-                          .from('progress')
-                          .delete()
-                          .eq('assignment_id', quickPlayActiveSession.id)
-                          .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
-                      } else {
-                        // No auth uid — clean up by name only
-                        await supabase
-                          .from('progress')
-                          .delete()
-                          .eq('assignment_id', quickPlayActiveSession.id)
-                          .eq('student_name', trimmedName);
-                      }
-
-                      const { data: existingProgress } = await supabase
-                        .from('progress')
-                        .select('id')
-                        .eq('assignment_id', quickPlayActiveSession.id)
-                        .eq('student_name', trimmedName)
-                        .limit(1);
-                      if (existingProgress && existingProgress.length > 0) {
-                        showToast("This name is already taken. Please choose a different one.", "error");
-                        return;
-                      }
-
-                      setTimeout(async () => {
-                        setQuickPlayStudentName(trimmedName);
-                        const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
-                        setUser(guestUser);
-
-                        const words = shuffle(quickPlayActiveSession.words).map(w => ({
-                          ...w,
-                          hebrew: w.hebrew || "",
-                          arabic: w.arabic || ""
-                        }));
-
-                        setAssignmentWords(words);
-                        // Create a virtual assignment so all game modes (including
-                        // sentence-builder) work the same as in real assignments.
-                        const quickPlaySentences = generateSentencesForAssignment(words, 2);
-                        setActiveAssignment({
-                          id: "quickplay-" + quickPlayActiveSession.id,
-                          classId: "",
-                          wordIds: words.map(w => w.id),
-                          words,
-                          title: "Quick Play",
-                          allowedModes: quickPlayActiveSession.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
-                          sentences: quickPlaySentences,
-                          sentenceDifficulty: 2,
-                        });
-                        setCurrentIndex(0);
-                        setScore(0);
-                        setFeedback(null);
-                        setIsFinished(false);
-                        setMistakes([]);
-                        setView("game");
-                        setShowModeSelection(true);
-
-                        // Save guest session to localStorage for page refresh recovery
-                        try {
-                          localStorage.setItem('vocaband_qp_guest', JSON.stringify({
-                            sessionId: quickPlayActiveSession.id,
-                            sessionCode: quickPlayActiveSession.sessionCode,
-                            name: trimmedName,
-                            avatar: quickPlayAvatar,
-                          }));
-                        } catch {}
-
-                        // Record that student joined — so teacher sees them in live stats immediately
-                        supabase.auth.getSession().then(({ data: { session } }) => {
-                          const authUid = session?.user?.id;
-                          if (!authUid) {
-                            console.error('[Quick Play] No auth session - cannot record join');
-                            return;
-                          }
-                          supabase.from('progress').insert({
-                            student_name: trimmedName,
-                            student_uid: authUid,
-                            assignment_id: quickPlayActiveSession.id,
-                            class_code: "QUICK_PLAY",
-                            score: 0,
-                            mode: "joined",
-                            completed_at: new Date().toISOString(),
-                            mistakes: [],
-                            avatar: guestUser.avatar || "🦊",
-                          }).then(({ error }) => {
-                            if (error) {
-                              console.error('[Quick Play] Failed to record join:', error);
-                            }
-                          });
-                        });
-                      }, 100);
-                    }}
-                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
-                  >
-                    Start Playing →
-                  </button>
-                </div>
-
-                <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-2xl border-2 border-surface-container-highest">
-                  <p className="text-xs sm:text-sm text-on-surface-variant text-center">
-                    ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!
-                  </p>
-                </div>
-              </div>
-            ) : null}
-        </main>
-      </div>
+      <LazyWrapper loadingMessage="Loading quick play...">
+        <QuickPlayStudentView
+          quickPlayActiveSession={quickPlayActiveSession}
+          setQuickPlayActiveSession={setQuickPlayActiveSession}
+          quickPlayStudentName={quickPlayStudentName}
+          setQuickPlayStudentName={setQuickPlayStudentName}
+          quickPlayAvatar={quickPlayAvatar}
+          setQuickPlayAvatar={setQuickPlayAvatar}
+          setView={setView}
+          setUser={setUser}
+          setAssignmentWords={setAssignmentWords}
+          setActiveAssignment={setActiveAssignment}
+          setCurrentIndex={setCurrentIndex}
+          setScore={setScore}
+          setFeedback={setFeedback}
+          setIsFinished={setIsFinished}
+          setMistakes={setMistakes}
+          setShowModeSelection={setShowModeSelection}
+          createGuestUser={createGuestUser}
+          cleanupSessionData={cleanupSessionData}
+          showToast={showToast}
+        />
+      </LazyWrapper>
     );
   }
 
@@ -6692,7 +6152,8 @@ export default function App() {
 
   if (view === "quick-play-setup") {
     return (
-      <SetupWizard
+      <LazyWrapper loadingMessage="Loading quick play setup...">
+      <QuickPlaySetupView
         mode="quick-play"
         allWords={ALL_WORDS}
         onComplete={async (result) => {
@@ -6749,6 +6210,7 @@ export default function App() {
         user={user}
         onLogout={() => supabase.auth.signOut()}
       />
+      </LazyWrapper>
     );
   }
 
@@ -6759,45 +6221,22 @@ export default function App() {
       return null;
     }
     return (
-      <QuickPlayMonitor
-        session={quickPlayActiveSession}
-        students={quickPlayJoinedStudents}
-        setStudents={setQuickPlayJoinedStudents}
-        onBack={() => {
-          cleanupSessionData(); // Clear save queue and timers
-          setView("teacher-dashboard");
-          setQuickPlayActiveSession(null);
-          setQuickPlaySelectedWords([]);
-          setQuickPlaySessionCode(null);
-          setQuickPlayJoinedStudents([]);
-          setQuickPlayCustomWords(new Map());
-          setQuickPlayAddingCustom(new Set());
-          setQuickPlayTranslating(new Set());
-          try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
-        }}
-        onEndSession={async () => {
-          showToast("Ending session...", "info");
-          const { error } = await supabase.rpc('end_quick_play_session', {
-            p_session_code: quickPlayActiveSession!.sessionCode
-          });
-          if (error) {
-            showToast("Failed to end session: " + error.message, "error");
-            return;
-          }
-          cleanupSessionData(); // Clear save queue and timers
-          setView("teacher-dashboard");
-          setQuickPlayActiveSession(null);
-          setQuickPlaySelectedWords([]);
-          setQuickPlaySessionCode(null);
-          setQuickPlayJoinedStudents([]);
-          setQuickPlayCustomWords(new Map());
-          setQuickPlayAddingCustom(new Set());
-          setQuickPlayTranslating(new Set());
-          try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
-          showToast("Quick Play session ended", "success");
-        }}
-        showToast={showToast}
-      />
+      <LazyWrapper loadingMessage="Loading session monitor...">
+        <QuickPlayTeacherMonitorView
+          quickPlayActiveSession={quickPlayActiveSession}
+          quickPlayJoinedStudents={quickPlayJoinedStudents}
+          setQuickPlayJoinedStudents={setQuickPlayJoinedStudents}
+          setView={setView}
+          setQuickPlayActiveSession={setQuickPlayActiveSession}
+          setQuickPlaySelectedWords={setQuickPlaySelectedWords}
+          setQuickPlaySessionCode={setQuickPlaySessionCode}
+          setQuickPlayCustomWords={setQuickPlayCustomWords}
+          setQuickPlayAddingCustom={setQuickPlayAddingCustom}
+          setQuickPlayTranslating={setQuickPlayTranslating}
+          cleanupSessionData={cleanupSessionData}
+          showToast={showToast}
+        />
+      </LazyWrapper>
     );
   }
 
