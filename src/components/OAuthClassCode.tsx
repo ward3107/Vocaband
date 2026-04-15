@@ -44,6 +44,28 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
     setIsLoading(true);
 
     try {
+      // Validate that the class code actually exists before creating a
+      // student profile.  Without this check, a typo creates a "phantom"
+      // student_profiles row in a class that doesn't exist — the student
+      // never sees any assignments because no real class matches their
+      // class_code.
+      const { data: classMatch, error: classLookupError } = await supabase
+        .from('classes')
+        .select('id, code')
+        .eq('code', trimmedCode)
+        .maybeSingle();
+      if (classLookupError) {
+        console.error('Class code lookup failed:', classLookupError);
+        onError('Could not verify class code. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      if (!classMatch) {
+        onError(`Class code "${trimmedCode}" not found. Please check with your teacher.`);
+        setIsLoading(false);
+        return;
+      }
+
       // Use the Google display name (OAuth always provides one)
       const { data: { user } } = await supabase.auth.getUser();
       const googleDisplayName = user?.user_metadata?.full_name || user?.user_metadata?.name || email.split('@')[0];
