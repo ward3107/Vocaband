@@ -78,7 +78,10 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
         // Show success message
         onError(message);
         setTimeout(() => {
-          window.location.href = '/'; // Go back to home
+          // Use replace() instead of href= so the OAuth redirect URL is
+          // dropped from history.  Otherwise the back button on mobile
+          // walks back through Google/Supabase URLs and exits the app.
+          window.location.replace('/');
         }, 3000);
       }
 

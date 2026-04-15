@@ -103,7 +103,7 @@ const OAuthCallback: React.FC<OAuthCallbackProps> = ({
           <AlertTriangle size={48} className="text-rose-600 mx-auto mb-4" />
           <p className="text-lg font-bold text-on-surface">{message}</p>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.replace('/')}
             className="mt-4 px-6 py-3 bg-primary text-white rounded-lg font-bold hover:scale-105 transition-all"
           >
             Back to Home
