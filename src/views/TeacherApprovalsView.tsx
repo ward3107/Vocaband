@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { supabase } from "../core/supabase";
+import type { View } from "../core/views";
 
 interface PendingStudent {
   id: string;
@@ -24,7 +25,7 @@ interface TeacherApprovalsViewProps {
   toasts: Toast[];
   consentModal: React.ReactNode;
   exitConfirmModal: React.ReactNode;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   loadPendingStudents: () => Promise<void> | void;
   handleApproveStudent: (id: string, displayName: string) => void;
   handleRejectStudent: (id: string, displayName: string) => void;

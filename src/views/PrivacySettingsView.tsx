@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "../config/privacy-config";
+import type { View } from "../core/views";
 
 type ToastType = "success" | "error" | "info";
 
@@ -15,7 +16,7 @@ interface PrivacySettingsViewProps {
   user: AppUser;
   consentModal: React.ReactNode;
   exitConfirmModal: React.ReactNode;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
   showToast: (message: string, type?: ToastType) => void;

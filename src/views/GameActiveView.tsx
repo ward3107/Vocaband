@@ -72,7 +72,7 @@ interface GameActiveViewProps {
   handleSpellingSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   handleSentenceWordTap: (word: string, isFromAvailable: boolean) => void;
   handleSentenceCheck: () => void;
-  speakWord: (wordId: number | undefined, fallbackText?: string) => void;
+  speakWord: (wordId: number, fallbackText?: string) => void;
   speak: (text: string) => void;
   shuffle: <T>(arr: T[]) => T[];
 }

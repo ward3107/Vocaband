@@ -12,7 +12,7 @@ interface WordPromptCardProps {
   feedback: "correct" | "wrong" | "show-answer" | null;
   isFlipped: boolean;
   scrambledWord: string;
-  speakWord: (wordId: number | undefined, fallbackText?: string) => void;
+  speakWord: (wordId: number, fallbackText?: string) => void;
 }
 
 export default function WordPromptCard({
@@ -59,7 +59,7 @@ export default function WordPromptCard({
               disabled: false,
               feedback,
             });
-            speakWord(currentWord?.id, currentWord?.english);
+            if (currentWord) speakWord(currentWord.id, currentWord.english);
           }}
           className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
           aria-label="Play pronunciation"

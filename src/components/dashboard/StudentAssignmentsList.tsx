@@ -2,6 +2,7 @@ import { BookOpen, RefreshCw } from "lucide-react";
 import StudentAssignmentCard from "./StudentAssignmentCard";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
+import type { View } from "../../core/views";
 
 interface StudentAssignmentsListProps {
   studentAssignments: AssignmentData[];
@@ -9,7 +10,7 @@ interface StudentAssignmentsListProps {
   studentDataLoading: boolean;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
-  setView: (v: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setShowModeSelection: (show: boolean) => void;
 }
 

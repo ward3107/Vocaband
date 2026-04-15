@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
+import type { View } from "../core/views";
 
 interface GlobalLeaderboardEntry {
   name: string;
@@ -9,7 +10,7 @@ interface GlobalLeaderboardEntry {
 
 interface GlobalLeaderboardViewProps {
   userRole: "teacher" | "student" | "admin" | "guest" | undefined;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   globalLeaderboard: GlobalLeaderboardEntry[];
 }
 

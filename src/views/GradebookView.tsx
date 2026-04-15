@@ -3,6 +3,7 @@ import { Users, Trophy, GraduationCap, ChevronDown, Download, UserCircle } from 
 import TopAppBar from "../components/TopAppBar";
 import { HelpTooltip } from "../components/HelpTooltip";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
+import type { View } from "../core/views";
 
 interface ClassStudent {
   name: string;
@@ -18,7 +19,7 @@ interface GradebookViewProps {
   classes: ClassData[];
   expandedStudent: string | null;
   setExpandedStudent: (key: string | null) => void;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 

@@ -7,13 +7,14 @@ import {
   THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES,
 } from "../constants/game";
 import { AVATAR_CATEGORIES } from "../constants/avatars";
+import type { View } from "../core/views";
 
 interface ShopViewProps {
   user: AppUser;
   xp: number;
   setXp: (xp: number) => void;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 

@@ -4,6 +4,7 @@ import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
+import type { View } from "../core/views";
 
 interface QuickPlaySession {
   id: string;
@@ -20,7 +21,7 @@ interface QuickPlayStudentViewProps {
   setQuickPlayStudentName: (name: string) => void;
   quickPlayAvatar: string;
   setQuickPlayAvatar: (avatar: string) => void;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setUser: (user: AppUser | null) => void;
   setAssignmentWords: (words: Word[]) => void;
   setActiveAssignment: (a: AssignmentData | null) => void;

@@ -1,12 +1,13 @@
 import { motion } from "motion/react";
 import type { LeaderboardEntry } from "../core/types";
 import type { ClassData } from "../core/supabase";
+import type { View } from "../core/views";
 
 interface LiveChallengeViewProps {
   selectedClass: ClassData;
   leaderboard: Record<string, LeaderboardEntry>;
   socketConnected: boolean;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setIsLiveChallenge: (v: boolean) => void;
 }
 

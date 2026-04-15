@@ -5,6 +5,7 @@ import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
 import { AVATAR_CATEGORIES, type AvatarCategory } from "../constants/avatars";
+import type { View } from "../core/views";
 
 interface ExistingStudent {
   id: string;
@@ -15,7 +16,7 @@ interface ExistingStudent {
 }
 
 interface StudentAccountLoginViewProps {
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   error: string | null;
   setError: (err: string | null) => void;
 

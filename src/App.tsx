@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
+import type { View } from "./core/views";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
@@ -88,31 +89,7 @@ export default function App() {
   // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
 
-  const [view, setView] = useState<
-    | "public-landing"
-    | "public-terms"
-    | "public-privacy"
-    | "accessibility-statement"
-    | "student-account-login"
-    | "student-pending-approval"
-    | "landing"
-    | "game"
-    | "teacher-dashboard"
-    | "teacher-approvals"
-    | "student-dashboard"
-    | "create-assignment"
-    | "gradebook"
-    | "live-challenge"
-    | "live-challenge-class-select"
-    | "analytics"
-    | "global-leaderboard"
-    | "students"
-    | "shop"
-    | "privacy-settings"
-    | "quick-play-setup"
-    | "quick-play-teacher-monitor"
-    | "quick-play-student"
-  >(() => {
+  const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
     if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
     return "public-landing";

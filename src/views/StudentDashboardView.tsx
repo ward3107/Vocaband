@@ -7,6 +7,7 @@ import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsLi
 import { THEMES } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
+import type { View, ShopTab } from "../core/views";
 
 interface StudentDashboardViewProps {
   user: AppUser;
@@ -22,8 +23,8 @@ interface StudentDashboardViewProps {
   setShowStudentOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
   consentModal: React.ReactNode;
   exitConfirmModal: React.ReactNode;
-  setView: (v: string) => void;
-  setShopTab: (tab: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
+  setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setShowModeSelection: (show: boolean) => void;

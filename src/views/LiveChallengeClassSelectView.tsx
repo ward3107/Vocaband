@@ -4,12 +4,13 @@ import type { Socket } from "socket.io-client";
 import TopAppBar from "../components/TopAppBar";
 import { supabase, type ClassData } from "../core/supabase";
 import { SOCKET_EVENTS } from "../core/types";
+import type { View } from "../core/views";
 
 interface LiveChallengeClassSelectViewProps {
   user: { displayName?: string; avatar?: string } | null;
   classes: ClassData[];
   socket: Socket | null;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setSelectedClass: (cls: ClassData) => void;
   setIsLiveChallenge: (val: boolean) => void;
 }

@@ -19,13 +19,14 @@ import {
   type AssignmentData,
   type ClassData,
 } from "../core/supabase";
+import type { View } from "../core/views";
 
 interface AnalyticsViewProps {
   user: { displayName?: string; avatar?: string } | null;
   classes: ClassData[];
   allScores: ProgressData[];
   teacherAssignments: AssignmentData[];
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
 }
 
 const toScoreHeightClass = (score: number) => {

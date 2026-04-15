@@ -5,6 +5,7 @@ import type { AppUser } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
+import type { View } from "../core/views";
 
 // Unbiased secure random integer in [0, max).
 function secureRandomInt(max: number): number {
@@ -51,7 +52,7 @@ interface GameFinishedViewProps {
   setMotivationalMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setAssignmentWords: React.Dispatch<React.SetStateAction<Word[]>>;
   setShowModeSelection: React.Dispatch<React.SetStateAction<boolean>>;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
 }
 
 export default function GameFinishedView({

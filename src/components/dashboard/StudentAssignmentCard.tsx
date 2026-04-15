@@ -2,6 +2,7 @@ import React from "react";
 import { ALL_WORDS } from "../../data/vocabulary";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
+import type { View } from "../../core/views";
 
 const DEFAULT_MODES = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
 
@@ -22,7 +23,7 @@ interface StudentAssignmentCardProps {
   studentProgress: ProgressData[];
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
-  setView: (v: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setShowModeSelection: (show: boolean) => void;
 }
 

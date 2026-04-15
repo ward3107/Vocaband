@@ -1,6 +1,7 @@
 import QuickPlayMonitor from "../components/QuickPlayMonitor";
 import { supabase } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
+import type { View } from "../core/views";
 
 interface QuickPlaySession {
   id: string;
@@ -24,7 +25,7 @@ interface QuickPlayTeacherMonitorViewProps {
   setQuickPlayJoinedStudents: (
     students: JoinedStudent[] | ((prev: JoinedStudent[]) => JoinedStudent[])
   ) => void;
-  setView: (view: string) => void;
+  setView: React.Dispatch<React.SetStateAction<View>>;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
   setQuickPlaySelectedWords: (w: Word[]) => void;
   setQuickPlaySessionCode: (c: string | null) => void;
