@@ -10,6 +10,7 @@ import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { synthesizeSpeechMp3 } from "./tts-common";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
 
@@ -757,6 +758,115 @@ Rules:
         message: `Gemini: ${rawMessage}`,
       });
     }
+  });
+
+  // ── Custom-word TTS generation ───────────────────────────────────────────
+  // Teachers can add custom vocabulary via OCR, smart-paste, or quick-play.
+  // Those words don't have prerecorded MP3s in the `sound/` bucket, so without
+  // this endpoint students fall back to the robotic browser SpeechSynthesis
+  // voice. This endpoint generates a Google Cloud TTS Neural2 MP3 per custom
+  // word and uploads it to `sound/{wordId}.mp3` — the SAME path the client
+  // already uses via `useAudio.speak(wordId)`. That means the frontend needs
+  // zero awareness of "custom vs. curriculum": if the MP3 exists, it plays;
+  // if it 404s, the existing failedWordIds → TTS fallback kicks in.
+  //
+  // Called fire-and-forget from the client right after custom words are
+  // created, so the teacher never waits on it. By the time students start
+  // playing an assignment, the files are in place.
+  const ttsCustomLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many TTS requests. Please wait a minute." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  app.post("/api/tts/custom-words", ttsCustomLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const authData = await verifyTokenWithEmail(authHeader.substring(7));
+    if (!authData) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    const userData = await getUserRoleAndClass(authData.uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can generate custom audio" });
+    }
+
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "TTS not configured", message: "GOOGLE_AI_API_KEY is not set." });
+    }
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Supabase not configured" });
+    }
+
+    // Expect { words: [{ id: number, english: string }, ...] }
+    const rawWords = Array.isArray(req.body?.words) ? req.body.words : null;
+    if (!rawWords) {
+      return res.status(400).json({ error: "Body must be { words: [{id, english}] }" });
+    }
+
+    const words = rawWords
+      .filter((w: unknown): w is { id: number; english: string } =>
+        typeof w === "object" && w !== null &&
+        typeof (w as any).id === "number" &&
+        typeof (w as any).english === "string" &&
+        (w as any).english.trim().length > 0 &&
+        (w as any).english.length <= 100
+      )
+      .slice(0, 500); // hard cap — 500 words per request is plenty
+
+    if (words.length === 0) {
+      return res.status(400).json({ error: "No valid words in request" });
+    }
+
+    // Process in small parallel batches so Google TTS doesn't rate-limit us
+    // and we don't open 500 concurrent HTTPS connections.
+    const BATCH_SIZE = 5;
+    let generated = 0, skipped = 0, failed = 0;
+    const failures: { english: string; reason: string }[] = [];
+
+    for (let i = 0; i < words.length; i += BATCH_SIZE) {
+      const batch = words.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (w) => {
+        const fileName = `${w.id}.mp3`;
+        try {
+          // Skip if already uploaded (idempotent — safe to call twice).
+          const { data: existing } = await supabaseAdmin.storage
+            .from("sound")
+            .list("", { search: fileName, limit: 1 });
+          if (existing && existing.some((f) => f.name === fileName)) {
+            skipped++;
+            return;
+          }
+
+          const mp3 = await synthesizeSpeechMp3(w.english.trim(), apiKey);
+          const { error: uploadErr } = await supabaseAdmin.storage
+            .from("sound")
+            .upload(fileName, mp3, { contentType: "audio/mpeg", upsert: true });
+          if (uploadErr) {
+            failed++;
+            failures.push({ english: w.english, reason: uploadErr.message });
+            return;
+          }
+          generated++;
+        } catch (err: any) {
+          failed++;
+          failures.push({ english: w.english, reason: (err?.message || "unknown").substring(0, 200) });
+        }
+      }));
+    }
+
+    console.log(`[TTS] ${authData.email}: generated=${generated} skipped=${skipped} failed=${failed}`);
+    if (failures.length > 0) {
+      console.warn(`[TTS] failures:`, failures.slice(0, 5));
+    }
+
+    res.json({ generated, skipped, failed, total: words.length });
   });
 
   // AI feature gate — checks if the authenticated teacher has AI access.
