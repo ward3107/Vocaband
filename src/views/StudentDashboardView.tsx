@@ -3,6 +3,9 @@ import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
 import StudentStatsRow from "../components/dashboard/StudentStatsRow";
+import DailyGoalBanner from "../components/dashboard/DailyGoalBanner";
+import BadgesStrip from "../components/dashboard/BadgesStrip";
+import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import { THEMES } from "../constants/game";
@@ -81,6 +84,14 @@ export default function StudentDashboardView({
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
         />
+        <DailyGoalBanner studentProgress={studentProgress} />
+        <LeaderboardTeaser
+          classCode={user.classCode}
+          currentStudentUid={user.uid}
+          currentXp={xp}
+          setView={setView}
+        />
+        <BadgesStrip earned={badges} />
         <StudentOverallProgress
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
