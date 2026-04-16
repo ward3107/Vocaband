@@ -61,11 +61,17 @@ const POWER_UPS = [
   { id: 'reveal_letter', name: 'Hint', emoji: '💡', desc: 'Reveal first letter', cost: 0, freeInDemo: 3 },
 ];
 
-// Demo words — a 100-word slice of Band 1 vocabulary so students get
+// Demo words — a 100-word slice of Set 1 vocabulary so students get
 // a real taste of the app instead of looping the same 10 words.  Pulled
 // from ALL_WORDS so the demo always stays in sync with what the full
 // app teaches.  100 keeps the demo lightweight while feeling expansive.
-const DEMO_WORDS: Word[] = ALL_WORDS.filter(w => w.level === 'Band 1').slice(0, 100);
+//
+// IMPORTANT: the vocabulary data uses level: "Set 1" (see
+// src/data/vocabulary.ts).  An earlier version of this filter said
+// 'Band 1' (legacy terminology) which matched NO words and left the
+// demo with an empty pool — rendering every game mode screen blank.
+// That's the bug the user reported as "no content in each mode".
+const DEMO_WORDS: Word[] = ALL_WORDS.filter(w => w.level === 'Set 1').slice(0, 100);
 
 // Translations
 const demoTranslations: Record<Language, Record<string, string>> = {
@@ -79,16 +85,16 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forTeachersTitle: "For English Teachers",
     forTeachersDesc: "Create assignments in minutes, track per-student + per-word mastery, run live challenges, and grade automatically.",
     forStudentsTitle: "For Students",
-    forStudentsDesc: "1000+ curated words from Bands 1–3. 10 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
+    forStudentsDesc: "1000+ curated words from Sets 1–3. 10 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
     tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
     experienceTitle: "What you'll try in this demo:",
-    sampleWords: "10 sample words from Band 1 (real vocabulary)",
+    sampleWords: "100 sample words from Set 1 (real vocabulary)",
     gameModes: "A real game mode, end-to-end",
     xpStreak: "XP, streak, and title progression",
     achievements: "Achievements & reward pop-ups",
     shopPreview: "A tour of the avatar + shop system",
     fullVersionTitle: "The full version adds:",
-    fullVersionBullets: "• 1000+ words across Bands 1–3\n• 10+ game modes (Classic, Spelling, Matching, Listening, Flashcards, Sentence Builder…)\n• Teacher dashboard, class codes, live challenges, gradebook\n• Mystery eggs, premium avatars, themes, titles, frames, boosters\n• Per-student word-mastery analytics",
+    fullVersionBullets: "• 1000+ words across Sets 1–3\n• 10+ game modes (Classic, Spelling, Matching, Listening, Flashcards, Sentence Builder…)\n• Teacher dashboard, class codes, live challenges, gradebook\n• Mystery eggs, premium avatars, themes, titles, frames, boosters\n• Per-student word-mastery analytics",
     demoRuntime: "~2 minutes, no account needed",
     letsGo: "Start the demo →",
     chooseAvatar: "Choose Your Avatar",
@@ -161,16 +167,16 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forTeachersTitle: "למורים לאנגלית",
     forTeachersDesc: "צרו מטלות תוך דקות, עקבו אחר שליטה במילים לכל תלמיד, נהלו אתגרים בכיתה וקבלו הערכה אוטומטית.",
     forStudentsTitle: "לתלמידים",
-    forStudentsDesc: "1000+ מילים ערוכות מ-Band 1 עד 3. 10 מצבי משחק. XP, רצפים, אווטרים וחנות מלאה בפריטים קוסמטיים וחיזוקים.",
+    forStudentsDesc: "1000+ מילים ערוכות מ-Set 1 עד 3. 10 מצבי משחק. XP, רצפים, אווטרים וחנות מלאה בפריטים קוסמטיים וחיזוקים.",
     tryDemoIntro: "בשתי הדקות הבאות תשחקו במצב משחק אמיתי עם 10 מילים לדוגמה ותראו איך מערכת ה-XP, האווטרים והחנות עובדת.",
     experienceTitle: "מה תנסו בהדגמה:",
-    sampleWords: "10 מילים לדוגמה מ-Band 1 (אוצר מילים אמיתי)",
+    sampleWords: "100 מילים לדוגמה מ-Set 1 (אוצר מילים אמיתי)",
     gameModes: "מצב משחק אמיתי, מתחילתו עד סופו",
     xpStreak: "התקדמות XP, רצפים ותארים",
     achievements: "הישגים וחלונות פרסים",
     shopPreview: "סיור במערכת האווטרים והחנות",
     fullVersionTitle: "הגרסה המלאה מוסיפה:",
-    fullVersionBullets: "• 1000+ מילים ב-Bands 1–3\n• 10+ מצבי משחק (קלאסי, איות, התאמה, הקשבה, כרטיסיות, בונה משפטים…)\n• לוח מורה, קודי כיתה, אתגרי חי, ספר ציונים\n• ביצי פתעה, אווטרים פרימיום, ערכות נושא, תארים, מסגרות וחיזוקים\n• אנליטיקה של שליטה במילים לכל תלמיד",
+    fullVersionBullets: "• 1000+ מילים ב-Sets 1–3\n• 10+ מצבי משחק (קלאסי, איות, התאמה, הקשבה, כרטיסיות, בונה משפטים…)\n• לוח מורה, קודי כיתה, אתגרי חי, ספר ציונים\n• ביצי פתעה, אווטרים פרימיום, ערכות נושא, תארים, מסגרות וחיזוקים\n• אנליטיקה של שליטה במילים לכל תלמיד",
     demoRuntime: "~2 דקות, בלי הרשמה",
     letsGo: "התחילו את ההדגמה ←",
     chooseAvatar: "בחרו את האווטר שלכם",
@@ -243,16 +249,16 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forTeachersTitle: "لمعلمي الإنجليزية",
     forTeachersDesc: "أنشئ واجبات خلال دقائق، تابع إتقان الكلمات لكل طالب، أدر تحديات مباشرة في الصف، واحصل على تقييم تلقائي.",
     forStudentsTitle: "للطلاب",
-    forStudentsDesc: "1000+ كلمة منسقة من Bands 1–3. 10 أوضاع لعب. XP، سلاسل، صور رمزية، ومتجر مليء بالتحسينات والتعزيزات.",
+    forStudentsDesc: "1000+ كلمة منسقة من Sets 1–3. 10 أوضاع لعب. XP، سلاسل، صور رمزية، ومتجر مليء بالتحسينات والتعزيزات.",
     tryDemoIntro: "في الدقيقتين التاليتين ستلعب وضع لعبة حقيقياً مع 10 كلمات نموذجية وترى نظام XP والصور الرمزية والمتجر يعمل مباشرة.",
     experienceTitle: "ما ستجربه في هذا العرض:",
-    sampleWords: "10 كلمات نموذجية من Band 1 (مفردات حقيقية)",
+    sampleWords: "100 كلمات نموذجية من Set 1 (مفردات حقيقية)",
     gameModes: "وضع لعبة حقيقي، من البداية إلى النهاية",
     xpStreak: "تقدم XP والسلاسل والألقاب",
     achievements: "الإنجازات وإشعارات المكافآت",
     shopPreview: "جولة في نظام الصور الرمزية والمتجر",
     fullVersionTitle: "النسخة الكاملة تضيف:",
-    fullVersionBullets: "• 1000+ كلمة في Bands 1–3\n• 10+ أوضاع لعب (كلاسيكي، تهجئة، مطابقة، استماع، بطاقات، بناء جمل…)\n• لوحة المعلم، رموز الصف، تحديات مباشرة، دفتر درجات\n• بيض مفاجآت، صور رمزية مميزة، مظاهر، ألقاب، إطارات، معززات\n• تحليلات إتقان الكلمات لكل طالب",
+    fullVersionBullets: "• 1000+ كلمة في Sets 1–3\n• 10+ أوضاع لعب (كلاسيكي، تهجئة، مطابقة، استماع، بطاقات، بناء جمل…)\n• لوحة المعلم، رموز الصف، تحديات مباشرة، دفتر درجات\n• بيض مفاجآت، صور رمزية مميزة، مظاهر، ألقاب، إطارات، معززات\n• تحليلات إتقان الكلمات لكل طالب",
     demoRuntime: "~2 دقائق، دون حساب",
     letsGo: "ابدأ العرض التجريبي ←",
     chooseAvatar: "اختر صورتك الرمزية",

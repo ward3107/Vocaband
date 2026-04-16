@@ -56,6 +56,31 @@ export default function LiveChallengeView({
           <p className="text-white/90 font-bold text-sm sm:text-base">Class Code: <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg">{selectedClass.code}</span></p>
         </div>
 
+        {/* Socket-offline warning — if the live socket never connects,
+            students can't appear on the podium.  Make the root cause
+            visible instead of letting the teacher guess.  Previously
+            this failure was silent (just a tiny red "Reconnecting…"
+            dot in the header). */}
+        {!socketConnected && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl p-4 sm:p-5 shadow-lg flex items-start gap-3"
+          >
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl">⚠️</div>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-base">Live podium not connected</p>
+              <p className="text-sm mt-1 leading-relaxed">
+                Students who join right now won't show up here until the
+                socket reconnects.  This is usually the real-time server
+                waking up from idle — try refreshing this page in 10–20
+                seconds.  If it keeps showing, the live backend (Render)
+                may be down or unreachable from your network.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Winner's Podium for Top 3 */}
         {top3.length > 0 && (
           <div className="mb-8">

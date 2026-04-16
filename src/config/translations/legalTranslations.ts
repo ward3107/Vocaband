@@ -71,7 +71,7 @@ export const uiTranslations: Record<Language, {
     ],
     serviceDescription: [
       "Designed for use in Israeli schools under teacher supervision",
-      "Aligned with the Israeli Ministry of Education English curriculum (Band 1, 2, 3)",
+      "Aligned with the Israeli Ministry of Education English curriculum (Set 1, 2, 3)",
       "Built to support anonymous student accounts",
       "Intended for educational purposes only",
     ],
@@ -145,7 +145,7 @@ export const uiTranslations: Record<Language, {
     ],
     serviceDescription: [
       "מתוכנן לשימוש בבתי ספר בישראל בפיקוח מורים",
-      "מותאם לתכנית הלימודים לאנגלית של משרד החינוך (Band 1, 2, 3)",
+      "מותאם לתכנית הלימודים לאנגלית של משרד החינוך (Set 1, 2, 3)",
       "בנוי לתמיכה בחשבונות תלמידים אנונימיים",
       "מיועד למטרות חינוכיות בלבד",
     ],
@@ -219,7 +219,7 @@ export const uiTranslations: Record<Language, {
     ],
     serviceDescription: [
       "مصمم للاستخدام في المدارس الإسرائيلية تحت إشراف المعلم",
-      "متوافق مع منهج اللغة الإنجليزية لوزارة التعليم الإسرائيلية (Band 1, 2, 3)",
+      "متوافق مع منهج اللغة الإنجليزية لوزارة التعليم الإسرائيلية (Set 1, 2, 3)",
       "مبني لدعم حسابات الطلاب المجهولة",
       "مخصص للأغراض التعليمية فقط",
     ],
