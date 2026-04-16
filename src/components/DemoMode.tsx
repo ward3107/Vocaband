@@ -317,18 +317,34 @@ const demoTranslations: Record<Language, Record<string, string>> = {
   },
 };
 
+// Per-mode gradient — keeps cards visually distinct and mirrors the
+// visual language of the real-app GameModeSelectionView so students
+// feel at home when they graduate from the demo.
+const MODE_GRADIENTS: Record<string, string> = {
+  classic:     'from-emerald-500 via-teal-500 to-cyan-600',
+  listening:   'from-sky-500 via-blue-500 to-indigo-600',
+  spelling:    'from-violet-500 via-purple-500 to-fuchsia-600',
+  matching:    'from-amber-500 via-orange-500 to-rose-500',
+  truefalse:   'from-rose-500 via-pink-500 to-fuchsia-500',
+  flashcards:  'from-cyan-500 via-sky-500 to-blue-500',
+  scramble:    'from-indigo-500 via-violet-500 to-purple-600',
+  reverse:     'from-fuchsia-500 via-pink-500 to-rose-500',
+  lettersounds:'from-violet-500 via-fuchsia-500 to-pink-500',
+  sentence:    'from-teal-500 via-emerald-500 to-green-600',
+};
+
 const GAME_MODES: Record<Language, { id: string; name: string; emoji: string; desc: string }[]> = {
   en: [
-    { id: "classic", name: "Classic", emoji: "📝", desc: "Pick the right meaning" },
-    { id: "listening", name: "Listening", emoji: "🎧", desc: "Hear and identify" },
-    { id: "spelling", name: "Spelling", emoji: "✍️", desc: "Type the word correctly" },
-    { id: "matching", name: "Matching", emoji: "🔗", desc: "Match words to meanings" },
-    { id: "truefalse", name: "True/False", emoji: "✓", desc: "Is it correct?" },
-    { id: "flashcards", name: "Flashcards", emoji: "🎴", desc: "Flip and learn" },
-    { id: "scramble", name: "Scramble", emoji: "🔤", desc: "Unscramble letters" },
-    { id: "reverse", name: "Reverse", emoji: "🔄", desc: "Translate to English" },
-    { id: "lettersounds", name: "Letter Sounds", emoji: "🔡", desc: "Sound it out" },
-    { id: "sentence", name: "Sentence Builder", emoji: "🧩", desc: "Build sentences" },
+    { id: "classic", name: "Classic", emoji: "📝", desc: "See the word, pick the right translation." },
+    { id: "listening", name: "Listening", emoji: "🎧", desc: "Only hear the word. No English text!" },
+    { id: "spelling", name: "Spelling", emoji: "✍️", desc: "Hear the word, type it in English." },
+    { id: "matching", name: "Matching", emoji: "🔗", desc: "Match Hebrew/Arabic to English pairs." },
+    { id: "truefalse", name: "True / False", emoji: "✅", desc: "Is the translation correct? Quick!" },
+    { id: "flashcards", name: "Flashcards", emoji: "🎴", desc: "Review at your own pace." },
+    { id: "scramble", name: "Scramble", emoji: "🔤", desc: "Unscramble the letters into a word." },
+    { id: "reverse", name: "Reverse", emoji: "🔄", desc: "See the translation, pick the English word." },
+    { id: "lettersounds", name: "Letter Sounds", emoji: "🔡", desc: "Hear each letter, type the full word." },
+    { id: "sentence", name: "Sentence Builder", emoji: "🧩", desc: "Tap the words in the right order." },
   ],
   he: [
     { id: "classic", name: "קלאסי", emoji: "📝", desc: "בחר את הפירוש הנכון" },
@@ -1055,44 +1071,64 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              <h1 className="text-2xl font-black font-headline text-stone-900 mb-2 text-center">
+              <h1 className="text-2xl sm:text-3xl font-black font-headline text-stone-900 mb-1 text-center">
                 {t.chooseGame}
               </h1>
-              <p className="text-stone-500 text-center mb-6">
+              <p className="text-stone-500 text-center mb-5 text-sm">
                 {t.tryPopular}
               </p>
 
-              {/* Power-ups display */}
-              <div className="bg-amber-50 rounded-2xl p-3 mb-4 border border-amber-200">
-                <p className="text-xs font-bold text-amber-800 mb-2 text-center">⚡ Power-ups (FREE in demo!)</p>
+              {/* Power-ups strip — same visual language as real app's chips */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-3 mb-5 border border-amber-200">
+                <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">⚡ Power-ups (free in demo)</p>
                 <div className="flex justify-center gap-2">
                   {POWER_UPS.map((pu) => (
-                    <div key={pu.id} className="bg-white px-2 py-1 rounded-lg text-center">
-                      <span className="text-lg">{pu.emoji}</span>
-                      <p className="text-xs font-bold text-stone-600">×{powerUps[pu.id as keyof typeof powerUps]}</p>
+                    <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
+                      <span className="text-xl block">{pu.emoji}</span>
+                      <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {modes.map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => startGame(mode.id)}
-                    className={`bg-white p-5 rounded-2xl flex flex-col items-center gap-3 hover:bg-stone-50 hover:shadow-lg hover:-translate-y-1 transition-all border border-stone-200 group min-h-[160px] ${isRTL ? 'rtl' : ''}`}
-                  >
-                    <span className="text-4xl">{mode.emoji}</span>
-                    <div className={`flex-1 text-center w-full ${textAlign}`}>
-                      <h3 className="font-bold text-stone-800 text-lg mb-1">{mode.name}</h3>
-                      <p className="text-sm text-stone-500 line-clamp-2">{mode.desc}</p>
-                    </div>
-                    {isRTL ?
-                      <ArrowLeft className="text-stone-400 group-hover:text-blue-600 group-hover:-translate-x-1 transition-all mt-auto" size={20} /> :
-                      <ArrowRight className="text-stone-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all mt-auto" size={20} />
-                    }
-                  </button>
-                ))}
+              {/* Big gradient mode cards — mirror the real-app layout so
+                  students feel a consistent design language between the
+                  demo and the full product. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {modes.map((mode) => {
+                  const grad = MODE_GRADIENTS[mode.id] ?? 'from-indigo-500 via-violet-500 to-fuchsia-500';
+                  return (
+                    <motion.button
+                      key={mode.id}
+                      onClick={() => startGame(mode.id)}
+                      type="button"
+                      style={{ touchAction: 'manipulation' }}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${grad} p-5 text-left shadow-lg hover:shadow-2xl transition-all min-h-[140px]`}
+                    >
+                      {/* Ambient glow in the corner */}
+                      <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 bg-white/20 rounded-full blur-2xl" />
+                      {/* Subtle contrast overlay */}
+                      <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10" />
+
+                      <div className="relative flex items-start gap-3">
+                        <div className="shrink-0 w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-3xl shadow-inner">
+                          {mode.emoji}
+                        </div>
+                        <div className={`flex-1 min-w-0 ${textAlign}`}>
+                          <h3 className="font-black text-white text-lg sm:text-xl leading-tight drop-shadow">{mode.name}</h3>
+                          <p className="text-xs sm:text-sm text-white/90 mt-1 leading-snug">{mode.desc}</p>
+                        </div>
+                      </div>
+
+                      <div className={`relative flex items-center justify-end mt-3 text-white/90 text-xs font-black uppercase tracking-widest ${isRTL ? 'justify-start' : 'justify-end'}`}>
+                        Play
+                        {isRTL ? <ArrowLeft size={14} className="ml-1" /> : <ArrowRight size={14} className="ml-1" />}
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -1825,51 +1861,63 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              {/* Back row + live XP pill — visual language matches the
+                  real-app ShopView header. */}
+              <div className={`flex items-center justify-between mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button
                   onClick={() => setView("game-select")}
-                  className={`flex items-center gap-2 text-stone-500 hover:text-blue-600 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  className={`inline-flex items-center gap-1.5 text-sm font-bold text-stone-500 hover:text-stone-900 bg-white border border-stone-200 hover:border-stone-300 rounded-full px-3 py-2 shadow-sm transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
-                  {isRTL ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
+                  {isRTL ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
                   {t.back}
                 </button>
-                <div className={`flex items-center gap-3 bg-stone-100 px-4 py-2 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <span className="text-3xl">{avatar}</span>
-                  <span className="font-bold text-stone-800">{displayName}</span>
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">
-                    {xp} XP
-                  </span>
+                <div className={`flex items-center gap-2 bg-white rounded-full pl-2 pr-3 py-1.5 border border-stone-200 shadow-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-black text-xs">{avatar}</span>
+                  <span className="font-black text-stone-900 tabular-nums text-sm">{xp}</span>
+                  <span className="text-[10px] font-black text-stone-500 uppercase tracking-widest">XP</span>
                 </div>
               </div>
 
-              <h1 className="text-3xl font-black mb-6 text-center">🛍️ {t.shop}</h1>
+              {/* Shop hero — same gradient hero as the real ShopView hub
+                  so students feel the same visual language before and
+                  after they sign up. */}
+              <div className="relative overflow-hidden rounded-[28px] mb-5 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
+                <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-cyan-400/25 rounded-full blur-3xl" />
+                <div className="relative">
+                  <p className="text-xs font-black text-white/85 uppercase tracking-widest mb-1">The Shop</p>
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Treat yourself 🎁</h1>
+                  <p className="text-sm text-white/90 mt-2 max-w-md">
+                    Preview avatars, titles, and power-ups — earn XP in the full app to unlock more.
+                  </p>
+                </div>
+              </div>
 
-              {/* Tab Navigation */}
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                <button
-                  onClick={() => setShopTab("avatars")}
-                  className={`px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${shopTab === "avatars" ? "bg-primary text-white" : "bg-stone-200 text-stone-700 hover:bg-stone-300"}`}
-                >
-                  🎭 {t.avatars}
-                </button>
-                <button
-                  onClick={() => setShopTab("titles")}
-                  className={`px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${shopTab === "titles" ? "bg-primary text-white" : "bg-stone-200 text-stone-700 hover:bg-stone-300"}`}
-                >
-                  🏆 {t.xpTitle}
-                </button>
-                <button
-                  onClick={() => setShopTab("powerups")}
-                  className={`px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${shopTab === "powerups" ? "bg-primary text-white" : "bg-stone-200 text-stone-700 hover:bg-stone-300"}`}
-                >
-                  ⚡ {t.powerups}
-                </button>
-                <button
-                  onClick={() => setShopTab("premium")}
-                  className={`px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${shopTab === "premium" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white" : "bg-stone-200 text-stone-700 hover:bg-stone-300"}`}
-                >
-                  {t.premium}
-                </button>
+              {/* Segmented pill tabs — matches the real ShopView strip */}
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
+                {(["avatars", "titles", "powerups", "premium"] as const).map(tab => {
+                  const isActive = shopTab === tab;
+                  const labels: Record<typeof tab, { emoji: string; text: string }> = {
+                    avatars:  { emoji: '🎭', text: t.avatars },
+                    titles:   { emoji: '🏷️', text: t.xpTitle },
+                    powerups: { emoji: '⚡', text: t.powerups },
+                    premium:  { emoji: '🔥', text: t.premium },
+                  };
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setShopTab(tab)}
+                      type="button"
+                      style={{ touchAction: 'manipulation', scrollSnapAlign: 'center' }}
+                      className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"}`}
+                    >
+                      <span className="text-base">{labels[tab].emoji}</span>
+                      <span>{labels[tab].text}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Avatars Tab - UNLOCKED FEATURES */}

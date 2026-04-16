@@ -42,6 +42,30 @@ export const DAILY_GOAL_BONUS = 30;
 // Thresholds used across the shop + pet evolution to gate progression.
 export const MASTERY_THRESHOLD = 5; // correct answers before a word counts as "mastered"
 
+// --- CLASS AVATARS (teacher dashboard) ---
+// Curated pool teachers pick from when naming/customising a class.
+// Selection rules (chosen to meet teaching standards in Israel and
+// internationally):
+//   - NO religious symbols (Star of David, crescent, cross, om, dharma)
+//   - NO national flags (avoids favouritism in mixed-population classes)
+//   - NO weapons, alcohol, smoking, gambling, or violent imagery
+//   - NO faces / hand gestures (cultural ambiguity — many gestures that
+//     are friendly in one culture are offensive in another)
+//   - NO political figures or symbols
+// What's IN: education tools, science, neutral animals, nature, sports
+// (universally played), arts, abstract symbols.  Grouped by theme so
+// the picker UI stays scannable.
+export const CLASS_AVATAR_GROUPS: { label: string; emojis: string[] }[] = [
+  { label: 'School',  emojis: ['📚','📖','✏️','📝','🎓','🍎','💡','🔔','📐','🖋️','📏','📓'] },
+  { label: 'Science', emojis: ['🌍','🔭','🔬','🧪','🚀','🛰️','🧠','⚛️','🧬','🌌','🧲','🛸'] },
+  { label: 'Animals', emojis: ['🦊','🐻','🦁','🐯','🐼','🐰','🦋','🦉','🐢','🐺','🐬','🦒'] },
+  { label: 'Nature',  emojis: ['🌳','🌻','🌈','⭐','🌙','☀️','🌊','🏔️','🍀','🌸','🍃','🪴'] },
+  { label: 'Sports',  emojis: ['⚽','🏀','🎾','🏊','🚴','🏓','🏐','🥇','🥈','🥉','🏆','🏅'] },
+  { label: 'Arts',    emojis: ['🎨','🎭','🎬','🎵','🎲','🎹','🎸','🥁','🎺','🎤','🪄','🎪'] },
+];
+// Flat list helper for places that want a single iterable.
+export const CLASS_AVATARS = CLASS_AVATAR_GROUPS.flatMap(g => g.emojis);
+
 // --- ASSIGNMENT REPLAY CAP (anti-farm) ---
 // Each assignment can be played at most this many times total across
 // all modes.  After the cap is hit, the assignment locks: no more XP,

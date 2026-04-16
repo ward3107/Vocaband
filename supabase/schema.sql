@@ -115,12 +115,15 @@ RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$
 $$;
 
 -- ·· users ··
+DROP POLICY IF EXISTS "users_select" ON public.users;
 CREATE POLICY "users_select" ON public.users
   FOR SELECT USING (auth.uid()::text = uid OR public.is_admin());
 
+DROP POLICY IF EXISTS "users_insert" ON public.users;
 CREATE POLICY "users_insert" ON public.users
   FOR INSERT WITH CHECK (auth.uid()::text = uid);
 
+DROP POLICY IF EXISTS "users_update" ON public.users;
 CREATE POLICY "users_update" ON public.users
   FOR UPDATE USING (auth.uid()::text = uid OR public.is_admin())
   WITH CHECK (
@@ -136,19 +139,23 @@ CREATE POLICY "users_update" ON public.users
 -- We intentionally allow any authenticated user to look up a class by code so that
 -- new students (who have no user row yet) can validate the code during login.
 -- The practical enumeration risk is low (1 million possible codes, rate-limited by Supabase).
+DROP POLICY IF EXISTS "classes_select" ON public.classes;
 CREATE POLICY "classes_select" ON public.classes
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "classes_insert" ON public.classes;
 CREATE POLICY "classes_insert" ON public.classes
   FOR INSERT WITH CHECK (
     auth.uid()::text = teacher_uid AND public.is_teacher()
   );
 
+DROP POLICY IF EXISTS "classes_update" ON public.classes;
 CREATE POLICY "classes_update" ON public.classes
   FOR UPDATE USING (
     auth.uid()::text = teacher_uid AND public.is_teacher()
   );
 
+DROP POLICY IF EXISTS "classes_delete" ON public.classes;
 CREATE POLICY "classes_delete" ON public.classes
   FOR DELETE USING (
     auth.uid()::text = teacher_uid AND public.is_teacher()
@@ -156,6 +163,7 @@ CREATE POLICY "classes_delete" ON public.classes
 
 -- ·· assignments ··
 -- Teachers see their own classes' assignments; students see their enrolled class's assignments.
+DROP POLICY IF EXISTS "assignments_select" ON public.assignments;
 CREATE POLICY "assignments_select" ON public.assignments
   FOR SELECT TO authenticated USING (
     class_id IN (
@@ -166,6 +174,7 @@ CREATE POLICY "assignments_select" ON public.assignments
     OR public.is_admin()
   );
 
+DROP POLICY IF EXISTS "assignments_insert" ON public.assignments;
 CREATE POLICY "assignments_insert" ON public.assignments
   FOR INSERT WITH CHECK (
     (
@@ -177,6 +186,7 @@ CREATE POLICY "assignments_insert" ON public.assignments
     OR public.is_admin()
   );
 
+DROP POLICY IF EXISTS "assignments_update" ON public.assignments;
 CREATE POLICY "assignments_update" ON public.assignments
   FOR UPDATE USING (
     (
@@ -188,6 +198,7 @@ CREATE POLICY "assignments_update" ON public.assignments
     OR public.is_admin()
   );
 
+DROP POLICY IF EXISTS "assignments_delete" ON public.assignments;
 CREATE POLICY "assignments_delete" ON public.assignments
   FOR DELETE USING (
     (
@@ -201,6 +212,7 @@ CREATE POLICY "assignments_delete" ON public.assignments
 
 -- ·· progress ··
 -- Students see only their own progress; teachers see progress for their classes only.
+DROP POLICY IF EXISTS "progress_select" ON public.progress;
 CREATE POLICY "progress_select" ON public.progress
   FOR SELECT TO authenticated USING (
     auth.uid()::text = student_uid
@@ -210,6 +222,7 @@ CREATE POLICY "progress_select" ON public.progress
     OR public.is_admin()
   );
 
+DROP POLICY IF EXISTS "progress_insert" ON public.progress;
 CREATE POLICY "progress_insert" ON public.progress
   FOR INSERT WITH CHECK (
     auth.uid()::text = student_uid
@@ -219,6 +232,7 @@ CREATE POLICY "progress_insert" ON public.progress
   );
 
 -- Students can only update their own records, and only to a higher score
+DROP POLICY IF EXISTS "progress_update" ON public.progress;
 CREATE POLICY "progress_update" ON public.progress
   FOR UPDATE
   USING (auth.uid()::text = student_uid)

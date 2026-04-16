@@ -172,6 +172,8 @@ export default function App() {
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
+  // Edit-class modal state — null when closed, the class data when open.
+  const [editingClass, setEditingClass] = useState<ClassData | null>(null);
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
@@ -5460,6 +5462,27 @@ export default function App() {
             setEditingAssignment(null);
           }}
           onDeleteClass={(classId) => handleDeleteClass(classId)}
+          editingClass={editingClass}
+          onEditClass={(c) => setEditingClass(c)}
+          onCloseEditClass={() => setEditingClass(null)}
+          onSaveClassEdit={async (next) => {
+            if (!editingClass) return;
+            // Direct UPDATE — RLS already lets teachers modify their own
+            // classes (see migration 20260402_add_teacher_class_rls).
+            // class_id and class_code never change, so all foreign keys
+            // (assignments, progress, student_profiles) are preserved.
+            const { error } = await supabase
+              .from('classes')
+              .update({ name: next.name, avatar: next.avatar })
+              .eq('id', editingClass.id);
+            if (error) {
+              showToast('Could not save class changes. Please try again.', 'error');
+              return;
+            }
+            setClasses(prev => prev.map(c => c.id === editingClass.id ? { ...c, name: next.name, avatar: next.avatar } : c));
+            setEditingClass(null);
+            showToast('Class updated.', 'success');
+          }}
           onEditAssignment={(assignment, c) => {
             setEditingAssignment(assignment);
             const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
@@ -5601,6 +5624,32 @@ export default function App() {
           setIsLiveChallenge={setIsLiveChallenge}
         />
       </LazyWrapper>
+    );
+  }
+  // Fallback: view === "live-challenge" but selectedClass was cleared (can
+  // happen after a hardware-back + state reset, or if a student lands on
+  // this teacher-only view directly).  Previously this rendered NOTHING
+  // (white page), then popstate kicked the user to the landing page
+  // without the teacher-login tab visible.  Redirect to the right home
+  // view instead so students get their dashboard back and teachers can
+  // re-select a class.
+  if (view === "live-challenge" && !selectedClass) {
+    // useEffect-style redirect without the hook — render a calm loading
+    // state while we schedule the navigation change.
+    setTimeout(() => {
+      setIsLiveChallenge(false);
+      if (user?.role === 'teacher') setView('live-challenge-class-select');
+      else if (user?.role === 'student') setView('student-dashboard');
+      else setView('public-landing');
+    }, 0);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white p-6">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⏳</div>
+          <p className="font-black text-lg">Redirecting…</p>
+          <p className="text-white/80 text-sm mt-1">Taking you back to your home screen.</p>
+        </div>
+      </div>
     );
   }
 
