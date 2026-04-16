@@ -6,6 +6,7 @@ import StudentStatsRow from "../components/dashboard/StudentStatsRow";
 import DailyGoalBanner from "../components/dashboard/DailyGoalBanner";
 import BadgesStrip from "../components/dashboard/BadgesStrip";
 import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
+import PetCompanion from "../components/dashboard/PetCompanion";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import { THEMES } from "../constants/game";
@@ -106,6 +107,7 @@ export default function StudentDashboardView({
           setShowModeSelection={setShowModeSelection}
         />
       </div>
+      <PetCompanion xp={xp} displayName={user.displayName} />
       <FloatingButtons showBackToTop={true} />
     </div>
   );
