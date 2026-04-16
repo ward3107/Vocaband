@@ -14,7 +14,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const AUDIO_DIR = 'C:\\Users\\Waseem\\Downloads\\Vocaband\\Vocaband-1\\temp-audio'
+const AUDIO_DIR = path.join(__dirname, '../temp-audio')
 const BUCKET = 'sound'
 const run = async () => {
   const files = fs.readdirSync(AUDIO_DIR).filter(f => f.endsWith('.mp3'))
