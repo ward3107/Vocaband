@@ -118,6 +118,7 @@ export default function StudentDashboardView({
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
           studentDataLoading={studentDataLoading}
+          userUid={user.uid}
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setView={setView}

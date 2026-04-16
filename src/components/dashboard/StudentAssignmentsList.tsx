@@ -8,6 +8,9 @@ interface StudentAssignmentsListProps {
   studentAssignments: AssignmentData[];
   studentProgress: ProgressData[];
   studentDataLoading: boolean;
+  /** Student's uid — forwarded to each card so the rounds counter
+   * reads from this student's localStorage bucket. */
+  userUid: string;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -15,7 +18,7 @@ interface StudentAssignmentsListProps {
 }
 
 export default function StudentAssignmentsList({
-  studentAssignments, studentProgress, studentDataLoading,
+  studentAssignments, studentProgress, studentDataLoading, userUid,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentsListProps) {
   return (
@@ -44,6 +47,7 @@ export default function StudentAssignmentsList({
               assignment={assignment}
               assignmentIdx={assignmentIdx}
               studentProgress={studentProgress}
+              userUid={userUid}
               setActiveAssignment={setActiveAssignment}
               setAssignmentWords={setAssignmentWords}
               setView={setView}

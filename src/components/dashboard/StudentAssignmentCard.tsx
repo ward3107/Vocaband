@@ -2,8 +2,9 @@ import React from "react";
 import { motion } from "motion/react";
 import { Zap, Sparkles, Lock } from "lucide-react";
 import { ALL_WORDS } from "../../data/vocabulary";
-import { MAX_ASSIGNMENT_REPLAYS } from "../../constants/game";
-import type { AssignmentData, ProgressData } from "../../core/supabase";
+import { MAX_ASSIGNMENT_ROUNDS } from "../../constants/game";
+import { readAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } from "../../hooks/useAssignmentPlays";
+import type { AppUser, AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
 
@@ -24,6 +25,10 @@ interface StudentAssignmentCardProps {
   assignment: AssignmentData;
   assignmentIdx: number;
   studentProgress: ProgressData[];
+  /** Student uid — needed to read their per-assignment play counter
+   * from localStorage (scoped per user so multi-student devices don't
+   * clobber each other's progress). */
+  userUid: string;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -67,7 +72,7 @@ function ProgressRing({
 }
 
 export default function StudentAssignmentCard({
-  assignment, assignmentIdx, studentProgress,
+  assignment, assignmentIdx, studentProgress, userUid,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentCardProps) {
   const allowedModes = (assignment.allowedModes || DEFAULT_MODES).filter(m => m !== "flashcards");
@@ -80,13 +85,18 @@ export default function StudentAssignmentCard({
   const isComplete = completedModes >= totalModes;
   const accent = ACCENTS[assignmentIdx % ACCENTS.length];
 
-  // Anti-farm replay cap: total plays across all modes for this
-  // assignment.  Once >= MAX_ASSIGNMENT_REPLAYS the assignment locks
-  // and stops granting XP.  Students still learn by varying which modes
-  // they play (we count plays, not unique modes).
-  const totalPlays = assignmentProgress.length;
-  const isLocked = totalPlays >= MAX_ASSIGNMENT_REPLAYS;
-  const playsLeft = Math.max(0, MAX_ASSIGNMENT_REPLAYS - totalPlays);
+  // Anti-farm replay cap (NEW SEMANTICS): "1 round = all allowed modes
+  // played once".  Student can complete MAX_ASSIGNMENT_ROUNDS (3)
+  // rounds, so the total allowed plays = 3 × totalModes.  After the
+  // 3rd full round the assignment locks and stops granting XP.
+  // Count is tracked client-side in localStorage per uid+assignmentId.
+  const totalPlays = readAssignmentPlays(userUid, assignment.id);
+  const maxPlays = MAX_ASSIGNMENT_ROUNDS * Math.max(totalModes, 1);
+  const roundsCompleted = computeRoundsCompleted(totalPlays, totalModes);
+  const isLocked = isAssignmentLocked(totalPlays, totalModes);
+  const playsLeft = Math.max(0, maxPlays - totalPlays);
+  // Current round the student is on (1-indexed, capped at the max).
+  const currentRound = Math.min(MAX_ASSIGNMENT_ROUNDS, roundsCompleted + 1);
 
   // Rough XP reward — totalModes * 15 XP per mode played (matches what the
   // game loop already awards).  Displayed as an incentive chip.
@@ -176,15 +186,16 @@ export default function StudentAssignmentCard({
             <span className="text-[10px] sm:text-xs font-bold text-stone-500">
               {completedModes}/{totalModes} modes
             </span>
-            {/* Plays-left counter — transparent so students understand
-                the cap.  Colour turns amber as the cap approaches. */}
+            {/* Rounds counter — colour turns amber as the cap approaches. */}
             <span className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${
               isLocked ? 'bg-stone-200 text-stone-600' :
-              playsLeft === 1 ? 'bg-rose-100 text-rose-700' :
-              playsLeft <= 2 ? 'bg-amber-100 text-amber-700' :
+              playsLeft <= totalModes ? 'bg-rose-100 text-rose-700' :
+              playsLeft <= totalModes * 2 ? 'bg-amber-100 text-amber-700' :
               'bg-stone-100 text-stone-600'
             }`}>
-              {isLocked ? 'Replay limit reached' : `${playsLeft} play${playsLeft === 1 ? '' : 's'} left`}
+              {isLocked
+                ? 'Locked — all 3 rounds done'
+                : `Round ${currentRound} of ${MAX_ASSIGNMENT_ROUNDS}`}
             </span>
           </div>
         </div>
@@ -216,7 +227,7 @@ export default function StudentAssignmentCard({
       {isLocked && (
         <div className="mt-3 text-[11px] font-bold text-stone-500 bg-white/60 border border-stone-200 rounded-xl px-3 py-2 flex items-center gap-2">
           <Lock size={12} />
-          You've played this {MAX_ASSIGNMENT_REPLAYS} times. Great practice! Check your other assignments.
+          You've completed all {MAX_ASSIGNMENT_ROUNDS} rounds of this assignment. Great practice! Check your other assignments.
         </div>
       )}
     </motion.div>

@@ -55,10 +55,11 @@ import ImageCropModal from "./components/ImageCropModal";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
-  MAX_ASSIGNMENT_REPLAYS,
+  MAX_ASSIGNMENT_ROUNDS,
   THEMES,
   type GameMode,
 } from "./constants/game";
+import { readAssignmentPlays, incrementAssignmentPlays, isAssignmentLocked } from "./hooks/useAssignmentPlays";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
@@ -4234,12 +4235,15 @@ export default function App() {
     // Regular assignment mode
     if (!activeAssignment) return;
 
-    // Server-side half of the replay cap — students who somehow bypass
-    // the dashboard lock (dev tools, back button, stale state) still
-    // can't earn more XP from a locked assignment.  UI lock on the
-    // dashboard card is the primary gate; this is belt-and-suspenders.
-    const playsForThis = studentProgress.filter(p => p.assignmentId === activeAssignment.id && p.mode !== 'flashcards').length;
-    const replayLocked = playsForThis >= MAX_ASSIGNMENT_REPLAYS;
+    // Anti-farm round cap — new semantics: 1 round = all allowed modes
+    // once; after MAX_ASSIGNMENT_ROUNDS (3) full rounds the assignment
+    // locks.  Total allowed plays = 3 × allowedModes.length.  Tracked
+    // client-side in localStorage per (uid, assignmentId) — see
+    // src/hooks/useAssignmentPlays.ts.  UI lock on the dashboard is the
+    // primary gate; this is belt-and-suspenders.
+    const allowedModesCount = (activeAssignment.allowedModes ?? []).filter(m => m !== 'flashcards').length || 1;
+    const playsForThis = readAssignmentPlays(user?.uid, activeAssignment.id);
+    const replayLocked = isAssignmentLocked(playsForThis, allowedModesCount);
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
     const maxPossible = gameWords.length * 10;
@@ -4263,7 +4267,7 @@ export default function App() {
     const baseEarned = replayLocked ? 0 : cappedScore;
     const xpEarned = Math.round(baseEarned * boosterMult);
     if (replayLocked) {
-      showToast(`You've played this assignment ${MAX_ASSIGNMENT_REPLAYS} times — no more XP from it.`, 'info');
+      showToast(`Assignment locked — you've completed all ${MAX_ASSIGNMENT_ROUNDS} rounds. Try another assignment.`, 'info');
     } else if (boosterMult > 1) {
       showToast(`${boosterMult}× XP active! ${cappedScore} → ${xpEarned} XP`, 'success');
     }
@@ -4286,6 +4290,13 @@ export default function App() {
     // Advance the retention weekly-challenge counter — any completed
     // game counts toward the student's weekly-play target.
     retention.recordPlay();
+
+    // Record this completed game against the assignment's round cap.
+    // Increments even when locked (so the total stays honest for
+    // display) but zero XP was granted above if locked.
+    if (user?.uid) {
+      incrementAssignmentPlays(user.uid, activeAssignment.id);
+    }
 
     // OPTIMIZED: Queue badge checks instead of immediate execution
     // Badges are cached server-side, so client checks are fast
