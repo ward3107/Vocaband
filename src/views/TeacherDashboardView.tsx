@@ -86,12 +86,15 @@ export default function TeacherDashboardView({
   onNewClass, onAssignClass, onDeleteClass,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
 }: TeacherDashboardViewProps) {
+  // Time-of-day greeting — small but friendly touch so the teacher feels the
+  // app is responsive to them and not a generic admin panel.
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const firstName = (user?.displayName || "").split(" ")[0] || "Teacher";
+
   return (
     <>
-      <div
-        className="min-h-screen bg-surface pt-24 pb-8"
-        style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', paddingLeft: '1rem', paddingRight: '1rem' }}
-      >
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-20 sm:pt-24 pb-12">
         {consentModal}
         {exitConfirmModal}
 
@@ -111,7 +114,20 @@ export default function TeacherDashboardView({
           onLogout={() => supabase.auth.signOut()}
         />
 
-        <div className="" style={{ maxWidth: '72rem', marginLeft: 'auto', marginRight: 'auto' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          {/* Welcome hero — sets a calm, personal tone */}
+          <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
+            <p className="text-xs sm:text-sm font-bold uppercase tracking-widest text-indigo-500 mb-2">
+              {greeting}
+            </p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight">
+              {firstName}, here's your classroom.
+            </h1>
+            <p className="text-sm sm:text-base text-stone-500 mt-2">
+              Manage your classes, review student progress, and create new assignments in a few taps.
+            </p>
+          </div>
+
           <TeacherQuickActions
             pendingStudentsCount={pendingStudentsCount}
             onQuickPlayClick={onQuickPlayClick}

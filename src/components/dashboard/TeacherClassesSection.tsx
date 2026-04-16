@@ -24,59 +24,77 @@ export default function TeacherClassesSection({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
 }: TeacherClassesSectionProps) {
   return (
-    <div
-      data-tour="my-classes"
-      className="bg-surface-container-low rounded-2xl p-6 mb-6 shadow-lg border-2 border-surface-container-high"
-    >
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-black text-on-surface flex items-center gap-2">
-          <Users className="text-primary" size={20} /> My Classes
-        </h2>
+    <div data-tour="my-classes">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
+        <div>
+          <h2 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
+            <Users size={18} className="text-stone-400" />
+            My classes
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+            {classes.length === 0
+              ? "You haven't created any classes yet."
+              : `${classes.length} class${classes.length === 1 ? '' : 'es'}`}
+          </p>
+        </div>
         <button
           data-tour="new-class"
           onClick={onNewClass}
-          className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-black text-base flex items-center gap-2 active:scale-95 transition-all"
+          type="button"
+          style={{ touchAction: 'manipulation' }}
+          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
           aria-label="Create new class"
         >
-          <Plus size={16} /> New Class
+          <Plus size={16} />
+          <span className="hidden sm:inline">New class</span>
+          <span className="sm:hidden">New</span>
         </button>
       </div>
 
       {classes.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users size={32} className="text-on-surface-variant" />
+        <div className="bg-white border border-dashed border-stone-300 rounded-2xl py-16 px-6 text-center">
+          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Users size={24} className="text-stone-400" />
           </div>
-          <p className="text-on-surface-variant font-medium">No classes yet. Create one to get a code!</p>
+          <p className="text-stone-700 font-semibold mb-1">No classes yet</p>
+          <p className="text-sm text-stone-500 mb-6">Create your first class to get a shareable join code.</p>
+          <button
+            onClick={onNewClass}
+            type="button"
+            style={{ touchAction: 'manipulation' }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
+          >
+            <Plus size={16} />
+            Create first class
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           {[...classes].reverse().map(c => {
             const classAssignments = teacherAssignments.filter(a => a.classId === c.id);
             return (
-              <div key={c.id} style={{ minWidth: '300px' }}>
-                <ClassCard
-                  name={c.name}
-                  code={c.code}
-                  copiedCode={copiedCode}
-                  assignments={classAssignments}
-                  openDropdownClassId={openDropdownClassId}
-                  onToggleDropdown={setOpenDropdownClassId}
-                  onAssign={() => onAssign(c)}
-                  onCopyCode={() => {
-                    navigator.clipboard.writeText(c.code);
-                    setCopiedCode(c.code);
-                    setTimeout(() => setCopiedCode(null), 2000);
-                  }}
-                  onWhatsApp={() => {
-                    window.open(`https://wa.me/?text=${encodeURIComponent(c.code)}`, '_blank');
-                  }}
-                  onDelete={() => onDeleteClass(c.id)}
-                  onEditAssignment={(assignment) => onEditAssignment(assignment, c)}
-                  onDuplicateAssignment={(assignment) => onDuplicateAssignment(assignment, c)}
-                  onDeleteAssignment={onDeleteAssignment}
-                />
-              </div>
+              <ClassCard
+                key={c.id}
+                name={c.name}
+                code={c.code}
+                copiedCode={copiedCode}
+                assignments={classAssignments}
+                openDropdownClassId={openDropdownClassId}
+                onToggleDropdown={setOpenDropdownClassId}
+                onAssign={() => onAssign(c)}
+                onCopyCode={() => {
+                  navigator.clipboard.writeText(c.code);
+                  setCopiedCode(c.code);
+                  setTimeout(() => setCopiedCode(null), 2000);
+                }}
+                onWhatsApp={() => {
+                  window.open(`https://wa.me/?text=${encodeURIComponent(c.code)}`, '_blank');
+                }}
+                onDelete={() => onDeleteClass(c.id)}
+                onEditAssignment={(assignment) => onEditAssignment(assignment, c)}
+                onDuplicateAssignment={(assignment) => onDuplicateAssignment(assignment, c)}
+                onDeleteAssignment={onDeleteAssignment}
+              />
             );
           })}
         </div>
