@@ -71,7 +71,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -177,7 +177,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
 
       {/* Assignments dropdown */}
       {assignments.length > 0 && showAssignments && (
-        <div className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2">
+        <div className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl">
           {assignments.map((assignment) => (
             <div
               key={assignment.id}
