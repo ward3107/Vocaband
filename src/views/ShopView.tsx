@@ -22,6 +22,58 @@ interface ShopViewProps {
   setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
 }
 
+// Per-title signature styling — each title gets its own gradient + type
+// vibe so the titles page looks like a roster of characters.  Tailwind
+// doesn't ship exotic fonts, so we lean on weight/case/italic/tracking
+// to communicate the personality (serif, mono, cursive-italic) without
+// shipping font files.
+const TITLE_STYLES: Record<string, {
+  gradient: string;
+  titleFont: string;
+  titleWeight: string;
+  titleExtra?: string;
+  titleStyle?: React.CSSProperties;
+  vibe: string;
+}> = {
+  _default:        { gradient: 'from-stone-600 to-stone-800',            titleFont: 'font-sans text-3xl sm:text-4xl',    titleWeight: 'font-black',          vibe: 'A classic flex.' },
+  champion:        { gradient: 'from-amber-500 via-orange-500 to-yellow-500', titleFont: 'font-sans text-3xl sm:text-4xl uppercase tracking-wider', titleWeight: 'font-black', vibe: 'Stand on the podium.' },
+  genius:          { gradient: 'from-sky-500 via-blue-600 to-indigo-700', titleFont: 'font-serif italic text-3xl sm:text-4xl', titleWeight: 'font-semibold',  vibe: 'For the quiet ones who know.' },
+  word_wizard:     { gradient: 'from-emerald-500 via-teal-500 to-cyan-600', titleFont: 'font-serif italic text-2xl sm:text-3xl', titleWeight: 'font-bold',     vibe: 'Spells cast in English.' },
+  vocab_king:      { gradient: 'from-yellow-500 via-amber-500 to-orange-600', titleFont: 'font-serif text-3xl sm:text-4xl',  titleWeight: 'font-black',         titleExtra: 'tracking-tight', vibe: 'Rule over the dictionary.' },
+  vocab_queen:     { gradient: 'from-pink-400 via-rose-500 to-fuchsia-600', titleFont: 'font-serif italic text-3xl sm:text-4xl', titleWeight: 'font-black',      vibe: 'Royal vocabulary energy.' },
+  speed_demon:     { gradient: 'from-rose-600 via-red-600 to-orange-600', titleFont: 'font-sans italic text-3xl sm:text-4xl uppercase', titleWeight: 'font-black', titleExtra: 'tracking-tight skew-x-[-6deg]', vibe: 'Nothing beats your WPM.' },
+  legend:          { gradient: 'from-indigo-700 via-violet-700 to-purple-800', titleFont: 'font-serif text-3xl sm:text-4xl',  titleWeight: 'font-black',        vibe: 'They\'ll tell stories about you.' },
+  brain:           { gradient: 'from-emerald-500 via-green-600 to-lime-500', titleFont: 'font-sans text-3xl sm:text-4xl',    titleWeight: 'font-black',         titleExtra: 'tracking-tight', vibe: 'Big thoughts only.' },
+  main_character:  { gradient: 'from-fuchsia-500 via-pink-500 to-rose-500', titleFont: 'font-serif italic text-3xl sm:text-4xl', titleWeight: 'font-black',     vibe: 'The story revolves around you.' },
+  goated:          { gradient: 'from-amber-400 via-yellow-500 to-orange-600', titleFont: 'font-sans text-3xl sm:text-4xl uppercase', titleWeight: 'font-black', titleExtra: 'tracking-widest', vibe: 'Greatest Of All Time.' },
+  aura_farmer:     { gradient: 'from-violet-500 via-fuchsia-500 to-pink-500', titleFont: 'font-sans italic text-3xl sm:text-4xl', titleWeight: 'font-light',      titleExtra: 'tracking-wide',  vibe: 'Your aura is farmable.' },
+  final_boss:      { gradient: 'from-red-700 via-rose-800 to-black',       titleFont: 'font-mono uppercase text-2xl sm:text-3xl',  titleWeight: 'font-black', titleExtra: 'tracking-widest', vibe: 'End of the rainbow.' },
+  rizzler:         { gradient: 'from-pink-500 via-rose-500 to-red-500',    titleFont: 'font-serif italic text-3xl sm:text-4xl',    titleWeight: 'font-black', vibe: 'Charisma meter: maxed.' },
+  chosen_one:      { gradient: 'from-amber-300 via-yellow-400 to-amber-600', titleFont: 'font-serif text-3xl sm:text-4xl', titleWeight: 'font-black',         titleStyle: { fontVariant: 'small-caps' }, vibe: 'Prophecy fulfilled.' },
+  speedrunner:     { gradient: 'from-lime-400 via-emerald-500 to-green-600', titleFont: 'font-mono uppercase text-2xl sm:text-3xl', titleWeight: 'font-black', titleExtra: 'tracking-tight', vibe: 'Any%. No hits. No mercy.' },
+  cracked:         { gradient: 'from-orange-500 via-red-600 to-rose-700',  titleFont: 'font-mono uppercase text-2xl sm:text-3xl',  titleWeight: 'font-black', titleExtra: 'tracking-[0.25em]', vibe: 'Cooking with gas.' },
+};
+
+// Per-booster gradient — vibe matches purpose (XP=warm, defensive=cool).
+const BOOSTER_STYLES: Record<string, string> = {
+  streak_freeze:  'from-sky-400 via-cyan-500 to-blue-600',
+  lucky_spin:     'from-emerald-500 via-teal-500 to-cyan-600',
+  xp_booster:     'from-amber-500 via-orange-500 to-rose-500',
+  lucky_charm:    'from-emerald-400 via-green-500 to-teal-500',
+  focus_mode:     'from-violet-500 via-purple-500 to-fuchsia-500',
+  weekend_warrior:'from-fuchsia-500 via-pink-500 to-rose-500',
+};
+
+// Per-powerup gradient — keeps cards visually distinct in the grid.
+const POWERUP_STYLES: Record<string, string> = {
+  skip:          'from-stone-500 via-stone-600 to-stone-700',
+  fifty_fifty:   'from-blue-500 via-indigo-500 to-violet-600',
+  reveal_letter: 'from-amber-400 via-yellow-500 to-orange-500',
+  double_points: 'from-fuchsia-500 via-pink-500 to-rose-500',
+  time_freeze:   'from-cyan-400 via-sky-500 to-blue-600',
+  peek:          'from-emerald-500 via-teal-500 to-cyan-600',
+};
+
 // Rarity → gradient / ring classes used on egg cards. Kept in one place so
 // the visual rarity language stays consistent with the eggs themselves.
 const RARITY_STYLES: Record<string, { bg: string; ring: string; badge: string; glow: string }> = {
@@ -422,32 +474,64 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           </div>
         )}
 
-        {/* Theme Shop */}
+        {/* Theme Shop — big hero cards. Each theme's bg class is used as a
+            full-bleed preview strip so students can see the actual vibe
+            before buying, not just a tiny swatch. */}
         {shopTab === "themes" && (
-          <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
-            <h2 className="text-xl font-black mb-4">Themes</h2>
-            <p className="text-stone-500 text-sm mb-4">Customize your game experience!</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-black text-stone-900">Themes</h2>
+              <p className="text-stone-500 text-sm mt-1">Change the whole-app vibe. Preview shows the actual theme background.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {THEMES.map(theme => {
                 const isOwned = theme.cost === 0 || (user.unlockedThemes ?? []).includes(theme.id);
                 const isActive = (user.activeTheme ?? 'default') === theme.id;
                 const canAfford = xp >= theme.cost;
                 return (
-                  <div key={theme.id} className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all ${isActive ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
-                    <div className={`w-full h-16 rounded-xl mb-3 ${theme.colors.bg} border border-stone-200 flex items-center justify-center`}>
-                      <span className="text-2xl">{theme.preview}</span>
+                  <div
+                    key={theme.id}
+                    className={`relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all border-2 ${isActive ? 'border-blue-500 ring-2 ring-blue-300' : 'border-white/80'}`}
+                  >
+                    {/* Full-bleed theme preview strip — uses the actual theme bg class */}
+                    <div className={`${theme.colors.bg} h-32 sm:h-36 relative flex items-center justify-center`}>
+                      <span className="text-6xl sm:text-7xl drop-shadow-lg">{theme.preview}</span>
+                      {/* Subtle overlay so text stays readable on any theme bg */}
+                      <div aria-hidden className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                     </div>
-                    <span className="text-sm font-bold text-stone-700">{theme.name}</span>
-                    {isActive ? (
-                      <span className="text-xs font-bold text-blue-600 mt-1">Active</span>
-                    ) : isOwned ? (
-                      <button onClick={() => equipTheme(theme.id)} className="text-xs font-bold text-green-600 mt-1 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200 transition-all">Apply</button>
-                    ) : (
-                      <button onClick={() => purchaseTheme(theme)} disabled={!canAfford}
-                        className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
-                        {theme.cost} XP
-                      </button>
-                    )}
+                    {/* Info + CTA strip on white background — high contrast */}
+                    <div className="bg-white p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-black text-stone-900 truncate">{theme.name}</h3>
+                        <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">
+                          {theme.cost === 0 ? 'Included for free' : `Unlock with XP`}
+                        </p>
+                      </div>
+                      {isActive ? (
+                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-black text-blue-700 bg-blue-100 border border-blue-200 px-3 py-2 rounded-xl">
+                          <CheckCircle2 size={12} /> Active
+                        </span>
+                      ) : isOwned ? (
+                        <button
+                          onClick={() => equipTheme(theme.id)}
+                          type="button"
+                          style={{ touchAction: 'manipulation' }}
+                          className="shrink-0 inline-flex items-center gap-1 text-sm font-black text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-xl shadow-md transition-all"
+                        >
+                          Apply
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => purchaseTheme(theme)}
+                          disabled={!canAfford}
+                          type="button"
+                          style={{ touchAction: 'manipulation' }}
+                          className={`shrink-0 inline-flex items-center gap-1 text-sm font-black px-4 py-2 rounded-xl shadow-md transition-all ${canAfford ? 'text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110' : 'text-stone-400 bg-stone-100 cursor-not-allowed'}`}
+                        >
+                          <Zap size={12} className={canAfford ? 'fill-white' : ''} /> {theme.cost}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -455,40 +539,81 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           </div>
         )}
 
-        {/* Name Titles Shop */}
+        {/* Name Titles — big cards, each with a per-title signature
+            gradient and typography vibe so the page looks like a roster
+            of trading cards instead of a uniform grid. */}
         {shopTab === "titles" && (
-          <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
-            <h2 className="text-xl font-black mb-2">Name Titles</h2>
-            <p className="text-stone-500 text-sm mb-4">Show off a custom title below your name!</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-black text-stone-900">Name Titles</h2>
+              <p className="text-stone-500 text-sm mt-1">Show off a custom title below your name. Each one has its own vibe.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {NAME_TITLES.map(title => {
                 const isOwned = (user.unlockedAvatars ?? []).includes(`title_${title.id}`);
                 const isActive = (user as any).activeTitle === title.id;
                 const canAfford = xp >= title.cost;
+                const style = TITLE_STYLES[title.id] ?? TITLE_STYLES._default;
                 return (
-                  <div key={title.id} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${isActive ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
-                    <span className="text-sm font-black text-stone-800 mb-1">{title.display}</span>
-                    {isActive ? (
-                      <span className="text-xs font-bold text-blue-600">Active</span>
-                    ) : isOwned ? (
-                      <button onClick={async () => {
-                        setUser(prev => prev ? { ...prev, activeTitle: title.id } as any : prev);
-                        await supabase.from('users').update({ active_title: title.id } as any).eq('uid', user.uid);
-                        showToast("Title equipped!", "success");
-                      }} className="text-xs font-bold text-green-600 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200">Equip</button>
-                    ) : (
-                      <button onClick={async () => {
-                        if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
-                        const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
-                        if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
-                        setXp(data.new_xp);
-                        setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
-                        showToast(`Unlocked "${title.display}"!`, "success");
-                      }} disabled={!canAfford}
-                        className={`text-xs font-bold px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
-                        {title.cost} XP
-                      </button>
-                    )}
+                  <div
+                    key={title.id}
+                    className={`relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all ${isActive ? 'ring-2 ring-blue-400' : ''}`}
+                  >
+                    {/* Signature gradient backdrop */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient}`} />
+                    <div aria-hidden className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 bg-white/15 rounded-full blur-3xl" />
+                    {/* Subtle pattern overlay */}
+                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-white/10" />
+
+                    <div className="relative p-5 sm:p-6 min-h-[140px] flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">Title</p>
+                        <p
+                          className={`${style.titleFont} ${style.titleWeight} ${style.titleExtra ?? ''} text-white drop-shadow-lg leading-tight truncate`}
+                          style={style.titleStyle}
+                        >
+                          {title.display}
+                        </p>
+                        <p className="text-xs text-white/80 mt-2 max-w-xs">{style.vibe}</p>
+                      </div>
+                      <div className="shrink-0">
+                        {isActive ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-black text-stone-900 bg-white px-3 py-2 rounded-xl shadow-md">
+                            <CheckCircle2 size={12} /> Active
+                          </span>
+                        ) : isOwned ? (
+                          <button
+                            onClick={async () => {
+                              setUser(prev => prev ? { ...prev, activeTitle: title.id } as any : prev);
+                              await supabase.from('users').update({ active_title: title.id } as any).eq('uid', user.uid);
+                              showToast("Title equipped!", "success");
+                            }}
+                            type="button"
+                            style={{ touchAction: 'manipulation' }}
+                            className="inline-flex items-center gap-1 text-sm font-black text-stone-900 bg-white hover:bg-stone-50 px-4 py-2 rounded-xl shadow-md transition-all"
+                          >
+                            Equip
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
+                              const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
+                              if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                              setXp(data.new_xp);
+                              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
+                              showToast(`Unlocked "${title.display}"!`, "success");
+                            }}
+                            disabled={!canAfford}
+                            type="button"
+                            style={{ touchAction: 'manipulation' }}
+                            className={`inline-flex items-center gap-1 text-sm font-black px-4 py-2 rounded-xl shadow-md transition-all ${canAfford ? 'text-stone-900 bg-white hover:bg-stone-50' : 'text-white/60 bg-black/20 cursor-not-allowed'}`}
+                          >
+                            <Zap size={12} className={canAfford ? 'text-amber-500 fill-amber-500' : ''} /> {title.cost}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -498,41 +623,78 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
 
         {/* Avatar Frames Shop */}
         {shopTab === "frames" && (
-          <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
-            <h2 className="text-xl font-black mb-2">Avatar Frames</h2>
-            <p className="text-stone-500 text-sm mb-4">Add a glowing border around your avatar!</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-black text-stone-900">Avatar Frames</h2>
+              <p className="text-stone-500 text-sm mt-1">A glowing border that wraps your avatar everywhere it appears.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {NAME_FRAMES.map(frame => {
                 const isOwned = (user.unlockedAvatars ?? []).includes(`frame_${frame.id}`);
                 const isActive = (user as any).activeFrame === frame.id;
                 const canAfford = xp >= frame.cost;
                 return (
-                  <div key={frame.id} className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all ${isActive ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-2 bg-white ${frame.border}`}>
-                      {user.avatar || "😎"}
+                  <div
+                    key={frame.id}
+                    className={`relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 ${isActive ? 'ring-2 ring-blue-400' : ''}`}
+                  >
+                    {/* Ambient corner glow tinted to the frame's accent */}
+                    <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-violet-500/30 to-pink-500/30 rounded-full blur-3xl" />
+                    <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-12 w-40 h-40 bg-gradient-to-br from-amber-400/20 to-rose-400/20 rounded-full blur-3xl" />
+
+                    <div className="relative p-5 sm:p-6 flex items-center gap-4 sm:gap-5">
+                      {/* Big avatar wearing the frame, on a checkered preview pad */}
+                      <div className="shrink-0 relative">
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-stone-100 to-white flex items-center justify-center text-5xl sm:text-6xl shadow-inner border border-white/20">
+                          <span className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white flex items-center justify-center ${frame.border}`}>
+                            {user.avatar || '😎'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-1">Frame</p>
+                        <h3 className="text-lg sm:text-xl font-black text-white leading-tight">{frame.name}</h3>
+                        <p className="text-xs text-white/70 mt-1">Wraps your avatar with a glowing ring.</p>
+                        <div className="mt-3">
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-black text-blue-100 bg-blue-500/30 border border-blue-400/40 px-3 py-2 rounded-xl">
+                              <CheckCircle2 size={12} /> Active
+                            </span>
+                          ) : isOwned ? (
+                            <button
+                              onClick={async () => {
+                                setUser(prev => prev ? { ...prev, activeFrame: frame.id } as any : prev);
+                                await supabase.from('users').update({ active_frame: frame.id } as any).eq('uid', user.uid);
+                                showToast("Frame equipped!", "success");
+                              }}
+                              type="button"
+                              style={{ touchAction: 'manipulation' }}
+                              className="inline-flex items-center gap-1 text-sm font-black text-stone-900 bg-white hover:bg-stone-50 px-4 py-2 rounded-xl shadow-md transition-all"
+                            >
+                              Equip
+                            </button>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
+                                const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
+                                if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                                setXp(data.new_xp);
+                                setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
+                                showToast(`Unlocked ${frame.name}!`, "success");
+                              }}
+                              disabled={!canAfford}
+                              type="button"
+                              style={{ touchAction: 'manipulation' }}
+                              className={`inline-flex items-center gap-1 text-sm font-black px-4 py-2 rounded-xl shadow-md transition-all ${canAfford ? 'text-stone-900 bg-white hover:bg-stone-50' : 'text-white/60 bg-white/10 cursor-not-allowed'}`}
+                            >
+                              <Zap size={12} className={canAfford ? 'text-amber-500 fill-amber-500' : ''} /> {frame.cost}
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-stone-700">{frame.name}</span>
-                    {isActive ? (
-                      <span className="text-xs font-bold text-blue-600 mt-1">Active</span>
-                    ) : isOwned ? (
-                      <button onClick={async () => {
-                        setUser(prev => prev ? { ...prev, activeFrame: frame.id } as any : prev);
-                        await supabase.from('users').update({ active_frame: frame.id } as any).eq('uid', user.uid);
-                        showToast("Frame equipped!", "success");
-                      }} className="text-xs font-bold text-green-600 mt-1 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200">Equip</button>
-                    ) : (
-                      <button onClick={async () => {
-                        if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
-                        const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
-                        if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
-                        setXp(data.new_xp);
-                        setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
-                        showToast(`Unlocked ${frame.name}!`, "success");
-                      }} disabled={!canAfford}
-                        className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
-                        {frame.cost} XP
-                      </button>
-                    )}
                   </div>
                 );
               })}
@@ -540,25 +702,46 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           </div>
         )}
 
-        {/* Boosters Shop */}
+        {/* Boosters — big hero cards.  Each booster has its own gradient
+            tied to its purpose (warm = XP, cool = streak/freeze). */}
         {shopTab === "boosters" && (
-          <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-3xl p-6 shadow-md border-2 border-pink-200">
-            <h2 className="text-xl font-black mb-2 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">🔥 Hot Boosters</h2>
-            <p className="text-stone-500 text-sm mb-4">The most wanted items in 2026!</p>
-            <div className="space-y-3">
+          <div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-black text-stone-900">Boosters</h2>
+              <p className="text-stone-500 text-sm mt-1">One-shot buffs that make your next plays count more.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {BOOSTERS_DEFS.map(booster => {
                 const canAfford = xp >= booster.cost;
+                const grad = BOOSTER_STYLES[booster.id] ?? 'from-fuchsia-500 via-pink-500 to-rose-500';
                 return (
-                  <div key={booster.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 border-pink-100 shadow-sm hover:shadow-md transition-all">
-                    <span className="text-4xl">{booster.emoji}</span>
-                    <div className="flex-1">
-                      <p className="font-bold text-stone-800">{booster.name}</p>
-                      <p className="text-xs text-stone-500">{booster.desc}</p>
+                  <div
+                    key={booster.id}
+                    className={`relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all bg-gradient-to-br ${grad}`}
+                  >
+                    <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 bg-white/20 rounded-full blur-3xl" />
+                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
+                    <div className="relative p-5 sm:p-6 flex items-center gap-4 sm:gap-5">
+                      <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-5xl sm:text-6xl shadow-inner">
+                        {booster.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-0.5">Booster</p>
+                        <h3 className="text-lg sm:text-xl font-black text-white leading-tight">{booster.name}</h3>
+                        <p className="text-xs text-white/85 mt-1 leading-relaxed">{booster.desc}</p>
+                        <div className="mt-3">
+                          <button
+                            onClick={() => purchaseBooster(booster)}
+                            disabled={!canAfford}
+                            type="button"
+                            style={{ touchAction: 'manipulation' }}
+                            className={`inline-flex items-center gap-1 text-sm font-black px-4 py-2 rounded-xl shadow-md transition-all ${canAfford ? 'text-stone-900 bg-white hover:bg-stone-50' : 'text-white/60 bg-white/10 cursor-not-allowed'}`}
+                          >
+                            <Zap size={12} className={canAfford ? 'text-amber-500 fill-amber-500' : ''} /> {booster.cost}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <button onClick={() => purchaseBooster(booster)} disabled={!canAfford}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${canAfford ? "bg-gradient-to-r from-pink-400 to-orange-400 text-white hover:from-pink-500 hover:to-orange-500 shadow-md" : "bg-stone-100 text-stone-400 cursor-not-allowed"}`}>
-                      {booster.cost} XP
-                    </button>
                   </div>
                 );
               })}
@@ -566,28 +749,51 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           </div>
         )}
 
-        {/* Power-ups Shop */}
+        {/* Power-ups — big hero cards with inventory pill */}
         {shopTab === "powerups" && (
-          <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
-            <h2 className="text-xl font-black mb-4">Power-ups</h2>
-            <p className="text-stone-500 text-sm mb-4">Buy boosts to use during games!</p>
-            <div className="space-y-3">
+          <div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-black text-stone-900">Power-ups</h2>
+              <p className="text-stone-500 text-sm mt-1">Stash these in your inventory and trigger them mid-game.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {POWER_UP_DEFS.map(powerUp => {
                 const owned = (user.powerUps ?? {})[powerUp.id] ?? 0;
                 const canAfford = xp >= powerUp.cost;
+                const grad = POWERUP_STYLES[powerUp.id] ?? 'from-amber-500 via-orange-500 to-rose-500';
                 return (
-                  <div key={powerUp.id} className="flex items-center gap-4 p-4 bg-stone-50 rounded-2xl border-2 border-stone-100">
-                    <span className="text-3xl">{powerUp.emoji}</span>
-                    <div className="flex-1">
-                      <p className="font-bold text-stone-800">{powerUp.name}</p>
-                      <p className="text-xs text-stone-500">{powerUp.desc}</p>
-                    </div>
-                    <div className="text-center">
-                      {owned > 0 && <p className="text-xs font-bold text-blue-600 mb-1">×{owned}</p>}
-                      <button onClick={() => purchasePowerUp(powerUp)} disabled={!canAfford}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${canAfford ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-stone-100 text-stone-400 cursor-not-allowed"}`}>
-                        {powerUp.cost} XP
-                      </button>
+                  <div
+                    key={powerUp.id}
+                    className={`relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all bg-gradient-to-br ${grad}`}
+                  >
+                    <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 bg-white/20 rounded-full blur-3xl" />
+                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
+                    {/* Owned counter — top-right pill */}
+                    {owned > 0 && (
+                      <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 bg-white text-stone-900 text-xs font-black px-2.5 py-1 rounded-full shadow-md">
+                        ×{owned} owned
+                      </span>
+                    )}
+                    <div className="relative p-5 sm:p-6 flex items-center gap-4 sm:gap-5">
+                      <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-5xl sm:text-6xl shadow-inner">
+                        {powerUp.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-0.5">Power-up</p>
+                        <h3 className="text-lg sm:text-xl font-black text-white leading-tight">{powerUp.name}</h3>
+                        <p className="text-xs text-white/85 mt-1 leading-relaxed">{powerUp.desc}</p>
+                        <div className="mt-3">
+                          <button
+                            onClick={() => purchasePowerUp(powerUp)}
+                            disabled={!canAfford}
+                            type="button"
+                            style={{ touchAction: 'manipulation' }}
+                            className={`inline-flex items-center gap-1 text-sm font-black px-4 py-2 rounded-xl shadow-md transition-all ${canAfford ? 'text-stone-900 bg-white hover:bg-stone-50' : 'text-white/60 bg-white/10 cursor-not-allowed'}`}
+                          >
+                            <Zap size={12} className={canAfford ? 'text-amber-500 fill-amber-500' : ''} /> {powerUp.cost}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

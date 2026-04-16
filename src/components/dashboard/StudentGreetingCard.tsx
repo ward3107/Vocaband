@@ -62,19 +62,21 @@ export default function StudentGreetingCard({
       <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 bg-cyan-400/25 rounded-full blur-3xl" />
 
       <div className="relative flex items-center gap-4 sm:gap-5">
-        {/* Animated avatar — gentle bob + pulsing ring */}
+        {/* Animated avatar — much bigger now (24x24 mobile, 32x32 desktop)
+            with a stronger glow halo so the student's chosen icon is the
+            visual anchor of the dashboard. */}
         <motion.div
           animate={{ y: [0, -4, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="relative shrink-0"
         >
-          <div className="absolute inset-0 rounded-3xl bg-white/40 blur-md animate-pulse" />
-          <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-lg ring-4 ring-white/30">
+          <div className="absolute inset-0 rounded-[28px] bg-white/40 blur-xl animate-pulse" />
+          <div className="relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[28px] flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ring-4 ring-white/40">
             {user.avatar || '🦊'}
           </div>
           {streak > 0 && (
-            <div className="absolute -bottom-1 -right-1 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-0.5 border-2 border-white">
-              <Flame size={10} className="fill-white" />
+            <div className="absolute -bottom-1.5 -right-1.5 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md flex items-center gap-1 border-2 border-white">
+              <Flame size={12} className="fill-white" />
               {streak}
             </div>
           )}
