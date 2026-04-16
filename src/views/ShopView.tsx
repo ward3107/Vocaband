@@ -972,12 +972,17 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
               style={{ touchAction: 'manipulation', scrollSnapAlign: 'start' }}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className={`relative shrink-0 w-40 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} p-3 text-left shadow-md`}
+              className={`relative shrink-0 w-40 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} p-3 pt-9 text-left shadow-md`}
             >
-              <span className={`absolute top-2 right-2 ${item.pillBg} text-white text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-sm`}>
+              {/* NEW/HOT/RARE pill — z-10 puts it above the emoji medallion
+                  so the badge is never covered.  Also given pt-9 padding
+                  on the card so there's dedicated space at the top of the
+                  card for the badge to sit in without overlapping the
+                  emoji container below. */}
+              <span className={`absolute top-2 left-2 z-10 ${item.pillBg} text-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-md border border-white/40`}>
                 {item.pill}
               </span>
-              <div className="w-full h-20 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl border border-white/30 mb-2 shadow-inner">
+              <div className="relative w-full h-20 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl border border-white/30 mb-2 shadow-inner">
                 {item.emoji}
               </div>
               <p className="text-xs font-black text-white leading-tight drop-shadow">{item.label}</p>
