@@ -13,11 +13,13 @@ export type Voice = {
   ssmlGender: 'MALE' | 'FEMALE' | 'NEUTRAL'
 }
 
-// Warm female Neural2 voice picked for kid-friendliness. If Google ever removes
-// this voice ID, swap to 'en-US-Neural2-C' or 'en-US-Neural2-H'.
+// Google's Journey voices are conversational neural voices designed to sound
+// more human than the older Neural2 line. Journey-F (female) is warm and
+// kid-friendly; swap to Journey-D for a male voice. If Google retires Journey,
+// fall back to 'en-US-Neural2-F'.
 export const DEFAULT_VOICE: Voice = {
   languageCode: 'en-US',
-  name: 'en-US-Neural2-F',
+  name: 'en-US-Journey-F',
   ssmlGender: 'FEMALE',
 }
 
@@ -28,16 +30,20 @@ export async function synthesizeSpeechMp3(
   apiKey: string,
   voice: Voice = DEFAULT_VOICE,
 ): Promise<Buffer> {
+  // Journey voices don't support speakingRate or pitch — passing them fails.
+  const isJourney = voice.name.includes('Journey')
+  const audioConfig: Record<string, unknown> = { audioEncoding: 'MP3' }
+  if (!isJourney) {
+    // 0.95 gives a slightly slower, clearer read for vocabulary learning
+    // without sounding sluggish. Only applied to voices that support it.
+    audioConfig.speakingRate = 0.95
+    audioConfig.pitch = 0
+  }
+
   const body = {
     input: { text },
     voice,
-    audioConfig: {
-      audioEncoding: 'MP3',
-      // 0.95 gives a slightly slower, clearer read for vocabulary learning
-      // without sounding sluggish.
-      speakingRate: 0.95,
-      pitch: 0,
-    },
+    audioConfig,
   }
 
   const res = await fetch(`${TTS_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
