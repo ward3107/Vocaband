@@ -4,6 +4,7 @@
 
 import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
+import { isChunkLoadError, attemptChunkReload } from '../utils/chunkReload';
 
 interface SuspenseWrapperProps {
   children: React.ReactNode;
@@ -84,6 +85,7 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
+  isReloading?: boolean;
 }
 
 export class LazyErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -93,15 +95,26 @@ export class LazyErrorBoundary extends React.Component<ErrorBoundaryProps, Error
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    return { hasError: true, error, isReloading: isChunkLoadError(error) };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Lazy load error:', error, errorInfo);
+    if (isChunkLoadError(error)) {
+      const reloading = attemptChunkReload();
+      if (!reloading) this.setState({ isReloading: false });
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      if (this.state.isReloading) {
+        return (
+          <div className="min-h-[400px] flex items-center justify-center text-stone-500">
+            Updating…
+          </div>
+        );
+      }
       return this.props.fallback || (
         <div className="min-h-[400px] flex items-center justify-center bg-surface">
           <div className="text-center">

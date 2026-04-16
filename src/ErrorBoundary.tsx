@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { isChunkLoadError, attemptChunkReload } from "./utils/chunkReload";
 
 interface Props {
   children: ReactNode;
@@ -7,27 +8,43 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  /** True once we've kicked off a reload to recover from a chunk-load
+   * failure. We render a lightweight spinner instead of the full error
+   * card so the user sees "Updating…" while the tab tears down. */
+  isReloading: boolean;
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
+    this.state = { hasError: false, error: null, isReloading: false };
   }
 
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  public static getDerivedStateFromError(error: Error): Partial<State> {
+    return { hasError: true, error, isReloading: isChunkLoadError(error) };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    if (isChunkLoadError(error)) {
+      const reloading = attemptChunkReload();
+      if (!reloading) {
+        // Guard window expired — stop retrying and show the error screen.
+        this.setState({ isReloading: false });
+      }
+    }
   }
 
   public render() {
     if (this.state.hasError) {
+      if (this.state.isReloading) {
+        return (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", fontFamily: "system-ui", color: "#666" }}>
+            Updating Vocaband…
+          </div>
+        );
+      }
+
       const errorMessage = "Something went wrong.";
       const details = "Please refresh the page and try again. If the problem persists, contact your teacher or administrator.";
 
