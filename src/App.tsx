@@ -1372,38 +1372,75 @@ export default function App() {
   }, []);
 
   // ── Live Challenge: ensure JOIN_CHALLENGE is emitted for students ──
-  // Previously JOIN_CHALLENGE was only emitted inline at login time
-  // (handleStudentLogin line 3658) and on reconnect (sock.on reconnect
-  // line 1337).  That left three gaps where students authenticated
-  // fine but never showed up on the teacher's live podium:
-  //   1. The "click my name from the class list" login path
-  //      (processStudentProfile) never emitted.
-  //   2. Students restoring a cached Supabase session on page refresh
-  //      (restoreSession) never emitted.
-  //   3. Timing race: if the socket wasn't connected at login time,
-  //      the emit got lost (no queue on socket.io-client for events
-  //      sent while disconnected).
-  // This centralised effect fires whenever (student + socket +
-  // classCode) are all present and emits exactly once per unique
-  // (socketId, classCode, uid) tuple.  Covers every entry path without
-  // touching the individual login flows.
+  // Centralised effect that fires whenever (student + socket + classCode)
+  // are all present, emitting exactly once per unique (socketId, uid)
+  // tuple.  Covers every login path (traditional, click-name, restore).
+  //
+  // CRITICAL: the uid in the payload MUST be the Supabase session's
+  // user.id, not user.uid from app state.  The server middleware
+  // authenticates the socket with the session's JWT and stores the
+  // verified uid in socket.data.uid.  The JOIN_CHALLENGE handler then
+  // rejects (silently!) if payload uid !== socket.data.uid.  On the
+  // click-name student login path, user.uid = profile.auth_uid which
+  // can differ from the current session's user.id — that mismatch was
+  // dropping join events on the floor.  Reading the session uid on
+  // every run guarantees we send whatever matches the JWT.
   useEffect(() => {
     if (!user || user.role !== 'student' || !user.classCode) return;
     if (!socket || !socketConnected) return;
-    const joinKey = `${socket.id}:${user.classCode}:${user.uid}`;
-    if (joinChallengeEmittedRef.current === joinKey) return;
-    joinChallengeEmittedRef.current = joinKey;
-    socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
-      classCode: user.classCode,
-      name: user.displayName,
-      uid: user.uid,
-    });
-    // Intentional log — if a student reports "I don't show up on the
-    // teacher's podium", this is the first thing to check in DevTools.
-    // Either the emit fires here (good — backend issue) or it never
-    // runs (missing state, socket disconnected, or user.uid mismatch).
-    console.log('[Live] JOIN_CHALLENGE emitted', { classCode: user.classCode, name: user.displayName, uid: user.uid });
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionUid = session?.user?.id;
+      if (cancelled) return;
+      if (!sessionUid) {
+        console.warn('[Live] JOIN_CHALLENGE skipped — no Supabase session yet. Students without an anonymous session cannot appear on the podium.');
+        return;
+      }
+      const joinKey = `${socket.id}:${user.classCode}:${sessionUid}`;
+      if (joinChallengeEmittedRef.current === joinKey) return;
+      joinChallengeEmittedRef.current = joinKey;
+      socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
+        classCode: user.classCode!,
+        name: user.displayName,
+        uid: sessionUid,
+      });
+      console.log('[Live] JOIN_CHALLENGE emitted', {
+        classCode: user.classCode,
+        name: user.displayName,
+        sessionUid,
+        userUid: user.uid,
+        match: sessionUid === user.uid,
+      });
+    })();
+    return () => { cancelled = true; };
   }, [user?.uid, user?.role, user?.classCode, user?.displayName, socket, socketConnected]);
+
+  // Teacher re-observe on reconnect: LiveChallengeClassSelectView
+  // emits OBSERVE_CHALLENGE once when the teacher picks a class, but
+  // if the socket drops + reconnects mid-challenge the teacher ends
+  // up in a live-challenge room without being subscribed to its
+  // leaderboard updates.  This effect re-emits on every reconnect
+  // while the teacher is inside the live-challenge view.
+  useEffect(() => {
+    if (!user || user.role !== 'teacher') return;
+    if (!socket || !socketConnected) return;
+    if (!selectedClass || !isLiveChallenge) return;
+    socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: selectedClass.code });
+    console.log('[Live] OBSERVE_CHALLENGE re-emitted for teacher', { classCode: selectedClass.code });
+  }, [user?.role, socket, socketConnected, selectedClass, isLiveChallenge]);
+
+  // Listen for server-side challenge error events so we can surface
+  // the rejection reason in the console (and optionally toast) instead
+  // of the silent-drop behaviour that made podium bugs invisible.
+  useEffect(() => {
+    if (!socket) return;
+    const onError = (payload: { event?: string; reason?: string }) => {
+      console.error('[Live] Server rejected event:', payload);
+    };
+    socket.on('challenge_error', onError);
+    return () => { socket.off('challenge_error', onError); };
+  }, [socket]);
 
   // Reset the emit-dedupe key on disconnect so the next connect can
   // re-emit.  Covers reconnects where the socket gets a new id.

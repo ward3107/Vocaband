@@ -330,26 +330,45 @@ async function startServer() {
     const clientIp = getSocketIp(socket);
     if (isDev) console.log(`[Socket] Client connected: uid=${uid}, ip=${clientIp}, socket=${socket.id}`);
 
+    // Helper: emit the reason a challenge event was rejected back to
+    // the specific socket that sent it.  Previously every reject path
+    // was a silent `return`, which made "student doesn't appear on the
+    // podium" impossible to debug — the client had no signal the event
+    // was even rejected.  Now the client can log the reason (and could
+    // optionally toast it) so operators can see the root cause in the
+    // student's DevTools without server log access.
+    const rejectChallenge = (event: string, reason: string) => {
+      if (isDev) console.warn(`[Socket] Rejected ${event}: ${reason}`, { uid: socket.data.uid });
+      socket.emit("challenge_error", { event, reason });
+    };
+
     socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid }: JoinChallengePayload) => {
-      if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid)) return;
+      if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid)) {
+        return rejectChallenge("join_challenge", "invalid payload");
+      }
 
-      // Pre-auth IP limiter: stops raw flooding before we hit Supabase
-      if (!preAuthIpLimiter.checkLimit(clientIp)) return;
+      if (!preAuthIpLimiter.checkLimit(clientIp)) {
+        return rejectChallenge("join_challenge", "rate limited (ip)");
+      }
 
-      // Identity check: payload uid must match the uid verified at connection time.
-      // The connection middleware already verified the JWT and stored the uid in socket.data.
-      if (uid !== socket.data.uid) return;
+      if (uid !== socket.data.uid) {
+        return rejectChallenge("join_challenge", "uid mismatch — payload uid doesn't match JWT uid (ensure app emits session.user.id, not profile.auth_uid)");
+      }
 
-      // Post-auth per-user limiter: each authenticated user gets 5 joins/min
-      if (!perUserLimiter.checkLimit(uid)) return;
+      if (!perUserLimiter.checkLimit(uid)) {
+        return rejectChallenge("join_challenge", "rate limited (per-user)");
+      }
 
       const userData = await getUserRoleAndClass(uid);
-      if (!userData) return;
+      if (!userData) {
+        return rejectChallenge("join_challenge", "no users-table row for this uid");
+      }
 
-      // Only class members (students) or teachers who own the class can join.
       const canJoinAsStudent = userData.role === "student" && userData.classCode === classCode;
       const canJoinAsTeacher = userData.role === "teacher" && await isTeacherForClass(uid, classCode);
-      if (!canJoinAsStudent && !canJoinAsTeacher) return;
+      if (!canJoinAsStudent && !canJoinAsTeacher) {
+        return rejectChallenge("join_challenge", `role/class mismatch — role=${userData.role} userClassCode=${userData.classCode} requestedClassCode=${classCode}`);
+      }
 
       // Fetch student's total score for THIS class via SQL SUM (single row result,
       // much faster than fetching 1000 rows and summing in JS — critical for 200+ users)
@@ -382,22 +401,29 @@ async function startServer() {
 
     // Observe-only mode for teachers - joins room without being on leaderboard
     socket.on(SOCKET_EVENTS.OBSERVE_CHALLENGE, async ({ classCode }: ObserveChallengePayload) => {
-      if (!isValidClassCode(classCode)) return;
+      if (!isValidClassCode(classCode)) {
+        return rejectChallenge("observe_challenge", "invalid classCode");
+      }
 
-      // Pre-auth IP limiter
-      if (!preAuthIpLimiter.checkLimit(clientIp)) return;
+      if (!preAuthIpLimiter.checkLimit(clientIp)) {
+        return rejectChallenge("observe_challenge", "rate limited (ip)");
+      }
 
-      // Use the uid verified at connection time — no need to re-verify the token
       const verifiedUid = socket.data.uid as string;
 
-      // Per-user rate limiter for observe
-      if (!observeLimiter.checkLimit(verifiedUid)) return;
+      if (!observeLimiter.checkLimit(verifiedUid)) {
+        return rejectChallenge("observe_challenge", "rate limited (per-user)");
+      }
 
       const userData = await getUserRoleAndClass(verifiedUid);
-      if (!userData || userData.role !== "teacher") return;
+      if (!userData || userData.role !== "teacher") {
+        return rejectChallenge("observe_challenge", `not a teacher (role=${userData?.role ?? 'none'})`);
+      }
 
       const isOwner = await isTeacherForClass(verifiedUid, classCode);
-      if (!isOwner) return;
+      if (!isOwner) {
+        return rejectChallenge("observe_challenge", "teacher doesn't own this class");
+      }
 
       socket.join(classCode);
       // Send current leaderboard state to the authorized observer
