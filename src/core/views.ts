@@ -31,6 +31,10 @@ export type View =
   | "quick-play-student";
 
 export type ShopTab =
+  // "hub" = the Arcade Lobby landing screen (portal tiles + hero +
+  // daily deal + trending rail).  Other values are category-focused
+  // sheets reached from the hub.
+  | "hub"
   | "eggs"
   | "avatars"
   | "themes"

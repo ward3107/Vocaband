@@ -77,7 +77,7 @@ export default function StudentDashboardView({
         {classNotFoundBanner}
         <StudentTopBar
           onPrivacyClick={() => setView("privacy-settings")}
-          onShopClick={() => { setShopTab("avatars"); setView("shop"); }}
+          onShopClick={() => { setShopTab("hub"); setView("shop"); }}
         />
         <StudentGreetingCard
           user={user}
