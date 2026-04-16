@@ -3701,7 +3701,13 @@ export default function App() {
     let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
 
     // If fewer than 3 distractors available (teacher assigned <4 words),
-    // cycle through the assigned words instead of borrowing from ALL_WORDS
+    // cycle through the assigned words instead of borrowing from ALL_WORDS.
+    // Edge case: if the teacher assigned exactly 1 word, possibleDistractors
+    // is empty — the cycle loop would never terminate and freezes the page.
+    // Fall back to ALL_WORDS in that case so we have real distractors to show.
+    if (possibleDistractors.length === 0) {
+      possibleDistractors = ALL_WORDS.filter(w => w.id !== correct.id);
+    }
     if (possibleDistractors.length < 3) {
       // Shuffle available distractors first
       const shuffledDistractors = shuffle(possibleDistractors);
