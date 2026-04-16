@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
-import type { View } from "./core/views";
+import type { View, ShopTab } from "./core/views";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
@@ -150,7 +150,7 @@ export default function App() {
     } as const;
     setView(viewMap[page]);
   };
-  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
+  const [shopTab, setShopTab] = useState<ShopTab>("avatars");
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
@@ -4689,10 +4689,6 @@ export default function App() {
         {showDemo && (
           <DemoModeWrapper
             onClose={() => setShowDemo(false)}
-            onSignUp={() => {
-              setShowDemo(false);
-              setView("student-account-login");
-            }}
           />
         )}
         {cookieBannerOverlay}
@@ -5192,6 +5188,8 @@ export default function App() {
           setUser={setUser}
           setView={setView}
           showToast={showToast}
+          shopTab={shopTab}
+          setShopTab={setShopTab}
         />
       </LazyWrapper>
     );

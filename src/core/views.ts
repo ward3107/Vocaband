@@ -31,6 +31,7 @@ export type View =
   | "quick-play-student";
 
 export type ShopTab =
+  | "eggs"
   | "avatars"
   | "themes"
   | "powerups"

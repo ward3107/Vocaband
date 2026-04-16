@@ -23,7 +23,6 @@ import { useLanguage, Language } from "../hooks/useLanguage";
 
 interface DemoModeProps {
   onClose: () => void;
-  onSignUp: () => void;
 }
 
 type DemoView = "welcome" | "avatar" | "game-select" | "game" | "results" | "shop";
@@ -79,17 +78,27 @@ const DEMO_WORDS: Word[] = [
 // Translations
 const demoTranslations: Record<Language, Record<string, string>> = {
   en: {
-    demoMode: "Demo Mode — Sign up for full access!",
-    signUpFree: "Sign Up Free",
-    welcomeTitle: "Welcome to Vocaband!",
-    welcomeDesc: "Try our vocabulary games with sample words from Band 1",
-    experienceTitle: "What you'll experience:",
-    sampleWords: "10 sample vocabulary words",
-    gameModes: "10 game modes",
-    xpStreak: "XP & streak system",
-    achievements: "Achievements & rewards",
-    shopPreview: "In-app shop preview",
-    letsGo: "Let's Go!",
+    demoMode: "Demo Mode — a hands-on preview of Vocaband",
+    signUpFree: "",
+    welcomeTitle: "Welcome to Vocaband",
+    welcomeDesc: "An English vocabulary app students actually want to play — built for Israeli classrooms.",
+    introHook: "Why Vocaband?",
+    introHookBody: "Most vocabulary practice feels like homework. Vocaband turns it into a game: XP, streaks, avatars, mystery eggs, and 10 game modes keep students coming back. Teachers get clear analytics on every word each student is learning.",
+    forTeachersTitle: "For English Teachers",
+    forTeachersDesc: "Create assignments in minutes, track per-student + per-word mastery, run live challenges, and grade automatically.",
+    forStudentsTitle: "For Students",
+    forStudentsDesc: "1000+ curated words from Bands 1–3. 10 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
+    tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
+    experienceTitle: "What you'll try in this demo:",
+    sampleWords: "10 sample words from Band 1 (real vocabulary)",
+    gameModes: "A real game mode, end-to-end",
+    xpStreak: "XP, streak, and title progression",
+    achievements: "Achievements & reward pop-ups",
+    shopPreview: "A tour of the avatar + shop system",
+    fullVersionTitle: "The full version adds:",
+    fullVersionBullets: "• 1000+ words across Bands 1–3\n• 10+ game modes (Classic, Spelling, Matching, Listening, Flashcards, Sentence Builder…)\n• Teacher dashboard, class codes, live challenges, gradebook\n• Mystery eggs, premium avatars, themes, titles, frames, boosters\n• Per-student word-mastery analytics",
+    demoRuntime: "~2 minutes, no account needed",
+    letsGo: "Start the demo →",
     chooseAvatar: "Choose Your Avatar",
     pickEmoji: "Pick an emoji to represent you",
     yourName: "Your Name",
@@ -114,11 +123,11 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     correctAns: "Correct",
     xpEarned: "XP Earned",
     yourAvatar: "Your Avatar",
-    wantMore: "Want more?",
-    unlockFeatures: "Sign up to unlock 1000+ words, 10 game modes, avatars, and more!",
+    wantMore: "What you just saw",
+    unlockFeatures: "This was a taste of what students experience every day in Vocaband. The full version expands into 1000+ words, 10+ game modes, live class challenges, and a full teacher dashboard.",
     playAgain: "Play Again",
     closeDemo: "Close Demo",
-    signFree: "Sign Up for Free",
+    signFree: "",
     check: "Check",
     typeWord: "Type the word in English",
     translation: "Translation:",
@@ -151,17 +160,27 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     badgesEarned: "Badges",
   },
   he: {
-    demoMode: "מצב הדגמה — הירשמו לגישה מלאה!",
-    signUpFree: "הרשמה חינם",
-    welcomeTitle: "ברוכים הבאים ל-Vocaband!",
-    welcomeDesc: "נסו את משחקי האוצר מילים עם מילים לדוגמה מ-Band 1",
-    experienceTitle: "מה תחוו:",
-    sampleWords: "10 מילים לדוגמה",
-    gameModes: "10 מצבי משחק",
-    xpStreak: "מערכת XP ורצפים",
-    achievements: "הישגים ופרסים",
-    shopPreview: "תצוגה מקדימה של החנות",
-    letsGo: "בואו נתחיל!",
+    demoMode: "מצב הדגמה — הצצה מעשית ל-Vocaband",
+    signUpFree: "",
+    welcomeTitle: "ברוכים הבאים ל-Vocaband",
+    welcomeDesc: "אפליקציית אוצר מילים באנגלית שתלמידים באמת רוצים לשחק — תפורה לכיתה הישראלית.",
+    introHook: "למה Vocaband?",
+    introHookBody: "רוב התרגולים של אוצר מילים מרגישים כמו שיעורי בית. Vocaband הופכת את זה למשחק: XP, רצפים, אווטרים, ביצי פתעה ו-10 מצבי משחק שמחזירים את התלמידים שוב ושוב. למורים יש אנליטיקה ברורה על כל מילה שכל תלמיד לומד.",
+    forTeachersTitle: "למורים לאנגלית",
+    forTeachersDesc: "צרו מטלות תוך דקות, עקבו אחר שליטה במילים לכל תלמיד, נהלו אתגרים בכיתה וקבלו הערכה אוטומטית.",
+    forStudentsTitle: "לתלמידים",
+    forStudentsDesc: "1000+ מילים ערוכות מ-Band 1 עד 3. 10 מצבי משחק. XP, רצפים, אווטרים וחנות מלאה בפריטים קוסמטיים וחיזוקים.",
+    tryDemoIntro: "בשתי הדקות הבאות תשחקו במצב משחק אמיתי עם 10 מילים לדוגמה ותראו איך מערכת ה-XP, האווטרים והחנות עובדת.",
+    experienceTitle: "מה תנסו בהדגמה:",
+    sampleWords: "10 מילים לדוגמה מ-Band 1 (אוצר מילים אמיתי)",
+    gameModes: "מצב משחק אמיתי, מתחילתו עד סופו",
+    xpStreak: "התקדמות XP, רצפים ותארים",
+    achievements: "הישגים וחלונות פרסים",
+    shopPreview: "סיור במערכת האווטרים והחנות",
+    fullVersionTitle: "הגרסה המלאה מוסיפה:",
+    fullVersionBullets: "• 1000+ מילים ב-Bands 1–3\n• 10+ מצבי משחק (קלאסי, איות, התאמה, הקשבה, כרטיסיות, בונה משפטים…)\n• לוח מורה, קודי כיתה, אתגרי חי, ספר ציונים\n• ביצי פתעה, אווטרים פרימיום, ערכות נושא, תארים, מסגרות וחיזוקים\n• אנליטיקה של שליטה במילים לכל תלמיד",
+    demoRuntime: "~2 דקות, בלי הרשמה",
+    letsGo: "התחילו את ההדגמה ←",
     chooseAvatar: "בחרו את האווטר שלכם",
     pickEmoji: "בחרו אימוג'י שייצג אתכם",
     yourName: "השם שלכם",
@@ -186,11 +205,11 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     correctAns: "נכונות",
     xpEarned: "XP שנצבר",
     yourAvatar: "האווטר שלכם",
-    wantMore: "רוצים עוד?",
-    unlockFeatures: "הירשמו לגישה ל-1000+ מילים, 10 מצבי משחק, אווטרים ועוד!",
+    wantMore: "מה ראיתם עכשיו",
+    unlockFeatures: "זו הייתה טעימה ממה שתלמידים חווים כל יום ב-Vocaband. הגרסה המלאה מתרחבת ל-1000+ מילים, 10+ מצבי משחק, אתגרים חיים בכיתה, ולוח מורה מלא.",
     playAgain: "שחקו שוב",
     closeDemo: "סגור הדגמה",
-    signFree: "הירשמו בחינם",
+    signFree: "",
     check: "בדוק",
     typeWord: "הקלד את המילה באנגלית",
     translation: "תרגום:",
@@ -223,17 +242,27 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     badgesEarned: "הישגים",
   },
   ar: {
-    demoMode: "وضع تجريبي — سجل للوصول الكامل!",
-    signUpFree: "سجل مجاناً",
-    welcomeTitle: "مرحباً بك في Vocaband!",
-    welcomeDesc: "جرب ألعاب المفردات مع كلمات نموذجية من Band 1",
-    experienceTitle: "ما ستجربه:",
-    sampleWords: "10 كلمات نموذجية",
-    gameModes: "10 أوضاع لعب",
-    xpStreak: "نظام XP والتتابعات",
-    achievements: "الإنجازات والمكافآت",
-    shopPreview: "معاينة متجر التطبيق",
-    letsGo: "هيا نبدأ!",
+    demoMode: "وضع تجريبي — معاينة عملية لـ Vocaband",
+    signUpFree: "",
+    welcomeTitle: "مرحباً بك في Vocaband",
+    welcomeDesc: "تطبيق مفردات إنجليزية يرغب الطلاب فعلاً في اللعب به — مصمم للصفوف الإسرائيلية.",
+    introHook: "لماذا Vocaband؟",
+    introHookBody: "معظم تمارين المفردات تشبه الواجبات. Vocaband يحولها إلى لعبة: XP، سلاسل، صور رمزية، بيض مفاجآت، و10 أوضاع لعب تُبقي الطلاب يعودون. يحصل المعلمون على تحليلات واضحة لكل كلمة يتعلمها كل طالب.",
+    forTeachersTitle: "لمعلمي الإنجليزية",
+    forTeachersDesc: "أنشئ واجبات خلال دقائق، تابع إتقان الكلمات لكل طالب، أدر تحديات مباشرة في الصف، واحصل على تقييم تلقائي.",
+    forStudentsTitle: "للطلاب",
+    forStudentsDesc: "1000+ كلمة منسقة من Bands 1–3. 10 أوضاع لعب. XP، سلاسل، صور رمزية، ومتجر مليء بالتحسينات والتعزيزات.",
+    tryDemoIntro: "في الدقيقتين التاليتين ستلعب وضع لعبة حقيقياً مع 10 كلمات نموذجية وترى نظام XP والصور الرمزية والمتجر يعمل مباشرة.",
+    experienceTitle: "ما ستجربه في هذا العرض:",
+    sampleWords: "10 كلمات نموذجية من Band 1 (مفردات حقيقية)",
+    gameModes: "وضع لعبة حقيقي، من البداية إلى النهاية",
+    xpStreak: "تقدم XP والسلاسل والألقاب",
+    achievements: "الإنجازات وإشعارات المكافآت",
+    shopPreview: "جولة في نظام الصور الرمزية والمتجر",
+    fullVersionTitle: "النسخة الكاملة تضيف:",
+    fullVersionBullets: "• 1000+ كلمة في Bands 1–3\n• 10+ أوضاع لعب (كلاسيكي، تهجئة، مطابقة، استماع، بطاقات، بناء جمل…)\n• لوحة المعلم، رموز الصف، تحديات مباشرة، دفتر درجات\n• بيض مفاجآت، صور رمزية مميزة، مظاهر، ألقاب، إطارات، معززات\n• تحليلات إتقان الكلمات لكل طالب",
+    demoRuntime: "~2 دقائق، دون حساب",
+    letsGo: "ابدأ العرض التجريبي ←",
     chooseAvatar: "اختر صورتك الرمزية",
     pickEmoji: "اختر إيموجي يمثلك",
     yourName: "اسمك",
@@ -258,11 +287,11 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     correctAns: "صحيح",
     xpEarned: "XP المكتسب",
     yourAvatar: "صورتك الرمزية",
-    wantMore: "تريد المزيد؟",
-    unlockFeatures: "سجل للوصول إلى 1000+ كلمة، 10 أوضاع لعب، صور رمزية والمزيد!",
+    wantMore: "ما شاهدته للتو",
+    unlockFeatures: "كانت تلك نكهة مما يختبره الطلاب كل يوم في Vocaband. النسخة الكاملة تتوسع إلى 1000+ كلمة، 10+ أوضاع لعب، تحديات صف مباشرة، ولوحة معلم كاملة.",
     playAgain: "العب مرة أخرى",
     closeDemo: "إغلاق العرض",
-    signFree: "سجل مجاناً",
+    signFree: "",
     check: "تحقق",
     typeWord: "اكتب الكلمة بالإنجليزية",
     translation: "الترجمة:",
@@ -345,7 +374,7 @@ const getXPTitle = (xpAmount: number) => {
   return XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
 };
 
-const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
+const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const { language, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
   const modes = GAME_MODES[language];
@@ -854,16 +883,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
   return (
     <div className="fixed inset-0 z-[100] bg-stone-50 overflow-auto" dir={dir}>
-      {/* Top Banner - More subtle */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 px-4 text-center font-bold text-sm flex items-center justify-center gap-2">
+      {/* Top banner — demo indicator only (no sign-up CTA; demo's job is
+          to showcase the product, not push a sign-up). */}
+      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-2.5 px-4 text-center font-bold text-sm flex items-center justify-center gap-2 shadow-md">
         <Sparkles size={14} />
-        <span>{t.demoMode}</span>
-        <button
-          onClick={onSignUp}
-          className="bg-white text-blue-600 px-3 py-1 rounded-full text-xs font-black hover:scale-105 transition-transform shadow-md"
-        >
-          {t.signUpFree}
-        </button>
+        <span className="tracking-wide">{t.demoMode}</span>
       </div>
 
       {/* Close Button */}
@@ -876,26 +900,71 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
 
       <div className="max-w-lg mx-auto px-4 py-6 pt-16">
         <AnimatePresence mode="wait">
-          {/* Welcome Screen */}
+          {/* Welcome screen — doubles as the product sales card: what
+              Vocaband is, who it's for, what's in the full version, and
+              what the next 2 minutes of the demo will show. No sign-up
+              CTA — the whole demo is there to let the product speak. */}
           {view === "welcome" && (
             <motion.div
               key="welcome"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="text-center"
             >
-              <div className="text-6xl mb-4">🎮</div>
-              <h1 className="text-3xl font-black font-headline text-stone-900 mb-2">
-                {t.welcomeTitle}
-              </h1>
-              <p className="text-stone-600 mb-8">
-                {t.welcomeDesc}
-              </p>
+              {/* Hero — brand gradient card */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20">
+                <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
+                <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
+                <div className="relative text-center">
+                  <div className="text-5xl sm:text-6xl mb-3">🎮</div>
+                  <h1 className="text-2xl sm:text-3xl font-black font-headline text-white mb-2 tracking-tight">
+                    {t.welcomeTitle}
+                  </h1>
+                  <p className="text-white/90 text-sm sm:text-base max-w-md mx-auto">
+                    {t.welcomeDesc}
+                  </p>
+                  <div className="inline-flex items-center gap-1.5 mt-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1 text-xs font-bold text-white">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                    {t.demoRuntime}
+                  </div>
+                </div>
+              </div>
 
-              <div className="bg-white rounded-3xl p-6 mb-6 shadow-sm border border-stone-200">
-                <h3 className={`font-bold text-stone-800 mb-4 ${textAlign}`}>{t.experienceTitle}</h3>
-                <div className="space-y-3">
+              {/* Why Vocaband — the pitch */}
+              <div className="bg-white rounded-3xl p-5 sm:p-6 mb-4 shadow-sm border border-stone-200">
+                <h3 className={`font-black text-stone-900 text-lg mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <Sparkles size={18} className="text-violet-500" />
+                  {t.introHook}
+                </h3>
+                <p className={`text-stone-600 text-sm leading-relaxed ${textAlign}`}>{t.introHookBody}</p>
+              </div>
+
+              {/* Audience split — teachers + students side by side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-5 border border-blue-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center text-lg shadow-sm">🍎</div>
+                    <h4 className="font-black text-stone-900">{t.forTeachersTitle}</h4>
+                  </div>
+                  <p className={`text-xs sm:text-sm text-stone-600 leading-relaxed ${textAlign}`}>{t.forTeachersDesc}</p>
+                </div>
+                <div className="bg-gradient-to-br from-fuchsia-50 to-rose-50 rounded-3xl p-5 border border-fuchsia-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-fuchsia-500 text-white flex items-center justify-center text-lg shadow-sm">🎯</div>
+                    <h4 className="font-black text-stone-900">{t.forStudentsTitle}</h4>
+                  </div>
+                  <p className={`text-xs sm:text-sm text-stone-600 leading-relaxed ${textAlign}`}>{t.forStudentsDesc}</p>
+                </div>
+              </div>
+
+              {/* What you'll try in the demo */}
+              <div className="bg-white rounded-3xl p-5 sm:p-6 mb-4 shadow-sm border border-stone-200">
+                <h3 className={`font-black text-stone-900 mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <Target size={18} className="text-emerald-500" />
+                  {t.experienceTitle}
+                </h3>
+                <p className={`text-xs text-stone-500 mb-3 ${textAlign}`}>{t.tryDemoIntro}</p>
+                <div className="space-y-2">
                   {[
                     { icon: "🎯", text: t.sampleWords },
                     { icon: "🎮", text: t.gameModes },
@@ -903,21 +972,32 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                     { icon: "🏆", text: t.achievements },
                     { icon: "🛍️", text: t.shopPreview },
                   ].map((item, i) => (
-                    <div key={i} className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse justify-end' : ''}`}>
-                      <span className="text-xl">{item.icon}</span>
-                      <span className={`text-stone-600 ${textAlign}`}>{item.text}</span>
+                    <div key={i} className={`flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2 ${isRTL ? 'flex-row-reverse justify-end' : ''}`}>
+                      <span className="text-lg">{item.icon}</span>
+                      <span className={`text-sm text-stone-700 ${textAlign}`}>{item.text}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Full version preview — what's beyond the demo */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-5 sm:p-6 mb-6 border border-amber-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Crown size={18} className="text-amber-600" />
+                  <h3 className="font-black text-stone-900">{t.fullVersionTitle}</h3>
+                </div>
+                <div className={`text-xs sm:text-sm text-stone-700 leading-relaxed whitespace-pre-line ${textAlign}`}>
+                  {t.fullVersionBullets}
+                </div>
+              </div>
+
               <button
                 onClick={() => setView("avatar")}
-                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-black transition-colors flex items-center justify-center gap-2"
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-black text-lg hover:bg-black active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2"
               >
                 {t.letsGo}
-                {!isRTL && <ArrowRight size={20} />}
-                {isRTL && <ArrowLeft size={20} />}
               </button>
             </motion.div>
           )}
@@ -1789,19 +1869,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                 </div>
               )}
 
-              {/* CTA */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-3xl p-6 mb-6">
-                <h3 className="text-xl font-black mb-2">{t.wantMore}</h3>
-                <p className="text-sm opacity-90 mb-4">
-                  {t.unlockFeatures}
-                </p>
-                <button
-                  onClick={onSignUp}
-                  className="w-full bg-white text-blue-600 py-3 rounded-xl font-bold hover:bg-stone-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Gift size={20} />
-                  {t.signFree}
-                </button>
+              {/* Summary card — recaps what the student just experienced
+                  and teases the full feature set without a sign-up CTA. */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white p-6 mb-6 shadow-xl shadow-violet-500/20">
+                <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 bg-yellow-300/25 rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gift size={20} />
+                    <h3 className="text-xl font-black">{t.wantMore}</h3>
+                  </div>
+                  <p className="text-sm text-white/90 leading-relaxed">
+                    {t.unlockFeatures}
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-3">
@@ -1921,13 +2001,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                                 </div>
                               )}
                             </div>
-                            <button
-                              onClick={onSignUp}
-                              className="w-full py-2 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-xl font-bold text-sm hover:from-pink-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-                            >
+                            <div className="w-full py-2 bg-stone-100 text-stone-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-stone-200">
                               <ShoppingBag size={16} />
-                              Sign Up to Unlock
-                            </button>
+                              Unlocks by earning XP in the full version
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1949,13 +2026,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                         </div>
                       ))}
                     </div>
-                    <button
-                      onClick={onSignUp}
-                      className="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-xl font-bold hover:from-pink-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-                    >
+                    <div className="w-full py-3 bg-white text-stone-700 rounded-xl font-bold flex items-center justify-center gap-2 border border-amber-200">
                       <ShoppingBag size={18} />
-                      Sign Up to Unlock Premium Avatars
-                    </button>
+                      Available in the full version
+                    </div>
                   </div>
                 </div>
               )}
@@ -2028,16 +2102,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onSignUp }) => {
                     <h2 className="text-xl font-black mb-2 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">
                       🔥 {t.shopFull}
                     </h2>
-                    <p className="text-stone-600 text-sm mb-4">
-                      Sign up to access 100+ avatars, themes, power-ups, and more!
+                    <p className="text-stone-600 text-sm">
+                      The full version includes 100+ avatars, themes, frames, titles,
+                      mystery eggs, and power-ups — all earned by playing and gaining XP.
                     </p>
-                    <button
-                      onClick={onSignUp}
-                      className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:from-pink-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-                    >
-                      <ShoppingBag size={18} />
-                      {t.signFree}
-                    </button>
                   </div>
 
                   {/* Locked Premium Avatars Preview */}

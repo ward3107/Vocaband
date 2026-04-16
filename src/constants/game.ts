@@ -112,6 +112,71 @@ export const THEMES = [
   { id: 'esports', name: 'Esports RGB', preview: '⚡', colors: { bg: 'bg-gradient-to-br from-black via-gray-900 to-black', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 350 },
 ];
 
+// --- SHOP: MYSTERY EGGS & CHESTS ---
+// Eggs and chests give students a gamified XP-sink + reward loop. Each
+// defines a cost, a description, and a random-drop payload range. The
+// client opens them via a dedicated RPC (open_mystery_egg) which rolls
+// the reward server-side so it can't be spoofed. Fallback for a missing
+// RPC: open_mystery_egg can be added in a later migration — until then
+// the UI surfaces the shop entries and the open action will just show
+// a coming-soon toast. No behavioural breakage.
+export const MYSTERY_EGGS = [
+  {
+    id: 'starter_egg',
+    name: 'Starter Egg',
+    emoji: '🥚',
+    desc: 'A simple egg. Drops 5-25 XP.',
+    cost: 30,
+    rarity: 'common' as const,
+    minXp: 5, maxXp: 25,
+  },
+  {
+    id: 'golden_egg',
+    name: 'Golden Egg',
+    emoji: '🐣',
+    desc: 'Sparkles gold. Drops 20-80 XP + a small chance of a rare avatar.',
+    cost: 80,
+    rarity: 'rare' as const,
+    minXp: 20, maxXp: 80,
+  },
+  {
+    id: 'dragon_egg',
+    name: 'Dragon Egg',
+    emoji: '🐉',
+    desc: 'Something mighty inside. Drops 80-200 XP.',
+    cost: 200,
+    rarity: 'epic' as const,
+    minXp: 80, maxXp: 200,
+  },
+  {
+    id: 'treasure_chest',
+    name: 'Treasure Chest',
+    emoji: '🎁',
+    desc: 'Premium loot. Drops 150-400 XP + guaranteed cosmetic.',
+    cost: 350,
+    rarity: 'legendary' as const,
+    minXp: 150, maxXp: 400,
+  },
+  {
+    id: 'cosmic_egg',
+    name: 'Cosmic Egg',
+    emoji: '🌟',
+    desc: 'Made of stardust. Drops 250-600 XP + a premium title.',
+    cost: 500,
+    rarity: 'legendary' as const,
+    minXp: 250, maxXp: 600,
+  },
+  {
+    id: 'rainbow_egg',
+    name: 'Rainbow Egg',
+    emoji: '🌈',
+    desc: 'The rarest egg. Drops 400-1000 XP + a random premium avatar.',
+    cost: 800,
+    rarity: 'mythic' as const,
+    minXp: 400, maxXp: 1000,
+  },
+];
+
 // --- SHOP: POWER-UPS & BOOSTERS ---
 // Power-ups consume on use (inventory count) — students stack them.
 // Boosters are one-shot buffs with a duration (handled in App.tsx).

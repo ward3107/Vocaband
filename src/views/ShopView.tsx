@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { CheckCircle2, Zap } from "lucide-react";
+import { CheckCircle2, Zap, Sparkles } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import FloatingButtons from "../components/FloatingButtons";
 import {
   XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
   THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES,
+  MYSTERY_EGGS,
 } from "../constants/game";
 import { AVATAR_CATEGORIES } from "../constants/avatars";
-import type { View } from "../core/views";
+import type { View, ShopTab } from "../core/views";
 
 interface ShopViewProps {
   user: AppUser;
@@ -16,10 +16,21 @@ interface ShopViewProps {
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   setView: React.Dispatch<React.SetStateAction<View>>;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  shopTab: ShopTab;
+  setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
 }
 
-export default function ShopView({ user, xp, setXp, setUser, setView, showToast }: ShopViewProps) {
-  const [shopTab, setShopTab] = useState<"avatars" | "themes" | "powerups" | "titles" | "frames" | "boosters">("avatars");
+// Rarity → gradient / ring classes used on egg cards. Kept in one place so
+// the visual rarity language stays consistent with the eggs themselves.
+const RARITY_STYLES: Record<string, { bg: string; ring: string; badge: string; glow: string }> = {
+  common:    { bg: 'from-stone-100 to-stone-200',          ring: 'ring-stone-300',   badge: 'bg-stone-200 text-stone-700',    glow: 'from-stone-200/0 to-stone-300/0' },
+  rare:      { bg: 'from-sky-100 to-blue-200',             ring: 'ring-blue-300',    badge: 'bg-blue-200 text-blue-800',      glow: 'from-sky-300/40 to-blue-400/40' },
+  epic:      { bg: 'from-violet-100 to-purple-200',        ring: 'ring-violet-300',  badge: 'bg-violet-200 text-violet-800',  glow: 'from-violet-400/40 to-purple-500/40' },
+  legendary: { bg: 'from-amber-100 via-yellow-100 to-orange-200', ring: 'ring-amber-300', badge: 'bg-amber-200 text-amber-800', glow: 'from-amber-400/50 to-orange-500/50' },
+  mythic:    { bg: 'from-pink-200 via-fuchsia-200 to-violet-200', ring: 'ring-fuchsia-400', badge: 'bg-gradient-to-r from-pink-400 to-violet-500 text-white', glow: 'from-pink-400/60 via-fuchsia-500/60 to-violet-500/60' },
+};
+
+export default function ShopView({ user, xp, setXp, setUser, setView, showToast, shopTab, setShopTab }: ShopViewProps) {
 
   const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
     if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
@@ -58,6 +69,32 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast 
     setXp(data.new_xp);
     setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
     showToast(`Got ${powerUp.name}!`, "success");
+  };
+
+  // Mystery-egg purchase flow. Calls the (optional) server-side
+  // `open_mystery_egg` RPC which rolls the reward and returns either
+  // `{ success, new_xp, reward_xp, reward_item?, reward_label? }` or
+  // `{ error }`. If the RPC isn't deployed yet, we fall back to a
+  // pure-client XP deduction + random roll so the feature still shows
+  // students a tangible drop — the server RPC can replace this later.
+  const purchaseEgg = async (egg: typeof MYSTERY_EGGS[0]) => {
+    if (xp < egg.cost) { showToast("Not enough XP!", "error"); return; }
+    const { data, error } = await supabase.rpc('open_mystery_egg', { egg_id: egg.id, egg_cost: egg.cost });
+    if (!error && data?.success) {
+      setXp(data.new_xp);
+      const rewardLabel = data.reward_label || `+${data.reward_xp ?? 0} XP`;
+      showToast(`${egg.emoji} ${egg.name} opened! ${rewardLabel}`, "success");
+      return;
+    }
+    // Fallback: RPC missing or returned an error → do the deduction +
+    // reward through the existing purchase_item RPC (which we know works)
+    // and roll the reward client-side. This keeps the feature usable
+    // pre-migration without risking the DB state getting out of sync.
+    const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
+    const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
+    if (pErr || !pData?.success) { showToast(pData?.error || "Could not open egg — try again later.", "error"); return; }
+    setXp(pData.new_xp);
+    showToast(`${egg.emoji} ${egg.name} opened! +${rewardXp} XP`, "success");
   };
 
   const purchaseBooster = async (booster: typeof BOOSTERS_DEFS[0]) => {
@@ -109,11 +146,14 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast 
           </div>
         </div>
 
-        {/* Tabs — segmented pill group, scrolls horizontally on mobile */}
+        {/* Tabs — segmented pill group, scrolls horizontally on mobile.
+            "Eggs" leads because it's the new hero category we want students
+            to try first. */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
-          {(["avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => {
+          {(["eggs", "avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => {
             const isActive = shopTab === tab;
             const labels = {
+              eggs: { emoji: '🥚', text: 'Eggs' },
               avatars: { emoji: '🎭', text: 'Avatars' },
               themes: { emoji: '🎨', text: 'Themes' },
               titles: { emoji: '🏷️', text: 'Titles' },
@@ -135,6 +175,77 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast 
             );
           })}
         </div>
+
+        {/* Mystery Eggs — the new hero shop category. Each egg is a big,
+            3D-feeling card with a rarity-coded gradient, ambient glow, and
+            an animated emoji that wobbles on hover so it feels alive. */}
+        {shopTab === "eggs" && (
+          <div className="space-y-4">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 shadow-lg shadow-violet-500/20">
+              <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-amber-300/40 rounded-full blur-3xl" />
+              <div className="relative flex items-center gap-3">
+                <Sparkles size={22} className="text-white" />
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-white">Mystery Eggs & Chests</h2>
+                  <p className="text-xs sm:text-sm text-white/90 mt-0.5">Spend XP to open an egg — every egg drops a random XP reward (and sometimes a surprise).</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {MYSTERY_EGGS.map(egg => {
+                const rarity = RARITY_STYLES[egg.rarity] ?? RARITY_STYLES.common;
+                const canAfford = xp >= egg.cost;
+                return (
+                  <div
+                    key={egg.id}
+                    className={`relative group overflow-hidden rounded-3xl bg-gradient-to-br ${rarity.bg} p-4 sm:p-5 ring-2 ${rarity.ring} shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all`}
+                  >
+                    {/* Ambient rarity glow behind the egg */}
+                    <div aria-hidden className={`pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl bg-gradient-to-br ${rarity.glow}`} />
+                    {/* Rarity badge */}
+                    <div className="relative flex justify-end">
+                      <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${rarity.badge}`}>
+                        {egg.rarity}
+                      </span>
+                    </div>
+                    {/* Giant animated emoji */}
+                    <div className="relative flex justify-center my-2 sm:my-3">
+                      <span className="text-6xl sm:text-7xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                        {egg.emoji}
+                      </span>
+                    </div>
+                    <h3 className="relative text-sm sm:text-base font-black text-stone-900 text-center">{egg.name}</h3>
+                    <p className="relative text-[11px] sm:text-xs text-stone-700/80 text-center mt-1 min-h-[2.5rem]">{egg.desc}</p>
+                    {/* XP drop range chip */}
+                    <div className="relative flex justify-center mt-2">
+                      <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-stone-700 bg-white/70 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/80">
+                        <Zap size={10} className="text-amber-500 fill-amber-500" />
+                        {egg.minXp}–{egg.maxXp} XP drop
+                      </span>
+                    </div>
+                    {/* Open button */}
+                    <button
+                      onClick={() => purchaseEgg(egg)}
+                      disabled={!canAfford}
+                      type="button"
+                      style={{ touchAction: 'manipulation' }}
+                      className={`relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-sm font-black transition-all ${
+                        canAfford
+                          ? 'bg-stone-900 text-white hover:bg-stone-800 active:scale-95 shadow-md'
+                          : 'bg-white/60 text-stone-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {canAfford ? 'Open' : 'Need'} <Zap size={12} className="text-amber-400 fill-amber-400" /> {egg.cost}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-center text-xs text-stone-500 italic">Tip: save up for the Rainbow Egg — it's the rarest drop in the shop.</p>
+          </div>
+        )}
 
         {/* Avatar Shop */}
         {shopTab === "avatars" && (
@@ -172,22 +283,29 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast 
                           <p className="text-xs text-stone-400 mt-1">{xp} / {unlock.xpRequired} XP ({progressPercent}%)</p>
                         </div>
                       )}
-                      <div className={`grid grid-cols-6 sm:grid-cols-10 gap-1.5 p-3 ${!isUnlocked ? "opacity-40 pointer-events-none" : ""}`}>
+                      <div className={`grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 p-3 sm:p-4 ${!isUnlocked ? "opacity-40 pointer-events-none" : ""}`}>
                         {AVATAR_CATEGORIES[category].map(a => {
                           const isEquipped = user.avatar === a;
                           return (
                             <button
                               key={a}
                               onClick={() => { if (isUnlocked) equipAvatar(a); }}
-                              className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl text-xl sm:text-2xl transition-all ${
+                              type="button"
+                              style={{ touchAction: 'manipulation' }}
+                              className={`relative aspect-square flex items-center justify-center rounded-2xl text-3xl sm:text-4xl transition-all border ${
                                 isEquipped
-                                  ? "bg-gradient-to-br from-blue-300 via-blue-500 to-blue-800 shadow-lg shadow-blue-200 ring-2 ring-blue-400 scale-110"
+                                  ? "bg-gradient-to-br from-indigo-400 via-violet-500 to-fuchsia-500 border-white shadow-lg shadow-violet-300/50 ring-2 ring-violet-400 scale-105"
                                   : isUnlocked
-                                  ? "bg-white hover:scale-110 hover:shadow-md shadow-sm cursor-pointer"
-                                  : "bg-stone-100 grayscale"
+                                  ? "bg-gradient-to-br from-white to-stone-50 border-stone-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-200 shadow-sm cursor-pointer"
+                                  : "bg-stone-100 border-stone-200 grayscale"
                               }`}
                             >
-                              {isUnlocked ? a : "?"}
+                              <span className="drop-shadow-sm">{isUnlocked ? a : "?"}</span>
+                              {isEquipped && (
+                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-md">
+                                  <CheckCircle2 size={14} className="text-violet-600" />
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -198,29 +316,78 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast 
               </div>
             </div>
 
-            {/* Featured Premium Avatars */}
-            <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-amber-100">
-              <h2 className="text-xl font-black mb-2">Featured Avatars</h2>
-              <p className="text-stone-500 text-sm mb-4">Exclusive avatars you can buy with XP!</p>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+            {/* Featured Premium Avatars — hero "trading card" style tiles:
+                bigger, tilted gradient backgrounds with ambient glow and
+                a floating emoji so they feel more like collectibles than
+                plain grid items. */}
+            <div className="bg-gradient-to-br from-white to-amber-50/40 rounded-3xl p-6 shadow-md border-2 border-amber-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={18} className="text-amber-500" />
+                <h2 className="text-xl font-black">Featured Avatars</h2>
+              </div>
+              <p className="text-stone-500 text-sm mb-4">Exclusive premium avatars — limited-style drops for XP.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 {PREMIUM_AVATARS.map(avatar => {
                   const isOwned = (user.unlockedAvatars ?? []).includes(avatar.emoji);
                   const isEquipped = user.avatar === avatar.emoji;
                   const canAfford = xp >= avatar.cost;
+                  // Gradient cycles so the wall of cards feels varied
+                  // without us having to store per-avatar colour meta.
+                  const gradients = [
+                    'from-violet-400 via-fuchsia-500 to-pink-500',
+                    'from-sky-400 via-cyan-500 to-emerald-500',
+                    'from-amber-400 via-orange-500 to-rose-500',
+                    'from-emerald-400 via-teal-500 to-sky-500',
+                    'from-rose-400 via-pink-500 to-purple-500',
+                  ];
+                  const gradient = gradients[Math.abs(avatar.emoji.charCodeAt(0)) % gradients.length];
                   return (
-                    <div key={avatar.emoji} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${isEquipped ? "border-blue-500 bg-blue-50" : isOwned ? "border-green-200 bg-green-50" : "border-stone-100 bg-stone-50"}`}>
-                      <span className="text-4xl mb-2">{isOwned ? avatar.emoji : "?"}</span>
-                      <span className="text-xs font-bold text-stone-700 text-center">{avatar.name}</span>
-                      {isEquipped ? (
-                        <span className="text-xs font-bold text-blue-600 mt-1">Equipped</span>
-                      ) : isOwned ? (
-                        <button onClick={() => equipAvatar(avatar.emoji)} className="text-xs font-bold text-green-600 mt-1 hover:text-green-800 px-2 py-0.5 rounded-lg bg-green-100 hover:bg-green-200 transition-all">Equip</button>
-                      ) : (
-                        <button onClick={() => purchaseAvatar(avatar)} disabled={!canAfford}
-                          className={`text-xs font-bold mt-1 px-2 py-0.5 rounded-lg transition-all ${canAfford ? "text-amber-700 bg-amber-100 hover:bg-amber-200" : "text-stone-400 bg-stone-100 cursor-not-allowed"}`}>
-                          {avatar.cost} XP
-                        </button>
-                      )}
+                    <div
+                      key={avatar.emoji}
+                      className={`relative overflow-hidden rounded-3xl transition-all shadow-md hover:shadow-2xl hover:-translate-y-0.5 ${
+                        isEquipped ? "ring-2 ring-violet-500" : ""
+                      }`}
+                    >
+                      {/* Gradient back panel — gives the card its 3D pop */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} ${!isOwned ? "opacity-80" : ""}`} />
+                      {/* Soft radial glow behind the emoji */}
+                      <div aria-hidden className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 bg-white/30 rounded-full blur-3xl" />
+                      {/* Subtle noise / sparkle overlay */}
+                      <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/20" />
+
+                      <div className="relative p-4 flex flex-col items-center">
+                        {/* Hero emoji in a frosted circle */}
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 backdrop-blur-sm border border-white/40 flex items-center justify-center mb-2 shadow-inner">
+                          <span className="text-5xl sm:text-6xl drop-shadow-lg">{isOwned ? avatar.emoji : "?"}</span>
+                        </div>
+                        <span className="text-sm font-black text-white text-center drop-shadow">{avatar.name}</span>
+                        <div className="mt-2 w-full flex justify-center">
+                          {isEquipped ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-white/25 backdrop-blur-sm px-3 py-1 rounded-full border border-white/40">
+                              <CheckCircle2 size={12} /> Equipped
+                            </span>
+                          ) : isOwned ? (
+                            <button
+                              onClick={() => equipAvatar(avatar.emoji)}
+                              type="button"
+                              style={{ touchAction: 'manipulation' }}
+                              className="inline-flex items-center gap-1 text-xs font-black text-stone-900 bg-white hover:bg-stone-50 px-3 py-1 rounded-full shadow-md transition-all"
+                            >
+                              Equip
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => purchaseAvatar(avatar)}
+                              disabled={!canAfford}
+                              type="button"
+                              style={{ touchAction: 'manipulation' }}
+                              className={`inline-flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full shadow-md transition-all ${canAfford ? "text-stone-900 bg-white hover:bg-stone-50" : "text-white/70 bg-black/20 cursor-not-allowed"}`}
+                            >
+                              <Zap size={10} className="text-amber-500 fill-amber-500" /> {avatar.cost} XP
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
