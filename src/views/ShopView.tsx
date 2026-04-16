@@ -69,32 +69,71 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast 
   };
 
   const activeThemeConfig = THEMES.find(t => t.id === (user.activeTheme ?? 'default')) ?? THEMES[0];
+  const isDefault = (user?.activeTheme ?? 'default') === 'default';
+  const pageBg = isDefault
+    ? 'bg-gradient-to-b from-violet-50 via-stone-50 to-white'
+    : activeThemeConfig.colors.bg;
 
   return (
-    <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
+    <div className={`min-h-screen ${pageBg} p-4 sm:p-6`}>
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
+        {/* Header row — Back link + live XP balance */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => setView("student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
-            ← Back
+          <button
+            onClick={() => setView("student-dashboard")}
+            type="button"
+            style={{ touchAction: 'manipulation' }}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-stone-500 hover:text-stone-900 transition-colors"
+          >
+            ← Back to dashboard
           </button>
-          <div className="flex items-center gap-2">
-            <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl font-black text-lg flex items-center gap-2 border-2 border-amber-200">
-              <Zap size={18} /> {xp} XP
-            </div>
+          <div className="flex items-center gap-2 bg-white rounded-full pl-2 pr-3 py-1.5 border border-stone-200 shadow-sm">
+            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+              <Zap size={14} className="text-white fill-white" />
+            </span>
+            <span className="font-black text-stone-900 tabular-nums">{xp}</span>
+            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">XP</span>
           </div>
         </div>
 
-        <h1 className={`text-3xl font-black mb-6 ${activeThemeConfig.colors.text}`}>🛍️ Shop</h1>
+        {/* Shop hero */}
+        <div className="relative overflow-hidden rounded-[28px] mb-6 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
+          <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-cyan-400/25 rounded-full blur-3xl" />
+          <div className="relative">
+            <p className="text-xs font-bold text-white/80 uppercase tracking-widest mb-1">The Shop</p>
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Treat yourself 🎁</h1>
+            <p className="text-sm text-white/90 mt-2 max-w-md">
+              Spend XP on avatars, themes, frames, titles, and power-ups. New items drop as you level up.
+            </p>
+          </div>
+        </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {(["avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => (
-            <button key={tab} onClick={() => setShopTab(tab)}
-              className={`px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all ${shopTab === tab ? "bg-blue-600 text-white shadow-md" : "bg-white text-stone-500 hover:bg-blue-50 border-2 border-blue-200"}`}>
-              {tab === "avatars" ? "🎭 Avatars" : tab === "themes" ? "🎨 Themes" : tab === "titles" ? "🏷️ Titles" : tab === "frames" ? "🖼️ Frames" : tab === "boosters" ? "🔥 Boosters" : "⚡ Power-ups"}
-            </button>
-          ))}
+        {/* Tabs — segmented pill group, scrolls horizontally on mobile */}
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
+          {(["avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => {
+            const isActive = shopTab === tab;
+            const labels = {
+              avatars: { emoji: '🎭', text: 'Avatars' },
+              themes: { emoji: '🎨', text: 'Themes' },
+              titles: { emoji: '🏷️', text: 'Titles' },
+              frames: { emoji: '🖼️', text: 'Frames' },
+              boosters: { emoji: '🔥', text: 'Boosters' },
+              powerups: { emoji: '⚡', text: 'Power-ups' },
+            };
+            return (
+              <button
+                key={tab}
+                onClick={() => setShopTab(tab)}
+                type="button"
+                style={{ touchAction: 'manipulation', scrollSnapAlign: 'center' }}
+                className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"}`}
+              >
+                <span className="text-base">{labels[tab].emoji}</span>
+                <span>{labels[tab].text}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Avatar Shop */}
