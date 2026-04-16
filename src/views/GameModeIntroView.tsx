@@ -101,12 +101,25 @@ export default function GameModeIntroView({
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
       >
-        {/* Language toggle — pill group, sticks to top */}
+        {/* Language toggle — drives BOTH the instruction language here AND
+            the student's game translation target language. Picking "عربي"
+            or "עברית" also commits the matching targetLanguage so the
+            duplicate "Choose your translation language" card below isn't
+            needed. "EN" doesn't set a target (Arabic/Hebrew are the only
+            valid translation targets for this app). */}
         <div className="flex justify-center gap-1.5 mb-6 bg-stone-100 rounded-full p-1 w-fit mx-auto">
           {([["en", "EN"], ["ar", "عربي"], ["he", "עברית"]] as const).map(([code, label]) => (
             <button
               key={code}
-              onClick={() => setIntroLang(code as "en" | "ar" | "he")}
+              onClick={() => {
+                setIntroLang(code as "en" | "ar" | "he");
+                if (code === 'ar' || code === 'he') {
+                  const target = code === 'ar' ? 'arabic' : 'hebrew';
+                  setTargetLanguage(target);
+                  try { localStorage.setItem('vocaband_target_lang', target); } catch {}
+                  setHasChosenLanguage(true);
+                }
+              }}
               style={{ touchAction: 'manipulation' }}
               className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all ${introLang === code ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
             >
@@ -153,36 +166,6 @@ export default function GameModeIntroView({
             </motion.div>
           ))}
         </div>
-
-        {/* Language selection — shown once, then remembered */}
-        {!hasChosenLanguage && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-5 bg-stone-50 border border-stone-200 rounded-2xl p-4"
-          >
-            <p className="text-xs sm:text-sm font-bold text-stone-600 mb-3 text-center uppercase tracking-wide">
-              Choose your translation language
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setTargetLanguage("hebrew"); try { localStorage.setItem('vocaband_target_lang', 'hebrew'); } catch {} setHasChosenLanguage(true); }}
-                style={{ touchAction: 'manipulation' }}
-                className={`flex-1 py-3 sm:py-4 rounded-xl font-black text-lg sm:text-xl transition-all ${targetLanguage === "hebrew" ? `bg-gradient-to-br ${theme.cta} text-white shadow-md` : "bg-white text-stone-700 border-2 border-stone-200 hover:border-stone-300 active:scale-95"}`}
-              >
-                עברית
-              </button>
-              <button
-                onClick={() => { setTargetLanguage("arabic"); try { localStorage.setItem('vocaband_target_lang', 'arabic'); } catch {} setHasChosenLanguage(true); }}
-                style={{ touchAction: 'manipulation' }}
-                className={`flex-1 py-3 sm:py-4 rounded-xl font-black text-lg sm:text-xl transition-all ${targetLanguage === "arabic" ? `bg-gradient-to-br ${theme.cta} text-white shadow-md` : "bg-white text-stone-700 border-2 border-stone-200 hover:border-stone-300 active:scale-95"}`}
-              >
-                عربي
-              </button>
-            </div>
-          </motion.div>
-        )}
 
         {/* Primary CTA */}
         <motion.button
