@@ -6,7 +6,7 @@ function makeWord(overrides: Partial<Word> & { id: number; english: string }): W
   return {
     hebrew: '',
     arabic: '',
-    level: 'Band 1' as const,
+    level: 'Set 1' as const,
     ...overrides,
   } as Word;
 }

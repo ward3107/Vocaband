@@ -112,7 +112,21 @@ export default function GameModeSelectionView({
             return (
               <motion.button
                 key={mode.id}
-                onClick={() => { if (isQpLocked) return; setGameMode(mode.id); setShowModeSelection(false); setShowModeIntro(true); }}
+                onClick={() => {
+                  if (isQpLocked) {
+                    console.warn('[Mode Selection] Click blocked — mode locked by Quick Play:', mode.id);
+                    return;
+                  }
+                  // Defensive log — helps diagnose the "clicked card but
+                  // nothing happens" bug by making the click trail
+                  // visible in the console.  If a student reports a
+                  // non-clickable mode, this reveals whether the handler
+                  // ran at all.
+                  console.log('[Mode Selection] Tapped mode:', mode.id);
+                  setGameMode(mode.id);
+                  setShowModeSelection(false);
+                  setShowModeIntro(true);
+                }}
                 disabled={isQpLocked}
                 className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}

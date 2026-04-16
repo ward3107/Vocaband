@@ -61,7 +61,7 @@ const LEVEL_TEMPLATES: Record<SentenceDifficulty, Record<string, string[]>> = {
 // HAND-WRITTEN SENTENCE BANK
 // ============================================================================
 // Map<wordId, string[]> — 2-3 quality sentences per word.
-// Priority: first 50 words of Band 1 (ids 1-76) and Band 2 (ids 1041-1099).
+// Priority: first 50 words of Set 1 (ids 1-76) and Set 2 (ids 1041-1099).
 
 const SENTENCE_BANK: Map<number, string[]> = new Map([
   // --- BAND 1 (first ~50 entries) ---

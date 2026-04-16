@@ -2427,10 +2427,10 @@ export default function App() {
     return unique.slice(0, 500);
   };
 
-  // Find matching Band 2 words (EXACT OR PARTIAL MATCH)
+  // Find matching Set 2 words (EXACT OR PARTIAL MATCH)
   // Combines duplicates and merges translations (Hebrew+Hebrew, Arabic+Arabic)
   // Also combines words with/without "(n)" suffix
-  const findMatchesInBand2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
+  const findMatchesInSet2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
     const allMatches: Word[] = [];
     const unmatched: string[] = [];
 
@@ -2493,7 +2493,7 @@ export default function App() {
     const words = extractWordsFromPaste(pastedText);
     if (words.length === 0) return;
 
-    const { matched, unmatched } = findMatchesInBand2(words);
+    const { matched, unmatched } = findMatchesInSet2(words);
 
     setPasteMatchedCount(matched.length);
     setPasteUnmatched(unmatched);

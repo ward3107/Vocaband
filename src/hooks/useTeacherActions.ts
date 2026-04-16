@@ -130,8 +130,8 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     return unique.slice(0, MAX_IMPORT_WORDS);
   };
 
-  // --- Helper: find matching Band 2 words ---
-  const findMatchesInBand2 = (words: string[]): { matched: Word[]; unmatched: string[] } => {
+  // --- Helper: find matching Set 2 words ---
+  const findMatchesInSet2 = (words: string[]): { matched: Word[]; unmatched: string[] } => {
     const allMatches: Word[] = [];
     const unmatched: string[] = [];
     for (const word of words) {
@@ -351,7 +351,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     const words = extractWordsFromPaste(pastedText);
     if (words.length === 0) return;
 
-    const { matched, unmatched } = findMatchesInBand2(words);
+    const { matched, unmatched } = findMatchesInSet2(words);
 
     setPasteMatchedCount(matched.length);
     setPasteUnmatched(unmatched);
