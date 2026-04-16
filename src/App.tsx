@@ -699,6 +699,18 @@ export default function App() {
   // Real-time polling for Quick Play teacher monitor
   // Polls Supabase for student progress every 3 seconds when in teacher monitor view
   // Helper: aggregate raw progress rows into the leaderboard format
+  //
+  // Dedupe strategy (two passes):
+  //   1. Group by student_uid — the "correct" key per row.
+  //   2. POST-PASS merge by student_name — catches the case where the
+  //      SAME student ends up with two different uids in the progress
+  //      table (which happens when their Supabase session rotates
+  //      between the "joined" insert and the first mode save, or when
+  //      the JOIN row uses session.user.id but the finish-game path
+  //      falls back to a guest "quickplay-<uuid>" because no session
+  //      was available at that instant).  Previously the teacher saw
+  //      "two students with the same name but different icons" — now
+  //      they collapse into one entry with the most-recent avatar.
   const aggregateProgress = useCallback((progressData: any[]) => {
     const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> }>();
 
@@ -737,7 +749,37 @@ export default function App() {
       }
     });
 
-    return Array.from(studentMap.values()).sort((a, b) => b.score - a.score);
+    // POST-PASS: merge entries that share the same student_name but
+    // have different uids (same student, rotated session).  Take the
+    // newer entry's avatar (what the student see themselves as),
+    // union the per-mode scores, and drop the older uid.
+    type Entry = { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> };
+    const byName = new Map<string, Entry>();
+    for (const entry of studentMap.values()) {
+      const dup = byName.get(entry.name);
+      if (!dup) {
+        byName.set(entry.name, entry);
+      } else {
+        // Merge the two entries — newer wins on metadata (avatar, mode,
+        // lastSeen); per-mode scores are max-merged.
+        const newer = new Date(entry.lastSeen) > new Date(dup.lastSeen) ? entry : dup;
+        const older = newer === entry ? dup : entry;
+        const mergedModes = new Map(older.modes);
+        newer.modes.forEach((v, mode) => {
+          const prev = mergedModes.get(mode) || 0;
+          if (v > prev) mergedModes.set(mode, v);
+        });
+        let total = 0;
+        mergedModes.forEach(v => { total += v; });
+        byName.set(entry.name, {
+          ...newer,
+          modes: mergedModes,
+          score: total,
+        });
+      }
+    }
+
+    return Array.from(byName.values()).sort((a, b) => b.score - a.score);
   }, []);
 
   useEffect(() => {
