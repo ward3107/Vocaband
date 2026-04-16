@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
+import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
@@ -184,6 +185,11 @@ export default function App() {
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
+
+  // Active boosters (xp_booster, weekend_warrior, streak_freeze,
+  // lucky_charm, focus_mode).  Scoped per-user via uid; persists in
+  // localStorage so boosters survive page refresh.
+  const boosters = useBoosters(user?.uid);
 
   const [studentAvatar, setStudentAvatar] = useState("🦊");
   const [needsConsent, setNeedsConsent] = useState(false);
@@ -4188,15 +4194,43 @@ export default function App() {
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
     const maxPossible = gameWords.length * 10;
-    const cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
+    let cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
+
+    // Lucky Charm: forgive the student's first wrong answer (= +10
+    // points up to maxPossible) by consuming one shield from inventory.
+    // Only worth burning if the student actually got something wrong.
+    if (cappedScore < maxPossible && boosters.consumeLuckyCharm()) {
+      const bumped = Math.min(maxPossible, cappedScore + 10);
+      showToast(`🍀 Lucky Charm used! Score ${cappedScore} → ${bumped}`, 'success');
+      cappedScore = bumped;
+    }
+
+    // Apply active booster multipliers — xp_booster (2×) +
+    // weekend_warrior (2× on Sat/Sun) stack multiplicatively.  Only
+    // applies to the actual XP grant, not to the score record itself.
+    const boosterMult = boosters.xpMultiplier();
 
     // If locked, still record the play for stats but grant zero XP.
-    const xpEarned = replayLocked ? 0 : cappedScore;
+    const baseEarned = replayLocked ? 0 : cappedScore;
+    const xpEarned = Math.round(baseEarned * boosterMult);
     if (replayLocked) {
       showToast(`You've played this assignment ${MAX_ASSIGNMENT_REPLAYS} times — no more XP from it.`, 'info');
+    } else if (boosterMult > 1) {
+      showToast(`${boosterMult}× XP active! ${cappedScore} → ${xpEarned} XP`, 'success');
     }
     const newXp = xp + xpEarned;
-    const newStreak = cappedScore >= 80 ? streak + 1 : 0;
+    // Streak handling — try to consume a Streak Freeze before resetting.
+    // Lets students keep their streak after a single bad day if they've
+    // bought the shield from the shop.
+    let newStreak: number;
+    if (cappedScore >= 80) {
+      newStreak = streak + 1;
+    } else if (boosters.tryConsumeStreakFreeze()) {
+      newStreak = streak; // freeze consumed — preserve streak
+      showToast('🧊 Streak Freeze used — your streak is safe!', 'success');
+    } else {
+      newStreak = 0;
+    }
     setXp(newXp);
     setStreak(newStreak);
 
@@ -5250,6 +5284,13 @@ export default function App() {
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
           retention={retention}
+          boosters={{
+            isXpBoosterActive: boosters.isXpBoosterActive,
+            isFocusModeActive: boosters.isFocusModeActive,
+            isWeekendWarriorActive: boosters.isWeekendWarriorActive,
+            streakFreezes: boosters.streakFreezes,
+            luckyCharms: boosters.luckyCharms,
+          }}
           onGrantXp={(amount, reason) => {
             // Grant retention rewards through the same path as gameplay XP.
             // Persist to the server and show a celebration toast so students
@@ -5308,6 +5349,7 @@ export default function App() {
           showToast={showToast}
           shopTab={shopTab}
           setShopTab={setShopTab}
+          activateBooster={boosters.activate}
         />
       </LazyWrapper>
     );

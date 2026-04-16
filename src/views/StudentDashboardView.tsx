@@ -8,6 +8,7 @@ import BadgesStrip from "../components/dashboard/BadgesStrip";
 import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
+import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
@@ -40,6 +41,14 @@ interface StudentDashboardViewProps {
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
+  /** Active booster snapshot for the dashboard chip strip. */
+  boosters: {
+    isXpBoosterActive: boolean;
+    isFocusModeActive: boolean;
+    isWeekendWarriorActive: boolean;
+    streakFreezes: number;
+    luckyCharms: number;
+  };
 }
 
 export default function StudentDashboardView({
@@ -50,7 +59,7 @@ export default function StudentDashboardView({
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
-  retention, onGrantXp, onGrantReward,
+  retention, onGrantXp, onGrantReward, boosters,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -93,6 +102,7 @@ export default function StudentDashboardView({
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
         />
+        <ActiveBoostersStrip {...boosters} />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
         <DailyGoalBanner studentProgress={studentProgress} />
         <LeaderboardTeaser

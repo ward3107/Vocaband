@@ -20,6 +20,10 @@ interface ShopViewProps {
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   shopTab: ShopTab;
   setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
+  /** Activate a booster on purchase (xp_booster, streak_freeze, etc).
+   * Called AFTER the purchase RPC succeeds — booster effect lives in
+   * the useBoosters hook in App.tsx. */
+  activateBooster: (id: 'streak_freeze' | 'lucky_spin' | 'xp_booster' | 'lucky_charm' | 'focus_mode' | 'weekend_warrior') => void;
 }
 
 // Per-title signature styling — each title gets its own gradient + type
@@ -97,7 +101,7 @@ function currentLimitedItem() {
   return LIMITED_ROTATION[Math.abs(hash) % LIMITED_ROTATION.length];
 }
 
-export default function ShopView({ user, xp, setXp, setUser, setView, showToast, shopTab, setShopTab }: ShopViewProps) {
+export default function ShopView({ user, xp, setXp, setUser, setView, showToast, shopTab, setShopTab, activateBooster }: ShopViewProps) {
   // Cinematic egg-opening state.  Phases:
   //   'idle'    → no cinematic
   //   'zoom'    → egg zooming into centre (250ms)
@@ -190,7 +194,20 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'booster', item_id: booster.id, item_cost: booster.cost });
     if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
     setXp(data.new_xp);
-    showToast(`Got ${booster.name}! 🎉`, "success");
+    // Activate the booster client-side so it actually takes effect in
+    // the next game.  Previously the purchase succeeded but the booster
+    // did nothing — this is the bug the user flagged.
+    activateBooster(booster.id as Parameters<typeof activateBooster>[0]);
+    // Per-booster confirmation message so students know what they got.
+    const confirmations: Record<string, string> = {
+      xp_booster:      'Got 2× XP Booster — active for the next 24 hours!',
+      weekend_warrior: 'Got Weekend Warrior — 2× XP every Sat & Sun!',
+      streak_freeze:   'Got Streak Freeze — your next missed day is forgiven.',
+      lucky_charm:     'Got Lucky Charm — first wrong answer in your next game is forgiven.',
+      focus_mode:      'Got Focus Mode — distraction-free for 1 hour.',
+      lucky_spin:      'Got Lucky Spin token — spin from the shop hub!',
+    };
+    showToast(confirmations[booster.id] ?? `Got ${booster.name}! 🎉`, "success");
   };
 
   const activeThemeConfig = THEMES.find(t => t.id === (user.activeTheme ?? 'default')) ?? THEMES[0];
