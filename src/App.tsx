@@ -1479,10 +1479,15 @@ export default function App() {
             try {
               intendedCode = sessionStorage.getItem('oauth_intended_class_code');
             } catch { /* sessionStorage unavailable */ }
-            if (intendedCode && intendedCode !== code) {
+            // Normalise both sides to uppercase so a DB-stored code that
+            // slipped through without case normalisation still compares
+            // correctly. The login form uppercases what students type.
+            const intendedNorm = intendedCode?.trim().toUpperCase() || null;
+            const currentNorm = code?.trim().toUpperCase() || '';
+            if (intendedNorm && intendedNorm !== currentNorm) {
               // Validate the intended class exists before offering to switch.
               const { data: intendedClassRows } = await supabase
-                .from('classes').select('code, name').eq('code', intendedCode);
+                .from('classes').select('code, name').eq('code', intendedNorm);
               if (intendedClassRows && intendedClassRows.length > 0) {
                 const { data: currentClassRows } = await supabase
                   .from('classes').select('code, name').eq('code', code);
@@ -1491,7 +1496,7 @@ export default function App() {
                 setPendingClassSwitch({
                   fromCode: code,
                   fromClassName: currentClassRows?.[0]?.name ?? null,
-                  toCode: intendedCode,
+                  toCode: intendedNorm,
                   toClassName: intendedClassRows[0].name ?? null,
                   supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
                 });
@@ -1501,7 +1506,12 @@ export default function App() {
                 try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
                 return; // stop here — modal drives the next step
               }
-              // Intended code is bogus — clear it and fall through to normal login
+              // Intended code was typed but doesn't match a real class.
+              // Tell the student so they don't think the app ignored them.
+              showToast(
+                `Class code "${intendedNorm}" not found — staying in your current class.`,
+                'error'
+              );
               try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
             } else if (intendedCode) {
               // Same class — just clear the flag
@@ -3291,9 +3301,11 @@ export default function App() {
       try {
         intendedCode = sessionStorage.getItem('oauth_intended_class_code');
       } catch { /* sessionStorage unavailable */ }
-      if (intendedCode && studentData.class_code && intendedCode !== studentData.class_code) {
+      const intendedNorm = intendedCode?.trim().toUpperCase() || null;
+      const currentNorm = studentData.class_code?.trim().toUpperCase() || '';
+      if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
         const { data: intendedClassRows } = await supabase
-          .from('classes').select('code, name').eq('code', intendedCode);
+          .from('classes').select('code, name').eq('code', intendedNorm);
         if (intendedClassRows && intendedClassRows.length > 0) {
           const { data: currentClassRows } = await supabase
             .from('classes').select('code, name').eq('code', studentData.class_code);
@@ -3314,7 +3326,7 @@ export default function App() {
           setPendingClassSwitch({
             fromCode: studentData.class_code,
             fromClassName: currentClassRows?.[0]?.name ?? null,
-            toCode: intendedCode,
+            toCode: intendedNorm,
             toClassName: intendedClassRows[0].name ?? null,
             supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
           });
@@ -3322,6 +3334,11 @@ export default function App() {
           try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
           return;
         }
+        // Typed a code that doesn't exist — tell the student, don't silent-fail.
+        showToast(
+          `Class code "${intendedNorm}" not found — staying in your current class.`,
+          'error'
+        );
         try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
       } else if (intendedCode) {
         try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
