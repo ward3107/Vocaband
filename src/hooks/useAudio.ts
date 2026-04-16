@@ -96,7 +96,8 @@ const getMotivationalUrl = (key: string): string => {
   return `${base}/storage/v1/object/public/motivational/${key}.mp3`
 }
 
-// All motivational phrase keys (must match generated audio files)
+// All motivational phrase keys (must match generated audio files).
+// Keep in sync with MOTIVATIONAL_PHRASES in scripts/generate-motivational.ts.
 const PHRASES = [
   "great-job","well-done","awesome","keep-it-up","nailed-it","brilliant",
   "youre-on-fire","fantastic","way-to-go","superstar","amazing","perfect",
@@ -106,12 +107,18 @@ const PHRASES = [
   "good-thinking","nice-work","good-work","you-did-it","first-try","like-a-pro",
   "you-are-a-champion","unstoppable","on-point","crushing-it","legend","genius",
   "word-master","vocab-hero","language-champion","english-star","you-smashed-it",
-  "top-of-the-class","gold-star","level-up","new-high-score","on-a-roll",
-  "nothing-can-stop-you","brain-power","quick-learner","smart-cookie",
-  "proud-of-you","hard-work-pays-off","knowledge-is-power","english-unlocked",
-  "new-word-learned","one-step-closer","making-progress","never-give-up",
-  "you-can-do-it","full-marks","ten-out-of-ten","flawless","exceptional",
-  "elite","top-tier","first-class","wow","unbelievable","mic-drop","pure-talent"
+  "top-of-the-class","gold-star","hat-trick","level-up","new-high-score","on-a-roll",
+  "keep-the-streak","nothing-can-stop-you","youre-growing","brain-power",
+  "sharp-as-a-tack","quick-learner","smart-cookie","you-inspire-me",
+  "proud-of-you","you-should-be-proud","hard-work-pays-off","practice-makes-perfect",
+  "every-word-counts","building-your-future","knowledge-is-power",
+  "youre-becoming-fluent","english-unlocked","new-word-learned","vocabulary-growing",
+  "one-step-closer","making-progress","moving-forward","never-give-up",
+  "believe-in-yourself","you-can-do-it","sky-is-the-limit","dream-big",
+  "full-marks","ten-out-of-ten","hundred-percent","flawless","impeccable",
+  "immaculate","marvelous","exceptional","elite","top-tier","first-class",
+  "above-and-beyond","blowing-my-mind","impressed","wow","unbelievable",
+  "speechless","mic-drop","that-was-beautiful","pure-talent"
 ]
 
 let preloadedMotivational = false
@@ -195,6 +202,31 @@ const PHRASE_LABELS: Record<string, string> = {
   "unbelievable": "Unbelievable! 🤯",
   "mic-drop": "Mic Drop! 🎤",
   "pure-talent": "Pure Talent! 🎨",
+  // Added to match the full 99-phrase generator set.
+  "hat-trick": "Hat Trick! 🎩",
+  "keep-the-streak": "Keep the Streak! 🔥",
+  "youre-growing": "You're Growing! 🌱",
+  "sharp-as-a-tack": "Sharp as a Tack! 📌",
+  "you-inspire-me": "You Inspire Me! ✨",
+  "you-should-be-proud": "You Should Be Proud! 🏆",
+  "practice-makes-perfect": "Practice Makes Perfect! 💪",
+  "every-word-counts": "Every Word Counts! 📖",
+  "building-your-future": "Building Your Future! 🏗️",
+  "youre-becoming-fluent": "You're Becoming Fluent! 🗣️",
+  "vocabulary-growing": "Vocabulary Growing! 📚",
+  "moving-forward": "Moving Forward! ➡️",
+  "believe-in-yourself": "Believe in Yourself! 💫",
+  "sky-is-the-limit": "The Sky's the Limit! ☁️",
+  "dream-big": "Dream Big! 🌟",
+  "hundred-percent": "100%! 💯",
+  "impeccable": "Impeccable! 💎",
+  "immaculate": "Immaculate! ✨",
+  "marvelous": "Marvelous! 🌈",
+  "above-and-beyond": "Above and Beyond! 🚀",
+  "blowing-my-mind": "Blowing My Mind! 🤯",
+  "impressed": "I'm Impressed! 😲",
+  "speechless": "Speechless! 😶",
+  "that-was-beautiful": "That Was Beautiful! 🌺",
 };
 
 // Global flag to force TTS for all words (for testing or if MP3 files have issues)
