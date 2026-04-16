@@ -1263,22 +1263,32 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </motion.div>
               )}
 
-              {/* Listening Mode */}
+              {/* Listening Mode — matches real app: stone card + stone
+                  volume pill + Classic-style 2-col answer grid with
+                  blurred word indicator. */}
               {selectedMode === "listening" && (
-                <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
+                <div className="max-w-lg mx-auto">
+                  <div className="bg-white rounded-2xl sm:rounded-[32px] p-4 sm:p-8 mb-4 sm:mb-6 text-center shadow-2xl border border-stone-100">
+                    <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-3">
+                      {currentWordIndex + 1} / {DEMO_WORDS.length}
+                    </span>
+                    {/* Blurred word so students train their ear — same
+                        visual cue the real WordPromptCard uses when
+                        gameMode === 'listening'. */}
+                    <h2 className="text-3xl sm:text-5xl font-black text-stone-900 blur-xl select-none opacity-20 mb-4" dir="ltr">
+                      {currentWord.english}
+                    </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="w-20 h-20 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto hover:bg-blue-700 transition-colors"
+                      className="p-3 sm:p-4 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors mx-auto flex items-center justify-center"
+                      aria-label="Play pronunciation"
                     >
-                      <Volume2 size={32} />
+                      <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
                     </button>
-                    <p className="text-sm text-stone-500 mt-4">{t.listenType}</p>
+                    <p className="text-xs sm:text-sm text-stone-400 mt-3 font-bold">{t.listenType}</p>
                   </div>
 
-                  <p className="text-stone-600 mb-4 text-center">{t.whatDoesMean}</p>
-
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {options.map((option, i) => {
                       const optionWord = DEMO_WORDS.find(w => getMeaning(w, targetLanguage) === option);
                       const isHidden = hiddenOptions.includes(optionWord?.id ?? -1);
@@ -1288,18 +1298,20 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       const isCorrectAnswer = option === getMeaning(currentWord, targetLanguage);
                       const showResult = selectedAnswer !== null;
 
-                      let bgClass = "bg-white border-stone-200";
-                      if (showResult && isCorrectAnswer) bgClass = "bg-green-100 border-green-500";
-                      if (showResult && isSelected && !isCorrect) bgClass = "bg-red-100 border-red-500";
+                      let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300";
+                      if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white motion-safe:scale-105 shadow-xl";
+                      if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
 
                       return (
                         <button
                           key={i}
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
-                          className={`w-full p-4 rounded-2xl border-2 ${bgClass} transition-all ${textAlign} ${!showResult ? "hover:border-blue-300" : ""}`}
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                          className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
+                          dir={isRTL ? 'rtl' : 'ltr'}
                         >
-                          <span className="font-bold text-stone-800">{option}</span>
+                          {option}
                         </button>
                       );
                     })}
@@ -1307,119 +1319,128 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Matching Mode */}
+              {/* Matching Mode — matches real MatchingModeGame: 2/3-col
+                  grid of fixed-height cards, blue-600 + ring on selected,
+                  matched cards disappear (not opacity-fade). */}
               {selectedMode === "matching" && (
-                <div>
-                  <p className="text-center text-stone-600 mb-4">
-                    {t.tapTwoCards}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {matchingCards.map((card) => (
-                      <div key={card.id} className="relative">
-                        <button
-                          onClick={() => handleMatchingSelect(card.id)}
-                          disabled={card.matched}
-                          className={`w-full p-4 rounded-2xl text-center transition-all border-2 ${
-                            card.matched
-                              ? "bg-green-100 border-green-300 opacity-60"
-                              : card.selected
-                              ? "bg-blue-100 border-blue-500 ring-2 ring-blue-300"
-                              : "bg-white border-stone-200 hover:border-blue-300"
-                          }`}
-                        >
-                          <div className={`text-lg font-bold ${card.type === 'meaning' ? textAlign : ''}`} dir={card.type === 'word' ? 'ltr' : undefined}>
-                            {card.content}
-                          </div>
-                          {card.matched && <span className="text-green-600">✓</span>}
-                        </button>
-                      </div>
+                <div className="max-w-2xl mx-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3">
+                    {matchingCards.filter(c => !c.matched).map((card) => (
+                      <button
+                        key={card.id}
+                        onClick={() => handleMatchingSelect(card.id)}
+                        disabled={card.matched}
+                        dir="auto"
+                        style={{ touchAction: 'manipulation' }}
+                        className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                          card.selected
+                            ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
+                            : "bg-white text-stone-800 hover:shadow-md"
+                        }`}
+                      >
+                        {card.content}
+                      </button>
                     ))}
                   </div>
-                  <div className={`mt-4 text-center text-stone-500 ${isRTL ? 'flex items-center justify-center gap-1' : ''}`}>
+                  <div className="mt-4 text-center text-xs font-bold text-stone-400 uppercase tracking-widest">
                     {t.matched} {matchedPairs} / 4
                   </div>
                 </div>
               )}
 
-              {/* Spelling Mode */}
+              {/* Spelling Mode — matches real SpellingGame: stone-prompt
+                  + big feedback-bordered input + stone-900 check button. */}
               {selectedMode === "spelling" && (
-                <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
-                    <div className="text-4xl font-black text-stone-900 mb-4">
+                <div className="max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 mb-4 sm:mb-6 text-center shadow-sm border border-stone-200">
+                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.translation}</p>
+                    <div className="text-3xl sm:text-4xl font-black text-stone-900 mb-3" dir="auto">
                       {getMeaning(currentWord, targetLanguage)}
                     </div>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto hover:bg-blue-700 transition-colors"
+                      className="p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      aria-label="Play pronunciation"
                     >
-                      <Volume2 size={24} />
+                      <Volume2 size={20} className="text-stone-600" />
                     </button>
                   </div>
 
                   {/* Power-ups for spelling */}
-                  {(selectedMode === "spelling" || selectedMode === "letter-sounds") && powerUps.reveal_letter > 0 && !selectedAnswer && spellingInput.length === 0 && (
+                  {powerUps.reveal_letter > 0 && !selectedAnswer && spellingInput.length === 0 && (
                     <div className="flex justify-center mb-3">
-                      <button onClick={handleRevealLetter} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
-                        💡 {t.hint} <span className="bg-green-200 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.reveal_letter}</span>
+                      <button onClick={handleRevealLetter} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all flex items-center gap-1 border border-emerald-200">
+                        💡 {t.hint} <span className="bg-emerald-200 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.reveal_letter}</span>
                       </button>
                     </div>
                   )}
 
-                  <p className="text-stone-600 mb-4 text-center">{t.typeWord}</p>
-
                   <form onSubmit={handleSpellingSubmit}>
                     <input
+                      autoFocus
                       type="text"
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
-                      placeholder={t.typeWord}
+                      placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full px-4 py-4 rounded-2xl bg-white border-2 border-stone-200 text-xl text-center font-bold text-stone-900 focus:border-blue-500 focus:outline-none disabled:opacity-50 ${textAlign}`}
+                      className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                        isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
+                        isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
+                        "border-stone-100 focus:border-stone-900 outline-none"
+                      }`}
                       dir="ltr"
                     />
                     {selectedAnswer === null && (
                       <button
                         type="submit"
                         disabled={!spellingInput.trim()}
-                        className="w-full mt-4 py-4 bg-stone-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50"
+                        style={{ touchAction: 'manipulation' }}
+                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {t.check}
+                        Check Answer
                       </button>
                     )}
                   </form>
                 </div>
               )}
 
-              {/* Scramble Mode */}
+              {/* Scramble Mode — same visual language as Spelling. */}
               {selectedMode === "scramble" && (
-                <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
-                    <div className="text-4xl font-black text-stone-900 mb-2 tracking-widest" dir="ltr">
+                <div className="max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 mb-4 sm:mb-6 text-center shadow-sm border border-stone-200">
+                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.unscramble}</p>
+                    <div className="text-3xl sm:text-5xl font-black text-stone-900 tracking-widest mb-2" dir="ltr">
                       {scrambledWord.toUpperCase()}
                     </div>
-                    <p className="text-stone-500 text-sm">{t.unscramble}</p>
-                    <div className="mt-4 text-xl text-stone-700 font-bold">
-                      {t.translation} {getMeaning(currentWord, targetLanguage)}
+                    <div className="mt-4 text-sm sm:text-base text-stone-600 font-bold">
+                      <span className="text-stone-400 text-xs uppercase tracking-widest block mb-1">{t.translation}</span>
+                      <span className="text-stone-900 text-lg sm:text-xl" dir="auto">{getMeaning(currentWord, targetLanguage)}</span>
                     </div>
                   </div>
 
                   <form onSubmit={handleScrambleSubmit}>
                     <input
+                      autoFocus
                       type="text"
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
-                      placeholder={t.typeWord}
+                      placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full px-4 py-4 rounded-2xl bg-white border-2 border-stone-200 text-xl text-center font-bold text-stone-900 focus:border-blue-500 focus:outline-none disabled:opacity-50 ${textAlign}`}
+                      className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                        isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
+                        isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
+                        "border-stone-100 focus:border-stone-900 outline-none"
+                      }`}
                       dir="ltr"
                     />
                     {selectedAnswer === null && (
                       <button
                         type="submit"
                         disabled={!spellingInput.trim()}
-                        className="w-full mt-4 py-4 bg-stone-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50"
+                        style={{ touchAction: 'manipulation' }}
+                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {t.check}
+                        Check Answer
                       </button>
                     )}
                   </form>
@@ -1471,175 +1492,193 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Flashcards Mode */}
+              {/* Flashcards Mode — matches real FlashcardsGame: stone
+                  flip button, rose "Still Learning" + blue "Got It"
+                  judgement buttons after flip. */}
               {selectedMode === "flashcards" && (
-                <div className="text-center">
-                  <div
-                    onClick={() => !isFlipped && setIsFlipped(true)}
-                    className={`bg-white rounded-3xl p-8 shadow-sm border border-stone-200 cursor-pointer min-h-[250px] flex flex-col items-center justify-center ${isFlipped ? '' : 'hover:shadow-md transition-shadow'}`}
-                  >
+                <div className="max-w-md mx-auto">
+                  {/* Hero card with the word/translation */}
+                  <div className="bg-white rounded-2xl sm:rounded-[32px] p-6 sm:p-10 shadow-2xl border border-stone-100 min-h-[250px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6">
                     {!isFlipped ? (
                       <>
-                        <div className="text-4xl font-black text-stone-900 mb-4" dir="ltr">
+                        <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.flashcardWord}</p>
+                        <div className="text-3xl sm:text-5xl font-black text-stone-900 mb-4" dir="ltr">
                           {currentWord.english}
                         </div>
                         <button
-                          onClick={(e) => { e.stopPropagation(); speakWord(currentWord.id); }}
-                          className="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
+                          onClick={() => speakWord(currentWord.id)}
+                          className="p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                          aria-label="Play pronunciation"
                         >
-                          <Volume2 size={24} />
+                          <Volume2 size={20} className="text-stone-600" />
                         </button>
-                        <p className="text-stone-500 mt-4">{t.flashcardTap}</p>
                       </>
                     ) : (
                       <>
-                        <p className="text-stone-500 text-sm mb-2">{t.flashcardMeaning}</p>
-                        <div className="text-3xl font-black text-stone-900">
+                        <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.flashcardMeaning}</p>
+                        <div className="text-3xl sm:text-5xl font-black text-stone-900" dir="auto">
                           {getMeaning(currentWord, targetLanguage)}
                         </div>
                       </>
                     )}
                   </div>
 
-                  {isFlipped && selectedAnswer === null && (
-                    <div className="mt-6 space-y-3">
-                      <button
-                        onClick={() => { setIsCorrect(true); handleFeedback(true); setSelectedAnswer("known"); }}
-                        className="w-full py-4 bg-green-100 text-green-700 rounded-2xl font-bold text-lg hover:bg-green-200 transition-colors"
-                      >
-                        ✓ {t.correct}
-                      </button>
-                      <button
-                        onClick={() => { setIsCorrect(false); handleFeedback(false); setSelectedAnswer("unknown"); }}
-                        className="w-full py-4 bg-red-100 text-red-700 rounded-2xl font-bold text-lg hover:bg-red-200 transition-colors"
-                      >
-                        ✗ {t.notQuite}
-                      </button>
-                    </div>
-                  )}
+                  <div className="space-y-3 sm:space-y-4">
+                    <button
+                      onClick={() => setIsFlipped(!isFlipped)}
+                      style={{ touchAction: 'manipulation' }}
+                      className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors"
+                    >
+                      {isFlipped ? "Show English" : "Show Translation"}
+                    </button>
+                    {isFlipped && selectedAnswer === null && (
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        <button
+                          onClick={() => { setIsCorrect(false); handleFeedback(false); setSelectedAnswer("unknown"); }}
+                          style={{ touchAction: 'manipulation', minHeight: '56px' }}
+                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                        >Still Learning</button>
+                        <button
+                          onClick={() => { setIsCorrect(true); handleFeedback(true); setSelectedAnswer("known"); }}
+                          style={{ touchAction: 'manipulation', minHeight: '56px' }}
+                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                        >Got It!</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Reverse Mode (translate from Hebrew/Arabic to English) */}
               {selectedMode === "reverse" && (
-                <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
-                    <p className="text-stone-500 text-sm mb-2">{t.reverseTitle}</p>
-                    <div className="text-4xl font-black text-stone-900 mb-4">
+                <div className="max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 mb-4 sm:mb-6 text-center shadow-sm border border-stone-200">
+                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.reverseTitle}</p>
+                    <div className="text-3xl sm:text-4xl font-black text-stone-900 mb-3" dir="auto">
                       {getMeaning(currentWord, targetLanguage)}
                     </div>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto hover:bg-blue-700 transition-colors"
+                      className="p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      aria-label="Play pronunciation"
                     >
-                      <Volume2 size={24} />
+                      <Volume2 size={20} className="text-stone-600" />
                     </button>
                   </div>
 
                   <form onSubmit={(e) => { e.preventDefault(); if (spellingInput.trim()) handleReverseAnswer(spellingInput); }}>
                     <input
+                      autoFocus
                       type="text"
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
-                      placeholder={t.typeWord}
+                      placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-stone-200 text-xl text-center font-bold text-stone-900 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+                      className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                        isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
+                        isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
+                        "border-stone-100 focus:border-stone-900 outline-none"
+                      }`}
                       dir="ltr"
                     />
                     {selectedAnswer === null && (
                       <button
                         type="submit"
                         disabled={!spellingInput.trim()}
-                        className="w-full mt-4 py-4 bg-stone-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50"
+                        style={{ touchAction: 'manipulation' }}
+                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {t.check}
+                        Check Answer
                       </button>
                     )}
                   </form>
                 </div>
               )}
 
-              {/* Letter Sounds Mode - Matching full app */}
+              {/* Letter Sounds Mode — matches real LetterSoundsGame:
+                  translation hint at top, bordered color-tinted letter
+                  tiles that fade in, input form appears once all revealed. */}
               {selectedMode === "lettersounds" && (
-                <div className="text-center">
-                  <div className="bg-white rounded-3xl p-8 mb-6 shadow-sm border border-stone-200">
-                    <p className="text-stone-600 mb-4">Listen to each letter sound</p>
-
-                    {/* Letters revealed one by one with colors */}
-                    <div className="flex justify-center gap-2 mb-6 flex-wrap" dir="ltr">
+                <div className="max-w-lg mx-auto">
+                  <p className="text-stone-600 text-lg sm:text-xl font-bold mb-4 text-center" dir="auto">
+                    {getMeaning(currentWord, targetLanguage)}
+                  </p>
+                  <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
+                    <div className="flex justify-center gap-1 sm:gap-2 flex-wrap" dir="ltr">
                       {currentWord.english.split("").map((letter, i) => {
-                        const isRevealed = i < revealedLetters;
+                        const revealed = i < revealedLetters;
                         const color = LETTER_COLORS[i % LETTER_COLORS.length];
                         return (
                           <motion.div
                             key={i}
                             initial={{ opacity: 0, scale: 0.5 }}
-                            animate={isRevealed ? { opacity: 1, scale: 1 } : { opacity: 0.2, scale: 0.8 }}
+                            animate={{ opacity: revealed ? 1 : 0.15, scale: revealed ? 1 : 0.5 }}
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-black ${
-                              isRevealed ? "text-white shadow-lg" : "bg-stone-100 text-stone-300"
-                            }`}
-                            style={isRevealed ? { backgroundColor: color } : {}}
+                            className="w-9 h-11 sm:w-12 sm:h-14 rounded-xl font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
+                            style={{
+                              color: revealed ? color : color + "40",
+                              borderColor: revealed ? color : color + "40",
+                              background: color + "18",
+                            }}
                           >
-                            {letter.toUpperCase()}
+                            {revealed ? letter.toUpperCase() : "?"}
                           </motion.div>
                         );
                       })}
                     </div>
+                  </div>
 
-                    {/* After all letters revealed, show input */}
-                    {revealedLetters >= currentWord.english.length && (
-                      <div className="mt-4">
-                        <p className="text-stone-600 mb-3">Now type the word you heard!</p>
-                        <form onSubmit={(e) => { e.preventDefault(); if (spellingInput.trim()) handleReverseAnswer(spellingInput); }}>
-                          <input
-                            type="text"
-                            value={spellingInput}
-                            onChange={(e) => setSpellingInput(e.target.value)}
-                            placeholder="Type the word..."
-                            disabled={selectedAnswer !== null}
-                            className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-stone-200 text-xl text-center font-bold text-stone-900 focus:border-blue-500 focus:outline-none disabled:opacity-50"
-                            dir="ltr"
-                          />
-                          {selectedAnswer === null && (
-                            <button
-                              type="submit"
-                              disabled={!spellingInput.trim()}
-                              className="w-full mt-4 py-4 bg-stone-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50"
-                            >
-                              {t.check}
-                            </button>
-                          )}
-                        </form>
-                      </div>
-                    )}
-
-                    {/* Replay button */}
-                    {revealedLetters < currentWord.english.length && selectedAnswer === null && (
+                  {revealedLetters >= currentWord.english.length ? (
+                    <form onSubmit={(e) => { e.preventDefault(); if (spellingInput.trim()) handleReverseAnswer(spellingInput); }} className="max-w-sm mx-auto">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={spellingInput}
+                        onChange={(e) => setSpellingInput(e.target.value)}
+                        placeholder="Type the word..."
+                        disabled={selectedAnswer !== null}
+                        className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
+                          isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
+                          isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
+                          "border-stone-100 focus:border-stone-900 outline-none"
+                        }`}
+                        dir="ltr"
+                      />
+                      {selectedAnswer === null && (
+                        <button
+                          type="submit"
+                          disabled={!spellingInput.trim()}
+                          style={{ touchAction: 'manipulation' }}
+                          className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Check Answer
+                        </button>
+                      )}
+                    </form>
+                  ) : selectedAnswer === null ? (
+                    <div className="text-center">
                       <button
-                        onClick={() => {
-                          setRevealedLetters(0);
-                          // Trigger re-reveal by changing the key
-                        }}
-                        className="mt-4 px-6 py-3 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 transition-colors"
+                        onClick={() => { setRevealedLetters(0); }}
+                        style={{ touchAction: 'manipulation' }}
+                        className="px-6 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors inline-flex items-center gap-2"
                       >
                         🔊 Replay Sounds
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
-              {/* Sentence Builder - simplified for demo */}
+              {/* Sentence Builder — matches real SentenceBuilderGame:
+                  stone bg for target area, blue-600 chips for built
+                  words, white bordered chips for available words,
+                  stone-900 Check button. */}
               {selectedMode === "sentence" && (
-                <div className="text-center">
-                  <div className="bg-white rounded-3xl p-6 mb-6 shadow-sm border border-stone-200">
-                    <p className="text-sm text-stone-500 mb-2">Build this sentence:</p>
-                    <p className="text-lg font-bold text-stone-800 mb-4" dir="ltr">
-                      "{currentWord.english} is great!"
+                <div className="max-w-xl mx-auto">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest">
+                      Build: "{currentWord.english} is great!"
                     </p>
-
-                    {/* Sound toggle button to replay sentence */}
                     <button
                       onClick={() => {
                         window.speechSynthesis?.cancel();
@@ -1647,50 +1686,60 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         utter.rate = 0.9;
                         window.speechSynthesis.speak(utter);
                       }}
-                      className="mb-4 px-4 py-2 bg-purple-100 text-purple-700 rounded-xl font-bold hover:bg-purple-200 transition-colors inline-flex items-center gap-2"
-                    >
-                      🔊 Replay Sentence
-                    </button>
+                      className="text-blue-500 hover:text-blue-700 active:scale-90 transition-all"
+                      title="Listen to sentence"
+                    >🔊</button>
+                  </div>
 
-                    {/* Built sentence area */}
-                    <div className="min-h-[80px] bg-blue-50 rounded-2xl p-4 mb-4 flex flex-wrap gap-2 justify-center items-center" dir="ltr">
-                      {builtSentence.length === 0 ? (
-                        <p className="text-stone-400 text-sm">Tap words below to build the sentence</p>
-                      ) : (
-                        builtSentence.map((word, i) => (
-                          <button
-                            key={`${word}-${i}`}
-                            onClick={() => {
-                              setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-                              setAvailableWords(prev => [...prev, word]);
-                            }}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-xl font-bold shadow-md hover:bg-blue-600 transition-all"
-                          >
-                            {word}
-                          </button>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Available words area */}
-                    <div className="min-h-[80px] bg-stone-50 rounded-2xl p-4 flex flex-wrap gap-2 justify-center items-center" dir="ltr">
-                      {availableWords.map((word, i) => (
+                  {/* Built sentence area */}
+                  <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
+                    sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
+                    sentenceFeedback === "incorrect" ? "border-rose-500 bg-rose-50" :
+                    "border-stone-200 bg-stone-50"
+                  }`} dir="ltr">
+                    {builtSentence.length === 0 ? (
+                      <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>
+                    ) : (
+                      builtSentence.map((word, i) => (
                         <button
                           key={`${word}-${i}`}
                           onClick={() => {
-                            setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-                            setBuiltSentence(prev => [...prev, word]);
+                            if (sentenceFeedback !== null) return;
+                            setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
+                            setAvailableWords(prev => [...prev, word]);
                           }}
-                          className="px-4 py-2 bg-white text-stone-800 rounded-xl font-bold shadow-sm hover:bg-stone-100 border-2 border-stone-200 transition-all"
-                        >
-                          {word}
-                        </button>
-                      ))}
-                    </div>
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
+                        >{word}</button>
+                      ))
+                    )}
                   </div>
 
-                  {/* Check button */}
-                  {builtSentence.length > 0 && sentenceFeedback === null && (
+                  {/* Available words */}
+                  <div className="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr">
+                    {availableWords.map((word, i) => (
+                      <button
+                        key={`${word}-${i}`}
+                        onClick={() => {
+                          if (sentenceFeedback !== null) return;
+                          setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
+                          setBuiltSentence(prev => [...prev, word]);
+                        }}
+                        className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
+                      >{word}</button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setBuiltSentence([]);
+                        const target = `${currentWord.english} is great!`.split(" ").filter(Boolean);
+                        setAvailableWords([...target].sort(() => Math.random() - 0.5));
+                      }}
+                      disabled={sentenceFeedback !== null}
+                      style={{ touchAction: 'manipulation' }}
+                      className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >Clear</button>
                     <button
                       onClick={() => {
                         const target = `${currentWord.english} is great!`;
@@ -1703,24 +1752,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           setTimeout(() => setSentenceFeedback(null), 1500);
                         }
                       }}
-                      className="w-full py-4 bg-stone-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-colors mb-3"
-                    >
-                      ✓ Check Sentence
-                    </button>
-                  )}
-
-                  {/* Feedback */}
-                  {sentenceFeedback === "correct" && (
-                    <div className="bg-green-100 text-green-800 p-4 rounded-2xl mb-3">
-                      <p className="font-bold">✓ Correct! Great job!</p>
-                    </div>
-                  )}
-                  {sentenceFeedback === "incorrect" && (
-                    <div className="bg-red-100 text-red-800 p-4 rounded-2xl mb-3">
-                      <p className="font-bold">✗ Not quite. Try again!</p>
-                      <p className="text-sm mt-1">Hint: "{currentWord.english} is great!"</p>
-                    </div>
-                  )}
+                      disabled={builtSentence.length === 0 || sentenceFeedback !== null}
+                      style={{ touchAction: 'manipulation' }}
+                      className="flex-1 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50"
+                    >Check ✓</button>
+                  </div>
                 </div>
               )}
 
