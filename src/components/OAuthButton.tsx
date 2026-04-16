@@ -6,18 +6,24 @@ interface OAuthButtonProps {
   onSuccess: (email: string, isNewUser: boolean) => void;
   onError: (error: string) => void;
   loading?: boolean;
+  /** Runs synchronously right before the Google redirect starts.
+   * Use for persisting intent (e.g. class-code to switch to) to sessionStorage
+   * so the app can read it back after the OAuth round-trip. */
+  beforeSignIn?: () => void;
 }
 
 const OAuthButton: React.FC<OAuthButtonProps> = ({
   onSuccess,
   onError,
-  loading = false
+  loading = false,
+  beforeSignIn,
 }) => {
   const [isLoading, setIsLoading] = React.useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
+      beforeSignIn?.();
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

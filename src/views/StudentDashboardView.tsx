@@ -23,6 +23,7 @@ interface StudentDashboardViewProps {
   setShowStudentOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
   consentModal: React.ReactNode;
   exitConfirmModal: React.ReactNode;
+  classSwitchModal: React.ReactNode;
   setView: React.Dispatch<React.SetStateAction<View>>;
   setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
   setActiveAssignment: (a: AssignmentData) => void;
@@ -35,7 +36,7 @@ export default function StudentDashboardView({
   copiedCode, setCopiedCode,
   studentAssignments, studentProgress, studentDataLoading,
   showStudentOnboarding, setShowStudentOnboarding,
-  consentModal, exitConfirmModal,
+  consentModal, exitConfirmModal, classSwitchModal,
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
 }: StudentDashboardViewProps) {
@@ -45,6 +46,7 @@ export default function StudentDashboardView({
     <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
       {consentModal}
       {exitConfirmModal}
+      {classSwitchModal}
       {showStudentOnboarding && (
         <StudentOnboarding
           userName={user.displayName}

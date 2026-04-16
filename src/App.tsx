@@ -192,6 +192,20 @@ export default function App() {
   const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
   const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
 
+  // --- CLASS SWITCH STATE ---
+  // Set when an already-approved student logs in with a class code that
+  // differs from their current class_code. Shows a confirmation modal;
+  // on confirm, student_profiles.class_code + users.class_code are updated
+  // and the student lands on the new class's dashboard. See "Approach 1,
+  // skip approval on switch" in the design discussion.
+  const [pendingClassSwitch, setPendingClassSwitch] = useState<{
+    fromCode: string;
+    fromClassName: string | null;
+    toCode: string;
+    toClassName: string | null;
+    supabaseUser: { id: string; email?: string | null };
+  } | null>(null);
+
   // AVATAR_CATEGORIES + selectedAvatarCategory moved into StudentAccountLoginView
   // (see src/views/StudentAccountLoginView.tsx; constants live in src/constants/avatars.ts)
 
@@ -1452,6 +1466,44 @@ export default function App() {
             }
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;
+
+            // Class-switch detection: if the student typed a different class
+            // code before the OAuth redirect, and that code maps to a real
+            // (different) class, surface the switch confirmation modal
+            // instead of silently logging them into their old class.
+            let intendedCode: string | null = null;
+            try {
+              intendedCode = sessionStorage.getItem('oauth_intended_class_code');
+            } catch { /* sessionStorage unavailable */ }
+            if (intendedCode && intendedCode !== code) {
+              // Validate the intended class exists before offering to switch.
+              const { data: intendedClassRows } = await supabase
+                .from('classes').select('code, name').eq('code', intendedCode);
+              if (intendedClassRows && intendedClassRows.length > 0) {
+                const { data: currentClassRows } = await supabase
+                  .from('classes').select('code, name').eq('code', code);
+                setUser(userData);
+                checkConsent(userData);
+                setPendingClassSwitch({
+                  fromCode: code,
+                  fromClassName: currentClassRows?.[0]?.name ?? null,
+                  toCode: intendedCode,
+                  toClassName: intendedClassRows[0].name ?? null,
+                  supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
+                });
+                // Park the user on their existing dashboard while the modal
+                // is up so there's a visible background (not the landing page).
+                setView("student-dashboard");
+                try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+                return; // stop here — modal drives the next step
+              }
+              // Intended code is bogus — clear it and fall through to normal login
+              try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+            } else if (intendedCode) {
+              // Same class — just clear the flag
+              try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+            }
+
             const { data: classRows } = await supabase
               .from('classes').select('*').eq('code', code);
             if (classRows && classRows.length > 0) {
@@ -3227,6 +3279,50 @@ export default function App() {
         return;
       }
 
+      // Class-switch detection: same logic as the restoreSession path.
+      // If the student entered a class code that differs from their
+      // current one and it's a real class, show the switch modal instead
+      // of logging them into their existing class.
+      let intendedCode: string | null = null;
+      try {
+        intendedCode = sessionStorage.getItem('oauth_intended_class_code');
+      } catch { /* sessionStorage unavailable */ }
+      if (intendedCode && studentData.class_code && intendedCode !== studentData.class_code) {
+        const { data: intendedClassRows } = await supabase
+          .from('classes').select('code, name').eq('code', intendedCode);
+        if (intendedClassRows && intendedClassRows.length > 0) {
+          const { data: currentClassRows } = await supabase
+            .from('classes').select('code, name').eq('code', studentData.class_code);
+          setIsOAuthCallback(false);
+          // Populate in-memory user so dashboard can render as the modal's
+          // backdrop rather than flashing landing/loader.
+          const switchUser: AppUser = {
+            uid: supabaseUser.id,
+            email: studentData.email,
+            displayName: studentData.display_name || email.split('@')[0],
+            role: 'student',
+            classCode: studentData.class_code,
+            xp: studentData.xp || 0,
+            avatar: studentData.avatar,
+            createdAt: studentData.created_at,
+          };
+          setUser(switchUser);
+          setPendingClassSwitch({
+            fromCode: studentData.class_code,
+            fromClassName: currentClassRows?.[0]?.name ?? null,
+            toCode: intendedCode,
+            toClassName: intendedClassRows[0].name ?? null,
+            supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
+          });
+          setView("student-dashboard");
+          try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+          return;
+        }
+        try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+      } else if (intendedCode) {
+        try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+      }
+
       // Ensure a users table row exists for this OAuth student (restoreSession needs it)
       const studentUser: AppUser = {
         uid: supabaseUser.id,
@@ -4897,6 +4993,106 @@ export default function App() {
     </div>
   ) : null;
 
+  // --- CLASS SWITCH MODAL -------------------------------------------------
+  // Shown when an already-approved student logs in with a class code that
+  // differs from their current class_code.  Approve = update profile +
+  // users row to the new class and land on the new dashboard (no teacher
+  // re-approval per Approach 1).  Cancel = keep the current class.
+  const handleConfirmClassSwitch = async () => {
+    if (!pendingClassSwitch) return;
+    const { toCode, supabaseUser } = pendingClassSwitch;
+    const email = supabaseUser.email ?? "";
+    try {
+      // Update both tables atomically from the client — no RPC needed, the
+      // student owns both rows (RLS keyed on email/uid).  Run in parallel.
+      await Promise.all([
+        supabase.from('student_profiles').update({ class_code: toCode, status: 'approved' }).eq('email', email),
+        supabase.from('users').update({ class_code: toCode }).eq('uid', supabaseUser.id),
+      ]);
+
+      // Load the new class's data and navigate to its dashboard.
+      const { data: classRows } = await supabase
+        .from('classes').select('*').eq('code', toCode);
+      if (classRows && classRows.length > 0) {
+        const classData = mapClass(classRows[0]);
+        const [assignResult, progressResult] = await Promise.all([
+          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+          supabase.from('progress').select('*').eq('class_code', toCode).eq('student_uid', supabaseUser.id),
+        ]);
+        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+        setStudentProgress((progressResult.data ?? []).map(mapProgress));
+      }
+
+      // Update in-memory user.classCode so the dashboard header shows the new code.
+      setUser(prev => prev ? { ...prev, classCode: toCode } : prev);
+      setPendingClassSwitch(null);
+      setView("student-dashboard");
+      setLoading(false);
+    } catch (err) {
+      console.error('Class switch failed:', err);
+      showToast('Could not switch class. Please try again.', 'error');
+      setPendingClassSwitch(null);
+    }
+  };
+
+  const handleCancelClassSwitch = async () => {
+    if (!pendingClassSwitch) return;
+    const { fromCode, supabaseUser } = pendingClassSwitch;
+    // User chose to stay in their current class — load that class's data
+    // as if the intended-code was never there.
+    try {
+      const { data: classRows } = await supabase
+        .from('classes').select('*').eq('code', fromCode);
+      if (classRows && classRows.length > 0) {
+        const classData = mapClass(classRows[0]);
+        const [assignResult, progressResult] = await Promise.all([
+          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+          supabase.from('progress').select('*').eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
+        ]);
+        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+        setStudentProgress((progressResult.data ?? []).map(mapProgress));
+      }
+    } catch { /* non-fatal — dashboard still renders */ }
+    setPendingClassSwitch(null);
+    setView("student-dashboard");
+    setLoading(false);
+  };
+
+  const classSwitchModal = pendingClassSwitch ? (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl">
+        <h2 className="text-2xl font-black mb-2">Switch class?</h2>
+        <p className="text-stone-600 mb-6 leading-relaxed">
+          You're currently in{' '}
+          <span className="font-bold text-stone-900">
+            {pendingClassSwitch.fromClassName ?? pendingClassSwitch.fromCode}
+          </span>
+          {'. '}Do you want to switch to{' '}
+          <span className="font-bold text-stone-900">
+            {pendingClassSwitch.toClassName ?? pendingClassSwitch.toCode}
+          </span>
+          ?
+        </p>
+        <div className="flex flex-col-reverse sm:flex-row gap-3">
+          <button
+            onClick={handleCancelClassSwitch}
+            style={{ touchAction: 'manipulation' }}
+            className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
+          >
+            Stay in {pendingClassSwitch.fromCode}
+          </button>
+          <button
+            onClick={handleConfirmClassSwitch}
+            style={{ touchAction: 'manipulation' }}
+            className="flex-1 py-4 rounded-2xl font-black text-white bg-gradient-to-br from-blue-500 to-indigo-600 hover:shadow-lg active:scale-95 transition-all"
+          >
+            Switch to {pendingClassSwitch.toCode}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   if (user?.role === "student" && view === "student-dashboard") {
     return (
       <LazyWrapper loadingMessage="Loading dashboard...">
@@ -4914,6 +5110,7 @@ export default function App() {
           setShowStudentOnboarding={setShowStudentOnboarding}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
+          classSwitchModal={classSwitchModal}
           setView={setView}
           setShopTab={setShopTab}
           setActiveAssignment={setActiveAssignment}
