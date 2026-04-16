@@ -4689,10 +4689,6 @@ export default function App() {
         {showDemo && (
           <DemoModeWrapper
             onClose={() => setShowDemo(false)}
-            onSignUp={() => {
-              setShowDemo(false);
-              setView("student-account-login");
-            }}
           />
         )}
         {cookieBannerOverlay}
