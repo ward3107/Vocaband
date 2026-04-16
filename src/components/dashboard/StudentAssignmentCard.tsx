@@ -45,21 +45,13 @@ export default function StudentAssignmentCard({
   const accent = ACCENT_COLORS[assignmentIdx % ACCENT_COLORS.length];
 
   const handleStart = () => {
-    try {
-      const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
-      alert(`[DEBUG] Click fired.\nAssignment: ${assignment.title}\nWord count: ${filteredWords.length}\nassignment.wordIds length: ${assignment.wordIds?.length}\nassignment.words defined: ${!!assignment.words}`);
-      setActiveAssignment(assignment);
-      setAssignmentWords(filteredWords);
-      React.startTransition(() => {
-        setView("game");
-        setShowModeSelection(true);
-      });
-      setTimeout(() => {
-        alert(`[DEBUG] After state update (500ms).\nIf you see this but NOT the game screen, the render path is broken.`);
-      }, 500);
-    } catch (err) {
-      alert(`[DEBUG] ERROR in handleStart: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
+    setActiveAssignment(assignment);
+    setAssignmentWords(filteredWords);
+    React.startTransition(() => {
+      setView("game");
+      setShowModeSelection(true);
+    });
   };
 
   return (
