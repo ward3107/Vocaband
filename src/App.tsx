@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
+import { useRetention } from "./hooks/useRetention";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import FloatingButtons from "./components/FloatingButtons";
@@ -150,7 +151,7 @@ export default function App() {
     } as const;
     setView(viewMap[page]);
   };
-  const [shopTab, setShopTab] = useState<ShopTab>("avatars");
+  const [shopTab, setShopTab] = useState<ShopTab>("hub");
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   // Track whether handleStudentLogin is in progress so onAuthStateChange
@@ -178,6 +179,10 @@ export default function App() {
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
+
+  // Retention state (daily chest, weekly challenge, comeback, limited
+  // rotating item, pet evolution milestones).  Scoped per-user via uid.
+  const retention = useRetention(user?.uid, xp);
 
   const [studentAvatar, setStudentAvatar] = useState("🦊");
   const [needsConsent, setNeedsConsent] = useState(false);
@@ -1358,6 +1363,34 @@ export default function App() {
     try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
   };
 
+  // Intended-class-code storage helpers (component-scoped so both the
+  // auth-effect's restoreSession and the component-level OAuth handler
+  // can share them).  We write to BOTH sessionStorage and localStorage
+  // because Google OAuth has been observed to wipe sessionStorage in
+  // some mobile browsers — the localStorage fallback keeps the student's
+  // class-switch intent alive across the Google redirect.
+  const readIntendedClassCode = (): string | null => {
+    try {
+      const s = sessionStorage.getItem('oauth_intended_class_code');
+      if (s) return s;
+    } catch {/* sessionStorage unavailable */}
+    try {
+      return localStorage.getItem('oauth_intended_class_code');
+    } catch {/* localStorage unavailable */}
+    return null;
+  };
+  const clearIntendedClassCode = () => {
+    try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+    try { localStorage.removeItem('oauth_intended_class_code'); } catch {}
+  };
+
+  // Sticky banner state: when a student typed a class code that doesn't
+  // exist, we surface a persistent banner on the dashboard so they can't
+  // miss the problem (toasts get dismissed/ignored).  Setting it here
+  // from either the OAuth-return path or the session-restore path both
+  // funnel into the same UI state.
+  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
+
   // --- AUTH LOGIC ---
   useEffect(() => {
     // If Supabase isn't configured, skip auth entirely and show the landing page.
@@ -1475,10 +1508,7 @@ export default function App() {
             // code before the OAuth redirect, and that code maps to a real
             // (different) class, surface the switch confirmation modal
             // instead of silently logging them into their old class.
-            let intendedCode: string | null = null;
-            try {
-              intendedCode = sessionStorage.getItem('oauth_intended_class_code');
-            } catch { /* sessionStorage unavailable */ }
+            const intendedCode = readIntendedClassCode();
             // Normalise both sides to uppercase so a DB-stored code that
             // slipped through without case normalisation still compares
             // correctly. The login form uppercases what students type.
@@ -1503,19 +1533,18 @@ export default function App() {
                 // Park the user on their existing dashboard while the modal
                 // is up so there's a visible background (not the landing page).
                 setView("student-dashboard");
-                try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+                clearIntendedClassCode();
                 return; // stop here — modal drives the next step
               }
               // Intended code was typed but doesn't match a real class.
-              // Tell the student so they don't think the app ignored them.
-              showToast(
-                `Class code "${intendedNorm}" not found — staying in your current class.`,
-                'error'
-              );
-              try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+              // Set a sticky banner (NOT a toast — toasts auto-dismiss and
+              // students miss them).  ClassNotFoundBanner on the dashboard
+              // renders this until the student acknowledges it.
+              setClassNotFoundIntent(intendedNorm);
+              clearIntendedClassCode();
             } else if (intendedCode) {
               // Same class — just clear the flag
-              try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+              clearIntendedClassCode();
             }
 
             const { data: classRows } = await supabase
@@ -3297,10 +3326,7 @@ export default function App() {
       // If the student entered a class code that differs from their
       // current one and it's a real class, show the switch modal instead
       // of logging them into their existing class.
-      let intendedCode: string | null = null;
-      try {
-        intendedCode = sessionStorage.getItem('oauth_intended_class_code');
-      } catch { /* sessionStorage unavailable */ }
+      const intendedCode = readIntendedClassCode();
       const intendedNorm = intendedCode?.trim().toUpperCase() || null;
       const currentNorm = studentData.class_code?.trim().toUpperCase() || '';
       if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
@@ -3331,17 +3357,15 @@ export default function App() {
             supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
           });
           setView("student-dashboard");
-          try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+          clearIntendedClassCode();
           return;
         }
-        // Typed a code that doesn't exist — tell the student, don't silent-fail.
-        showToast(
-          `Class code "${intendedNorm}" not found — staying in your current class.`,
-          'error'
-        );
-        try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+        // Typed a code that doesn't exist — sticky banner on dashboard so
+        // the student can actually see the problem (toasts get missed).
+        setClassNotFoundIntent(intendedNorm);
+        clearIntendedClassCode();
       } else if (intendedCode) {
-        try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
+        clearIntendedClassCode();
       }
 
       // Ensure a users table row exists for this OAuth student (restoreSession needs it)
@@ -4163,6 +4187,10 @@ export default function App() {
     const newStreak = cappedScore >= 80 ? streak + 1 : 0;
     setXp(newXp);
     setStreak(newStreak);
+
+    // Advance the retention weekly-challenge counter — any completed
+    // game counts toward the student's weekly-play target.
+    retention.recordPlay();
 
     // OPTIMIZED: Queue badge checks instead of immediate execution
     // Badges are cached server-side, so client checks are fast
@@ -5097,6 +5125,35 @@ export default function App() {
     setLoading(false);
   };
 
+  // Sticky banner the student sees on the dashboard when they typed a
+  // class code that doesn't exist (OAuth or session-restore).  Presents
+  // the typo visibly with a dismiss button — the student either realises
+  // their typo and fixes it via logout, or dismisses and stays where
+  // they are.  Previously this was a toast, which students missed.
+  const classNotFoundBanner = classNotFoundIntent ? (
+    <div className="max-w-4xl mx-auto mb-4">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-rose-500 to-pink-500 text-white shadow-lg p-4 sm:p-5 flex items-start gap-3">
+        <div className="shrink-0 w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">⚠️</div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-sm sm:text-base">Class code "{classNotFoundIntent}" not found</p>
+          <p className="text-xs sm:text-sm text-white/90 mt-0.5 leading-relaxed">
+            That class doesn't exist. You're still signed in to your current class.
+            To try again, sign out and type the correct code.
+          </p>
+        </div>
+        <button
+          onClick={() => setClassNotFoundIntent(null)}
+          type="button"
+          style={{ touchAction: 'manipulation' }}
+          className="shrink-0 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black transition-colors"
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const classSwitchModal = pendingClassSwitch ? (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl">
@@ -5150,11 +5207,36 @@ export default function App() {
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           classSwitchModal={classSwitchModal}
+          classNotFoundBanner={classNotFoundBanner}
           setView={setView}
           setShopTab={setShopTab}
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
+          retention={retention}
+          onGrantXp={(amount, reason) => {
+            // Grant retention rewards through the same path as gameplay XP.
+            // Persist to the server and show a celebration toast so students
+            // feel the reward landing, not just a silent number bump.
+            const newXp = xp + amount;
+            setXp(newXp);
+            if (user) {
+              supabase.from('users').update({ xp: newXp }).eq('uid', user.uid).then(() => {});
+            }
+            showToast(reason, 'success');
+          }}
+          onGrantReward={(kind, value) => {
+            // Apply a non-XP reward (title/frame/avatar unlock) into
+            // user state + DB.  Gets called from the pet milestone claim.
+            if (!user) return;
+            if (kind === 'unlock_avatar') {
+              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), String(value)] } : prev);
+            } else if (kind === 'unlock_title') {
+              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${value}`] } : prev);
+            } else if (kind === 'unlock_frame') {
+              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${value}`] } : prev);
+            }
+          }}
         />
       </LazyWrapper>
     );

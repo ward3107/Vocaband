@@ -1,10 +1,12 @@
-import { CheckCircle2, Zap, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { CheckCircle2, Zap, Sparkles, ChevronRight } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import FloatingButtons from "../components/FloatingButtons";
 import {
   XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
   THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES,
-  MYSTERY_EGGS,
+  MYSTERY_EGGS, LIMITED_ROTATION,
 } from "../constants/game";
 import { AVATAR_CATEGORIES } from "../constants/avatars";
 import type { View, ShopTab } from "../core/views";
@@ -30,7 +32,28 @@ const RARITY_STYLES: Record<string, { bg: string; ring: string; badge: string; g
   mythic:    { bg: 'from-pink-200 via-fuchsia-200 to-violet-200', ring: 'ring-fuchsia-400', badge: 'bg-gradient-to-r from-pink-400 to-violet-500 text-white', glow: 'from-pink-400/60 via-fuchsia-500/60 to-violet-500/60' },
 };
 
+// Deterministic limited-rotation item picker (same for all students in
+// a given ISO week).  Mirrors the one in useRetention so the shop hero
+// matches the dashboard ticker.
+function currentLimitedItem() {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), 0, 1);
+  const diffDays = Math.floor((d.getTime() - start.getTime()) / 86400000);
+  const week = `${d.getFullYear()}-W${Math.ceil((diffDays + start.getDay() + 1) / 7)}`;
+  let hash = 0;
+  for (let i = 0; i < week.length; i++) hash = (hash * 31 + week.charCodeAt(i)) | 0;
+  return LIMITED_ROTATION[Math.abs(hash) % LIMITED_ROTATION.length];
+}
+
 export default function ShopView({ user, xp, setXp, setUser, setView, showToast, shopTab, setShopTab }: ShopViewProps) {
+  // Cinematic egg-opening state.  Phases:
+  //   'idle'    → no cinematic
+  //   'zoom'    → egg zooming into centre (250ms)
+  //   'shake'   → 3 shakes (900ms)
+  //   'crack'   → flash + confetti burst, reward label fades in (1200ms)
+  // The real RPC (via purchaseEgg) runs in parallel so network latency
+  // is hidden inside the ~2s animation window.
+  const [openingEgg, setOpeningEgg] = useState<null | { egg: typeof MYSTERY_EGGS[0]; phase: 'zoom' | 'shake' | 'crack'; rewardLabel?: string }>(null);
 
   const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
     if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
@@ -77,24 +100,37 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
   // `{ error }`. If the RPC isn't deployed yet, we fall back to a
   // pure-client XP deduction + random roll so the feature still shows
   // students a tangible drop — the server RPC can replace this later.
+  // Run the network work + cinematic in parallel — the 2-second
+  // animation hides most RPC latency and the reward label only updates
+  // once the real result lands, so students see a matching number.
   const purchaseEgg = async (egg: typeof MYSTERY_EGGS[0]) => {
     if (xp < egg.cost) { showToast("Not enough XP!", "error"); return; }
-    const { data, error } = await supabase.rpc('open_mystery_egg', { egg_id: egg.id, egg_cost: egg.cost });
-    if (!error && data?.success) {
-      setXp(data.new_xp);
-      const rewardLabel = data.reward_label || `+${data.reward_xp ?? 0} XP`;
-      showToast(`${egg.emoji} ${egg.name} opened! ${rewardLabel}`, "success");
-      return;
-    }
-    // Fallback: RPC missing or returned an error → do the deduction +
-    // reward through the existing purchase_item RPC (which we know works)
-    // and roll the reward client-side. This keeps the feature usable
-    // pre-migration without risking the DB state getting out of sync.
-    const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
-    const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
-    if (pErr || !pData?.success) { showToast(pData?.error || "Could not open egg — try again later.", "error"); return; }
-    setXp(pData.new_xp);
-    showToast(`${egg.emoji} ${egg.name} opened! +${rewardXp} XP`, "success");
+    // Kick off the cinematic immediately.
+    setOpeningEgg({ egg, phase: 'zoom' });
+    setTimeout(() => setOpeningEgg(prev => prev ? { ...prev, phase: 'shake' } : prev), 300);
+    // Fire the RPC in the background.
+    const rpcPromise = (async () => {
+      const { data, error } = await supabase.rpc('open_mystery_egg', { egg_id: egg.id, egg_cost: egg.cost });
+      if (!error && data?.success) {
+        setXp(data.new_xp);
+        return data.reward_label || `+${data.reward_xp ?? 0} XP`;
+      }
+      // Fallback path — roll client-side via purchase_item RPC.
+      const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
+      const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
+      if (pErr || !pData?.success) {
+        showToast(pData?.error || "Could not open egg — try again later.", "error");
+        return null;
+      }
+      setXp(pData.new_xp);
+      return `+${rewardXp} XP`;
+    })();
+    // Advance to "crack" at 1.2s, show the reward label whenever RPC finishes.
+    const rewardLabel = await rpcPromise;
+    if (rewardLabel === null) { setOpeningEgg(null); return; }
+    setTimeout(() => {
+      setOpeningEgg(prev => prev ? { ...prev, phase: 'crack', rewardLabel } : prev);
+    }, Math.max(0, 1200 - 300));
   };
 
   const purchaseBooster = async (booster: typeof BOOSTERS_DEFS[0]) => {
@@ -133,48 +169,27 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           </div>
         </div>
 
-        {/* Shop hero */}
-        <div className="relative overflow-hidden rounded-[28px] mb-6 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
-          <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-cyan-400/25 rounded-full blur-3xl" />
-          <div className="relative">
-            <p className="text-xs font-bold text-white/80 uppercase tracking-widest mb-1">The Shop</p>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Treat yourself 🎁</h1>
-            <p className="text-sm text-white/90 mt-2 max-w-md">
-              Spend XP on avatars, themes, frames, titles, and power-ups. New items drop as you level up.
-            </p>
+        {/* --- ARCADE LOBBY HUB --- Only rendered when shopTab === "hub".
+            Otherwise we show a "back to shop" breadcrumb + the focused
+            category content below. */}
+        {shopTab === "hub" ? (
+          <ArcadeLobbyHub
+            xp={xp}
+            setShopTab={setShopTab}
+          />
+        ) : (
+          <div className="mb-5">
+            <button
+              onClick={() => setShopTab("hub")}
+              type="button"
+              style={{ touchAction: 'manipulation' }}
+              className="inline-flex items-center gap-1.5 text-sm font-bold text-stone-500 hover:text-stone-900 bg-white border border-stone-200 hover:border-stone-300 rounded-full px-3 py-1.5 shadow-sm transition-all"
+            >
+              <span className="rotate-180 inline-block"><ChevronRight size={14} /></span>
+              All shop
+            </button>
           </div>
-        </div>
-
-        {/* Tabs — segmented pill group, scrolls horizontally on mobile.
-            "Eggs" leads because it's the new hero category we want students
-            to try first. */}
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
-          {(["eggs", "avatars", "themes", "titles", "frames", "boosters", "powerups"] as const).map(tab => {
-            const isActive = shopTab === tab;
-            const labels = {
-              eggs: { emoji: '🥚', text: 'Eggs' },
-              avatars: { emoji: '🎭', text: 'Avatars' },
-              themes: { emoji: '🎨', text: 'Themes' },
-              titles: { emoji: '🏷️', text: 'Titles' },
-              frames: { emoji: '🖼️', text: 'Frames' },
-              boosters: { emoji: '🔥', text: 'Boosters' },
-              powerups: { emoji: '⚡', text: 'Power-ups' },
-            };
-            return (
-              <button
-                key={tab}
-                onClick={() => setShopTab(tab)}
-                type="button"
-                style={{ touchAction: 'manipulation', scrollSnapAlign: 'center' }}
-                className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"}`}
-              >
-                <span className="text-base">{labels[tab].emoji}</span>
-                <span>{labels[tab].text}</span>
-              </button>
-            );
-          })}
-        </div>
+        )}
 
         {/* Mystery Eggs — the new hero shop category. Each egg is a big,
             3D-feeling card with a rarity-coded gradient, ambient glow, and
@@ -599,7 +614,294 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           </div>
         </div>
       </div>
+
+      {/* Egg-opening cinematic — full-screen drama overlay */}
+      <EggOpeningCinematic
+        state={openingEgg}
+        onClose={() => setOpeningEgg(null)}
+      />
+
       <FloatingButtons showBackToTop={true} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Arcade Lobby Hub — the new "wow moment" shop landing.  Renders when
+// shopTab === "hub".  Self-contained so we can iterate on the hub without
+// disturbing the category sheets.
+// ---------------------------------------------------------------------------
+interface ArcadeLobbyHubProps {
+  xp: number;
+  setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
+}
+
+function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
+  const limited = currentLimitedItem();
+  const limitedEmoji = limited.kind === 'avatar' ? limited.itemId :
+                       limited.kind === 'title'  ? '🏷️' :
+                       limited.kind === 'frame'  ? '🖼️' : '🎨';
+  // Trending rail — hand-picked items that feel like "drops" worth looking
+  // at.  Mix a hero egg, a premium avatar, a frame, a title.
+  const trending: { label: string; pill: string; pillBg: string; onClick: () => void; emoji: string; gradient: string }[] = [
+    { label: 'Rainbow Egg',     pill: 'MYTHIC', pillBg: 'bg-fuchsia-500', emoji: '🌈', gradient: 'from-pink-400 via-fuchsia-500 to-violet-500', onClick: () => setShopTab('eggs') },
+    { label: 'GOAT Avatar',     pill: 'HOT',    pillBg: 'bg-rose-500',    emoji: '🐐', gradient: 'from-amber-400 via-orange-500 to-rose-500', onClick: () => setShopTab('avatars') },
+    { label: 'Crown Frame',     pill: 'RARE',   pillBg: 'bg-amber-500',   emoji: '👑', gradient: 'from-yellow-400 via-amber-500 to-orange-500', onClick: () => setShopTab('frames') },
+    { label: 'Final Boss Title',pill: 'NEW',    pillBg: 'bg-emerald-500', emoji: '🏁', gradient: 'from-indigo-500 via-violet-500 to-fuchsia-500', onClick: () => setShopTab('titles') },
+    { label: '2× XP Booster',   pill: 'HOT',    pillBg: 'bg-rose-500',    emoji: '🚀', gradient: 'from-sky-400 via-blue-500 to-indigo-600', onClick: () => setShopTab('boosters') },
+  ];
+
+  // Portals — the 5 main categories as big pressable tiles.  Each has a
+  // distinct vibe so the hub doesn't feel monotone.
+  const portals: { tab: Exclude<ShopTab, 'hub'>; label: string; emoji: string; subtitle: string; gradient: string }[] = [
+    { tab: 'eggs',     label: 'Mystery Eggs', emoji: '🥚', subtitle: 'Random XP drops',            gradient: 'from-indigo-500 via-violet-500 to-fuchsia-500' },
+    { tab: 'avatars',  label: 'Avatars',      emoji: '🎭', subtitle: 'Collect them all',           gradient: 'from-blue-500 via-sky-500 to-cyan-500' },
+    { tab: 'frames',   label: 'Frames',       emoji: '🖼️', subtitle: 'Flex your profile',          gradient: 'from-amber-500 via-orange-500 to-rose-500' },
+    { tab: 'titles',   label: 'Titles',       emoji: '🏷️', subtitle: 'What you\'re known for',     gradient: 'from-violet-500 via-purple-500 to-fuchsia-500' },
+    { tab: 'themes',   label: 'Themes',       emoji: '🎨', subtitle: 'Change the vibe',            gradient: 'from-emerald-500 via-teal-500 to-sky-500' },
+    { tab: 'boosters', label: 'Boosters',     emoji: '🔥', subtitle: '24h + weekend buffs',        gradient: 'from-rose-500 via-pink-500 to-fuchsia-500' },
+    { tab: 'powerups', label: 'Power-ups',    emoji: '⚡', subtitle: 'Use during games',           gradient: 'from-yellow-500 via-amber-500 to-orange-500' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* HERO — Drop of the Week (limited rotating item at 20% off) */}
+      <motion.button
+        onClick={() => setShopTab(
+          limited.kind === 'avatar' ? 'avatars' :
+          limited.kind === 'title'  ? 'titles'  :
+          limited.kind === 'frame'  ? 'frames'  : 'themes'
+        )}
+        type="button"
+        style={{ touchAction: 'manipulation' }}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.98 }}
+        className="relative w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 shadow-xl shadow-violet-500/20 text-left"
+      >
+        <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-yellow-300/30 rounded-full blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-20 w-64 h-64 bg-cyan-400/25 rounded-full blur-3xl" />
+        {/* Sparkle particles */}
+        {[0, 1, 2, 3, 4].map(i => (
+          <motion.span
+            key={i}
+            aria-hidden
+            className="pointer-events-none absolute text-white/60"
+            style={{ top: `${20 + (i * 13) % 60}%`, left: `${10 + (i * 17) % 80}%`, fontSize: 10 }}
+            animate={{ opacity: [0.2, 0.9, 0.2], scale: [0.8, 1.2, 0.8] }}
+            transition={{ duration: 2 + i * 0.3, repeat: Infinity, delay: i * 0.4 }}
+          >✨</motion.span>
+        ))}
+        <div className="relative flex items-center gap-5">
+          <motion.div
+            animate={{ rotate: [-4, 4, -4], y: [0, -4, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-5xl sm:text-6xl shadow-inner"
+          >
+            {limitedEmoji}
+          </motion.div>
+          <div className="flex-1 min-w-0">
+            <div className="inline-flex items-center gap-1.5 bg-amber-300 text-rose-900 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-1.5">
+              <Sparkles size={10} /> Drop of the week
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">{limited.tagline}</h1>
+            <p className="text-sm text-white/90 mt-1">
+              <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-black">
+                {Math.round(limited.discount * 100)}% OFF
+              </span>
+              {' '}this week in the shop
+            </p>
+          </div>
+          <ChevronRight size={24} className="text-white/70 shrink-0 hidden sm:block" />
+        </div>
+      </motion.button>
+
+      {/* TRENDING RAIL — horizontal scrolling mini-cards */}
+      <div>
+        <div className="flex items-center justify-between mb-2 px-1">
+          <h2 className="text-sm font-black text-stone-900 uppercase tracking-widest">Trending now</h2>
+          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Featured drops</span>
+        </div>
+        <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-1 px-1" style={{ scrollSnapType: 'x mandatory' }}>
+          {trending.map((item, i) => (
+            <motion.button
+              key={i}
+              onClick={item.onClick}
+              type="button"
+              style={{ touchAction: 'manipulation', scrollSnapAlign: 'start' }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className={`relative shrink-0 w-40 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} p-3 text-left shadow-md`}
+            >
+              <span className={`absolute top-2 right-2 ${item.pillBg} text-white text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-sm`}>
+                {item.pill}
+              </span>
+              <div className="w-full h-20 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl border border-white/30 mb-2 shadow-inner">
+                {item.emoji}
+              </div>
+              <p className="text-xs font-black text-white leading-tight drop-shadow">{item.label}</p>
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      {/* PORTAL TILES — the 5+ main category entrances */}
+      <div>
+        <h2 className="text-sm font-black text-stone-900 uppercase tracking-widest mb-2 px-1">Browse shop</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {portals.map(p => (
+            <motion.button
+              key={p.tab}
+              onClick={() => setShopTab(p.tab)}
+              type="button"
+              style={{ touchAction: 'manipulation' }}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className={`relative aspect-[5/4] overflow-hidden rounded-3xl bg-gradient-to-br ${p.gradient} p-4 text-left shadow-lg`}
+            >
+              <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 bg-white/20 rounded-full blur-2xl" />
+              <div className="relative h-full flex flex-col justify-between">
+                <motion.div
+                  animate={{ y: [0, -2, 0] }}
+                  transition={{ duration: 2 + Math.random(), repeat: Infinity, ease: 'easeInOut' }}
+                  className="text-4xl sm:text-5xl drop-shadow-lg"
+                >
+                  {p.emoji}
+                </motion.div>
+                <div>
+                  <p className="text-base sm:text-lg font-black text-white leading-tight drop-shadow">{p.label}</p>
+                  <p className="text-[11px] text-white/85 mt-0.5">{p.subtitle}</p>
+                </div>
+                <ChevronRight size={16} className="absolute top-0 right-0 text-white/70" />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      {/* YOUR BALANCE callout — tiny trend pointer so students know their earn rate */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
+          <Zap size={20} className="text-white fill-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Your balance</p>
+          <p className="text-xl font-black text-stone-900 tabular-nums">{xp} XP</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Next tier</p>
+          <p className="text-sm font-black text-stone-900">{getXpTitle(xp).emoji} {getXpTitle(xp).title}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Egg-opening cinematic — full-screen overlay with zoom → shake → crack.
+// ---------------------------------------------------------------------------
+interface EggOpeningCinematicProps {
+  state: { egg: typeof MYSTERY_EGGS[0]; phase: 'zoom' | 'shake' | 'crack'; rewardLabel?: string } | null;
+  onClose: () => void;
+}
+
+function EggOpeningCinematic({ state, onClose }: EggOpeningCinematicProps) {
+  return (
+    <AnimatePresence>
+      {state && (
+        <motion.div
+          key="egg-cinematic"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={state.phase === 'crack' ? onClose : undefined}
+        >
+          {/* Ambient radial glow to sell the rarity */}
+          <motion.div
+            aria-hidden
+            initial={{ scale: 0 }}
+            animate={{ scale: [0, 1.5, 1] }}
+            transition={{ duration: 1.5 }}
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          >
+            <div className={`w-96 h-96 rounded-full blur-3xl opacity-60 bg-gradient-to-br ${RARITY_STYLES[state.egg.rarity].glow}`} />
+          </motion.div>
+
+          {/* The egg itself */}
+          <motion.div
+            className="relative text-center"
+            initial={{ scale: 0, y: 80 }}
+            animate={
+              state.phase === 'zoom' ? { scale: 1, y: 0 } :
+              state.phase === 'shake' ? { scale: 1, y: 0, rotate: [-6, 6, -6, 6, -6, 6, 0] } :
+              { scale: 1.1, y: 0 }
+            }
+            transition={
+              state.phase === 'zoom' ? { type: 'spring', stiffness: 200, damping: 16 } :
+              state.phase === 'shake' ? { duration: 0.9, ease: 'easeInOut' } :
+              { duration: 0.4 }
+            }
+          >
+            <motion.div
+              className="text-[10rem] sm:text-[14rem] leading-none drop-shadow-[0_0_40px_rgba(255,255,255,0.4)]"
+              animate={state.phase === 'crack' ? { scale: [1, 1.15, 1], rotate: [0, -5, 5, 0] } : {}}
+              transition={state.phase === 'crack' ? { duration: 0.5 } : {}}
+            >
+              {state.egg.emoji}
+            </motion.div>
+
+            {/* Reward label */}
+            <AnimatePresence>
+              {state.phase === 'crack' && state.rewardLabel && (
+                <motion.div
+                  key="reward"
+                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.2, type: 'spring' }}
+                  className="mt-6"
+                >
+                  <p className="text-sm font-black text-white/70 uppercase tracking-widest mb-1">
+                    {state.egg.name} opened!
+                  </p>
+                  <p className="text-4xl sm:text-5xl font-black text-white drop-shadow">
+                    {state.rewardLabel}
+                  </p>
+                  <button
+                    onClick={onClose}
+                    type="button"
+                    style={{ touchAction: 'manipulation' }}
+                    className="mt-6 bg-white text-stone-900 font-black px-6 py-3 rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-transform"
+                  >
+                    Awesome!
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Confetti-ish particle burst at the crack moment */}
+            {state.phase === 'crack' && (
+              <>
+                {[...Array(14)].map((_, i) => (
+                  <motion.span
+                    key={i}
+                    className="absolute left-1/2 top-1/2 text-2xl pointer-events-none"
+                    initial={{ x: 0, y: 0, opacity: 1, scale: 0.5 }}
+                    animate={{
+                      x: Math.cos((i / 14) * Math.PI * 2) * (100 + Math.random() * 60),
+                      y: Math.sin((i / 14) * Math.PI * 2) * (100 + Math.random() * 60),
+                      opacity: 0,
+                      scale: 1,
+                    }}
+                    transition={{ duration: 1.2, ease: 'easeOut' }}
+                  >
+                    {['✨', '⭐', '💫', '🎉'][i % 4]}
+                  </motion.span>
+                ))}
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
