@@ -1,11 +1,19 @@
-import googleTTS from 'google-tts-api'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
 import * as fs from 'fs'
 import * as path from 'path'
-import * as https from 'https'
 import { fileURLToPath } from 'url'
+import { synthesizeSpeechMp3 } from '../tts-common'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+const API_KEY = process.env.GOOGLE_AI_API_KEY
+if (!API_KEY) {
+  console.error('GOOGLE_AI_API_KEY missing in .env.local — needed for Google Cloud TTS.')
+  process.exit(1)
+}
 
 // English motivational phrases only
 export const MOTIVATIONAL_PHRASES: { key: string; text: string; lang: string }[] = [
@@ -113,20 +121,11 @@ export const MOTIVATIONAL_PHRASES: { key: string; text: string; lang: string }[]
 const OUTPUT_DIR = path.join(__dirname, '../temp-motivational')
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 
-const download = (url: string, dest: string): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest)
-    https.get(url, res => {
-      res.pipe(file)
-      file.on('finish', () => { file.close(); resolve() })
-    }).on('error', err => { fs.unlink(dest, () => {}); reject(err) })
-  })
-
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 const run = async () => {
   let done = 0, skipped = 0, failed: string[] = []
-  console.log(`Generating ${MOTIVATIONAL_PHRASES.length} English motivational phrases...`)
+  console.log(`Generating ${MOTIVATIONAL_PHRASES.length} motivational phrases via Google Cloud TTS (Neural2-F)...`)
 
   for (const phrase of MOTIVATIONAL_PHRASES) {
     const dest = path.join(OUTPUT_DIR, `${phrase.key}.mp3`)
@@ -137,17 +136,14 @@ const run = async () => {
     }
 
     try {
-      const url = googleTTS.getAudioUrl(phrase.text, {
-        lang: phrase.lang,
-        slow: false,
-        host: 'https://translate.google.com',
-      })
-      await download(url, dest)
+      const mp3 = await synthesizeSpeechMp3(phrase.text, API_KEY!)
+      fs.writeFileSync(dest, mp3)
       done++
-      if (done % 20 === 0) console.log(`✓ ${done + skipped}/${MOTIVATIONAL_PHRASES.length}`)
-      await sleep(350)
-    } catch (err) {
-      console.error(`✗ Failed: ${phrase.key}`)
+      if (done % 10 === 0) console.log(`✓ ${done + skipped}/${MOTIVATIONAL_PHRASES.length}`)
+      // Small gap between calls to stay well under the 1000 QPM quota.
+      await sleep(80)
+    } catch (err: any) {
+      console.error(`✗ Failed: ${phrase.key} — ${err?.message || err}`)
       failed.push(phrase.key)
     }
   }

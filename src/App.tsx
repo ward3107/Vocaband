@@ -81,6 +81,33 @@ function uniqueNegativeId(offset = 0): number {
   return -(Date.now() + offset + secureRandomInt(10000));
 }
 
+// Fire-and-forget request to have the server generate + upload MP3s for
+// custom words (OCR, paste, quick-play). Students will then hear a natural
+// Neural2 voice instead of the robotic browser SpeechSynthesis fallback.
+// Never await this — it can take 5–10s for a big list and we don't want the
+// teacher UI to block on it.
+async function requestCustomWordAudio(words: { id: number; english: string }[]): Promise<void> {
+  if (words.length === 0) return;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    await fetch('/api/tts/custom-words', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        words: words.map(w => ({ id: w.id, english: w.english })),
+      }),
+    });
+  } catch (err) {
+    // Non-critical: if this fails, students just hear browser TTS.
+    console.warn('[TTS] Custom-word audio request failed:', err);
+  }
+}
+
 
 export default function App() {
   // Initialize game debugger
@@ -2505,6 +2532,9 @@ export default function App() {
         setSelectedLevel("Custom");
         setSelectedWords(customWordsFromOCR.map(w => w.id));
 
+        // Fire off Neural2 audio generation so students hear real pronunciations.
+        void requestCustomWordAudio(customWordsFromOCR);
+
         // Navigate to create-assignment view so user can see the matched words
         if (classes.length > 0) {
           setSelectedClass(classes[0]);
@@ -2648,6 +2678,8 @@ export default function App() {
     }));
     setCustomWords(prev => [...prev, ...newCustomWords]);
     setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
+    // Fire off Neural2 audio generation for the new custom words.
+    void requestCustomWordAudio(newCustomWords);
     // Switch to Custom tab so users can see the added words
     setSelectedLevel("Custom");
     // Clear search and filters so all words are visible
@@ -2697,6 +2729,7 @@ export default function App() {
     setQuickPlaySelectedWords(newSelectedWords);
 
     // Add custom words from translations (either from Translate All or manual entry)
+    const customWordsToGenerate: { id: number; english: string }[] = [];
     if (unmatchedTerms.length > 0 && customTranslations) {
       unmatchedTerms.forEach(term => {
         const translation = customTranslations.get(term.term);
@@ -2709,9 +2742,12 @@ export default function App() {
             level: "Custom"
           };
           setQuickPlaySelectedWords(prev => [...prev, customWord]);
+          customWordsToGenerate.push({ id: customWord.id, english: customWord.english });
         }
       });
     }
+    // Fire off Neural2 audio generation for any new custom words.
+    void requestCustomWordAudio(customWordsToGenerate);
 
     // Clear preview state
     setShowQuickPlayPreview(false);
