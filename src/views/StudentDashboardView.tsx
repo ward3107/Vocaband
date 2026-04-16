@@ -2,6 +2,7 @@ import StudentOnboarding from "../components/StudentOnboarding";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
+import StudentStatsRow from "../components/dashboard/StudentStatsRow";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import { THEMES } from "../constants/game";
@@ -42,8 +43,16 @@ export default function StudentDashboardView({
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
+  // The default theme now uses a soft gradient instead of flat stone-100 —
+  // sets a warmer tone for the vibrant greeting hero that follows. Other
+  // themes still pick their own bg from THEMES.
+  const isDefault = (user?.activeTheme ?? 'default') === 'default';
+  const bgClass = isDefault
+    ? 'bg-gradient-to-b from-violet-50 via-stone-50 to-white'
+    : activeThemeConfig.colors.bg;
+
   return (
-    <div className={`min-h-screen ${activeThemeConfig.colors.bg} p-4 sm:p-6`}>
+    <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
       {consentModal}
       {exitConfirmModal}
       {classSwitchModal}
@@ -65,6 +74,12 @@ export default function StudentDashboardView({
           badges={badges}
           copiedCode={copiedCode}
           setCopiedCode={setCopiedCode}
+        />
+        <StudentStatsRow
+          xp={xp}
+          streak={streak}
+          studentAssignments={studentAssignments}
+          studentProgress={studentProgress}
         />
         <StudentOverallProgress
           studentAssignments={studentAssignments}

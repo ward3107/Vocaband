@@ -1,4 +1,6 @@
 import React from "react";
+import { motion } from "motion/react";
+import { Zap, Sparkles } from "lucide-react";
 import { ALL_WORDS } from "../../data/vocabulary";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
@@ -6,15 +8,15 @@ import type { View } from "../../core/views";
 
 const DEFAULT_MODES = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
 
-const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
-
-const ACCENT_COLORS = [
-  { bg: "bg-blue-50", border: "border-blue-100", hoverBorder: "hover:border-blue-300", bar: "[&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600", btn: "bg-blue-700 hover:bg-blue-800", strip: "bg-blue-500" },
-  { bg: "bg-purple-50", border: "border-purple-100", hoverBorder: "hover:border-purple-300", bar: "[&::-webkit-progress-value]:bg-purple-600 [&::-moz-progress-bar]:bg-purple-600", btn: "bg-purple-700 hover:bg-purple-800", strip: "bg-purple-500" },
-  { bg: "bg-emerald-50", border: "border-emerald-100", hoverBorder: "hover:border-emerald-300", bar: "[&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:bg-emerald-600", btn: "bg-emerald-700 hover:bg-emerald-800", strip: "bg-emerald-500" },
-  { bg: "bg-amber-50", border: "border-amber-100", hoverBorder: "hover:border-amber-300", bar: "[&::-webkit-progress-value]:bg-amber-600 [&::-moz-progress-bar]:bg-amber-600", btn: "bg-amber-700 hover:bg-amber-800", strip: "bg-amber-500" },
-  { bg: "bg-rose-50", border: "border-rose-100", hoverBorder: "hover:border-rose-300", bar: "[&::-webkit-progress-value]:bg-rose-600 [&::-moz-progress-bar]:bg-rose-600", btn: "bg-rose-700 hover:bg-rose-800", strip: "bg-rose-500" },
-  { bg: "bg-cyan-50", border: "border-cyan-100", hoverBorder: "hover:border-cyan-300", bar: "[&::-webkit-progress-value]:bg-cyan-600 [&::-moz-progress-bar]:bg-cyan-600", btn: "bg-cyan-700 hover:bg-cyan-800", strip: "bg-cyan-500" },
+// Per-card accent palette — rotates so the dashboard feels colourful instead
+// of uniform, but each card stays internally consistent.
+const ACCENTS = [
+  { bg: "bg-gradient-to-br from-blue-50 to-indigo-50",        ring: "stroke-blue-500",     cta: "bg-gradient-to-r from-blue-500 to-indigo-600",    strip: "from-blue-500 to-indigo-600",     text: "text-blue-700",     chip: "bg-blue-100 text-blue-700" },
+  { bg: "bg-gradient-to-br from-purple-50 to-fuchsia-50",     ring: "stroke-purple-500",   cta: "bg-gradient-to-r from-purple-500 to-fuchsia-600", strip: "from-purple-500 to-fuchsia-600",  text: "text-purple-700",   chip: "bg-purple-100 text-purple-700" },
+  { bg: "bg-gradient-to-br from-emerald-50 to-teal-50",       ring: "stroke-emerald-500",  cta: "bg-gradient-to-r from-emerald-500 to-teal-600",   strip: "from-emerald-500 to-teal-600",    text: "text-emerald-700",  chip: "bg-emerald-100 text-emerald-700" },
+  { bg: "bg-gradient-to-br from-amber-50 to-orange-50",       ring: "stroke-amber-500",    cta: "bg-gradient-to-r from-amber-500 to-orange-600",   strip: "from-amber-500 to-orange-600",    text: "text-amber-700",    chip: "bg-amber-100 text-amber-700" },
+  { bg: "bg-gradient-to-br from-rose-50 to-pink-50",          ring: "stroke-rose-500",     cta: "bg-gradient-to-r from-rose-500 to-pink-600",      strip: "from-rose-500 to-pink-600",       text: "text-rose-700",     chip: "bg-rose-100 text-rose-700" },
+  { bg: "bg-gradient-to-br from-cyan-50 to-sky-50",           ring: "stroke-cyan-500",     cta: "bg-gradient-to-r from-cyan-500 to-sky-600",       strip: "from-cyan-500 to-sky-600",        text: "text-cyan-700",     chip: "bg-cyan-100 text-cyan-700" },
 ];
 
 interface StudentAssignmentCardProps {
@@ -25,6 +27,42 @@ interface StudentAssignmentCardProps {
   setAssignmentWords: (w: Word[]) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
   setShowModeSelection: (show: boolean) => void;
+}
+
+// Circular progress ring — SVG so it scales cleanly + animates via stroke-dasharray.
+function ProgressRing({
+  percent,
+  stroke,
+  size = 58,
+}: { percent: number; stroke: string; size?: number }) {
+  const radius = (size - 8) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.min(100, Math.max(0, percent)) / 100) * circumference;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        {/* Track */}
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          strokeWidth="6" fill="none"
+          className="stroke-white/70"
+        />
+        {/* Progress */}
+        <motion.circle
+          cx={size / 2} cy={size / 2} r={radius}
+          strokeWidth="6" strokeLinecap="round" fill="none"
+          className={stroke}
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.9, ease: "easeOut" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-sm font-black text-stone-800 tabular-nums">{Math.round(percent)}%</span>
+      </div>
+    </div>
+  );
 }
 
 export default function StudentAssignmentCard({
@@ -42,7 +80,11 @@ export default function StudentAssignmentCard({
 
   const progressPercentage = Math.min(100, Math.round((completedModes / Math.max(totalModes, 1)) * 100));
   const isComplete = completedModes >= totalModes;
-  const accent = ACCENT_COLORS[assignmentIdx % ACCENT_COLORS.length];
+  const accent = ACCENTS[assignmentIdx % ACCENTS.length];
+
+  // Rough XP reward — totalModes * 15 XP per mode played (matches what the
+  // game loop already awards).  Displayed as an incentive chip.
+  const xpReward = totalModes * 15;
 
   const handleStart = () => {
     const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
@@ -55,46 +97,86 @@ export default function StudentAssignmentCard({
   };
 
   return (
-    <div
+    <motion.div
       onClick={handleStart}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStart(); }}
-      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}
-      className={`${accent.bg} p-5 sm:p-6 rounded-3xl border-2 ${accent.border} ${accent.hoverBorder} transition-colors relative overflow-hidden active:scale-[0.99]`}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: assignmentIdx * 0.06 }}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+      className={`${accent.bg} p-4 sm:p-5 rounded-3xl border border-white/80 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.99] transition-all relative overflow-hidden`}
     >
-      <div className={`absolute top-0 left-0 w-1.5 h-full ${accent.strip} rounded-l-3xl`} />
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
-        <div className="flex-1">
-          <h3 className="text-xl sm:text-xl font-bold text-stone-800">{assignment.title}</h3>
-          <p className="text-stone-500 text-base sm:text-sm font-medium mt-2 sm:mt-1">
-            {assignment.wordIds.length} Vocabulary Words
-            {assignment.deadline && ` • Due: ${new Date(assignment.deadline).toLocaleDateString()}`}
-          </p>
+      {/* Colored left strip */}
+      <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${accent.strip}`} />
+
+      {/* MASTERED banner + sparkle */}
+      {isComplete && (
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: -8 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.4 }}
+          className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
+        >
+          <Sparkles size={10} className="fill-white" />
+          MASTERED
+        </motion.div>
+      )}
+
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Progress ring */}
+        <ProgressRing percent={progressPercentage} stroke={accent.ring} />
+
+        {/* Title + meta */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-black text-stone-900 leading-tight truncate">
+            {assignment.title}
+          </h3>
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span className="text-[10px] sm:text-xs font-bold text-stone-500 uppercase tracking-wide">
+              {assignment.wordIds.length} words
+            </span>
+            {assignment.deadline && (
+              <>
+                <span className="text-stone-300">·</span>
+                <span className="text-[10px] sm:text-xs font-bold text-stone-500">
+                  Due {new Date(assignment.deadline).toLocaleDateString()}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${accent.chip}`}>
+              <Zap size={11} className="fill-current" />
+              +{xpReward} XP
+            </span>
+            <span className="text-[10px] sm:text-xs font-bold text-stone-500">
+              {completedModes}/{totalModes} modes
+            </span>
+          </div>
         </div>
+
+        {/* CTA */}
         <button
           onClick={(e) => { e.stopPropagation(); handleStart(); }}
+          type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`w-full sm:w-auto px-6 py-4 sm:py-3 ${accent.btn} text-white rounded-xl font-bold transition-colors whitespace-nowrap text-base sm:text-sm`}
+          className={`hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${accent.cta} text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all`}
         >
-          {isComplete ? "Play Again" : "Start Learning"}
+          {isComplete ? "Play again" : "Start"} →
         </button>
       </div>
 
-      {/* Progress Bar */}
-      <div>
-        <div className="flex justify-between text-sm sm:text-xs font-bold mb-3 sm:mb-2">
-          <span className="text-stone-500 uppercase tracking-widest">Progress</span>
-          <span className={isComplete ? "text-blue-700" : "text-stone-500"}>
-            {completedModes} / {totalModes} Modes ({progressPercentage}%)
-          </span>
-        </div>
-        <progress
-          className={`h-4 sm:h-3 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 ${accent.bar}`}
-          max={100}
-          value={toProgressValue(progressPercentage)}
-        />
-      </div>
-    </div>
+      {/* Mobile CTA — full-width at bottom */}
+      <button
+        onClick={(e) => { e.stopPropagation(); handleStart(); }}
+        type="button"
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        className={`sm:hidden w-full mt-3 py-2.5 ${accent.cta} text-white rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all`}
+      >
+        {isComplete ? "Play again" : "Start learning"} →
+      </button>
+    </motion.div>
   );
 }
