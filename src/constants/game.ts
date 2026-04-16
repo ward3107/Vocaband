@@ -67,14 +67,15 @@ export const CLASS_AVATAR_GROUPS: { label: string; emojis: string[] }[] = [
 export const CLASS_AVATARS = CLASS_AVATAR_GROUPS.flatMap(g => g.emojis);
 
 // --- ASSIGNMENT REPLAY CAP (anti-farm) ---
-// Each assignment can be played at most this many times total across
-// all modes.  After the cap is hit, the assignment locks: no more XP,
-// button disabled in the dashboard card, "maxed out" badge shown.
-// Chosen to let a student try 5 different modes once, OR replay their
-// favourite 2-3 modes a couple of times — both of which are healthy
-// study patterns — while closing the XP-farm loophole of replaying
-// the same easy mode 20+ times for guaranteed XP.
-export const MAX_ASSIGNMENT_REPLAYS = 5;
+// Each assignment can be played at most this many times TOTAL across
+// all modes (one "play" = one completed game).  After the cap is hit
+// the assignment locks: no more XP, button disabled in the dashboard
+// card, "maxed out" badge shown.  Count is assignment-level, NOT
+// per-mode — the teacher sets which modes are allowed, but the
+// student still only gets this many total attempts regardless of
+// which mode they pick.  Set low (3) to firmly close the XP-farm
+// loophole of replaying the same easy mode for guaranteed XP.
+export const MAX_ASSIGNMENT_REPLAYS = 3;
 
 export const XP_TITLES = [
   { min: 0, title: 'Beginner', emoji: '🌱' },
