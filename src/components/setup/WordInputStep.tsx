@@ -9,7 +9,7 @@ import {
   X, Check, ChevronRight, ChevronDown, Search, Plus, Trash2, Edit2,
   Clipboard, ArrowRight, ArrowLeft, Sparkles, Save, Star, FileText,
   Volume2, Loader2, Languages, Camera, Info, BookOpen,
-  FolderOpen, Copy, Share2, Filter, Lock, Undo2, AlertTriangle, Eye,
+  FolderOpen, Copy, Share2, Filter, Lock, Undo2, AlertTriangle, AlertCircle, Eye,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
