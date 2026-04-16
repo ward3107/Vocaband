@@ -13,13 +13,13 @@ export type Voice = {
   ssmlGender: 'MALE' | 'FEMALE' | 'NEUTRAL'
 }
 
-// Google's Journey voices are conversational neural voices designed to sound
-// more human than the older Neural2 line. Journey-F (female) is warm and
-// kid-friendly; swap to Journey-D for a male voice. If Google retires Journey,
-// fall back to 'en-US-Neural2-F'.
+// Studio voices are Google's highest-quality tier, designed for long-form
+// content like audiobooks — the most human-sounding option. Studio-O is
+// female; swap to Studio-Q for male. Free-tier limit is 100K chars/month,
+// which comfortably fits our 9,159-word + 99-phrase corpus (~57K chars).
 export const DEFAULT_VOICE: Voice = {
   languageCode: 'en-US',
-  name: 'en-US-Journey-F',
+  name: 'en-US-Studio-O',
   ssmlGender: 'FEMALE',
 }
 
