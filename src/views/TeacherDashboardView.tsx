@@ -5,6 +5,7 @@ import { supabase } from "../core/supabase";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
+import EditClassModal from "../components/dashboard/EditClassModal";
 import ClassCreatedModal from "../components/dashboard/ClassCreatedModal";
 import DeleteAssignmentModal from "../components/dashboard/DeleteAssignmentModal";
 import RejectStudentModal from "../components/dashboard/RejectStudentModal";
@@ -65,6 +66,11 @@ interface TeacherDashboardViewProps {
   onNewClass: () => void;
   onAssignClass: (c: ClassData) => void;
   onDeleteClass: (classId: string) => void;
+  /** Open the rename + change-avatar modal for the given class. */
+  editingClass: ClassData | null;
+  onEditClass: (c: ClassData) => void;
+  onCloseEditClass: () => void;
+  onSaveClassEdit: (next: { name: string; avatar: string | null }) => Promise<void>;
   onEditAssignment: (a: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (a: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (a: AssignmentData) => void;
@@ -84,6 +90,7 @@ export default function TeacherDashboardView({
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onLiveChallengeClick, onAnalyticsClick, onGradebookClick, onApprovalsClick,
   onNewClass, onAssignClass, onDeleteClass,
+  editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
 }: TeacherDashboardViewProps) {
   // Time-of-day greeting — small but friendly touch so the teacher feels the
@@ -147,6 +154,7 @@ export default function TeacherDashboardView({
             onNewClass={onNewClass}
             onAssign={onAssignClass}
             onDeleteClass={onDeleteClass}
+            onEditClass={onEditClass}
             onEditAssignment={onEditAssignment}
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}
@@ -161,6 +169,12 @@ export default function TeacherDashboardView({
         setNewClassName={setNewClassName}
         onCancel={() => setShowCreateClassModal(false)}
         onCreate={handleCreateClass}
+      />
+
+      <EditClassModal
+        klass={editingClass}
+        onClose={onCloseEditClass}
+        onSave={onSaveClassEdit}
       />
 
       <ClassCreatedModal

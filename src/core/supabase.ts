@@ -98,6 +98,10 @@ export interface ClassData {
   name: string;
   code: string;
   teacherUid: string;
+  /** Optional emoji avatar for the class — null until the teacher picks
+   * one.  Selected from a curated education-appropriate pool in the
+   * client (CLASS_AVATARS).  Renamed/changed without losing students. */
+  avatar?: string | null;
 }
 
 export interface AssignmentData {
@@ -170,6 +174,7 @@ export function mapClass(row: any): ClassData {
     name: row.name,
     code: row.code,
     teacherUid: row.teacher_uid,
+    avatar: row.avatar ?? null,
   };
 }
 

@@ -12,6 +12,8 @@ interface TeacherClassesSectionProps {
   onNewClass: () => void;
   onAssign: (c: ClassData) => void;
   onDeleteClass: (classId: string) => void;
+  /** Open the rename + change-avatar modal for this class. */
+  onEditClass: (c: ClassData) => void;
   onEditAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (assignment: AssignmentData) => void;
@@ -20,7 +22,7 @@ interface TeacherClassesSectionProps {
 export default function TeacherClassesSection({
   classes, teacherAssignments, copiedCode, setCopiedCode,
   openDropdownClassId, setOpenDropdownClassId,
-  onNewClass, onAssign, onDeleteClass,
+  onNewClass, onAssign, onDeleteClass, onEditClass,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
 }: TeacherClassesSectionProps) {
   return (
@@ -77,6 +79,7 @@ export default function TeacherClassesSection({
                 key={c.id}
                 name={c.name}
                 code={c.code}
+                avatar={c.avatar}
                 copiedCode={copiedCode}
                 assignments={classAssignments}
                 openDropdownClassId={openDropdownClassId}
@@ -91,6 +94,7 @@ export default function TeacherClassesSection({
                   window.open(`https://wa.me/?text=${encodeURIComponent(c.code)}`, '_blank');
                 }}
                 onDelete={() => onDeleteClass(c.id)}
+                onEdit={() => onEditClass(c)}
                 onEditAssignment={(assignment) => onEditAssignment(assignment, c)}
                 onDuplicateAssignment={(assignment) => onDuplicateAssignment(assignment, c)}
                 onDeleteAssignment={onDeleteAssignment}

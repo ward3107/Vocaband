@@ -172,6 +172,8 @@ export default function App() {
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
+  // Edit-class modal state — null when closed, the class data when open.
+  const [editingClass, setEditingClass] = useState<ClassData | null>(null);
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
@@ -5460,6 +5462,27 @@ export default function App() {
             setEditingAssignment(null);
           }}
           onDeleteClass={(classId) => handleDeleteClass(classId)}
+          editingClass={editingClass}
+          onEditClass={(c) => setEditingClass(c)}
+          onCloseEditClass={() => setEditingClass(null)}
+          onSaveClassEdit={async (next) => {
+            if (!editingClass) return;
+            // Direct UPDATE — RLS already lets teachers modify their own
+            // classes (see migration 20260402_add_teacher_class_rls).
+            // class_id and class_code never change, so all foreign keys
+            // (assignments, progress, student_profiles) are preserved.
+            const { error } = await supabase
+              .from('classes')
+              .update({ name: next.name, avatar: next.avatar })
+              .eq('id', editingClass.id);
+            if (error) {
+              showToast('Could not save class changes. Please try again.', 'error');
+              return;
+            }
+            setClasses(prev => prev.map(c => c.id === editingClass.id ? { ...c, name: next.name, avatar: next.avatar } : c));
+            setEditingClass(null);
+            showToast('Class updated.', 'success');
+          }}
           onEditAssignment={(assignment, c) => {
             setEditingAssignment(assignment);
             const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));

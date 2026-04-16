@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil } from "lucide-react";
 
 interface Assignment {
   id: string;
@@ -17,11 +17,15 @@ interface Assignment {
 interface ClassCardProps {
   name: string;
   code: string;
+  /** Optional emoji avatar; falls back to GraduationCap icon when null. */
+  avatar?: string | null;
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
   onWhatsApp: () => void;
   onDelete: () => void;
+  /** Open the edit-class modal for renaming + changing avatar. */
+  onEdit?: () => void;
   copiedCode?: string | null;
   assignments?: Assignment[];
   onEditAssignment?: (assignment: Assignment) => void;
@@ -34,11 +38,13 @@ interface ClassCardProps {
 const ClassCard: React.FC<ClassCardProps> = ({
   name,
   code,
+  avatar,
   studentCount,
   onAssign,
   onCopyCode,
   onWhatsApp,
   onDelete,
+  onEdit,
   copiedCode,
   assignments = [],
   onEditAssignment,
@@ -76,8 +82,14 @@ const ClassCard: React.FC<ClassCardProps> = ({
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm">
-              <GraduationCap size={20} className="text-white" />
+            {/* Class avatar — emoji if the teacher picked one, otherwise
+                the default GraduationCap inside the gradient tile. */}
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${avatar ? 'bg-gradient-to-br from-stone-50 to-white border border-stone-200' : 'bg-gradient-to-br from-indigo-500 to-violet-600'}`}>
+              {avatar ? (
+                <span className="text-2xl leading-none">{avatar}</span>
+              ) : (
+                <GraduationCap size={20} className="text-white" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-lg sm:text-xl font-bold text-stone-900 leading-tight truncate">{name}</h3>
@@ -117,7 +129,17 @@ const ClassCard: React.FC<ClassCardProps> = ({
               <MoreVertical size={18} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-stone-200 shadow-lg py-1 z-20">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-stone-200 shadow-lg py-1 z-20">
+                {onEdit && (
+                  <button
+                    onClick={() => { onEdit(); setMenuOpen(false); }}
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  >
+                    <Pencil size={14} className="text-indigo-600" />
+                    Edit class
+                  </button>
+                )}
                 <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
                   type="button"
