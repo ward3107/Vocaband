@@ -17,7 +17,7 @@ import {
   Crown,
   Target
 } from "lucide-react";
-import { Word } from "../data/vocabulary";
+import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
 
@@ -61,19 +61,11 @@ const POWER_UPS = [
   { id: 'reveal_letter', name: 'Hint', emoji: '💡', desc: 'Reveal first letter', cost: 0, freeInDemo: 3 },
 ];
 
-// Demo words - curated selection
-const DEMO_WORDS: Word[] = [
-  { id: 21, english: "adventure", hebrew: "הַרפַּתקָה", arabic: "مغامرة", level: "Band 1", pos: "n" },
-  { id: 38, english: "amazing", hebrew: "מדהים", arabic: "مدهش", level: "Band 1", pos: "adj" },
-  { id: 127, english: "brave", hebrew: "אַמִיץ", arabic: "شجاع", level: "Band 1", pos: "adj" },
-  { id: 175, english: "champion", hebrew: "אַלוּף", arabic: "بطل", level: "Band 1", pos: "n" },
-  { id: 282, english: "dream", hebrew: "חֲלוֹם", arabic: "حلم", level: "Band 1", pos: "n" },
-  { id: 367, english: "freedom", hebrew: "חוֹפֶשׁ", arabic: "حرية", level: "Band 1", pos: "n" },
-  { id: 434, english: "hero", hebrew: "גיבור", arabic: "بطل", level: "Band 1", pos: "n" },
-  { id: 580, english: "magic", hebrew: "קֶסֶם", arabic: "سحر", level: "Band 1", pos: "n" },
-  { id: 339, english: "fantastic", hebrew: "פַנטַסטִי", arabic: "رائع", level: "Band 1", pos: "adj" },
-  { id: 1924, english: "success", hebrew: "הַצלָחָה", arabic: "نجاح", level: "Band 2", pos: "n" },
-];
+// Demo words — a 100-word slice of Band 1 vocabulary so students get
+// a real taste of the app instead of looping the same 10 words.  Pulled
+// from ALL_WORDS so the demo always stays in sync with what the full
+// app teaches.  100 keeps the demo lightweight while feeling expansive.
+const DEMO_WORDS: Word[] = ALL_WORDS.filter(w => w.level === 'Band 1').slice(0, 100);
 
 // Translations
 const demoTranslations: Record<Language, Record<string, string>> = {
@@ -900,10 +892,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
       <div className="max-w-lg mx-auto px-4 py-6 pt-16">
         <AnimatePresence mode="wait">
-          {/* Welcome screen — doubles as the product sales card: what
-              Vocaband is, who it's for, what's in the full version, and
-              what the next 2 minutes of the demo will show. No sign-up
-              CTA — the whole demo is there to let the product speak. */}
+          {/* Welcome screen — short, no marketing.  The demo's job is to let
+              students taste the product immediately, not pitch them; the
+              full pitch lives on the public landing page. */}
           {view === "welcome" && (
             <motion.div
               key="welcome"
@@ -911,83 +902,17 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              {/* Hero — brand gradient card */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20">
+              <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
                 <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                 <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
-                <div className="relative text-center">
+                <div className="relative">
                   <div className="text-5xl sm:text-6xl mb-3">🎮</div>
-                  <h1 className="text-2xl sm:text-3xl font-black font-headline text-white mb-2 tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                     {t.welcomeTitle}
                   </h1>
-                  <p className="text-white/90 text-sm sm:text-base max-w-md mx-auto">
+                  <p className="text-white/90 text-sm sm:text-base mt-2">
                     {t.welcomeDesc}
                   </p>
-                  <div className="inline-flex items-center gap-1.5 mt-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1 text-xs font-bold text-white">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                    {t.demoRuntime}
-                  </div>
-                </div>
-              </div>
-
-              {/* Why Vocaband — the pitch */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 mb-4 shadow-sm border border-stone-200">
-                <h3 className={`font-black text-stone-900 text-lg mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <Sparkles size={18} className="text-violet-500" />
-                  {t.introHook}
-                </h3>
-                <p className={`text-stone-600 text-sm leading-relaxed ${textAlign}`}>{t.introHookBody}</p>
-              </div>
-
-              {/* Audience split — teachers + students side by side */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-5 border border-blue-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center text-lg shadow-sm">🍎</div>
-                    <h4 className="font-black text-stone-900">{t.forTeachersTitle}</h4>
-                  </div>
-                  <p className={`text-xs sm:text-sm text-stone-600 leading-relaxed ${textAlign}`}>{t.forTeachersDesc}</p>
-                </div>
-                <div className="bg-gradient-to-br from-fuchsia-50 to-rose-50 rounded-3xl p-5 border border-fuchsia-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-9 h-9 rounded-xl bg-fuchsia-500 text-white flex items-center justify-center text-lg shadow-sm">🎯</div>
-                    <h4 className="font-black text-stone-900">{t.forStudentsTitle}</h4>
-                  </div>
-                  <p className={`text-xs sm:text-sm text-stone-600 leading-relaxed ${textAlign}`}>{t.forStudentsDesc}</p>
-                </div>
-              </div>
-
-              {/* What you'll try in the demo */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 mb-4 shadow-sm border border-stone-200">
-                <h3 className={`font-black text-stone-900 mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <Target size={18} className="text-emerald-500" />
-                  {t.experienceTitle}
-                </h3>
-                <p className={`text-xs text-stone-500 mb-3 ${textAlign}`}>{t.tryDemoIntro}</p>
-                <div className="space-y-2">
-                  {[
-                    { icon: "🎯", text: t.sampleWords },
-                    { icon: "🎮", text: t.gameModes },
-                    { icon: "⭐", text: t.xpStreak },
-                    { icon: "🏆", text: t.achievements },
-                    { icon: "🛍️", text: t.shopPreview },
-                  ].map((item, i) => (
-                    <div key={i} className={`flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2 ${isRTL ? 'flex-row-reverse justify-end' : ''}`}>
-                      <span className="text-lg">{item.icon}</span>
-                      <span className={`text-sm text-stone-700 ${textAlign}`}>{item.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Full version preview — what's beyond the demo */}
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-5 sm:p-6 mb-6 border border-amber-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Crown size={18} className="text-amber-600" />
-                  <h3 className="font-black text-stone-900">{t.fullVersionTitle}</h3>
-                </div>
-                <div className={`text-xs sm:text-sm text-stone-700 leading-relaxed whitespace-pre-line ${textAlign}`}>
-                  {t.fullVersionBullets}
                 </div>
               </div>
 
@@ -995,7 +920,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 onClick={() => setView("avatar")}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-black text-lg hover:bg-black active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2"
+                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-black text-lg hover:bg-black active:scale-[0.98] transition-all shadow-lg"
               >
                 {t.letsGo}
               </button>
@@ -1062,20 +987,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   })}
               </div>
 
-              {/* See More Avatars Button */}
-              <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-3xl p-4 mb-6 border-2 border-pink-200">
-                <h3 className="text-lg font-black mb-2 text-center">✨ More Avatars in Shop!</h3>
-                <p className="text-sm text-stone-600 text-center mb-3">
-                  Unlock 20+ more avatars by earning XP or sign up for the full version!
-                </p>
-                <button
-                  onClick={() => setView("shop")}
-                  className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:from-pink-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag size={18} />
-                  Visit Shop
-                </button>
-              </div>
+              {/* (Removed duplicate "More Avatars in Shop!" CTA — was a
+                  second shop entry on the avatar screen on top of the
+                  shop tab in the game-select header.  Single shop
+                  entry-point now.) */}
 
               <div className="mb-6">
                 <label className={`block text-sm font-bold text-stone-600 mb-2 ${textAlign}`}>{t.yourName}</label>
