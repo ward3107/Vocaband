@@ -1008,6 +1008,10 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [mistakes, setMistakes] = useState<number[]>([]);
+  // Per-word attempts accumulated during the current game.  Flushed to the
+  // word_attempts table via save_student_progress when the student finishes.
+  // Reset on game start so each session is independent.
+  const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
@@ -4042,6 +4046,7 @@ export default function App() {
     setCurrentIndex(0);
     setScore(0);
     setMistakes([]);
+    setWordAttemptBatch([]);
     setFeedback(null);
     setSpellingInput("");
     setMatchedIds([]);
@@ -4200,7 +4205,11 @@ export default function App() {
         p_score: cappedScore,
         p_mode: gameMode,
         p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-        p_avatar: user.avatar || "🦊"
+        p_avatar: user.avatar || "🦊",
+        // Per-word attempt batch — the migration 20260423 added support for
+        // this arg.  Older DBs without the migration will fail the RPC call;
+        // catch below logs and falls back.  Empty array is fine (no attempts).
+        p_word_attempts: wordAttemptBatch,
       });
 
       if (rpcError) throw rpcError;
@@ -4293,6 +4302,8 @@ export default function App() {
         isProcessingRef.current = true;
         setIsMatchingProcessing(true);
         setMatchedIds([...matchedIds, item.id]);
+        // Record the correct match as a word attempt for mastery tracking.
+        setWordAttemptBatch(prev => [...prev, { word_id: item.id, is_correct: true }]);
         const newScore = score + 15;
         setScore(newScore);
 
@@ -4350,6 +4361,9 @@ export default function App() {
         return newState;
       });
 
+      // Record the correct attempt for per-word mastery tracking.
+      setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: true }]);
+
       emitScoreUpdate(newScore);
 
       // Auto-skip quickly after correct answer (clear any pending timeout first)
@@ -4373,6 +4387,8 @@ export default function App() {
         // Show the right answer after max attempts
         setFeedback("show-answer");
         setMistakes(prev => addUnique(prev, currentWord.id));
+        // Final incorrect attempt on this word — record for mastery tracking.
+        setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: false }]);
 
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -4446,6 +4462,9 @@ export default function App() {
       willAutoSkip: isCorrect,
     });
 
+    // Record the attempt for per-word mastery tracking.
+    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
+
     if (isCorrect) {
       setFeedback("correct");
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
@@ -4504,6 +4523,10 @@ export default function App() {
     // Set processing flag to prevent double-clicks
     isProcessingRef.current = true;
 
+    // Record the flashcard answer for per-word mastery tracking.
+    // Flashcard "Got it" = correct, "Still learning" = incorrect.
+    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: knewIt }]);
+
     let currentScore = score;
     if (knewIt) {
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
@@ -4557,6 +4580,9 @@ export default function App() {
       isCorrect,
       willAutoSkip: isCorrect,
     });
+
+    // Record the spelling attempt for per-word mastery tracking.
+    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
 
     if (isCorrect) {
       setFeedback("correct");
