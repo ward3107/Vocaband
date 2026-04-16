@@ -8,28 +8,37 @@ interface TrueFalseGameProps {
 }
 
 export default function TrueFalseGame({ tfOption, targetLanguage, feedback, onAnswer }: TrueFalseGameProps) {
+  const handleTap = (isTrue: boolean) => () => {
+    if (feedback) return;
+    onAnswer(isTrue);
+  };
+
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-2 sm:mb-6">
-        <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">
+    <div className="max-w-lg mx-auto px-4">
+      <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-6 sm:p-10 rounded-3xl mb-4 sm:mb-6 shadow-sm border border-stone-200">
+        <p className="text-3xl sm:text-5xl font-black text-stone-800 text-center" dir="auto">
           {tfOption?.[targetLanguage] || tfOption?.arabic || tfOption?.hebrew}
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <button
-          onClick={() => onAnswer(true)}
-          onTouchStart={(e) => { if (!feedback) e.currentTarget.click(); }}
+          type="button"
+          onClick={handleTap(true)}
           disabled={!!feedback}
-          style={{ touchAction: 'manipulation', minHeight: '60px' }}
-          className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >True ✓</button>
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
+          className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          True ✓
+        </button>
         <button
-          onClick={() => onAnswer(false)}
-          onTouchStart={(e) => { if (!feedback) e.currentTarget.click(); }}
+          type="button"
+          onClick={handleTap(false)}
           disabled={!!feedback}
-          style={{ touchAction: 'manipulation', minHeight: '60px' }}
-          className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >False ✗</button>
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
+          className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          False ✗
+        </button>
       </div>
     </div>
   );
