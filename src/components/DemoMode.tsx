@@ -1213,7 +1213,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-[24px] sm:rounded-[40px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-4 border-blue-600" : isCorrect === false ? "bg-red-50 border-4 border-red-500" : "border-4 border-transparent"}`}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-2 sm:mb-4">
                     {currentWordIndex + 1} / {DEMO_WORDS.length}
@@ -1251,7 +1251,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           key={i}
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
-                          className={`py-3 px-4 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold transition-all duration-300 ${btnClass}`}
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                          className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
                         >
                           {option}
@@ -1425,57 +1426,46 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* True/False Mode */}
+              {/* True/False Mode — matches real app's TrueFalseGame.
+                  Emerald + rose gradient buttons, big 3xl font, same
+                  stone-gradient prompt card. */}
               {selectedMode === "truefalse" && tfStatement && (
-                <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <div className="bg-white rounded-3xl p-8 mb-6 text-center shadow-sm border border-stone-200">
-                    <div className="text-2xl font-black text-stone-900 mb-2" dir="ltr">
+                <div className="max-w-lg mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-6 sm:p-10 rounded-3xl mb-4 sm:mb-6 shadow-sm border border-stone-200 text-center">
+                    <div className="text-2xl sm:text-4xl font-black text-stone-900 mb-2" dir="ltr">
                       {tfStatement.word.english}
                     </div>
-                    <div className="text-stone-500 text-sm mb-4">=</div>
-                    <div className="text-2xl font-bold text-stone-800">
+                    <div className="text-stone-400 text-sm mb-3 font-black">=</div>
+                    <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">
                       {tfStatement.shownMeaning}
-                    </div>
+                    </p>
                     <button
                       onClick={() => speakWord(tfStatement.word.id)}
-                      className="mt-4 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto hover:bg-blue-700 transition-colors"
+                      className="mt-5 p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      aria-label="Play pronunciation"
                     >
-                      <Volume2 size={20} />
+                      <Volume2 size={20} className="text-stone-600" />
                     </button>
                   </div>
 
-                  <p className="text-stone-600 mb-4 text-center">{t.trueFalse}</p>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <button
+                      type="button"
                       onClick={() => handleTFAnswer(true)}
                       disabled={selectedAnswer !== null}
-                      className={`py-4 rounded-2xl font-bold text-lg transition-all border-2 ${
-                        selectedAnswer === "true" && tfStatement.isCorrect
-                          ? "bg-green-100 border-green-500 text-green-700"
-                          : selectedAnswer === "true" && !tfStatement.isCorrect
-                          ? "bg-red-100 border-red-500 text-red-700"
-                          : selectedAnswer !== null && tfStatement.isCorrect
-                          ? "bg-green-100 border-green-500 text-green-700"
-                          : "bg-white border-stone-200 text-stone-800 hover:border-green-300"
-                      }`}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
+                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      ✓ {t.trueBtn}
+                      True ✓
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleTFAnswer(false)}
                       disabled={selectedAnswer !== null}
-                      className={`py-4 rounded-2xl font-bold text-lg transition-all border-2 ${
-                        selectedAnswer === "false" && !tfStatement.isCorrect
-                          ? "bg-green-100 border-green-500 text-green-700"
-                          : selectedAnswer === "false" && tfStatement.isCorrect
-                          ? "bg-red-100 border-red-500 text-red-700"
-                          : selectedAnswer !== null && !tfStatement.isCorrect
-                          ? "bg-green-100 border-green-500 text-green-700"
-                          : "bg-white border-stone-200 text-stone-800 hover:border-red-300"
-                      }`}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
+                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      ✗ {t.falseBtn}
+                      False ✗
                     </button>
                   </div>
                 </div>
