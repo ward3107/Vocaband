@@ -20,13 +20,14 @@ import {
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
+import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
 
 interface DemoModeProps {
   onClose: () => void;
 }
 
 type DemoView = "welcome" | "avatar" | "game-select" | "game" | "results" | "shop";
-type ShopTab = "avatars" | "titles" | "powerups" | "premium";
+type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
 // Avatar categories matching the full app
 const AVATAR_CATEGORIES: Record<string, { emoji: string[]; unlockXP: number }> = {
@@ -1927,12 +1928,18 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Segmented pill tabs — matches the real ShopView strip */}
+              {/* Segmented pill tabs — 7 tabs now, mirrors the real
+                  ShopView's category set so the demo previews the full
+                  shop breadth (eggs, themes, frames are the three new
+                  ones that were missing before). */}
               <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
-                {(["avatars", "titles", "powerups", "premium"] as const).map(tab => {
+                {(["eggs", "avatars", "themes", "frames", "titles", "powerups", "premium"] as const).map(tab => {
                   const isActive = shopTab === tab;
                   const labels: Record<typeof tab, { emoji: string; text: string }> = {
+                    eggs:     { emoji: '🥚', text: 'Eggs' },
                     avatars:  { emoji: '🎭', text: t.avatars },
+                    themes:   { emoji: '🎨', text: t.themes },
+                    frames:   { emoji: '🖼️', text: 'Frames' },
                     titles:   { emoji: '🏷️', text: t.xpTitle },
                     powerups: { emoji: '⚡', text: t.powerups },
                     premium:  { emoji: '🔥', text: t.premium },
@@ -1951,6 +1958,118 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   );
                 })}
               </div>
+
+              {/* Eggs Tab — mirrors the real ShopView eggs category.
+                  Shows the 6 mystery eggs with rarity-coded gradients,
+                  ambient glow, drop-range chip, and an "In full app"
+                  hint (opening is locked in demo). */}
+              {shopTab === "eggs" && (
+                <div>
+                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 mb-4 shadow-lg shadow-violet-500/20">
+                    <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-amber-300/40 rounded-full blur-3xl" />
+                    <div className="relative">
+                      <h2 className="text-lg sm:text-xl font-black text-white">Mystery Eggs & Chests</h2>
+                      <p className="text-xs sm:text-sm text-white/90 mt-0.5">Spend XP to open — every egg drops a random XP reward.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    {MYSTERY_EGGS.map(egg => {
+                      const rarityBg: Record<string, string> = {
+                        common:    'from-stone-100 to-stone-200',
+                        rare:      'from-sky-100 to-blue-200',
+                        epic:      'from-violet-100 to-purple-200',
+                        legendary: 'from-amber-100 via-yellow-100 to-orange-200',
+                        mythic:    'from-pink-200 via-fuchsia-200 to-violet-200',
+                      };
+                      const rarityRing: Record<string, string> = {
+                        common: 'ring-stone-300', rare: 'ring-blue-300', epic: 'ring-violet-300',
+                        legendary: 'ring-amber-300', mythic: 'ring-fuchsia-400',
+                      };
+                      return (
+                        <div key={egg.id} className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${rarityBg[egg.rarity]} p-4 sm:p-5 ring-2 ${rarityRing[egg.rarity]} shadow-lg`}>
+                          <div className="flex justify-end">
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 text-stone-700">{egg.rarity}</span>
+                          </div>
+                          <div className="flex justify-center my-2 sm:my-3">
+                            <span className="text-6xl sm:text-7xl drop-shadow-lg">{egg.emoji}</span>
+                          </div>
+                          <h3 className="text-sm sm:text-base font-black text-stone-900 text-center">{egg.name}</h3>
+                          <p className="text-[11px] sm:text-xs text-stone-700/80 text-center mt-1 min-h-[2.5rem]">{egg.desc}</p>
+                          <div className="flex justify-center mt-2">
+                            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-stone-700 bg-white/70 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/80">
+                              {egg.minXp}–{egg.maxXp} XP drop
+                            </span>
+                          </div>
+                          <div className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-sm font-black bg-white/60 text-stone-500 border border-white/80">
+                            <ShoppingBag size={14} />
+                            Unlock in full app
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Themes Tab — full-bleed preview strip + Apply button,
+                  matches the real ShopView themes section. */}
+              {shopTab === "themes" && (
+                <div>
+                  <div className="mb-4">
+                    <h2 className="text-xl font-black text-stone-900">Themes</h2>
+                    <p className="text-stone-500 text-sm mt-1">Change the whole-app vibe.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {THEMES.slice(0, 6).map(theme => (
+                      <div key={theme.id} className="relative overflow-hidden rounded-3xl shadow-lg border-2 border-white/80">
+                        <div className={`${theme.colors.bg} h-28 sm:h-32 relative flex items-center justify-center`}>
+                          <span className="text-5xl sm:text-6xl drop-shadow-lg">{theme.preview}</span>
+                          <div aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                        </div>
+                        <div className="bg-white p-3 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-black text-stone-900 truncate">{theme.name}</h3>
+                            <p className="text-[10px] text-stone-500 mt-0.5">{theme.cost === 0 ? 'Free' : `${theme.cost} XP in full app`}</p>
+                          </div>
+                          <div className="shrink-0 text-[10px] font-black text-stone-500 bg-stone-100 px-2 py-1 rounded-lg">
+                            Full app
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Frames Tab — dark card with the student's avatar
+                  wearing each frame.  Same layout as real ShopView. */}
+              {shopTab === "frames" && (
+                <div>
+                  <div className="mb-4">
+                    <h2 className="text-xl font-black text-stone-900">Avatar Frames</h2>
+                    <p className="text-stone-500 text-sm mt-1">Glowing rings around your avatar everywhere it appears.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {NAME_FRAMES.slice(0, 6).map(frame => (
+                      <div key={frame.id} className="relative overflow-hidden rounded-3xl shadow-lg bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 p-5">
+                        <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-violet-500/30 to-pink-500/30 rounded-full blur-3xl" />
+                        <div className="relative flex items-center gap-4">
+                          <div className="shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-stone-100 to-white flex items-center justify-center shadow-inner border border-white/20">
+                            <span className={`w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-3xl ${frame.border}`}>
+                              {avatar || '😎'}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-0.5">Frame</p>
+                            <h3 className="text-base font-black text-white truncate">{frame.name}</h3>
+                            <p className="text-xs text-white/70 mt-1">Full app — {frame.cost} XP</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Avatars Tab - UNLOCKED FEATURES */}
               {shopTab === "avatars" && (
