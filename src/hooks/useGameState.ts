@@ -9,6 +9,7 @@ import {
   WRONG_FEEDBACK_DELAY_MS,
   FIRST_COMPLETION_BONUS,
   STREAK_XP_MULTIPLIER,
+  PERFECT_SCORE_BONUS,
   type GameMode,
 } from "../constants/game";
 import {
@@ -456,7 +457,8 @@ export function useGameState(params: UseGameStateParams) {
     // --- XP Calculation with bonuses ---
     let xpEarned = cappedScore;
 
-    // Streak bonus: streak × 5 XP (rewards daily play)
+    // Streak bonus: streak × STREAK_XP_MULTIPLIER (2026: 8×, was 5×) —
+    // rewards daily play harder.  At 10-day streak that's +80 XP.
     const streakBonus = streak * STREAK_XP_MULTIPLIER;
     if (streakBonus > 0) xpEarned += streakBonus;
 
@@ -467,6 +469,11 @@ export function useGameState(params: UseGameStateParams) {
     );
     if (!alreadyCompleted) xpEarned += FIRST_COMPLETION_BONUS;
 
+    // Perfect-score bonus (2026): flat +25 at exactly 100/100.  Gives
+    // strong students a concrete reason to retry a mode after a 90.
+    const perfectBonus = cappedScore === maxPossible ? PERFECT_SCORE_BONUS : 0;
+    if (perfectBonus) xpEarned += perfectBonus;
+
     const newXp = xp + xpEarned;
     const newStreak = cappedScore >= 80 ? streak + 1 : 0;
     setXp(newXp);
@@ -476,6 +483,7 @@ export function useGameState(params: UseGameStateParams) {
     const bonusParts: string[] = [];
     if (streakBonus > 0) bonusParts.push(`+${streakBonus} streak`);
     if (!alreadyCompleted) bonusParts.push(`+${FIRST_COMPLETION_BONUS} first clear`);
+    if (perfectBonus) bonusParts.push(`+${perfectBonus} perfect`);
     if (bonusParts.length > 0) {
       showToast(`${xpEarned} XP earned! (${cappedScore} base ${bonusParts.join(', ')})`, "success");
     }

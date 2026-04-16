@@ -18,10 +18,29 @@ export const randomMotivation = () =>
   MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
 
 // --- XP REWARD SYSTEM ---
+// 2026 rebalance — these values were tuned against the target earn curve:
+//   casual student ~200 XP/week · regular ~400 · grinder ~700.
+// Old values felt either too slow (single flat bonus) or too fast (early
+// items were priced below one session's output).  See PR notes for the
+// cost/time table this targets.
+
 // Bonus XP for completing a mode for the first time on an assignment
 export const FIRST_COMPLETION_BONUS = 50;
 // Streak bonus: streak × this value added to each game's XP
-export const STREAK_XP_MULTIPLIER = 5;
+// Bumped from 5 → 8 to reward daily habit harder (was ~+50 @ 10-day, now +80).
+export const STREAK_XP_MULTIPLIER = 8;
+// Perfect-score bonus: flat XP for scoring 100/100 on an assignment.  Gives
+// strong students a reason to retry a mode after a 90 instead of moving on.
+export const PERFECT_SCORE_BONUS = 25;
+// First time a word is mastered (≥5 correct attempts across modes).  Tracked
+// against the word_attempts table — a student earns this the session it
+// crosses the threshold, so mastery feels like a visible reward moment.
+export const WORD_MASTERY_BONUS = 5;
+// One-shot bonus when the student hits today's daily goal.
+export const DAILY_GOAL_BONUS = 30;
+
+// Thresholds used across the shop + pet evolution to gate progression.
+export const MASTERY_THRESHOLD = 5; // correct answers before a word counts as "mastered"
 
 export const XP_TITLES = [
   { min: 0, title: 'Beginner', emoji: '🌱' },
@@ -30,42 +49,47 @@ export const XP_TITLES = [
   { min: 700, title: 'Expert', emoji: '🏅' },
   { min: 1500, title: 'Master', emoji: '👑' },
   { min: 3000, title: 'Legend', emoji: '🌟' },
+  // Endgame tiers added in 2026 — keeps top students with something to chase.
+  { min: 6000,  title: 'Mythic',   emoji: '🔮' },
+  { min: 12000, title: 'Ascended', emoji: '✨' },
 ];
 export const getXpTitle = (xpAmount: number) => XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
 
 // --- SHOP: AVATARS ---
+// Tiering (2026): common 50-150, rare 200-350, epic 400-700.
+// Dragon/Eagle were absurdly cheap — pushed them up so they feel earned.
 export const PREMIUM_AVATARS = [
-  { emoji: '🐉', name: 'Dragon', cost: 50 },
-  { emoji: '🦅', name: 'Eagle', cost: 50 },
-  { emoji: '🐺', name: 'Wolf', cost: 75 },
-  { emoji: '🦖', name: 'Dinosaur', cost: 100 },
-  { emoji: '🧙‍♂️', name: 'Wizard', cost: 150 },
-  { emoji: '🦸', name: 'Superhero', cost: 200 },
-  { emoji: '👾', name: 'Alien', cost: 250 },
-  { emoji: '🤴', name: 'Prince', cost: 300 },
-  { emoji: '👸', name: 'Princess', cost: 300 },
-  { emoji: '🦄', name: 'Unicorn', cost: 150 },
-  { emoji: '🐲', name: 'Dragon Face', cost: 100 },
-  { emoji: '🧛', name: 'Vampire', cost: 200 },
-  { emoji: '🧜', name: 'Merperson', cost: 175 },
-  { emoji: '🥷', name: 'Ninja', cost: 250 },
-  { emoji: '🤖', name: 'Robot', cost: 125 },
+  { emoji: '🐉', name: 'Dragon', cost: 150 },
+  { emoji: '🦅', name: 'Eagle', cost: 125 },
+  { emoji: '🐺', name: 'Wolf', cost: 150 },
+  { emoji: '🦖', name: 'Dinosaur', cost: 175 },
+  { emoji: '🧙‍♂️', name: 'Wizard', cost: 225 },
+  { emoji: '🦸', name: 'Superhero', cost: 275 },
+  { emoji: '👾', name: 'Alien', cost: 275 },
+  { emoji: '🤴', name: 'Prince', cost: 325 },
+  { emoji: '👸', name: 'Princess', cost: 325 },
+  { emoji: '🦄', name: 'Unicorn', cost: 500 },
+  { emoji: '🐲', name: 'Dragon Face', cost: 200 },
+  { emoji: '🧛', name: 'Vampire', cost: 275 },
+  { emoji: '🧜', name: 'Merperson', cost: 250 },
+  { emoji: '🥷', name: 'Ninja', cost: 300 },
+  { emoji: '🤖', name: 'Robot', cost: 175 },
   // 2026 additions — popular with kids globally + in Israeli schools.
-  { emoji: '🐐', name: 'GOAT', cost: 350 },
-  { emoji: '👨‍🚀', name: 'Astronaut', cost: 275 },
-  { emoji: '🧑‍💻', name: 'Coder', cost: 225 },
-  { emoji: '🧙‍♀️', name: 'Witch', cost: 150 },
-  { emoji: '🦹', name: 'Super Villain', cost: 250 },
-  { emoji: '🎧', name: 'DJ', cost: 200 },
-  { emoji: '🎮', name: 'Pro Gamer', cost: 175 },
-  { emoji: '🏆', name: 'Champion', cost: 400 },
-  { emoji: '🦾', name: 'Cyborg', cost: 275 },
-  { emoji: '🧝', name: 'Elf', cost: 225 },
-  { emoji: '🧞', name: 'Genie', cost: 300 },
-  { emoji: '🐙', name: 'Kraken', cost: 150 },
-  { emoji: '🦉', name: 'Owl Sage', cost: 125 },
-  { emoji: '🪐', name: 'Planet Master', cost: 350 },
-  { emoji: '⚡', name: 'Lightning', cost: 200 },
+  { emoji: '🐐', name: 'GOAT', cost: 600 },
+  { emoji: '👨‍🚀', name: 'Astronaut', cost: 325 },
+  { emoji: '🧑‍💻', name: 'Coder', cost: 275 },
+  { emoji: '🧙‍♀️', name: 'Witch', cost: 225 },
+  { emoji: '🦹', name: 'Super Villain', cost: 300 },
+  { emoji: '🎧', name: 'DJ', cost: 225 },
+  { emoji: '🎮', name: 'Pro Gamer', cost: 250 },
+  { emoji: '🏆', name: 'Champion', cost: 550 },
+  { emoji: '🦾', name: 'Cyborg', cost: 325 },
+  { emoji: '🧝', name: 'Elf', cost: 275 },
+  { emoji: '🧞', name: 'Genie', cost: 350 },
+  { emoji: '🐙', name: 'Kraken', cost: 225 },
+  { emoji: '🦉', name: 'Owl Sage', cost: 175 },
+  { emoji: '🪐', name: 'Planet Master', cost: 450 },
+  { emoji: '⚡', name: 'Lightning', cost: 275 },
 ];
 
 export const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label: string }> = {
@@ -85,10 +109,12 @@ export const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label
   Vehicles: { xpRequired: 500, label: '500 XP' },
   LabRats: { xpRequired: 600, label: '600 XP' },
   // Rare packs — for committed players.
+  // 2026 rebalance: compressed the top end so these stop feeling
+  // unreachable (Space was 1500, ~3-5 weeks of consistent play).
   WarriorPack: { xpRequired: 800, label: '800 XP' },
-  Fantasy: { xpRequired: 900, label: '900 XP' },
-  SpaceLegends: { xpRequired: 1200, label: '1200 XP' },
-  Space: { xpRequired: 1500, label: '1500 XP' },
+  Fantasy: { xpRequired: 700, label: '700 XP' },
+  SpaceLegends: { xpRequired: 900, label: '900 XP' },
+  Space: { xpRequired: 1200, label: '1200 XP' },
 };
 
 // --- SHOP: THEMES ---
@@ -121,83 +147,88 @@ export const THEMES = [
 // the UI surfaces the shop entries and the open action will just show
 // a coming-soon toast. No behavioural breakage.
 export const MYSTERY_EGGS = [
+  // 2026 rebalance: eggs now average near break-even on XP — students
+  // open them for the excitement of a rare drop, not guaranteed profit.
+  // Rainbow is the 2-month endgame goal at 2000 XP.
   {
     id: 'starter_egg',
     name: 'Starter Egg',
     emoji: '🥚',
-    desc: 'A simple egg. Drops 5-25 XP.',
-    cost: 30,
+    desc: 'A simple egg. Drops 15-40 XP.',
+    cost: 50,
     rarity: 'common' as const,
-    minXp: 5, maxXp: 25,
+    minXp: 15, maxXp: 40,
   },
   {
     id: 'golden_egg',
     name: 'Golden Egg',
     emoji: '🐣',
-    desc: 'Sparkles gold. Drops 20-80 XP + a small chance of a rare avatar.',
-    cost: 80,
+    desc: 'Sparkles gold. Drops 50-120 XP + a small chance of a rare avatar.',
+    cost: 150,
     rarity: 'rare' as const,
-    minXp: 20, maxXp: 80,
+    minXp: 50, maxXp: 120,
   },
   {
     id: 'dragon_egg',
     name: 'Dragon Egg',
     emoji: '🐉',
-    desc: 'Something mighty inside. Drops 80-200 XP.',
-    cost: 200,
+    desc: 'Something mighty inside. Drops 150-280 XP.',
+    cost: 350,
     rarity: 'epic' as const,
-    minXp: 80, maxXp: 200,
+    minXp: 150, maxXp: 280,
   },
   {
     id: 'treasure_chest',
     name: 'Treasure Chest',
     emoji: '🎁',
-    desc: 'Premium loot. Drops 150-400 XP + guaranteed cosmetic.',
-    cost: 350,
+    desc: 'Premium loot. Drops 300-500 XP + guaranteed cosmetic.',
+    cost: 600,
     rarity: 'legendary' as const,
-    minXp: 150, maxXp: 400,
+    minXp: 300, maxXp: 500,
   },
   {
     id: 'cosmic_egg',
     name: 'Cosmic Egg',
     emoji: '🌟',
-    desc: 'Made of stardust. Drops 250-600 XP + a premium title.',
-    cost: 500,
+    desc: 'Made of stardust. Drops 600-900 XP + a premium title.',
+    cost: 1000,
     rarity: 'legendary' as const,
-    minXp: 250, maxXp: 600,
+    minXp: 600, maxXp: 900,
   },
   {
     id: 'rainbow_egg',
     name: 'Rainbow Egg',
     emoji: '🌈',
-    desc: 'The rarest egg. Drops 400-1000 XP + a random premium avatar.',
-    cost: 800,
+    desc: 'The rarest egg. Drops 1200-1800 XP + a random premium avatar.',
+    cost: 2000,
     rarity: 'mythic' as const,
-    minXp: 400, maxXp: 1000,
+    minXp: 1200, maxXp: 1800,
   },
 ];
 
 // --- SHOP: POWER-UPS & BOOSTERS ---
 // Power-ups consume on use (inventory count) — students stack them.
 // Boosters are one-shot buffs with a duration (handled in App.tsx).
+// 2026 rebalance: power-ups were too cheap (25-50) — one assignment
+// bought 3 of them, making games trivial.  Bumped across the board.
 export const POWER_UP_DEFS = [
-  { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 30 },
-  { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 40 },
-  { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 25 },
-  // 2026 additions
-  { id: 'double_points', name: 'Double Points', emoji: '2️⃣', desc: 'Next correct answer = 2× XP', cost: 50 },
-  { id: 'time_freeze', name: 'Time Freeze', emoji: '⏰', desc: 'Add 10 seconds on timed modes', cost: 40 },
-  { id: 'peek', name: 'Peek', emoji: '👁️', desc: 'Reveal the correct answer for 1 second', cost: 45 },
+  { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 50 },
+  { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 60 },
+  { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 40 },
+  { id: 'double_points', name: 'Double Points', emoji: '2️⃣', desc: 'Next correct answer = 2× XP', cost: 80 },
+  { id: 'time_freeze', name: 'Time Freeze', emoji: '⏰', desc: 'Add 10 seconds on timed modes', cost: 60 },
+  { id: 'peek', name: 'Peek', emoji: '👁️', desc: 'Reveal the correct answer for 1 second', cost: 70 },
 ];
 
+// 2026 rebalance: streak_freeze dropped (it's defensive), xp_booster
+// bumped (it's very strong at 2×), weekend_warrior bumped (full weekend).
 export const BOOSTERS_DEFS = [
-  { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 200 },
+  { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 150 },
   { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
-  { id: 'xp_booster', name: '2× XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 300 },
-  // 2026 additions
+  { id: 'xp_booster', name: '2× XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 400 },
   { id: 'lucky_charm', name: 'Lucky Charm', emoji: '🍀', desc: 'Your first wrong answer in the next game is forgiven', cost: 180 },
   { id: 'focus_mode', name: 'Focus Mode', emoji: '🎯', desc: 'Distraction-free theme for 1 hour', cost: 120 },
-  { id: 'weekend_warrior', name: 'Weekend Warrior', emoji: '📅', desc: '2× XP for an entire weekend', cost: 400 },
+  { id: 'weekend_warrior', name: 'Weekend Warrior', emoji: '📅', desc: '2× XP for an entire weekend', cost: 500 },
 ];
 
 // --- SHOP: COSMETICS ---
@@ -215,9 +246,11 @@ export const NAME_FRAMES = [
   { id: 'holographic', name: 'Holographic', preview: '✨', border: 'ring-4 ring-cyan-300 shadow-lg shadow-pink-300/40', cost: 550 },
 ];
 
+// 2026 rebalance: Champion + Genius bumped a little so they aren't
+// instant-grabs in the first week.
 export const NAME_TITLES = [
-  { id: 'champion', name: 'Champion', display: 'Champion', cost: 150 },
-  { id: 'genius', name: 'Genius', display: 'Genius', cost: 200 },
+  { id: 'champion', name: 'Champion', display: 'Champion', cost: 200 },
+  { id: 'genius', name: 'Genius', display: 'Genius', cost: 275 },
   { id: 'word_wizard', name: 'Word Wizard', display: 'Word Wizard', cost: 300 },
   { id: 'vocab_king', name: 'Vocab King', display: 'Vocab King', cost: 250 },
   { id: 'vocab_queen', name: 'Vocab Queen', display: 'Vocab Queen', cost: 250 },
@@ -233,6 +266,60 @@ export const NAME_TITLES = [
   { id: 'chosen_one', name: 'Chosen One', display: 'The Chosen One', cost: 450 },
   { id: 'speedrunner', name: 'Speedrunner', display: 'Speedrunner', cost: 300 },
   { id: 'cracked', name: 'Cracked', display: 'Cracked', cost: 275 },
+];
+
+// --- RETENTION: PET EVOLUTION REWARDS ---
+// The dashboard PetCompanion evolves through XP thresholds (egg → dragon).
+// Each evolution is also a one-shot reward: the student either gets a
+// chunk of bonus XP or unlocks a special shop item tied to that stage.
+// Rewards are claimed on the dashboard when the student crosses the
+// threshold and persist in localStorage to prevent re-claim spam.
+export type PetRewardKind = 'xp' | 'unlock_avatar' | 'unlock_title' | 'unlock_frame';
+export interface PetMilestone {
+  stage: string;       // name of the evolution stage
+  emoji: string;       // the pet emoji at this stage
+  xpRequired: number;  // cumulative XP to reach this stage
+  reward: {
+    kind: PetRewardKind;
+    value: number | string; // XP amount OR item id
+    label: string;      // human-readable reward description
+  };
+}
+
+export const PET_MILESTONES: PetMilestone[] = [
+  { stage: 'Egg',       emoji: '🥚',  xpRequired: 0,    reward: { kind: 'xp',            value: 0,              label: 'Starting out' } },
+  { stage: 'Hatchling', emoji: '🐣',  xpRequired: 100,  reward: { kind: 'xp',            value: 50,             label: '+50 XP bonus' } },
+  { stage: 'Fox Kit',   emoji: '🦊',  xpRequired: 300,  reward: { kind: 'unlock_avatar', value: '🦊',            label: 'Free Fox avatar' } },
+  { stage: 'Eagle',     emoji: '🦅',  xpRequired: 700,  reward: { kind: 'xp',            value: 150,            label: '+150 XP bonus' } },
+  { stage: 'Dragon',    emoji: '🐉',  xpRequired: 1500, reward: { kind: 'unlock_frame',  value: 'gold',         label: 'Free Gold Frame' } },
+  { stage: 'Unicorn',   emoji: '🦄',  xpRequired: 3000, reward: { kind: 'unlock_title',  value: 'legend',       label: 'Free "Living Legend" title' } },
+  { stage: 'Mythic',    emoji: '🔮',  xpRequired: 6000, reward: { kind: 'unlock_avatar', value: '🦄',            label: 'Free Unicorn avatar' } },
+  { stage: 'Ascended',  emoji: '✨',  xpRequired: 12000, reward: { kind: 'unlock_frame', value: 'holographic',  label: 'Free Holographic Frame' } },
+];
+
+// --- RETENTION: DAILY / WEEKLY / COMEBACK / LIMITED ---
+// Daily chest reward ranges — cycles gently to feel varied but never
+// feels like "less than yesterday".  A weekly challenge multiplier
+// kicks in after 5 plays in a calendar week.
+export const DAILY_CHEST_XP = { min: 20, max: 60 };
+export const WEEKLY_CHALLENGE_PLAYS = 5;      // plays required
+export const WEEKLY_CHALLENGE_REWARD_XP = 100; // + a free common egg (granted via RPC)
+export const COMEBACK_AFTER_DAYS = 3;          // offline this many days → free golden egg on return
+export const LIMITED_ITEM_ROTATION_DAYS = 7;   // limited cosmetic rotates weekly
+
+// Rotating limited-time items (one visible at a time).  The active item
+// is picked from this pool modulo current ISO-week so all students see
+// the same "hot drop" at once.  Items are regular shop SKUs priced at
+// ~20% off — the scarcity itself drives the FOMO, not a custom price.
+export const LIMITED_ROTATION: { kind: 'avatar' | 'frame' | 'title' | 'theme'; itemId: string; discount: number; tagline: string }[] = [
+  { kind: 'avatar', itemId: '🐉',            discount: 0.2, tagline: 'Week of the Dragon' },
+  { kind: 'frame',  itemId: 'holographic',    discount: 0.2, tagline: 'Holo Week' },
+  { kind: 'title',  itemId: 'goated',         discount: 0.2, tagline: 'GOATed Drop' },
+  { kind: 'theme',  itemId: 'galaxy',         discount: 0.2, tagline: 'Galaxy Week' },
+  { kind: 'avatar', itemId: '🦄',            discount: 0.2, tagline: 'Unicorn Season' },
+  { kind: 'frame',  itemId: 'crown',          discount: 0.2, tagline: 'Reign Week' },
+  { kind: 'title',  itemId: 'final_boss',     discount: 0.2, tagline: 'Final Boss Week' },
+  { kind: 'avatar', itemId: '🐐',            discount: 0.2, tagline: 'GOAT Energy' },
 ];
 
 // --- GAME: LETTER COLORS ---

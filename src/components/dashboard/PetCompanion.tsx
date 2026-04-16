@@ -1,52 +1,65 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Heart, Sparkles, X } from "lucide-react";
+import { Heart, Sparkles, X, Gift } from "lucide-react";
+import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
 
 interface PetCompanionProps {
   /** Student's current XP — drives pet level. */
   xp: number;
   /** Student's display name, used in the nudge copy. */
   displayName: string;
+  /** The current pet stage (from useRetention so source of truth is shared). */
+  currentStage: PetMilestone;
+  /** The next stage the student is working toward, if any. */
+  nextStage: PetMilestone | null;
+  /** A reached-but-unclaimed milestone, or null. */
+  claimableMilestone: PetMilestone | null;
+  /** Callback when the student taps "Claim reward" on the pet. */
+  onClaim: (milestone: PetMilestone) => void;
 }
-
-// Pet species the student unlocks as they level up. Emoji keeps it zero-
-// asset for now; easy to swap to an image sprite later.
-const PET_STAGES: Array<{ minXp: number; emoji: string; name: string; vibe: string; glow: string }> = [
-  { minXp: 0,    emoji: '🥚', name: 'Mystery Egg',    vibe: 'Keep playing to hatch it!', glow: 'from-stone-200 to-stone-300' },
-  { minXp: 50,   emoji: '🐣', name: 'Tiny Hatchling',  vibe: 'Just hatched — say hi!',    glow: 'from-yellow-200 to-amber-200' },
-  { minXp: 200,  emoji: '🦊', name: 'Fox Buddy',       vibe: 'Curious and clever',        glow: 'from-orange-200 to-amber-300' },
-  { minXp: 500,  emoji: '🦅', name: 'Sky Hawk',        vibe: 'Ready to soar',              glow: 'from-sky-200 to-indigo-200' },
-  { minXp: 1000, emoji: '🐉', name: 'Dragon Friend',   vibe: 'Legendary!',                 glow: 'from-fuchsia-300 to-violet-300' },
-  { minXp: 2500, emoji: '🦄', name: 'Mystic Unicorn',  vibe: 'Rare + mythical',            glow: 'from-pink-300 to-purple-300' },
-];
 
 /**
  * A persistent little "pet" that sits on the dashboard as a floating
  * companion bubble in the bottom-right corner. Tap it → opens a small
- * card showing the pet's current species, level progress, and a cute
- * line. It evolves as the student earns XP, so students have a visible
- * milestone independent from the XP number.
+ * card showing the pet's current species, level progress, and — crucially
+ * — a "Claim reward" button the moment the student crosses an evolution
+ * threshold.  Each milestone grants XP, a free avatar, a free title, or
+ * a free frame (per PET_MILESTONES in constants).
  *
- * Pure client-side derivation from XP — no schema change, no extra
- * fetches. If we later want pet customisation (names, colors, feeding),
- * that becomes its own migration + table.
+ * Evolution is pure client-side derivation from XP; claims are persisted
+ * via useRetention (localStorage, scoped per user).
  */
-export default function PetCompanion({ xp, displayName }: PetCompanionProps) {
+export default function PetCompanion({
+  xp, displayName, currentStage, nextStage, claimableMilestone, onClaim,
+}: PetCompanionProps) {
   const [open, setOpen] = useState(false);
 
-  const { stage, nextStage, pct } = useMemo(() => {
-    // Find current stage = highest entry where minXp ≤ xp.
-    let currentIdx = 0;
-    for (let i = PET_STAGES.length - 1; i >= 0; i--) {
-      if (xp >= PET_STAGES[i].minXp) { currentIdx = i; break; }
-    }
-    const current = PET_STAGES[currentIdx];
-    const next = PET_STAGES[currentIdx + 1] ?? null;
-    const progress = next
-      ? Math.min(100, Math.round(((xp - current.minXp) / (next.minXp - current.minXp)) * 100))
-      : 100;
-    return { stage: current, nextStage: next, pct: progress };
-  }, [xp]);
+  // Gradient glow per stage — cycled deterministically from stage index
+  // so students see a different vibe at every evolution.
+  const stageIdx = PET_MILESTONES.findIndex(m => m.stage === currentStage.stage);
+  const glows = [
+    'from-stone-200 to-stone-300',
+    'from-yellow-200 to-amber-200',
+    'from-orange-200 to-amber-300',
+    'from-sky-200 to-indigo-200',
+    'from-fuchsia-300 to-violet-300',
+    'from-pink-300 to-purple-300',
+    'from-violet-300 to-indigo-400',
+    'from-amber-200 to-pink-300',
+  ];
+  const glow = glows[Math.max(0, stageIdx) % glows.length];
+
+  const pct = nextStage
+    ? Math.min(100, Math.round(((xp - currentStage.xpRequired) / (nextStage.xpRequired - currentStage.xpRequired)) * 100))
+    : 100;
+
+  // Auto-open the card when a new reward becomes claimable — students
+  // shouldn't miss an unlock moment.
+  const [autoOpened, setAutoOpened] = useState(false);
+  if (claimableMilestone && !autoOpened && !open) {
+    setAutoOpened(true);
+    setOpen(true);
+  }
 
   return (
     <>
@@ -60,18 +73,26 @@ export default function PetCompanion({ xp, displayName }: PetCompanionProps) {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.92 }}
         style={{ touchAction: 'manipulation' }}
-        className={`fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${stage.glow} shadow-lg flex items-center justify-center border-2 border-white`}
+        className={`fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${glow} shadow-lg flex items-center justify-center border-2 border-white`}
         aria-label="Open pet companion"
-        title={stage.name}
+        title={currentStage.stage}
       >
         <motion.span
           animate={{ y: [0, -3, 0], rotate: [-2, 2, -2] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           className="text-2xl sm:text-3xl"
         >
-          {stage.emoji}
+          {currentStage.emoji}
         </motion.span>
-        {/* Pulse ring to draw attention the first time */}
+        {/* Reward-pending indicator — pulsing red dot */}
+        {claimableMilestone && (
+          <motion.span
+            animate={{ scale: [1, 1.25, 1] }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-0 right-0 w-4 h-4 rounded-full bg-rose-500 border-2 border-white"
+          />
+        )}
+        {/* Ambient pulse ring */}
         <span className="absolute inset-0 rounded-full bg-white/50 animate-ping opacity-20" />
       </motion.button>
 
@@ -96,22 +117,48 @@ export default function PetCompanion({ xp, displayName }: PetCompanionProps) {
             </button>
 
             <div className="flex items-center gap-3 mb-3">
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${stage.glow} flex items-center justify-center text-3xl shadow-sm`}>
-                {stage.emoji}
+              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${glow} flex items-center justify-center text-3xl shadow-sm`}>
+                {currentStage.emoji}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Your companion</p>
-                <h4 className="text-lg font-black text-stone-900 leading-tight truncate">{stage.name}</h4>
-                <p className="text-xs text-stone-500">{stage.vibe}</p>
+                <h4 className="text-lg font-black text-stone-900 leading-tight truncate">{currentStage.stage}</h4>
+                <p className="text-xs text-stone-500">Level {stageIdx + 1}</p>
               </div>
             </div>
+
+            {/* Claimable reward banner — appears the instant a milestone is crossed */}
+            {claimableMilestone && (
+              <motion.button
+                onClick={() => { onClaim(claimableMilestone); setOpen(false); setAutoOpened(false); }}
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                className="w-full mb-3 relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white shadow-md"
+              >
+                <div aria-hidden className="pointer-events-none absolute -top-4 -right-4 w-20 h-20 bg-yellow-200/40 rounded-full blur-2xl" />
+                <div className="relative flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center">
+                    <Gift size={18} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/85">Evolution reward</p>
+                    <p className="font-black text-sm truncate">{claimableMilestone.reward.label}</p>
+                  </div>
+                  <span className="shrink-0 bg-white/25 backdrop-blur-sm px-2 py-1 rounded-lg font-black text-xs border border-white/30">Claim</span>
+                </div>
+              </motion.button>
+            )}
 
             {/* Evolution progress */}
             {nextStage ? (
               <>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-stone-500">Next: {nextStage.emoji} {nextStage.name}</span>
-                  <span className="text-xs font-bold text-stone-500 tabular-nums">{xp} / {nextStage.minXp} XP</span>
+                  <span className="text-xs font-bold text-stone-500">Next: {nextStage.emoji} {nextStage.stage}</span>
+                  <span className="text-xs font-bold text-stone-500 tabular-nums">{xp} / {nextStage.xpRequired} XP</span>
                 </div>
                 <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
                   <motion.div
@@ -123,14 +170,14 @@ export default function PetCompanion({ xp, displayName }: PetCompanionProps) {
                 </div>
                 <p className="text-xs text-stone-500 mt-2 flex items-center gap-1">
                   <Sparkles size={12} className="text-amber-500" />
-                  {displayName}, earn {nextStage.minXp - xp} more XP to evolve!
+                  {displayName}, earn {nextStage.xpRequired - xp} more XP — next unlock: <span className="font-bold">{nextStage.reward.label}</span>
                 </p>
               </>
             ) : (
               <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 border border-fuchsia-200 rounded-xl p-3 flex items-center gap-2">
                 <Heart size={16} className="text-fuchsia-600 fill-fuchsia-300" />
                 <p className="text-xs font-semibold text-fuchsia-800">
-                  Maxed out! You and {stage.name} are unstoppable.
+                  Maxed out! You and {currentStage.stage} are unstoppable.
                 </p>
               </div>
             )}

@@ -7,12 +7,14 @@ import DailyGoalBanner from "../components/dashboard/DailyGoalBanner";
 import BadgesStrip from "../components/dashboard/BadgesStrip";
 import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import PetCompanion from "../components/dashboard/PetCompanion";
+import RetentionStrip from "../components/dashboard/RetentionStrip";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
-import { THEMES } from "../constants/game";
+import { THEMES, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View, ShopTab } from "../core/views";
+import type { RetentionState } from "../hooks/useRetention";
 
 interface StudentDashboardViewProps {
   user: AppUser;
@@ -29,11 +31,15 @@ interface StudentDashboardViewProps {
   consentModal: React.ReactNode;
   exitConfirmModal: React.ReactNode;
   classSwitchModal: React.ReactNode;
+  classNotFoundBanner?: React.ReactNode;
   setView: React.Dispatch<React.SetStateAction<View>>;
   setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setShowModeSelection: (show: boolean) => void;
+  retention: RetentionState;
+  onGrantXp: (amount: number, reason: string) => void;
+  onGrantReward: (kind: PetRewardKind, value: number | string) => void;
 }
 
 export default function StudentDashboardView({
@@ -41,9 +47,10 @@ export default function StudentDashboardView({
   copiedCode, setCopiedCode,
   studentAssignments, studentProgress, studentDataLoading,
   showStudentOnboarding, setShowStudentOnboarding,
-  consentModal, exitConfirmModal, classSwitchModal,
+  consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
+  retention, onGrantXp, onGrantReward,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -67,6 +74,7 @@ export default function StudentDashboardView({
         />
       )}
       <div className="max-w-4xl mx-auto">
+        {classNotFoundBanner}
         <StudentTopBar
           onPrivacyClick={() => setView("privacy-settings")}
           onShopClick={() => { setShopTab("avatars"); setView("shop"); }}
@@ -85,6 +93,7 @@ export default function StudentDashboardView({
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
         />
+        <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
         <DailyGoalBanner studentProgress={studentProgress} />
         <LeaderboardTeaser
           classCode={user.classCode}
@@ -107,7 +116,23 @@ export default function StudentDashboardView({
           setShowModeSelection={setShowModeSelection}
         />
       </div>
-      <PetCompanion xp={xp} displayName={user.displayName} />
+      <PetCompanion
+        xp={xp}
+        displayName={user.displayName}
+        currentStage={retention.currentPetStage}
+        nextStage={retention.nextPetStage}
+        claimableMilestone={retention.claimablePetMilestone}
+        onClaim={(milestone) => {
+          // Grant the reward first so the student sees it land, then
+          // record the claim so it won't re-surface.
+          if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
+            onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+          } else {
+            onGrantReward(milestone.reward.kind, milestone.reward.value);
+          }
+          retention.claimPetMilestone(milestone);
+        }}
+      />
       <FloatingButtons showBackToTop={true} />
     </div>
   );

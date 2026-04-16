@@ -289,11 +289,20 @@ export default function StudentAccountLoginView({
                           // Persist the class code the student typed so that after
                           // the OAuth round-trip we can detect if they're trying to
                           // switch classes (existing profile class_code differs).
+                          // Write to BOTH sessionStorage (clears at tab close, fast)
+                          // and localStorage (survives full browser close so the
+                          // switch intent survives the Google redirect even when
+                          // sessionStorage is wiped between tabs on mobile).
                           const trimmed = studentLoginClassCode.trim().toUpperCase();
                           try {
-                            if (trimmed) sessionStorage.setItem('oauth_intended_class_code', trimmed);
-                            else sessionStorage.removeItem('oauth_intended_class_code');
-                          } catch { /* sessionStorage unavailable */ }
+                            if (trimmed) {
+                              sessionStorage.setItem('oauth_intended_class_code', trimmed);
+                              localStorage.setItem('oauth_intended_class_code', trimmed);
+                            } else {
+                              sessionStorage.removeItem('oauth_intended_class_code');
+                              localStorage.removeItem('oauth_intended_class_code');
+                            }
+                          } catch { /* storage unavailable */ }
                         }}
                       />
                     </>
