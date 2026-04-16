@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, Check } from "lucide-react";
 import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
-import { AVATAR_CATEGORIES, type AvatarCategory } from "../constants/avatars";
+import { AvatarPicker } from "../components/AvatarPicker";
 import type { View } from "../core/views";
 
 interface ExistingStudent {
@@ -86,9 +86,6 @@ export default function StudentAccountLoginView({
   loadStudentsInClass,
   cookieBannerOverlay,
 }: StudentAccountLoginViewProps) {
-  const [selectedAvatarCategory, setSelectedAvatarCategory] =
-    useState<AvatarCategory>("Animals");
-
   return (
     <>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-tertiary/10 to-secondary/10">
@@ -345,43 +342,11 @@ export default function StudentAccountLoginView({
                           />
                         </div>
 
-                        {/* Avatar Selection */}
-                        <div>
-                          <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
-                            Choose Your Avatar
-                          </label>
-                          <div className="mb-3 flex flex-wrap gap-1">
-                            {(Object.keys(AVATAR_CATEGORIES) as Array<AvatarCategory>).map((category) => (
-                              <button
-                                key={category}
-                                onClick={() => setSelectedAvatarCategory(category)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                  selectedAvatarCategory === category
-                                    ? "bg-primary text-white"
-                                    : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
-                                }`}
-                              >
-                                {category}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-2 bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest">
-                            {AVATAR_CATEGORIES[selectedAvatarCategory].map((avatar) => (
-                              <button
-                                key={avatar}
-                                onClick={() => setStudentAvatar(avatar)}
-                                className={`text-3xl p-2 rounded-lg transition-all hover:scale-110 ${
-                                  studentAvatar === avatar
-                                    ? "bg-primary/20 ring-2 ring-primary"
-                                    : "hover:bg-surface-container"
-                                }`}
-                                aria-label={`Choose ${avatar} avatar`}
-                              >
-                                {avatar}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                        <AvatarPicker
+                          value={studentAvatar}
+                          onChange={setStudentAvatar}
+                          label="Choose Your Avatar"
+                        />
 
                         {error && (
                           <motion.div

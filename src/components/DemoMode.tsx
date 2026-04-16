@@ -20,6 +20,7 @@ import {
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
+import { AvatarPicker } from "./AvatarPicker";
 import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
 
 interface DemoModeProps {
@@ -960,92 +961,68 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
             >
               <button
                 onClick={() => setView("welcome")}
-                className={`flex items-center gap-2 text-stone-500 mb-6 hover:text-blue-600 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+                className={`flex items-center gap-2 text-on-surface-variant mb-6 hover:text-primary transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
               >
                 {isRTL ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
                 {t.back}
               </button>
 
-              <h1 className="text-2xl font-black font-headline text-stone-900 mb-2 text-center">
+              <h1 className="text-2xl font-black font-headline text-on-surface mb-2 text-center">
                 {t.chooseAvatar}
               </h1>
-              <p className="text-stone-500 text-center mb-6">
+              <p className="text-on-surface-variant text-center mb-6">
                 {t.pickEmoji}
               </p>
 
-              {/* Avatar Categories - ONLY UNLOCKED */}
-              <div className="space-y-4 mb-6">
-                {Object.entries(AVATAR_CATEGORIES)
-                  .filter(([_, { unlockXP }]) => xp >= unlockXP)
-                  .map(([category, { emoji, unlockXP }]) => {
-                    return (
-                      <div key={category} className="rounded-2xl border-2 border-green-200 bg-green-50/50 overflow-hidden">
-                        <div className="flex items-center justify-between px-4 py-3 bg-green-100/50">
-                          <div className="flex items-center gap-2">
-                            <Check size={16} className="text-green-600" />
-                            <span className="font-black text-sm text-green-800">{category}</span>
-                            <span className="text-xs text-stone-400">({emoji.length} avatars)</span>
-                          </div>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-200 text-green-800">
-                            {unlockXP === 0 ? "Free" : "Unlocked!"}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-6 gap-2 p-3">
-                          {emoji.map((e) => (
-                            <button
-                              key={e}
-                              onClick={() => setAvatar(e)}
-                              className={`text-2xl sm:text-3xl p-2 rounded-xl transition-all ${
-                                avatar === e
-                                  ? "bg-blue-500 ring-2 ring-blue-300 scale-110"
-                                  : "bg-white hover:bg-stone-100 border border-stone-200"
-                              }`}
-                            >
-                              {e}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* (Removed duplicate "More Avatars in Shop!" CTA — was a
-                  second shop entry on the avatar screen on top of the
-                  shop tab in the game-select header.  Single shop
-                  entry-point now.) */}
-
-              <div className="mb-6">
-                <label className={`block text-sm font-bold text-stone-600 mb-2 ${textAlign}`}>{t.yourName}</label>
+              {/* Name field — styled to match signup screen */}
+              <div className="mb-4">
+                <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                  {t.yourName}
+                </label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder={t.enterNickname}
-                  className={`w-full px-4 py-3 rounded-xl bg-stone-100 border-2 border-stone-200 text-stone-900 focus:border-blue-500 focus:outline-none ${textAlign}`}
+                  className={`w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 ${textAlign}`}
                   maxLength={15}
+                  dir={dir}
+                />
+              </div>
+
+              {/* Shared AvatarPicker — same component that powers real signup,
+                  so the demo inherits every future tweak automatically. XP is
+                  passed in so categories still lock/unlock based on the demo
+                  sandbox's XP progression. */}
+              <div className="mb-6">
+                <AvatarPicker
+                  value={avatar}
+                  onChange={setAvatar}
+                  xp={xp}
+                  label={t.chooseAvatar}
                 />
               </div>
 
               {/* XP Title Display */}
               {xp > 0 && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-6 border border-blue-200">
+                <div className="bg-gradient-to-r from-primary/10 to-tertiary/10 rounded-2xl p-4 mb-6 border border-primary/20">
                   <div className="flex items-center justify-center gap-2">
-                    <Crown size={20} className={xpTitle.color} />
+                    <Crown size={20} style={{ color: xpTitle.color }} />
                     <span className="font-black" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
                   </div>
-                  <p className="text-xs text-center text-stone-600 mt-1">{xp} XP</p>
+                  <p className="text-xs text-center text-on-surface-variant mt-1">{xp} XP</p>
                 </div>
               )}
 
               <button
                 onClick={() => setView("game-select")}
                 disabled={!displayName.trim()}
-                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {t.continue}
-                {!isRTL && <ArrowRight size={20} />}
-                {isRTL && <ArrowLeft size={20} />}
+                {!isRTL && <ArrowRight size={24} />}
+                {isRTL && <ArrowLeft size={24} />}
               </button>
             </motion.div>
           )}
