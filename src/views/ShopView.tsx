@@ -178,15 +178,26 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
             setShopTab={setShopTab}
           />
         ) : (
-          <div className="mb-5">
+          // Sticky "back to hub" chip — stays visible as the student
+          // scrolls through a tall category grid.  Dashboard chip beside
+          // it for a one-tap exit out of the shop entirely.
+          <div className="sticky top-2 z-20 mb-5 flex items-center gap-2">
             <button
               onClick={() => setShopTab("hub")}
               type="button"
               style={{ touchAction: 'manipulation' }}
-              className="inline-flex items-center gap-1.5 text-sm font-bold text-stone-500 hover:text-stone-900 bg-white border border-stone-200 hover:border-stone-300 rounded-full px-3 py-1.5 shadow-sm transition-all"
+              className="inline-flex items-center gap-1.5 text-sm font-black text-white bg-stone-900/90 backdrop-blur-sm hover:bg-stone-800 rounded-full pl-2 pr-3 py-2 shadow-lg transition-all"
             >
-              <span className="rotate-180 inline-block"><ChevronRight size={14} /></span>
-              All shop
+              <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center rotate-180"><ChevronRight size={12} /></span>
+              Shop hub
+            </button>
+            <button
+              onClick={() => setView("student-dashboard")}
+              type="button"
+              style={{ touchAction: 'manipulation' }}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-stone-900 bg-white/80 backdrop-blur-sm border border-stone-200 hover:border-stone-300 rounded-full px-3 py-2 shadow-sm transition-all"
+            >
+              Dashboard
             </button>
           </div>
         )}
@@ -621,7 +632,15 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
         onClose={() => setOpeningEgg(null)}
       />
 
-      <FloatingButtons showBackToTop={true} />
+      <FloatingButtons
+        showBackToTop={false}
+        shareLevel={{
+          displayName: user.displayName,
+          xp,
+          title: getXpTitle(xp).title,
+          emoji: getXpTitle(xp).emoji,
+        }}
+      />
     </div>
   );
 }

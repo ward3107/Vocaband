@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Share2, MessageCircle, Link2, Check, ArrowUp, Facebook } from "lucide-react";
+import { Share2, MessageCircle, Link2, Check, ArrowUp, Facebook, Instagram, Music2 } from "lucide-react";
 import { motion } from "motion/react";
 
 interface FloatingButtonsProps {
   showBackToTop?: boolean;
   className?: string;
+  /** When provided, the share button shares the student's level/XP card
+   * instead of the generic "check out Vocaband" message.  Drives viral
+   * growth — students posting "I'm Level X Word Wizard" on social. */
+  shareLevel?: {
+    displayName: string;
+    xp: number;
+    title: string;          // "Word Wizard", "Scholar", etc.
+    emoji: string;          // title emoji
+  };
 }
 
 // Get the visible background color at a point by traversing the DOM
@@ -66,8 +75,9 @@ function getColorTemperature(rgb: { r: number; g: number; b: number }): 'warm' |
 const rgba = (r: number, g: number, b: number, a: number) => `rgba(${r}, ${g}, ${b}, ${a})`;
 
 const FloatingButtons: React.FC<FloatingButtonsProps> = ({
-  showBackToTop = true,
+  showBackToTop = false,
   className = "",
+  shareLevel,
 }) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -163,29 +173,78 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-  const shareText = "Check out Vocaband - the fun way to master English vocabulary for Israeli EFL students!";
+  const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  // Share text flips between "level flex" (when shareLevel is provided
+  // from the student dashboard) and the generic landing-page teaser
+  // (everywhere else).  The level version is what drives viral growth —
+  // students flexing their rank with friends.
+  const shareText = useMemo(() => {
+    if (shareLevel) {
+      return `${shareLevel.emoji} I'm ${shareLevel.xp} XP — a ${shareLevel.title} on Vocaband! Can you beat my level?`;
+    }
+    return "Check out Vocaband — the fun way to master English vocabulary!";
+  }, [shareLevel]);
 
   const shareOptions = useMemo(() => [
     {
       name: "Facebook",
       icon: Facebook,
       action: () => {
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank");
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
+          "_blank"
+        );
       },
     },
     {
       name: "WhatsApp",
       icon: MessageCircle,
       action: () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(shareUrl)}`, "_blank");
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, "_blank");
+      },
+    },
+    {
+      name: "Instagram",
+      icon: Instagram,
+      // Instagram doesn't support web-based link sharing (no web share
+      // intent — their deep link is app-only + often unreliable).  So we
+      // copy the message + URL to clipboard and nudge the student to
+      // paste it into their Instagram story / DM.
+      action: () => {
+        navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        setCopied(true);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = setTimeout(() => {
+          setCopied(false);
+          copiedTimerRef.current = null;
+        }, 2500);
+        // Best-effort: open the Instagram app on mobile via intent URL.
+        // Falls back silently on desktop.
+        try { window.open('instagram://', '_blank'); } catch { /* noop */ }
+      },
+    },
+    {
+      name: "TikTok",
+      icon: Music2,
+      // TikTok has no share intent either — same copy-to-clipboard
+      // pattern + best-effort app deep link.
+      action: () => {
+        navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        setCopied(true);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = setTimeout(() => {
+          setCopied(false);
+          copiedTimerRef.current = null;
+        }, 2500);
+        try { window.open('snssdk1233://', '_blank'); } catch { /* noop */ }
       },
     },
     {
       name: "Copy Link",
       icon: copied ? Check : Link2,
       action: () => {
-        navigator.clipboard.writeText(shareUrl);
+        navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
         setCopied(true);
         if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
         copiedTimerRef.current = setTimeout(() => {
@@ -194,7 +253,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         }, 2000);
       },
     },
-  ], [shareUrl, copied]);
+  ], [shareUrl, shareText, copied]);
 
   // Calculate dynamic button styles - use ONLY backgroundColor, never 'background'
   const styles = useMemo(() => {

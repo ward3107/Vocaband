@@ -10,7 +10,7 @@ import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
-import { THEMES, type PetRewardKind } from "../constants/game";
+import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View, ShopTab } from "../core/views";
@@ -133,7 +133,15 @@ export default function StudentDashboardView({
           retention.claimPetMilestone(milestone);
         }}
       />
-      <FloatingButtons showBackToTop={true} />
+      <FloatingButtons
+        showBackToTop={false}
+        shareLevel={{
+          displayName: user.displayName,
+          xp,
+          title: getXpTitle(xp).title,
+          emoji: getXpTitle(xp).emoji,
+        }}
+      />
     </div>
   );
 }
