@@ -5626,6 +5626,32 @@ export default function App() {
       </LazyWrapper>
     );
   }
+  // Fallback: view === "live-challenge" but selectedClass was cleared (can
+  // happen after a hardware-back + state reset, or if a student lands on
+  // this teacher-only view directly).  Previously this rendered NOTHING
+  // (white page), then popstate kicked the user to the landing page
+  // without the teacher-login tab visible.  Redirect to the right home
+  // view instead so students get their dashboard back and teachers can
+  // re-select a class.
+  if (view === "live-challenge" && !selectedClass) {
+    // useEffect-style redirect without the hook — render a calm loading
+    // state while we schedule the navigation change.
+    setTimeout(() => {
+      setIsLiveChallenge(false);
+      if (user?.role === 'teacher') setView('live-challenge-class-select');
+      else if (user?.role === 'student') setView('student-dashboard');
+      else setView('public-landing');
+    }, 0);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white p-6">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⏳</div>
+          <p className="font-black text-lg">Redirecting…</p>
+          <p className="text-white/80 text-sm mt-1">Taking you back to your home screen.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (view === "global-leaderboard") {
     return (

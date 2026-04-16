@@ -85,7 +85,6 @@ export default function StudentDashboardView({
       <div className="max-w-4xl mx-auto">
         {classNotFoundBanner}
         <StudentTopBar
-          onPrivacyClick={() => setView("privacy-settings")}
           onShopClick={() => { setShopTab("hub"); setView("shop"); }}
         />
         <StudentGreetingCard
