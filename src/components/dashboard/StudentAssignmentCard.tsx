@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Zap, Sparkles, Lock } from "lucide-react";
 import { ALL_WORDS } from "../../data/vocabulary";
 import { MAX_ASSIGNMENT_ROUNDS } from "../../constants/game";
-import { readAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } from "../../hooks/useAssignmentPlays";
+import { resolveAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } from "../../hooks/useAssignmentPlays";
 import type { AppUser, AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
@@ -89,8 +89,9 @@ export default function StudentAssignmentCard({
   // played once".  Student can complete MAX_ASSIGNMENT_ROUNDS (3)
   // rounds, so the total allowed plays = 3 × totalModes.  After the
   // 3rd full round the assignment locks and stops granting XP.
-  // Count is tracked client-side in localStorage per uid+assignmentId.
-  const totalPlays = readAssignmentPlays(userUid, assignment.id);
+  // Count is DB-backed via progress.play_count (migration 20260425),
+  // with localStorage as an optimistic cache for immediate UI updates.
+  const totalPlays = resolveAssignmentPlays(userUid, assignment.id, studentProgress);
   const maxPlays = MAX_ASSIGNMENT_ROUNDS * Math.max(totalModes, 1);
   const roundsCompleted = computeRoundsCompleted(totalPlays, totalModes);
   const isLocked = isAssignmentLocked(totalPlays, totalModes);

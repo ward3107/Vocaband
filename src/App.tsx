@@ -59,7 +59,7 @@ import {
   THEMES,
   type GameMode,
 } from "./constants/game";
-import { readAssignmentPlays, incrementAssignmentPlays, isAssignmentLocked } from "./hooks/useAssignmentPlays";
+import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } from "./hooks/useAssignmentPlays";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
@@ -4242,7 +4242,10 @@ export default function App() {
     // src/hooks/useAssignmentPlays.ts.  UI lock on the dashboard is the
     // primary gate; this is belt-and-suspenders.
     const allowedModesCount = (activeAssignment.allowedModes ?? []).filter(m => m !== 'flashcards').length || 1;
-    const playsForThis = readAssignmentPlays(user?.uid, activeAssignment.id);
+    // Uses max(DB play_count sum, localStorage cache) so the cap is
+    // honoured across devices but still responds instantly to a fresh
+    // local play before the server round-trips.
+    const playsForThis = resolveAssignmentPlays(user?.uid, activeAssignment.id, studentProgress);
     const replayLocked = isAssignmentLocked(playsForThis, allowedModesCount);
 
     // Cap score to the maximum possible for this assignment (10 pts per word)
