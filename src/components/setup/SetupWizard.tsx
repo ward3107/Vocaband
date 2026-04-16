@@ -23,7 +23,7 @@ interface StepperProps {
 
 const Stepper = memo(({ currentStep, mode }: StepperProps) => {
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6">
+    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-7 sm:mb-8">
       {[1, 2, 3].map((step) => {
         const stepNum = step as 1 | 2 | 3;
         const isCompleted = stepNum < currentStep;
@@ -34,24 +34,24 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
           <React.Fragment key={step}>
             <div className="flex flex-col items-center">
               <div
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   isCompleted
-                    ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-lg shadow-green-500/30'
+                    ? 'bg-emerald-500 text-white'
                     : isCurrent
-                    ? 'bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-110'
-                    : 'bg-stone-200 text-stone-600 border-2 border-stone-300/40'
+                    ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
+                    : 'bg-white text-stone-400 border border-stone-200'
                 }`}
               >
                 {isCompleted ? '✓' : step}
               </div>
               {isOptional && !isCompleted && !isCurrent && (
-                <span className="text-[10px] text-stone-600 mt-1">(Optional)</span>
+                <span className="text-[10px] font-semibold text-stone-400 mt-1.5">Optional</span>
               )}
             </div>
             {step < 3 && (
               <div
-                className={`w-8 sm:w-12 h-0.5 ${
-                  step < currentStep ? 'bg-green-400' : 'bg-stone-300/40'
+                className={`w-8 sm:w-14 h-0.5 rounded-full ${
+                  step < currentStep ? 'bg-emerald-500' : 'bg-stone-200'
                 }`}
               />
             )}
@@ -215,7 +215,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const isAssignment = mode === 'assignment';
 
   return (
-    <div className="min-h-screen bg-stone-100 pt-32 pb-20 sm:pb-8 px-3 sm:px-4 md:px-6">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-28 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
       <TopAppBar
         title={isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}

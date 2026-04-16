@@ -1229,38 +1229,44 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
   // ── TAB BAR COMPONENT ─────────────────────────────────────────────────────
   const renderTabBar = () => (
-    <div className="mb-3 sm:mb-5 sticky top-0 z-30 bg-stone-100 pb-2 -mx-3 px-3 sm:-mx-4 sm:px-4 pt-2">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <button onClick={onBack} className="text-stone-400 hover:text-stone-600 font-bold text-sm flex items-center gap-1 transition-colors">
-          <ArrowLeft size={16} /> Back
+    <div className="mb-4 sm:mb-6 sticky top-0 z-30 bg-gradient-to-b from-stone-50 to-stone-50/95 backdrop-blur-sm pb-3 -mx-3 px-3 sm:-mx-4 sm:px-4 pt-2">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={onBack}
+          type="button"
+          style={{ touchAction: 'manipulation' }}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-stone-500 hover:text-stone-900 transition-colors"
+        >
+          <ArrowLeft size={15} /> Back
         </button>
-        <h2 className="text-base sm:text-xl font-black text-stone-900">
-          {isQuickPlay ? 'Add Words' : editingAssignment ? 'Edit Words' : 'Add Words'}
+        <h2 className="text-base sm:text-lg font-bold text-stone-900">
+          {isQuickPlay ? 'Add words' : editingAssignment ? 'Edit words' : 'Add words'}
         </h2>
-        <div className="text-xs font-bold text-stone-400">Step 1/3</div>
+        <div className="text-xs font-semibold text-stone-400">Step 1 / 3</div>
       </div>
 
-      {/* Tab strip */}
-      <div className="bg-white rounded-2xl shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5" style={{ scrollSnapType: 'x mandatory' }}>
+      {/* Tab strip — segmented pill group, coherent with the mode-intro design */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5" style={{ scrollSnapType: 'x mandatory' }}>
         {tabs.map(tab => {
           const isActive = subStep === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setSubStep(tab.id)}
-              className={`relative flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 px-1.5 sm:px-3 rounded-xl text-center transition-all duration-200 ${
+              type="button"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', scrollSnapAlign: 'center' }}
+              className={`relative flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2.5 px-1.5 sm:px-3 rounded-xl text-center transition-all ${
                 isActive
-                  ? 'bg-stone-900 text-white shadow-md'
-                  : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'
+                  ? 'bg-stone-900 text-white shadow-sm'
+                  : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'
               }`}
-              style={{ scrollSnapAlign: 'center' }}
             >
               <span className="text-base sm:text-lg leading-none">{tab.emoji}</span>
-              <span className={`text-[9px] sm:text-xs font-black leading-tight truncate w-full ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+              <span className={`text-[10px] sm:text-xs font-bold leading-tight truncate w-full ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
               {tab.badge !== undefined && (
-                <span className={`absolute -top-1 -right-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-white text-stone-900' : 'bg-stone-200 text-stone-500'
+                <span className={`absolute -top-1.5 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ${
+                  isActive ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'
                 }`}>
                   {tab.badge}
                 </span>
@@ -1273,7 +1279,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       {/* Selected count */}
       {selectedWords.length > 0 && (
         <div className="mt-3 text-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-xs font-semibold">
             <Check size={12} /> {selectedWords.length} word{selectedWords.length !== 1 ? 's' : ''} selected
           </span>
         </div>
