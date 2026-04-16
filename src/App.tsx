@@ -1124,6 +1124,11 @@ export default function App() {
   // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
   const userRef = useRef(user);
   const isLiveChallengeRef = useRef(isLiveChallenge);
+  // Tracks which (socketId:classCode:uid) combo has already emitted
+  // JOIN_CHALLENGE — prevents duplicate emits when effects re-run.
+  // Cleared whenever the socket reconnects (new socket id) so the
+  // next join goes through.
+  const joinChallengeEmittedRef = useRef<string>("");
 
   // Timeout ref for cleanup (prevents memory leaks on unmount)
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -1364,6 +1369,48 @@ export default function App() {
       }
     };
   }, []);
+
+  // ── Live Challenge: ensure JOIN_CHALLENGE is emitted for students ──
+  // Previously JOIN_CHALLENGE was only emitted inline at login time
+  // (handleStudentLogin line 3658) and on reconnect (sock.on reconnect
+  // line 1337).  That left three gaps where students authenticated
+  // fine but never showed up on the teacher's live podium:
+  //   1. The "click my name from the class list" login path
+  //      (processStudentProfile) never emitted.
+  //   2. Students restoring a cached Supabase session on page refresh
+  //      (restoreSession) never emitted.
+  //   3. Timing race: if the socket wasn't connected at login time,
+  //      the emit got lost (no queue on socket.io-client for events
+  //      sent while disconnected).
+  // This centralised effect fires whenever (student + socket +
+  // classCode) are all present and emits exactly once per unique
+  // (socketId, classCode, uid) tuple.  Covers every entry path without
+  // touching the individual login flows.
+  useEffect(() => {
+    if (!user || user.role !== 'student' || !user.classCode) return;
+    if (!socket || !socketConnected) return;
+    const joinKey = `${socket.id}:${user.classCode}:${user.uid}`;
+    if (joinChallengeEmittedRef.current === joinKey) return;
+    joinChallengeEmittedRef.current = joinKey;
+    socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
+      classCode: user.classCode,
+      name: user.displayName,
+      uid: user.uid,
+    });
+    // Intentional log — if a student reports "I don't show up on the
+    // teacher's podium", this is the first thing to check in DevTools.
+    // Either the emit fires here (good — backend issue) or it never
+    // runs (missing state, socket disconnected, or user.uid mismatch).
+    console.log('[Live] JOIN_CHALLENGE emitted', { classCode: user.classCode, name: user.displayName, uid: user.uid });
+  }, [user?.uid, user?.role, user?.classCode, user?.displayName, socket, socketConnected]);
+
+  // Reset the emit-dedupe key on disconnect so the next connect can
+  // re-emit.  Covers reconnects where the socket gets a new id.
+  useEffect(() => {
+    if (!socketConnected) {
+      joinChallengeEmittedRef.current = "";
+    }
+  }, [socketConnected]);
 
   // Helper: set pending approval info and persist to sessionStorage
   const showPendingApproval = (info: { name: string; classCode: string; profileId?: string }) => {
