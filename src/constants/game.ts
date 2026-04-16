@@ -67,14 +67,23 @@ export const CLASS_AVATAR_GROUPS: { label: string; emojis: string[] }[] = [
 export const CLASS_AVATARS = CLASS_AVATAR_GROUPS.flatMap(g => g.emojis);
 
 // --- ASSIGNMENT REPLAY CAP (anti-farm) ---
-// Each assignment can be played at most this many times total across
-// all modes.  After the cap is hit, the assignment locks: no more XP,
-// button disabled in the dashboard card, "maxed out" badge shown.
-// Chosen to let a student try 5 different modes once, OR replay their
-// favourite 2-3 modes a couple of times — both of which are healthy
-// study patterns — while closing the XP-farm loophole of replaying
-// the same easy mode 20+ times for guaranteed XP.
-export const MAX_ASSIGNMENT_REPLAYS = 5;
+// Students can complete each assignment at most this many ROUNDS,
+// where one round = playing every allowed mode once.  So if the
+// teacher enables 5 modes on an assignment, the student can play a
+// total of 3 × 5 = 15 games before the assignment locks.  Counts
+// are tracked client-side in localStorage (see readAssignmentPlays
+// in App.tsx) — simple, no schema change, good enough for an
+// anti-farm safeguard.
+//
+// Previously tracked as flat "plays" (3 plays total regardless of
+// mode count).  Changed after user clarified: "plays the 5 modes
+// three times — 5 + 5 + 5 — then the assignment is locked."
+export const MAX_ASSIGNMENT_ROUNDS = 3;
+// Back-compat alias — old code still imports MAX_ASSIGNMENT_REPLAYS.
+// It now means "rounds" not "total plays"; downstream consumers
+// compute total-plays-allowed as MAX_ASSIGNMENT_ROUNDS *
+// allowedModes.length.
+export const MAX_ASSIGNMENT_REPLAYS = MAX_ASSIGNMENT_ROUNDS;
 
 export const XP_TITLES = [
   { min: 0, title: 'Beginner', emoji: '🌱' },

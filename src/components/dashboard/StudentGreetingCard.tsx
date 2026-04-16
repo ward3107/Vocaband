@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Zap, Check, Copy, Flame } from "lucide-react";
+import { Zap, Check, Copy, Flame, ShoppingBag } from "lucide-react";
 import { getXpTitle } from "../../constants/game";
 import type { AppUser } from "../../core/supabase";
 
@@ -11,6 +11,10 @@ interface StudentGreetingCardProps {
   badges: string[];
   copiedCode: string | null;
   setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
+  /** Tap handler for the shop button inlined in the greeting card.
+   * (Previously lived in StudentTopBar; moved here so the student's
+   * name + avatar + XP + Shop all live in one coloured rectangle.) */
+  onShopClick: () => void;
 }
 
 /**
@@ -20,7 +24,7 @@ interface StudentGreetingCardProps {
  * has a streak going.
  */
 export default function StudentGreetingCard({
-  user, xp, streak, copiedCode, setCopiedCode,
+  user, xp, streak, copiedCode, setCopiedCode, onShopClick,
 }: StudentGreetingCardProps) {
   const handleCopyCode = () => {
     navigator.clipboard.writeText(user.classCode || "");
@@ -111,20 +115,64 @@ export default function StudentGreetingCard({
           </div>
         </div>
 
-        {/* XP orb on the right — big, juicy, with rolling number */}
-        <div className="hidden sm:flex shrink-0 flex-col items-center justify-center bg-white/15 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/20">
-          <div className="flex items-center gap-1 text-amber-200">
-            <Zap size={18} className="fill-amber-200" />
-            <span className="text-2xl font-black text-white tabular-nums">{displayedXp}</span>
+        {/* Right-hand stack: highlighted XP card + Shop button.
+            Moved from the old floating top-bar so everything the student
+            cares about (their identity + their balance + where to spend
+            it) sits inside one coloured rectangle.  On desktop both
+            elements are visible; on mobile they collapse to a tighter
+            row below the name. */}
+        <div className="hidden sm:flex shrink-0 flex-col gap-2">
+          {/* Highlighted XP card — amber/yellow gradient + spark icon so
+              it catches the eye as the main metric. */}
+          <div className="relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-2xl px-5 py-3 shadow-lg shadow-amber-500/30 border-2 border-white/60">
+            <div className="absolute inset-0 rounded-2xl bg-white/20 blur-lg opacity-60 pointer-events-none" />
+            <div className="relative flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-inner">
+                <Zap size={16} className="text-white fill-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-stone-900 tabular-nums leading-none">{displayedXp}</span>
+                <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">Total XP</span>
+              </div>
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider mt-0.5">XP</span>
+
+          {/* Shop button — same visual weight as the XP card so they
+              read as a natural pair. */}
+          <button
+            onClick={onShopClick}
+            type="button"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            className="relative inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg shadow-pink-500/40 hover:shadow-xl hover:shadow-pink-500/50 active:scale-95 transition-all text-sm border-2 border-white/60"
+          >
+            <ShoppingBag size={16} />
+            Shop
+            <span className="ml-0.5 inline-flex items-center gap-0.5 bg-yellow-300 text-rose-700 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white/50">
+              NEW
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Mobile XP pill — shown instead of the orb below 640px */}
-      <div className="sm:hidden mt-4 flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/20 w-fit">
-        <Zap size={14} className="text-amber-200 fill-amber-200" />
-        <span className="text-white font-black tabular-nums text-sm">{displayedXp} XP</span>
+      {/* Mobile row — XP pill + Shop button side-by-side so phones get
+          the same info density as the desktop stack. */}
+      <div className="sm:hidden mt-4 flex items-stretch gap-2">
+        <div className="flex-1 relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-2xl px-3 py-2 shadow-lg shadow-amber-500/30 border-2 border-white/60 flex items-center gap-2">
+          <Zap size={14} className="text-stone-900 fill-amber-600 shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-lg font-black text-stone-900 tabular-nums leading-none truncate">{displayedXp}</span>
+            <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">Total XP</span>
+          </div>
+        </div>
+        <button
+          onClick={onShopClick}
+          type="button"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
+        >
+          <ShoppingBag size={14} />
+          Shop
+        </button>
       </div>
     </motion.div>
   );

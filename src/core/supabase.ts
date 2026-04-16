@@ -128,6 +128,10 @@ export interface ProgressData {
   completedAt: string;
   mistakes?: number[];
   avatar?: string;
+  /** Cumulative replay count for this (assignment, mode) pair.  Added
+   * in migration 20260425 — null/undefined means the row predates the
+   * migration and should be treated as 1. */
+  playCount?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -207,6 +211,7 @@ export function mapProgress(row: any): ProgressData {
     completedAt: row.completed_at,
     mistakes: row.mistakes,
     avatar: row.avatar,
+    playCount: row.play_count ?? undefined,
   };
 }
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, RefreshCw, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { Trophy, RefreshCw, AlertTriangle, CheckCircle2, Info, Home, Grid3X3 } from "lucide-react";
 import type { AppUser } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
@@ -148,44 +148,103 @@ export default function GameFinishedView({
           <span className="text-sm">{saveError}</span>
         </div>
       ) : null}
-      <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-        {/* Try Again — replay same mode + words */}
-        <button
-          onClick={() => {
-            setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-            setSpellingInput(""); setMotivationalMessage(null);
-          }}
-          disabled={isSaving}
-          className="w-full bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
-        >Try Again</button>
-        {/* Try Again — only missed words */}
-        {mistakes.length > 0 && (
+      {/* "What's next?" action panel — designed to feel like a popup card
+          so students see their three options at once instead of having
+          to scroll through a cramped button stack.  Primary (Try Again)
+          is the big filled button.  Secondary (Choose Another Mode) is
+          the new path the user asked for — stays inside the assignment,
+          just goes back to mode selection without detouring through the
+          dashboard.  Tertiary (Back to Dashboard) is the low-weight
+          escape hatch. */}
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 240, damping: 22, delay: 0.3 }}
+        className={`${t.card} rounded-[28px] shadow-2xl border ${isDark ? 'border-gray-700' : 'border-stone-200'} p-5 sm:p-6 w-full max-w-md`}
+      >
+        <p className={`text-[11px] font-black uppercase tracking-widest text-center mb-3 ${isDark ? 'text-gray-400' : 'text-stone-400'}`}>
+          What's next?
+        </p>
+
+        <div className="flex flex-col gap-2.5">
+          {/* Primary — Try Again (same mode + words) */}
           <button
             onClick={() => {
-              const missedWords = gameWords.filter(w => mistakes.includes(w.id));
-              if (missedWords.length > 0) {
-                setAssignmentWords(missedWords);
-              }
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
               setSpellingInput(""); setMotivationalMessage(null);
             }}
             disabled={isSaving}
-            className={`w-full px-8 py-3 rounded-full font-bold text-base transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-stone-200 text-stone-800 hover:bg-stone-300'}`}
-          >Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}</button>
-        )}
-        <button
-          onClick={() => {
-            setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
-            if (user?.isGuest) {
-              setView("game");
-            } else {
-              setView("student-dashboard");
-            }
-          }}
-          disabled={isSaving}
-          className="signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-        >Back to Dashboard</button>
-      </div>
+            type="button"
+            style={{ touchAction: 'manipulation' }}
+            className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={20} />
+            Try Again
+          </button>
+
+          {/* Secondary — Back to Game Modes (NEW).  Keeps the student
+              inside the same assignment but returns them to the mode
+              selection screen so they don't have to bounce through the
+              dashboard + assignment picker every time. */}
+          <button
+            onClick={() => {
+              // Reset game state but keep activeAssignment + gameWords
+              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+              setSpellingInput(""); setMotivationalMessage(null);
+              // Show the mode selection screen while staying in view="game"
+              setShowModeSelection(true);
+            }}
+            disabled={isSaving}
+            type="button"
+            style={{ touchAction: 'manipulation' }}
+            className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600' : 'bg-white text-stone-900 border-2 border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
+          >
+            <Grid3X3 size={18} />
+            Choose Another Mode
+          </button>
+
+          {/* Review missed words — only when mistakes > 0.  Sits between
+              secondary and tertiary because it's game-specific. */}
+          {mistakes.length > 0 && (
+            <button
+              onClick={() => {
+                const missedWords = gameWords.filter(w => mistakes.includes(w.id));
+                if (missedWords.length > 0) {
+                  setAssignmentWords(missedWords);
+                }
+                setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
+                setSpellingInput(""); setMotivationalMessage(null);
+              }}
+              disabled={isSaving}
+              type="button"
+              style={{ touchAction: 'manipulation' }}
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-rose-900/40 text-rose-200 hover:bg-rose-900/60' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`}
+            >
+              Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}
+            </button>
+          )}
+
+          {/* Tertiary — Back to Dashboard, de-emphasised link-style so
+              students see it as the "exit" option, not the primary. */}
+          <button
+            onClick={() => {
+              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
+              if (user?.isGuest) {
+                setView("game");
+              } else {
+                setView("student-dashboard");
+              }
+            }}
+            disabled={isSaving}
+            type="button"
+            style={{ touchAction: 'manipulation' }}
+            className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}
+          >
+            <Home size={14} />
+            Back to Dashboard
+          </button>
+        </div>
+      </motion.div>
 
       {/* Toast Notifications */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">

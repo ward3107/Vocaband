@@ -84,9 +84,7 @@ export default function StudentDashboardView({
       )}
       <div className="max-w-4xl mx-auto">
         {classNotFoundBanner}
-        <StudentTopBar
-          onShopClick={() => { setShopTab("hub"); setView("shop"); }}
-        />
+        <StudentTopBar />
         <StudentGreetingCard
           user={user}
           xp={xp}
@@ -94,6 +92,7 @@ export default function StudentDashboardView({
           badges={badges}
           copiedCode={copiedCode}
           setCopiedCode={setCopiedCode}
+          onShopClick={() => { setShopTab("hub"); setView("shop"); }}
         />
         <StudentStatsRow
           xp={xp}
@@ -119,6 +118,7 @@ export default function StudentDashboardView({
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
           studentDataLoading={studentDataLoading}
+          userUid={user.uid}
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setView={setView}
