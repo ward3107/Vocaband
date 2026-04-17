@@ -21,6 +21,7 @@ import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
+import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
 import { type WordAnalysisResult} from "./utils/wordAnalysis";
@@ -4913,7 +4914,7 @@ export default function App() {
     }
 
 
-    const isCorrect = spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase();
+    const isCorrect = isAnswerCorrect(spellingInput, currentWord.english);
 
     gameDebug.logAnswer({
       gameMode: 'spelling',
