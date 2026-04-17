@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ALL_WORDS, SET_2_WORDS, Word } from "../data/vocabulary";
 import { shuffle, addUnique, removeKey } from "../utils";
+import { isAnswerCorrect } from "../utils/answerMatch";
 import { SOCKET_EVENTS } from "../core/types";
 import {
   MAX_ATTEMPTS_PER_WORD,
@@ -906,7 +907,7 @@ export function useGameState(params: UseGameStateParams) {
     e.preventDefault();
     if (feedback) return;
 
-    if (spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase()) {
+    if (isAnswerCorrect(spellingInput, currentWord.english)) {
       setFeedback("correct");
       setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;

@@ -27,6 +27,7 @@ import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
+import { isAnswerCorrect } from "../utils/answerMatch";
 import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
 
 interface DemoModeProps {
@@ -747,7 +748,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const handleSpellingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!spellingInput.trim() || selectedAnswer) return;
-    const correct = spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase();
+    const correct = isAnswerCorrect(spellingInput, currentWord.english);
     setSelectedAnswer(spellingInput);
     setIsCorrect(correct);
     handleFeedback(correct);
@@ -756,7 +757,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const handleScrambleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!spellingInput.trim() || selectedAnswer) return;
-    const correct = spellingInput.toLowerCase().trim() === currentWord.english.toLowerCase();
+    const correct = isAnswerCorrect(spellingInput, currentWord.english);
     setSelectedAnswer(spellingInput);
     setIsCorrect(correct);
     handleFeedback(correct);
@@ -780,7 +781,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
   const handleReverseAnswer = (answer: string) => {
     if (selectedAnswer) return;
-    const correct = answer.toLowerCase().trim() === currentWord.english.toLowerCase();
+    const correct = isAnswerCorrect(answer, currentWord.english);
     setSelectedAnswer(answer);
     setIsCorrect(correct);
     handleFeedback(correct);
