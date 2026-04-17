@@ -1229,7 +1229,6 @@ export default function App() {
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
-  useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
   useEffect(() => {
     isProcessingRef.current = !!feedback;
     gameDebug.logProcessing({ isProcessing: !!feedback, reason: `feedback changed to ${feedback}` });
@@ -1241,7 +1240,6 @@ export default function App() {
 
     const failsafeTimer = setTimeout(() => {
       setFeedback(null);
-      setMotivationalMessage(null);
     }, 5000);
 
     return () => clearTimeout(failsafeTimer);
@@ -4735,7 +4733,6 @@ export default function App() {
         // Show try again with attempt count
         setFeedback("wrong");
         playWrong();
-        setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
 
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -6109,7 +6106,6 @@ export default function App() {
           setWordAttempts={setWordAttempts}
           setHiddenOptions={setHiddenOptions}
           setSpellingInput={setSpellingInput}
-          setMotivationalMessage={setMotivationalMessage}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
           setView={setView}
