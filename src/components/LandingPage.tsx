@@ -57,7 +57,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
         <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative flex items-center justify-center">
           {/* Animated Gradient Mesh Background */}
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden -z-10">
             <motion.div
               animate={{
                 scale: [1, 1.2, 1],
