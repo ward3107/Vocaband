@@ -702,7 +702,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Layers size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Or Use Your Own Words</h3>
+                  <h3 className="text-2xl font-black mb-2">Use Your Own Words</h3>
                   <p className="text-white/80 font-bold text-sm">
                     Upload your custom vocabulary lists. Assign any words you need.
                   </p>
@@ -1102,7 +1102,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    Used in 100+ Schools
+                    Loved by Schools
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -1154,7 +1154,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* Copyright */}
             <div className="pt-8 text-center">
               <p className="text-white text-sm font-bold">
-                © {new Date().getFullYear()} Vocaband. Made with ❤️ for Israeli students.
+                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for Israeli students.
               </p>
             </div>
           </div>
