@@ -1691,9 +1691,12 @@ export default function App() {
             const intendedNorm = intendedCode?.trim().toUpperCase() || null;
             const currentNorm = code?.trim().toUpperCase() || '';
             if (intendedNorm && intendedNorm !== currentNorm) {
-              // Validate the intended class exists before offering to switch.
+              // Validate the intended class exists via a SECURITY DEFINER RPC
+              // that bypasses RLS — the student isn't a member yet, so a
+              // direct .from('classes').select(...) would return empty even
+              // for valid codes. RPC only returns code + name (safe to expose).
               const { data: intendedClassRows } = await supabase
-                .from('classes').select('code, name').eq('code', intendedNorm);
+                .rpc('class_lookup_by_code', { p_code: intendedNorm });
               if (intendedClassRows && intendedClassRows.length > 0) {
                 const { data: currentClassRows } = await supabase
                   .from('classes').select('code, name').eq('code', code);
@@ -3560,8 +3563,10 @@ export default function App() {
       const intendedNorm = intendedCode?.trim().toUpperCase() || null;
       const currentNorm = studentData.class_code?.trim().toUpperCase() || '';
       if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
+        // Same RLS workaround as above — use the SECURITY DEFINER RPC so
+        // non-member students can still verify the target class exists.
         const { data: intendedClassRows } = await supabase
-          .from('classes').select('code, name').eq('code', intendedNorm);
+          .rpc('class_lookup_by_code', { p_code: intendedNorm });
         if (intendedClassRows && intendedClassRows.length > 0) {
           const { data: currentClassRows } = await supabase
             .from('classes').select('code, name').eq('code', studentData.class_code);
