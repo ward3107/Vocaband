@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2,
+  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
@@ -9,34 +9,16 @@ import { supabase } from '../../core/supabase';
 import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData } from './types';
 import { DateTimePicker } from '../DateTimePicker';
 
-// ── Assignment Templates ────────────────────────────────────────────────────
-const ASSIGNMENT_TEMPLATES: { title: string; instructions: string; modes?: string[]; group: string }[] = [
-  // Quick Practice
-  { group: 'Quick Practice', title: 'Flashcard Review', instructions: 'Learn new words at your own pace with visual flashcards', modes: ['flashcards'] },
-  { group: 'Quick Practice', title: 'Classic Quiz', instructions: 'Multiple-choice vocabulary quiz — pick the correct translation', modes: ['classic'] },
-  { group: 'Quick Practice', title: 'Listening Practice', instructions: 'Listen to words and choose the correct answer — builds audio recognition', modes: ['listening'] },
-  { group: 'Quick Practice', title: 'Matching Pairs', instructions: 'Connect words to their translations — drag-and-match style', modes: ['matching'] },
-  { group: 'Quick Practice', title: 'True or False', instructions: 'Decide if translations are correct — quick comprehension check', modes: ['true-false'] },
-  // Writing & Spelling
-  { group: 'Writing & Spelling', title: 'Spelling Bee', instructions: 'Type the correct spelling — builds writing accuracy', modes: ['spelling'] },
-  { group: 'Writing & Spelling', title: 'Word Scramble', instructions: 'Unscramble the letters to form the correct word', modes: ['scramble'] },
-  { group: 'Writing & Spelling', title: 'Sentence Builder', instructions: 'Arrange words to build correct sentences — advanced writing practice', modes: ['sentence-builder'] },
-  { group: 'Writing & Spelling', title: 'Letter Sounds', instructions: 'Practice phonics — identify words by their letter sounds', modes: ['letter-sounds'] },
-  // Mixed Modes
-  { group: 'Mixed Modes', title: 'Beginner Mix', instructions: 'Gentle start — flashcards, matching, and classic quiz', modes: ['flashcards', 'matching', 'classic', 'listening'] },
-  { group: 'Mixed Modes', title: 'Full Practice', instructions: 'All core game modes for thorough vocabulary practice', modes: ['flashcards', 'matching', 'classic', 'listening', 'true-false', 'spelling', 'reverse', 'scramble', 'letter-sounds'] },
-  { group: 'Mixed Modes', title: 'Challenge Mode', instructions: 'Every mode including sentence builder — for advanced students', modes: ['flashcards', 'matching', 'classic', 'listening', 'true-false', 'spelling', 'reverse', 'scramble', 'letter-sounds', 'sentence-builder'] },
-  { group: 'Mixed Modes', title: 'Reading & Listening', instructions: 'Focus on receptive skills — flashcards, listening, and true/false', modes: ['flashcards', 'listening', 'true-false'] },
-  { group: 'Mixed Modes', title: 'Writing Focus', instructions: 'Productive skills — spelling, scramble, reverse, and sentence builder', modes: ['spelling', 'scramble', 'reverse', 'sentence-builder'] },
-  // Assessment
-  { group: 'Assessment', title: 'Quick Check', instructions: 'Short vocabulary check — classic quiz and true/false only', modes: ['classic', 'true-false'] },
-  { group: 'Assessment', title: 'Spelling Test', instructions: 'Written assessment — spelling and word scramble', modes: ['spelling', 'scramble'] },
-  { group: 'Assessment', title: 'Listening Exam', instructions: 'Audio-based assessment — listening and letter sounds', modes: ['listening', 'letter-sounds'] },
-  { group: 'Assessment', title: 'Comprehensive Test', instructions: 'Full assessment across all modes — test overall vocabulary mastery', modes: ['classic', 'listening', 'spelling', 'matching', 'true-false', 'reverse'] },
-  // Homework
-  { group: 'Homework', title: 'Weekly Homework', instructions: 'Complete all activities at home — practice at your own pace', modes: ['flashcards', 'classic', 'spelling', 'matching'] },
-  { group: 'Homework', title: 'Review & Practice', instructions: 'Self-study assignment — start with flashcards then test yourself', modes: ['flashcards', 'classic', 'true-false', 'listening'] },
-  { group: 'Homework', title: 'XP Challenge', instructions: 'Earn as many XP points as possible — compete on the leaderboard!', modes: ['classic', 'spelling', 'matching', 'true-false', 'reverse', 'scramble'] },
+// ── Assignment Templates (2026 compact design) ───────────────────────────────
+const ASSIGNMENT_TEMPLATES: { title: string; instructions: string; modes?: string[]; icon: string; color: string }[] = [
+  { icon: '📇', title: 'Flashcard Review', instructions: 'Learn new words at your own pace', modes: ['flashcards'], color: 'from-blue-500 to-indigo-500' },
+  { icon: '✅', title: 'Classic Quiz', instructions: 'Multiple-choice vocabulary quiz', modes: ['classic'], color: 'from-emerald-500 to-teal-500' },
+  { icon: '🎧', title: 'Listening Practice', instructions: 'Audio-based word recognition', modes: ['listening'], color: 'from-violet-500 to-purple-500' },
+  { icon: '🧩', title: 'Matching Pairs', instructions: 'Connect words to translations', modes: ['matching'], color: 'from-amber-500 to-orange-500' },
+  { icon: '⚡', title: 'Quick Mix', instructions: 'Flashcards + Quiz + Matching', modes: ['flashcards', 'classic', 'matching'], color: 'from-rose-500 to-pink-500' },
+  { icon: '📚', title: 'Full Practice', instructions: 'All modes for complete mastery', modes: ALL_GAME_MODE_IDS, color: 'from-cyan-500 to-blue-500' },
+  { icon: '✍️', title: 'Spelling Focus', instructions: 'Writing and spelling practice', modes: ['spelling', 'scramble'], color: 'from-fuchsia-500 to-pink-500' },
+  { icon: '🏠', title: 'Weekly Homework', instructions: 'Complete all activities at home', modes: ['flashcards', 'classic', 'spelling', 'matching'], color: 'from-green-500 to-emerald-500' },
 ];
 
 // ── Props ───────────────────────────────────────────────────────────────────
@@ -134,6 +116,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           return;
         }
         const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+        console.log('[AI features] checking /api/features at', apiUrl);
         // ?debug=1 makes the server include a `reason` field when aiSentences
         // is false, so we can log the exact rejection cause to the console
         // instead of the user staring at a missing button with no explanation.
@@ -141,6 +124,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
+        console.log('[AI features] response:', data);
         if (data.aiSentences === true) {
           console.log('[AI features] enabled for', data.email || 'current user');
         } else {
@@ -198,13 +182,18 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   };
 
   // Template selector — assignment-only helper
-  const applyTemplate = (templateTitle: string) => {
-    const t = ASSIGNMENT_TEMPLATES.find(tp => tp.title === templateTitle);
+  const applyTemplate = (index: number) => {
+    const t = ASSIGNMENT_TEMPLATES[index];
     if (!t) return;
     onTitleChange?.(t.title);
     onInstructionsChange?.(t.instructions);
     if (t.modes) onModesChange(t.modes);
   };
+
+  // Check if current selection matches a template
+  const activeTemplateIndex = ASSIGNMENT_TEMPLATES.findIndex(t =>
+    t.title === assignmentTitle && t.instructions === assignmentInstructions
+  );
 
   // Can proceed?
   const canProceed = isAssignment
@@ -243,82 +232,99 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         )}
       </div>
 
-      {/* ── Assignment-only: details section ─────────────────────────────── */}
+      {/* ── Assignment-only: details section (2026 redesign) ────────────────── */}
       {isAssignment && (
-        <div className="space-y-4">
-          {/* Combined Template Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-5"
+        >
+          {/* Template Selector - at top, small buttons */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-900 mb-2">
-              <Sparkles size={16} className="text-amber-500" />
+            <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
+              <Sparkles size={14} className="text-amber-500" />
               Quick template
             </label>
-            <select
-              ref={templateSelectorRef}
-              value=""
-              onChange={(e) => applyTemplate(e.target.value)}
-              className="w-full p-3 sm:p-4 rounded-2xl border-3 border-amber-400/50 bg-gradient-to-r from-amber-50 to-yellow-50 text-stone-900 mb-4 cursor-pointer appearance-none shadow-lg shadow-amber-200/50 hover:shadow-xl hover:border-amber-400 transition-all outline-none focus:ring-4 focus:ring-amber-400/30 font-bold text-base"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%23f59e0b' d='M6 9L1 4l5 5 5-5z'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 0.75rem center',
-                paddingRight: '2.5rem',
-              }}
-            >
-              <option value="">{String.fromCodePoint(0x1F4CB)} Choose a template...</option>
-              {(() => {
-                const groups = [...new Set(ASSIGNMENT_TEMPLATES.map(t => t.group))];
-                return groups.map(group => (
-                  <optgroup key={group} label={group}>
-                    {ASSIGNMENT_TEMPLATES.filter(t => t.group === group).map(t => (
-                      <option key={t.title} value={t.title}>{t.title}</option>
-                    ))}
-                  </optgroup>
-                ));
-              })()}
-            </select>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {ASSIGNMENT_TEMPLATES.map((template, index) => {
+                const isActive = activeTemplateIndex === index;
+                return (
+                  <motion.button
+                    key={template.title}
+                    onClick={() => applyTemplate(index)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    className={`p-2.5 rounded-xl border-2 text-left transition-all ${
+                      isActive
+                        ? `border-transparent bg-gradient-to-r ${template.color} text-white shadow-md`
+                        : 'border-stone-200 bg-white hover:border-stone-300'
+                    }`}
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{template.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-stone-800'}`}>
+                          {template.title}
+                        </p>
+                        <p className={`text-[10px] truncate ${isActive ? 'text-white/80' : 'text-stone-500'}`}>
+                          {template.instructions}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
 
-            {/* Editable Title Field */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-stone-900 mb-2">
-                Assignment title <span className="text-error">*</span>
+          {/* Title & Instructions - compact inputs */}
+          <div className="grid grid-cols-1 gap-3">
+            {/* Assignment Title */}
+            <div>
+              <label className="block text-xs font-bold text-stone-600 mb-1.5">
+                Assignment title <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={assignmentTitle}
                 onChange={(e) => onTitleChange?.(e.target.value)}
                 placeholder="e.g., Fruits Vocabulary - Unit 5"
-                className="w-full p-4 rounded-2xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 placeholder:text-stone-600/50 transition-all"
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
               />
             </div>
 
-            {/* Editable Instructions Field */}
+            {/* Instructions */}
             <div>
-              <label className="block text-sm font-bold text-stone-900 mb-2">
-                Instructions for students (optional)
+              <label className="block text-xs font-bold text-stone-600 mb-1.5">
+                Instructions for students
               </label>
               <textarea
-                id="instructions-textarea"
                 value={assignmentInstructions}
                 onChange={(e) => onInstructionsChange?.(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                placeholder="Add a note for your students... or choose a template above"
+                placeholder="Add a note for your students..."
                 rows={2}
-                className="w-full p-4 rounded-2xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 placeholder:text-stone-600/50 transition-all resize-none"
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
               />
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ── Game Modes by Level ───────────────────────────────────────────── */}
-      <div className="space-y-4">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-4"
+      >
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-bold text-stone-900">
-            Game modes
+          <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+            <span>🎮</span> Game modes
           </label>
           <button
             onClick={handleSelectAllToggle}
-            className="text-xs font-bold text-primary hover:text-primary-dim transition-colors"
+            className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
             {selectedModes.length >= ALL_GAME_MODE_IDS.length ? 'Clear all' : 'Select all'}
           </button>
@@ -396,7 +402,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <span>Mastery</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Sentence Difficulty — only when sentence-builder is selected ──── */}
       {selectedModes.includes('sentence-builder') && (
@@ -569,21 +575,26 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </div>
       )}
 
-      {/* ── Schedule (Assignment-only) ────────────────────────────────────── */}
+      {/* ── Schedule (Assignment-only) - compact 2026 design ─────────────────── */}
       {isAssignment && (
-        <div className="space-y-3">
-          <label className="block text-sm font-bold text-stone-900">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+            <Calendar size={14} className="text-indigo-500" />
             Schedule (optional)
           </label>
           <div>
-            <label className="block text-xs text-stone-600 mb-1">Deadline</label>
+            <label className="block text-xs text-stone-500 mb-1.5">Deadline</label>
             <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
               placeholder="Pick deadline date and time"
             />
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ── Navigation ───────────────────────────────────────────────────── */}

@@ -11,8 +11,8 @@ export default defineConfig(() => {
       // VitePWA disabled — service worker was causing white screens from stale cache
       // Will re-enable with proper config after cache is cleared from all devices
       tailwindcss(),
-      // Skip Cloudflare plugin in E2E tests (miniflare has DNS issues in test env)
-      ...(!isTest ? [cloudflare()] : []),
+      // Cloudflare plugin disabled — causing white screen in dev
+      // ...(!isTest ? [cloudflare()] : []),
     ],
     resolve: {
       alias: {
@@ -35,7 +35,7 @@ export default defineConfig(() => {
       host: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: 'http://localhost:3002',
           changeOrigin: true,
         },
       },

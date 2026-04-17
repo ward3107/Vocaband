@@ -219,9 +219,9 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
         )}
       </button>
 
-      {/* Popover */}
+      {/* Popover - opens upward to avoid going off-screen on mobile */}
       {open && (
-        <div className="absolute z-50 top-full left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-stone-200 w-80 overflow-hidden">
+        <div className="absolute z-50 bottom-full left-0 mb-2 bg-white rounded-2xl shadow-2xl border border-stone-200 w-80 overflow-hidden">
           {/* Month nav */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
             <button

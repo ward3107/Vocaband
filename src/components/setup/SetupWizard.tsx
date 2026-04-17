@@ -12,6 +12,7 @@ import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
 import { WizardMode, AssignmentData, ALL_GAME_MODE_IDS } from './types';
 import { WordInputStep } from './WordInputStep';
+import { WordInputStep2026 } from './WordInputStep2026';
 import { ConfigureStep } from './ConfigureStep';
 import { ReviewStep } from './ReviewStep';
 
@@ -98,6 +99,9 @@ export interface SetupWizardProps {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
   onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
+
+  // Feature flags
+  use2026WordInput?: boolean; // Use new 2026 word input design
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
   onOcrUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isOcrProcessing?: boolean;
@@ -142,6 +146,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   showToast,
   onPlayWord,
   onTranslateWord,
+  use2026WordInput = false,
   topicPacks = [],
   onOcrUpload,
   isOcrProcessing = false,
@@ -242,32 +247,81 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
 
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
-            <WordInputStep
-              key="step1"
-              mode={mode}
-              allWords={allWords}
-              set1Words={set1Words}
-              set2Words={set2Words}
-              selectedWords={selectedWords}
-              onSelectedWordsChange={setSelectedWords}
-              onNext={handleNext}
-              onBack={handleBack}
-              autoMatchPartial={autoMatchPartial}
-              showLevelFilter={showLevelFilter}
-              classId={selectedClass?.id}
-              showSuggestedWords={mode === 'assignment' && !!selectedClass?.id}
-              onTranslateWord={onTranslateWord}
-              onOcrUpload={onOcrUpload}
-              isOcrProcessing={isOcrProcessing}
-              ocrProgress={ocrProgress}
-              onDocxUpload={onDocxUpload}
-              onPlayWord={onPlayWord}
-              showToast={showToast}
-              topicPacks={topicPacks}
-              customWords={customWords}
-              onCustomWordsChange={onCustomWordsChange}
-              editingAssignment={editingAssignment}
-            />
+            <>
+              {use2026WordInput ? (
+                <WordInputStep2026
+                  key="step1-2026"
+                  allWords={allWords}
+                  selectedWords={selectedWords}
+                  onSelectedWordsChange={setSelectedWords}
+                  onNext={handleNext}
+                  onBack={handleBack}
+                  onTranslateWord={onTranslateWord}
+                  onOcrUpload={async (file) => {
+                    // Use the existing /api/ocr endpoint with FormData
+                    const token = localStorage.getItem('vocaband-token') || localStorage.getItem('sb-access-token');
+                    if (!token) {
+                      showToast?.('Authentication required', 'error');
+                      throw new Error('No auth token');
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch('https://api.vocaband.com/api/ocr', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                      },
+                      body: formData,
+                    });
+
+                    if (!response.ok) {
+                      const error = await response.json();
+                      throw new Error(error.error || error.message || 'OCR failed');
+                    }
+
+                    const result = await response.json();
+                    return {
+                      words: result.words || [],
+                      success: result.success,
+                    };
+                  }}
+                  showToast={showToast}
+                  topicPacks={topicPacks}
+                  savedGroups={[]} // TODO: pass from props
+                  customWords={customWords}
+                  onCustomWordsChange={onCustomWordsChange}
+                />
+              ) : (
+                <WordInputStep
+                  key="step1"
+                  mode={mode}
+                  allWords={allWords}
+                  set1Words={set1Words}
+                  set2Words={set2Words}
+                  selectedWords={selectedWords}
+                  onSelectedWordsChange={setSelectedWords}
+                  onNext={handleNext}
+                  onBack={handleBack}
+                  autoMatchPartial={autoMatchPartial}
+                  showLevelFilter={showLevelFilter}
+                  classId={selectedClass?.id}
+                  showSuggestedWords={mode === 'assignment' && !!selectedClass?.id}
+                  onTranslateWord={onTranslateWord}
+                  onOcrUpload={onOcrUpload}
+                  isOcrProcessing={isOcrProcessing}
+                  ocrProgress={ocrProgress}
+                  onDocxUpload={onDocxUpload}
+                  onPlayWord={onPlayWord}
+                  showToast={showToast}
+                  topicPacks={topicPacks}
+                  customWords={customWords}
+                  onCustomWordsChange={onCustomWordsChange}
+                  editingAssignment={editingAssignment}
+                />
+              )}
+            </>
           )}
 
           {currentStep === 2 && (

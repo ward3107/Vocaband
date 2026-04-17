@@ -1,0 +1,1719 @@
+/**
+ * WordInputStep2026 — Redesigned word input with hero paste area + cards
+ *
+ * Design philosophy:
+ * - One main action (paste) presented beautifully
+ * - Progressive cards below for alternatives
+ * - Visual status instead of cryptic dots
+ * - Conversational, helpful tone
+ */
+
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Check, AlertTriangle, Sparkles, Upload, Camera,
+  ChevronRight, Loader2, X, Search, Package, FolderOpen,
+  BookOpen, Plus, Trash2
+} from 'lucide-react';
+import { Word } from '../../data/vocabulary';
+import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
+
+// English-only text constants for the word input step
+const TEXT = {
+  pasteTitle: 'Paste your word list here',
+  pastePlaceholder: 'apple, banana, orange, grape',
+  pasteTip: 'Separate words with commas, spaces, or lines',
+  analyzeButton: 'Analyze & Add Words',
+  analyzing: 'Analyzing...',
+  or: 'OR',
+  topicPacks: 'Topic Packs',
+  savedGroups: 'Saved Groups',
+  browseLibrary: 'Browse Library',
+  ocr: 'Scan & Upload',
+  ocrSubtitle: 'Photo to text',
+  view: 'View',
+  upload: 'Upload',
+  packs: 'packs',
+  groups: 'groups',
+  words: 'words',
+  wordsSelected: 'words selected',
+  ready: 'READY',
+  readyDesc: 'All words have translations',
+  needsWork: 'NEEDS WORK',
+  needsWorkDesc: 'Missing translations',
+  fixTranslations: 'Fix Missing Translations',
+  done: 'Done',
+  fix: 'Fix',
+  addTranslation: 'Add translation',
+  continue: 'Continue to Step 2',
+  back: 'Back',
+  cancel: 'Cancel',
+  addWords: 'Add Words',
+  camera: 'Camera',
+  gallery: 'Gallery',
+  uploading: 'Uploading...',
+  extracting: 'Extracting words...',
+  ocrError: 'No words detected',
+  ocrErrorDesc: 'Try a clearer photo or different angle',
+  tryAgain: 'Try Again',
+  wordsFound: 'words found',
+  reviewWords: 'Review and edit before adding:',
+  new: 'new',
+  noSavedGroups: 'No saved groups yet',
+  saveGroupHint: 'Create a group from your selected words',
+  searchPlaceholder: 'Search words...',
+  showingFirst: 'Showing first 100',
+  refineSearch: 'refine your search',
+  addSelectedPacks: 'Add selected packs',
+  addSelectedWords: 'Add selected words',
+  chooseFile: 'Choose File',
+  noFileSelected: 'No file selected',
+  // Language preference
+  translationLang: 'Translation Language',
+  bothLang: 'Both',
+  hebrewOnly: 'Hebrew Only',
+  arabicOnly: 'Arabic Only',
+  clearAll: 'Clear All',
+  clearAllConfirm: 'Are you sure you want to remove all words?',
+  selectWords: 'Select words to add:',
+  allWords: 'All words',
+  addSelected: 'Add selected words',
+  alreadyAdded: 'Already added',
+};
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface WordWithStatus {
+  id: number;
+  english: string;
+  hebrew: string;
+  arabic: string;
+  hasTranslation: boolean;
+  isPhrase?: boolean;
+}
+
+export interface WordInputStep2026Props {
+  allWords: Word[];
+  selectedWords: Word[];
+  onSelectedWordsChange: (words: Word[]) => void;
+  onNext: () => void;
+  onBack: () => void;
+  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
+  onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
+  savedGroups?: Array<{ id: string; name: string; words: number[] }>;
+  customWords?: Word[];
+  onCustomWordsChange?: (words: Word[]) => void;
+}
+
+type OcrState = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
+type PanelType = 'topic-packs' | 'saved-groups' | 'browse-library' | null;
+type TranslationLang = 'both' | 'hebrew' | 'arabic';
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+// Hero Paste Area
+interface HeroPasteAreaProps {
+  onAnalyze: (text: string) => void;
+  isAnalyzing: boolean;
+}
+
+const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing }) => {
+  const [text, setText] = useState('');
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-8"
+    >
+      <div className="bg-white rounded-2xl shadow-lg border-2 border-indigo-100 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <Sparkles className="w-5 h-5" />
+            <span className="font-bold text-lg">✨ {TEXT.pasteTitle}</span>
+          </div>
+        </div>
+
+        {/* Input Area */}
+        <div className="p-6">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={TEXT.pastePlaceholder}
+            dir="ltr"
+            className="w-full h-32 p-4 border border-stone-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-stone-700 placeholder:text-stone-400"
+            style={{ textAlign: 'left' }}
+          />
+
+          {/* Tip */}
+          <p className="mt-3 text-sm text-stone-500 flex items-center gap-2">
+            <span>💡</span>
+            <span>{TEXT.pasteTip}</span>
+          </p>
+
+          {/* CTA Button */}
+          <button
+            onClick={() => text.trim() && onAnalyze(text)}
+            disabled={!text.trim() || isAnalyzing}
+            type="button"
+            className="mt-4 w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold py-3 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>{TEXT.analyzing}</span>
+              </>
+            ) : (
+              <>
+                <span>{TEXT.analyzeButton}</span>
+                <ChevronRight className="w-5 h-5" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Option Card
+interface OptionCardProps {
+  emoji: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  gradient: string;
+  onClick: () => void;
+  delay: number;
+  isNew?: boolean;
+}
+
+const OptionCard: React.FC<OptionCardProps> = ({
+  emoji, title, subtitle, ctaText, gradient, onClick, delay, isNew
+}) => {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      onClick={onClick}
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      type="button"
+      className="bg-white rounded-2xl shadow-md hover:shadow-xl border border-stone-100 p-6 flex flex-col items-center text-center min-h-[180px] transition-shadow"
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+    >
+      {/* Icon with optional sparkle */}
+      <div className="relative">
+        <span className="text-5xl">{emoji}</span>
+        {isNew && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-1 -right-2 text-lg"
+          >
+            ✨
+          </motion.span>
+        )}
+      </div>
+
+      {/* Title */}
+      <h3 className="mt-3 font-bold text-stone-800">{title}</h3>
+
+      {/* Subtitle */}
+      <p className="mt-1 text-sm text-stone-500">{subtitle}</p>
+
+      {/* CTA Button */}
+      <div className="mt-auto pt-4 self-start">
+        <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${gradient} text-transparent bg-clip-text`}>
+          {ctaText}
+          <ChevronRight className="w-4 h-4" />
+        </span>
+      </div>
+    </motion.button>
+  );
+};
+
+// Status Cards
+interface StatusCardsProps {
+  readyCount: number;
+  needsWorkCount: number;
+  onFixClick?: () => void;
+}
+
+const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, onFixClick }) => {
+
+  if (readyCount === 0 && needsWorkCount === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+      {/* Ready Card */}
+      {readyCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white">
+              <Check className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-emerald-700">{readyCount}</p>
+              <p className="text-sm font-semibold text-emerald-600">
+                {TEXT.ready}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-emerald-600">
+            {TEXT.readyDesc}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Needs Work Card */}
+      {needsWorkCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-amber-700">{needsWorkCount}</p>
+              <p className="text-sm font-semibold text-amber-600">
+                {TEXT.needsWork}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-amber-600">
+            {TEXT.needsWorkDesc}
+          </p>
+          {onFixClick && (
+            <button
+              onClick={onFixClick}
+              type="button"
+              className="mt-3 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:shadow-md transition-shadow"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              {TEXT.fixTranslations}
+            </button>
+          )}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+// Word Card
+interface WordCardProps {
+  word: WordWithStatus;
+  translationLang: TranslationLang;
+  onRemove?: () => void;
+  onEdit?: () => void;
+}
+
+const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, onEdit }) => {
+  // Check if word has the required translation(s) based on preference
+  const hasRequiredTranslation = (() => {
+    if (translationLang === 'both') return word.hebrew && word.arabic;
+    if (translationLang === 'hebrew') return word.hebrew;
+    if (translationLang === 'arabic') return word.arabic;
+    return false;
+  })();
+
+  // Get display text for translations
+  const getTranslationText = () => {
+    if (translationLang === 'both') {
+      return word.hebrew && word.arabic
+        ? `${word.hebrew} • ${word.arabic}`
+        : (word.hebrew || word.arabic || '');
+    }
+    if (translationLang === 'hebrew') return word.hebrew || '';
+    if (translationLang === 'arabic') return word.arabic || '';
+    return '';
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="bg-white rounded-lg shadow-sm border border-stone-100 p-2 pr-1 relative overflow-hidden group hover:shadow-md transition-shadow"
+    >
+      {/* Status stripe */}
+      <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${hasRequiredTranslation ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+
+      <div className="flex items-center justify-between gap-2 pl-2">
+        {/* Word info */}
+        <div className="flex-1 min-w-0">
+          {/* English */}
+          <p className="font-semibold text-stone-800 text-sm truncate leading-tight">{word.english}</p>
+
+          {/* Translations */}
+          {hasRequiredTranslation ? (
+            <p className="mt-0.5 text-xs text-stone-500 truncate" dir="auto">
+              {getTranslationText()}
+            </p>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.();
+              }}
+              type="button"
+              className="mt-0.5 text-xs text-amber-600 font-medium hover:text-amber-700 flex items-center gap-0.5"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              <AlertTriangle className="w-2.5 h-2.5" />
+              {TEXT.addTranslation}
+            </button>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Edit button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.();
+            }}
+            type="button"
+            className="p-1 rounded-md bg-stone-100 hover:bg-indigo-100 text-stone-600 hover:text-indigo-600 transition-colors"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            title="Edit translations"
+          >
+            <span className="text-xs">✏️</span>
+          </button>
+
+          {/* Remove button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove?.();
+            }}
+            type="button"
+            className="p-1 rounded-md bg-stone-100 hover:bg-red-100 text-stone-600 hover:text-red-600 transition-colors"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            title="Remove word"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Edit Translation Modal
+interface EditTranslationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  word: WordWithStatus | null;
+  translationLang: TranslationLang;
+  onSave: (wordId: number, hebrew: string, arabic: string) => void;
+}
+
+const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
+  isOpen, onClose, word, translationLang, onSave
+}) => {
+  const [hebrew, setHebrew] = useState('');
+  const [arabic, setArabic] = useState('');
+
+  useEffect(() => {
+    if (word) {
+      setHebrew(word.hebrew || '');
+      setArabic(word.arabic || '');
+    }
+  }, [word]);
+
+  if (!isOpen || !word) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <span className="text-2xl">✏️</span>
+            <span className="font-bold">Edit Translations</span>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            className="text-white/80 hover:text-white"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* English word (read-only) */}
+          <div>
+            <label className="block text-sm font-semibold text-stone-700 mb-1">
+              English
+            </label>
+            <div className="w-full px-4 py-3 bg-stone-100 rounded-xl text-stone-800 font-bold">
+              {word.english}
+            </div>
+          </div>
+
+          {/* Hebrew translation */}
+          {(translationLang === 'both' || translationLang === 'hebrew') && (
+            <div>
+              <label className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+                <span>🇮🇱</span> Hebrew {translationLang === 'hebrew' && <span className="text-xs text-emerald-600">(Required)</span>}
+              </label>
+              <input
+                type="text"
+                value={hebrew}
+                onChange={(e) => setHebrew(e.target.value)}
+                placeholder="Enter Hebrew translation"
+                className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                dir="rtl"
+              />
+            </div>
+          )}
+
+          {/* Arabic translation */}
+          {(translationLang === 'both' || translationLang === 'arabic') && (
+            <div>
+              <label className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+                <span>🇸🇦</span> Arabic {translationLang === 'arabic' && <span className="text-xs text-emerald-600">(Required)</span>}
+              </label>
+              <input
+                type="text"
+                value={arabic}
+                onChange={(e) => setArabic(e.target.value)}
+                placeholder="Enter Arabic translation"
+                className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                dir="rtl"
+              />
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              type="button"
+              className="flex-1 py-3 bg-stone-100 text-stone-700 font-bold rounded-xl hover:bg-stone-200 transition-colors"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              {TEXT.cancel}
+            </button>
+            <button
+              onClick={() => {
+                onSave(word.id, hebrew, arabic);
+                onClose();
+              }}
+              type="button"
+              className="flex-1 py-3 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold rounded-xl hover:shadow-lg transition-shadow"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// OCR Upload Modal
+interface OcrModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onUpload: (file: File) => Promise<void>;
+  state: OcrState;
+  progress: number;
+  extractedWords: string[];
+  onConfirm: (words: string[]) => void;
+  onEditWord: (index: number, value: string) => void;
+}
+
+const OcrModal: React.FC<OcrModalProps> = ({
+  isOpen, onClose, onUpload, state, progress, extractedWords, onConfirm, onEditWord
+}) => {
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-rose-500 to-fuchsia-500 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <Camera className="w-5 h-5" />
+            <span className="font-bold">{TEXT.ocr}</span>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            className="text-white/80 hover:text-white"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* Upload State */}
+          {state === 'idle' && (
+            <div className="text-center">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-rose-100 to-fuchsia-100 flex items-center justify-center">
+                <Camera className="w-10 h-10 text-rose-500" />
+              </div>
+              <p className="text-stone-700 font-medium mb-4">
+                {TEXT.ocrSubtitle}
+              </p>
+
+              {/* Camera input (with capture) */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUpload(file);
+                }}
+                capture="environment"
+              />
+
+              {/* Gallery input (without capture) */}
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUpload(file);
+                }}
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => cameraInputRef.current?.click()}
+                  type="button"
+                  className="flex-1 bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <Camera className="w-5 h-5" />
+                  {TEXT.camera}
+                </button>
+                <button
+                  onClick={() => galleryInputRef.current?.click()}
+                  type="button"
+                  className="flex-1 bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <Upload className="w-5 h-5" />
+                  {TEXT.gallery}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Processing State */}
+          {(state === 'uploading' || state === 'processing') && (
+            <div className="text-center py-8">
+              <Loader2 className="w-12 h-12 text-rose-500 animate-spin mx-auto mb-4" />
+              <p className="text-stone-700 font-medium">
+                {state === 'uploading'
+                  ? TEXT.uploading
+                  : TEXT.extracting
+                }
+              </p>
+              {progress > 0 && (
+                <div className="mt-4 w-full bg-stone-200 rounded-full h-2">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    className="bg-gradient-to-r from-rose-500 to-fuchsia-500 h-2 rounded-full"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Success State - Preview */}
+          {state === 'success' && (
+            <div>
+              {/* Success Badge */}
+              <div className="mb-4 p-3 rounded-lg flex items-center gap-2 bg-emerald-50 text-emerald-700">
+                <Check className="w-5 h-5" />
+                <span className="text-sm font-medium">
+                  {extractedWords.length} {TEXT.wordsFound}
+                </span>
+              </div>
+
+              {/* Words List */}
+              <p className="text-sm text-stone-500 mb-2">
+                {TEXT.reviewWords}
+              </p>
+              <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
+                {extractedWords.map((word, i) => (
+                  <input
+                    key={i}
+                    type="text"
+                    value={word}
+                    onChange={(e) => onEditWord(i, e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    dir="ltr"
+                  />
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  type="button"
+                  className="flex-1 bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  {TEXT.cancel}
+                </button>
+                <button
+                  onClick={() => onConfirm(extractedWords.filter(w => w.trim()))}
+                  type="button"
+                  className="flex-1 bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold py-3 px-4 rounded-xl"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  {TEXT.addWords}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {state === 'error' && (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-100 flex items-center justify-center">
+                <AlertTriangle className="w-8 h-8 text-rose-500" />
+              </div>
+              <p className="text-stone-700 font-medium mb-2">
+                {TEXT.ocrError}
+              </p>
+              <p className="text-sm text-stone-500 mb-4">
+                {TEXT.ocrErrorDesc}
+              </p>
+              <button
+                onClick={onClose}
+                type="button"
+                className="bg-stone-100 text-stone-700 font-bold py-3 px-6 rounded-xl"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                {TEXT.tryAgain}
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// ── Pack Words Modal (shows individual words in a pack) ─────────────────────────
+
+interface PackWordsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onParentClose?: () => void; // Close the parent panel too
+  pack: { name: string; icon: string; ids: number[]; words: Word[] } | null;
+  selectedWordIds: Set<number>;
+  onAddWords: (words: Word[]) => void;
+}
+
+const PackWordsModal: React.FC<PackWordsModalProps> = ({
+  isOpen, onClose, onParentClose, pack, selectedWordIds, onAddWords
+}) => {
+  const [selectedForAdd, setSelectedForAdd] = useState<Set<number>>(new Set());
+
+  // Pre-select words that aren't already added
+  useEffect(() => {
+    if (pack) {
+      const notYetAdded = pack.words.filter(w => !selectedWordIds.has(w.id));
+      setSelectedForAdd(new Set(notYetAdded.map(w => w.id)));
+    }
+  }, [pack, selectedWordIds]);
+
+  if (!isOpen || !pack) return null;
+
+  const toggleWord = (wordId: number) => {
+    setSelectedForAdd(prev => {
+      const next = new Set(prev);
+      if (next.has(wordId)) {
+        next.delete(wordId);
+      } else {
+        next.add(wordId);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSelected = () => {
+    const wordsToAdd = pack.words.filter(w => selectedForAdd.has(w.id));
+    onAddWords(wordsToAdd);
+    setSelectedForAdd(new Set());
+    onClose();
+    onParentClose?.(); // Also close the parent Topic Packs panel
+  };
+
+  const selectAll = () => {
+    setSelectedForAdd(new Set(pack.words.map(w => w.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedForAdd(new Set());
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60]">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 text-white">
+            <span className="text-2xl">{pack.icon}</span>
+            <span className="font-bold">{pack.name}</span>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            className="text-white/80 hover:text-white"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Select All / Deselect All */}
+        <div className="px-4 py-3 border-b border-stone-200 flex gap-2">
+          <button
+            onClick={selectAll}
+            type="button"
+            className="flex-1 py-2 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-lg hover:bg-emerald-200 transition-colors"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            {TEXT.allWords}
+          </button>
+          <button
+            onClick={deselectAll}
+            type="button"
+            className="flex-1 py-2 bg-stone-100 text-stone-600 text-sm font-semibold rounded-lg hover:bg-stone-200 transition-colors"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            {TEXT.cancel}
+          </button>
+        </div>
+
+        {/* Words List */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2 max-h-80">
+            {pack.words.map((word) => {
+              const isAlreadyAdded = selectedWordIds.has(word.id);
+              const isSelected = selectedForAdd.has(word.id);
+
+              return (
+                <motion.button
+                  key={word.id}
+                  whileHover={{ scale: isAlreadyAdded ? 1 : 1.01 }}
+                  whileTap={{ scale: isAlreadyAdded ? 1 : 0.99 }}
+                  onClick={() => !isAlreadyAdded && toggleWord(word.id)}
+                  disabled={isAlreadyAdded}
+                  type="button"
+                  className={`w-full p-3 rounded-lg text-left transition-all ${
+                    isAlreadyAdded
+                      ? 'bg-stone-100 border border-stone-200 opacity-60 cursor-not-allowed'
+                      : isSelected
+                      ? 'bg-emerald-50 border-2 border-emerald-400'
+                      : 'bg-white border border-stone-200 hover:border-emerald-300'
+                  }`}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-stone-800 truncate">{word.english}</p>
+                      <p className="text-sm text-stone-500 truncate" dir="auto">
+                        {word.hebrew} • {word.arabic}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isAlreadyAdded && (
+                        <span className="text-xs font-semibold text-stone-500">
+                          {TEXT.alreadyAdded}
+                        </span>
+                      )}
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-stone-300'
+                      }`}>
+                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </div>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        {selectedForAdd.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 border-t border-stone-200 shrink-0"
+          >
+            <button
+              onClick={handleAddSelected}
+              type="button"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-3 px-6 rounded-xl"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              {TEXT.addSelected} ({selectedForAdd.size})
+            </button>
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
+};
+
+// ── Topic Packs Panel ───────────────────────────────────────────────────────────
+
+interface TopicPacksPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  topicPacks: Array<{ name: string; icon: string; ids: number[] }>;
+  allWords: Word[];
+  selectedWords: Word[];
+  onAddWords: (words: Word[]) => void;
+}
+
+const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
+  isOpen, onClose, topicPacks, allWords, selectedWords, onAddWords
+}) => {
+  const [selectedPack, setSelectedPack] = useState<{ name: string; icon: string; ids: number[]; words: Word[] } | null>(null);
+
+  const selectedWordIds = new Set(selectedWords.map(w => w.id));
+
+  // Calculate word counts for each pack
+  const packsWithCounts = useMemo(() => {
+    return topicPacks.map(pack => {
+      const words = pack.ids.map(id => allWords.find(w => w.id === id)).filter(Boolean) as Word[];
+      const newCount = words.filter(w => !selectedWordIds.has(w.id)).length;
+      return { ...pack, words, newCount };
+    });
+  }, [topicPacks, allWords, selectedWordIds]);
+
+  const handlePackClick = (pack: typeof packsWithCounts[0]) => {
+    setSelectedPack(pack);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2 text-white">
+              <Package className="w-5 h-5" />
+              <span className="font-bold">{TEXT.topicPacks}</span>
+            </div>
+            <button
+              onClick={onClose}
+              type="button"
+              className="text-white/80 hover:text-white"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-4 overflow-y-auto flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {packsWithCounts.map((pack) => (
+                <motion.button
+                  key={pack.name}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handlePackClick(pack)}
+                  type="button"
+                  className="p-4 rounded-xl border-2 border-stone-200 bg-white hover:border-emerald-300 text-left transition-all"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{pack.icon}</span>
+                        <span className="font-bold text-stone-800">{pack.name}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-stone-500">
+                        {pack.words.length} {TEXT.words}
+                        {pack.newCount > 0 && (
+                          <span className="text-emerald-600 ml-2">
+                            (+{pack.newCount} {TEXT.new})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-stone-400 shrink-0" />
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Pack Words Modal */}
+      <PackWordsModal
+        isOpen={selectedPack !== null}
+        onClose={() => setSelectedPack(null)}
+        onParentClose={onClose}
+        pack={selectedPack}
+        selectedWordIds={selectedWordIds}
+        onAddWords={onAddWords}
+      />
+    </>
+  );
+};
+
+// ── Saved Groups Panel ─────────────────────────────────────────────────────────
+
+interface SavedGroupsPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  savedGroups: Array<{ id: string; name: string; words: number[] }>;
+  allWords: Word[];
+  selectedWords: Word[];
+  onAddWords: (words: Word[]) => void;
+}
+
+const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
+  isOpen, onClose, savedGroups, allWords, selectedWords, onAddWords
+}) => {
+  const selectedWordIds = new Set(selectedWords.map(w => w.id));
+
+  const groupsWithCounts = useMemo(() => {
+    return savedGroups.map(group => {
+      const words = group.words.map(id => allWords.find(w => w.id === id)).filter(Boolean) as Word[];
+      const newCount = words.filter(w => !selectedWordIds.has(w.id)).length;
+      return { ...group, words, newCount };
+    });
+  }, [savedGroups, allWords, selectedWordIds]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 text-white">
+            <FolderOpen className="w-5 h-5" />
+            <span className="font-bold">{TEXT.savedGroups}</span>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            className="text-white/80 hover:text-white"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 overflow-y-auto flex-1">
+          {groupsWithCounts.length === 0 ? (
+            <div className="text-center py-12">
+              <FolderOpen className="w-16 h-16 text-stone-300 mx-auto mb-4" />
+              <p className="text-stone-500">{TEXT.noSavedGroups}</p>
+              <p className="text-sm text-stone-400 mt-1">
+                {TEXT.saveGroupHint}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {groupsWithCounts.map((group) => (
+                <motion.button
+                  key={group.id}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => {
+                    const newWords = group.words.filter(w => !selectedWordIds.has(w.id));
+                    onAddWords(newWords);
+                    onClose();
+                  }}
+                  type="button"
+                  className="w-full p-4 rounded-xl border border-stone-200 bg-white hover:border-amber-300 text-left transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-stone-800">{group.name}</p>
+                      <p className="mt-1 text-sm text-stone-500">
+                        {group.words.length} {TEXT.words}
+                        {group.newCount > 0 && (
+                          <span className="text-emerald-600 ml-2">
+                            (+{group.newCount} {TEXT.new})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-stone-400" />
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// ── Browse Library Panel ───────────────────────────────────────────────────────
+
+interface BrowseLibraryPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  allWords: Word[];
+  selectedWords: Word[];
+  onAddWords: (words: Word[]) => void;
+  onRemoveWord?: (wordId: number) => void;
+}
+
+const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
+  isOpen, onClose, allWords, selectedWords, onAddWords, onRemoveWord
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState<'All' | 'Set 1' | 'Set 2' | 'Set 3'>('All');
+  const [selectedForAdd, setSelectedForAdd] = useState<Set<number>>(new Set());
+
+  const selectedWordIds = new Set(selectedWords.map(w => w.id));
+
+  // Filter words based on search and level
+  const filteredWords = useMemo(() => {
+    return allWords.filter(word => {
+      const matchesSearch = searchQuery === '' ||
+        word.english.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        word.hebrew?.includes(searchQuery) ||
+        word.arabic?.includes(searchQuery);
+      const matchesLevel = selectedLevel === 'All' || word.level === selectedLevel;
+      return matchesSearch && matchesLevel;
+    });
+  }, [allWords, searchQuery, selectedLevel]);
+
+  const handleAddSelected = () => {
+    const wordsToAdd = filteredWords.filter(w => selectedForAdd.has(w.id) && !selectedWordIds.has(w.id));
+    onAddWords(wordsToAdd);
+    setSelectedForAdd(new Set());
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 text-white">
+            <BookOpen className="w-5 h-5" />
+            <span className="font-bold">{TEXT.browseLibrary}</span>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            className="text-white/80 hover:text-white"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Search and Filter */}
+        <div className="p-4 border-b border-stone-200 shrink-0 space-y-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={TEXT.searchPlaceholder}
+              className="w-full pl-10 pr-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              dir="ltr"
+            />
+          </div>
+
+          {/* Level Filter */}
+          <div className="flex gap-2 flex-wrap">
+            {['All', 'Set 1', 'Set 2', 'Set 3'].map((level) => (
+              <button
+                key={level}
+                onClick={() => setSelectedLevel(level as typeof selectedLevel)}
+                type="button"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  selectedLevel === level
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+
+          {/* Results count - removed the number display */}
+          <p className="text-sm text-stone-500">
+            {searchQuery ? `Matching "${searchQuery}"` : 'All words'}
+          </p>
+        </div>
+
+        {/* Word List */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2 max-h-64">
+            {filteredWords.slice(0, 100).map((word) => {
+              const isSelected = selectedWordIds.has(word.id);
+              const isPending = selectedForAdd.has(word.id);
+
+              return (
+                <motion.button
+                  key={word.id}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => {
+                    if (isSelected) {
+                      onRemoveWord?.(word.id);
+                    } else if (isPending) {
+                      setSelectedForAdd(prev => { const next = new Set(prev); next.delete(word.id); return next; });
+                    } else {
+                      setSelectedForAdd(prev => new Set(prev).add(word.id));
+                    }
+                  }}
+                  type="button"
+                  className={`w-full p-3 rounded-lg text-left transition-all ${
+                    isSelected
+                      ? 'bg-emerald-50 border-2 border-emerald-300'
+                      : isPending
+                      ? 'bg-indigo-50 border-2 border-indigo-300'
+                      : 'bg-white border border-stone-200 hover:border-stone-300'
+                  }`}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-stone-800 truncate">{word.english}</p>
+                      <p className="text-sm text-stone-500 truncate" dir="auto">
+                        {word.hebrew} • {word.arabic}
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                    )}
+                    {isPending && !isSelected && (
+                      <Plus className="w-5 h-5 text-indigo-500 shrink-0" />
+                    )}
+                  </div>
+                </motion.button>
+              );
+            })}
+            {filteredWords.length > 100 && (
+              <p className="text-center text-sm text-stone-400 py-2">
+                {TEXT.showingFirst} — {TEXT.refineSearch}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        {selectedForAdd.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 border-t border-stone-200 shrink-0"
+          >
+            <button
+              onClick={handleAddSelected}
+              type="button"
+              className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold py-3 px-6 rounded-xl"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              {TEXT.addSelectedWords} ({selectedForAdd.size})
+            </button>
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
+};
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
+  allWords,
+  selectedWords,
+  onSelectedWordsChange,
+  onNext,
+  onBack,
+  onTranslateWord,
+  onOcrUpload,
+  showToast,
+  topicPacks = [],
+  savedGroups = [],
+  customWords = [],
+  onCustomWordsChange,
+}) => {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const selectedWordsRef = useRef<HTMLDivElement>(null);
+
+  // Language preference for translations
+  const [translationLang, setTranslationLang] = useState<TranslationLang>('both');
+
+  // Panel State
+  const [openPanel, setOpenPanel] = useState<PanelType>(null);
+
+  // Saved Groups from localStorage
+  const [localSavedGroups, setLocalSavedGroups] = useState<Array<{ id: string; name: string; words: number[] }>>([]);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vocaband-saved-groups');
+      if (saved) {
+        setLocalSavedGroups(JSON.parse(saved));
+      }
+    } catch {}
+  }, []);
+
+  // OCR State
+  const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [ocrState, setOcrState] = useState<OcrState>('idle');
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [extractedWords, setExtractedWords] = useState<string[]>([]);
+
+  // Edit Translation State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingWord, setEditingWord] = useState<WordWithStatus | null>(null);
+
+  // Convert selected words to status format
+  const wordsWithStatus: WordWithStatus[] = selectedWords.map(w => ({
+    id: w.id,
+    english: w.english,
+    hebrew: w.hebrew || '',
+    arabic: w.arabic || '',
+    hasTranslation: !!(w.hebrew && w.arabic),
+    isPhrase: w.isPhrase || false,
+  }));
+
+  const readyCount = wordsWithStatus.filter(w => w.hasTranslation).length;
+  const needsWorkCount = wordsWithStatus.filter(w => !w.hasTranslation).length;
+
+  // Analyze pasted text - NOW ACTUALLY ADDS THE WORDS
+  const handleAnalyze = useCallback(async (text: string) => {
+    console.log('[WordInputStep2026] handleAnalyze START', { textLength: text.length, allWordsCount: allWords.length });
+    setIsAnalyzing(true);
+    try {
+      const result = analyzePastedText(text, allWords);
+      console.log('[WordInputStep2026] analyzePastedText result', {
+        matchedWordsCount: result.matchedWords.length,
+        unmatchedTermsCount: result.unmatchedTerms.length,
+        stats: result.stats,
+      });
+
+      // Add matched words to selection
+      const existingIds = new Set(selectedWords.map(w => w.id));
+      const newWords = result.matchedWords
+        .map(m => m.word)
+        .filter(w => !existingIds.has(w.id));
+
+      console.log('[WordInputStep2026] new words to add', {
+        newWordsCount: newWords.length,
+        newWordIds: newWords.map(w => w.id),
+      });
+
+      if (newWords.length > 0) {
+        onSelectedWordsChange([...selectedWords, ...newWords]);
+        showToast?.(`Added ${newWords.length} words`, 'success');
+        // Scroll to selected words section after a short delay for re-render
+        setTimeout(() => {
+          selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      } else {
+        showToast?.('No new words found', 'info');
+      }
+
+      // Show unmatched words
+      if (result.unmatchedTerms.length > 0) {
+        console.log('[WordInputStep2026] Unmatched words:', result.unmatchedTerms.map(t => t.term));
+      }
+    } catch (error) {
+      console.error('[WordInputStep2026] handleAnalyze ERROR', error);
+      showToast?.('Failed to analyze text', 'error');
+    } finally {
+      setIsAnalyzing(false);
+      console.log('[WordInputStep2026] handleAnalyze END');
+    }
+  }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
+
+  // OCR Upload handler
+  const handleOcrUpload = useCallback(async (file: File) => {
+    if (!onOcrUpload) return;
+
+    setOcrState('uploading');
+    setOcrProgress(0);
+
+    try {
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setOcrProgress(p => Math.min(p + 10, 90));
+      }, 100);
+
+      const result = await onOcrUpload(file);
+      clearInterval(progressInterval);
+      setOcrProgress(100);
+
+      if (result.words.length === 0) {
+        setOcrState('error');
+      } else {
+        setExtractedWords(result.words);
+        setOcrState('success');
+      }
+    } catch (error) {
+      setOcrState('error');
+    }
+  }, [onOcrUpload]);
+
+  const handleEditOcrWord = useCallback((index: number, value: string) => {
+    setExtractedWords(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }, []);
+
+  const handleConfirmOcr = useCallback((words: string[]) => {
+    // Match words against vocabulary and add to selection
+    const matchedWords = words
+      .map(w => allWords.find(aw => aw.english.toLowerCase() === w.toLowerCase()))
+      .filter(Boolean) as Word[];
+    const newWords = matchedWords.filter(w => !selectedWords.find(sw => sw.id === w.id));
+    onSelectedWordsChange([...selectedWords, ...newWords]);
+    setOcrModalOpen(false);
+    showToast?.(`Added ${newWords.length} words`, 'success');
+  }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
+
+  // Add words from panels (Topic Packs, Saved Groups, Browse Library)
+  const handleAddWords = useCallback((words: Word[]) => {
+    const existingIds = new Set(selectedWords.map(w => w.id));
+    const newWords = words.filter(w => !existingIds.has(w.id));
+    if (newWords.length > 0) {
+      onSelectedWordsChange([...selectedWords, ...newWords]);
+      showToast?.(`Added ${newWords.length} words`, 'success');
+    }
+  }, [selectedWords, onSelectedWordsChange, showToast]);
+
+  // Remove a single word
+  const handleRemoveWord = useCallback((wordId: number) => {
+    onSelectedWordsChange(selectedWords.filter(w => w.id !== wordId));
+  }, [selectedWords, onSelectedWordsChange]);
+
+  // Fix missing translations
+  const handleFixTranslations = useCallback(() => {
+    setOpenPanel('browse-library');
+  }, []);
+
+  // Edit translation handlers
+  const handleEditWord = useCallback((word: WordWithStatus) => {
+    setEditingWord(word);
+    setEditModalOpen(true);
+  }, []);
+
+  const handleSaveTranslation = useCallback((wordId: number, hebrew: string, arabic: string) => {
+    // Update the selected words with new translations
+    const updatedWords = selectedWords.map(w =>
+      w.id === wordId
+        ? { ...w, hebrew: hebrew || undefined, arabic: arabic || undefined }
+        : w
+    );
+    onSelectedWordsChange(updatedWords);
+    showToast?.('Translations updated', 'success');
+  }, [selectedWords, onSelectedWordsChange, showToast]);
+
+  return (
+    <div>
+      {/* Hero Paste Area */}
+      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+
+      {/* OR Separator */}
+      <div className="flex items-center gap-4 my-8">
+        <div className="flex-1 h-px bg-stone-200" />
+        <span className="text-sm font-semibold text-stone-400 uppercase tracking-wider">
+          {TEXT.or}
+        </span>
+        <div className="flex-1 h-px bg-stone-200" />
+      </div>
+
+      {/* Option Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <OptionCard
+          emoji="🧩"
+          title={TEXT.topicPacks}
+          subtitle={`${topicPacks.length} ${TEXT.packs}`}
+          ctaText={TEXT.view}
+          gradient="from-emerald-500 to-teal-500"
+          onClick={() => setOpenPanel('topic-packs')}
+          delay={0}
+        />
+        <OptionCard
+          emoji="💾"
+          title={TEXT.savedGroups}
+          subtitle={`${savedGroups.length} ${TEXT.groups}`}
+          ctaText={TEXT.view}
+          gradient="from-amber-500 to-orange-500"
+          onClick={() => setOpenPanel('saved-groups')}
+          delay={0.1}
+        />
+        <OptionCard
+          emoji="📚"
+          title={TEXT.browseLibrary}
+          subtitle="Search & add words"
+          ctaText={TEXT.view}
+          gradient="from-indigo-500 to-violet-500"
+          onClick={() => setOpenPanel('browse-library')}
+          delay={0.2}
+        />
+        <OptionCard
+          emoji="📷"
+          title={TEXT.ocr}
+          subtitle={TEXT.ocrSubtitle}
+          ctaText={TEXT.upload}
+          gradient="from-rose-500 to-fuchsia-500"
+          onClick={() => setOcrModalOpen(true)}
+          delay={0.3}
+          isNew
+        />
+      </div>
+
+      {/* Selected Words Section */}
+      {selectedWords.length > 0 && (
+        <div ref={selectedWordsRef}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-10"
+        >
+          {/* Status Banner with Clear All button */}
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Check className="w-5 h-5 text-emerald-500" />
+              <span className="font-semibold text-stone-700">
+                {selectedWords.length} {TEXT.wordsSelected}
+              </span>
+            </div>
+            <button
+              onClick={() => onSelectedWordsChange([])}
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-lg transition-colors"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>{TEXT.clearAll}</span>
+            </button>
+          </div>
+
+          {/* Language Preference Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-center justify-center gap-4 flex-wrap"
+          >
+            <span className="text-sm font-semibold text-stone-600 flex items-center gap-2">
+              <span>🌐</span> {TEXT.translationLang}:
+            </span>
+            <div className="flex gap-2 bg-stone-100 rounded-xl p-1">
+              <button
+                onClick={() => setTranslationLang('both')}
+                type="button"
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  translationLang === 'both'
+                    ? 'bg-indigo-500 text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-200'
+                }`}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                🇮🇱+🇸🇦 {TEXT.bothLang}
+              </button>
+              <button
+                onClick={() => setTranslationLang('hebrew')}
+                type="button"
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  translationLang === 'hebrew'
+                    ? 'bg-indigo-500 text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-200'
+                }`}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                🇮🇱 {TEXT.hebrewOnly}
+              </button>
+              <button
+                onClick={() => setTranslationLang('arabic')}
+                type="button"
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  translationLang === 'arabic'
+                    ? 'bg-indigo-500 text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-200'
+                }`}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                🇸🇦 {TEXT.arabicOnly}
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Status Cards */}
+          <StatusCards
+            readyCount={readyCount}
+            needsWorkCount={needsWorkCount}
+            onFixClick={needsWorkCount > 0 ? handleFixTranslations : undefined}
+          />
+
+          {/* Words Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AnimatePresence mode="popLayout">
+              {wordsWithStatus.map((word) => (
+                <WordCard
+                  key={word.id}
+                  word={word}
+                  translationLang={translationLang}
+                  onRemove={() => handleRemoveWord(word.id)}
+                  onEdit={() => handleEditWord(word)}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+        </div>
+      )}
+
+      {/* Continue Button */}
+      {selectedWords.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-8"
+        >
+          <button
+            onClick={onNext}
+            type="button"
+            className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            {TEXT.continue} →
+          </button>
+        </motion.div>
+      )}
+
+      {/* Edit Translation Modal */}
+      <EditTranslationModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingWord(null);
+        }}
+        word={editingWord}
+        translationLang={translationLang}
+        onSave={handleSaveTranslation}
+      />
+
+      {/* OCR Modal */}
+      <OcrModal
+        isOpen={ocrModalOpen}
+        onClose={() => {
+          setOcrModalOpen(false);
+          setOcrState('idle');
+          setExtractedWords([]);
+        }}
+        onUpload={handleOcrUpload}
+        state={ocrState}
+        progress={ocrProgress}
+        extractedWords={extractedWords}
+        onConfirm={handleConfirmOcr}
+        onEditWord={handleEditOcrWord}
+      />
+
+      {/* Topic Packs Panel */}
+      <TopicPacksPanel
+        isOpen={openPanel === 'topic-packs'}
+        onClose={() => setOpenPanel(null)}
+        topicPacks={topicPacks}
+        allWords={allWords}
+        selectedWords={selectedWords}
+        onAddWords={handleAddWords}
+      />
+
+      {/* Saved Groups Panel */}
+      <SavedGroupsPanel
+        isOpen={openPanel === 'saved-groups'}
+        onClose={() => setOpenPanel(null)}
+        savedGroups={localSavedGroups}
+        allWords={allWords}
+        selectedWords={selectedWords}
+        onAddWords={handleAddWords}
+      />
+
+      {/* Browse Library Panel */}
+      <BrowseLibraryPanel
+        isOpen={openPanel === 'browse-library'}
+        onClose={() => setOpenPanel(null)}
+        allWords={allWords}
+        selectedWords={selectedWords}
+        onAddWords={handleAddWords}
+        onRemoveWord={handleRemoveWord}
+      />
+    </div>
+  );
+};
+
+export default WordInputStep2026;

@@ -6502,36 +6502,184 @@ export const SET_1_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 1");
 export const SET_2_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 2");
 export const SET_3_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 3");
 
-// Topic Packs — curated word groups by category
+// Topic Packs — curated word groups by category (max 20 words per pack)
 export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
+  // ── Core Curriculum Packs ────────────────────────────────────────────────────────
   {
-    name: "Animals",
+    name: "Animals 🐾",
     icon: "🐾",
-    ids: ALL_WORDS.filter(w => w.english.match(/dog|cat|bird|fish|animal|pet|lion|tiger|bear/i)).map(w => w.id),
+    ids: [180, 476, 702, 1272, 1643, 2666, 3372, 4593, 6275, 782, 1043, 1322, 1384, 1853, 2184, 2945, 3401, 3613], // 18 animals
   },
   {
-    name: "Food",
+    name: "Food & Drinks 🍕",
     icon: "🍕",
-    ids: ALL_WORDS.filter(w => w.english.match(/bread|fruit|vegetable|food|eat|drink|meal|breakfast|lunch|dinner/i)).map(w => w.id),
+    ids: [208, 349, 554, 562, 782, 1212, 1308, 1356, 1689, 1751, 2757, 2849, 2858, 2903, 3216, 3759, 4859, 601, 629, 690], // 20 food items
   },
   {
-    name: "School",
+    name: "School 📚",
     icon: "📚",
-    ids: ALL_WORDS.filter(w => w.english.match(/school|teacher|student|class|lesson|homework|test|study|learn/i)).map(w => w.id),
+    ids: [507, 817, 1172, 2173, 2174, 2605, 2628, 3892, 4271, 4275, 4433, 4480], // 12 school words
   },
   {
-    name: "Family",
+    name: "Family 👨‍👩‍👧",
     icon: "👨‍👩‍👧",
-    ids: ALL_WORDS.filter(w => w.english.match(/family|mother|father|parent|child|brother|sister|home|house/i)).map(w => w.id),
+    ids: [582, 785, 1103, 1557, 1580, 1956, 2167, 2198, 2940, 2961, 4037], // 11 family words
   },
   {
-    name: "Weather",
+    name: "Weather 🌤️",
     icon: "🌤️",
-    ids: ALL_WORDS.filter(w => w.english.match(/sun|rain|wind|snow|weather|hot|cold|warm|cloud|storm/i)).map(w => w.id),
+    ids: [859, 879, 2190, 3625, 3631, 4095, 4245, 4313, 4319, 4914, 4956, 5048], // 12 weather words
   },
   {
-    name: "Sports",
+    name: "Sports & Games ⚽",
     icon: "⚽",
-    ids: ALL_WORDS.filter(w => w.english.match(/sport|game|play|ball|run|win|team|player|match/i)).map(w => w.id),
+    ids: [344, 371, 1109, 1694, 1777, 2566, 2931, 2932, 2938, 3818, 4179, 4361, 4438, 5045], // 14 sports words
+  },
+
+  // ── Additional Curriculum Packs ───────────────────────────────────────────────────
+  {
+    name: "Colors 🎨",
+    icon: "🎨",
+    ids: [481, 498, 532, 1962, 1969, 1974, 3216, 3404, 3577, 3676, 5026, 5126], // 12 colors
+  },
+  {
+    name: "Numbers 🔢",
+    icon: "🔢",
+    ids: [1371, 1384, 1396, 1452, 1654, 3069, 3876, 3889, 3960, 4043, 4463, 4555, 4763, 6817, 6956], // 15 numbers
+  },
+  {
+    name: "Days & Months 📅",
+    icon: "📅",
+    ids: [1587, 1739, 2450, 2943, 3871, 4315, 4582, 4730, 4963], // 9 days & months
+  },
+  {
+    name: "Body Parts 👂",
+    icon: "👂",
+    ids: [232, 1339, 1528, 1532, 1629, 1693, 2014, 2025, 2054, 2082, 2619, 2972], // 12 body parts
+  },
+  {
+    name: "Clothes 👔",
+    icon: "👔",
+    ids: [869, 1305, 1748, 2054, 2444, 2454, 3299, 3987, 3992, 4058, 4373], // 11 clothing items
+  },
+  {
+    name: "Feelings & Emotions 😊",
+    icon: "😊",
+    ids: [87, 179, 516, 1485, 2045, 3556, 3832, 3884, 4340, 4604, 5093], // 11 emotions
+  },
+  {
+    name: "Transportation 🚗",
+    icon: "🚗",
+    ids: [468, 502, 605, 675, 1312, 3414, 3985, 4289, 4429, 4715, 248], // 11 transportation
+  },
+  {
+    name: "Professions & Jobs 👷",
+    icon: "👷",
+    ids: [248, 775, 1270, 1312, 1568, 3113, 3403, 3452, 4033, 4433, 5111], // 11 professions
+  },
+  {
+    name: "Nature 🌳",
+    icon: "🌳",
+    ids: [405, 1669, 1960, 2948, 2970, 3123, 3226, 3780, 3860, 3915, 4208, 4313, 4698], // 13 nature words
+  },
+  {
+    name: "Furniture 🛋️",
+    icon: "🛋️",
+    ids: [418, 737, 1085, 1172, 2568, 2922, 3979, 4110, 4376], // 9 furniture items
+  },
+  {
+    name: "Kitchen Items 🍽️",
+    icon: "🍽️",
+    ids: [532, 1082, 1711, 1868, 2188, 2552, 3423, 4178, 6838], // 9 kitchen items
+  },
+  {
+    name: "Music & Arts 🎵",
+    icon: "🎵",
+    ids: [1109, 1318, 1671, 1991, 2566, 2992, 3432, 4032, 5836], // 9 music/arts
+  },
+  {
+    name: "Fruits 🍎",
+    icon: "🍎",
+    ids: [208, 349, 1751, 3216, 4859], // 5 fruits
+  },
+  {
+    name: "Vegetables 🥕",
+    icon: "🥕",
+    ids: [4859, 624, 690, 2858, 3931], // 5 vegetables
+  },
+  {
+    name: "Desserts & Sweets 🍰",
+    icon: "🍰",
+    ids: [573, 629, 701, 855, 1944], // 5 desserts
+  },
+  {
+    name: "Beach & Sea 🏖️",
+    icon: "🏖️",
+    ids: [405, 3123, 3226, 3915, 4208], // 5 beach/sea words
+  },
+  {
+    name: "Hobbies & Free Time 🎯",
+    icon: "🎯",
+    ids: [1109, 1777, 2931, 2566, 2992, 3432], // 6 hobbies
+  },
+  {
+    name: "Birds 🐦",
+    icon: "🐦",
+    ids: [476], // can add more bird words
+  },
+  {
+    name: "Farm Animals 🐄",
+    icon: "🐄",
+    ids: [782, 892, 1043, 2184, 2945], // 5 farm animals
+  },
+  {
+    name: "Time Expressions ⏰",
+    icon: "⏰",
+    ids: [101, 141, 148, 3702, 3871], // 5 time words
+  },
+  {
+    name: "Shapes & Sizes 📐",
+    icon: "📐",
+    ids: [4313], // can be expanded
+  },
+  {
+    name: "Greetings & Phrases 👋",
+    icon: "👋",
+    ids: [102, 122, 126, 130, 132], // 5 greeting phrases
+  },
+  {
+    name: "Bathroom 🚽",
+    icon: "🚽",
+    ids: [184, 185, 2203], // bathroom items
+  },
+  {
+    name: "Common Verbs 🏃",
+    icon: "🏃",
+    ids: [1143, 2605, 2628, 2931, 3256, 3432, 3818], // 7 common verbs
+  },
+  {
+    name: "Places & Rooms 🏠",
+    icon: "🏠",
+    ids: [1874, 2167, 2188, 2198, 3892], // 5 places
+  },
+  {
+    name: "Sky & Space ✨",
+    icon: "✨",
+    ids: [2525, 3584, 3666, 4313], // 4 sky words
+  },
+  {
+    name: "Hello & Goodbye 👋",
+    icon: "👋",
+    ids: [102, 132, 141], // 3 greeting words
+  },
+  {
+    name: "Hot & Cold 🌡️",
+    icon: "🌡️",
+    ids: [879, 2190, 4914], // 3 temperature words
+  },
+  {
+    name: "Action Words 💪",
+    icon: "💪",
+    ids: [1143, 1356, 203, 205, 2931, 3432, 3818], // 7 action verbs
   },
 ];
