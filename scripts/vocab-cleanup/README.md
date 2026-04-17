@@ -21,6 +21,9 @@ npx tsx scripts/vocab-cleanup/03-expand-phrases.ts
 
 # Phase 4: review all translations with Gemini (flags mismatches)
 npx tsx scripts/vocab-cleanup/04-review-translations.ts
+
+# Phase 5: build the final vocabulary.ts from the cleaned JSON
+npx tsx scripts/vocab-cleanup/05-build-final-ts.ts
 ```
 
 Each phase reads the previous phase's output. Skip any phase if you don't
@@ -30,10 +33,11 @@ need it — phase 4 falls back to the latest available output.
 
 | File | Purpose |
 |---|---|
-| `tmp/vocabulary-01-cleaned.ts` | After phase 1 |
-| `tmp/vocabulary-02-deduped.ts` | After phase 2 |
-| `tmp/vocabulary-03-expanded.ts` | After phase 3 |
+| `tmp/vocabulary-01-cleaned.json` | After phase 1 |
+| `tmp/vocabulary-02-deduped.json` | After phase 2 |
+| `tmp/vocabulary-03-expanded.json` | After phase 3 |
 | `tmp/translation-issues.csv` | After phase 4 — open in Excel |
+| `tmp/vocabulary-final.ts` | After phase 5 — ready to move into src/data/ |
 | `tmp/report-0X-*.txt` | Human-readable report per phase |
 
 ## Reviewing the output
@@ -50,19 +54,22 @@ entries. Read `report-0X-*.txt` for a summary.
 
 ## Promoting the cleaned file to production
 
-When you're satisfied with `tmp/vocabulary-03-expanded.ts`:
+When you're satisfied with the cleaned data, phase 5 builds a proper
+`vocabulary.ts` with the exact interface + exports the app expects:
 
-1. **Back up the original:**
+1. **Build the final TS file:**
+   ```powershell
+   npx tsx scripts/vocab-cleanup/05-build-final-ts.ts
+   ```
+   Creates `tmp/vocabulary-final.ts`.
+2. **Back up the original:**
    ```powershell
    Copy-Item src\data\vocabulary.ts src\data\vocabulary.backup.ts
    ```
-2. **Move the cleaned file into place:**
+3. **Move the cleaned file into place:**
    ```powershell
-   Move-Item tmp\vocabulary-03-expanded.ts src\data\vocabulary.ts -Force
+   Move-Item tmp\vocabulary-final.ts src\data\vocabulary.ts -Force
    ```
-3. **Fix the import path in the new file.** The tmp files import
-   `Word` from `'../src/data/vocabulary'` — once moved to `src/data/`, change
-   that import to `export interface Word { ... }` OR just `import type { Word } from './vocabulary'` — adjust for the new location.
 4. **Regenerate audio for NEW entries only:**
    ```powershell
    npx tsx scripts/generate-audio.ts

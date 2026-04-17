@@ -49,18 +49,17 @@ function escapeCsv(s: string): string {
   return s
 }
 
-async function loadLatestPhase(): Promise<Word[]> {
+function loadLatestPhase(): Word[] {
   const candidates = [
-    'vocabulary-03-expanded.ts',
-    'vocabulary-02-deduped.ts',
-    'vocabulary-01-cleaned.ts',
+    'vocabulary-03-expanded.json',
+    'vocabulary-02-deduped.json',
+    'vocabulary-01-cleaned.json',
   ]
   for (const name of candidates) {
     const p = path.join(OUTPUT_DIR, name)
     if (fs.existsSync(p)) {
       console.log(`Loading ${name}`)
-      const mod = await import(p)
-      return mod.ALL_WORDS as Word[]
+      return JSON.parse(fs.readFileSync(p, 'utf-8')) as Word[]
     }
   }
   throw new Error('No phase output found. Run at least phase 1 first.')
@@ -123,7 +122,7 @@ const run = async () => {
     process.exit(1)
   }
 
-  const words = await loadLatestPhase()
+  const words = loadLatestPhase()
   console.log(`Reviewing ${words.length} translations via Gemini (this takes a while)...`)
 
   const BATCH_SIZE = 30
