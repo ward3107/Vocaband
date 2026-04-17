@@ -1039,7 +1039,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
                 <h2 className="text-4xl md:text-6xl lg:text-7xl font-black font-headline mb-6 tracking-tight">
                   Ready to Become a
-                  <span className="inline-block pr-2 block mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
+                  <span className="inline-block pr-4 mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
                     Vocabulary Legend?
                   </span>
                 </h2>
