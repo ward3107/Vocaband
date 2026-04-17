@@ -3304,10 +3304,27 @@ export default function App() {
       return;
     }
 
+    // RLS on public.users requires auth.uid()::text = uid on INSERT.
+    // If profile.auth_uid drifted from the current session (rare, but
+    // happens after some auth migrations / re-signins), a naive INSERT
+    // using profile.auth_uid gets a 401. Always pull the live session
+    // uid and prefer it — that's the only value RLS will accept.
+    const { data: { session: _liveSession } } = await supabase.auth.getSession();
+    const liveAuthUid = _liveSession?.user?.id;
+    if (!liveAuthUid) {
+      setError("Session expired. Please sign in again.");
+      return;
+    }
+
     // For students with approved accounts (from teacher approval workflow):
     // We use their profile.auth_uid directly without creating a Supabase auth session.
     // The save_student_progress RPC bypasses RLS, so we don't need a valid session.
-    const studentUid = profile.auth_uid;
+    // Use the live session uid (not profile.auth_uid) so RLS on INSERT
+    // always passes — see comment above where liveAuthUid was grabbed.
+    const studentUid = liveAuthUid;
+    if (liveAuthUid !== profile.auth_uid) {
+      console.warn('[processStudentProfile] auth uid mismatch — profile=', profile.auth_uid, 'session=', liveAuthUid);
+    }
 
     // Create user data with the profile's auth_uid
     const userData: AppUser = {
