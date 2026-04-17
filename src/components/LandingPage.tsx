@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import {
   Rocket,
@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Layers,
   Accessibility,
+  X,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -44,6 +45,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
     { icon: <Flame size={24} />, name: "Daily Streaks", color: "from-amber-500 to-orange-500", delay: 0.4 },
     { icon: <Gift size={24} />, name: "Mystery Eggs", color: "from-emerald-500 to-teal-500", delay: 0.6 },
   ];
+
+  // Allow users to dismiss the floating accessibility button for the
+  // current session — it returns on next session (sessionStorage). The
+  // a11y panel itself is still reachable via the nav bar's A11y icon.
+  const [a11yButtonHidden, setA11yButtonHidden] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('a11y_button_hidden') === '1'; } catch { return false; }
+  });
+  const hideA11yButton = () => {
+    try { sessionStorage.setItem('a11y_button_hidden', '1'); } catch { /* ignore */ }
+    setA11yButtonHidden(true);
+  };
 
   return (
     <div className="min-h-screen signature-gradient overflow-x-hidden">
@@ -1152,17 +1164,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <FloatingButtons />
 
-      {/* Floating A11y Button - opens global widget */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
-        aria-label="Open accessibility options"
-        className="fixed bottom-28 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
-        type="button"
-      >
-        <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
-      </motion.button>
+      {/* Floating A11y Button — opens global widget. Has a small X in the
+          top-right corner for users who don't need it; dismissing stores
+          a session-only flag so the button returns on next visit. The
+          panel is still reachable via the nav bar A11y icon. */}
+      {!a11yButtonHidden && (
+        <div className="fixed bottom-28 right-6 z-50">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
+            aria-label="Open accessibility options"
+            className="w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
+            type="button"
+          >
+            <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
+          </motion.button>
+          <button
+            onClick={hideA11yButton}
+            aria-label="Hide accessibility button"
+            type="button"
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-stone-900 text-white border border-white/40 shadow-md flex items-center justify-center hover:bg-stone-700 hover:scale-110 transition-all"
+          >
+            <X size={10} strokeWidth={3} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
