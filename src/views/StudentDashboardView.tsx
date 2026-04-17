@@ -9,6 +9,7 @@ import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
+import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
@@ -101,6 +102,15 @@ export default function StudentDashboardView({
           studentProgress={studentProgress}
         />
         <ActiveBoostersStrip {...boosters} />
+        {/* Weekly rotating shop drop — identical card to the one at the
+            top of the Shop view, so students see the offer from the
+            dashboard and can click straight through to the right tab. */}
+        <DropOfTheWeekCard
+          onShopOpen={(tab) => {
+            setShopTab(tab);
+            setView("shop");
+          }}
+        />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
         <DailyGoalBanner studentProgress={studentProgress} />
         <LeaderboardTeaser

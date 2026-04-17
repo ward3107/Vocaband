@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, Zap, Sparkles, ChevronRight } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import FloatingButtons from "../components/FloatingButtons";
+import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import {
   XP_TITLES, getXpTitle, PREMIUM_AVATARS, AVATAR_CATEGORY_UNLOCKS,
   THEMES, POWER_UP_DEFS, BOOSTERS_DEFS, NAME_FRAMES, NAME_TITLES,
@@ -879,10 +880,6 @@ interface ArcadeLobbyHubProps {
 }
 
 function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
-  const limited = currentLimitedItem();
-  const limitedEmoji = limited.kind === 'avatar' ? limited.itemId :
-                       limited.kind === 'title'  ? '🏷️' :
-                       limited.kind === 'frame'  ? '🖼️' : '🎨';
   // Trending rail — hand-picked items that feel like "drops" worth looking
   // at.  Mix a hero egg, a premium avatar, a frame, a title.
   const trending: { label: string; pill: string; pillBg: string; onClick: () => void; emoji: string; gradient: string }[] = [
@@ -907,55 +904,8 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
 
   return (
     <div className="space-y-5">
-      {/* HERO — Drop of the Week (limited rotating item at 20% off) */}
-      <motion.button
-        onClick={() => setShopTab(
-          limited.kind === 'avatar' ? 'avatars' :
-          limited.kind === 'title'  ? 'titles'  :
-          limited.kind === 'frame'  ? 'frames'  : 'themes'
-        )}
-        type="button"
-        style={{ touchAction: 'manipulation' }}
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.98 }}
-        className="relative w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 shadow-xl shadow-violet-500/20 text-left"
-      >
-        <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-yellow-300/30 rounded-full blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-20 w-64 h-64 bg-cyan-400/25 rounded-full blur-3xl" />
-        {/* Sparkle particles */}
-        {[0, 1, 2, 3, 4].map(i => (
-          <motion.span
-            key={i}
-            aria-hidden
-            className="pointer-events-none absolute text-white/60"
-            style={{ top: `${20 + (i * 13) % 60}%`, left: `${10 + (i * 17) % 80}%`, fontSize: 10 }}
-            animate={{ opacity: [0.2, 0.9, 0.2], scale: [0.8, 1.2, 0.8] }}
-            transition={{ duration: 2 + i * 0.3, repeat: Infinity, delay: i * 0.4 }}
-          >✨</motion.span>
-        ))}
-        <div className="relative flex items-center gap-5">
-          <motion.div
-            animate={{ rotate: [-4, 4, -4], y: [0, -4, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-5xl sm:text-6xl shadow-inner"
-          >
-            {limitedEmoji}
-          </motion.div>
-          <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-1.5 bg-amber-300 text-rose-900 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-1.5">
-              <Sparkles size={10} /> Drop of the week
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">{limited.tagline}</h1>
-            <p className="text-sm text-white/90 mt-1">
-              <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-black">
-                {Math.round(limited.discount * 100)}% OFF
-              </span>
-              {' '}this week in the shop
-            </p>
-          </div>
-          <ChevronRight size={24} className="text-white/70 shrink-0 hidden sm:block" />
-        </div>
-      </motion.button>
+      {/* HERO — Drop of the Week (shared component; also appears on dashboard) */}
+      <DropOfTheWeekCard onShopOpen={setShopTab} />
 
       {/* TRENDING RAIL — horizontal scrolling mini-cards */}
       <div>
