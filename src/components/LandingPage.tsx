@@ -92,18 +92,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
               <div className="text-center lg:text-left">
-                {/* Tagline with glow */}
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-6"
-                >
-                  <Sparkles size={16} className="text-amber-400" />
-                  <span className="text-sm font-black tracking-widest uppercase text-white/90">
-                    Israeli English Curriculum
-                  </span>
-                </motion.div>
-
                 {/* Main Headline - 3D Text Effect */}
                 <motion.h1
                   initial={{ opacity: 0, y: 30 }}
