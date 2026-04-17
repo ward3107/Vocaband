@@ -1,0 +1,101 @@
+/**
+ * Phase 1: Strip POS tags + parenthetical content from English words.
+ *
+ * Input:  src/data/vocabulary.ts
+ * Output: tmp/vocabulary-01-cleaned.ts + tmp/report-01-cleaned.txt
+ *
+ * Rules applied to word.english:
+ *   - POS tags stripped:   "happy (adj)"          → "happy"
+ *   - Parenthetical strip: "(be) in a hurry"      → "in a hurry"
+ *                           "knock (someone) out"  → "knock out"
+ *   - Leading/trailing quotes removed
+ *   - Whitespace collapsed + trimmed
+ *   - Entries with empty English after cleanup are DROPPED + logged
+ *
+ * Hebrew/Arabic translations are left untouched here — phase 4 will
+ * verify them. IDs are preserved.
+ *
+ * Non-destructive — doesn't touch vocabulary.ts. You review
+ * tmp/vocabulary-01-cleaned.ts and the report, then either:
+ *   a) feed it into phase 2, or
+ *   b) rename to src/data/vocabulary.ts yourself when satisfied.
+ */
+import * as fs from 'fs'
+import * as path from 'path'
+import { fileURLToPath } from 'url'
+import { ALL_WORDS, Word } from '../../src/data/vocabulary'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const OUTPUT_DIR = path.join(__dirname, '../../tmp')
+if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true })
+
+const POS_TAG_REGEX = /\s*\((?:n|v|adj|adv|prep|conj|pron|art|interj|num)\)\s*/gi
+
+function cleanEnglish(text: string): string {
+  return text
+    .replace(POS_TAG_REGEX, ' ')                        // POS tags out
+    .replace(/\([^)]*\)/g, ' ')                         // any other parens (content included)
+    .replace(/^["'\u2018\u2019\u201C\u201D]+|["'\u2018\u2019\u201C\u201D]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const run = () => {
+  const stats = {
+    total: ALL_WORDS.length,
+    changed: 0,
+    dropped: 0,
+    kept: 0,
+  }
+  const changes: { id: number; before: string; after: string }[] = []
+  const dropped: { id: number; before: string }[] = []
+  const cleaned: Word[] = []
+
+  for (const word of ALL_WORDS) {
+    const after = cleanEnglish(word.english)
+    if (!after) {
+      stats.dropped++
+      dropped.push({ id: word.id, before: word.english })
+      continue
+    }
+    if (after !== word.english) {
+      stats.changed++
+      changes.push({ id: word.id, before: word.english, after })
+    }
+    cleaned.push({ ...word, english: after })
+    stats.kept++
+  }
+
+  const outPath = path.join(OUTPUT_DIR, 'vocabulary-01-cleaned.json')
+  fs.writeFileSync(outPath, JSON.stringify(cleaned, null, 2) + '\n')
+
+  const reportPath = path.join(OUTPUT_DIR, 'report-01-cleaned.txt')
+  const lines: string[] = []
+  lines.push(`Phase 1 — Strip POS tags + parenthetical content`)
+  lines.push(`================================================\n`)
+  lines.push(`Input: ${stats.total} words`)
+  lines.push(`Changed: ${stats.changed}`)
+  lines.push(`Dropped (empty after clean): ${stats.dropped}`)
+  lines.push(`Kept: ${stats.kept}\n`)
+  lines.push(`--- Changes (first 50) ---`)
+  changes.slice(0, 50).forEach(c => {
+    lines.push(`  ${c.id}: "${c.before}"  →  "${c.after}"`)
+  })
+  if (changes.length > 50) lines.push(`  ... and ${changes.length - 50} more`)
+  if (dropped.length > 0) {
+    lines.push(`\n--- Dropped entries ---`)
+    dropped.forEach(d => {
+      lines.push(`  ${d.id}: "${d.before}"`)
+    })
+  }
+  fs.writeFileSync(reportPath, lines.join('\n'))
+
+  console.log(`✅ Phase 1 complete`)
+  console.log(`   Changed: ${stats.changed} | Dropped: ${stats.dropped} | Kept: ${stats.kept}`)
+  console.log(`   Output: tmp/vocabulary-01-cleaned.json`)
+  console.log(`   Report: tmp/report-01-cleaned.txt`)
+}
+
+run()

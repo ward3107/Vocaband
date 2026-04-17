@@ -43,6 +43,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
             transition={{
               y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
               scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+              rotateZ: { duration: 0.3, repeat: Infinity },
             }}
             whileHover={{
               scale: 1.1,
@@ -50,7 +51,6 @@ const PublicNav: React.FC<PublicNavProps> = ({
               boxShadow: "0 0 30px rgba(0, 80, 212, 0.7), 0 0 60px rgba(147, 51, 234, 0.4)"
             }}
             whileTap={{ scale: 0.95 }}
-            transition={{ rotateZ: { duration: 0.3, repeat: Infinity } }}
             className="relative bg-gradient-to-r from-primary via-violet-600 to-fuchsia-600 text-white text-sm font-black px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-2xl shadow-primary/50 hover:shadow-primary/70 flex items-center gap-2 border-2 border-white/40 overflow-hidden"
             style={{ transformStyle: 'preserve-3d' }}
           >
