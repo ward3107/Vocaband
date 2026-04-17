@@ -317,11 +317,14 @@ export const useAudio = () => {
       return
     }
 
-    // If a motivational praise is still playing (e.g. "Champion!" right after
-    // a correct answer), defer the word playback until the praise finishes.
-    // Otherwise the two overlap and both sound broken. The deferred call
-    // doesn't re-enter this branch because by then currentMotivational is null.
-    if (currentMotivational && currentMotivational.playing()) {
+    // If a motivational praise is still playing (or loading to play) right
+    // after a correct answer, defer word playback until the praise finishes.
+    // We check the pointer — NOT Howl.playing() — because .playing() returns
+    // false during the brief load window right after playMotivational()
+    // fires, and a speak() scheduled in that window would slip through.
+    // currentMotivational is set synchronously inside playMotivational and
+    // only cleared when the sound ends/stops/loaderrors.
+    if (currentMotivational) {
       onMotivationalEndListeners.push(() => speak(wordId, fallbackText))
       return
     }
