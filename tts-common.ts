@@ -25,11 +25,35 @@ export const DEFAULT_VOICE: Voice = {
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
 
+// POS (part-of-speech) grammatical markers that appear in the vocabulary —
+// stripped entirely because TTS pronouncing "happy parenthesis a d j
+// parenthesis" is nonsense to a student. Anything else in parens
+// (e.g. "(be) in a hurry", "knock (someone) out") keeps its CONTENT and
+// loses the parens so the phrase stays natural and grammatical.
+const POS_TAG_REGEX = /\s*\((?:n|v|adj|adv|prep|conj|pron|art|interj|num)\)\s*/gi
+
+export function cleanWordForTts(text: string): string {
+  return text
+    // 1. Remove POS tags entirely: "happy (adj)" → "happy"
+    .replace(POS_TAG_REGEX, ' ')
+    // 2. For any remaining parens, keep the content but drop the parens:
+    //    "(be) in a hurry" → "be in a hurry"
+    .replace(/\(([^)]*)\)/g, '$1')
+    // 3. Trim leading/trailing quotes (single, double, or smart)
+    .replace(/^["'\u2018\u2019\u201C\u201D]+|["'\u2018\u2019\u201C\u201D]+$/g, '')
+    // 4. Collapse all whitespace into single spaces
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export async function synthesizeSpeechMp3(
   text: string,
   apiKey: string,
   voice: Voice = DEFAULT_VOICE,
 ): Promise<Buffer> {
+  // Always clean text so "(be) in a hurry" doesn't get read as a literal
+  // open-paren — callers don't need to remember to do this.
+  const cleanText = cleanWordForTts(text)
   // Journey voices don't support speakingRate or pitch — passing them fails.
   const isJourney = voice.name.includes('Journey')
   const audioConfig: Record<string, unknown> = { audioEncoding: 'MP3' }
@@ -41,7 +65,7 @@ export async function synthesizeSpeechMp3(
   }
 
   const body = {
-    input: { text },
+    input: { text: cleanText },
     voice,
     audioConfig,
   }
