@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import {
   Rocket,
@@ -23,9 +23,11 @@ import {
   Clock,
   CheckCircle2,
   Layers,
+  Accessibility,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
+import { AccessibilityWidget } from "./AccessibilityWidget";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
@@ -36,6 +38,9 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
+  // Accessibility widget state
+  const [a11yOpen, setA11yOpen] = useState(false);
+
   // Floating 3D cards data for hero
   const floatingCards = [
     { icon: <Gamepad2 size={24} />, name: "10 Game Modes", color: "from-violet-500 to-purple-600", delay: 0 },
@@ -1150,6 +1155,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       </main>
 
       <FloatingButtons />
+
+      {/* Accessibility Widget */}
+      <AccessibilityWidget open={a11yOpen} onOpenChange={setA11yOpen} />
+
+      {/* Floating A11y Button */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setA11yOpen(true)}
+        aria-label="Open accessibility options"
+        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center p-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/30 transition-all"
+        type="button"
+      >
+        <Accessibility size={20} aria-hidden="true" />
+        <span className="text-[9px] font-black font-headline mt-0.5">A11y</span>
+      </motion.button>
     </div>
   );
 };
