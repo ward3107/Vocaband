@@ -27,7 +27,7 @@ import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
-import { isAnswerCorrect } from "../utils/answerMatch";
+import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
 import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
 
 interface DemoModeProps {
@@ -513,7 +513,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           initMatchingGame();
           break;
         case "scramble":
-          setScrambledWord(shuffleWord(currentWord.english));
+          setScrambledWord(shuffleWord(cleanWordForDisplay(currentWord.english)));
           break;
         case "truefalse":
           generateTFStatement();
@@ -1267,7 +1267,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                   <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
                     <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 break-words w-full text-center" dir="ltr">
-                      {currentWord.english}
+                      {cleanWordForDisplay(currentWord.english)}
                     </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
@@ -1333,7 +1333,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                   <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
                     <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 blur-xl select-none opacity-20 break-words w-full text-center" dir="ltr">
-                      {currentWord.english}
+                      {cleanWordForDisplay(currentWord.english)}
                     </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
@@ -1569,7 +1569,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                   <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 sm:p-8 rounded-2xl sm:rounded-3xl mb-4 shadow-sm border border-stone-200 max-w-lg mx-auto">
                     <div className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-900 mb-2" dir="ltr">
-                      {tfStatement.word.english}
+                      {cleanWordForDisplay(tfStatement.word.english)}
                     </div>
                     <div className="text-stone-400 text-sm mb-3 font-black">=</div>
                     <p className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-800" dir="auto">
@@ -1633,7 +1633,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <>
                         <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3">{t.flashcardWord}</p>
                         <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 mb-4 break-words w-full" dir="ltr">
-                          {currentWord.english}
+                          {cleanWordForDisplay(currentWord.english)}
                         </h2>
                         <button
                           onClick={() => speakWord(currentWord.id)}
@@ -1763,7 +1763,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </p>
                   <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
                     <div className="flex justify-center gap-1 sm:gap-2 flex-wrap" dir="ltr">
-                      {currentWord.english.split("").map((letter, i) => {
+                      {cleanWordForDisplay(currentWord.english).split("").map((letter, i) => {
                         const revealed = i < revealedLetters;
                         const color = LETTER_COLORS[i % LETTER_COLORS.length];
                         return (
@@ -1786,7 +1786,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  {revealedLetters >= currentWord.english.length ? (
+                  {revealedLetters >= cleanWordForDisplay(currentWord.english).length ? (
                     <form onSubmit={(e) => { e.preventDefault(); if (spellingInput.trim()) handleReverseAnswer(spellingInput); }} className="max-w-sm mx-auto">
                       <input
                         autoFocus
@@ -1955,7 +1955,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <div className={isRTL ? 'text-right' : 'text-left'}>
                       <span className="font-bold text-red-700">{t.notQuite}</span>
                       <p className="text-sm mt-1 text-red-600">
-                        {t.theAnswerIs} <strong dir="ltr">{currentWord.english}</strong> = {getMeaning(currentWord, targetLanguage)}
+                        {t.theAnswerIs} <strong dir="ltr">{cleanWordForDisplay(currentWord.english)}</strong> = {getMeaning(currentWord, targetLanguage)}
                       </p>
                     </div>
                   )}

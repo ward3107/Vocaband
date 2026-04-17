@@ -4,7 +4,7 @@ dotenv.config({ path: '.env.local' })
 import * as fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
-import { synthesizeSpeechMp3 } from '../tts-common'
+import { synthesizeSpeechMp3, DEFAULT_VOICE } from '../tts-common'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -125,7 +125,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 const run = async () => {
   let done = 0, skipped = 0, failed: string[] = []
-  console.log(`Generating ${MOTIVATIONAL_PHRASES.length} motivational phrases via Google Cloud TTS (Neural2-F)...`)
+  console.log(`Generating ${MOTIVATIONAL_PHRASES.length} motivational phrases via Google Cloud TTS (${DEFAULT_VOICE.name})...`)
 
   for (const phrase of MOTIVATIONAL_PHRASES) {
     const dest = path.join(OUTPUT_DIR, `${phrase.key}.mp3`)

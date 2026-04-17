@@ -1,5 +1,6 @@
 import { LETTER_COLORS } from "../../constants/game";
 import { ShowAnswerFeedback } from "../ShowAnswerFeedback";
+import { cleanWordForDisplay } from "../../utils/answerMatch";
 import type { Word } from "../../data/vocabulary";
 
 interface LetterSoundsGameProps {
@@ -22,7 +23,7 @@ export default function LetterSoundsGame({
         {currentWord?.[targetLanguage]}
       </p>
       <div className="flex flex-col items-center gap-2 sm:gap-3 mb-6">
-        {currentWord?.english.split(" ").map((word, wordIdx, allWords) => {
+        {cleanWordForDisplay(currentWord?.english || "").split(" ").map((word, wordIdx, allWords) => {
           let charOffset = 0;
           for (let j = 0; j < wordIdx; j++) charOffset += allWords[j].length + 1;
           return (
@@ -51,7 +52,7 @@ export default function LetterSoundsGame({
           );
         })}
       </div>
-      {revealedLetters >= (currentWord?.english.length || 99) && (
+      {revealedLetters >= (cleanWordForDisplay(currentWord?.english || "").length || 99) && (
         <form onSubmit={onSpellingSubmit} className="max-w-sm mx-auto">
           <input
             autoFocus
@@ -68,7 +69,7 @@ export default function LetterSoundsGame({
             }`}
           />
           {feedback === "show-answer" && (
-            <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-3" />
+            <ShowAnswerFeedback answer={cleanWordForDisplay(currentWord?.english || "")} dir="ltr" className="mb-3" />
           )}
           <button
             type="submit"

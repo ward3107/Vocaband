@@ -7,7 +7,7 @@ import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
 import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData } from './types';
-import { DatePicker } from '../DatePicker';
+import { DateTimePicker } from '../DateTimePicker';
 
 // ── Assignment Templates ────────────────────────────────────────────────────
 const ASSIGNMENT_TEMPLATES: { title: string; instructions: string; modes?: string[]; group: string }[] = [
@@ -577,10 +577,10 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           </label>
           <div>
             <label className="block text-xs text-stone-600 mb-1">Deadline</label>
-            <DatePicker
+            <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
-              placeholder="Pick a deadline"
+              placeholder="Pick deadline date and time"
             />
           </div>
         </div>

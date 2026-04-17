@@ -5,7 +5,7 @@ import { ALL_WORDS } from '../src/data/vocabulary'
 import * as fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
-import { synthesizeSpeechMp3 } from '../tts-common'
+import { synthesizeSpeechMp3, DEFAULT_VOICE } from '../tts-common'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -33,7 +33,7 @@ const CONCURRENCY = 3
 const run = async () => {
   let done = 0, skipped = 0
   const failed: { id: number; english: string; reason: string }[] = []
-  console.log(`Generating audio for ${ALL_WORDS.length} words via Google Cloud TTS (Neural2-F)...`)
+  console.log(`Generating audio for ${ALL_WORDS.length} words via Google Cloud TTS (${DEFAULT_VOICE.name})...`)
 
   for (let i = 0; i < ALL_WORDS.length; i += CONCURRENCY) {
     const batch = ALL_WORDS.slice(i, i + CONCURRENCY)

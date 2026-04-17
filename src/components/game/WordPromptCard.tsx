@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import { getGameDebugger } from "../../utils/gameDebug";
+import { cleanWordForDisplay } from "../../utils/answerMatch";
 import type { Word } from "../../data/vocabulary";
 
 interface WordPromptCardProps {
@@ -44,8 +45,8 @@ export default function WordPromptCard({
             : gameMode === "scramble"
             ? scrambledWord
             : gameMode === "flashcards"
-            ? (isFlipped ? (currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew) : currentWord?.english)
-            : currentWord?.english}
+            ? (isFlipped ? (currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew) : cleanWordForDisplay(currentWord?.english || ""))
+            : cleanWordForDisplay(currentWord?.english || "")}
         </h2>
       </div>
       <div className="flex justify-center gap-2 mt-0.5 sm:mt-0">
