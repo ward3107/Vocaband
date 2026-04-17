@@ -34,7 +34,6 @@ interface GameViewProps {
   currentWord: Word;
   options: Word[];
   feedback: "correct" | "wrong" | "show-answer" | null;
-  motivationalMessage: string | null;
   toProgressValue: (v: number) => number;
   speakWord: (id?: number, english?: string) => void;
   hiddenOptions: number[];
@@ -70,7 +69,7 @@ export default function GameView(props: GameViewProps) {
     targetLanguage, setTargetLanguage, handleExitGame, gameMode, activeThemeBg,
     matchingPairs, matchedIds, selectedMatch, handleMatchClick,
     currentIndex, setCurrentIndex, gameWords, currentWord, options, feedback,
-    motivationalMessage, toProgressValue, speakWord,
+    toProgressValue, speakWord,
     hiddenOptions, setHiddenOptions, handleAnswer,
     tfOption, handleTFAnswer, isFlipped, setIsFlipped, handleFlashcardAnswer,
     revealedLetters, spellingInput, setSpellingInput, handleSpellingSubmit, scrambledWord,
@@ -171,15 +170,6 @@ export default function GameView(props: GameViewProps) {
                 max={100}
                 value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
               />
-
-              {/* Motivational message - positioned at top to not block answers */}
-              {motivationalMessage && (
-                <div className="absolute top-4 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
-                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
-                    {motivationalMessage}
-                  </span>
-                </div>
-              )}
 
               {/* Show correct answer after 3 failed attempts */}
               {feedback === "show-answer" && (

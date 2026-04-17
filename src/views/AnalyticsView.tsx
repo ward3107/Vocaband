@@ -1,15 +1,15 @@
 import { useState, useMemo } from "react";
 import {
-  BarChart3,
   Users,
-  RefreshCw,
   TrendingUp,
-  BookOpen,
-  Layers,
   AlertTriangle,
   X,
-  History,
   ChevronRight,
+  Sparkles,
+  BookOpen,
+  Gamepad2,
+  Check,
+  Plus,
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { ALL_WORDS } from "../data/vocabulary";
@@ -27,14 +27,12 @@ interface AnalyticsViewProps {
   allScores: ProgressData[];
   teacherAssignments: AssignmentData[];
   setView: React.Dispatch<React.SetStateAction<View>>;
+  // Assignment creation state from App.tsx
+  selectedClass: { name: string; code: string; studentCount?: number; id?: string } | null;
+  setSelectedClass: React.Dispatch<React.SetStateAction<{ name: string; code: string; studentCount?: number; id?: string } | null>>;
+  selectedWords: number[];
+  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
 }
-
-const toScoreHeightClass = (score: number) => {
-  if (score < 25) return "h-1/4";
-  if (score < 50) return "h-2/4";
-  if (score < 75) return "h-3/4";
-  return "h-full";
-};
 
 export default function AnalyticsView({
   user,
@@ -42,160 +40,283 @@ export default function AnalyticsView({
   allScores,
   teacherAssignments,
   setView,
+  selectedClass: appSelectedClass,
+  setSelectedClass: setAppSelectedClass,
+  selectedWords: appSelectedWords,
+  setSelectedWords: setAppSelectedWords,
 }: AnalyticsViewProps) {
-  const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const [analyticsClassFilter, setAnalyticsClassFilter] = useState<string>("all");
+  const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
+  // State for words selected for reteaching
+  const [reteachWords, setReteachWords] = useState<Set<number>>(new Set());
 
-  // Matrix data for Student × Assignment view
+  // Per-class analytics
+  const classAnalytics = useMemo(() => {
+    const analytics: Map<string, {
+      studentCount: number;
+      avgScore: number;
+      totalAttempts: number;
+      strugglingCount: number;
+      topMistakes: Array<{ wordId: number; count: number; word: typeof ALL_WORDS[number] }>;
+      bestMode: string;
+      modeCounts: Record<string, number>;
+      strugglingStudents: Array<{
+        name: string;
+        avg: number;
+        avatar: string;
+        attempts: number;
+      }>;
+    }> = new Map();
+
+    // Group scores by class
+    const byClass: Map<string, ProgressData[]> = new Map();
+    allScores.forEach(s => {
+      if (!byClass.has(s.classCode)) byClass.set(s.classCode, []);
+      byClass.get(s.classCode)!.push(s);
+    });
+
+    byClass.forEach((scores, classCode) => {
+      // Unique students
+      const uniqueStudents = new Set(scores.map(s => s.studentName));
+      const studentCount = uniqueStudents.size;
+
+      // Average score
+      const avgScore = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
+
+      // Total attempts
+      const totalAttempts = scores.length;
+
+      // Find struggling students (avg < 70%)
+      const studentStats: Map<string, { total: number; count: number; avatar: string }> = new Map();
+      scores.forEach(s => {
+        if (!studentStats.has(s.studentName)) {
+          studentStats.set(s.studentName, { total: 0, count: 0, avatar: s.avatar || '🦊' });
+        }
+        const stat = studentStats.get(s.studentName)!;
+        stat.total += s.score;
+        stat.count++;
+      });
+
+      const strugglingStudents: Array<{ name: string; avg: number; avatar: string; attempts: number }> = [];
+      studentStats.forEach((stat, name) => {
+        const avg = Math.round(stat.total / stat.count);
+        if (avg < 70) {
+          strugglingStudents.push({ name, avg, avatar: stat.avatar, attempts: stat.count });
+        }
+      });
+      strugglingStudents.sort((a, b) => a.avg - b.avg);
+
+      // Most missed words
+      const mistakeCounts: Record<number, number> = {};
+      scores.forEach(s => {
+        s.mistakes?.forEach(wordId => {
+          mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
+        });
+      });
+      const topMistakes = Object.entries(mistakeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([wordId, count]) => ({
+          wordId: parseInt(wordId),
+          count,
+          word: ALL_WORDS.find(w => w.id === parseInt(wordId)),
+        }))
+        .filter(m => m.word !== undefined) as Array<{ wordId: number; count: number; word: typeof ALL_WORDS[number] }>;
+
+      // Best mode (most plays with high scores)
+      const modeScores: Map<string, { total: number; count: number }> = new Map();
+      scores.forEach(s => {
+        if (!modeScores.has(s.mode)) modeScores.set(s.mode, { total: 0, count: 0 });
+        const m = modeScores.get(s.mode)!;
+        m.total += s.score;
+        m.count++;
+      });
+
+      let bestMode = "flashcards";
+      let bestScore = -1;
+      modeScores.forEach((stats, mode) => {
+        const avg = stats.total / stats.count;
+        if (avg > bestScore && stats.count >= 3) {
+          bestScore = avg;
+          bestMode = mode;
+        }
+      });
+
+      // Mode counts for "most played"
+      const modeCounts: Record<string, number> = {};
+      scores.forEach(s => {
+        modeCounts[s.mode] = (modeCounts[s.mode] || 0) + 1;
+      });
+
+      analytics.set(classCode, {
+        studentCount,
+        avgScore,
+        totalAttempts,
+        strugglingCount: strugglingStudents.length,
+        topMistakes,
+        bestMode,
+        modeCounts,
+        strugglingStudents,
+      });
+    });
+
+    return analytics;
+  }, [allScores]);
+
+  // Get analytics for selected class (or "all")
+  const currentAnalytics = selectedClass
+    ? classAnalytics.get(selectedClass)
+    : (() => {
+        // Aggregate for "all classes"
+        let totalStudents = 0;
+        let totalScore = 0;
+        let totalCount = 0;
+        const allStruggling: Set<string> = new Set();
+        const allMistakes: Record<number, number> = {};
+        const allModeCounts: Record<string, number> = {};
+
+        classAnalytics.forEach((data) => {
+          totalStudents += data.studentCount;
+          totalScore += data.avgScore * data.totalAttempts;
+          totalCount += data.totalAttempts;
+          data.strugglingStudents.forEach(s => allStruggling.add(s.name));
+          data.topMistakes.forEach(m => {
+            allMistakes[m.wordId] = (allMistakes[m.wordId] || 0) + m.count;
+          });
+          Object.entries(data.modeCounts).forEach(([mode, count]) => {
+            allModeCounts[mode] = (allModeCounts[mode] || 0) + count;
+          });
+        });
+
+        // Build struggling students list from all scores
+        const studentStats: Map<string, { total: number; count: number; avatar: string }> = new Map();
+        allScores.forEach(s => {
+          if (!studentStats.has(s.studentName)) {
+            studentStats.set(s.studentName, { total: 0, count: 0, avatar: s.avatar || '🦊' });
+          }
+          const stat = studentStats.get(s.studentName)!;
+          stat.total += s.score;
+          stat.count++;
+        });
+
+        const strugglingStudents: Array<{ name: string; avg: number; avatar: string; attempts: number }> = [];
+        studentStats.forEach((stat, name) => {
+          const avg = Math.round(stat.total / stat.count);
+          if (avg < 70) {
+            strugglingStudents.push({ name, avg, avatar: stat.avatar, attempts: stat.count });
+          }
+        });
+        strugglingStudents.sort((a, b) => a.avg - b.avg);
+
+        const topMistakes = Object.entries(allMistakes)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8)
+          .map(([wordId, count]) => ({
+            wordId: parseInt(wordId),
+            count,
+            word: ALL_WORDS.find(w => w.id === parseInt(wordId)),
+          }))
+          .filter(m => m.word !== undefined) as Array<{ wordId: number; count: number; word: typeof ALL_WORDS[number] }>;
+
+        // Find best mode
+        let bestMode = "flashcards";
+        let bestPlays = 0;
+        Object.entries(allModeCounts).forEach(([mode, count]) => {
+          if (count > bestPlays) {
+            bestPlays = count;
+            bestMode = mode;
+          }
+        });
+
+        return {
+          studentCount: totalStudents,
+          avgScore: totalCount > 0 ? Math.round(totalScore / totalCount) : 0,
+          totalAttempts: totalCount,
+          strugglingCount: allStruggling.size,
+          topMistakes,
+          bestMode,
+          modeCounts: allModeCounts,
+          strugglingStudents,
+        };
+      })();
+
+  const selectedClassData = classes.find(c => c.code === selectedClass);
+
+  // Matrix data for student detail modal
   const matrixData = useMemo(() => {
-    // Get unique students and assignments
     const studentMap = new Map<string, ProgressData[]>();
-    const assignmentSet = new Set<string>();
-
     allScores.forEach(s => {
       if (!studentMap.has(s.studentName)) {
         studentMap.set(s.studentName, []);
       }
       studentMap.get(s.studentName)!.push(s);
-      assignmentSet.add(s.assignmentId);
     });
 
-    const students = Array.from(studentMap.keys()).sort();
-    const assignments = Array.from(assignmentSet).sort();
-
-    // Helper function to get student metadata from their first record
-    const getStudentClassCode = (studentName: string): string => {
-      const scores = studentMap.get(studentName);
-      return scores?.[0]?.classCode || "";
-    };
-
-    const getStudentAvatar = (studentName: string): string | undefined => {
-      const scores = studentMap.get(studentName);
-      return scores?.find(s => s.avatar)?.avatar;
-    };
-
-    // Build matrix: for each student-assignment, get the most recent score
-    const matrix: Map<string, Map<string, ProgressData>> = new Map();
-    const averages: Map<string, number> = new Map(); // student averages
-
-    students.forEach(student => {
-      matrix.set(student, new Map());
-      const studentScores = studentMap.get(student)!;
-
-      // Calculate student average
-      const avgScore = studentScores.reduce((sum, s) => sum + s.score, 0) / studentScores.length;
-      averages.set(student, Math.round(avgScore));
-
-      // For each assignment, get the most recent score
-      assignments.forEach(assignmentId => {
-        const assignmentScores = studentScores.filter(s => s.assignmentId === assignmentId);
-        if (assignmentScores.length > 0) {
-          // Sort by completedAt descending and take the first (most recent)
-          assignmentScores.sort((a, b) =>
-            new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
-          );
-          matrix.get(student)!.set(assignmentId, assignmentScores[0]);
-        }
-      });
-    });
-
-    // Build assignment title lookup from teacherAssignments
     const assignmentTitleMap = new Map<string, string>();
     teacherAssignments.forEach(a => assignmentTitleMap.set(a.id, a.title));
-    const getAssignmentTitle = (id: string) => assignmentTitleMap.get(id) || id.slice(0, 8) + '…';
 
-    return { students, assignments, matrix, averages, studentMap, getStudentClassCode, getStudentAvatar, getAssignmentTitle };
+    return { studentMap, getAssignmentTitle: (id: string) => assignmentTitleMap.get(id) || id.slice(0, 8) + '…' };
   }, [allScores, teacherAssignments]);
 
-  // Per-class analytics computed from allScores
-  const classAnalytics = useMemo(() => {
-    const filteredScores = analyticsClassFilter === "all"
-      ? allScores
-      : allScores.filter(s => s.classCode === analyticsClassFilter);
+  // Toggle word selection for reteaching
+  const toggleReteachWord = (wordId: number) => {
+    setReteachWords(prev => {
+      const next = new Set(prev);
+      if (next.has(wordId)) {
+        next.delete(wordId);
+      } else {
+        next.add(wordId);
+      }
+      return next;
+    });
+  };
 
-    if (filteredScores.length === 0) return null;
+  // Select all visible mistake words
+  const selectAllReteachWords = () => {
+    if (currentAnalytics?.topMistakes) {
+      setReteachWords(new Set(currentAnalytics.topMistakes.map(m => m.wordId)));
+    }
+  };
 
-    // Score distribution buckets
-    const distribution = { excellent: 0, good: 0, needsWork: 0 };
-    filteredScores.forEach(s => {
-      if (s.score >= 90) distribution.excellent++;
-      else if (s.score >= 70) distribution.good++;
-      else distribution.needsWork++;
+  // Clear all selections
+  const clearReteachWords = () => {
+    setReteachWords(new Set());
+  };
+
+  // Create assignment with selected reteach words
+  const handleCreateAssignment = () => {
+    if (reteachWords.size === 0) return;
+
+    // Find which class we're viewing
+    const targetClassCode = selectedClass || (classes.length === 1 ? classes[0].code : null);
+    if (!targetClassCode) {
+      // Need to ask user to select a class first
+      return;
+    }
+
+    const targetClass = classes.find(c => c.code === targetClassCode);
+    if (!targetClass) return;
+
+    // Set the selected class and words in App.tsx state
+    setAppSelectedClass({
+      name: targetClass.name,
+      code: targetClass.code,
+      studentCount: currentAnalytics?.studentCount,
+      id: targetClass.id,
     });
 
-    // Mode usage
-    const modeCount: Record<string, number> = {};
-    filteredScores.forEach(s => {
-      modeCount[s.mode] = (modeCount[s.mode] || 0) + 1;
-    });
-    const topModes = Object.entries(modeCount).sort((a, b) => b[1] - a[1]);
-    const maxModeCount = topModes.length > 0 ? topModes[0][1] : 1;
+    setAppSelectedWords(Array.from(reteachWords));
 
-    // Activity over time (group by week)
-    const weekMap: Record<string, { count: number; totalScore: number }> = {};
-    filteredScores.forEach(s => {
-      const d = new Date(s.completedAt);
-      // Get Monday of the week
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      const weekKey = monday.toISOString().slice(0, 10);
-      if (!weekMap[weekKey]) weekMap[weekKey] = { count: 0, totalScore: 0 };
-      weekMap[weekKey].count++;
-      weekMap[weekKey].totalScore += s.score;
-    });
-    const weeklyActivity = Object.entries(weekMap)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-12); // last 12 weeks
-    const maxWeekCount = Math.max(...weeklyActivity.map(([, v]) => v.count), 1);
-
-    // Most missed words across all students
-    const mistakeCounts: Record<number, number> = {};
-    filteredScores.forEach(s => {
-      s.mistakes?.forEach(wordId => {
-        mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
-      });
-    });
-    const topMistakes = Object.entries(mistakeCounts)
-      .sort((a, b) => Number(b[1]) - Number(a[1]))
-      .slice(0, 8)
-      .map(([wordId, count]) => ({ wordId: parseInt(wordId), count }));
-    const maxMistakeCount = topMistakes.length > 0 ? topMistakes[0].count : 1;
-
-    // Unique students
-    const uniqueStudents = new Set(filteredScores.map(s => s.studentUid || s.studentName));
-
-    // Average score
-    const avgScore = Math.round(filteredScores.reduce((sum, s) => sum + s.score, 0) / filteredScores.length);
-
-    // Completion rate per assignment
-    const assignmentStudents: Record<string, Set<string>> = {};
-    filteredScores.forEach(s => {
-      if (!assignmentStudents[s.assignmentId]) assignmentStudents[s.assignmentId] = new Set();
-      assignmentStudents[s.assignmentId].add(s.studentName);
-    });
-
-    return {
-      totalAttempts: filteredScores.length,
-      uniqueStudents: uniqueStudents.size,
-      avgScore,
-      distribution,
-      topModes,
-      maxModeCount,
-      weeklyActivity,
-      maxWeekCount,
-      topMistakes,
-      maxMistakeCount,
-      assignmentStudents,
-    };
-  }, [allScores, analyticsClassFilter]);
+    // Navigate to create-assignment view
+    setView("create-assignment");
+  };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24">
       <TopAppBar
         title="Analytics"
-        subtitle="CLASSROOM INSIGHTS & PERFORMANCE"
+        subtitle="CLASSROOM INSIGHTS"
         showBack
         onBack={() => setView("teacher-dashboard")}
         userName={user?.displayName}
@@ -203,696 +324,469 @@ export default function AnalyticsView({
         onLogout={() => supabase.auth.signOut()}
       />
 
-      <main className="pt-24 px-6 max-w-7xl mx-auto">
+      <main className="pt-24 px-4 max-w-5xl mx-auto">
         {/* Class Filter Tabs */}
-        {classes.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button
+            onClick={() => { setSelectedClass(null); setReteachWords(new Set()); }}
+            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+              selectedClass === null
+                ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+                : "bg-white text-stone-600 hover:bg-stone-100 border-2 border-stone-200"
+            }`}
+          >
+            All Classes
+          </button>
+          {classes.map(c => (
             <button
-              onClick={() => setAnalyticsClassFilter("all")}
-              className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
-                analyticsClassFilter === "all"
-                  ? "bg-secondary text-white shadow-lg shadow-purple-500/20"
-                  : "bg-surface-container-lowest text-on-surface hover:bg-surface-container border-2 border-surface-container"
+              key={c.code}
+              onClick={() => { setSelectedClass(c.code); setReteachWords(new Set()); }}
+              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                selectedClass === c.code
+                  ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+                  : "bg-white text-stone-600 hover:bg-stone-100 border-2 border-stone-200"
               }`}
             >
-              All Classes
+              {c.name}
             </button>
-            {classes.map(c => (
-              <button
-                key={c.code}
-                onClick={() => setAnalyticsClassFilter(c.code)}
-                className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
-                  analyticsClassFilter === c.code
-                    ? "bg-secondary text-white shadow-lg shadow-purple-500/20"
-                    : "bg-surface-container-lowest text-on-surface hover:bg-surface-container border-2 border-surface-container"
-                }`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
         {allScores.length === 0 ? (
-          <div className="bg-surface-container-lowest p-12 rounded-xl shadow-xl text-center border-2 border-blue-50">
-            <BarChart3 className="mx-auto text-on-surface-variant mb-4" size={48} />
-            <p className="text-on-surface-variant font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
+          <div className="bg-white p-12 rounded-3xl shadow-xl text-center">
+            <Sparkles className="mx-auto text-stone-300 mb-4" size={48} />
+            <p className="text-stone-400 font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
           </div>
         ) : (
           <>
-            {/* Summary Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Users className="text-secondary" size={20} />
-              </div>
-            </div>
-            <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Students</p>
-            <p className="text-3xl font-black text-on-surface">{classAnalytics?.uniqueStudents ?? 0}</p>
-          </div>
-          <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-blue-50">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <RefreshCw className="text-primary" size={20} />
-              </div>
-            </div>
-            <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Attempts</p>
-            <p className="text-3xl font-black text-on-surface">{classAnalytics?.totalAttempts ?? 0}</p>
-          </div>
-          <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-emerald-50">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <TrendingUp className="text-emerald-600" size={20} />
-              </div>
-            </div>
-            <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Avg Score</p>
-            <p className="text-3xl font-black text-primary">{classAnalytics?.avgScore ?? 0}%</p>
-          </div>
-          <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-amber-50">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                <BookOpen className="text-tertiary" size={20} />
-              </div>
-            </div>
-            <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider">Assignments</p>
-            <p className="text-3xl font-black text-on-surface">{matrixData.assignments.length}</p>
-          </div>
-        </div>
+            {/* CLASS CARDS VIEW (when no class selected) */}
+            {selectedClass === null && classes.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {classes.map(c => {
+                  const analytics = classAnalytics.get(c.code);
+                  if (!analytics) return null;
 
-        {/* Charts Row */}
-        {classAnalytics && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-            {/* Score Distribution Chart */}
-            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
-              <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center">
-                  <BarChart3 className="text-secondary" size={16} />
-                </div>
-                Score Distribution
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { label: "Excellent (90%+)", count: classAnalytics.distribution.excellent, color: "bg-emerald-400", textColor: "text-emerald-700" },
-                  { label: "Good (70-89%)", count: classAnalytics.distribution.good, color: "bg-blue-400", textColor: "text-blue-700" },
-                  { label: "Needs Work (<70%)", count: classAnalytics.distribution.needsWork, color: "bg-rose-400", textColor: "text-rose-700" },
-                ].map(({ label, count, color, textColor }) => {
-                  const total = classAnalytics.totalAttempts;
-                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                   return (
-                    <div key={label}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-on-surface-variant font-bold">{label}</span>
-                        <span className={`font-black ${textColor}`}>{count} ({pct}%)</span>
+                    <button
+                      key={c.code}
+                      onClick={() => setSelectedClass(c.code)}
+                      className="bg-white p-6 rounded-3xl shadow-xl hover:shadow-2xl transition-all text-left group border-2 border-transparent hover:border-indigo-200"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-4xl">{c.avatar || '📖'}</span>
+                        <ChevronRight className="text-stone-300 group-hover:text-indigo-500 transition-colors" size={24} />
                       </div>
-                      <div className="h-4 bg-surface-container rounded-full overflow-hidden">
-                        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                      <h3 className="font-bold text-lg text-stone-900 mb-3">{c.name}</h3>
 
-            {/* Game Mode Usage */}
-            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
-              <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center">
-                  <Layers className="text-secondary" size={16} />
-                </div>
-                Game Mode Usage
-              </h3>
-              <div className="space-y-2">
-                {classAnalytics.topModes.slice(0, 6).map(([mode, count]) => {
-                  const pct = Math.round((count / classAnalytics.maxModeCount) * 100);
-                  return (
-                    <div key={mode} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-on-surface-variant w-24 truncate capitalize">{mode.replace(/-/g, ' ')}</span>
-                      <div className="flex-1 h-5 bg-surface-container rounded-full overflow-hidden">
-                        <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-xs font-black text-on-surface w-8 text-right">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Weekly Activity Chart */}
-            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-purple-50">
-              <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <TrendingUp className="text-emerald-600" size={16} />
-                </div>
-                Weekly Activity
-              </h3>
-              {classAnalytics.weeklyActivity.length > 0 ? (
-                <div className="flex items-end gap-1 h-32">
-                  {classAnalytics.weeklyActivity.map(([week, data]) => {
-                    const heightPct = Math.round((data.count / classAnalytics.maxWeekCount) * 100);
-                    const avgPct = Math.round(data.totalScore / data.count);
-                    return (
-                      <div key={week} className="flex-1 flex flex-col items-center gap-1 group relative">
-                        <div
-                          className={`w-full rounded-t-md transition-all ${avgPct >= 90 ? "bg-emerald-400" : avgPct >= 70 ? "bg-primary" : "bg-rose-400"}`}
-                          style={{ height: `${Math.max(heightPct, 8)}%` }}
-                        />
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                          {data.count} attempts, avg {avgPct}%
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500 text-sm">Students</span>
+                          <span className="font-bold text-stone-900">{analytics.studentCount}</span>
                         </div>
-                        <span className="text-[9px] text-on-surface-variant truncate w-full text-center">{week.slice(5)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-on-surface-variant text-sm italic">No activity data yet</p>
-              )}
-              <p className="text-[10px] text-on-surface-variant mt-2 text-center">Bar color = average score quality</p>
-            </div>
-
-            {/* Most Missed Words */}
-            <div className="bg-surface-container-lowest p-6 rounded-xl shadow-xl border-2 border-rose-100">
-              <h3 className="font-black text-on-surface mb-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-error-container/20 flex items-center justify-center">
-                  <AlertTriangle className="text-error" size={16} />
-                </div>
-                Most Missed Words
-              </h3>
-              {classAnalytics.topMistakes.length > 0 ? (
-                <div className="space-y-3">
-                  {classAnalytics.topMistakes.map(({ wordId, count }) => {
-                    const word = ALL_WORDS.find(w => w.id === wordId);
-                    const pct = Math.round((count / classAnalytics.maxMistakeCount) * 100);
-                    // Find which students missed this word
-                    const studentsWhoMissed = new Set<string>();
-                    allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter)
-                      .forEach(s => { if (s.mistakes?.includes(wordId)) studentsWhoMissed.add(s.studentName); });
-                    return (
-                      <div key={wordId} className="bg-rose-50/50 rounded-xl p-3 border border-rose-100">
-                        <div className="flex items-center gap-3 mb-1">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="font-black text-sm text-on-surface">{word?.english || `#${wordId}`}</span>
-                              <span className="text-error font-black text-sm ml-2">{count}×</span>
-                            </div>
-                            <div className="flex gap-2 text-xs text-on-surface-variant">
-                              {word?.hebrew && <span dir="rtl">{word.hebrew}</span>}
-                              {word?.hebrew && word?.arabic && <span>•</span>}
-                              {word?.arabic && <span dir="rtl">{word.arabic}</span>}
-                            </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500 text-sm">Average Score</span>
+                          <span className={`font-bold ${analytics.avgScore >= 80 ? 'text-emerald-600' : analytics.avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                            {analytics.avgScore}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500 text-sm">Total Attempts</span>
+                          <span className="font-bold text-stone-900">{analytics.totalAttempts}</span>
+                        </div>
+                        {analytics.strugglingCount > 0 && (
+                          <div className="pt-2 border-t border-stone-100">
+                            <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-sm">
+                              <AlertTriangle size={14} />
+                              {analytics.strugglingCount} need help
+                            </span>
                           </div>
-                        </div>
-                        <div className="h-2 bg-surface-container rounded-full overflow-hidden mb-1.5">
-                          <div className="h-full bg-error/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {Array.from(studentsWhoMissed).slice(0, 5).map(name => (
-                            <span key={name} className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full font-bold">{name}</span>
-                          ))}
-                          {studentsWhoMissed.size > 5 && <span className="text-[10px] text-rose-500 font-bold">+{studentsWhoMissed.size - 5} more</span>}
-                        </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-on-surface-variant text-sm italic">No mistake data yet</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Students Needing Attention + Weak Modes row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
-          {/* Students Needing Attention */}
-          <div className="bg-white rounded-[30px] shadow-xl p-5 sm:p-6">
-            <h3 className="text-sm font-black text-on-surface mb-4 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Users className="text-amber-700" size={16} />
-              </div>
-              Students Needing Attention
-            </h3>
-            {(() => {
-              // Find students with avg < 70% or high mistake rates
-              const studentStats: {name: string, avg: number, mistakes: number, attempts: number, avatar: string}[] = [];
-              const filtered = allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter);
-              const byStudent = new Map<string, typeof filtered>();
-              filtered.forEach(s => {
-                const key = s.studentName;
-                if (!byStudent.has(key)) byStudent.set(key, []);
-                byStudent.get(key)!.push(s);
-              });
-              byStudent.forEach((scores, name) => {
-                const avg = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
-                const totalMistakes = scores.reduce((sum, s) => sum + (s.mistakes?.length || 0), 0);
-                const avatar = scores[0]?.avatar || '🦊';
-                if (avg < 70 || (totalMistakes > 5 && avg < 80)) {
-                  studentStats.push({ name, avg, mistakes: totalMistakes, attempts: scores.length, avatar });
-                }
-              });
-              studentStats.sort((a, b) => a.avg - b.avg);
-              return studentStats.length > 0 ? (
-                <div className="space-y-2">
-                  {studentStats.slice(0, 6).map(s => (
-                    <div key={s.name} className="flex items-center gap-3 bg-amber-50/50 rounded-xl p-3 border border-amber-100 cursor-pointer hover:shadow-md hover:ring-2 hover:ring-amber-400 transition-all" onClick={() => setSelectedStudent(s.name)}>
-                      <span className="text-xl">{s.avatar}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-stone-800 truncate">{s.name}</p>
-                        <p className="text-xs text-stone-500">{s.attempts} attempts • {s.mistakes} mistakes</p>
-                      </div>
-                      <span className={`font-black text-lg ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>{s.avg}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-on-surface-variant text-sm italic">All students are doing well! 🎉</p>
-              );
-            })()}
-          </div>
-
-          {/* Score by Game Mode */}
-          <div className="bg-white rounded-[30px] shadow-xl p-5 sm:p-6">
-            <h3 className="text-sm font-black text-on-surface mb-4 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Layers className="text-purple-700" size={16} />
-              </div>
-              Average Score by Mode
-            </h3>
-            {(() => {
-              const filtered = allScores.filter(s => analyticsClassFilter === "all" || s.classCode === analyticsClassFilter);
-              const modeStats = new Map<string, {total: number, count: number, mistakes: number}>();
-              filtered.forEach(s => {
-                if (!modeStats.has(s.mode)) modeStats.set(s.mode, {total: 0, count: 0, mistakes: 0});
-                const m = modeStats.get(s.mode)!;
-                m.total += s.score;
-                m.count++;
-                m.mistakes += (s.mistakes?.length || 0);
-              });
-              const sorted = Array.from(modeStats.entries())
-                .map(([mode, stats]) => ({ mode, avg: Math.round(stats.total / stats.count), count: stats.count, mistakes: stats.mistakes }))
-                .sort((a, b) => a.avg - b.avg);
-              return sorted.length > 0 ? (
-                <div className="space-y-2">
-                  {sorted.map(({ mode, avg, count, mistakes }) => (
-                    <div key={mode} className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between text-xs mb-0.5">
-                          <span className="font-bold text-on-surface capitalize">{mode.replace('-', ' ')}</span>
-                          <span className="text-on-surface-variant">{count} plays • {mistakes} mistakes</span>
-                        </div>
-                        <div className="h-3 bg-surface-container rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${avg >= 80 ? 'bg-blue-400' : avg >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${avg}%` }} />
-                        </div>
-                      </div>
-                      <span className={`font-black text-sm w-10 text-right ${avg >= 80 ? 'text-blue-600' : avg >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>{avg}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-on-surface-variant text-sm italic">No data yet</p>
-              );
-            })()}
-          </div>
-        </div>
-
-        {/* Explanation banner */}
-        <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 sm:p-5 mb-6">
-          <h2 className="font-bold text-purple-900 text-sm sm:text-base mb-2">Student Scores Matrix</h2>
-          <div className="flex flex-wrap gap-3 text-xs">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-50 border border-blue-300 inline-block"></span> ★ 90%+ Excellent</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-50 border border-blue-200 inline-block"></span> 70-89% Good</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-300 inline-block"></span> Below 70%</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 border border-stone-200 inline-block"></span> — Not attempted</span>
-          </div>
-          <p className="text-xs text-purple-700 mt-2 font-medium">💡 Click any <strong>student name</strong> or <strong>score cell</strong> to see detailed breakdown and missed words.</p>
-        </div>
-
-        {/* Matrix Table */}
-        <div className="bg-white rounded-[30px] shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-stone-50">
-                <tr>
-                  <th className="px-3 py-2.5 text-left font-bold text-stone-400 uppercase text-[10px] sm:text-xs sticky left-0 bg-stone-50">Student</th>
-                  {matrixData.assignments.map(assignmentId => (
-                    <th key={assignmentId} className="px-2 py-2.5 text-center font-bold text-stone-400 text-[10px] sm:text-xs min-w-[70px] max-w-[120px]" title={assignmentId}>
-                      <span className="line-clamp-2 leading-tight">{matrixData.getAssignmentTitle(assignmentId)}</span>
-                    </th>
-                  ))}
-                  <th className="px-2 py-2.5 text-center font-bold text-stone-400 uppercase text-[10px] sm:text-xs min-w-[60px]">Avg</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matrixData.students
-                  .filter(student => analyticsClassFilter === "all" || matrixData.getStudentClassCode(student) === analyticsClassFilter)
-                  .map(student => {
-                  const studentAvg = matrixData.averages.get(student) || 0;
-                  const classCode = matrixData.getStudentClassCode(student);
-                  const avatar = matrixData.getStudentAvatar(student);
-                  const className = classes.find(c => c.code === classCode)?.name;
-                  return (
-                    <tr key={student} className="border-t border-stone-100 hover:bg-stone-50">
-                      <td
-                        className="px-3 py-2 font-bold text-blue-700 text-sm sticky left-0 bg-white hover:bg-blue-50 cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all underline decoration-blue-300 decoration-dotted underline-offset-2"
-                        onClick={() => setSelectedStudent(student)}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {avatar && <span className="text-base">{avatar}</span>}
-                          <div className="flex flex-col">
-                            <span className="text-xs sm:text-sm leading-tight">{student}</span>
-                            {className && <span className="text-[10px] font-normal text-stone-400 leading-tight">{className}</span>}
-                          </div>
-                        </div>
-                      </td>
-                      {matrixData.assignments.map(assignmentId => {
-                        const scoreData = matrixData.matrix.get(student)?.get(assignmentId);
-                        const score = scoreData?.score || 0;
-                        const hasScore = scoreData !== undefined;
-
-                        let cellClass = "bg-stone-100";
-                        let indicator = "";
-
-                        if (hasScore) {
-                          if (score >= 90) {
-                            cellClass = "bg-blue-50";
-                            indicator = "★";
-                          } else if (score >= 70) {
-                            cellClass = "bg-blue-50";
-                          } else {
-                            cellClass = "bg-rose-100";
-                            indicator = "⚠️";
-                          }
-                        }
-
-                        return (
-                          <td
-                            key={assignmentId}
-                            className={`px-2 py-2 text-center text-xs ${cellClass} ${hasScore ? "cursor-pointer hover:ring-2 hover:ring-blue-600 transition-all" : ""}`}
-                            onClick={() => hasScore && setSelectedScore(scoreData!)}
-                          >
-                            {hasScore ? (
-                              <span className="font-black text-stone-800">{indicator}{score}%</span>
-                            ) : (
-                              <span className="text-stone-300">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className={`px-2 py-2 text-center text-xs font-bold ${
-                        studentAvg >= 90 ? "text-blue-700" : studentAvg >= 70 ? "text-blue-600" : "text-rose-600"
-                      }`}>
-                        {studentAvg}%
-                      </td>
-                    </tr>
+                    </button>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            )}
 
-          {/* Legend */}
-          <div className="p-4 bg-stone-50 border-t border-stone-100">
-            <div className="flex items-center gap-2 mb-2 text-stone-400 text-xs sm:hidden">
-              <span>Scroll for legend</span>
-              <span>→</span>
-            </div>
-            <div className="flex flex-wrap gap-4 sm:gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-100 border-2 border-green-400 rounded"></div>
-                <span className="text-stone-800 font-bold">Excellent (90%+)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-100 border-2 border-blue-400 rounded"></div>
-                <span className="text-stone-800 font-bold">Good (70-89%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-rose-100 border-2 border-rose-400 rounded"></div>
-                <span className="text-stone-800 font-bold">Needs Attention (&lt;70%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Score Detail Modal */}
-        {selectedScore && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedScore(null)}>
-            <div className="bg-white rounded-[30px] shadow-2xl max-w-lg w-full p-8" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h2 className="text-2xl font-black text-stone-900">{selectedScore.studentName}</h2>
-                  <p className="text-stone-500">Assignment: {matrixData.getAssignmentTitle(selectedScore.assignmentId)}</p>
-                </div>
+            {/* DETAILED ANALYTICS (when class selected) */}
+            {selectedClass !== null && currentAnalytics && (
+              <>
+                {/* Back header */}
                 <button
-                  onClick={() => setSelectedScore(null)}
-                  className="text-stone-400 hover:text-stone-600"
-                  aria-label="Close score details"
-                  title="Close score details"
+                  onClick={() => { setSelectedClass(null); setReteachWords(new Set()); }}
+                  className="mb-6 flex items-center gap-2 text-stone-500 hover:text-stone-900 font-medium transition-colors"
                 >
+                  ← Back to all classes
+                </button>
+
+                {/* Class Title */}
+                <div className="mb-8">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-900">
+                    {selectedClassData?.name || 'All Classes'}
+                  </h1>
+                  <p className="text-stone-500 mt-1">
+                    {currentAnalytics.studentCount} students • {currentAnalytics.totalAttempts} total attempts
+                  </p>
+                </div>
+
+                {/* 3-CARD DESIGN */}
+                <div className="space-y-6">
+                  {/* CARD 1: WHO NEEDS HELP */}
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-3xl shadow-xl border-2 border-amber-200">
+                    <h2 className="font-black text-lg text-stone-900 mb-4 flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                        <Users className="text-amber-700" size={20} />
+                      </div>
+                      Who Needs Help
+                    </h2>
+
+                    {currentAnalytics.strugglingStudents.length === 0 ? (
+                      <p className="text-stone-500 italic">All students are doing well! 🎉</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {currentAnalytics.strugglingStudents.slice(0, 6).map(s => (
+                          <button
+                            key={s.name}
+                            onClick={() => setSelectedStudent(s.name)}
+                            className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-all text-left border-2 border-amber-100 hover:border-amber-300"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{s.avatar}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-stone-900 truncate">{s.name}</p>
+                                <p className="text-stone-500 text-sm">{s.attempts} attempts</p>
+                              </div>
+                              <span className={`font-black text-xl ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>
+                                {s.avg}%
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentAnalytics.strugglingStudents.length > 6 && (
+                      <p className="text-stone-500 text-sm mt-3">
+                        +{currentAnalytics.strugglingStudents.length - 6} more students need attention
+                      </p>
+                    )}
+                  </div>
+
+                  {/* CARD 2: WHAT TO RETEACH (with selection) */}
+                  <div className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-3xl shadow-xl border-2 border-rose-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-black text-lg text-stone-900 flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                          <BookOpen className="text-rose-700" size={20} />
+                        </div>
+                        What to Reteach
+                      </h2>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={selectAllReteachWords}
+                          className="text-xs font-bold text-rose-600 hover:text-rose-800 px-3 py-1 bg-rose-100 rounded-full"
+                        >
+                          Select All
+                        </button>
+                        {reteachWords.size > 0 && (
+                          <button
+                            onClick={clearReteachWords}
+                            className="text-xs font-bold text-stone-500 hover:text-stone-700 px-3 py-1 bg-stone-100 rounded-full"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {currentAnalytics.topMistakes.length === 0 ? (
+                      <p className="text-stone-500 italic">No mistakes recorded yet — students are doing great!</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {currentAnalytics.topMistakes.map(({ word, count }) => {
+                          const isSelected = reteachWords.has(word.id);
+                          return (
+                            <button
+                              key={word.id}
+                              onClick={() => toggleReteachWord(word.id)}
+                              className={`relative p-4 rounded-2xl border-2 transition-all text-left ${
+                                isSelected
+                                  ? 'bg-rose-500 border-rose-600 shadow-lg'
+                                  : 'bg-white border-rose-100 hover:border-rose-300 shadow-sm'
+                              }`}
+                            >
+                              {/* Selection indicator */}
+                              <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? 'bg-white'
+                                  : 'bg-rose-100'
+                              }`}>
+                                {isSelected && <Check className="text-rose-600" size={14} />}
+                              </div>
+
+                              <div className="flex justify-between items-start mb-2 pr-6">
+                                <p className={`font-bold ${isSelected ? 'text-white' : 'text-stone-900'}`}>{word.english}</p>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                  isSelected
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-rose-100 text-rose-700'
+                                }`}>
+                                  {count}×
+                                </span>
+                              </div>
+                              <div className={`flex gap-2 text-sm ${isSelected ? 'text-rose-100' : 'text-stone-500'}`}>
+                                {word.hebrew && <span dir="rtl">{word.hebrew}</span>}
+                                {word.hebrew && word.arabic && <span>•</span>}
+                                {word.arabic && <span dir="rtl">{word.arabic}</span>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {reteachWords.size > 0 && (
+                      <div className="mt-4 p-3 bg-rose-100 rounded-xl flex items-center justify-between">
+                        <span className="text-rose-700 font-bold text-sm">
+                          {reteachWords.size} word{reteachWords.size !== 1 ? 's' : ''} selected
+                        </span>
+                        <span className="text-rose-600 text-sm">Create assignment below ↓</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CARD 3: CLASS HEALTH */}
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-3xl shadow-xl border-2 border-emerald-200">
+                    <h2 className="font-black text-lg text-stone-900 mb-4 flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <TrendingUp className="text-emerald-700" size={20} />
+                      </div>
+                      Class Health
+                    </h2>
+
+                    <div className="space-y-4">
+                      {/* Average Score Bar */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-stone-600 font-medium">Average Score</span>
+                          <span className={`font-black text-xl ${currentAnalytics.avgScore >= 80 ? 'text-emerald-600' : currentAnalytics.avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                            {currentAnalytics.avgScore}%
+                          </span>
+                        </div>
+                        <div className="h-4 bg-white rounded-full overflow-hidden shadow-inner">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              currentAnalytics.avgScore >= 80 ? 'bg-emerald-500' :
+                              currentAnalytics.avgScore >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${currentAnalytics.avgScore}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Best Mode */}
+                      <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                            <Gamepad2 className="text-indigo-600" size={20} />
+                          </div>
+                          <div>
+                            <p className="text-stone-500 text-sm">Most Played Mode</p>
+                            <p className="font-black text-stone-900 capitalize">
+                              {currentAnalytics.bestMode.replace(/-/g, ' ')}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-indigo-600 font-bold">
+                          {currentAnalytics.modeCounts[currentAnalytics.bestMode] || 0} plays
+                        </span>
+                      </div>
+
+                      {/* Engagement Summary */}
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm text-center">
+                          <p className="text-3xl font-black text-indigo-600">{currentAnalytics.studentCount}</p>
+                          <p className="text-stone-500 text-sm">Active Students</p>
+                        </div>
+                        <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm text-center">
+                          <p className="text-3xl font-black text-indigo-600">{currentAnalytics.totalAttempts}</p>
+                          <p className="text-stone-500 text-sm">Total Attempts</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </main>
+
+      {/* FLOATING ACTION BUTTON - Create Assignment */}
+      {reteachWords.size > 0 && selectedClass !== null && (
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto z-40">
+          <button
+            onClick={handleCreateAssignment}
+            className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 font-bold"
+          >
+            <Plus size={20} />
+            Create Assignment with {reteachWords.size} word{reteachWords.size !== 1 ? 's' : ''}
+          </button>
+        </div>
+      )}
+
+      {/* STUDENT DETAIL MODAL */}
+      {selectedStudent && (() => {
+        const studentScores = matrixData.studentMap.get(selectedStudent) || [];
+        const avgScore = studentScores.length > 0
+          ? Math.round(studentScores.reduce((sum, s) => sum + s.score, 0) / studentScores.length)
+          : 0;
+
+        // Get top mistakes
+        const mistakeCounts: Record<number, number> = {};
+        studentScores.forEach(s => {
+          s.mistakes?.forEach(wordId => {
+            mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
+          });
+        });
+        const topMistakes = Object.entries(mistakeCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([wordId, count]) => ({ wordId: parseInt(wordId), count }))
+          .map(({ wordId, count }) => ({
+            wordId,
+            count,
+            word: ALL_WORDS.find(w => w.id === wordId),
+          }))
+          .filter(m => m.word !== undefined);
+
+        const avatar = studentScores[0]?.avatar || '🦊';
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedStudent(null)}>
+            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl">{avatar}</span>
+                  <div>
+                    <h2 className="text-2xl font-black text-stone-900">{selectedStudent}</h2>
+                    <p className="text-stone-500">{studentScores.length} {studentScores.length === 1 ? 'attempt' : 'attempts'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedStudent(null)} className="text-stone-400 hover:text-stone-600">
                   <X size={24} />
                 </button>
               </div>
 
-              <div className="space-y-6">
-                {/* Score */}
-                <div className="flex items-center gap-4">
-                  <div className={`px-6 py-3 rounded-2xl font-black text-2xl ${
-                    selectedScore.score >= 90 ? "bg-blue-50 text-blue-700" :
-                    selectedScore.score >= 70 ? "bg-blue-100 text-blue-700" :
-                    "bg-rose-100 text-rose-700"
-                  }`}>
-                    {selectedScore.score}%
-                  </div>
-                  <div className="text-stone-500">
-                    <p>Mode: <span className="font-bold text-stone-800 capitalize">{selectedScore.mode}</span></p>
-                    <p>Completed: <span className="font-bold text-stone-800">{new Date(selectedScore.completedAt).toLocaleDateString()}</span></p>
-                  </div>
-                </div>
-
-                {/* Mistakes */}
-                {selectedScore.mistakes && selectedScore.mistakes.length > 0 && (
-                  <div>
-                    <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
-                      <AlertTriangle className="text-rose-500" size={20} />
-                      Words Missed ({selectedScore.mistakes.length})
-                    </h3>
-                    <div className="bg-stone-50 rounded-2xl p-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {selectedScore.mistakes.map((wordId, idx) => {
-                          const word = ALL_WORDS.find(w => w.id === wordId);
-                          // Count how many times this student missed this word across all attempts
-                          const totalMisses = allScores
-                            .filter(s => s.studentName === selectedScore.studentName)
-                            .reduce((sum, s) => sum + (s.mistakes?.filter(m => m === wordId).length || 0), 0);
-                          return (
-                            <div key={`${selectedScore.id}-${wordId}-${idx}`} className="bg-white p-3 rounded-xl border border-rose-200">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-black text-stone-800">{word?.english || "Unknown"}</p>
-                                  <div className="flex gap-2 text-xs text-stone-500 mt-0.5">
-                                    {word?.hebrew && <span dir="rtl">{word.hebrew}</span>}
-                                    {word?.arabic && <span dir="rtl">{word.arabic}</span>}
-                                  </div>
-                                </div>
-                                {totalMisses > 1 && (
-                                  <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full text-[10px] font-black">{totalMisses}× total</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Class Info */}
-                <p className="text-stone-500">
-                  Class: <span className="font-bold text-stone-800">{selectedScore.classCode}</span>
+              {/* Average Score */}
+              <div className={`p-6 rounded-2xl mb-6 ${
+                avgScore >= 80 ? 'bg-emerald-50' : avgScore >= 70 ? 'bg-amber-50' : 'bg-rose-50'
+              }`}>
+                <p className="text-stone-500 text-sm font-bold uppercase mb-1">Average Score</p>
+                <p className={`text-4xl font-black ${avgScore >= 80 ? 'text-emerald-600' : avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                  {avgScore}%
                 </p>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Student Profile Modal */}
-        {selectedStudent && (() => {
-          const studentScores = matrixData.studentMap.get(selectedStudent) || [];
-          const classCode = matrixData.getStudentClassCode(selectedStudent);
-          const avatar = matrixData.getStudentAvatar(selectedStudent);
-          const avgScore = matrixData.averages.get(selectedStudent) || 0;
-          const classAvg = Math.round(Array.from(matrixData.averages.values()).reduce((a, b) => a + b, 0) / matrixData.averages.size) || 0;
-
-          // Get top 5 mistake words across all attempts
-          const mistakeCounts: Record<number, number> = {};
-          studentScores.forEach(s => {
-            s.mistakes?.forEach(wordId => {
-              mistakeCounts[wordId] = (mistakeCounts[wordId] || 0) + 1;
-            });
-          });
-          const topMistakes = Object.entries(mistakeCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([wordId, count]) => ({ wordId: parseInt(wordId), count }));
-
-          // Build score trend data (sorted by date)
-          const scoreTrend = [...studentScores]
-            .sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime());
-
-          return (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedStudent(null)}>
-              <div className="bg-white rounded-[30px] shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
-                {/* Header */}
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-3">
-                    {avatar && <span className="text-4xl">{avatar}</span>}
-                    <div>
-                      <h2 className="text-2xl sm:text-3xl font-black text-stone-900">{selectedStudent}</h2>
-                      <p className="text-stone-500 flex items-center gap-2">
-                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-sm font-bold">{classCode}</span>
-                        <span>•</span>
-                        <span>{studentScores.length} {studentScores.length === 1 ? 'attempt' : 'attempts'}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedStudent(null)}
-                    className="text-stone-400 hover:text-stone-600"
-                    aria-label="Close student details"
-                    title="Close student details"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                  <div className={`p-4 rounded-2xl ${
-                    avgScore >= 90 ? "bg-blue-50" : avgScore >= 70 ? "bg-blue-100" : "bg-rose-100"
-                  }`}>
-                    <p className="text-stone-500 text-sm font-bold uppercase">Average Score</p>
-                    <p className={`text-3xl font-black ${
-                      avgScore >= 90 ? "text-blue-700" : avgScore >= 70 ? "text-blue-600" : "text-rose-600"
-                    }`}>{avgScore}%</p>
-                  </div>
-                  <div className="p-4 bg-stone-50 rounded-2xl">
-                    <p className="text-stone-500 text-sm font-bold uppercase">Class Average</p>
-                    <p className="text-3xl font-black text-stone-700">{classAvg}%</p>
-                    <p className={`text-sm mt-1 ${avgScore >= classAvg ? "text-green-600" : "text-rose-600"}`}>
-                      {avgScore >= classAvg ? "▲ Above class avg" : "▼ Below class avg"}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-stone-50 rounded-2xl">
-                    <p className="text-stone-500 text-sm font-bold uppercase">Total Score Points</p>
-                    <p className="text-3xl font-black text-stone-700">{studentScores.reduce((sum, s) => sum + s.score, 0)}</p>
-                  </div>
-                </div>
-
-                {/* Score Trend Chart (Simple Bar Visualization) */}
-                {scoreTrend.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
-                      <TrendingUp className="text-blue-600" size={20} />
-                      Score Trend Over Time
-                    </h3>
-                    <div className="bg-stone-50 rounded-2xl p-4">
-                      <div className="flex items-end gap-1 h-32">
-                        {scoreTrend.map((s, idx) => {
-                          return (
-                            <div
-                              key={`${s.id}-${idx}`}
-                              className="flex-1 flex flex-col items-center gap-1 group relative"
-                            >
-                              <div
-                                className={`w-full rounded-t-lg transition-all ${
-                                  s.score >= 90 ? "bg-blue-400" : s.score >= 70 ? "bg-blue-300" : "bg-rose-300"
-                                } ${toScoreHeightClass(s.score)}`}
-                              />
-                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {s.score}%
-                              </div>
-                              <span className="text-xs text-stone-400 truncate w-full text-center">{idx + 1}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-center text-xs text-stone-400 mt-2">Click/tap bars to see exact scores</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Top Mistakes */}
-                {topMistakes.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
-                      <AlertTriangle className="text-rose-500" size={20} />
-                      Most Challenging Words ({topMistakes.length} total)
-                    </h3>
-                    <div className="bg-stone-50 rounded-2xl p-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {topMistakes.map(({ wordId, count }) => {
-                          const word = ALL_WORDS.find(w => w.id === wordId);
-                          return (
-                            <div key={wordId} className="bg-white p-3 rounded-xl border border-stone-200 flex justify-between items-center">
-                              <div>
-                                <p className="font-bold text-stone-800">{word?.english || "Unknown"}</p>
-                                <p className="text-xs text-stone-500">{word?.hebrew || ""}</p>
-                              </div>
-                              <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-sm font-bold">{count}×</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Assignment History */}
-                <div>
+              {/* Top Mistakes */}
+              {topMistakes.length > 0 && (
+                <div className="mb-6">
                   <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
-                    <History className="text-blue-600" size={20} />
-                    Assignment History
+                    <AlertTriangle className="text-rose-500" size={18} />
+                    Most Challenging Words
                   </h3>
-                  <div className="bg-stone-50 rounded-2xl p-4 space-y-2">
-                    {scoreTrend.map((s, idx) => (
+                  <div className="space-y-2">
+                    {topMistakes.map(({ word, count }) => (
+                      <div key={word.id} className="bg-stone-50 p-3 rounded-xl flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-stone-800">{word.english}</p>
+                          <p className="text-stone-500 text-sm">{word.hebrew || ''}</p>
+                        </div>
+                        <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-sm font-bold">{count}×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Attempts */}
+              <div>
+                <h3 className="font-bold text-stone-800 mb-3">Recent Attempts</h3>
+                <div className="space-y-2">
+                  {studentScores
+                    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+                    .slice(0, 5)
+                    .map(s => (
                       <div
-                        key={`${s.id}-${idx}`}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
-                          s.score >= 90 ? "bg-blue-50 border-blue-200" : s.score >= 70 ? "bg-blue-50 border-blue-200" : "bg-rose-50 border-rose-200"
+                        key={s.id}
+                        className={`p-4 rounded-xl border-2 cursor-pointer hover:shadow-md transition-all ${
+                          s.score >= 80 ? 'bg-emerald-50 border-emerald-200' : s.score >= 70 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'
                         }`}
                         onClick={() => { setSelectedStudent(null); setSelectedScore(s); }}
                       >
                         <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            <span className={`px-3 py-1 rounded-full font-bold text-lg ${
-                              s.score >= 90 ? "bg-blue-200 text-blue-800" : s.score >= 70 ? "bg-blue-200 text-blue-800" : "bg-rose-200 text-rose-800"
-                            }`}>
-                              {s.score}%
-                            </span>
-                            <div>
-                              <p className="font-bold text-stone-800">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
-                              <p className="text-xs text-stone-500">
-                                <span className="capitalize">{s.mode.replace('-', ' ')}</span> • {new Date(s.completedAt).toLocaleDateString()}
-                                {s.mistakes && s.mistakes.length > 0 && (
-                                  <span className="text-rose-500 ml-1">• {s.mistakes.length} mistake{s.mistakes.length !== 1 ? 's' : ''}</span>
-                                )}
-                              </p>
-                            </div>
+                          <div>
+                            <p className="font-bold text-stone-800">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
+                            <p className="text-stone-500 text-sm capitalize">{s.mode.replace(/-/g, ' ')} • {new Date(s.completedAt).toLocaleDateString()}</p>
                           </div>
-                          <ChevronRight className="text-stone-400" size={18} />
+                          <span className={`font-black text-lg ${s.score >= 80 ? 'text-emerald-600' : s.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                            {s.score}%
+                          </span>
                         </div>
                       </div>
                     ))}
-                  </div>
-                  <p className="text-xs text-stone-400 mt-2 text-center">Click any attempt to see details</p>
                 </div>
               </div>
             </div>
-          );
-        })()}
-          </>
-        )}
-      </main>
+          </div>
+        );
+      })()}
+
+      {/* SCORE DETAIL MODAL */}
+      {selectedScore && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedScore(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-xl font-black text-stone-900">{selectedScore.studentName}</h2>
+                <p className="text-stone-500">{matrixData.getAssignmentTitle(selectedScore.assignmentId)}</p>
+              </div>
+              <button onClick={() => setSelectedScore(null)} className="text-stone-400 hover:text-stone-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className={`p-6 rounded-2xl mb-6 text-center ${
+              selectedScore.score >= 80 ? 'bg-emerald-50' : selectedScore.score >= 70 ? 'bg-amber-50' : 'bg-rose-50'
+            }`}>
+              <p className={`text-5xl font-black ${selectedScore.score >= 80 ? 'text-emerald-600' : selectedScore.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                {selectedScore.score}%
+              </p>
+              <p className="text-stone-500 mt-1 capitalize">{selectedScore.mode.replace(/-/g, ' ')}</p>
+            </div>
+
+            {selectedScore.mistakes && selectedScore.mistakes.length > 0 && (
+              <div>
+                <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="text-rose-500" size={18} />
+                  Words Missed
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedScore.mistakes.map((wordId, idx) => {
+                    const word = ALL_WORDS.find(w => w.id === wordId);
+                    return (
+                      <div key={idx} className="bg-rose-50 p-3 rounded-xl border border-rose-200">
+                        <p className="font-bold text-stone-800">{word?.english || 'Unknown'}</p>
+                        <p className="text-stone-500 text-sm">{word?.hebrew || ''}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

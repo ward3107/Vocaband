@@ -590,11 +590,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   // True/False game state
   const [tfStatement, setTfStatement] = useState<{ word: Word; shownMeaning: string; isCorrect: boolean } | null>(null);
 
-  // Motivational message overlay — set on correct answer, cleared after
-  // the praise MP3 ends so the label animation stays on screen while the
-  // voice plays. Mirrors the real app's GameActiveView overlay.
-  const [motivationalMessage, setMotivationalMessage] = useState<string>("");
-
   // Flashcard state
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -611,7 +606,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "incorrect" | null>(null);
 
-  const { speak, preloadMany, playMotivational, getMotivationalLabel } = useAudio();
+  const { speak, preloadMany } = useAudio();
 
   // Track response timing for adaptive transitions
   const responseStartTime = useRef(Date.now());
@@ -965,12 +960,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       checkAndAwardBadges(true, newXp);
-      // Show the praise label on screen (e.g. "Champion! 🏅") while the
-      // audio plays — auto-clears after ~1.8s so it doesn't linger on the
-      // next word. Mirrors the real app's motivational overlay timing.
-      const key = playMotivational();
-      setMotivationalMessage(getMotivationalLabel(key));
-      setTimeout(() => setMotivationalMessage(""), 1800);
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
     } else {
       setStreak(0);
@@ -1422,16 +1411,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               exit={{ opacity: 0, y: -20 }}
               className="relative"
             >
-              {/* Motivational message overlay — mirrors GameActiveView.tsx:218
-                  so correct-answer praise feels identical to the real app. */}
-              {motivationalMessage && (
-                <div className="absolute top-20 left-0 right-0 flex justify-center z-30 pointer-events-none">
-                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/90 px-4 py-1.5 sm:px-5 sm:py-2.5 rounded-2xl shadow-lg">
-                    {motivationalMessage}
-                  </span>
-                </div>
-              )}
-
               {/* Header */}
               <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button

@@ -108,6 +108,9 @@ export interface SetupWizardProps {
   customWords?: Word[];
   onCustomWordsChange?: (words: Word[]) => void;
 
+  // Initial selected words (for pre-filling from analytics, etc.)
+  initialSelectedWords?: Word[];
+
   // TopAppBar props
   user?: { displayName?: string; avatar?: string } | null;
   onLogout?: () => void;
@@ -146,6 +149,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   onDocxUpload,
   customWords = [],
   onCustomWordsChange,
+  initialSelectedWords,
   user,
   onLogout,
 }) => {
@@ -169,6 +173,13 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
       }
     }
   }, [editingAssignment]);
+
+  // ── Pre-populate from initial selected words (analytics flow, etc.) ────────────
+  useEffect(() => {
+    if (initialSelectedWords && initialSelectedWords.length > 0) {
+      setSelectedWords(initialSelectedWords);
+    }
+  }, [initialSelectedWords]);
 
   // ── Navigation Handlers ───────────────────────────────────────────────────
   const handleNext = () => {

@@ -307,16 +307,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-stone-200 shadow-lg py-1 z-20">
-                {onEdit && (
-                  <button
-                    onClick={() => { onEdit(); setMenuOpen(false); }}
-                    type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
-                  >
-                    <Pencil size={14} className="text-indigo-600" />
-                    Edit class
-                  </button>
-                )}
                 <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
                   type="button"

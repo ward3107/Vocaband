@@ -1,4 +1,4 @@
-// Audio hook for playing word pronunciation and motivational sounds
+// Audio hook for playing word pronunciation (motivational sounds removed)
 import { Howl } from 'howler'
 
 const MAX_WORD_CACHE_SIZE = 100
@@ -7,12 +7,8 @@ const wordCacheOrder: number[] = [] // LRU tracking
 const motivationalCache: Record<string, Howl> = {}
 const failedWordIds = new Set<number>() // Track words that failed to load
 
-// Tracks the motivational Howl currently playing so speak() can defer word
-// playback until the praise finishes — otherwise "Champion!" and the next
-// word's pronunciation overlap, which sounds broken. Cleared on end/stop.
+// Motivational sounds removed - these are now no-ops
 let currentMotivational: Howl | null = null
-// Optional callback the game logic can attach to know when the motivational
-// has finished — kept alongside currentMotivational for extensibility.
 const onMotivationalEndListeners: Array<() => void> = []
 
 // ── Voice Selection for High-Quality TTS ──────────────────────────────────────
@@ -317,18 +313,7 @@ export const useAudio = () => {
       return
     }
 
-    // If a motivational praise is still playing (or loading to play) right
-    // after a correct answer, defer word playback until the praise finishes.
-    // We check the pointer — NOT Howl.playing() — because .playing() returns
-    // false during the brief load window right after playMotivational()
-    // fires, and a speak() scheduled in that window would slip through.
-    // currentMotivational is set synchronously inside playMotivational and
-    // only cleared when the sound ends/stops/loaderrors.
-    if (currentMotivational) {
-      onMotivationalEndListeners.push(() => speak(wordId, fallbackText))
-      return
-    }
-
+    // Motivational sounds removed - skip waiting logic
     // Stop any currently playing audio first
     Object.values(wordCache).forEach(h => h.stop())
     window.speechSynthesis?.cancel()
@@ -395,83 +380,15 @@ export const useAudio = () => {
     wordIds.filter(id => id > 0).forEach(preload)
   }
 
-  // Preload a small batch of motivational phrases (avoids Audio pool exhaustion)
+  // Preload motivational phrases - NO-OP (feature removed)
   const preloadMotivational = () => {
-    if (preloadedMotivational) return
-    preloadedMotivational = true
-
-    // Preload only a random subset to avoid creating 72 Howl instances at once
-    const batch = [...PHRASES].sort(() => Math.random() - 0.5).slice(0, 8)
-    batch.forEach(key => {
-      if (!motivationalCache[key]) {
-        motivationalCache[key] = new Howl({
-          src: [getMotivationalUrl(key)],
-          preload: true,
-          volume: 0.8,
-          onloaderror: () => { console.warn('Motivational audio load failed') }
-        })
-      }
-    })
+    // Motivational sounds removed - do nothing
   }
 
+  // Play motivational sound - NO-OP (feature removed)
   const playMotivational = (): string => {
-    // Drain the OLD motivational cleanly BEFORE stopping anything else —
-    // otherwise stopping the old sound fires its 'stop' event, which runs
-    // drainWaiters, which nulls currentMotivational and fires queued
-    // word-speaks in the tiny window before we set the new one. That race
-    // was why long praise phrases still overlapped the next word.
-    if (currentMotivational) {
-      currentMotivational.off('end')
-      currentMotivational.off('stop')
-      currentMotivational.off('loaderror')
-    }
-    onMotivationalEndListeners.length = 0
-    currentMotivational = null
-
-    // Now safe to stop anything still making noise.
-    Object.values(motivationalCache).forEach(h => h.stop())
-    Object.values(wordCache).forEach(h => h.stop())
-    window.speechSynthesis?.cancel()
-
-    const key = pick()
-
-    // Create if doesn't exist (fallback)
-    if (!motivationalCache[key]) {
-      motivationalCache[key] = new Howl({
-        src: [getMotivationalUrl(key)],
-        preload: true,
-        volume: 0.8,
-        onloaderror: () => { console.warn('Motivational audio load failed') }
-      })
-    }
-
-    const sound = motivationalCache[key]
-
-    // Register this as the "currently playing" motivational so deferred
-    // word-playbacks in speak() can wait for it. Clear the pointer on end
-    // OR stop (both cases), and drain the queue of waiters.
-    currentMotivational = sound
-    const drainWaiters = () => {
-      currentMotivational = null
-      const queued = onMotivationalEndListeners.splice(0)
-      queued.forEach((fn) => { try { fn() } catch { /* swallow */ } })
-    }
-    sound.off('end')
-    sound.off('stop')
-    sound.off('loaderror')
-    sound.on('end', drainWaiters)
-    sound.on('stop', drainWaiters)
-    sound.on('loaderror', drainWaiters)
-
-    // Play immediately if loaded, otherwise wait
-    if (sound.state() === 'loaded') {
-      sound.play()
-    } else {
-      sound.once('load', () => sound.play())
-      sound.load()
-    }
-
-    return key
+    // Motivational sounds removed - return empty key
+    return ''
   }
 
   const getMotivationalLabel = (key: string): string => {

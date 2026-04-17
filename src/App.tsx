@@ -1104,15 +1104,8 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel, playWrong } = useAudio();
-
-  // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
-  const isQuickPlayGuest = !!user?.isGuest;
-  const speakWord = speakWordRaw; // Always allow pronunciation
-  const playMotivational = (...args: Parameters<typeof playMotivationalRaw>) => {
-    if (isQuickPlayGuest) return ''; // Mute motivational sounds in QP
-    return playMotivationalRaw(...args);
-  };
+  const { speak: speakWordRaw, preloadMany, playWrong } = useAudio();
+  const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -1127,7 +1120,6 @@ export default function App() {
   // Reset on game start so each session is independent.
   const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
-  const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
     try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
   });
@@ -1342,13 +1334,6 @@ export default function App() {
       fetchScores();
     }
   }, [view]);
-
-  // Speak motivational message during gameplay — only when student is in game view
-  useEffect(() => {
-    if (motivationalMessage && view === "game") {
-      playMotivational();
-    }
-  }, [motivationalMessage, view]);
 
   // Speak congratulatory message when a mode is finished — only in game view
   useEffect(() => {
@@ -4693,8 +4678,6 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
-      const mKey = playMotivational();
-      setMotivationalMessage(getMotivationalLabel(mKey));
       const newScore = score + 10;
       setScore(newScore);
 
@@ -4811,7 +4794,6 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
       setScore(newScore);
 
@@ -4873,8 +4855,6 @@ export default function App() {
 
     let currentScore = score;
     if (knewIt) {
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
-      setTimeout(() => setMotivationalMessage(null), 1000);
       currentScore = score + 5;
       setScore(currentScore);
       emitScoreUpdate(currentScore);
@@ -4930,7 +4910,6 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
       setScore(newScore);
 
@@ -6065,6 +6044,10 @@ export default function App() {
           allScores={allScores}
           teacherAssignments={teacherAssignments}
           setView={setView}
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          selectedWords={selectedWords}
+          setSelectedWords={setSelectedWords}
         />
       </LazyWrapper>
     );
@@ -6185,7 +6168,6 @@ export default function App() {
         setCurrentIndex={setCurrentIndex}
         currentWord={currentWord}
         feedback={feedback}
-        motivationalMessage={motivationalMessage}
         options={options}
         hiddenOptions={hiddenOptions}
         setHiddenOptions={setHiddenOptions}

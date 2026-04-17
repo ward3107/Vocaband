@@ -39,7 +39,6 @@ interface GameActiveViewProps {
   setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
   currentWord: Word | undefined;
   feedback: "correct" | "wrong" | "show-answer" | null;
-  motivationalMessage: string | null;
   options: Word[];
   hiddenOptions: number[];
   setHiddenOptions: React.Dispatch<React.SetStateAction<number[]>>;
@@ -82,7 +81,7 @@ export default function GameActiveView({
   score, xp, streak,
   targetLanguage, setTargetLanguage,
   gameMode, gameWords, currentIndex, setCurrentIndex, currentWord,
-  feedback, motivationalMessage,
+  feedback,
   options, hiddenOptions, setHiddenOptions,
   isMatchingProcessing, matchingPairs, matchedIds, selectedMatch,
   tfOption, isFlipped, setIsFlipped, isProcessingRef,
@@ -213,15 +212,6 @@ export default function GameActiveView({
                   max={100}
                   value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
                 />
-
-                {/* Motivational message */}
-                {motivationalMessage && (
-                  <div className="absolute top-4 sm:top-4 left-0 right-0 flex justify-center pointer-events-none z-20">
-                    <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/80 px-3 py-1 sm:px-4 sm:py-2 rounded-2xl">
-                      {motivationalMessage}
-                    </span>
-                  </div>
-                )}
 
                 {/* Show correct answer after 3 failed attempts */}
                 {feedback === "show-answer" && (

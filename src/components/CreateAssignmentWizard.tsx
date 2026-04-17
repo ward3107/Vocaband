@@ -326,6 +326,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       autoMatchPartial={true}
       showLevelFilter={true}
       selectedClass={selectedClass}
+      initialSelectedWords={selectedWords}
       assignmentTitle={assignmentTitle}
       onTitleChange={setAssignmentTitle}
       assignmentDeadline={assignmentDeadline}
