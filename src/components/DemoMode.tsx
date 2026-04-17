@@ -37,14 +37,10 @@ interface DemoModeProps {
 type DemoView = "welcome" | "avatar" | "game-select" | "game" | "results" | "shop";
 type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
-// Avatar categories matching the full app
-const AVATAR_CATEGORIES: Record<string, { emoji: string[]; unlockXP: number }> = {
-  "Forest Friends": { emoji: ["🦊", "🐻", "🐰", "🦌", "🐿️", "🦔"], unlockXP: 0 },
-  "Ocean Crew": { emoji: ["🐬", "🦈", "🐙", "🦀", "🐠", "🐳"], unlockXP: 50 },
-  "Sky Squad": { emoji: ["🦅", "🦉", "🦜", "🐦", "🦋", "🦗"], unlockXP: 100 },
-  "Dream Team": { emoji: ["🐉", "🦄", "🦁", "🐯", "🦘", "🦒"], unlockXP: 150 },
-  "Sport Stars": { emoji: ["⚽", "🏀", "🏈", "🎾", "🏐", "🎱"], unlockXP: 200 },
-};
+// Avatar categories pulled from the real app constants so the demo shop
+// shows the same 17-category ladder students actually see in production.
+import { AVATAR_CATEGORIES as REAL_AVATAR_CATEGORIES } from "../constants/avatars";
+import { AVATAR_CATEGORY_UNLOCKS } from "../constants/game";
 
 const PREMIUM_AVATARS = [
   { emoji: '🐉', name: 'Dragon', cost: 50 },
@@ -1386,47 +1382,75 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   grid of fixed-height cards, blue-600 + ring on selected,
                   matched cards disappear (not opacity-fade). */}
               {selectedMode === "matching" && (
-                <div className="max-w-2xl mx-auto">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3">
-                    {matchingCards.filter(c => !c.matched).map((card) => (
-                      <button
-                        key={card.id}
-                        onClick={() => handleMatchingSelect(card.id)}
-                        disabled={card.matched}
-                        dir="auto"
-                        style={{ touchAction: 'manipulation' }}
-                        className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
-                          card.selected
-                            ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
-                            : "bg-white text-stone-800 hover:shadow-md"
-                        }`}
-                      >
-                        {card.content}
-                      </button>
-                    ))}
+                <motion.div
+                  key="matching"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="max-w-3xl mx-auto"
+                >
+                  <AnimatePresence>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3">
+                      {matchingCards.filter(c => !c.matched).map((card) => (
+                        <motion.button
+                          key={card.id}
+                          initial={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.4, transition: { duration: 0.25 } }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleMatchingSelect(card.id)}
+                          disabled={card.matched}
+                          dir="auto"
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                          className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                            card.selected
+                              ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
+                              : "bg-white text-stone-800 hover:shadow-md"
+                          }`}
+                        >
+                          {card.content}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </AnimatePresence>
+                  <div className="mt-4 text-center text-[10px] sm:text-xs font-black text-stone-400 uppercase tracking-widest">
+                    {t.matched} <span className="text-stone-800">{matchedPairs} / 4</span>
                   </div>
-                  <div className="mt-4 text-center text-xs font-bold text-stone-400 uppercase tracking-widest">
-                    {t.matched} {matchedPairs} / 4
-                  </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Spelling Mode — matches real SpellingGame: stone-prompt
                   + big feedback-bordered input + stone-900 check button. */}
               {selectedMode === "spelling" && (
-                <div className="max-w-md mx-auto">
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 mb-4 sm:mb-6 text-center shadow-sm border border-stone-200">
-                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.translation}</p>
-                    <div className="text-3xl sm:text-4xl font-black text-stone-900 mb-3" dir="auto">
-                      {getMeaning(currentWord, targetLanguage)}
-                    </div>
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  {/* Word display — student hears the English word, types it.
+                      Translation shown underneath as a hint (matches real
+                      SpellingGame pattern). */}
+                  <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="p-3 sm:p-4 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors mx-auto flex items-center justify-center"
                       aria-label="Play pronunciation"
                     >
-                      <Volume2 size={20} className="text-stone-600" />
+                      <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
                     </button>
+                    <p className="text-stone-400 text-sm sm:text-base font-bold mt-2">
+                      {t.translation}: <span className="text-stone-900 text-lg sm:text-2xl font-black" dir="auto">
+                        {getMeaning(currentWord, targetLanguage)}
+                      </span>
+                    </p>
                   </div>
 
                   {/* Power-ups for spelling */}
@@ -1438,7 +1462,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </div>
                   )}
 
-                  <form onSubmit={handleSpellingSubmit}>
+                  <form onSubmit={handleSpellingSubmit} className="max-w-md mx-auto">
                     <input
                       autoFocus
                       type="text"
@@ -1446,7 +1470,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all ${
                         isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
                         isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
                         "border-stone-100 focus:border-stone-900 outline-none"
@@ -1457,31 +1481,45 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <button
                         type="submit"
                         disabled={!spellingInput.trim()}
-                        style={{ touchAction: 'manipulation' }}
-                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Check Answer
                       </button>
                     )}
                   </form>
-                </div>
+                </motion.div>
               )}
 
               {/* Scramble Mode — same visual language as Spelling. */}
               {selectedMode === "scramble" && (
-                <div className="max-w-md mx-auto">
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 mb-4 sm:mb-6 text-center shadow-sm border border-stone-200">
-                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.unscramble}</p>
-                    <div className="text-3xl sm:text-5xl font-black text-stone-900 tracking-widest mb-2" dir="ltr">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
+                    <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest">{t.unscramble}</p>
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 tracking-widest break-words w-full text-center" dir="ltr">
                       {scrambledWord.toUpperCase()}
-                    </div>
-                    <div className="mt-4 text-sm sm:text-base text-stone-600 font-bold">
-                      <span className="text-stone-400 text-xs uppercase tracking-widest block mb-1">{t.translation}</span>
-                      <span className="text-stone-900 text-lg sm:text-xl" dir="auto">{getMeaning(currentWord, targetLanguage)}</span>
-                    </div>
+                    </h2>
+                    <p className="text-stone-400 text-sm sm:text-base font-bold mt-2">
+                      {t.translation}: <span className="text-stone-900 text-lg sm:text-2xl font-black" dir="auto">
+                        {getMeaning(currentWord, targetLanguage)}
+                      </span>
+                    </p>
                   </div>
 
-                  <form onSubmit={handleScrambleSubmit}>
+                  <form onSubmit={handleScrambleSubmit} className="max-w-md mx-auto">
                     <input
                       autoFocus
                       type="text"
@@ -1489,7 +1527,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all ${
                         isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
                         isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
                         "border-stone-100 focus:border-stone-900 outline-none"
@@ -1500,14 +1538,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <button
                         type="submit"
                         disabled={!spellingInput.trim()}
-                        style={{ touchAction: 'manipulation' }}
-                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Check Answer
                       </button>
                     )}
                   </form>
-                </div>
+                </motion.div>
               )}
 
               {/* True/False Mode — unified card + progress + large
@@ -1573,37 +1611,52 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   flip button, rose "Still Learning" + blue "Got It"
                   judgement buttons after flip. */}
               {selectedMode === "flashcards" && (
-                <div className="max-w-md mx-auto">
-                  {/* Hero card with the word/translation */}
-                  <div className="bg-white rounded-2xl sm:rounded-[32px] p-6 sm:p-10 shadow-2xl border border-stone-100 min-h-[250px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden"
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  {/* Hero card with the word/translation (inner, sits inside
+                      the main game card so we match the GameActiveView
+                      structure: outer card + progress + inner content). */}
+                  <div className="bg-stone-50 rounded-2xl sm:rounded-[28px] p-5 sm:p-10 border border-stone-200 min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
                     {!isFlipped ? (
                       <>
-                        <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.flashcardWord}</p>
-                        <div className="text-3xl sm:text-5xl font-black text-stone-900 mb-4" dir="ltr">
+                        <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3">{t.flashcardWord}</p>
+                        <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 mb-4 break-words w-full" dir="ltr">
                           {currentWord.english}
-                        </div>
+                        </h2>
                         <button
                           onClick={() => speakWord(currentWord.id)}
-                          className="p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                          className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                           aria-label="Play pronunciation"
                         >
-                          <Volume2 size={20} className="text-stone-600" />
+                          <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.flashcardMeaning}</p>
-                        <div className="text-3xl sm:text-5xl font-black text-stone-900" dir="auto">
+                        <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3">{t.flashcardMeaning}</p>
+                        <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 break-words w-full" dir="auto">
                           {getMeaning(currentWord, targetLanguage)}
-                        </div>
+                        </h2>
                       </>
                     )}
                   </div>
 
-                  <div className="space-y-3 sm:space-y-4">
+                  <div className="space-y-3 sm:space-y-4 max-w-md mx-auto">
                     <button
                       onClick={() => setIsFlipped(!isFlipped)}
-                      style={{ touchAction: 'manipulation' }}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                       className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors"
                     >
                       {isFlipped ? "Show English" : "Show Translation"}
@@ -1612,18 +1665,18 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <div className="grid grid-cols-2 gap-3 sm:gap-4">
                         <button
                           onClick={() => { setIsCorrect(false); handleFeedback(false); setSelectedAnswer("unknown"); }}
-                          style={{ touchAction: 'manipulation', minHeight: '56px' }}
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '56px' }}
                           className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
                         >Still Learning</button>
                         <button
                           onClick={() => { setIsCorrect(true); handleFeedback(true); setSelectedAnswer("known"); }}
-                          style={{ touchAction: 'manipulation', minHeight: '56px' }}
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '56px' }}
                           className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
                         >Got It!</button>
                       </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Reverse Mode — translate from Hebrew/Arabic to English.
@@ -1691,7 +1744,20 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   translation hint at top, bordered color-tinted letter
                   tiles that fade in, input form appears once all revealed. */}
               {selectedMode === "lettersounds" && (
-                <div className="max-w-lg mx-auto">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
                   <p className="text-stone-600 text-lg sm:text-xl font-bold mb-4 text-center" dir="auto">
                     {getMeaning(currentWord, targetLanguage)}
                   </p>
@@ -1706,7 +1772,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                             initial={{ opacity: 0, scale: 0.5 }}
                             animate={{ opacity: revealed ? 1 : 0.15, scale: revealed ? 1 : 0.5 }}
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            className="w-9 h-11 sm:w-12 sm:h-14 rounded-xl font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
+                            className="w-10 h-12 sm:w-14 sm:h-16 rounded-xl font-black text-lg sm:text-3xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
                             style={{
                               color: revealed ? color : color + "40",
                               borderColor: revealed ? color : color + "40",
@@ -1729,7 +1795,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         onChange={(e) => setSpellingInput(e.target.value)}
                         placeholder="Type the word..."
                         disabled={selectedAnswer !== null}
-                        className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
+                        className={`w-full p-3 sm:p-4 text-base sm:text-2xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
                           isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
                           isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
                           "border-stone-100 focus:border-stone-900 outline-none"
@@ -1740,8 +1806,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         <button
                           type="submit"
                           disabled={!spellingInput.trim()}
-                          style={{ touchAction: 'manipulation' }}
-                          className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                          className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Check Answer
                         </button>
@@ -1751,14 +1817,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <div className="text-center">
                       <button
                         onClick={() => { setRevealedLetters(0); }}
-                        style={{ touchAction: 'manipulation' }}
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                         className="px-6 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors inline-flex items-center gap-2"
                       >
                         🔊 Replay Sounds
                       </button>
                     </div>
                   ) : null}
-                </div>
+                </motion.div>
               )}
 
               {/* Sentence Builder — matches real SentenceBuilderGame:
@@ -1766,10 +1832,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   words, white bordered chips for available words,
                   stone-900 Check button. */}
               {selectedMode === "sentence" && (
-                <div className="max-w-xl mx-auto">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest">
-                      Build: "{currentWord.english} is great!"
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 relative overflow-hidden"
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <div className="flex items-center justify-center gap-2 mb-3 mt-2">
+                    <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest">
+                      {t.sentenceBuild || "Build the sentence"}
                     </p>
                     <button
                       onClick={() => {
@@ -1783,73 +1858,77 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     >🔊</button>
                   </div>
 
-                  {/* Built sentence area */}
-                  <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
-                    sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
-                    sentenceFeedback === "incorrect" ? "border-rose-500 bg-rose-50" :
-                    "border-stone-200 bg-stone-50"
-                  }`} dir="ltr">
-                    {builtSentence.length === 0 ? (
-                      <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>
-                    ) : (
-                      builtSentence.map((word, i) => (
+                  <div className="max-w-xl mx-auto">
+                    {/* Built sentence area */}
+                    <div className={`min-h-[64px] sm:min-h-[72px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
+                      sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
+                      sentenceFeedback === "incorrect" ? "border-rose-500 bg-rose-50" :
+                      "border-stone-200 bg-stone-50"
+                    }`} dir="ltr">
+                      {builtSentence.length === 0 ? (
+                        <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>
+                      ) : (
+                        builtSentence.map((word, i) => (
+                          <button
+                            key={`${word}-${i}`}
+                            onClick={() => {
+                              if (sentenceFeedback !== null) return;
+                              setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
+                              setAvailableWords(prev => [...prev, word]);
+                            }}
+                            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
+                          >{word}</button>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Available words */}
+                    <div className="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr">
+                      {availableWords.map((word, i) => (
                         <button
                           key={`${word}-${i}`}
                           onClick={() => {
                             if (sentenceFeedback !== null) return;
-                            setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-                            setAvailableWords(prev => [...prev, word]);
+                            setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
+                            setBuiltSentence(prev => [...prev, word]);
                           }}
-                          className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                          className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
                         >{word}</button>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
 
-                  {/* Available words */}
-                  <div className="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr">
-                    {availableWords.map((word, i) => (
+                    <div className="flex gap-2">
                       <button
-                        key={`${word}-${i}`}
                         onClick={() => {
-                          if (sentenceFeedback !== null) return;
-                          setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-                          setBuiltSentence(prev => [...prev, word]);
+                          setBuiltSentence([]);
+                          const target = `${currentWord.english} is great!`.split(" ").filter(Boolean);
+                          setAvailableWords([...target].sort(() => Math.random() - 0.5));
                         }}
-                        className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
-                      >{word}</button>
-                    ))}
+                        disabled={sentenceFeedback !== null}
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                        className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >Clear</button>
+                      <button
+                        onClick={() => {
+                          const target = `${currentWord.english} is great!`;
+                          const built = builtSentence.join(" ");
+                          if (built.toLowerCase() === target.toLowerCase()) {
+                            setSentenceFeedback("correct");
+                            handleFeedback(true);
+                          } else {
+                            setSentenceFeedback("incorrect");
+                            setTimeout(() => setSentenceFeedback(null), 1500);
+                          }
+                        }}
+                        disabled={builtSentence.length === 0 || sentenceFeedback !== null}
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                        className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50"
+                      >Check ✓</button>
+                    </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setBuiltSentence([]);
-                        const target = `${currentWord.english} is great!`.split(" ").filter(Boolean);
-                        setAvailableWords([...target].sort(() => Math.random() - 0.5));
-                      }}
-                      disabled={sentenceFeedback !== null}
-                      style={{ touchAction: 'manipulation' }}
-                      className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >Clear</button>
-                    <button
-                      onClick={() => {
-                        const target = `${currentWord.english} is great!`;
-                        const built = builtSentence.join(" ");
-                        if (built.toLowerCase() === target.toLowerCase()) {
-                          setSentenceFeedback("correct");
-                          handleFeedback(true);
-                        } else {
-                          setSentenceFeedback("incorrect");
-                          setTimeout(() => setSentenceFeedback(null), 1500);
-                        }
-                      }}
-                      disabled={builtSentence.length === 0 || sentenceFeedback !== null}
-                      style={{ touchAction: 'manipulation' }}
-                      className="flex-1 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50"
-                    >Check ✓</button>
-                  </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Feedback */}
@@ -1892,88 +1971,118 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="text-center"
+              className="flex flex-col items-center text-center"
             >
-              <div className="text-6xl mb-4">🎉</div>
-              <h1 className="text-3xl font-black font-headline text-stone-900 mb-2">
+              {/* Trophy hero — matches real GameFinishedView */}
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="mb-6"
+              >
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/30">
+                  <Trophy size={48} className="text-white sm:w-16 sm:h-16" />
+                </div>
+              </motion.div>
+
+              <h1 className="text-3xl sm:text-5xl font-black font-headline text-stone-900 mb-2">
                 {t.greatJob}
               </h1>
-              <p className="text-stone-600 mb-6">
+              <p className="text-stone-500 text-sm sm:text-base mb-6 sm:mb-8">
                 {t.completedDemo}
               </p>
 
-              {/* XP Title */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-4 border border-blue-200">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Crown size={24} className={xpTitle.color} />
-                  <span className="font-black text-xl" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
+              {/* Score / XP / Streak triple card — matches GameFinishedView */}
+              <div className="w-full flex flex-col sm:flex-row gap-3 mb-4 sm:mb-6">
+                <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md flex-1 text-center border border-stone-100">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-1 font-black">Final Score</p>
+                  <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
                 </div>
-                <p className="text-sm text-stone-600">{xp} XP • {score} {t.correctAns}</p>
+                <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md flex-1 text-center border border-stone-100">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-1 font-black">Total XP</p>
+                  <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
+                </div>
+                {streak > 0 && (
+                  <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
+                    <p className="text-[10px] sm:text-xs uppercase tracking-widest text-orange-500 mb-1 font-black">Streak</p>
+                    <p className="text-4xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
+                  </div>
+                )}
               </div>
 
-              {/* Stats */}
-              <div className="bg-white rounded-3xl p-6 mb-6 shadow-sm border border-stone-200">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-3xl font-black text-blue-600">{score}/{DEMO_WORDS.length}</div>
-                    <div className="text-sm text-stone-500">{t.correctAns}</div>
-                  </div>
-                  <div>
-                    <div className="text-3xl font-black text-amber-500">{xp}</div>
-                    <div className="text-sm text-stone-500">{t.xpEarned}</div>
-                  </div>
-                  <div>
-                    <div className="text-3xl">{avatar}</div>
-                    <div className="text-sm text-stone-500">{t.yourAvatar}</div>
-                  </div>
+              {/* Accuracy summary row — new, matches real app */}
+              <div className="bg-white rounded-2xl shadow-sm px-6 py-3 mb-6 text-stone-600 text-sm">
+                <span className="font-bold">{score}</span> / {DEMO_WORDS.length} correct
+              </div>
+
+              {/* XP Title callout */}
+              <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-6 border border-blue-200">
+                <div className="flex items-center justify-center gap-2">
+                  <Crown size={20} style={{ color: xpTitle.color }} />
+                  <span className="font-black text-lg" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
                 </div>
               </div>
 
               {/* Badges */}
               {badges.length > 0 && (
-                <div className="bg-white rounded-3xl p-4 mb-6 shadow-sm border border-stone-200">
-                  <p className="text-xs font-black text-stone-400 uppercase mb-3 tracking-widest">{t.badgesEarned}</p>
+                <div className="w-full mb-6">
+                  <p className="text-[10px] sm:text-xs font-black text-stone-400 uppercase mb-3 tracking-widest text-center">{t.badgesEarned}</p>
                   <div className="flex flex-wrap justify-center gap-2">
                     {badges.map((badge) => (
-                      <span key={badge} className="bg-amber-100 text-amber-900 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1">
-                        <Trophy size={14} />
-                        {badge}
-                      </span>
+                      <motion.div
+                        key={badge}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2"
+                      >
+                        <span className="text-lg">🏅</span>
+                        <span className="font-bold text-stone-800 text-sm">{badge}</span>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Summary card — recaps what the student just experienced
-                  and teases the full feature set without a sign-up CTA. */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white p-6 mb-6 shadow-xl shadow-violet-500/20">
-                <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 bg-yellow-300/25 rounded-full blur-3xl" />
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Gift size={20} />
-                    <h3 className="text-xl font-black">{t.wantMore}</h3>
-                  </div>
-                  <p className="text-sm text-white/90 leading-relaxed">
-                    {t.unlockFeatures}
-                  </p>
-                </div>
-              </div>
+              {/* "What's next?" action panel — matches GameFinishedView
+                  layout: single card, primary filled, secondary outlined. */}
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 240, damping: 22, delay: 0.3 }}
+                className="w-full bg-white rounded-[28px] shadow-2xl border border-stone-200 p-5 sm:p-6 max-w-md"
+              >
+                <p className="text-[11px] font-black uppercase tracking-widest text-center mb-3 text-stone-400">
+                  What's next?
+                </p>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={resetDemo}
-                  className={`flex-1 bg-stone-100 text-stone-800 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
-                >
-                  <RefreshCw size={18} />
-                  {t.playAgain}
-                </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 bg-stone-100 text-stone-800 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
-                >
-                  {t.closeDemo}
-                </button>
-              </div>
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    onClick={resetDemo}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
+                  >
+                    <RefreshCw size={20} />
+                    {t.playAgain}
+                  </button>
+                  <button
+                    onClick={() => setView("game-select")}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-stone-200 text-stone-800 px-6 py-3 rounded-2xl font-black text-sm sm:text-base hover:border-stone-300 active:scale-[0.98] transition-all"
+                  >
+                    Try Another Mode
+                  </button>
+                  <button
+                    onClick={onClose}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full text-stone-500 py-2 font-bold text-sm hover:text-stone-800 transition-colors"
+                  >
+                    {t.closeDemo}
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
 
@@ -2165,53 +2274,63 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* Avatars Tab - UNLOCKED FEATURES */}
               {shopTab === "avatars" && (
                 <div className="space-y-4">
-                  {Object.entries(AVATAR_CATEGORIES).map(([category, { emoji, unlockXP }]) => {
-                    const isUnlocked = xp >= unlockXP;
+                  <h2 className="text-xl font-black mb-2 text-stone-900">Avatar Collections</h2>
+                  <p className="text-stone-500 text-sm mb-4">Earn XP to unlock new avatar packs! Select any unlocked avatar to equip it.</p>
+                  {(Object.keys(REAL_AVATAR_CATEGORIES) as Array<keyof typeof REAL_AVATAR_CATEGORIES>).map((category) => {
+                    const unlock = AVATAR_CATEGORY_UNLOCKS[category] ?? { xpRequired: 0, label: 'Free' };
+                    const isUnlocked = xp >= unlock.xpRequired;
+                    const progressPercent = unlock.xpRequired > 0 ? Math.min(100, Math.round((xp / unlock.xpRequired) * 100)) : 100;
                     return (
-                      <div key={category} className={`bg-white rounded-3xl p-4 shadow-md border-2 ${isUnlocked ? 'border-green-300' : 'border-stone-200'} ${isRTL ? 'text-right' : ''}`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-bold text-stone-800">{category}</h3>
-                          {isUnlocked ? (
-                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold flex items-center gap-1">
-                              <Check size={14} /> UNLOCKED
-                            </span>
-                          ) : (
-                            <span className="text-xs bg-stone-100 text-stone-500 px-3 py-1 rounded-full font-bold">
-                              🔒 {unlockXP} XP
-                            </span>
-                          )}
-                        </div>
-
-                        {isUnlocked ? (
-                          <div className="grid grid-cols-6 gap-2">
-                            {emoji.map((e) => (
-                              <button
-                                key={e}
-                                onClick={() => { setAvatar(e); setView("game-select"); }}
-                                className={`text-2xl p-2 rounded-xl text-center transition-all hover:scale-110 ${avatar === e ? 'bg-blue-100 ring-2 ring-blue-500' : 'bg-stone-100 hover:bg-stone-200'}`}
-                              >
-                                {e}
-                              </button>
-                            ))}
+                      <div key={category} className={`rounded-2xl border-2 overflow-hidden transition-all ${isUnlocked ? 'border-green-200 bg-green-50/50' : 'border-stone-200 bg-stone-50'}`}>
+                        <div className={`flex items-center justify-between px-4 py-3 ${isUnlocked ? 'bg-green-100/50' : 'bg-stone-100'}`}>
+                          <div className="flex items-center gap-2">
+                            {isUnlocked ? (
+                              <Check size={16} className="text-green-600" />
+                            ) : (
+                              <span className="text-sm">🔒</span>
+                            )}
+                            <span className={`text-sm font-black ${isUnlocked ? 'text-green-800' : 'text-stone-500'}`}>{category}</span>
+                            <span className="text-xs text-stone-400">({REAL_AVATAR_CATEGORIES[category].length} avatars)</span>
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-6 gap-2 opacity-50">
-                              {emoji.slice(0, 6).map((e) => (
-                                <div key={e} className="text-2xl p-2 bg-stone-100 rounded-xl text-center">{e}</div>
-                              ))}
-                              {emoji.length > 6 && (
-                                <div className="col-span-6 flex items-center justify-center text-xs text-stone-500">
-                                  +{emoji.length - 6} more
-                                </div>
-                              )}
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isUnlocked ? 'bg-green-200 text-green-800' : 'bg-amber-100 text-amber-700'}`}>
+                            {unlock.xpRequired === 0 ? 'Free' : isUnlocked ? 'Unlocked!' : `${unlock.label} needed`}
+                          </span>
+                        </div>
+                        {!isUnlocked && (
+                          <div className="px-4 pt-2 pb-1">
+                            <div className="w-full bg-stone-200 rounded-full h-1.5">
+                              <div className="bg-amber-400 h-1.5 rounded-full transition-all" style={{ width: `${progressPercent}%` }}></div>
                             </div>
-                            <div className="w-full py-2 bg-stone-100 text-stone-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-stone-200">
-                              <ShoppingBag size={16} />
-                              Unlocks by earning XP in the full version
-                            </div>
+                            <p className="text-xs text-stone-400 mt-1">{xp} / {unlock.xpRequired} XP ({progressPercent}%)</p>
                           </div>
                         )}
+                        <div className={`grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 p-3 sm:p-4 ${!isUnlocked ? 'opacity-40 pointer-events-none' : ''}`}>
+                          {REAL_AVATAR_CATEGORIES[category].map((a) => {
+                            const isEquipped = avatar === a;
+                            return (
+                              <button
+                                key={a}
+                                onClick={() => { if (isUnlocked) { setAvatar(a); setView('game-select'); } }}
+                                type="button"
+                                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                                className={`relative aspect-square flex items-center justify-center rounded-2xl text-3xl sm:text-4xl transition-all border ${
+                                  isEquipped
+                                    ? 'bg-gradient-to-br from-indigo-400 via-violet-500 to-fuchsia-500 border-white shadow-lg shadow-violet-300/50 ring-2 ring-violet-400 scale-105'
+                                    : isUnlocked
+                                    ? 'bg-gradient-to-br from-white to-stone-50 border-stone-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-200 shadow-sm cursor-pointer'
+                                    : 'bg-stone-100 border-stone-200 grayscale'
+                                }`}
+                              >
+                                <span className="drop-shadow-sm">{isUnlocked ? a : '?'}</span>
+                                {isEquipped && (
+                                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-md">
+                                    <Check size={12} className="text-violet-600" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
