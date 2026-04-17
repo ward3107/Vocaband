@@ -415,8 +415,20 @@ export const useAudio = () => {
   }
 
   const playMotivational = (): string => {
-    // Stop any currently playing motivational audio AND any word audio —
-    // otherwise the previous word's pronunciation and the praise overlap.
+    // Drain the OLD motivational cleanly BEFORE stopping anything else —
+    // otherwise stopping the old sound fires its 'stop' event, which runs
+    // drainWaiters, which nulls currentMotivational and fires queued
+    // word-speaks in the tiny window before we set the new one. That race
+    // was why long praise phrases still overlapped the next word.
+    if (currentMotivational) {
+      currentMotivational.off('end')
+      currentMotivational.off('stop')
+      currentMotivational.off('loaderror')
+    }
+    onMotivationalEndListeners.length = 0
+    currentMotivational = null
+
+    // Now safe to stop anything still making noise.
     Object.values(motivationalCache).forEach(h => h.stop())
     Object.values(wordCache).forEach(h => h.stop())
     window.speechSynthesis?.cancel()

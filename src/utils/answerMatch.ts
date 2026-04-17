@@ -71,3 +71,34 @@ export function isAnswerCorrect(studentInput: string, expectedWord: string): boo
 
   return student === formA || student === formB;
 }
+
+/**
+ * Clean an English vocabulary entry for ON-SCREEN DISPLAY.
+ *
+ * The Ministry of Education curriculum carries parenthetical context like
+ * "(be) in a hurry" or POS markers like "happy (adj)" to help teachers.
+ * Students don't need to see that — it's noise that distracts from the
+ * actual word they're learning. This helper strips them so the word card
+ * shows the cleanest possible form.
+ *
+ * Rules:
+ *   - POS tags ((n), (v), (adj), (adv), (prep), (conj), (pron), (art),
+ *     (interj), (num)) stripped entirely
+ *   - Any other parenthetical content ALSO stripped (so "(be) in a hurry"
+ *     shows as "in a hurry" — answer matching still accepts both forms
+ *     so the student can't be marked wrong for typing either)
+ *   - Quotes trimmed; whitespace collapsed; case preserved
+ */
+export function cleanWordForDisplay(text: string): string {
+  if (!text) return "";
+  return text
+    // Strip POS tags (case-insensitive) — remove content and parens
+    .replace(POS_TAG_REGEX, " ")
+    // Strip ANY other parenthetical content + parens
+    .replace(/\([^)]*\)/g, " ")
+    // Trim leading/trailing quotes (straight + smart)
+    .replace(/^["'\u2018\u2019\u201C\u201D]+|["'\u2018\u2019\u201C\u201D]+$/g, "")
+    // Collapse whitespace + trim
+    .replace(/\s+/g, " ")
+    .trim();
+}
