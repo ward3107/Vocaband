@@ -42,6 +42,39 @@ export const DAILY_GOAL_BONUS = 30;
 // Thresholds used across the shop + pet evolution to gate progression.
 export const MASTERY_THRESHOLD = 5; // correct answers before a word counts as "mastered"
 
+// --- TEACHER REWARDS ---
+// Teachers can manually reward students for hard work, participation, etc.
+// No hard limits (trust teacher judgment), but all rewards are logged for audit.
+
+// XP preset amounts for quick selection
+export const TEACHER_XP_PRESETS = [10, 25, 50, 100] as const;
+
+// Special badges teachers can award (recognition for effort/behavior)
+export const TEACHER_BADGES = [
+  { id: '⭐', label: 'Star Student' },
+  { id: '🌟', label: 'Shining Star' },
+  { id: '👏', label: 'Great Effort' },
+  { id: '🤝', label: 'Helper' },
+  { id: '🔥', label: 'On Fire' },
+  { id: '💪', label: 'Persistent' },
+  { id: '🎯', label: 'Focused' },
+  { id: '🚀', label: 'Rising Star' },
+  { id: '🦸', label: 'Hero' },
+  { id: '👑', label: 'Class Champion' },
+] as const;
+
+// Locked avatars teachers can unlock for students
+export const LOCKED_AVATARS = [
+  '🦸', '🧙', '🧚', '🧜', '🧝', '🧛', '🧟', '🧞', '🦹', '🐉',
+  '🦄', '🦋', '🐞', '🦩', '🦚', '🦜', '🐇', '🐼', '🦁', '🐯'
+] as const;
+
+// Special titles teachers can award
+export const TEACHER_TITLES = [
+  'Class Champion', 'Mentor', 'Leader', 'Inspiration',
+  'Dedicated', 'Enthusiastic', 'Reliable', 'Creative'
+] as const;
+
 // --- CLASS AVATARS (teacher dashboard) ---
 // Curated pool teachers pick from when naming/customising a class.
 // Selection rules (chosen to meet teaching standards in Israel and
