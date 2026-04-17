@@ -7,6 +7,14 @@ const wordCacheOrder: number[] = [] // LRU tracking
 const motivationalCache: Record<string, Howl> = {}
 const failedWordIds = new Set<number>() // Track words that failed to load
 
+// Tracks the motivational Howl currently playing so speak() can defer word
+// playback until the praise finishes — otherwise "Champion!" and the next
+// word's pronunciation overlap, which sounds broken. Cleared on end/stop.
+let currentMotivational: Howl | null = null
+// Optional callback the game logic can attach to know when the motivational
+// has finished — kept alongside currentMotivational for extensibility.
+const onMotivationalEndListeners: Array<() => void> = []
+
 // ── Voice Selection for High-Quality TTS ──────────────────────────────────────
 // Cache the selected voice so the same voice is used consistently
 let cachedVoice: SpeechSynthesisVoice | null = null
@@ -309,6 +317,15 @@ export const useAudio = () => {
       return
     }
 
+    // If a motivational praise is still playing (e.g. "Champion!" right after
+    // a correct answer), defer the word playback until the praise finishes.
+    // Otherwise the two overlap and both sound broken. The deferred call
+    // doesn't re-enter this branch because by then currentMotivational is null.
+    if (currentMotivational && currentMotivational.playing()) {
+      onMotivationalEndListeners.push(() => speak(wordId, fallbackText))
+      return
+    }
+
     // Stop any currently playing audio first
     Object.values(wordCache).forEach(h => h.stop())
     window.speechSynthesis?.cancel()
@@ -395,8 +412,11 @@ export const useAudio = () => {
   }
 
   const playMotivational = (): string => {
-    // Stop any currently playing motivational audio
+    // Stop any currently playing motivational audio AND any word audio —
+    // otherwise the previous word's pronunciation and the praise overlap.
     Object.values(motivationalCache).forEach(h => h.stop())
+    Object.values(wordCache).forEach(h => h.stop())
+    window.speechSynthesis?.cancel()
 
     const key = pick()
 
@@ -411,6 +431,22 @@ export const useAudio = () => {
     }
 
     const sound = motivationalCache[key]
+
+    // Register this as the "currently playing" motivational so deferred
+    // word-playbacks in speak() can wait for it. Clear the pointer on end
+    // OR stop (both cases), and drain the queue of waiters.
+    currentMotivational = sound
+    const drainWaiters = () => {
+      currentMotivational = null
+      const queued = onMotivationalEndListeners.splice(0)
+      queued.forEach((fn) => { try { fn() } catch { /* swallow */ } })
+    }
+    sound.off('end')
+    sound.off('stop')
+    sound.off('loaderror')
+    sound.on('end', drainWaiters)
+    sound.on('stop', drainWaiters)
+    sound.on('loaderror', drainWaiters)
 
     // Play immediately if loaded, otherwise wait
     if (sound.state() === 'loaded') {
