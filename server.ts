@@ -491,6 +491,15 @@ async function startServer() {
 
   // Translation endpoint — server-side proxy to protect Google API key
   // Only authenticated teachers can access this
+  // Translate a batch of English words to Hebrew + Arabic using Gemini.
+  // Uses the same GOOGLE_AI_API_KEY that powers OCR/TTS — no extra setup.
+  // Previously delegated to Google Translate API (separate key), which most
+  // users never configured. Gemini produces noticeably better translations
+  // for school vocabulary because it can disambiguate polysemous words from
+  // context (e.g. "bank" as riverbank vs. financial institution).
+  //
+  // Response shape is unchanged: { hebrew: string[], arabic: string[] } in
+  // input order, so existing frontend code keeps working.
   app.post("/api/translate", async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
@@ -503,7 +512,6 @@ async function startServer() {
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    // Verify user is a teacher
     const userData = await getUserRoleAndClass(uid);
     if (!userData || userData.role !== "teacher") {
       return res.status(403).json({ error: "Only teachers can translate" });
@@ -514,59 +522,69 @@ async function startServer() {
       return res.status(400).json({ error: "words array required" });
     }
 
-    // Validate words
-    const validWords = words.filter((w: string) => typeof w === "string" && w.trim().length > 0);
+    const validWords = words
+      .filter((w: unknown): w is string => typeof w === "string" && w.trim().length > 0)
+      .slice(0, 100) // hard cap per request — 100 words is plenty for any single paste/OCR
+      .map(w => w.trim());
+
     if (validWords.length === 0) {
       return res.status(400).json({ error: "No valid words provided" });
     }
 
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey || apiKey.trim() === "") {
       return res.status(503).json({
-        error: "Google Translate API key not configured",
-        message: "Please add GOOGLE_TRANSLATE_API_KEY to your .env file to enable translation."
+        error: "Gemini API key not configured",
+        message: "GOOGLE_AI_API_KEY is not set.",
       });
     }
 
     try {
-      // Translate to Hebrew
-      const [hebrewResponse, arabicResponse] = await Promise.all([
-        fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            q: validWords,
-            source: "en",
-            target: "iw",
-            format: "text",
-          }),
-        }),
-        fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            q: validWords,
-            source: "en",
-            target: "ar",
-            format: "text",
-          }),
-        }),
-      ]);
+      const genAI = new GoogleGenerativeAI(apiKey.trim());
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      if (!hebrewResponse.ok || !arabicResponse.ok) {
-        throw new Error("Translation API error");
+      // Structured prompt so we can parse deterministically.
+      const prompt = `Translate these English words to Hebrew AND Arabic. Return ONLY a JSON array with this exact shape — no prose, no markdown fences:
+[{"english":"word","hebrew":"פירוש","arabic":"ترجمة"},...]
+
+Rules:
+- Output order MUST match input order.
+- If the English word already appears as-is in a target language (proper noun, brand, etc.), copy it.
+- Preserve pluralisation and grammatical form from the English input.
+- For multi-word phrases, translate the phrase, not word-by-word.
+- Never return an empty string — if you're unsure, transliterate phonetically.
+
+Input:
+${JSON.stringify(validWords)}`;
+
+      const result = await model.generateContent(prompt);
+      const raw = result.response.text().trim();
+      const cleaned = raw.replace(/```json?\s*|\s*```/g, "").trim();
+
+      let parsed: Array<{ english: string; hebrew: string; arabic: string }>;
+      try {
+        parsed = JSON.parse(cleaned);
+        if (!Array.isArray(parsed)) throw new Error("not an array");
+      } catch {
+        console.error("[translate] Gemini returned unparseable response:", raw.slice(0, 200));
+        return res.status(502).json({ error: "Translation parsing failed" });
       }
 
-      const hebrewData = await hebrewResponse.json();
-      const arabicData = await arabicResponse.json();
+      // Align by input order. If Gemini returns fewer items than requested
+      // (rare but possible), pad with empty strings so the arrays stay
+      // positional — frontend can show an auto-translate button for gaps.
+      const hebrew: string[] = [];
+      const arabic: string[] = [];
+      for (let i = 0; i < validWords.length; i++) {
+        const item = parsed[i];
+        hebrew.push(item?.hebrew?.trim() || "");
+        arabic.push(item?.arabic?.trim() || "");
+      }
 
-      res.json({
-        hebrew: hebrewData.data?.translations?.map((t: any) => t.translatedText) || [],
-        arabic: arabicData.data?.translations?.map((t: any) => t.translatedText) || [],
-      });
-    } catch (error) {
-      console.error("Translation error:", error);
-      res.status(500).json({ error: "Translation failed" });
+      res.json({ hebrew, arabic });
+    } catch (error: any) {
+      console.error("[translate] Gemini error:", error?.message || error);
+      res.status(500).json({ error: "Translation failed", message: (error?.message || "").substring(0, 200) });
     }
   });
 

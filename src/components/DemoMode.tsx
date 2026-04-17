@@ -459,6 +459,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   // True/False game state
   const [tfStatement, setTfStatement] = useState<{ word: Word; shownMeaning: string; isCorrect: boolean } | null>(null);
 
+  // Motivational message overlay — set on correct answer, cleared after
+  // the praise MP3 ends so the label animation stays on screen while the
+  // voice plays. Mirrors the real app's GameActiveView overlay.
+  const [motivationalMessage, setMotivationalMessage] = useState<string>("");
+
   // Flashcard state
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -475,7 +480,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "incorrect" | null>(null);
 
-  const { speak, preloadMany, playMotivational } = useAudio();
+  const { speak, preloadMany, playMotivational, getMotivationalLabel } = useAudio();
 
   // Track response timing for adaptive transitions
   const responseStartTime = useRef(Date.now());
@@ -829,7 +834,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       checkAndAwardBadges(true, newXp);
-      playMotivational();
+      // Show the praise label on screen (e.g. "Champion! 🏅") while the
+      // audio plays — auto-clears after ~1.8s so it doesn't linger on the
+      // next word. Mirrors the real app's motivational overlay timing.
+      const key = playMotivational();
+      setMotivationalMessage(getMotivationalLabel(key));
+      setTimeout(() => setMotivationalMessage(""), 1800);
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
     } else {
       setStreak(0);
@@ -1162,7 +1172,18 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              className="relative"
             >
+              {/* Motivational message overlay — mirrors GameActiveView.tsx:218
+                  so correct-answer praise feels identical to the real app. */}
+              {motivationalMessage && (
+                <div className="absolute top-20 left-0 right-0 flex justify-center z-30 pointer-events-none">
+                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/90 px-4 py-1.5 sm:px-5 sm:py-2.5 rounded-2xl shadow-lg">
+                    {motivationalMessage}
+                  </span>
+                </div>
+              )}
+
               {/* Header */}
               <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button
@@ -1208,8 +1229,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Progress (for most modes) */}
-              {["classic", "listening", "spelling", "scramble", "truefalse", "flashcards", "reverse", "lettersounds"].includes(selectedMode!) && (
+              {/* Progress bar now lives INSIDE each mode card (matches real
+                  app's GameActiveView). Older per-mode standalone progress
+                  was removed — only Classic/Listening/Reverse/TrueFalse have
+                  it baked in currently; other modes still get the wordOf pill. */}
+              {["spelling", "scramble", "flashcards", "lettersounds"].includes(selectedMode!) && (
                 <div className="mb-4">
                   <div className={`flex justify-between text-sm text-stone-500 mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span>{t.wordOf.replace('{current}', String(currentWordIndex + 1)).replace('{total}', String(DEMO_WORDS.length))}</span>
@@ -1224,31 +1248,40 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Classic Mode */}
+              {/* Classic Mode — matches GameActiveView.tsx + WordPromptCard:
+                  white card with shadow-2xl and rounded-[32px], big word
+                  display at top, stone volume button, 2-col answer grid
+                  styled identically to AnswerOptionButton. */}
               {selectedMode === "classic" && (
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
-                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-xs sm:text-base px-3 py-1 rounded-full mb-2 sm:mb-4">
+                  {/* Progress bar at top of card (matches real app) */}
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
                     {currentWordIndex + 1} / {DEMO_WORDS.length}
                   </span>
 
-                  <div className="flex flex-col items-center justify-center gap-4 mb-8">
-                    <h2 className="text-2xl sm:text-5xl font-black text-stone-900 break-words w-full text-center" dir="ltr">
+                  <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 break-words w-full text-center" dir="ltr">
                       {currentWord.english}
                     </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                       aria-label="Play pronunciation"
                     >
-                      <Volume2 size={24} className="text-stone-600" />
+                      <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
                     {options.map((option, i) => {
                       const optionWord = DEMO_WORDS.find(w => getMeaning(w, targetLanguage) === option);
                       const isSelected = selectedAnswer === option;
@@ -1258,9 +1291,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                       if (isHidden) return null;
 
-                      let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200";
-                      if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white scale-105 shadow-xl";
-                      if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
+                      // Matches AnswerOptionButton.tsx styling exactly so demo
+                      // options feel identical to the real app.
+                      let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300";
+                      if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white motion-safe:scale-105 shadow-xl";
+                      else if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
+                      else if (showResult) btnClass = "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed";
 
                       return (
                         <button
@@ -1271,7 +1307,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
                         >
-                          {option}
+                          {showResult && isCorrectAnswer && <span aria-hidden="true">✓</span>}
+                          <span>{option}</span>
                         </button>
                       );
                     })}
@@ -1279,19 +1316,26 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </motion.div>
               )}
 
-              {/* Listening Mode — matches real app: stone card + stone
-                  volume pill + Classic-style 2-col answer grid with
-                  blurred word indicator. */}
+              {/* Listening Mode — unified card like Classic, with the word
+                  blurred (same visual cue as real WordPromptCard when
+                  gameMode === 'listening'). */}
               {selectedMode === "listening" && (
-                <div className="max-w-lg mx-auto">
-                  <div className="bg-white rounded-2xl sm:rounded-[32px] p-4 sm:p-8 mb-4 sm:mb-6 text-center shadow-2xl border border-stone-100">
-                    <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-3">
-                      {currentWordIndex + 1} / {DEMO_WORDS.length}
-                    </span>
-                    {/* Blurred word so students train their ear — same
-                        visual cue the real WordPromptCard uses when
-                        gameMode === 'listening'. */}
-                    <h2 className="text-3xl sm:text-5xl font-black text-stone-900 blur-xl select-none opacity-20 mb-4" dir="ltr">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 blur-xl select-none opacity-20 break-words w-full text-center" dir="ltr">
                       {currentWord.english}
                     </h2>
                     <button
@@ -1301,10 +1345,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     >
                       <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
                     </button>
-                    <p className="text-xs sm:text-sm text-stone-400 mt-3 font-bold">{t.listenType}</p>
+                    <p className="text-xs sm:text-sm text-stone-400 font-bold">{t.listenType}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
                     {options.map((option, i) => {
                       const optionWord = DEMO_WORDS.find(w => getMeaning(w, targetLanguage) === option);
                       const isHidden = hiddenOptions.includes(optionWord?.id ?? -1);
@@ -1316,7 +1360,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                       let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300";
                       if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white motion-safe:scale-105 shadow-xl";
-                      if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
+                      else if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
+                      else if (showResult) btnClass = "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed";
 
                       return (
                         <button
@@ -1327,12 +1372,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
                         >
-                          {option}
+                          {showResult && isCorrectAnswer && <span aria-hidden="true">✓</span>}
+                          <span>{option}</span>
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Matching Mode — matches real MatchingModeGame: 2/3-col
@@ -1463,29 +1509,43 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* True/False Mode — matches real app's TrueFalseGame.
-                  Emerald + rose gradient buttons, big 3xl font, same
-                  stone-gradient prompt card. */}
+              {/* True/False Mode — unified card + progress + large
+                  translation shown (matches real TrueFalseGame which shows
+                  only the translation; demo keeps English + translation so
+                  a 2-min demo taster doesn't force students to listen). */}
               {selectedMode === "truefalse" && tfStatement && (
-                <div className="max-w-lg mx-auto">
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-6 sm:p-10 rounded-3xl mb-4 sm:mb-6 shadow-sm border border-stone-200 text-center">
-                    <div className="text-2xl sm:text-4xl font-black text-stone-900 mb-2" dir="ltr">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 sm:p-8 rounded-2xl sm:rounded-3xl mb-4 shadow-sm border border-stone-200 max-w-lg mx-auto">
+                    <div className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-900 mb-2" dir="ltr">
                       {tfStatement.word.english}
                     </div>
                     <div className="text-stone-400 text-sm mb-3 font-black">=</div>
-                    <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">
+                    <p className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-800" dir="auto">
                       {tfStatement.shownMeaning}
                     </p>
                     <button
                       onClick={() => speakWord(tfStatement.word.id)}
-                      className="mt-5 p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="mt-4 p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                       aria-label="Play pronunciation"
                     >
-                      <Volume2 size={20} className="text-stone-600" />
+                      <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-lg mx-auto">
                     <button
                       type="button"
                       onClick={() => handleTFAnswer(true)}
@@ -1505,7 +1565,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       False ✗
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Flashcards Mode — matches real FlashcardsGame: stone
@@ -1565,24 +1625,39 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Reverse Mode (translate from Hebrew/Arabic to English) */}
+              {/* Reverse Mode — translate from Hebrew/Arabic to English.
+                  Unified card like Classic, translation at top, English
+                  text input below. */}
               {selectedMode === "reverse" && (
-                <div className="max-w-md mx-auto">
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 mb-4 sm:mb-6 text-center shadow-sm border border-stone-200">
-                    <p className="text-stone-400 text-xs font-black uppercase tracking-widest mb-2">{t.reverseTitle}</p>
-                    <div className="text-3xl sm:text-4xl font-black text-stone-900 mb-3" dir="auto">
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
+                  />
+
+                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                    {currentWordIndex + 1} / {DEMO_WORDS.length}
+                  </span>
+
+                  <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
+                    <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest">{t.reverseTitle}</p>
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 break-words w-full text-center" dir="auto">
                       {getMeaning(currentWord, targetLanguage)}
-                    </div>
+                    </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-2.5 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
                       aria-label="Play pronunciation"
                     >
-                      <Volume2 size={20} className="text-stone-600" />
+                      <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                     </button>
                   </div>
 
-                  <form onSubmit={(e) => { e.preventDefault(); if (spellingInput.trim()) handleReverseAnswer(spellingInput); }}>
+                  <form onSubmit={(e) => { e.preventDefault(); if (spellingInput.trim()) handleReverseAnswer(spellingInput); }} className="max-w-md mx-auto">
                     <input
                       autoFocus
                       type="text"
@@ -1590,7 +1665,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all ${
                         isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
                         isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
                         "border-stone-100 focus:border-stone-900 outline-none"
@@ -1601,14 +1676,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <button
                         type="submit"
                         disabled={!spellingInput.trim()}
-                        style={{ touchAction: 'manipulation' }}
-                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Check Answer
                       </button>
                     )}
                   </form>
-                </div>
+                </motion.div>
               )}
 
               {/* Letter Sounds Mode — matches real LetterSoundsGame:
