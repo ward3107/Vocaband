@@ -5734,6 +5734,30 @@ export default function App() {
             setEditingClass(null);
             showToast('Class updated.', 'success');
           }}
+          onNameChange={async (classId, newName) => {
+            const { error } = await supabase
+              .from('classes')
+              .update({ name: newName })
+              .eq('id', classId);
+            if (error) {
+              showToast('Could not update name. Please try again.', 'error');
+              return;
+            }
+            setClasses(prev => prev.map(c => c.id === classId ? { ...c, name: newName } : c));
+            showToast('Name updated.', 'success');
+          }}
+          onAvatarChange={async (classId, newAvatar) => {
+            const { error } = await supabase
+              .from('classes')
+              .update({ avatar: newAvatar })
+              .eq('id', classId);
+            if (error) {
+              showToast('Could not update avatar. Please try again.', 'error');
+              return;
+            }
+            setClasses(prev => prev.map(c => c.id === classId ? { ...c, avatar: newAvatar } : c));
+            showToast('Avatar updated.', 'success');
+          }}
           onEditAssignment={(assignment, c) => {
             setEditingAssignment(assignment);
             const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));

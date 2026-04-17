@@ -19,6 +19,10 @@ import {
   BookOpen,
   Volume2,
   PenTool,
+  BarChart3,
+  Clock,
+  CheckCircle2,
+  Layers,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -620,6 +624,244 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         </motion.span>
                       ))}
                     </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Teacher Features Section - Why Teachers Love Vocaband */}
+        <section className="py-20 px-4 md:px-6 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-7xl mx-auto mb-12 text-center"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sky-500/20 backdrop-blur-md border border-sky-400/30 mb-6"
+            >
+              <GraduationCap size={16} className="text-sky-300" />
+              <span className="text-sm font-black tracking-widest uppercase text-sky-200">
+                For Teachers
+              </span>
+            </motion.div>
+            <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
+              Why Teachers Love Vocaband
+            </h2>
+            <p className="text-lg text-white/80 font-bold">
+              Engage your class with zero prep time.
+            </p>
+          </motion.div>
+
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Auto-Grading - Large Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              whileHover={{ y: -12, scale: 1.02 }}
+              className="relative group md:col-span-2"
+            >
+              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
+                    <CheckCircle2 size={40} />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <h3 className="text-3xl md:text-4xl font-black mb-3">Auto-Grading</h3>
+                    <p className="text-white/80 font-bold text-lg max-w-2xl">
+                      Every practice session graded instantly. No worksheets to collect, no stacks to review. Focus on teaching, not paperwork.
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="text-6xl">✅</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Ready-Made Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              whileHover={{ y: -12, scale: 1.03 }}
+              className="relative group"
+            >
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                    <Layers size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">Or Use Your Own Words</h3>
+                  <p className="text-white/80 font-bold text-sm">
+                    Upload your custom vocabulary lists. Assign any words you need.
+                  </p>
+                  {/* Floating word cards */}
+                  <div className="mt-4 relative h-16 flex items-center justify-center">
+                    {["apple", "liberty", "journey"].map((word, i) => (
+                      <motion.div
+                        key={word}
+                        animate={{
+                          y: [0, -8, 0],
+                          opacity: [0.6, 1, 0.6],
+                          rotate: [-5, 5, -5],
+                        }}
+                        transition={{
+                          duration: 2.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.4,
+                        }}
+                        className="absolute px-3 py-1 rounded-lg bg-white/20 text-xs font-black"
+                        style={{ left: `${15 + i * 30}%` }}
+                      >
+                        {word}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Real-Time Analytics */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              whileHover={{ y: -12, scale: 1.03 }}
+              className="relative group"
+            >
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                    <BarChart3 size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">Spot Who's Struggling</h3>
+                  <p className="text-white/80 font-bold text-sm">
+                    Real-time analytics show exactly who needs help — before the test.
+                  </p>
+                  {/* Animated chart bars */}
+                  <div className="mt-4 relative h-16 flex items-end justify-center gap-2">
+                    {[40, 65, 45, 80, 55, 90].map((height, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ height: [height * 0.3, height, height * 0.5] }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.1,
+                        }}
+                        className="w-6 bg-white/30 rounded-t-lg"
+                        style={{ height: `${height}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Quick Setup */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              whileHover={{ y: -12, scale: 1.03 }}
+              className="relative group"
+            >
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                    <Clock size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">Setup in 30 Seconds</h3>
+                  <p className="text-white/80 font-bold text-sm">
+                    Create class → Share code → Students join. That's it.
+                  </p>
+                  {/* Clock tick animation */}
+                  <div className="mt-4 relative h-16 flex items-center justify-center">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                      className="text-5xl relative"
+                    >
+                      ⏱️
+                      <motion.span
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full"
+                      />
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Student Engagement */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              whileHover={{ y: -12, scale: 1.03 }}
+              className="relative group"
+            >
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                    <Sparkles size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">They Actually Want to Practice</h3>
+                  <p className="text-white/80 font-bold text-sm">
+                    Game modes, XP, streaks — students voluntarily study at home.
+                  </p>
+                  {/* Sparkle burst */}
+                  <div className="mt-4 relative h-16 flex items-center justify-center">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                      className="text-4xl"
+                    >
+                      🎮
+                    </motion.div>
+                    {[0, 1, 2, 3].map((i) => (
+                      <motion.span
+                        key={i}
+                        animate={{
+                          scale: [0, 1, 0],
+                          opacity: [0, 1, 0],
+                          rotate: [0, 180],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                          delay: i * 0.3,
+                        }}
+                        className="absolute text-lg"
+                        style={{
+                          top: `${20 + Math.sin(i * 1.5) * 20}%`,
+                          left: `${30 + i * 15}%`,
+                        }}
+                      >
+                        ✨
+                      </motion.span>
+                    ))}
                   </div>
                 </div>
               </div>
