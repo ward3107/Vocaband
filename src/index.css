@@ -234,6 +234,20 @@ h1, h2, h3, h4, h5, h6, .font-headline {
   animation: pulse-subtle-float 3s ease-in-out infinite;
 }
 
+/* Shine effect for buttons */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shine {
+  animation: shine 1.5s ease-in-out;
+}
+
 /* =============================================================================
    Accessibility Utilities (WCAG 2.0 AA / IS 5568)
    ============================================================================= */

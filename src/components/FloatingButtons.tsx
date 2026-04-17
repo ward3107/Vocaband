@@ -2,6 +2,16 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Share2, MessageCircle, Link2, Check, ArrowUp, Facebook, Instagram, Music2 } from "lucide-react";
 import { motion } from "motion/react";
 
+// Brand colors for social platforms
+const BRAND_COLORS = {
+  facebook: '#1877F2',
+  whatsapp: '#25D366',
+  instagram: 'linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D, #F56040, #F77737, #FCAF45, #FFDC80)',
+  tiktok: 'linear-gradient(45deg, #00F2EA, #FF0050)',
+  copy: '#6B7280',
+  copySuccess: '#22C55E',
+} as const;
+
 interface FloatingButtonsProps {
   showBackToTop?: boolean;
   className?: string;
@@ -190,6 +200,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "Facebook",
       icon: Facebook,
+      brandColor: BRAND_COLORS.facebook,
+      gradient: false,
       action: () => {
         window.open(
           `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
@@ -200,6 +212,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "WhatsApp",
       icon: MessageCircle,
+      brandColor: BRAND_COLORS.whatsapp,
+      gradient: false,
       action: () => {
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, "_blank");
       },
@@ -207,6 +221,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "Instagram",
       icon: Instagram,
+      brandColor: BRAND_COLORS.instagram,
+      gradient: true,
       // Instagram doesn't support web-based link sharing (no web share
       // intent — their deep link is app-only + often unreliable).  So we
       // copy the message + URL to clipboard and nudge the student to
@@ -227,6 +243,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "TikTok",
       icon: Music2,
+      brandColor: BRAND_COLORS.tiktok,
+      gradient: true,
       // TikTok has no share intent either — same copy-to-clipboard
       // pattern + best-effort app deep link.
       action: () => {
@@ -243,6 +261,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     {
       name: "Copy Link",
       icon: copied ? Check : Link2,
+      brandColor: copied ? BRAND_COLORS.copySuccess : BRAND_COLORS.copy,
+      gradient: false,
       action: () => {
         navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
         setCopied(true);
@@ -373,6 +393,27 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
             {shareOptions.map((option, index) => {
               const Icon = option.icon;
               const isThisHovered = isHovered === option.name;
+
+              // Brand color styling
+              const getBrandStyle = () => {
+                if (option.gradient) {
+                  return {
+                    background: option.brandColor as string,
+                    color: 'white',
+                    boxShadow: isThisHovered
+                      ? `0 0 20px ${option.brandColor === BRAND_COLORS.instagram ? 'rgba(193, 53, 132, 0.6)' : 'rgba(0, 242, 234, 0.6)'}`
+                      : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  };
+                }
+                return {
+                  backgroundColor: option.brandColor as string,
+                  color: 'white',
+                  boxShadow: isThisHovered
+                    ? `0 0 16px ${option.brandColor}80`
+                    : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                };
+              };
+
               return (
                 <motion.button
                   key={option.name}
@@ -387,17 +428,13 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.15 }}
                   whileTap={{ scale: 0.9 }}
-                  className="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all duration-200"
-                  style={
-                    copied && option.name === "Copy Link"
-                      ? { backgroundColor: 'rgb(34, 197, 94)', color: 'white' }
-                      : { ...styles.popupItem, transform: isThisHovered ? 'scale(1.15)' : undefined }
-                  }
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border-2 border-white/20"
+                  style={getBrandStyle()}
                   title={option.name}
                   role="menuitem"
                   aria-label={`Share via ${option.name}`}
                 >
-                  <Icon size={18} strokeWidth={2.5} aria-hidden="true" />
+                  <Icon size={20} strokeWidth={2.5} aria-hidden="true" />
                 </motion.button>
               );
             })}
