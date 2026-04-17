@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "motion/react";
 import {
   Rocket,
@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
-import { AccessibilityWidget } from "./AccessibilityWidget";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
@@ -38,18 +37,6 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
-  // Accessibility widget state - session-based hide (widget uses same key internally)
-  const [a11yOpen, setA11yOpen] = useState(false);
-  const [a11yDismissed, setA11yDismissed] = useState(() => {
-    try { return sessionStorage.getItem('a11y_dismissed') === '1'; } catch { return false; }
-  });
-
-  const handleA11yDismiss = () => {
-    try { sessionStorage.setItem('a11y_dismissed', '1'); } catch { /* ignore */ }
-    setA11yDismissed(true);
-    setA11yOpen(false);
-  };
-
   // Floating 3D cards data for hero
   const floatingCards = [
     { icon: <Gamepad2 size={24} />, name: "10 Game Modes", color: "from-violet-500 to-purple-600", delay: 0 },
@@ -1165,28 +1152,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <FloatingButtons />
 
-      {/* Accessibility Widget - only show if not dismissed */}
-      {!a11yDismissed && (
-        <AccessibilityWidget
-          open={a11yOpen}
-          onOpenChange={setA11yOpen}
-          onDismiss={handleA11yDismiss}
-        />
-      )}
-
-      {/* Floating A11y Button - only show if not dismissed */}
-      {!a11yDismissed && (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setA11yOpen(true)}
-          aria-label="Open accessibility options"
-          className="fixed bottom-28 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
-          type="button"
-        >
-          <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
-        </motion.button>
-      )}
+      {/* Floating A11y Button - opens global widget */}
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
+        aria-label="Open accessibility options"
+        className="fixed bottom-28 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
+        type="button"
+      >
+        <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
+      </motion.button>
     </div>
   );
 };
