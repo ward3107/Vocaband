@@ -70,9 +70,10 @@ function saveSettings(s: A11ySettings) {
 interface AccessibilityWidgetProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onDismiss?: () => void;
 }
 
-export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: controlledOpen, onOpenChange }) => {
+export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: controlledOpen, onOpenChange, onDismiss }) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = (val: boolean) => {
@@ -207,7 +208,8 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
     setDismissed(true);
     setIsOpen(false);
-  }, []);
+    onDismiss?.();
+  }, [onDismiss]);
 
   // Expose open function for external trigger (from nav bar)
   // Set this up BEFORE the dismissed check so nav button can re-open the panel

@@ -23,6 +23,7 @@ import {
   Clock,
   CheckCircle2,
   Layers,
+  Accessibility,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -55,9 +56,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <main>
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
-        <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative overflow-x-hidden flex items-center justify-center">
+        <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative flex items-center justify-center">
           {/* Animated Gradient Mesh Background */}
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden -z-10">
             <motion.div
               animate={{
                 scale: [1, 1.2, 1],
@@ -92,30 +93,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
               <div className="text-center lg:text-left">
-                {/* Tagline with glow */}
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-6"
-                >
-                  <Sparkles size={16} className="text-amber-400" />
-                  <span className="text-sm font-black tracking-widest uppercase text-white/90">
-                    Israeli English Curriculum
-                  </span>
-                </motion.div>
-
                 {/* Main Headline - 3D Text Effect */}
                 <motion.h1
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight tracking-wide mb-6"
+                  className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight break-words mb-6"
                 >
-                  <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
+                  <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     Level Up
                   </span>
                   <br />
-                  <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
+                  <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
                     Your Vocabulary
                   </span>
                 </motion.h1>
@@ -702,7 +691,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Layers size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Or Use Your Own Words</h3>
+                  <h3 className="text-2xl font-black mb-2">Use Your Own Words</h3>
                   <p className="text-white/80 font-bold text-sm">
                     Upload your custom vocabulary lists. Assign any words you need.
                   </p>
@@ -1051,7 +1040,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
                 <h2 className="text-4xl md:text-6xl lg:text-7xl font-black font-headline mb-6 tracking-tight">
                   Ready to Become a
-                  <span className="block mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
+                  <span className="inline-block pr-4 pb-2 mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
                     Vocabulary Legend?
                   </span>
                 </h2>
@@ -1102,7 +1091,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    Used in 100+ Schools
+                    Loved by Schools
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -1154,7 +1143,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* Copyright */}
             <div className="pt-8 text-center">
               <p className="text-white text-sm font-bold">
-                © {new Date().getFullYear()} Vocaband. Made with ❤️ for Israeli students.
+                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for Israeli students.
               </p>
             </div>
           </div>
@@ -1162,6 +1151,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       </main>
 
       <FloatingButtons />
+
+      {/* Floating A11y Button - opens global widget */}
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
+        aria-label="Open accessibility options"
+        className="fixed bottom-28 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
+        type="button"
+      >
+        <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
+      </motion.button>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Users,
   TrendingUp,
@@ -10,8 +10,10 @@ import {
   Gamepad2,
   Check,
   Plus,
+  Gift,
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
+import TeacherRewardModal from "../components/dashboard/TeacherRewardModal";
 import { ALL_WORDS } from "../data/vocabulary";
 import {
   supabase,
@@ -50,6 +52,9 @@ export default function AnalyticsView({
   const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
   // State for words selected for reteaching
   const [reteachWords, setReteachWords] = useState<Set<number>>(new Set());
+  // State for teacher rewards
+  const [rewardStudent, setRewardStudent] = useState<{ uid: string; name: string; avatar: string; xp?: number } | null>(null);
+  const [studentUidMap, setStudentUidMap] = useState<Map<string, { uid: string; xp: number }>>(new Map());
 
   // Per-class analytics
   const classAnalytics = useMemo(() => {
@@ -312,6 +317,40 @@ export default function AnalyticsView({
     setView("create-assignment");
   };
 
+  // Fetch student UIDs when class is selected (for reward functionality)
+  useEffect(() => {
+    const fetchStudentUids = async () => {
+      if (!selectedClass) {
+        setStudentUidMap(new Map());
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('list_students_in_class', {
+          p_class_code: selectedClass,
+        });
+
+        if (error) throw error;
+
+        // Create map of student name -> uid + xp
+        const map = new Map<string, { uid: string; xp: number }>();
+        if (data) {
+          data.forEach((student: { id: string; auth_uid: string | null; display_name: string; xp: number }) => {
+            // Use auth_uid as the user identifier for award_reward
+            if (student.auth_uid) {
+              map.set(student.display_name, { uid: student.auth_uid, xp: student.xp });
+            }
+          });
+        }
+        setStudentUidMap(map);
+      } catch (err) {
+        console.error('Failed to fetch student UIDs:', err);
+      }
+    };
+
+    fetchStudentUids();
+  }, [selectedClass]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24">
       <TopAppBar
@@ -444,24 +483,49 @@ export default function AnalyticsView({
                       <p className="text-stone-500 italic">All students are doing well! 🎉</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {currentAnalytics.strugglingStudents.slice(0, 6).map(s => (
-                          <button
-                            key={s.name}
-                            onClick={() => setSelectedStudent(s.name)}
-                            className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-all text-left border-2 border-amber-100 hover:border-amber-300"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="text-2xl">{s.avatar}</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-stone-900 truncate">{s.name}</p>
-                                <p className="text-stone-500 text-sm">{s.attempts} attempts</p>
+                        {currentAnalytics.strugglingStudents.slice(0, 6).map(s => {
+                          const studentInfo = studentUidMap.get(s.name);
+                          return (
+                            <div
+                              key={s.name}
+                              className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-all border-2 border-amber-100 hover:border-amber-300"
+                            >
+                              <button
+                                onClick={() => setSelectedStudent(s.name)}
+                                className="flex items-center gap-3 w-full text-left"
+                              >
+                                <span className="text-2xl">{s.avatar}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-stone-900 truncate">{s.name}</p>
+                                  <p className="text-stone-500 text-sm">{s.attempts} attempts</p>
+                                </div>
+                                <span className={`font-black text-xl ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>
+                                  {s.avg}%
+                                </span>
+                              </button>
+                              <div className="mt-2 pt-2 border-t border-amber-100 flex justify-end">
+                                <button
+                                  onClick={() => {
+                                    if (studentInfo) {
+                                      setRewardStudent({
+                                        uid: studentInfo.uid,
+                                        name: s.name,
+                                        avatar: s.avatar,
+                                        xp: studentInfo.xp,
+                                      });
+                                    }
+                                  }}
+                                  type="button"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold transition-colors"
+                                  title="Give reward"
+                                >
+                                  <Gift size={14} />
+                                  Reward
+                                </button>
                               </div>
-                              <span className={`font-black text-xl ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>
-                                {s.avg}%
-                              </span>
                             </div>
-                          </button>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -787,6 +851,20 @@ export default function AnalyticsView({
           </div>
         </div>
       )}
+
+      {/* Teacher Reward Modal */}
+      <TeacherRewardModal
+        student={rewardStudent}
+        onClose={() => setRewardStudent(null)}
+        onRewardGiven={() => {
+          // Optionally refresh data after giving reward
+        }}
+        showToast={(message, type) => {
+          // Simple toast notification
+          console.log(`[${type}] ${message}`);
+          // In a real app, this would use the app's toast system
+        }}
+      />
     </div>
   );
 }
