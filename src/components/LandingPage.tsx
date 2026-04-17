@@ -99,11 +99,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight break-words mb-6"
                 >
-                  <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
+                  <span className="inline-block pr-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     Level Up
                   </span>
                   <br />
-                  <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
+                  <span className="inline-block pr-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
                     Your Vocabulary
                   </span>
                 </motion.h1>
