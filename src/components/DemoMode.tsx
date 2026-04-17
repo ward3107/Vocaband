@@ -15,7 +15,13 @@ import {
   ShoppingBag,
   Trophy,
   Crown,
-  Target
+  Target,
+  BookOpen,
+  PenTool,
+  CheckCircle2,
+  Layers,
+  Shuffle,
+  Repeat,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
@@ -325,20 +331,47 @@ const demoTranslations: Record<Language, Record<string, string>> = {
   },
 };
 
-// Per-mode gradient — keeps cards visually distinct and mirrors the
-// visual language of the real-app GameModeSelectionView so students
-// feel at home when they graduate from the demo.
-const MODE_GRADIENTS: Record<string, string> = {
-  classic:     'from-emerald-500 via-teal-500 to-cyan-600',
-  listening:   'from-sky-500 via-blue-500 to-indigo-600',
-  spelling:    'from-violet-500 via-purple-500 to-fuchsia-600',
-  matching:    'from-amber-500 via-orange-500 to-rose-500',
-  truefalse:   'from-rose-500 via-pink-500 to-fuchsia-500',
-  flashcards:  'from-cyan-500 via-sky-500 to-blue-500',
-  scramble:    'from-indigo-500 via-violet-500 to-purple-600',
-  reverse:     'from-fuchsia-500 via-pink-500 to-rose-500',
-  lettersounds:'from-violet-500 via-fuchsia-500 to-pink-500',
-  sentence:    'from-teal-500 via-emerald-500 to-green-600',
+// Visual mapping for mode cards — mirrors the real app's
+// GameModeSelectionView exactly (same Tailwind palette, same Lucide icons).
+// Keeping these two maps rather than hex codes means when the real view
+// swaps a colour, updating this map keeps demo in sync with one edit.
+const MODE_CARD_CLASSES: Record<string, string> = {
+  classic:      'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 text-emerald-700',
+  listening:    'bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700',
+  spelling:     'bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700',
+  matching:     'bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700',
+  truefalse:    'bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700',
+  flashcards:   'bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700',
+  scramble:     'bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700',
+  reverse:      'bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700',
+  lettersounds: 'bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700',
+  sentence:     'bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700',
+};
+
+const MODE_ICON_COLORS: Record<string, string> = {
+  classic:      'text-emerald-600',
+  listening:    'text-blue-600',
+  spelling:     'text-purple-600',
+  matching:     'text-amber-600',
+  truefalse:    'text-rose-600',
+  flashcards:   'text-cyan-600',
+  scramble:     'text-indigo-600',
+  reverse:      'text-fuchsia-600',
+  lettersounds: 'text-violet-600',
+  sentence:     'text-teal-600',
+};
+
+const MODE_ICONS: Record<string, React.ReactNode> = {
+  classic:      <BookOpen size={24} />,
+  listening:    <Volume2 size={24} />,
+  spelling:     <PenTool size={24} />,
+  matching:     <Zap size={24} />,
+  truefalse:    <CheckCircle2 size={24} />,
+  flashcards:   <Layers size={24} />,
+  scramble:     <Shuffle size={24} />,
+  reverse:      <Repeat size={24} />,
+  lettersounds: <span className="text-2xl">🔡</span>,
+  sentence:     <span className="text-2xl">🧩</span>,
 };
 
 const GAME_MODES: Record<Language, { id: string; name: string; emoji: string; desc: string }[]> = {
@@ -1035,84 +1068,86 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <div className={`flex items-center justify-between mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              {/* Top bar — back button left, avatar/XP chip right.
+                  Outside the main card so the card itself feels clean. */}
+              <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button
                   onClick={() => setView("avatar")}
-                  className={`flex items-center gap-2 text-stone-500 hover:text-blue-600 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+                  className={`flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
                   {isRTL ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
                   {t.back}
                 </button>
-                <div className={`flex items-center gap-3 bg-stone-100 px-4 py-2 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <span className="text-3xl">{avatar}</span>
-                  <span className="font-bold text-stone-800">{displayName}</span>
+                <div className={`flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-2xl">{avatar}</span>
+                  <span className="font-bold text-on-surface">{displayName}</span>
                   {xp > 0 && (
-                    <div className={`flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full`}>
-                      <Target size={14} className="text-blue-600" />
-                      <span className="font-black text-blue-700 text-xs">{xp} XP</span>
+                    <div className="flex items-center gap-1 bg-primary/15 px-2 py-0.5 rounded-full">
+                      <Target size={14} className="text-primary" />
+                      <span className="font-black text-primary text-xs">{xp} XP</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-black font-headline text-stone-900 mb-1 text-center">
-                {t.chooseGame}
-              </h1>
-              <p className="text-stone-500 text-center mb-5 text-sm">
-                {t.tryPopular}
-              </p>
+              {/* Main card — white panel with blue accent bar and close X,
+                  exactly matching the real GameModeSelectionView layout. */}
+              <div className="w-full bg-white rounded-[32px] shadow-2xl p-5 sm:p-10 text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
 
-              {/* Power-ups strip — same visual language as real app's chips */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-3 mb-5 border border-amber-200">
-                <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">⚡ Power-ups (free in demo)</p>
-                <div className="flex justify-center gap-2">
-                  {POWER_UPS.map((pu) => (
-                    <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
-                      <span className="text-xl block">{pu.emoji}</span>
-                      <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
-                    </div>
-                  ))}
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-5 sm:mb-8 mt-4 sm:mt-0"
+                >
+                  <h2 className="text-2xl sm:text-4xl font-black mb-2 text-stone-900 tracking-tight">
+                    {t.chooseGame}
+                  </h2>
+                  <p className="text-stone-500 text-sm sm:text-lg font-medium">
+                    {t.tryPopular}
+                  </p>
+                </motion.div>
+
+                {/* Power-ups strip — demo-specific but styled to feel native */}
+                <div className="bg-amber-50 rounded-2xl p-3 mb-5 border border-amber-200">
+                  <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">
+                    ⚡ Power-ups (free in demo)
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    {POWER_UPS.map((pu) => (
+                      <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
+                        <span className="text-xl block">{pu.emoji}</span>
+                        <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Big gradient mode cards — mirror the real-app layout so
-                  students feel a consistent design language between the
-                  demo and the full product. */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {modes.map((mode) => {
-                  const grad = MODE_GRADIENTS[mode.id] ?? 'from-indigo-500 via-violet-500 to-fuchsia-500';
-                  return (
+                {/* Mode grid — identical layout to real app: 2 cols on
+                    mobile, 4 cols on desktop, pastel cards with icon-
+                    in-white-square. Clicking triggers demo's startGame. */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+                  {modes.map((mode, idx) => (
                     <motion.button
                       key={mode.id}
                       onClick={() => startGame(mode.id)}
                       type="button"
-                      style={{ touchAction: 'manipulation' }}
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${grad} p-5 text-left shadow-lg hover:shadow-2xl transition-all min-h-[140px]`}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      className={`p-4 sm:p-6 rounded-[24px] sm:rounded-[32px] text-center transition-all border-2 border-transparent flex flex-col items-center ${MODE_CARD_CLASSES[mode.id] ?? 'bg-stone-50 text-stone-700'} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      whileHover={{ scale: 1.05, translateY: -8 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      {/* Ambient glow in the corner */}
-                      <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 bg-white/20 rounded-full blur-2xl" />
-                      {/* Subtle contrast overlay */}
-                      <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10" />
-
-                      <div className="relative flex items-start gap-3">
-                        <div className="shrink-0 w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-3xl shadow-inner">
-                          {mode.emoji}
-                        </div>
-                        <div className={`flex-1 min-w-0 ${textAlign}`}>
-                          <h3 className="font-black text-white text-lg sm:text-xl leading-tight drop-shadow">{mode.name}</h3>
-                          <p className="text-xs sm:text-sm text-white/90 mt-1 leading-snug">{mode.desc}</p>
-                        </div>
+                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] sm:rounded-[20px] bg-white flex items-center justify-center mb-3 sm:mb-4 shadow-sm group-hover:shadow-md transition-all ${MODE_ICON_COLORS[mode.id] ?? 'text-stone-600'}`}>
+                        {MODE_ICONS[mode.id] ?? <span className="text-2xl">🎮</span>}
                       </div>
-
-                      <div className={`relative flex items-center justify-end mt-3 text-white/90 text-xs font-black uppercase tracking-widest ${isRTL ? 'justify-start' : 'justify-end'}`}>
-                        Play
-                        {isRTL ? <ArrowLeft size={14} className="ml-1" /> : <ArrowRight size={14} className="ml-1" />}
-                      </div>
+                      <p className="font-black text-sm sm:text-lg mb-1 leading-tight">{mode.name}</p>
+                      <p className="opacity-70 text-[11px] sm:text-xs font-bold leading-snug">{mode.desc}</p>
                     </motion.button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
