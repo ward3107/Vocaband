@@ -463,7 +463,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
   // Translation language toggle (independent of UI language)
-  const [targetLanguage, setTargetLanguage] = useState<TargetLang>(language === 'ar' ? 'arabic' : 'arabic');
+  const [targetLanguage, setTargetLanguage] = useState<TargetLang>(language === 'ar' ? 'arabic' : 'hebrew');
 
   // Letter sounds state
   const [letterOptions, setLetterOptions] = useState<string[]>([]);
