@@ -71,6 +71,10 @@ interface TeacherDashboardViewProps {
   onEditClass: (c: ClassData) => void;
   onCloseEditClass: () => void;
   onSaveClassEdit: (next: { name: string; avatar: string | null }) => Promise<void>;
+  /** Quick inline name change. */
+  onNameChange?: (classId: string, newName: string) => Promise<void>;
+  /** Quick inline avatar change. */
+  onAvatarChange?: (classId: string, newAvatar: string | null) => Promise<void>;
   onEditAssignment: (a: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (a: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (a: AssignmentData) => void;
@@ -91,6 +95,7 @@ export default function TeacherDashboardView({
   onQuickPlayClick, onLiveChallengeClick, onAnalyticsClick, onGradebookClick, onApprovalsClick,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
+  onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
 }: TeacherDashboardViewProps) {
   // Time-of-day greeting — small but friendly touch so the teacher feels the
@@ -155,6 +160,8 @@ export default function TeacherDashboardView({
             onAssign={onAssignClass}
             onDeleteClass={onDeleteClass}
             onEditClass={onEditClass}
+            onNameChange={onNameChange}
+            onAvatarChange={onAvatarChange}
             onEditAssignment={onEditAssignment}
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}

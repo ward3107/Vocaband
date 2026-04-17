@@ -1104,15 +1104,8 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, preloadMotivational, playMotivational: playMotivationalRaw, getMotivationalLabel, playWrong } = useAudio();
-
-  // In Quick Play online mode, keep word pronunciation but suppress motivational sounds
-  const isQuickPlayGuest = !!user?.isGuest;
-  const speakWord = speakWordRaw; // Always allow pronunciation
-  const playMotivational = (...args: Parameters<typeof playMotivationalRaw>) => {
-    if (isQuickPlayGuest) return ''; // Mute motivational sounds in QP
-    return playMotivationalRaw(...args);
-  };
+  const { speak: speakWordRaw, preloadMany, playWrong } = useAudio();
+  const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
@@ -1127,7 +1120,6 @@ export default function App() {
   // Reset on game start so each session is independent.
   const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
-  const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
     try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
   });
@@ -1237,7 +1229,6 @@ export default function App() {
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
-  useEffect(() => { if (feedback === null) setMotivationalMessage(null); }, [feedback]);
   useEffect(() => {
     isProcessingRef.current = !!feedback;
     gameDebug.logProcessing({ isProcessing: !!feedback, reason: `feedback changed to ${feedback}` });
@@ -1249,7 +1240,6 @@ export default function App() {
 
     const failsafeTimer = setTimeout(() => {
       setFeedback(null);
-      setMotivationalMessage(null);
     }, 5000);
 
     return () => clearTimeout(failsafeTimer);
@@ -1342,13 +1332,6 @@ export default function App() {
       fetchScores();
     }
   }, [view]);
-
-  // Speak motivational message during gameplay — only when student is in game view
-  useEffect(() => {
-    if (motivationalMessage && view === "game") {
-      playMotivational();
-    }
-  }, [motivationalMessage, view]);
 
   // Speak congratulatory message when a mode is finished — only in game view
   useEffect(() => {
@@ -4693,8 +4676,6 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
-      const mKey = playMotivational();
-      setMotivationalMessage(getMotivationalLabel(mKey));
       const newScore = score + 10;
       setScore(newScore);
 
@@ -4752,7 +4733,6 @@ export default function App() {
         // Show try again with attempt count
         setFeedback("wrong");
         playWrong();
-        setMotivationalMessage(`Try again (${currentAttempts}/${MAX_ATTEMPTS_PER_WORD})`);
 
         // Clear any pending timeout first
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -4811,7 +4791,6 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 15;
       setScore(newScore);
 
@@ -4873,8 +4852,6 @@ export default function App() {
 
     let currentScore = score;
     if (knewIt) {
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
-      setTimeout(() => setMotivationalMessage(null), 1000);
       currentScore = score + 5;
       setScore(currentScore);
       emitScoreUpdate(currentScore);
@@ -4930,7 +4907,6 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
-      setMotivationalMessage(getMotivationalLabel(playMotivational()));
       const newScore = score + 20;
       setScore(newScore);
 
@@ -5734,6 +5710,30 @@ export default function App() {
             setEditingClass(null);
             showToast('Class updated.', 'success');
           }}
+          onNameChange={async (classId, newName) => {
+            const { error } = await supabase
+              .from('classes')
+              .update({ name: newName })
+              .eq('id', classId);
+            if (error) {
+              showToast('Could not update name. Please try again.', 'error');
+              return;
+            }
+            setClasses(prev => prev.map(c => c.id === classId ? { ...c, name: newName } : c));
+            showToast('Name updated.', 'success');
+          }}
+          onAvatarChange={async (classId, newAvatar) => {
+            const { error } = await supabase
+              .from('classes')
+              .update({ avatar: newAvatar })
+              .eq('id', classId);
+            if (error) {
+              showToast('Could not update avatar. Please try again.', 'error');
+              return;
+            }
+            setClasses(prev => prev.map(c => c.id === classId ? { ...c, avatar: newAvatar } : c));
+            showToast('Avatar updated.', 'success');
+          }}
           onEditAssignment={(assignment, c) => {
             setEditingAssignment(assignment);
             const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
@@ -6041,6 +6041,10 @@ export default function App() {
           allScores={allScores}
           teacherAssignments={teacherAssignments}
           setView={setView}
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          selectedWords={selectedWords}
+          setSelectedWords={setSelectedWords}
         />
       </LazyWrapper>
     );
@@ -6102,7 +6106,6 @@ export default function App() {
           setWordAttempts={setWordAttempts}
           setHiddenOptions={setHiddenOptions}
           setSpellingInput={setSpellingInput}
-          setMotivationalMessage={setMotivationalMessage}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
           setView={setView}
@@ -6161,7 +6164,6 @@ export default function App() {
         setCurrentIndex={setCurrentIndex}
         currentWord={currentWord}
         feedback={feedback}
-        motivationalMessage={motivationalMessage}
         options={options}
         hiddenOptions={hiddenOptions}
         setHiddenOptions={setHiddenOptions}

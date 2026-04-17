@@ -22,6 +22,7 @@ import {
   Layers,
   Shuffle,
   Repeat,
+  Globe,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
@@ -332,30 +333,71 @@ const demoTranslations: Record<Language, Record<string, string>> = {
 // GameModeSelectionView exactly (same Tailwind palette, same Lucide icons).
 // Keeping these two maps rather than hex codes means when the real view
 // swaps a colour, updating this map keeps demo in sync with one edit.
+// Color classes matching GameModeSelectionView exactly
+const colorClasses: Record<string, string> = {
+  emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
+  blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
+  purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
+  amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
+  rose: "bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700",
+  cyan: "bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700",
+  indigo: "bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700",
+  fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
+  violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
+  teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
+};
+
+const iconColorClasses: Record<string, string> = {
+  emerald: "text-blue-700",
+  blue: "text-blue-600",
+  purple: "text-purple-600",
+  amber: "text-amber-600",
+  rose: "text-rose-600",
+  cyan: "text-cyan-600",
+  indigo: "text-indigo-600",
+  fuchsia: "text-fuchsia-600",
+  violet: "text-violet-600",
+  teal: "text-teal-600",
+};
+
+// Mode color mapping
+const MODE_COLORS: Record<string, string> = {
+  classic: "emerald",
+  listening: "blue",
+  spelling: "purple",
+  matching: "amber",
+  "true-false": "rose",
+  flashcards: "cyan",
+  scramble: "indigo",
+  reverse: "fuchsia",
+  "letter-sounds": "violet",
+  "sentence-builder": "teal",
+};
+
 const MODE_CARD_CLASSES: Record<string, string> = {
-  classic:      'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 text-emerald-700',
-  listening:    'bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700',
-  spelling:     'bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700',
-  matching:     'bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700',
-  truefalse:    'bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700',
-  flashcards:   'bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700',
-  scramble:     'bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700',
-  reverse:      'bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700',
-  lettersounds: 'bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700',
-  sentence:     'bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700',
+  classic:      'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 hover:from-emerald-100 hover:to-emerald-200 text-emerald-800 shadow-emerald-200/50 hover:shadow-emerald-300/70',
+  listening:    'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-800 shadow-blue-200/50 hover:shadow-blue-300/70',
+  spelling:     'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 text-purple-800 shadow-purple-200/50 hover:shadow-purple-300/70',
+  matching:     'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:from-amber-100 hover:to-amber-200 text-amber-800 shadow-amber-200/50 hover:shadow-amber-300/70',
+  "true-false":    'bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200 hover:from-rose-100 hover:to-rose-200 text-rose-800 shadow-rose-200/50 hover:shadow-rose-300/70',
+  flashcards:   'bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200 hover:from-cyan-100 hover:to-cyan-200 text-cyan-800 shadow-cyan-200/50 hover:shadow-cyan-300/70',
+  scramble:     'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 hover:from-indigo-100 hover:to-indigo-200 text-indigo-800 shadow-indigo-200/50 hover:shadow-indigo-300/70',
+  reverse:      'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 border-fuchsia-200 hover:from-fuchsia-100 hover:to-fuchsia-200 text-fuchsia-800 shadow-fuchsia-200/50 hover:shadow-fuchsia-300/70',
+  "letter-sounds": 'bg-gradient-to-br from-violet-50 to-violet-100 border-violet-200 hover:from-violet-100 hover:to-violet-200 text-violet-800 shadow-violet-200/50 hover:shadow-violet-300/70',
+  "sentence-builder":     'bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 hover:from-teal-100 hover:to-teal-200 text-teal-800 shadow-teal-200/50 hover:shadow-teal-300/70',
 };
 
 const MODE_ICON_COLORS: Record<string, string> = {
-  classic:      'text-emerald-600',
-  listening:    'text-blue-600',
-  spelling:     'text-purple-600',
-  matching:     'text-amber-600',
-  truefalse:    'text-rose-600',
-  flashcards:   'text-cyan-600',
-  scramble:     'text-indigo-600',
-  reverse:      'text-fuchsia-600',
-  lettersounds: 'text-violet-600',
-  sentence:     'text-teal-600',
+  classic:      'text-emerald-600 bg-emerald-100',
+  listening:    'text-blue-600 bg-blue-100',
+  spelling:     'text-purple-600 bg-purple-100',
+  matching:     'text-amber-600 bg-amber-100',
+  "true-false":    'text-rose-600 bg-rose-100',
+  flashcards:   'text-cyan-600 bg-cyan-100',
+  scramble:     'text-indigo-600 bg-indigo-100',
+  reverse:      'text-fuchsia-600 bg-fuchsia-100',
+  "letter-sounds": 'text-violet-600 bg-violet-100',
+  "sentence-builder":     'text-teal-600 bg-teal-100',
 };
 
 const MODE_ICONS: Record<string, React.ReactNode> = {
@@ -363,50 +405,142 @@ const MODE_ICONS: Record<string, React.ReactNode> = {
   listening:    <Volume2 size={24} />,
   spelling:     <PenTool size={24} />,
   matching:     <Zap size={24} />,
-  truefalse:    <CheckCircle2 size={24} />,
+  "true-false":    <CheckCircle2 size={24} />,
   flashcards:   <Layers size={24} />,
   scramble:     <Shuffle size={24} />,
   reverse:      <Repeat size={24} />,
-  lettersounds: <span className="text-2xl">🔡</span>,
-  sentence:     <span className="text-2xl">🧩</span>,
+  "letter-sounds": <span className="text-2xl">🔡</span>,
+  "sentence-builder":     <span className="text-2xl">🧩</span>,
 };
 
+// Game mode configuration with tooltips — matching GameModeSelectionView exactly
+const GAME_MODES_CONFIG: Array<{
+  id: string;
+  name: string;
+  desc: string;
+  color: string;
+  icon: React.ReactNode;
+  tooltip: string[];
+}> = [
+    {
+      id: "classic",
+      name: "Classic Mode",
+      desc: "See the word, hear the word, pick translation.",
+      color: "emerald",
+      icon: <BookOpen size={24} />,
+      tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"]
+    },
+    {
+      id: "listening",
+      name: "Listening Mode",
+      desc: "Only hear the word. No English text!",
+      color: "blue",
+      icon: <Volume2 size={24} />,
+      tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"]
+    },
+    {
+      id: "spelling",
+      name: "Spelling Mode",
+      desc: "Type the English word. Hardest mode!",
+      color: "purple",
+      icon: <PenTool size={24} />,
+      tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"]
+    },
+    {
+      id: "matching",
+      name: "Matching Mode",
+      desc: "Match Hebrew to English. Fun & fast!",
+      color: "amber",
+      icon: <Zap size={24} />,
+      tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"]
+    },
+    {
+      id: "true-false",
+      name: "True/False",
+      desc: "Is the translation correct? Quick thinking!",
+      color: "rose",
+      icon: <CheckCircle2 size={24} />,
+      tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"]
+    },
+    {
+      id: "flashcards",
+      name: "Flashcards",
+      desc: "Review words at your own pace. No pressure.",
+      color: "cyan",
+      icon: <Layers size={24} />,
+      tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"]
+    },
+    {
+      id: "scramble",
+      name: "Word Scramble",
+      desc: "Unscramble the letters to find the word.",
+      color: "indigo",
+      icon: <Shuffle size={24} />,
+      tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"]
+    },
+    {
+      id: "reverse",
+      name: "Reverse Mode",
+      desc: "See Hebrew/Arabic, pick the English word.",
+      color: "fuchsia",
+      icon: <Repeat size={24} />,
+      tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"]
+    },
+    {
+      id: "letter-sounds",
+      name: "Letter Sounds",
+      desc: "Watch each letter light up and hear its sound.",
+      color: "violet",
+      icon: <span className="text-2xl">🔡</span>,
+      tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"]
+    },
+    {
+      id: "sentence-builder",
+      name: "Sentence Builder",
+      desc: "Tap words in the right order to build the sentence.",
+      color: "teal",
+      icon: <span className="text-2xl">🧩</span>,
+      tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"]
+    },
+  ];
+
+// Localized mode data for translations (kept for backwards compatibility)
 const GAME_MODES: Record<Language, { id: string; name: string; emoji: string; desc: string }[]> = {
   en: [
-    { id: "classic", name: "Classic", emoji: "📝", desc: "See the word, pick the right translation." },
+    { id: "classic", name: "Classic", emoji: "📖", desc: "See the word, pick the right translation." },
     { id: "listening", name: "Listening", emoji: "🎧", desc: "Only hear the word. No English text!" },
-    { id: "spelling", name: "Spelling", emoji: "✍️", desc: "Hear the word, type it in English." },
-    { id: "matching", name: "Matching", emoji: "🔗", desc: "Match Hebrew/Arabic to English pairs." },
-    { id: "truefalse", name: "True / False", emoji: "✅", desc: "Is the translation correct? Quick!" },
-    { id: "flashcards", name: "Flashcards", emoji: "🎴", desc: "Review at your own pace." },
+    { id: "spelling", name: "Spelling", emoji: "✏️", desc: "Hear the word, type it in English." },
+    { id: "matching", name: "Matching", emoji: "⚡", desc: "Match Hebrew/Arabic to English pairs." },
+    { id: "true-false", name: "True / False", emoji: "✅", desc: "Is the translation correct? Quick!" },
+    { id: "flashcards", name: "Flashcards", emoji: "🃏", desc: "Review at your own pace." },
     { id: "scramble", name: "Scramble", emoji: "🔤", desc: "Unscramble the letters into a word." },
     { id: "reverse", name: "Reverse", emoji: "🔄", desc: "See the translation, pick the English word." },
-    { id: "lettersounds", name: "Letter Sounds", emoji: "🔡", desc: "Hear each letter, type the full word." },
-    { id: "sentence", name: "Sentence Builder", emoji: "🧩", desc: "Tap the words in the right order." },
+    { id: "letter-sounds", name: "Letter Sounds", emoji: "🔡", desc: "Hear each letter, type the full word." },
+    { id: "sentence-builder", name: "Sentence Builder", emoji: "🧩", desc: "Tap the words in the right order." },
   ],
   he: [
-    { id: "classic", name: "קלאסי", emoji: "📝", desc: "בחר את הפירוש הנכון" },
+    { id: "classic", name: "קלאסי", emoji: "📖", desc: "בחר את הפירוש הנכון" },
     { id: "listening", name: "הקשבה", emoji: "🎧", desc: "שמע וזהה" },
-    { id: "spelling", name: "איות", emoji: "✍️", desc: "הקלד את המילה נכון" },
-    { id: "matching", name: "התאמה", emoji: "🔗", desc: "התאם מילים לפירושים" },
-    { id: "truefalse", name: "נכון/לא נכון", emoji: "✓", desc: "האם זה נכון?" },
-    { id: "flashcards", name: "כרטיסיות", emoji: "🎴", desc: "הפוך ולמד" },
+    { id: "spelling", name: "איות", emoji: "✏️", desc: "הקלד את המילה נכון" },
+    { id: "matching", name: "התאמה", emoji: "⚡", desc: "התאם מילים לפירושים" },
+    { id: "true-false", name: "נכון/לא נכון", emoji: "✅", desc: "האם זה נכון?" },
+    { id: "flashcards", name: "כרטיסיות", emoji: "🃏", desc: "הפוך ולמד" },
     { id: "scramble", name: "ערבוב", emoji: "🔤", desc: "סדר את האותיות" },
     { id: "reverse", name: "הפוך", emoji: "🔄", desc: "תרגם לאנגלית" },
-    { id: "lettersounds", name: "צלילי אותיות", emoji: "🔡", desc: "השמע את זה" },
-    { id: "sentence", name: "בונה משפטים", emoji: "🧩", desc: "בנה משפטים" },
+    { id: "letter-sounds", name: "צלילי אותיות", emoji: "🔡", desc: "השמע את זה" },
+    { id: "sentence-builder", name: "בונה משפטים", emoji: "🧩", desc: "בנה משפטים" },
   ],
   ar: [
-    { id: "classic", name: "كلاسيكي", emoji: "📝", desc: "اختر المعنى الصحيح" },
+    { id: "classic", name: "كلاسيكي", emoji: "📖", desc: "اختر المعنى الصحيح" },
     { id: "listening", name: "استماع", emoji: "🎧", desc: "اسمع وحدد" },
-    { id: "spelling", name: "تهجئة", emoji: "✍️", desc: "اكتب الكلمة بشكل صحيح" },
-    { id: "matching", name: "مطابقة", emoji: "🔗", desc: "طابق الكلمات مع المعاني" },
-    { id: "truefalse", name: "صح/خطأ", emoji: "✓", desc: "هل هذا صحيح؟" },
-    { id: "flashcards", name: "بطاقات", emoji: "🎴", desc: "اقلب وتعلم" },
+    { id: "spelling", name: "تهجئة", emoji: "✏️", desc: "اكتب الكلمة بشكل صحيح" },
+    { id: "matching", name: "مطابقة", emoji: "⚡", desc: "طابق الكلمات مع المعاني" },
+    { id: "true-false", name: "صح/خطأ", emoji: "✅", desc: "هل هذا صحيح؟" },
+    { id: "flashcards", name: "بطاقات", emoji: "🃏", desc: "اقلب وتعلم" },
     { id: "scramble", name: "خلط", emoji: "🔤", desc: "رتب الحروف" },
     { id: "reverse", name: "عكس", emoji: "🔄", desc: "ترجم للإنجليزية" },
-    { id: "lettersounds", name: "أصوات الحروف", emoji: "🔡", desc: "انطقها" },
-    { id: "sentence", name: "بناء الجمل", emoji: "🧩", desc: "ابني جملًا" },
+    { id: "letter-sounds", name: "أصوات الحروف", emoji: "🔡", desc: "انطقها" },
+    { id: "sentence-builder", name: "بناء الجمل", emoji: "🧩", desc: "ابني جملًا" },
   ],
 };
 
@@ -421,7 +555,7 @@ const getXPTitle = (xpAmount: number) => {
 };
 
 const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
-  const { language, dir, isRTL, textAlign } = useLanguage();
+  const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
   const modes = GAME_MODES[language];
 
@@ -456,11 +590,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   // True/False game state
   const [tfStatement, setTfStatement] = useState<{ word: Word; shownMeaning: string; isCorrect: boolean } | null>(null);
 
-  // Motivational message overlay — set on correct answer, cleared after
-  // the praise MP3 ends so the label animation stays on screen while the
-  // voice plays. Mirrors the real app's GameActiveView overlay.
-  const [motivationalMessage, setMotivationalMessage] = useState<string>("");
-
   // Flashcard state
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -477,7 +606,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "incorrect" | null>(null);
 
-  const { speak, preloadMany, playMotivational, getMotivationalLabel } = useAudio();
+  const { speak, preloadMany } = useAudio();
 
   // Track response timing for adaptive transitions
   const responseStartTime = useRef(Date.now());
@@ -515,10 +644,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
         case "scramble":
           setScrambledWord(shuffleWord(cleanWordForDisplay(currentWord.english)));
           break;
-        case "truefalse":
+        case "true-false":
           generateTFStatement();
           break;
-        case "lettersounds":
+        case "letter-sounds":
           // Don't generate options - the full app reveals letters one by one
           setRevealedLetters(0);
           break;
@@ -535,13 +664,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   }, [view, selectedMode, currentWordIndex]);
 
   // Auto-speak: play word audio when a new word loads in game view
-  // All modes except flashcards, lettersounds, sentence, and matching: see + hear simultaneously on word load
+  // All modes except flashcards, letter-sounds, sentence, and matching: see + hear simultaneously on word load
   // Sentence builder and matching have their own audio handling (explicit user interaction)
   useEffect(() => {
     if (view !== "game" || !currentWord) return;
     if (selectedMode === "flashcards") return; // speak when flipped, not on load
-    if (selectedMode === "lettersounds") return; // has its own letter-by-letter speech
-    if (selectedMode === "sentence") return; // sentence mode has separate audio handling
+    if (selectedMode === "letter-sounds") return; // has its own letter-by-letter speech
+    if (selectedMode === "sentence-builder") return; // sentence mode has separate audio handling
     if (selectedMode === "matching") return; // matching mode: user clicks speaker icon to hear
 
     responseStartTime.current = Date.now();
@@ -566,7 +695,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
   // Letter Sounds: reveal letters one by one with colors and sounds
   useEffect(() => {
-    if (view !== "game" || selectedMode !== "lettersounds" || !currentWord || selectedAnswer !== null) return;
+    if (view !== "game" || selectedMode !== "letter-sounds" || !currentWord || selectedAnswer !== null) return;
 
     const word = currentWord.english;
     let cancelled = false;
@@ -831,12 +960,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       checkAndAwardBadges(true, newXp);
-      // Show the praise label on screen (e.g. "Champion! 🏅") while the
-      // audio plays — auto-clears after ~1.8s so it doesn't linger on the
-      // next word. Mirrors the real app's motivational overlay timing.
-      const key = playMotivational();
-      setMotivationalMessage(getMotivationalLabel(key));
-      setTimeout(() => setMotivationalMessage(""), 1800);
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
     } else {
       setStreak(0);
@@ -938,7 +1061,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const xpTitle = getXPTitle(xp);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-stone-50 overflow-auto" dir={dir}>
+    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-sky-200 via-indigo-300 to-violet-400 overflow-auto" dir={dir}>
       {/* Top banner — demo indicator only (no sign-up CTA; demo's job is
           to showcase the product, not push a sign-up). */}
       <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-2.5 px-4 text-center font-bold text-sm flex items-center justify-center gap-2 shadow-md">
@@ -968,10 +1091,91 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              className="relative"
             >
-              <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
-                <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
-                <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
+              {/* Floating game icons - animated, scattered across the entire page below */}
+              <motion.div
+                animate={{ y: [0, -20, 0], rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-[30rem] left-[5%] text-5xl opacity-60 z-20"
+              >⭐</motion.div>
+              <motion.div
+                animate={{ y: [0, 15, 0], rotate: [0, -15, 15, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="absolute top-[36rem] right-[8%] text-4xl opacity-50 z-20"
+              >🏆</motion.div>
+              <motion.div
+                animate={{ y: [0, -25, 0], x: [0, 10, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="absolute bottom-8 left-[15%] text-4xl opacity-40 z-20"
+              >🎯</motion.div>
+              <motion.div
+                animate={{ y: [0, 20, 0], rotate: [0, 360] }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear", delay: 1.5 }}
+                className="absolute top-[40rem] right-[20%] text-5xl opacity-30 z-20"
+              >💎</motion.div>
+              <motion.div
+                animate={{ y: [0, -18, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute bottom-16 right-[12%] text-4xl opacity-50 z-20"
+              >🎮</motion.div>
+              <motion.div
+                animate={{ y: [0, 22, 0], rotate: [0, -20, 20, 0] }}
+                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+                className="absolute top-[44rem] left-[25%] text-3xl opacity-40 z-20"
+              >🚀</motion.div>
+              <motion.div
+                animate={{ x: [0, 15, 0], y: [0, -10, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
+                className="absolute bottom-24 left-[40%] text-4xl opacity-35 z-20"
+              >⚡</motion.div>
+              <motion.div
+                animate={{ y: [0, -15, 0], rotate: [0, 180] }}
+                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
+                className="absolute top-[48rem] right-[35%] text-3xl opacity-45 z-20"
+              >🎁</motion.div>
+
+              {/* Main content */}
+              <div className="relative z-10">
+                <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
+                  <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
+                  <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
+
+                {/* 3D Demo Mode Badge — floating in top-right corner */}
+                <motion.div
+                  initial={{ rotate: -15, y: -10 }}
+                  animate={{ rotate: [-15, -10, -15], y: [-10, -5, -10] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute -top-4 -right-4 z-10"
+                >
+                  <div className="relative">
+                    {/* 3D shadow layers */}
+                    <div className="absolute inset-0 bg-black/20 rounded-xl transform translate-x-1 translate-y-1" />
+                    <div className="absolute inset-0 bg-black/10 rounded-xl transform translate-x-0.5 translate-y-0.5" />
+                    {/* Main badge */}
+                    <div className="relative bg-white rounded-xl px-4 py-2 shadow-lg border-2 border-white/50 transform rotate-3">
+                      <div className="flex items-center gap-2">
+                        <motion.span
+                          animate={{ rotateY: [0, 360] }}
+                          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                          className="text-2xl"
+                          style={{ transformStyle: 'preserve-3d' }}
+                        >
+                          🎮
+                        </motion.span>
+                        <div className="text-left">
+                          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                            {language === 'en' ? 'Try' : language === 'he' ? 'נסו' : 'جرب'}
+                          </div>
+                          <div className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-fuchsia-600">
+                            DEMO
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
                 <div className="relative">
                   <div className="text-5xl sm:text-6xl mb-3">🎮</div>
                   <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
@@ -983,14 +1187,49 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              <button
+              {/* Language selector — let users choose their preferred language */}
+              <div className="mb-5">
+                <p className="text-sm font-black text-white uppercase tracking-wide mb-3 text-center drop-shadow-lg">
+                  {language === 'en' ? 'Choose your language' : language === 'he' ? 'בחרו שפה' : 'اختر لغتك'}
+                </p>
+                {/* Force LTR direction so buttons stay in place: EN | HE | AR */}
+                <div className="flex gap-3" dir="ltr">
+                  {(['en', 'he', 'ar'] as Language[]).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => setLanguage(lang)}
+                      type="button"
+                      style={{ touchAction: 'manipulation', minWidth: '100px', flex: 1 }}
+                      className={`py-3 px-3 rounded-xl font-bold text-sm border-2 transition-all shadow-lg ${
+                        language === lang
+                          ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-orange-400 shadow-orange-500/50 scale-105'
+                          : 'bg-white/90 text-on-surface border-white/60 hover:bg-white hover:scale-102'
+                      }`}
+                    >
+                      <span className="text-xl">{lang === 'en' ? '🇬🇧' : lang === 'he' ? '🇮🇱' : '🇸🇦'}</span>
+                      <span className="block text-xs mt-0.5">{lang === 'en' ? 'English' : lang === 'he' ? 'עברית' : 'العربية'}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <motion.button
                 onClick={() => setView("avatar")}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className="w-full bg-stone-900 text-white py-4 rounded-2xl font-black text-lg hover:bg-black active:scale-[0.98] transition-all shadow-lg"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-violet-500/40 border-2 border-white/30 relative overflow-hidden"
               >
-                {t.letsGo}
-              </button>
+                {/* Animated shine effect */}
+                <motion.div
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                />
+                <span className="relative z-10">{t.letsGo}</span>
+              </motion.button>
+              </div>
             </motion.div>
           )}
 
@@ -1077,6 +1316,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              className="p-4 sm:p-6"
             >
               {/* Top bar — back button left, avatar/XP chip right.
                   Outside the main card so the card itself feels clean. */}
@@ -1100,64 +1340,64 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Main card — white panel with blue accent bar and close X,
-                  exactly matching the real GameModeSelectionView layout. */}
-              <div className="w-full bg-white rounded-[32px] shadow-2xl p-5 sm:p-10 text-center relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
+              {/* Game mode selection — no white card, content on gradient background */}
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-5 sm:mb-8"
+              >
+                <h2 className="text-2xl sm:text-4xl font-black mb-2 text-stone-900 tracking-tight">
+                  {t.chooseGame}
+                </h2>
+                <p className="text-stone-600 text-sm sm:text-lg font-medium">
+                  {t.tryPopular}
+                </p>
+              </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-5 sm:mb-8 mt-4 sm:mt-0"
-                >
-                  <h2 className="text-2xl sm:text-4xl font-black mb-2 text-stone-900 tracking-tight">
-                    {t.chooseGame}
-                  </h2>
-                  <p className="text-stone-500 text-sm sm:text-lg font-medium">
-                    {t.tryPopular}
-                  </p>
-                </motion.div>
-
-                {/* Power-ups strip — demo-specific but styled to feel native */}
-                <div className="bg-amber-50 rounded-2xl p-3 mb-5 border border-amber-200">
-                  <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">
-                    ⚡ Power-ups (free in demo)
-                  </p>
-                  <div className="flex justify-center gap-2">
-                    {POWER_UPS.map((pu) => (
-                      <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
-                        <span className="text-xl block">{pu.emoji}</span>
-                        <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
-                      </div>
-                    ))}
-                  </div>
+              {/* Power-ups strip — demo-specific but styled to feel native */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-3 mb-5 border border-white/50 shadow-sm">
+                <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">
+                  ⚡ Power-ups (free in demo)
+                </p>
+                <div className="flex justify-center gap-2">
+                  {POWER_UPS.map((pu) => (
+                    <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
+                      <span className="text-xl block">{pu.emoji}</span>
+                      <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* Mode grid — identical layout to real app: 2 cols on
-                    mobile, 4 cols on desktop, pastel cards with icon-
-                    in-white-square. Clicking triggers demo's startGame. */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-                  {modes.map((mode, idx) => (
+              {/* Mode grid — matching GameModeSelectionView exactly */}
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                {GAME_MODES_CONFIG.map((mode, idx) => {
+                  const modeColor = MODE_COLORS[mode.id] || "emerald";
+                  return (
                     <motion.button
                       key={mode.id}
                       onClick={() => startGame(mode.id)}
                       type="button"
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className={`p-4 sm:p-6 rounded-[24px] sm:rounded-[32px] text-center transition-all border-2 border-transparent flex flex-col items-center ${MODE_CARD_CLASSES[mode.id] ?? 'bg-stone-50 text-stone-700'} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                      className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[modeColor]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                       initial={{ opacity: 0, scale: 0.9, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
                       whileHover={{ scale: 1.05, translateY: -8 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] sm:rounded-[20px] bg-white flex items-center justify-center mb-3 sm:mb-4 shadow-sm group-hover:shadow-md transition-all ${MODE_ICON_COLORS[mode.id] ?? 'text-stone-600'}`}>
-                        {MODE_ICONS[mode.id] ?? <span className="text-2xl">🎮</span>}
+                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[modeColor]} relative`}>
+                        {mode.icon}
                       </div>
-                      <p className="font-black text-sm sm:text-lg mb-1 leading-tight">{mode.name}</p>
-                      <p className="opacity-70 text-[11px] sm:text-xs font-bold leading-snug">{mode.desc}</p>
+                      <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
+                      <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
+
+                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Zap size={20} className="animate-pulse" />
+                      </div>
                     </motion.button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -1171,16 +1411,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               exit={{ opacity: 0, y: -20 }}
               className="relative"
             >
-              {/* Motivational message overlay — mirrors GameActiveView.tsx:218
-                  so correct-answer praise feels identical to the real app. */}
-              {motivationalMessage && (
-                <div className="absolute top-20 left-0 right-0 flex justify-center z-30 pointer-events-none">
-                  <span className="text-base sm:text-3xl font-black text-blue-700 drop-shadow animate-bounce bg-white/90 px-4 py-1.5 sm:px-5 sm:py-2.5 rounded-2xl shadow-lg">
-                    {motivationalMessage}
-                  </span>
-                </div>
-              )}
-
               {/* Header */}
               <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button
@@ -1214,14 +1444,20 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {["classic", "listening", "reverse"].includes(selectedMode!) && (
                 <div className="flex justify-center gap-2 mb-3">
                   {(selectedMode === "classic" || selectedMode === "listening" || selectedMode === "reverse") && powerUps.fifty_fifty > 0 && hiddenOptions.length === 0 && !selectedAnswer && (
-                    <button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
-                      ✂️ 50/50 <span className="bg-amber-200 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.fifty_fifty}</span>
-                    </button>
+                    <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      ✂️ 50/50 <span className="bg-amber-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.fifty_fifty}</span>
+                    </motion.button>
                   )}
                   {powerUps.skip > 0 && !selectedAnswer && (
-                    <button onClick={handleSkip} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
-                      ⏭️ {t.skip} <span className="bg-blue-200 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.skip}</span>
-                    </button>
+                    <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-xl text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      ⏭️ {t.skip} <span className="bg-blue-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.skip}</span>
+                    </motion.button>
                   )}
                 </div>
               )}
@@ -1230,7 +1466,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   app's GameActiveView). Older per-mode standalone progress
                   was removed — only Classic/Listening/Reverse/TrueFalse have
                   it baked in currently; other modes still get the wordOf pill. */}
-              {["spelling", "scramble", "flashcards", "lettersounds"].includes(selectedMode!) && (
+              {["spelling", "scramble", "flashcards", "letter-sounds"].includes(selectedMode!) && (
                 <div className="mb-4">
                   <div className={`flex justify-between text-sm text-stone-500 mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span>{t.wordOf.replace('{current}', String(currentWordIndex + 1)).replace('{total}', String(DEMO_WORDS.length))}</span>
@@ -1245,23 +1481,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Classic Mode — matches GameActiveView.tsx + WordPromptCard:
-                  white card with shadow-2xl and rounded-[32px], big word
-                  display at top, stone volume button, 2-col answer grid
-                  styled identically to AnswerOptionButton. */}
+              {/* Classic Mode — EMERALD/GREEN theme */}
               {selectedMode === "classic" && (
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-emerald-50 to-green-50 border-[3px] border-emerald-500 shadow-emerald-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-emerald-100"}`}
                 >
-                  {/* Progress bar at top of card (matches real app) */}
                   <div
-                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500 shadow-lg shadow-emerald-300/50"
                     style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
                   />
 
-                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                  <span className="inline-block bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2 shadow-sm">
                     {currentWordIndex + 1} / {DEMO_WORDS.length}
                   </span>
 
@@ -1271,10 +1503,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="p-1.5 sm:p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-full hover:from-emerald-100 hover:to-emerald-200 transition-all shadow-sm hover:shadow-md border border-emerald-200"
                       aria-label="Play pronunciation"
                     >
-                      <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
+                      <Volume2 size={20} className="text-emerald-600 sm:w-6 sm:h-6" />
                     </button>
                   </div>
 
@@ -1288,25 +1520,25 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                       if (isHidden) return null;
 
-                      // Matches AnswerOptionButton.tsx styling exactly so demo
-                      // options feel identical to the real app.
-                      let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300";
-                      if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white motion-safe:scale-105 shadow-xl";
-                      else if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
+                      let btnClass = "bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-800 hover:from-emerald-100 hover:to-emerald-200 active:from-emerald-200 active:to-emerald-300 shadow-sm hover:shadow-md border border-emerald-200";
+                      if (showResult && isCorrectAnswer) btnClass = "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white motion-safe:scale-105 shadow-xl shadow-emerald-300/50 ring-2 ring-emerald-400";
+                      else if (showResult && isSelected && !isCorrect) btnClass = "bg-gradient-to-br from-rose-100 to-rose-200 text-rose-600 opacity-50";
                       else if (showResult) btnClass = "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed";
 
                       return (
-                        <button
+                        <motion.button
                           key={i}
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                           className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
+                          whileHover={{ scale: showResult ? 1 : 1.02 }}
+                          whileTap={{ scale: 0.97 }}
                         >
                           {showResult && isCorrectAnswer && <span aria-hidden="true">✓</span>}
                           <span>{option}</span>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -1337,7 +1569,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-3 sm:p-4 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors mx-auto flex items-center justify-center"
+                      className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200 mx-auto flex items-center justify-center"
                       aria-label="Play pronunciation"
                     >
                       <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
@@ -1355,23 +1587,25 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       const isCorrectAnswer = option === getMeaning(currentWord, targetLanguage);
                       const showResult = selectedAnswer !== null;
 
-                      let btnClass = "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300";
-                      if (showResult && isCorrectAnswer) btnClass = "bg-blue-600 text-white motion-safe:scale-105 shadow-xl";
-                      else if (showResult && isSelected && !isCorrect) btnClass = "bg-rose-100 text-rose-500 opacity-50";
+                      let btnClass = "bg-gradient-to-br from-stone-100 to-stone-200 text-stone-800 hover:from-stone-200 hover:to-stone-300 active:from-stone-300 active:to-stone-400 shadow-sm hover:shadow-md";
+                      if (showResult && isCorrectAnswer) btnClass = "bg-gradient-to-br from-blue-500 to-blue-600 text-white motion-safe:scale-105 shadow-xl shadow-blue-300/50 ring-2 ring-blue-400";
+                      else if (showResult && isSelected && !isCorrect) btnClass = "bg-gradient-to-br from-rose-100 to-rose-200 text-rose-600 opacity-50";
                       else if (showResult) btnClass = "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed";
 
                       return (
-                        <button
+                        <motion.button
                           key={i}
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                           className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
+                          whileHover={{ scale: showResult ? 1 : 1.02 }}
+                          whileTap={{ scale: 0.97 }}
                         >
                           {showResult && isCorrectAnswer && <span aria-hidden="true">✓</span>}
                           <span>{option}</span>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -1395,16 +1629,16 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           key={card.id}
                           initial={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.4, transition: { duration: 0.25 } }}
-                          whileHover={{ scale: 1.05 }}
+                          whileHover={{ scale: 1.05, translateY: -4 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleMatchingSelect(card.id)}
                           disabled={card.matched}
                           dir="auto"
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                          className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-md font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 border-2 ${
                             card.selected
-                              ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
-                              : "bg-white text-stone-800 hover:shadow-md"
+                              ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl shadow-blue-300/50 ring-4 ring-blue-200 border-blue-400"
+                              : "bg-gradient-to-br from-white to-stone-50 text-stone-800 border-stone-200 hover:shadow-lg hover:border-blue-200"
                           }`}
                         >
                           {card.content}
@@ -1424,10 +1658,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
                 >
                   <div
-                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500 shadow-lg shadow-purple-300/50"
                     style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
                   />
 
@@ -1441,7 +1675,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   <div className="flex flex-col items-center justify-center gap-1 sm:gap-3 mb-4 sm:mb-6">
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-3 sm:p-4 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors mx-auto flex items-center justify-center"
+                      className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200 mx-auto flex items-center justify-center"
                       aria-label="Play pronunciation"
                     >
                       <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
@@ -1456,7 +1690,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   {/* Power-ups for spelling */}
                   {powerUps.reveal_letter > 0 && !selectedAnswer && spellingInput.length === 0 && (
                     <div className="flex justify-center mb-3">
-                      <button onClick={handleRevealLetter} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all flex items-center gap-1 border border-emerald-200">
+                      <button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 rounded-xl text-xs font-bold hover:from-emerald-100 hover:to-emerald-200 transition-all flex items-center gap-1 border border-emerald-300 shadow-sm hover:shadow-md">
                         💡 {t.hint} <span className="bg-emerald-200 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.reveal_letter}</span>
                       </button>
                     </div>
@@ -1470,22 +1704,24 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all ${
-                        isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
-                        isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
-                        "border-stone-100 focus:border-stone-900 outline-none"
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
+                        isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
+                        isCorrect === false ? "border-rose-500 bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 shadow-rose-200/50" :
+                        "border-stone-200 bg-white focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none hover:border-stone-300"
                       }`}
                       dir="ltr"
                     />
                     {selectedAnswer === null && (
-                      <button
+                      <motion.button
                         type="submit"
                         disabled={!spellingInput.trim()}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: spellingInput.trim() ? 1.02 : 1 }}
+                        whileTap={{ scale: 0.97 }}
                       >
                         Check Answer
-                      </button>
+                      </motion.button>
                     )}
                   </form>
                 </motion.div>
@@ -1527,22 +1763,24 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all ${
-                        isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
-                        isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
-                        "border-stone-100 focus:border-stone-900 outline-none"
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
+                        isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
+                        isCorrect === false ? "border-rose-500 bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 shadow-rose-200/50" :
+                        "border-stone-200 bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 outline-none hover:border-stone-300"
                       }`}
                       dir="ltr"
                     />
                     {selectedAnswer === null && (
-                      <button
+                      <motion.button
                         type="submit"
                         disabled={!spellingInput.trim()}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: spellingInput.trim() ? 1.02 : 1 }}
+                        whileTap={{ scale: 0.97 }}
                       >
                         Check Answer
-                      </button>
+                      </motion.button>
                     )}
                   </form>
                 </motion.div>
@@ -1552,7 +1790,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   translation shown (matches real TrueFalseGame which shows
                   only the translation; demo keeps English + translation so
                   a 2-min demo taster doesn't force students to listen). */}
-              {selectedMode === "truefalse" && tfStatement && (
+              {selectedMode === "true-false" && tfStatement && (
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1577,7 +1815,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </p>
                     <button
                       onClick={() => speakWord(tfStatement.word.id)}
-                      className="mt-4 p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="mt-4 p-2 sm:p-3 bg-gradient-to-br from-rose-50 to-rose-100 rounded-full hover:from-rose-100 hover:to-rose-200 transition-all shadow-sm hover:shadow-md border border-rose-200"
                       aria-label="Play pronunciation"
                     >
                       <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
@@ -1585,24 +1823,28 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-lg mx-auto">
-                    <button
+                    <motion.button
                       type="button"
                       onClick={() => handleTFAnswer(true)}
                       disabled={selectedAnswer !== null}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
-                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/50 hover:shadow-xl hover:shadow-emerald-400/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-emerald-300"
+                      whileHover={{ scale: selectedAnswer === null ? 1.05 : 1, translateY: selectedAnswer === null ? -4 : 0 }}
+                      whileTap={{ scale: 0.95 }}
                     >
                       True ✓
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       type="button"
                       onClick={() => handleTFAnswer(false)}
                       disabled={selectedAnswer !== null}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
-                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-500 text-white shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-300/50 hover:shadow-xl hover:shadow-rose-400/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-rose-300"
+                      whileHover={{ scale: selectedAnswer === null ? 1.05 : 1, translateY: selectedAnswer === null ? -4 : 0 }}
+                      whileTap={{ scale: 0.95 }}
                     >
                       False ✗
-                    </button>
+                    </motion.button>
                   </div>
                 </motion.div>
               )}
@@ -1617,31 +1859,33 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   className="bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden"
                 >
                   <div
-                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-cyan-500 to-cyan-600 transition-all duration-500 shadow-lg shadow-cyan-300/50"
                     style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
                   />
 
-                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                  <span className="inline-block bg-gradient-to-br from-stone-100 to-stone-200 text-stone-600 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2 shadow-sm">
                     {currentWordIndex + 1} / {DEMO_WORDS.length}
                   </span>
 
                   {/* Hero card with the word/translation (inner, sits inside
                       the main game card so we match the GameActiveView
                       structure: outer card + progress + inner content). */}
-                  <div className="bg-stone-50 rounded-2xl sm:rounded-[28px] p-5 sm:p-10 border border-stone-200 min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[28px] p-5 sm:p-10 border-2 border-stone-200 shadow-sm min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
                     {!isFlipped ? (
                       <>
                         <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3">{t.flashcardWord}</p>
                         <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 mb-4 break-words w-full" dir="ltr">
                           {cleanWordForDisplay(currentWord.english)}
                         </h2>
-                        <button
+                        <motion.button
                           onClick={() => speakWord(currentWord.id)}
-                          className="p-2 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                          className="p-2 sm:p-3 bg-white rounded-full hover:bg-stone-50 transition-colors shadow-sm border border-stone-200"
                           aria-label="Play pronunciation"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                         >
                           <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
-                        </button>
+                        </motion.button>
                       </>
                     ) : (
                       <>
@@ -1654,25 +1898,31 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
 
                   <div className="space-y-3 sm:space-y-4 max-w-md mx-auto">
-                    <button
+                    <motion.button
                       onClick={() => setIsFlipped(!isFlipped)}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors"
+                      className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-gradient-to-r from-stone-100 to-stone-200 text-stone-700 hover:from-stone-200 hover:to-stone-300 transition-all shadow-sm hover:shadow-md"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
                     >
                       {isFlipped ? "Show English" : "Show Translation"}
-                    </button>
+                    </motion.button>
                     {isFlipped && selectedAnswer === null && (
                       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                        <button
+                        <motion.button
                           onClick={() => { setIsCorrect(false); handleFeedback(false); setSelectedAnswer("unknown"); }}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '56px' }}
-                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
-                        >Still Learning</button>
-                        <button
+                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-gradient-to-br from-rose-50 to-rose-100 text-rose-600 hover:from-rose-100 hover:to-rose-200 transition-all shadow-sm hover:shadow-md border border-rose-200"
+                          whileHover={{ scale: 1.05, translateY: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                        >Still Learning</motion.button>
+                        <motion.button
                           onClick={() => { setIsCorrect(true); handleFeedback(true); setSelectedAnswer("known"); }}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '56px' }}
-                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                        >Got It!</button>
+                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200"
+                          whileHover={{ scale: 1.05, translateY: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                        >Got It!</motion.button>
                       </div>
                     )}
                   </div>
@@ -1704,7 +1954,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </h2>
                     <button
                       onClick={() => speakWord(currentWord.id)}
-                      className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+                      className="p-1.5 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200"
                       aria-label="Play pronunciation"
                     >
                       <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
@@ -1719,22 +1969,24 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all ${
-                        isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
-                        isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
-                        "border-stone-100 focus:border-stone-900 outline-none"
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
+                        isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
+                        isCorrect === false ? "border-rose-500 bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 shadow-rose-200/50" :
+                        "border-stone-200 bg-white focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-100 outline-none hover:border-stone-300"
                       }`}
                       dir="ltr"
                     />
                     {selectedAnswer === null && (
-                      <button
+                      <motion.button
                         type="submit"
                         disabled={!spellingInput.trim()}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: spellingInput.trim() ? 1.02 : 1 }}
+                        whileTap={{ scale: 0.97 }}
                       >
                         Check Answer
-                      </button>
+                      </motion.button>
                     )}
                   </form>
                 </motion.div>
@@ -1743,18 +1995,18 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* Letter Sounds Mode — matches real LetterSoundsGame:
                   translation hint at top, bordered color-tinted letter
                   tiles that fade in, input form appears once all revealed. */}
-              {selectedMode === "lettersounds" && (
+              {selectedMode === "letter-sounds" && (
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
                 >
                   <div
-                    className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
+                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-violet-500 to-violet-600 transition-all duration-500 shadow-lg shadow-violet-300/50"
                     style={{ width: `${((currentWordIndex + 1) / DEMO_WORDS.length) * 100}%` }}
                   />
 
-                  <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2">
+                  <span className="inline-block bg-gradient-to-br from-stone-100 to-stone-200 text-stone-600 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1 mt-2 shadow-sm">
                     {currentWordIndex + 1} / {DEMO_WORDS.length}
                   </span>
 
@@ -1831,7 +2083,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   stone bg for target area, blue-600 chips for built
                   words, white bordered chips for available words,
                   stone-900 Check button. */}
-              {selectedMode === "sentence" && (
+              {selectedMode === "sentence-builder" && (
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1877,7 +2129,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                               setAvailableWords(prev => [...prev, word]);
                             }}
                             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
+                            className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:from-blue-600 hover:to-blue-700 active:scale-95 transition-all shadow-sm hover:shadow-md"
                           >{word}</button>
                         ))
                       )}
@@ -1886,7 +2138,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     {/* Available words */}
                     <div className="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr">
                       {availableWords.map((word, i) => (
-                        <button
+                        <motion.button
                           key={`${word}-${i}`}
                           onClick={() => {
                             if (sentenceFeedback !== null) return;
@@ -1894,13 +2146,15 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                             setBuiltSentence(prev => [...prev, word]);
                           }}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
-                        >{word}</button>
+                          className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-teal-400 hover:text-teal-700 active:scale-95 transition-all shadow-sm hover:shadow-md"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >{word}</motion.button>
                       ))}
                     </div>
 
                     <div className="flex gap-2">
-                      <button
+                      <motion.button
                         onClick={() => {
                           setBuiltSentence([]);
                           const target = `${currentWord.english} is great!`.split(" ").filter(Boolean);
@@ -1908,9 +2162,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         }}
                         disabled={sentenceFeedback !== null}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >Clear</button>
-                      <button
+                        className="flex-1 py-2 bg-gradient-to-r from-stone-100 to-stone-200 text-stone-600 rounded-xl font-bold hover:from-stone-200 hover:to-stone-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                        whileHover={{ scale: sentenceFeedback === null ? 1.02 : 1 }}
+                        whileTap={{ scale: 0.97 }}
+                      >Clear</motion.button>
+                      <motion.button
                         onClick={() => {
                           const target = `${currentWord.english} is great!`;
                           const built = builtSentence.join(" ");
@@ -1924,8 +2180,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         }}
                         disabled={builtSentence.length === 0 || sentenceFeedback !== null}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50"
-                      >Check ✓</button>
+                        className="flex-2 py-2 px-6 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-xl font-bold hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: (builtSentence.length > 0 && sentenceFeedback === null) ? 1.02 : 1 }}
+                        whileTap={{ scale: 0.97 }}
+                      >Check ✓</motion.button>
                     </div>
                   </div>
                 </motion.div>

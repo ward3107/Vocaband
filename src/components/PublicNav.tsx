@@ -1,5 +1,6 @@
 import React from "react";
 import { Gamepad2 } from "lucide-react";
+import { motion } from "motion/react";
 
 interface PublicNavProps {
   currentPage: "home" | "terms" | "privacy";
@@ -33,14 +34,72 @@ const PublicNav: React.FC<PublicNavProps> = ({
 
       <div className="flex items-center gap-2 md:gap-3">
         {onTryDemo && (
-          <button
+          <motion.button
             onClick={onTryDemo}
-            className="bg-primary text-white text-sm font-black px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/40 hover:shadow-primary/60 flex items-center gap-1 border-2 border-primary/30"
+            animate={{
+              y: [0, -4, 0],
+              scale: [1, 1.03, 1],
+            }}
+            transition={{
+              y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+            }}
+            whileHover={{
+              scale: 1.1,
+              rotateZ: [-3, 3, -3],
+              boxShadow: "0 0 30px rgba(0, 80, 212, 0.7), 0 0 60px rgba(147, 51, 234, 0.4)"
+            }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ rotateZ: { duration: 0.3, repeat: Infinity } }}
+            className="relative bg-gradient-to-r from-primary via-violet-600 to-fuchsia-600 text-white text-sm font-black px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-2xl shadow-primary/50 hover:shadow-primary/70 flex items-center gap-2 border-2 border-white/40 overflow-hidden"
+            style={{ transformStyle: 'preserve-3d' }}
           >
-            <Gamepad2 size={14} />
-            <span className="hidden sm:inline">Try Demo</span>
-            <span className="sm:hidden">Demo</span>
-          </button>
+            {/* Pulsing glow ring */}
+            <motion.div
+              animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-fuchsia-600"
+            />
+
+            {/* 3D depth shadow layers */}
+            <div className="absolute inset-0 bg-black/30 rounded-full transform translate-y-1 translate-x-1" />
+            <div className="absolute inset-0 bg-black/15 rounded-full transform translate-y-0.5 translate-x-0.5" />
+
+            {/* Animated shine sweep */}
+            <motion.div
+              animate={{ x: ['-100%', '200%'] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+            />
+
+            {/* Rotating gamepad icon */}
+            <motion.div
+              animate={{ rotateY: [0, 360], rotateZ: [0, 10, 0, -10, 0] }}
+              transition={{
+                rotateY: { duration: 3, repeat: Infinity, ease: "linear" },
+                rotateZ: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+              }}
+              className="relative z-10"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <Gamepad2 size={18} strokeWidth={3} />
+            </motion.div>
+
+            <span className="hidden sm:inline relative z-10 text-sm md:text-base">TRY DEMO</span>
+            <span className="sm:hidden relative z-10 text-xs">DEMO</span>
+
+            {/* Sparkle effects */}
+            <motion.span
+              animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
+              className="absolute -top-1 -right-1 text-yellow-300"
+            >✨</motion.span>
+            <motion.span
+              animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
+              className="absolute -bottom-1 -left-1 text-yellow-300"
+            >✨</motion.span>
+          </motion.button>
         )}
       </div>
     </nav>

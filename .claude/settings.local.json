@@ -195,7 +195,12 @@
       "Bash(mv 20260327_02_quick_play_custom_words_fixed.sql 20260326_quick_play_custom_words_fixed.sql)",
       "Bash(mv 20260327_03_quick_play_sessions.sql 20260327_quick_play_sessions.sql)",
       "Bash(mv 20260327_04_student_profiles.sql 20260328_student_profiles.sql)",
-      "Bash(ls supabase/migrations/*.sql)")
+      "Bash(ls supabase/migrations/*.sql)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(gh api *)",
+      "Bash(gh dependabot *)",
+      "Bash(npm audit *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

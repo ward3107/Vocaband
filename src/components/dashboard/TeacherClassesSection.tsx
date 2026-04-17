@@ -14,6 +14,10 @@ interface TeacherClassesSectionProps {
   onDeleteClass: (classId: string) => void;
   /** Open the rename + change-avatar modal for this class. */
   onEditClass: (c: ClassData) => void;
+  /** Quick inline name change. */
+  onNameChange?: (classId: string, newName: string) => Promise<void>;
+  /** Quick inline avatar change. */
+  onAvatarChange?: (classId: string, newAvatar: string | null) => Promise<void>;
   onEditAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (assignment: AssignmentData) => void;
@@ -23,6 +27,7 @@ export default function TeacherClassesSection({
   classes, teacherAssignments, copiedCode, setCopiedCode,
   openDropdownClassId, setOpenDropdownClassId,
   onNewClass, onAssign, onDeleteClass, onEditClass,
+  onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
 }: TeacherClassesSectionProps) {
   return (
@@ -95,6 +100,8 @@ export default function TeacherClassesSection({
                 }}
                 onDelete={() => onDeleteClass(c.id)}
                 onEdit={() => onEditClass(c)}
+                onNameChange={onNameChange ? (newName) => onNameChange(c.id, newName) : undefined}
+                onAvatarChange={onAvatarChange ? (newAvatar) => onAvatarChange(c.id, newAvatar) : undefined}
                 onEditAssignment={(assignment) => onEditAssignment(assignment, c)}
                 onDuplicateAssignment={(assignment) => onDuplicateAssignment(assignment, c)}
                 onDeleteAssignment={onDeleteAssignment}

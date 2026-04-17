@@ -49,7 +49,6 @@ interface GameFinishedViewProps {
   setWordAttempts: React.Dispatch<React.SetStateAction<Record<number, number>>>;
   setHiddenOptions: React.Dispatch<React.SetStateAction<number[]>>;
   setSpellingInput: React.Dispatch<React.SetStateAction<string>>;
-  setMotivationalMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setAssignmentWords: React.Dispatch<React.SetStateAction<Word[]>>;
   setShowModeSelection: React.Dispatch<React.SetStateAction<boolean>>;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -59,7 +58,7 @@ export default function GameFinishedView({
   user, score, xp, streak, badges, mistakes, gameWords,
   isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
   setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
-  setWordAttempts, setHiddenOptions, setSpellingInput, setMotivationalMessage,
+  setWordAttempts, setHiddenOptions, setSpellingInput,
   setAssignmentWords, setShowModeSelection, setView,
 }: GameFinishedViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
@@ -171,7 +170,7 @@ export default function GameFinishedView({
           <button
             onClick={() => {
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-              setSpellingInput(""); setMotivationalMessage(null);
+              setSpellingInput("");
             }}
             disabled={isSaving}
             type="button"
@@ -190,7 +189,7 @@ export default function GameFinishedView({
             onClick={() => {
               // Reset game state but keep activeAssignment + gameWords
               setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-              setSpellingInput(""); setMotivationalMessage(null);
+              setSpellingInput("");
               // Show the mode selection screen while staying in view="game"
               setShowModeSelection(true);
             }}
@@ -213,7 +212,7 @@ export default function GameFinishedView({
                   setAssignmentWords(missedWords);
                 }
                 setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-                setSpellingInput(""); setMotivationalMessage(null);
+                setSpellingInput("");
               }}
               disabled={isSaving}
               type="button"
