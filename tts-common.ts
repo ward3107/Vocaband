@@ -70,21 +70,36 @@ export async function synthesizeSpeechMp3(
     audioConfig,
   }
 
-  const res = await fetch(`${TTS_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  // Retry on 429 (rate limit) with exponential backoff. Studio voices have
+  // a strict per-minute quota — a single batch can trigger it briefly and
+  // the request will succeed a few seconds later. Fail on non-429 errors
+  // immediately so we don't mask real problems.
+  const MAX_RETRIES = 4
+  const RETRY_DELAYS_MS = [2000, 5000, 15000, 30000]
 
-  if (!res.ok) {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(`${TTS_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (res.ok) {
+      const json = (await res.json()) as { audioContent?: string }
+      if (!json.audioContent) {
+        throw new Error('Google TTS response missing audioContent')
+      }
+      return Buffer.from(json.audioContent, 'base64')
+    }
+
     const errText = await res.text().catch(() => '')
-    throw new Error(`Google TTS ${res.status}: ${errText.slice(0, 300)}`)
+    // Only 429 retries — other errors (401/403/400/500) are not transient.
+    if (res.status !== 429 || attempt === MAX_RETRIES) {
+      throw new Error(`Google TTS ${res.status}: ${errText.slice(0, 300)}`)
+    }
+    await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]))
   }
 
-  const json = (await res.json()) as { audioContent?: string }
-  if (!json.audioContent) {
-    throw new Error('Google TTS response missing audioContent')
-  }
-
-  return Buffer.from(json.audioContent, 'base64')
+  // Unreachable — the loop either returns or throws.
+  throw new Error('Google TTS retries exhausted')
 }

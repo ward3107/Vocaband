@@ -23,9 +23,12 @@ if (!fs.existsSync(OUTPUT_DIR)) {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-// Concurrency controls Google Cloud TTS quota usage. Default Neural2 limit is
-// 1000 requests/minute → running 10 in parallel with a tiny gap is well under.
-const CONCURRENCY = 10
+// Concurrency controls Google Cloud TTS quota usage. Studio voices have a
+// STRICT per-minute quota (~100 req/min on default projects). Keep this low
+// + use a real inter-batch gap so we stay under the limit even on the long
+// tail of the 9,000-word run. Neural2/Journey voices tolerate higher rates
+// (1000 req/min) but we bias for the strictest case so Studio works cleanly.
+const CONCURRENCY = 3
 
 const run = async () => {
   let done = 0, skipped = 0
@@ -52,7 +55,10 @@ const run = async () => {
       console.log(`✓ ${done + skipped + failed.length}/${ALL_WORDS.length} (new=${done}, skipped=${skipped}, failed=${failed.length})`)
     }
     // Gap between batches so we stay well under the per-minute quota.
-    await sleep(60)
+    // With CONCURRENCY=3 and 1500ms gap → ~2 req/s = 120 req/min, which is
+    // above Studio's nominal 100/min — but tts-common.ts handles 429 retries
+    // with exponential backoff, so occasional spikes over the line are fine.
+    await sleep(1500)
   }
 
   console.log(`\n✅ Done! Generated: ${done} | Skipped: ${skipped} | Failed: ${failed.length}`)
