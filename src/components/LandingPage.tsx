@@ -38,8 +38,17 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
-  // Accessibility widget state
+  // Accessibility widget state - session-based hide (widget uses same key internally)
   const [a11yOpen, setA11yOpen] = useState(false);
+  const [a11yDismissed, setA11yDismissed] = useState(() => {
+    try { return sessionStorage.getItem('a11y_dismissed') === '1'; } catch { return false; }
+  });
+
+  const handleA11yDismiss = () => {
+    try { sessionStorage.setItem('a11y_dismissed', '1'); } catch { /* ignore */ }
+    setA11yDismissed(true);
+    setA11yOpen(false);
+  };
 
   // Floating 3D cards data for hero
   const floatingCards = [
@@ -1156,21 +1165,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <FloatingButtons />
 
-      {/* Accessibility Widget */}
-      <AccessibilityWidget open={a11yOpen} onOpenChange={setA11yOpen} />
+      {/* Accessibility Widget - only show if not dismissed */}
+      {!a11yDismissed && (
+        <AccessibilityWidget
+          open={a11yOpen}
+          onOpenChange={setA11yOpen}
+          onDismiss={handleA11yDismiss}
+        />
+      )}
 
-      {/* Floating A11y Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setA11yOpen(true)}
-        aria-label="Open accessibility options"
-        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center p-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/30 transition-all"
-        type="button"
-      >
-        <Accessibility size={20} aria-hidden="true" />
-        <span className="text-[9px] font-black font-headline mt-0.5">A11y</span>
-      </motion.button>
+      {/* Floating A11y Button - only show if not dismissed */}
+      {!a11yDismissed && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setA11yOpen(true)}
+          aria-label="Open accessibility options"
+          className="fixed bottom-28 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
+          type="button"
+        >
+          <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
+        </motion.button>
+      )}
     </div>
   );
 };
