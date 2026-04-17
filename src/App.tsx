@@ -1004,42 +1004,71 @@ export default function App() {
   // Cache for translated words to avoid redundant API calls
   const translationCache = useRef<Map<string, {hebrew: string, arabic: string, match: number}>>(new Map());
 
-  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
-    // Check cache first
-    const cached = translationCache.current.get(englishWord.toLowerCase());
-    if (cached) return cached;
+  // Batch-translate English → Hebrew + Arabic via /api/translate (Gemini).
+  // Handles one-or-many words in a single HTTP call so paste of 30 custom
+  // words doesn't fire 30 parallel requests. Results are cached by lowercased
+  // English so subsequent requests (per-word retries, auto-translate button)
+  // don't re-hit the API.
+  const translateWordsBatch = async (
+    englishWords: string[]
+  ): Promise<Map<string, { hebrew: string; arabic: string; match: number }>> => {
+    const out = new Map<string, { hebrew: string; arabic: string; match: number }>();
+    const uncached: string[] = [];
+
+    for (const w of englishWords) {
+      const key = w.toLowerCase().trim();
+      if (!key) continue;
+      const cached = translationCache.current.get(key);
+      if (cached) {
+        out.set(key, cached);
+      } else {
+        uncached.push(w.trim());
+      }
+    }
+
+    if (uncached.length === 0) return out;
 
     try {
-      // Using MyMemory Translation API (free, no API key required)
-      const [hebrewRes, arabicRes] = await Promise.all([
-        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|he`),
-        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|ar`)
-      ]);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return out;
 
-      const hebrewData = await hebrewRes.json();
-      const arabicData = await arabicRes.json();
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ words: uncached }),
+      });
 
-      if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
-        // MyMemory returns match score 0-1 for each translation
-        const heMatch = parseFloat(hebrewData.responseData.match) || 0;
-        const arMatch = parseFloat(arabicData.responseData.match) || 0;
-        const match = Math.min(heMatch, arMatch); // Use the lower score
-
-        const result = {
-          hebrew: hebrewData.responseData.translatedText,
-          arabic: arabicData.responseData.translatedText,
-          match,
-        };
-        // Cache the result
-        translationCache.current.set(englishWord.toLowerCase(), result);
-        return result;
+      if (!res.ok) {
+        console.warn('[translate] /api/translate failed:', res.status);
+        return out;
       }
 
-      return null;
+      const { hebrew, arabic } = await res.json() as { hebrew?: string[]; arabic?: string[] };
+      uncached.forEach((word, i) => {
+        const he = hebrew?.[i]?.trim() || '';
+        const ar = arabic?.[i]?.trim() || '';
+        if (!he && !ar) return;
+        const entry = { hebrew: he, arabic: ar, match: he && ar ? 1 : 0.5 };
+        const key = word.toLowerCase();
+        translationCache.current.set(key, entry);
+        out.set(key, entry);
+      });
     } catch (error) {
       trackAutoError(error, 'Translation service error');
-      return null;
     }
+
+    return out;
+  };
+
+  // Single-word translator kept for API compatibility with existing callers
+  // (manual "Auto-translate" button, Quick Play). Thin wrapper over the batch.
+  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
+    const result = await translateWordsBatch([englishWord]);
+    return result.get(englishWord.toLowerCase().trim()) || null;
   };
 
   const handleAutoTranslate = async (term: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -2542,15 +2571,24 @@ export default function App() {
       const rawText = ocrData.raw_text || '';
 
 
-      // Create Word objects for custom assignment
-      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => ({
-        id: Date.now() + index, // Generate unique ID
-        english: word,
-        hebrew: '', // Leave empty - user can add later
-        arabic: '',
-        level: 'Custom',
-        recProd: 'Prod'
-      }));
+      // Auto-translate OCR words to Hebrew + Arabic via Gemini so teachers
+      // don't have to fill them in manually. Done BEFORE creating the Word
+      // objects so the translations land on first render. Failure is silent
+      // — teachers see a "Translate" button per word as the fallback.
+      setOcrStatus("Translating to Hebrew + Arabic…");
+      const translations = await translateWordsBatch(extractedWords);
+
+      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => {
+        const t = translations.get(word.toLowerCase().trim());
+        return {
+          id: Date.now() + index,
+          english: word,
+          hebrew: t?.hebrew || '',
+          arabic: t?.arabic || '',
+          level: 'Custom',
+          recProd: 'Prod',
+        };
+      });
 
       if (customWordsFromOCR.length > 0) {
       }
