@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import TeacherRewardModal from "../components/dashboard/TeacherRewardModal";
+import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import { ALL_WORDS } from "../data/vocabulary";
 import {
   supabase,
@@ -54,7 +55,20 @@ export default function AnalyticsView({
   const [reteachWords, setReteachWords] = useState<Set<number>>(new Set());
   // State for teacher rewards
   const [rewardStudent, setRewardStudent] = useState<{ uid: string; name: string; avatar: string; xp?: number } | null>(null);
-  const [studentUidMap, setStudentUidMap] = useState<Map<string, { uid: string; xp: number }>>(new Map());
+  // Map key: lowercased + trimmed display_name (so lookups tolerate
+  // whitespace/case differences between analytics aggregates and the
+  // students table). Value: {uid, xp} — uid is auth_uid where available,
+  // else null (students without auth accounts can't receive rewards).
+  const [studentUidMap, setStudentUidMap] = useState<Map<string, { uid: string | null; xp: number }>>(new Map());
+  // Visible toast queue — replaces the console.log that was the silent
+  // failure on the reward flow.
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const pushToast = (message: string, type: Toast['type'] = 'info') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    const duration = type === 'error' ? 6000 : 3000;
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+  };
 
   // Per-class analytics
   const classAnalytics = useMemo(() => {
@@ -332,13 +346,18 @@ export default function AnalyticsView({
 
         if (error) throw error;
 
-        // Create map of student name -> uid + xp
-        const map = new Map<string, { uid: string; xp: number }>();
+        // Map keyed by lowercased + trimmed display_name so later lookups
+        // tolerate case/whitespace differences between analytics aggregates
+        // (which come from progress.student_name) and the students table
+        // (which stores display_name). Include students WITHOUT auth_uid
+        // too — we show a toast when the teacher tries to reward them
+        // instead of silently doing nothing.
+        const map = new Map<string, { uid: string | null; xp: number }>();
         if (data) {
           data.forEach((student: { id: string; auth_uid: string | null; display_name: string; xp: number }) => {
-            // Use auth_uid as the user identifier for award_reward
-            if (student.auth_uid) {
-              map.set(student.display_name, { uid: student.auth_uid, xp: student.xp });
+            const key = (student.display_name || '').trim().toLowerCase();
+            if (key) {
+              map.set(key, { uid: student.auth_uid, xp: student.xp });
             }
           });
         }
@@ -484,7 +503,7 @@ export default function AnalyticsView({
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentAnalytics.strugglingStudents.slice(0, 6).map(s => {
-                          const studentInfo = studentUidMap.get(s.name);
+                          const studentInfo = studentUidMap.get((s.name || '').trim().toLowerCase());
                           return (
                             <div
                               key={s.name}
@@ -506,14 +525,20 @@ export default function AnalyticsView({
                               <div className="mt-2 pt-2 border-t border-amber-100 flex justify-end">
                                 <button
                                   onClick={() => {
-                                    if (studentInfo) {
-                                      setRewardStudent({
-                                        uid: studentInfo.uid,
-                                        name: s.name,
-                                        avatar: s.avatar,
-                                        xp: studentInfo.xp,
-                                      });
+                                    if (!studentInfo) {
+                                      pushToast(`Can't find ${s.name} in this class. Try refreshing the page.`, 'error');
+                                      return;
                                     }
+                                    if (!studentInfo.uid) {
+                                      pushToast(`${s.name} hasn't created an account yet — can't receive rewards.`, 'error');
+                                      return;
+                                    }
+                                    setRewardStudent({
+                                      uid: studentInfo.uid,
+                                      name: s.name,
+                                      avatar: s.avatar,
+                                      xp: studentInfo.xp,
+                                    });
                                   }}
                                   type="button"
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold transition-colors"
@@ -852,19 +877,18 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* Teacher Reward Modal */}
+      {/* Teacher Reward Modal — wired to visible toasts now so teachers
+          see success / failure, not a silent no-op. */}
       <TeacherRewardModal
         student={rewardStudent}
         onClose={() => setRewardStudent(null)}
         onRewardGiven={() => {
           // Optionally refresh data after giving reward
         }}
-        showToast={(message, type) => {
-          // Simple toast notification
-          console.log(`[${type}] ${message}`);
-          // In a real app, this would use the app's toast system
-        }}
+        showToast={pushToast}
       />
+
+      <ToastList toasts={toasts} />
     </div>
   );
 }
