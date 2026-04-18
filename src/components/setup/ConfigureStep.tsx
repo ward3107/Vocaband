@@ -106,31 +106,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 }) => {
   void _editingAssignment;
 
-  // Ref for template selector (for auto-scroll)
-  const templateSelectorRef = useRef<HTMLSelectElement>(null);
+  // Ref on the Next button is kept for programmatic focus only (e.g.
+  // accessibility announce on step mount), never for auto-scrolling.
+  // Both of the old setTimeout-based scrollIntoView effects were
+  // removed — they fought the SetupWizard's scroll-to-top on step
+  // change and produced the "page jumps up, then down" UX. The
+  // templateSelectorRef was also removed because the Quick Template
+  // grid it targeted no longer exists.
   const nextButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Auto-scroll to template selector when component mounts (especially for Quick Play)
-  useEffect(() => {
-    if (templateSelectorRef.current) {
-      setTimeout(() => {
-        templateSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        templateSelectorRef.current?.focus();
-      }, 300);
-    }
-  }, []);
-
-  // Auto-scroll to Next button when user can proceed (using existing canProceed from line 146)
-  useEffect(() => {
-    // This will run after the component is fully rendered and canProceed is defined
-    setTimeout(() => {
-      // We need to compute canProceed the same way as line 146
-      const canProceed = mode === 'quick-play' || (mode === 'assignment' && !!assignmentTitle);
-      if (canProceed && nextButtonRef.current && selectedModes.length > 0) {
-        nextButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 500);
-  }, [mode, assignmentTitle, selectedModes.length]);
 
   // Sentence builder local state
   const [customSentenceInput, setCustomSentenceInput] = useState('');
