@@ -89,6 +89,25 @@ jobs:
       - name: Link to Supabase project
         run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
 
+      - name: Repair phantom remote migration entries
+        # The remote schema_migrations table has rows from earlier
+        # `supabase db push` runs that used full HHMMSS timestamps
+        # (e.g. 20260403142757) — but our local files use the short
+        # date format (20260403_*.sql). The CLI sees the mismatch and
+        # refuses to push with "Remote migration versions not found in
+        # local migrations directory". Mark those phantom rows as
+        # reverted so the CLI ignores them and pushes only the current
+        # local migrations. `|| true` keeps the step idempotent — once
+        # the rows are gone, repair returns non-zero and we don't care.
+        run: |
+          supabase migration repair --status reverted \
+            20260325 \
+            20260403142757 \
+            20260410093834 \
+            20260410093847 \
+            20260410093922 \
+            20260410102931 || echo "No phantom entries to repair (already clean)."
+
       - name: Push migrations (non-interactive)
         # `db push` reads SUPABASE_DB_PASSWORD from the env and exits
         # non-zero on any failure. Piping `yes` answers the "do you want
