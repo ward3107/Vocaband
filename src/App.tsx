@@ -120,6 +120,11 @@ export default function App() {
   const [studentDataLoading, setStudentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
+  // Detect "share" param — set by the social-share buttons in
+  // FloatingButtons so shared links always render the landing page even
+  // for logged-in visitors (whose auth would otherwise redirect them to
+  // their dashboard and make the preview useless).
+  const fromShareLinkRef = useRef(new URLSearchParams(window.location.search).get('share') === '1');
 
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
@@ -1990,8 +1995,14 @@ export default function App() {
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && !manualLoginInProgress.current && !restoreInProgress.current) {
+        if (session?.user && !manualLoginInProgress.current && !restoreInProgress.current && !fromShareLinkRef.current) {
           restoreSession(session.user);
+        } else if (fromShareLinkRef.current) {
+          // Shared-link visitor is already logged in. Keep them on the
+          // landing page so the preview they were sent to is what they
+          // actually see — they can click "Start Learning" or "Teacher
+          // Login" to jump back to their dashboard if they want.
+          setLoading(false);
         }
       } catch { /* getSession failed — let onAuthStateChange handle it */ }
     })();
@@ -2003,6 +2014,12 @@ export default function App() {
       if (session?.user) {
         // Fire-and-forget: releases the auth lock immediately, then
         // does the slow DB work asynchronously.
+        if (fromShareLinkRef.current && event === 'INITIAL_SESSION') {
+          // Same reasoning as the getSession path above: don't hijack a
+          // shared-link visit with an auto-dashboard redirect.
+          setLoading(false);
+          return;
+        }
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
