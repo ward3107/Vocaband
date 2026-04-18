@@ -183,7 +183,14 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
+  // Build the shared URL. We always point at the site root + `?share=1`
+  // so OG previews and clicks land on the public landing page — without
+  // the flag, a logged-in visitor would get auto-redirected to their
+  // dashboard by the auth restore effect in App.tsx and never see the
+  // landing that the sharer was trying to show them.
+  const shareUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/?share=1`
+    : "";
 
   // Share text flips between "level flex" (when shareLevel is provided
   // from the student dashboard) and the generic landing-page teaser
