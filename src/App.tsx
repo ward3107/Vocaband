@@ -6027,11 +6027,16 @@ export default function App() {
     return (
       <LazyWrapper loadingMessage="Loading quick play setup...">
       <QuickPlaySetupView
-        mode="quick-play"
         allWords={ALL_WORDS}
-        onComplete={async (result) => {
-          const dbWords = result.words.filter(w => w.id >= 0);
-          const customWords = result.words.filter(w => w.id < 0);
+        onCreateSession={async (words, modes) => {
+          // Creates the Quick Play session in the DB and returns the 6-char
+          // session code so QuickPlaySetupView can render its success
+          // screen. The title/notes parameters are accepted by the
+          // prop signature but not yet persisted — we can add columns to
+          // quick_play_sessions in a follow-up if teachers want to see
+          // labelled sessions in their history.
+          const dbWords = words.filter(w => w.id >= 0);
+          const customWords = words.filter(w => w.id < 0);
           const wordIds = dbWords.map(w => w.id);
 
           const customWordsJson = customWords.length > 0 ? JSON.stringify(
@@ -6045,34 +6050,33 @@ export default function App() {
           const { data, error } = await supabase.rpc('create_quick_play_session', {
             p_word_ids: wordIds.length > 0 ? wordIds : null,
             p_custom_words: customWordsJson,
-            p_allowed_modes: result.modes
+            p_allowed_modes: modes
           });
 
           if (error) {
             showToast("Failed to create session: " + error.message, "error");
-            return;
+            throw error;
           }
 
           const session = data as { id: string; session_code: string; allowed_modes?: string[] };
           setQuickPlaySessionCode(session.session_code);
-          const newSession = {
+          setQuickPlayActiveSession({
             id: session.id,
             sessionCode: session.session_code,
             wordIds: wordIds,
-            words: result.words
-          };
-          setQuickPlayActiveSession(newSession);
+            words,
+          });
 
           try {
             localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
               id: session.id,
-              words: result.words
+              words,
             }));
-          } catch (e) {
-          }
+          } catch { /* quota exceeded — safe to ignore, UI still works */ }
 
-          setView("quick-play-teacher-monitor");
+          return session.session_code;
         }}
+        onOpenMonitor={() => setView("quick-play-teacher-monitor")}
         onBack={() => setView("teacher-dashboard")}
         autoMatchPartial={true}
         showLevelFilter={false}

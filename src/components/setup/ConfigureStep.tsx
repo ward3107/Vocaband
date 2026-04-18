@@ -223,23 +223,27 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 
       <div className="text-center">
         <h2 className="text-2xl font-black text-stone-900 mb-2">
-          {isAssignment ? 'Configure assignment' : 'Choose game modes (optional)'}
+          {isAssignment ? 'Configure assignment' : 'Configure Quick Play'}
         </h2>
-        {isAssignment && (
-          <p className="text-stone-600">
-            Add details and choose game modes
-          </p>
-        )}
+        <p className="text-stone-600">
+          {isAssignment ? 'Add details and choose game modes' : 'Optional: add a title for your records, then choose modes'}
+        </p>
       </div>
 
-      {/* ── Assignment-only: details section (2026 redesign) ────────────────── */}
-      {isAssignment && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-5"
-        >
-          {/* Template Selector - at top, small buttons */}
+      {/* ── Details section (title + instructions) ─────────────────────────── */}
+      {/* Previously this block was gated on isAssignment, but Quick Play
+          teachers also benefit from labelling a session ("Period 3 warm-up")
+          so it shows up in analytics and in the success screen. We keep
+          the fields optional for Quick Play and required for assignments
+          (the canProceed check at the top of the component enforces that). */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-5"
+      >
+        {/* Template Selector — assignment-only because Quick Play doesn't
+            need the full "homework template" scaffolding. */}
+        {isAssignment && (
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
               <Sparkles size={14} className="text-amber-500" />
@@ -278,39 +282,48 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               })}
             </div>
           </div>
+        )}
 
-          {/* Title & Instructions - compact inputs */}
-          <div className="grid grid-cols-1 gap-3">
-            {/* Assignment Title */}
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1.5">
-                Assignment title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={assignmentTitle}
-                onChange={(e) => onTitleChange?.(e.target.value)}
-                placeholder="e.g., Fruits Vocabulary - Unit 5"
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
-              />
-            </div>
-
-            {/* Instructions */}
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1.5">
-                Instructions for students
-              </label>
-              <textarea
-                value={assignmentInstructions}
-                onChange={(e) => onInstructionsChange?.(e.target.value)}
-                placeholder="Add a note for your students..."
-                rows={2}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
-              />
-            </div>
+        {/* Title & Instructions — shown for both assignment AND quick-play. */}
+        <div className="grid grid-cols-1 gap-3">
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-bold text-stone-600 mb-1.5">
+              {isAssignment ? 'Assignment title ' : 'Session title '}
+              {isAssignment ? (
+                <span className="text-red-500">*</span>
+              ) : (
+                <span className="text-stone-400 font-normal">(optional)</span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={assignmentTitle}
+              onChange={(e) => onTitleChange?.(e.target.value)}
+              placeholder={isAssignment
+                ? 'e.g., Fruits Vocabulary - Unit 5'
+                : 'e.g., Period 3 warm-up'}
+              className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
+            />
           </div>
-        </motion.div>
-      )}
+
+          {/* Instructions */}
+          <div>
+            <label className="block text-xs font-bold text-stone-600 mb-1.5">
+              {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
+            </label>
+            <textarea
+              value={assignmentInstructions}
+              onChange={(e) => onInstructionsChange?.(e.target.value)}
+              placeholder={isAssignment
+                ? 'Add a note for your students...'
+                : 'e.g., Remember to use headphones'}
+              rows={2}
+              className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
+            />
+          </div>
+        </div>
+      </motion.div>
 
       {/* ── Game Modes by Level ───────────────────────────────────────────── */}
       <motion.div
