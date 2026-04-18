@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import {
@@ -29,6 +29,7 @@ import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
+import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
 import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
 
@@ -625,6 +626,22 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   // Get current word
   const currentWord = DEMO_WORDS[currentWordIndex];
 
+  // Pick a real, grammatically-correct sentence for the current demo
+  // word instead of the old `${word} is great!` template, which worked
+  // only for nouns and produced nonsense for verbs/adjectives/adverbs
+  // ("run is great!", "happy is great!"). getSentencesForWord consults
+  // the hand-written SENTENCE_BANK first, then per-POS level templates,
+  // so every demo word gets a sentence that actually parses. Memoised
+  // on currentWord so the same word always picks the same sentence for
+  // a given mount — otherwise every render would re-shuffle and the
+  // user would see the target change mid-build.
+  const currentSentence = useMemo(() => {
+    if (!currentWord) return "";
+    const pool = getSentencesForWord(currentWord, 2);
+    return pool[0] ?? `${currentWord.english}.`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWordIndex]);
+
   // Preload next word's audio for seamless transitions
   useEffect(() => {
     if (view === "game" && currentWordIndex < DEMO_WORDS.length - 1) {
@@ -661,10 +678,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           // Don't generate options - the full app reveals letters one by one
           setRevealedLetters(0);
           break;
-        case "sentence":
-          // Initialize sentence builder with shuffled words
-          const sentence = `${currentWord.english} is great!`;
-          const words = shuffle(sentence.split(" "));
+        case "sentence-builder":
+          // Initialize sentence builder with a real sentence from the
+          // sentence bank. Old code used case "sentence" (never matched —
+          // the mode id is "sentence-builder") with the silly
+          // "${word} is great!" template. Fixed to use currentSentence.
+          const words = shuffle(currentSentence.split(/\s+/).filter(Boolean));
           setAvailableWords(words);
           setBuiltSentence([]);
           setSentenceFeedback(null);
@@ -687,15 +706,18 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     speak(currentWord.id);
   }, [view, selectedMode, currentWordIndex]);
 
-  // Sentence Builder: speak the full sentence so the learner hears it
+  // Sentence Builder: speak the full sentence so the learner hears it.
+  // Mode id is "sentence-builder" (was wrongly checked as "sentence" and
+  // never fired). Uses currentSentence from the bank, not the old
+  // "${word} is great!" template.
   useEffect(() => {
-    if (view !== "game" || selectedMode !== "sentence" || !currentWord) return;
+    if (view !== "game" || selectedMode !== "sentence-builder" || !currentWord) return;
     responseStartTime.current = Date.now();
     window.speechSynthesis?.cancel();
-    const utter = new SpeechSynthesisUtterance(`${currentWord.english} is great!`);
+    const utter = new SpeechSynthesisUtterance(currentSentence);
     utter.rate = 0.9;
     window.speechSynthesis?.speak(utter);
-  }, [view, selectedMode, currentWordIndex]);
+  }, [view, selectedMode, currentWordIndex, currentSentence]);
 
   // Flashcards: speak when card is flipped to reveal meaning
   useEffect(() => {
@@ -2307,7 +2329,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => {
                         window.speechSynthesis?.cancel();
-                        const utter = new SpeechSynthesisUtterance(`${currentWord.english} is great!`);
+                        const utter = new SpeechSynthesisUtterance(currentSentence);
                         utter.rate = 0.9;
                         window.speechSynthesis.speak(utter);
                       }}
@@ -2363,7 +2385,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <motion.button
                         onClick={() => {
                           setBuiltSentence([]);
-                          const target = `${currentWord.english} is great!`.split(" ").filter(Boolean);
+                          const target = currentSentence.split(/\s+/).filter(Boolean);
                           setAvailableWords([...target].sort(() => Math.random() - 0.5));
                         }}
                         disabled={sentenceFeedback !== null}
@@ -2374,7 +2396,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       >Clear</motion.button>
                       <motion.button
                         onClick={() => {
-                          const target = `${currentWord.english} is great!`;
+                          const target = currentSentence;
                           const built = builtSentence.join(" ");
                           if (built.toLowerCase() === target.toLowerCase()) {
                             setSentenceFeedback("correct");
