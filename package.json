@@ -21,6 +21,7 @@
     "test:e2e": "npx playwright test --config e2e/playwright.config.ts",
     "test:e2e:ui": "npx playwright test --config e2e/playwright.config.ts --ui",
     "audit": "npm audit",
+    "gen:types": "npx supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > src/core/supabase-types.generated.ts",
     "install:prod": "npm install --legacy-peer-deps",
     "deploy:preview": "npm run build && wrangler deploy --config dist/vocaband/wrangler.json --name vocaband-preview"
   },

@@ -72,6 +72,22 @@ export async function handleDbError(
 }
 
 // ---------------------------------------------------------------------------
+// Explicit column lists for `.select(...)` calls.
+//
+// Prefer these over `.select('*')` so the mapper and the query stay in sync
+// and the client doesn't waste bandwidth hauling a row's full surface area
+// (e.g. users' full cosmetic state) on every dashboard refresh. Each
+// constant lists exactly the columns the matching mapper below reads.
+// ---------------------------------------------------------------------------
+export const USER_COLUMNS =
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme';
+export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
+export const ASSIGNMENT_COLUMNS =
+  'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
+export const PROGRESS_COLUMNS =
+  'id,student_name,student_uid,assignment_id,class_code,score,mode,completed_at,mistakes,avatar,play_count';
+
+// ---------------------------------------------------------------------------
 // Row-to-interface mappers (DB uses snake_case, TS uses camelCase)
 // ---------------------------------------------------------------------------
 

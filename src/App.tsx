@@ -11,7 +11,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
@@ -878,48 +878,51 @@ export default function App() {
     };
   }, [view, quickPlayActiveSession?.id, aggregateProgress]);
 
-  // Quick Play student: subscribe to session status (end) and progress deletes (kick)
+  // Quick Play student: one channel, two listeners — session-end + kick.
+  //
+  // Previously this useEffect opened TWO channels (`qp-session-*` and
+  // `qp-kick-*`) per student. Combined with the teacher-side progress
+  // channel that makes 3 concurrent postgres_changes subscriptions every
+  // time a Quick Play session is running. Supabase Starter allows 10
+  // concurrent realtime subscribers per project, so a classroom of 10+
+  // students would exhaust the slots and start dropping mid-game.
+  //
+  // One channel can hold multiple `.on(...)` listeners, each watching a
+  // different table/filter, so fold them together.
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
 
     const sessionCode = quickPlayActiveSession.sessionCode;
     const sessionId = quickPlayActiveSession.id;
+    const uid = user.uid;
 
-    // 1. Subscribe to session end
-    const sessionChannel = supabase
-      .channel(`qp-session-${sessionCode}`)
+    const channel = supabase
+      .channel(`qp-student-${sessionCode}-${uid}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'quick_play_sessions',
-          filter: `session_code=eq.${sessionCode}`
+          filter: `session_code=eq.${sessionCode}`,
         },
         (payload) => {
           if (payload.new && !(payload.new as any).is_active) {
-            // Show session end screen instead of just redirecting
             setQuickPlaySessionEnded(true);
             setActiveAssignment(null);
           }
         }
       )
-      .subscribe();
-
-    // 2. Subscribe to progress deletes for THIS student only (teacher kicked)
-    const kickChannel = supabase
-      .channel(`qp-kick-${sessionId}-${user.uid}`)
       .on(
         'postgres_changes',
         {
           event: 'DELETE',
           schema: 'public',
           table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`
+          filter: `assignment_id=eq.${sessionId}`,
         },
         (payload) => {
-          // Only kick if the deleted row belongs to THIS student
-          if (payload.old && (payload.old as any).student_uid === user.uid) {
+          if (payload.old && (payload.old as any).student_uid === uid) {
             setQuickPlayKicked(true);
             setActiveAssignment(null);
           }
@@ -928,10 +931,9 @@ export default function App() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(sessionChannel);
-      supabase.removeChannel(kickChannel);
+      supabase.removeChannel(channel);
     };
-  }, [user?.isGuest, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
+  }, [user?.isGuest, user?.uid, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
 
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   // --- HELPER: Create Guest User ---
@@ -1574,7 +1576,7 @@ export default function App() {
     // Helper: fetch user profile with a single retry for transient errors.
     const fetchUserProfile = async (uid: string, retries = 1): Promise<ReturnType<typeof mapUser> | null> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
-        const { data: userRow, error } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
+        const { data: userRow, error } = await supabase.from('users').select(USER_COLUMNS).eq('uid', uid).maybeSingle();
         if (userRow) return mapUser(userRow);
         if (!error) return null; // No row exists — don't retry
         if (attempt < retries) await new Promise(r => setTimeout(r, 500));
@@ -1719,14 +1721,14 @@ export default function App() {
             }
 
             const { data: classRows } = await supabase
-              .from('classes').select('*').eq('code', code);
+              .from('classes').select(CLASS_COLUMNS).eq('code', code);
             if (classRows && classRows.length > 0) {
               const classData = mapClass(classRows[0]);
               // Fetch assignments + progress in parallel for faster restore.
               // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
               const [assignResult, progressResult] = await Promise.all([
                 supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', supabaseUser.id),
+                supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', supabaseUser.id),
               ]);
               setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
               setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -1767,12 +1769,12 @@ export default function App() {
               setUser(studentUser);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
-                  .from('classes').select('*').eq('code', studentProfile.class_code);
+                  .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
                 if (classRows && classRows.length > 0) {
                   const classData = mapClass(classRows[0]);
                   const [assignResult, progressResult] = await Promise.all([
                     supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                    supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
+                    supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
                   ]);
                   setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -1809,7 +1811,7 @@ export default function App() {
               if (savedCode && savedName && savedUid && UUID_RE.test(savedUid)) {
                 // Look up the users row by the OLD uid
                 const { data: existingUser } = await supabase
-                  .from('users').select('*').eq('uid', savedUid).maybeSingle();
+                  .from('users').select(USER_COLUMNS).eq('uid', savedUid).maybeSingle();
                 if (existingUser) {
                   // Migrate the row to the new anonymous UID
                   await supabase.from('users')
@@ -1822,12 +1824,12 @@ export default function App() {
                     checkConsent(restored);
                     if (restored.role === "student" && restored.classCode) {
                       const { data: classRows } = await supabase
-                        .from('classes').select('*').eq('code', restored.classCode);
+                        .from('classes').select(CLASS_COLUMNS).eq('code', restored.classCode);
                       if (classRows && classRows.length > 0) {
                         const c = mapClass(classRows[0]);
                         const [a, p] = await Promise.all([
                           supabase.rpc('get_assignments_for_class', { p_class_id: c.id }),
-                          supabase.from('progress').select('*').eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
+                          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
                         ]);
                         setStudentAssignments((a.data ?? []).map(mapAssignment));
                         setStudentProgress((p.data ?? []).map(mapProgress));
@@ -1876,12 +1878,12 @@ export default function App() {
               setUser(studentUser);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
-                  .from('classes').select('*').eq('code', studentProfile.class_code);
+                  .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
                 if (classRows && classRows.length > 0) {
                   const classData = mapClass(classRows[0]);
                   const [assignResult, progressResult] = await Promise.all([
                     supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                    supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
+                    supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
                   ]);
                   setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -2407,7 +2409,7 @@ export default function App() {
   }, [user?.role, view]);
 
   const fetchTeacherData = async (uid: string) => {
-    const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
+    const { data, error } = await supabase.from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
     if (!error && data) {
       const mappedClasses = data.map(mapClass);
       setClasses(mappedClasses);
@@ -3337,7 +3339,7 @@ export default function App() {
     // Ensure user record exists in users table (for XP/streak tracking)
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .select('*')
+      .select(USER_COLUMNS)
       .eq('uid', studentUid)
       .maybeSingle();
 
@@ -3393,7 +3395,7 @@ export default function App() {
       console.error('Class RPC error:', classError);
       // Fallback: try direct query (might fail due to RLS, but worth trying)
       const { data: fallbackClassRows } = await supabase
-        .from('classes').select('*').eq('code', code);
+        .from('classes').select(CLASS_COLUMNS).eq('code', code);
 
       if (fallbackClassRows && fallbackClassRows.length > 0) {
         await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
@@ -3427,14 +3429,14 @@ export default function App() {
 
     // Progress still uses direct query (should work for student's own progress)
     const { data: progressResult, error: progressError } = await supabase
-      .from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid);
+      .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
 
 
     if (assignError) {
       console.error('Assignments RPC error:', assignError);
       // Fallback to direct query
       const { data: fallbackData, error: fallbackError } = await supabase
-        .from('assignments').select('*').eq('class_id', classData.id);
+        .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
       setStudentAssignments((fallbackData ?? []).map(mapAssignment));
     } else {
       setStudentAssignments((assignResult ?? []).map(mapAssignment));
@@ -3631,12 +3633,12 @@ export default function App() {
       // Load class assignments and progress
       if (studentData.class_code) {
         const { data: classRows } = await supabase
-          .from('classes').select('*').eq('code', studentData.class_code);
+          .from('classes').select(CLASS_COLUMNS).eq('code', studentData.class_code);
         if (classRows && classRows.length > 0) {
           const classData = mapClass(classRows[0]);
           const [assignResult, progressResult] = await Promise.all([
             supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-            supabase.from('progress').select('*').eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
+            supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
           ]);
           setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
           setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -3795,7 +3797,7 @@ export default function App() {
         }
       } catch { /* ignore cache errors */ }
 
-      const classResult = classData ? null : await supabase.from('classes').select('*').eq('code', trimmedCode);
+      const classResult = classData ? null : await supabase.from('classes').select(CLASS_COLUMNS).eq('code', trimmedCode);
       if (classResult?.error) throw classResult.error;
 
       if (classResult?.data && classResult.data.length > 0) {
@@ -3815,7 +3817,7 @@ export default function App() {
       }
 
       const [userResult] = await Promise.all([
-        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
+        supabase.from('users').select(USER_COLUMNS).eq('uid', studentUid).maybeSingle(),
       ]);
 
       // Cache class info in localStorage for faster future logins
@@ -3905,7 +3907,7 @@ export default function App() {
       setStudentDataLoading(true);
       Promise.all([
         supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
+        supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', trimmedCode).eq('student_uid', studentUid),
       ]).then(([assignResult, progressResult]) => {
         if (assignResult.error) {
           console.error('Error loading assignments:', assignResult.error);
@@ -4062,7 +4064,7 @@ export default function App() {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data, error } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };
@@ -5382,12 +5384,12 @@ export default function App() {
 
       // Load the new class's data and navigate to its dashboard.
       const { data: classRows } = await supabase
-        .from('classes').select('*').eq('code', toCode);
+        .from('classes').select(CLASS_COLUMNS).eq('code', toCode);
       if (classRows && classRows.length > 0) {
         const classData = mapClass(classRows[0]);
         const [assignResult, progressResult] = await Promise.all([
           supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select('*').eq('class_code', toCode).eq('student_uid', supabaseUser.id),
+          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', toCode).eq('student_uid', supabaseUser.id),
         ]);
         setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
         setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -5412,12 +5414,12 @@ export default function App() {
     // as if the intended-code was never there.
     try {
       const { data: classRows } = await supabase
-        .from('classes').select('*').eq('code', fromCode);
+        .from('classes').select(CLASS_COLUMNS).eq('code', fromCode);
       if (classRows && classRows.length > 0) {
         const classData = mapClass(classRows[0]);
         const [assignResult, progressResult] = await Promise.all([
           supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select('*').eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
+          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
         ]);
         setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
         setStudentProgress((progressResult.data ?? []).map(mapProgress));
