@@ -112,6 +112,14 @@ export default function StudentAssignmentCard({
       setView("game");
       setShowModeSelection(true);
     });
+    // Jump the viewport to the top so the student lands on the mode
+    // selection hero card, not halfway down the new view. Without this,
+    // students who scrolled the dashboard to find their assignment
+    // ended up on a blank patch of the mode selector and had to scroll
+    // up to see "Choose Your Mode".
+    if (typeof window !== 'undefined') {
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+    }
   };
 
   return (
