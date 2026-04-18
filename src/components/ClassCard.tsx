@@ -184,18 +184,25 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     </button>
                   </div>
 
-                  {/* Default option */}
+                  {/* Default option — sits inline with "Default" label so it
+                      looks like a picker tile, not a giant hero preview. The
+                      previous version used `aspect-square w-full` which
+                      stretched this single tile to 288×288 inside a 288px
+                      popover, burying the emoji grid below the fold. */}
                   <button
                     onClick={() => handleAvatarPick(null)}
                     type="button"
                     style={{ touchAction: 'manipulation' }}
-                    className={`aspect-square rounded-xl flex items-center justify-center transition-all border-2 mb-3 w-full ${
+                    className={`w-full mb-3 px-3 py-2 rounded-xl flex items-center gap-2 transition-all border-2 ${
                       avatar === null
-                        ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200'
-                        : 'bg-white border-stone-200 hover:border-stone-300'
+                        ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200 text-indigo-700'
+                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700'
                     }`}
                   >
-                    <GraduationCap size={20} className="text-stone-600" />
+                    <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
+                      <GraduationCap size={18} className="text-stone-600" />
+                    </span>
+                    <span className="text-sm font-bold">Default</span>
                   </button>
 
                   {/* Emoji grid - scrollable */}
