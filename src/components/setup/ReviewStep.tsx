@@ -47,14 +47,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   // Ref for launch button (auto-scroll)
   const launchButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Auto-scroll to launch button when component mounts
-  useEffect(() => {
-    if (launchButtonRef.current) {
-      setTimeout(() => {
-        launchButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 400);
-    }
-  }, []);
+  // Auto-scroll-to-launch-button removed. It fought the SetupWizard's
+  // scroll-to-top on step change: SetupWizard scrolled to top of step 3,
+  // then 400 ms later this effect yanked the page back down to the
+  // Launch button — producing a jarring up-then-down jump. The Launch
+  // button is reachable by normal scroll; the wizard-level scroll-to-top
+  // now handles step-mount behavior uniformly.
 
   const isQuickPlay = mode === 'quick-play';
   const isAssignment = mode === 'assignment';
