@@ -6,20 +6,58 @@ import {
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
-import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData } from './types';
+import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig } from './types';
 import { DateTimePicker } from '../DateTimePicker';
 
-// ── Assignment Templates (2026 compact design) ───────────────────────────────
-const ASSIGNMENT_TEMPLATES: { title: string; instructions: string; modes?: string[]; icon: string; color: string }[] = [
-  { icon: '📇', title: 'Flashcard Review', instructions: 'Learn new words at your own pace', modes: ['flashcards'], color: 'from-blue-500 to-indigo-500' },
-  { icon: '✅', title: 'Classic Quiz', instructions: 'Multiple-choice vocabulary quiz', modes: ['classic'], color: 'from-emerald-500 to-teal-500' },
-  { icon: '🎧', title: 'Listening Practice', instructions: 'Audio-based word recognition', modes: ['listening'], color: 'from-violet-500 to-purple-500' },
-  { icon: '🧩', title: 'Matching Pairs', instructions: 'Connect words to translations', modes: ['matching'], color: 'from-amber-500 to-orange-500' },
-  { icon: '⚡', title: 'Quick Mix', instructions: 'Flashcards + Quiz + Matching', modes: ['flashcards', 'classic', 'matching'], color: 'from-rose-500 to-pink-500' },
-  { icon: '📚', title: 'Full Practice', instructions: 'All modes for complete mastery', modes: ALL_GAME_MODE_IDS, color: 'from-cyan-500 to-blue-500' },
-  { icon: '✍️', title: 'Spelling Focus', instructions: 'Writing and spelling practice', modes: ['spelling', 'scramble'], color: 'from-fuchsia-500 to-pink-500' },
-  { icon: '🏠', title: 'Weekly Homework', instructions: 'Complete all activities at home', modes: ['flashcards', 'classic', 'spelling', 'matching'], color: 'from-green-500 to-emerald-500' },
+// ── Derive assignment meta from selected modes ───────────────────────────────
+// The old "Quick template" UI forced teachers to pick a preset before
+// touching modes. Reversing that: teachers pick modes first, we derive a
+// sensible title + instructions for them, and they can edit afterwards
+// if they want something custom. Signature returns exactly the fields
+// ConfigureStep fills in so the call-site stays dumb.
+interface DerivedMeta {
+  title: string;
+  instructions: string;
+}
+
+// Hand-curated combos first — these recognise intentional picks like
+// "Spelling + Scramble = Spelling Focus". Fallback below handles any
+// other combination by naming the first 2-3 modes.
+const COMBO_META: { match: (ids: string[]) => boolean; meta: DerivedMeta }[] = [
+  { match: ids => ids.length === 1 && ids[0] === 'flashcards',     meta: { title: 'Flashcard Review',    instructions: 'Flip cards at your own pace to learn the new words.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'classic',        meta: { title: 'Classic Quiz',        instructions: 'Read each word and pick the right translation.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'listening',      meta: { title: 'Listening Practice',  instructions: 'Listen carefully — the English text is hidden!' } },
+  { match: ids => ids.length === 1 && ids[0] === 'matching',       meta: { title: 'Matching Pairs',      instructions: 'Tap the pairs to connect English with the translation.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'true-false',     meta: { title: 'True or False',       instructions: 'Decide if each translation is correct. Quick reflexes win.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'spelling',       meta: { title: 'Spelling Practice',   instructions: 'Type each word exactly as you hear it.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'scramble',       meta: { title: 'Word Scramble',       instructions: 'Unscramble the letters into the correct word.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'reverse',        meta: { title: 'Reverse Translate',   instructions: 'See the translation, pick the English word.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'letter-sounds',  meta: { title: 'Letter Sounds',       instructions: 'Hear each letter one by one, then spell the word.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'sentence-builder', meta: { title: 'Sentence Builder',  instructions: 'Arrange the words to form the correct sentence.' } },
+
+  // Multi-mode combos teachers commonly pick:
+  { match: ids => ids.length === 2 && new Set(ids).has('spelling') && new Set(ids).has('scramble'),
+    meta: { title: 'Spelling Focus',     instructions: 'Practice writing each word two ways — straight spelling and unscrambling.' } },
+  { match: ids => ids.length === 3 && ['flashcards','classic','matching'].every(m => ids.includes(m)),
+    meta: { title: 'Quick Mix',          instructions: 'Learn with Flashcards, then test yourself with Classic and Matching.' } },
+  { match: ids => ids.length === 4 && ['flashcards','classic','spelling','matching'].every(m => ids.includes(m)),
+    meta: { title: 'Weekly Homework',    instructions: 'Complete all four activities at home: flip, quiz, type, and match.' } },
+  { match: ids => ids.length >= ALL_GAME_MODE_IDS.length,
+    meta: { title: 'Full Practice',      instructions: 'Work through every game mode for complete mastery.' } },
 ];
+
+function deriveAssignmentMeta(modes: string[]): DerivedMeta {
+  if (modes.length === 0) return { title: '', instructions: '' };
+  const combo = COMBO_META.find(c => c.match(modes));
+  if (combo) return combo.meta;
+  // Generic fallback — name the first couple modes in the title.
+  const names = modes.map(id => getGameModeConfig(id)?.name ?? id).slice(0, 3);
+  const suffix = modes.length > 3 ? ` + ${modes.length - 3} more` : '';
+  return {
+    title: `${names.join(' + ')}${suffix} Practice`,
+    instructions: `A quick set using ${modes.length} game mode${modes.length === 1 ? '' : 's'}.`,
+  };
+}
 
 // ── Props ───────────────────────────────────────────────────────────────────
 interface ConfigureStepProps {
@@ -181,19 +219,35 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
     }
   };
 
-  // Template selector — assignment-only helper
-  const applyTemplate = (index: number) => {
-    const t = ASSIGNMENT_TEMPLATES[index];
-    if (!t) return;
-    onTitleChange?.(t.title);
-    onInstructionsChange?.(t.instructions);
-    if (t.modes) onModesChange(t.modes);
-  };
+  // Auto-derive title + instructions from the selected modes. Runs the
+  // first time the teacher picks modes AND every subsequent time they
+  // change the selection — UNLESS they've typed their own title (which
+  // flips the ref below). Typing into the title field later never gets
+  // stomped by mode changes because titleManuallyEditedRef stays true
+  // for the rest of the session once the teacher touches the field.
+  const titleManuallyEditedRef = useRef(false);
+  const instructionsManuallyEditedRef = useRef(false);
+  const lastAutoTitleRef = useRef('');
+  const lastAutoInstrRef = useRef('');
 
-  // Check if current selection matches a template
-  const activeTemplateIndex = ASSIGNMENT_TEMPLATES.findIndex(t =>
-    t.title === assignmentTitle && t.instructions === assignmentInstructions
-  );
+  useEffect(() => {
+    if (!isAssignment) return;
+    const derived = deriveAssignmentMeta(selectedModes);
+
+    // Title: fill in if empty OR the field still holds the previous
+    // auto-derived value. Respect user edits.
+    if (!titleManuallyEditedRef.current || assignmentTitle === '' || assignmentTitle === lastAutoTitleRef.current) {
+      if (derived.title !== assignmentTitle) onTitleChange?.(derived.title);
+      lastAutoTitleRef.current = derived.title;
+    }
+
+    // Instructions: same pattern.
+    if (!instructionsManuallyEditedRef.current || assignmentInstructions === '' || assignmentInstructions === lastAutoInstrRef.current) {
+      if (derived.instructions !== assignmentInstructions) onInstructionsChange?.(derived.instructions);
+      lastAutoInstrRef.current = derived.instructions;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModes, isAssignment]);
 
   // Can proceed?
   const canProceed = isAssignment
@@ -241,46 +295,18 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         animate={{ opacity: 1, y: 0 }}
         className="space-y-5"
       >
-        {/* Template Selector — assignment-only because Quick Play doesn't
-            need the full "homework template" scaffolding. */}
-        {isAssignment && (
-          <div>
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
-              <Sparkles size={14} className="text-amber-500" />
-              Quick template
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {ASSIGNMENT_TEMPLATES.map((template, index) => {
-                const isActive = activeTemplateIndex === index;
-                return (
-                  <motion.button
-                    key={template.title}
-                    onClick={() => applyTemplate(index)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    className={`p-2.5 rounded-xl border-2 text-left transition-all ${
-                      isActive
-                        ? `border-transparent bg-gradient-to-r ${template.color} text-white shadow-md`
-                        : 'border-stone-200 bg-white hover:border-stone-300'
-                    }`}
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{template.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-stone-800'}`}>
-                          {template.title}
-                        </p>
-                        <p className={`text-[10px] truncate ${isActive ? 'text-white/80' : 'text-stone-500'}`}>
-                          {template.instructions}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
+        {/* The old Quick template grid lived here. Removed — teachers
+            now pick modes first (further down) and we auto-fill a
+            sensible title + instructions based on that selection via
+            deriveAssignmentMeta. They can still edit either field
+            afterwards; a one-time manual-edit flag stops the auto-fill
+            from overwriting their customization on subsequent mode
+            changes. */}
+        {isAssignment && selectedModes.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-3 text-center text-xs text-stone-500">
+            <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
+            Pick one or more game modes below and we'll suggest a title
+            automatically. You can always edit it.
           </div>
         )}
 
@@ -299,7 +325,10 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <input
               type="text"
               value={assignmentTitle}
-              onChange={(e) => onTitleChange?.(e.target.value)}
+              onChange={(e) => {
+                titleManuallyEditedRef.current = true;
+                onTitleChange?.(e.target.value);
+              }}
               placeholder={isAssignment
                 ? 'e.g., Fruits Vocabulary - Unit 5'
                 : 'e.g., Period 3 warm-up'}
@@ -314,7 +343,10 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             </label>
             <textarea
               value={assignmentInstructions}
-              onChange={(e) => onInstructionsChange?.(e.target.value)}
+              onChange={(e) => {
+                instructionsManuallyEditedRef.current = true;
+                onInstructionsChange?.(e.target.value);
+              }}
               placeholder={isAssignment
                 ? 'Add a note for your students...'
                 : 'e.g., Remember to use headphones'}
