@@ -6108,6 +6108,18 @@ export default function App() {
         topicPacks={TOPIC_PACKS}
         user={user}
         onLogout={() => supabase.auth.signOut()}
+        // Sentence Builder config — without these props the Sentence
+        // Difficulty buttons in ConfigureStep call an undefined handler
+        // and silently no-op (user-reported "not clickable"), and the
+        // AI-sentences button generates fine but has nowhere to store
+        // the output because onSentencesChange is undefined.
+        // QuickPlaySetupView spreads {...rest} into SetupWizard, so
+        // forwarding them here reaches ConfigureStep without further
+        // plumbing.
+        assignmentSentences={assignmentSentences}
+        onSentencesChange={setAssignmentSentences}
+        sentenceDifficulty={sentenceDifficulty}
+        onSentenceDifficultyChange={setSentenceDifficulty}
       />
       </LazyWrapper>
     );

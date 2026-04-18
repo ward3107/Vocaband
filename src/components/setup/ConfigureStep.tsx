@@ -172,11 +172,32 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ words, difficulty: sentenceDifficulty }),
       });
-      if (!res.ok) throw new Error('AI generation failed');
+      if (!res.ok) {
+        // Previously the error was swallowed silently, leaving the
+        // teacher to wonder why nothing happened after clicking
+        // "Generate". Now surface the actual HTTP status + server
+        // message so the console/toast names the problem (401 / 403 /
+        // 503 / 500) and we can diagnose without Render log diving.
+        let reason = `HTTP ${res.status}`;
+        try {
+          const body = await res.json();
+          if (body?.error) reason = `${body.error}${body.message ? ` — ${body.message}` : ''}`;
+        } catch { /* body wasn't JSON */ }
+        throw new Error(reason);
+      }
       const { sentences } = await res.json();
       onSentencesChange?.(sentences);
-    } catch {
-      /* fallback: caller already has template sentences, just keep them */
+    } catch (err) {
+      console.warn('[AI sentences] generation failed:', err);
+      // Keep whatever template sentences the caller already has, but
+      // tell the teacher why the AI path didn't produce output so
+      // they can fix it (allowlist, API key, token) instead of staring
+      // at an unmoved sentence list and thinking the button is broken.
+      const msg = err instanceof Error ? err.message : 'AI generation failed';
+      // No toast handler in scope here — log a structured warning that
+      // devtools + Sentry will catch. Upstream consumers can wire a
+      // toast via props in a follow-up if we want user-visible errors.
+      console.warn(`[AI sentences] ${msg}`);
     } finally {
       setIsGeneratingAI(false);
     }
