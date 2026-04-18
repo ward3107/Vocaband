@@ -34,6 +34,11 @@ interface QuickPlayStudentViewProps {
   createGuestUser: (name: string, prefix?: string, avatar?: string) => AppUser;
   cleanupSessionData: () => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  /** True when the student has already joined this session and is mid-game.
+   * Triggers the "Resume playing" resume card. Without it, the body would
+   * render empty if the popstate back button sent them here from view=game
+   * (session + name both set, but no join-form body to show). */
+  userIsActiveGuest?: boolean;
 }
 
 export default function QuickPlayStudentView({
@@ -56,6 +61,7 @@ export default function QuickPlayStudentView({
   createGuestUser,
   cleanupSessionData,
   showToast,
+  userIsActiveGuest,
 }: QuickPlayStudentViewProps) {
   return (
     <div className="min-h-screen flex flex-col bg-surface">
@@ -86,6 +92,44 @@ export default function QuickPlayStudentView({
             <div className="text-center py-12 sm:py-20">
               <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
               <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
+            </div>
+          ) : userIsActiveGuest && quickPlayStudentName ? (
+            // Resume card: reached when the mobile back button pops the
+            // in-game history entry and lands the student back on
+            // quick-play-student with both session + name still set.
+            // Before this branch the body rendered empty — students saw a
+            // mysterious white page with only the "Vocaband / Back"
+            // header. Give them a one-tap path back into the game.
+            <div className="w-full max-w-md text-center py-8">
+              <div className="text-6xl mb-4">{quickPlayAvatar}</div>
+              <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
+                Welcome back, {quickPlayStudentName}!
+              </h1>
+              <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
+                Your Quick Play session is still active.
+              </p>
+              <button
+                onClick={() => {
+                  setShowModeSelection(true);
+                  setView("game");
+                }}
+                className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
+              >
+                Continue Playing →
+              </button>
+              <button
+                onClick={() => {
+                  cleanupSessionData();
+                  try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+                  setQuickPlayActiveSession(null);
+                  setQuickPlayStudentName("");
+                  setUser(null);
+                  setView("public-landing");
+                }}
+                className="mt-3 text-sm text-on-surface-variant font-bold hover:text-on-surface"
+              >
+                Leave Quick Play
+              </button>
             </div>
           ) : !quickPlayStudentName ? (
             <div className="w-full max-w-md">

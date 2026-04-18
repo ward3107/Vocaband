@@ -839,8 +839,14 @@ export default function App() {
       fetchProgress();
     }
 
-    // 2. Subscribe to realtime changes on progress table for this session
-    // OPTIMIZED: Use payload data directly instead of re-fetching, only when visible
+    // 2. Subscribe to realtime changes on progress table for this session.
+    // We can't safely merge `payload.new` into the already-aggregated state
+    // (previously we fed aggregated entries back into aggregateProgress,
+    // which reads raw column names like student_name/student_uid — the
+    // camelCase aggregated fields became undefined, producing a phantom
+    // "no-name, 0 pts" student on the podium next to the real one).
+    // Re-fetching on each INSERT is cheap at classroom scale and keeps
+    // the dedup logic in one place.
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
@@ -851,30 +857,12 @@ export default function App() {
           table: 'progress',
           filter: `assignment_id=eq.${sessionId}`
         },
-        (payload) => {
-          // Only process if page is visible (save resources when hidden)
+        () => {
           if (document.hidden) return;
-
-          if (payload.new && payload.eventType === 'INSERT') {
-            const newRecord = payload.new as any;
-            setQuickPlayJoinedStudents(prev => {
-              const updated = aggregateProgress([...prev, {
-                student_name: newRecord.student_name,
-                student_uid: newRecord.student_uid,
-                score: newRecord.score,
-                avatar: newRecord.avatar,
-                completed_at: newRecord.completed_at,
-                mode: newRecord.mode
-              }]);
-              return updated;
-            });
-          }
+          fetchProgress();
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-        }
-      });
+      .subscribe();
 
     // OPTIMIZED: Re-fetch when tab becomes visible after being hidden
     const handleVisibilityChange = () => {
@@ -1130,7 +1118,11 @@ export default function App() {
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
   // --- NEW MODES STATE ---
-  const [tfOption, setTfOption] = useState<Word | null>(null);
+  // tfOption is derived (useMemo below) so it's populated SYNCHRONOUSLY on
+  // the first render of True/False. Previously it was useState+useEffect,
+  // which left tfOption null for one render cycle after entering the mode
+  // — the first tap was swallowed (handleTFAnswer guards against null) and
+  // the buttons felt dead until the student backed out and re-entered.
   const [isFlipped, setIsFlipped] = useState(false);
 
   // --- MATCHING MODE STATE ---
@@ -4115,22 +4107,24 @@ export default function App() {
     return shuffle([...shuffledOthers, correct]);
   }, [currentWord, gameWords]);
 
-  useEffect(() => {
-    if (currentWord) {
-      // 50% chance to show correct translation, 50% chance to show wrong translation
-      if (secureRandomInt(2) === 0) {
-        setTfOption(currentWord);
-      } else {
-        let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
-        if (possibleDistractors.length === 0) {
-          const allPossibleWords = [...ALL_WORDS, ...gameWords];
-          possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
-        }
-        setTfOption(possibleDistractors[secureRandomInt( possibleDistractors.length)]);
-      }
-      setIsFlipped(false);
+  // Synchronously derive tfOption so it is never null on the first render
+  // of a True/False round (see note next to the isFlipped declaration).
+  const tfOption = useMemo<Word | null>(() => {
+    if (!currentWord) return null;
+    // 50% correct translation, 50% distractor
+    if (secureRandomInt(2) === 0) return currentWord;
+    let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
+    if (possibleDistractors.length === 0) {
+      const allPossibleWords = [...ALL_WORDS, ...gameWords];
+      possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
     }
+    return possibleDistractors[secureRandomInt(possibleDistractors.length)] ?? currentWord;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, currentWord, gameWords]);
+
+  useEffect(() => {
+    if (currentWord) setIsFlipped(false);
+  }, [currentIndex, currentWord]);
 
   const scrambledWord = useMemo(() => {
     if (!currentWord) return "";
@@ -4345,7 +4339,6 @@ export default function App() {
     setMatchedIds([]);
     setSelectedMatch(null);
     setIsFlipped(false);
-    setTfOption(null);
     setRevealedLetters(0);
     setSentenceIndex(0);
     setAvailableWords([]);
@@ -4363,9 +4356,21 @@ export default function App() {
         setFeedback(null); // Clear feedback when showing mode selection
       }
     } else if (user?.isGuest) {
-      // Quick Play guest: go back to mode selection so they can pick another mode
-      setShowModeSelection(true);
-      setFeedback(null); // Clear feedback when showing mode selection
+      if (showModeSelection) {
+        // Already on mode selection — second Exit tap leaves Quick Play
+        // entirely. Before, this branch always set showModeSelection(true)
+        // which was a no-op from the mode picker, so the guest had no way
+        // out of the game without closing the tab.
+        cleanupSessionData();
+        try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+        setQuickPlayActiveSession(null);
+        setQuickPlayStudentName("");
+        setUser(null);
+        setView("public-landing");
+      } else {
+        setShowModeSelection(true);
+        setFeedback(null); // Clear feedback when showing mode selection
+      }
     } else {
       setUser(null);
       setView("public-landing");
@@ -5271,6 +5276,7 @@ export default function App() {
           createGuestUser={createGuestUser}
           cleanupSessionData={cleanupSessionData}
           showToast={showToast}
+          userIsActiveGuest={!!user?.isGuest}
         />
       </LazyWrapper>
     );
@@ -6131,6 +6137,14 @@ export default function App() {
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
           setView={setView}
+          onQuickPlayExit={() => {
+            cleanupSessionData();
+            try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+            setQuickPlayActiveSession(null);
+            setQuickPlayStudentName("");
+            setUser(null);
+            setView("public-landing");
+          }}
         />
       </LazyWrapper>
     );
