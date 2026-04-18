@@ -1096,7 +1096,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       {/* Width scales per view: narrow for welcome/avatar (focused UX),
           wide for game-select/game/results/shop (needs room for 4-col grids
           and real-app parity on desktop). */}
-      <div className={`${['game-select', 'game', 'results', 'shop'].includes(view) ? 'max-w-5xl' : 'max-w-lg'} mx-auto px-4 py-6 pt-16`}>
+      {/* The demo's outer content container used a fixed max-w-lg (512px)
+          for welcome / avatar / mode-intro. On mobile that fills the
+          screen nicely, but on a 1920px desktop the card floats as a
+          narrow strip with huge empty sides. Widen non-game views to
+          max-w-2xl (672px) so they read as a proper centred card on
+          laptops without hurting the mobile layout. */}
+      <div className={`${['game-select', 'game', 'results', 'shop'].includes(view) ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 py-6 pt-16`}>
         <AnimatePresence mode="wait">
           {/* Welcome screen — short, no marketing.  The demo's job is to let
               students taste the product immediately, not pitch them; the
