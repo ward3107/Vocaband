@@ -6028,6 +6028,18 @@ export default function App() {
       <LazyWrapper loadingMessage="Loading quick play setup...">
       <QuickPlaySetupView
         allWords={ALL_WORDS}
+        // use2026WordInput + OCR/DOCX handlers + custom-words state make
+        // Quick Play's step 1 look and behave identically to Assignment's.
+        // Without these the QP teacher got the older WordInputStep UI
+        // (just paste + topics) while assignment teachers got the richer
+        // 2026 redesign (library, OCR photo, DOCX upload, custom words).
+        use2026WordInput={true}
+        onOcrUpload={handleOcrUpload}
+        isOcrProcessing={isOcrProcessing}
+        ocrProgress={ocrProgress}
+        onDocxUpload={handleDocxUpload}
+        customWords={customWords}
+        onCustomWordsChange={setCustomWords}
         onCreateSession={async (words, modes) => {
           // Creates the Quick Play session in the DB and returns the 6-char
           // session code so QuickPlaySetupView can render its success
