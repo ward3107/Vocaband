@@ -67,17 +67,21 @@ const POWER_UPS = [
   { id: 'reveal_letter', name: 'Hint', emoji: '💡', desc: 'Reveal first letter', cost: 0, freeInDemo: 3 },
 ];
 
-// Demo words — a 100-word slice of Set 1 vocabulary so students get
-// a real taste of the app instead of looping the same 10 words.  Pulled
-// from ALL_WORDS so the demo always stays in sync with what the full
-// app teaches.  100 keeps the demo lightweight while feeling expansive.
+// Demo words — 50 carefully-curated Set 1 words presented in a gentle
+// ramp from easiest to hardest so a brand-new visitor succeeds on the
+// first handful and only slowly meets trickier words.  Difficulty is
+// approximated by English word length (shortest first) — not perfect
+// but a good proxy for "cat/dog/run" vs "butterfly/understand".
 //
 // IMPORTANT: the vocabulary data uses level: "Set 1" (see
 // src/data/vocabulary.ts).  An earlier version of this filter said
 // 'Band 1' (legacy terminology) which matched NO words and left the
 // demo with an empty pool — rendering every game mode screen blank.
-// That's the bug the user reported as "no content in each mode".
-const DEMO_WORDS: Word[] = ALL_WORDS.filter(w => w.level === 'Set 1').slice(0, 100);
+const DEMO_WORDS: Word[] = ALL_WORDS
+  .filter(w => w.level === 'Set 1')
+  .slice()
+  .sort((a, b) => a.english.length - b.english.length || a.english.localeCompare(b.english))
+  .slice(0, 50);
 
 // Translations
 const demoTranslations: Record<Language, Record<string, string>> = {
