@@ -4095,6 +4095,21 @@ export default function App() {
     lastFetchRef.current.students = now;
   };
 
+  // Re-run fetchScores when classes transitions from 0 → non-zero while the
+  // teacher is viewing Analytics or Gradebook. Without this, clicking the
+  // Analytics card before the async classes fetch completes locks in an
+  // empty state: fetchScores sees classes=[] and returns early, and nothing
+  // else re-triggers it. Guarded by allScores.length === 0 so this fires
+  // at most once per session.
+  useEffect(() => {
+    if (user?.role !== "teacher") return;
+    if (classes.length === 0) return;
+    if (allScores.length > 0) return;
+    if (view !== "analytics" && view !== "gradebook") return;
+    fetchScores();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes.length, view, user?.role]);
+
   const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
