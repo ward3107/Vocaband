@@ -36,7 +36,7 @@ interface DemoModeProps {
   onClose: () => void;
 }
 
-type DemoView = "welcome" | "avatar" | "game-select" | "game" | "results" | "shop";
+type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop";
 type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
 // Avatar categories pulled from the real app constants so the demo shop
@@ -1042,8 +1042,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     setAvailableWords([]);
     setBuiltSentence([]);
     setSentenceFeedback(null);
-    setView("game");
+    // Show the mode-intro screen first — matches the real app's flow where
+    // a tap on a mode card takes you to GameModeIntroView (rules / steps /
+    // "Let's go!") before gameplay. Without this, demo players were dropped
+    // straight into the first question with zero orientation.
+    setView("mode-intro");
   };
+
+  const beginGameplay = () => setView("game");
 
   const resetDemo = () => {
     setView("welcome");
@@ -1459,6 +1465,88 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
             </motion.div>
           )}
 
+          {/* Mode Intro — shown between mode pick and gameplay. Ports the
+              real app's GameModeIntroView pattern (gradient hero + 3
+              numbered steps + big "Let's go!" CTA) into demo so a
+              first-time player gets the same orientation as a logged-in
+              student does on a real assignment. We use a trimmed in-place
+              version instead of importing GameModeIntroView so the demo
+              stays self-contained and its language strings stay in
+              demoTranslations. */}
+          {view === "mode-intro" && selectedMode && (() => {
+            const modeIntros: Record<string, { icon: string; steps: string[]; cardClass: string; accentClass: string; stepBgClass: string; stepNumClass: string; ctaClass: string }> = {
+              classic:           { icon: '📖', steps: ['See the English word', 'Listen to the pronunciation', 'Pick the correct translation'], cardClass: 'from-emerald-400 to-emerald-600', accentClass: 'text-emerald-700', stepBgClass: 'bg-emerald-50 border-emerald-100', stepNumClass: 'bg-emerald-500', ctaClass: 'from-emerald-500 to-emerald-600' },
+              listening:         { icon: '🎧', steps: ['Listen carefully to the word', 'The English is hidden!', 'Choose the correct translation'], cardClass: 'from-blue-400 to-indigo-600', accentClass: 'text-blue-700', stepBgClass: 'bg-blue-50 border-blue-100', stepNumClass: 'bg-blue-500', ctaClass: 'from-blue-500 to-indigo-600' },
+              spelling:          { icon: '✏️', steps: ['See the translation', 'Type the English word', 'Spelling must be exact!'], cardClass: 'from-purple-400 to-fuchsia-600', accentClass: 'text-purple-700', stepBgClass: 'bg-purple-50 border-purple-100', stepNumClass: 'bg-purple-500', ctaClass: 'from-purple-500 to-fuchsia-600' },
+              matching:          { icon: '⚡', steps: ['Find the matching pairs', 'Tap English then translation', 'Clear the board to finish!'], cardClass: 'from-amber-400 to-orange-500', accentClass: 'text-amber-700', stepBgClass: 'bg-amber-50 border-amber-100', stepNumClass: 'bg-amber-500', ctaClass: 'from-amber-500 to-orange-500' },
+              "true-false":      { icon: '✅', steps: ['See a word and a translation', 'Decide if the pair is correct', 'Think fast!'], cardClass: 'from-rose-400 to-pink-500', accentClass: 'text-rose-700', stepBgClass: 'bg-rose-50 border-rose-100', stepNumClass: 'bg-rose-500', ctaClass: 'from-rose-500 to-pink-500' },
+              flashcards:        { icon: '🃏', steps: ['Go at your own pace', 'Flip to see the answer', 'No pressure — just learn!'], cardClass: 'from-cyan-400 to-teal-500', accentClass: 'text-cyan-700', stepBgClass: 'bg-cyan-50 border-cyan-100', stepNumClass: 'bg-cyan-500', ctaClass: 'from-cyan-500 to-teal-500' },
+              scramble:          { icon: '🔤', steps: ['The letters are scrambled', 'Type the correct English word', 'Unscramble them all!'], cardClass: 'from-indigo-400 to-violet-600', accentClass: 'text-indigo-700', stepBgClass: 'bg-indigo-50 border-indigo-100', stepNumClass: 'bg-indigo-500', ctaClass: 'from-indigo-500 to-violet-600' },
+              reverse:           { icon: '🔄', steps: ['See the Hebrew/Arabic word', 'Pick the English translation', 'Reverse of classic!'], cardClass: 'from-fuchsia-400 to-purple-600', accentClass: 'text-fuchsia-700', stepBgClass: 'bg-fuchsia-50 border-fuchsia-100', stepNumClass: 'bg-fuchsia-500', ctaClass: 'from-fuchsia-500 to-purple-600' },
+              "letter-sounds":   { icon: '🔡', steps: ['Each letter lights up', 'Listen to each letter sound', 'Type the full word when ready'], cardClass: 'from-violet-400 to-purple-500', accentClass: 'text-violet-700', stepBgClass: 'bg-violet-50 border-violet-100', stepNumClass: 'bg-violet-500', ctaClass: 'from-violet-500 to-purple-500' },
+              "sentence-builder":{ icon: '🧩', steps: ['Words are shuffled below', 'Tap them in the correct order', 'Build the full sentence!'], cardClass: 'from-teal-400 to-emerald-500', accentClass: 'text-teal-700', stepBgClass: 'bg-teal-50 border-teal-100', stepNumClass: 'bg-teal-500', ctaClass: 'from-teal-500 to-emerald-500' },
+            };
+            const info = modeIntros[selectedMode] ?? modeIntros.classic;
+            const modeName = GAME_MODES_CONFIG.find(m => m.id === selectedMode)?.name ?? selectedMode;
+            return (
+              <motion.div
+                key="mode-intro"
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.35 }}
+                className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto"
+              >
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.1 }}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-[22px] sm:rounded-[28px] bg-gradient-to-br ${info.cardClass} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
+                >
+                  {info.icon}
+                </motion.div>
+                <h2 className={`text-2xl sm:text-4xl font-black ${info.accentClass} mb-6 sm:mb-8 text-center`}>
+                  {modeName}
+                </h2>
+                <div className="space-y-2.5 sm:space-y-3 mb-6 sm:mb-8">
+                  {info.steps.map((step, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + i * 0.1 }}
+                      className={`flex items-center gap-3 sm:gap-4 ${info.stepBgClass} border p-3 sm:p-4 rounded-2xl`}
+                    >
+                      <span className={`w-8 h-8 sm:w-10 sm:h-10 ${info.stepNumClass} text-white rounded-full flex items-center justify-center text-sm sm:text-base font-black flex-shrink-0 shadow-sm`}>
+                        {i + 1}
+                      </span>
+                      <span className="text-stone-700 font-semibold text-sm sm:text-base leading-snug">
+                        {step}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 + info.steps.length * 0.1 }}
+                  onClick={beginGameplay}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className={`w-full py-4 sm:py-5 bg-gradient-to-br ${info.ctaClass} text-white rounded-2xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
+                >
+                  Let's Go! →
+                </motion.button>
+                <button
+                  onClick={() => setView('game-select')}
+                  className="w-full mt-3 py-2 text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+                >
+                  ← Back to Modes
+                </button>
+              </motion.div>
+            );
+          })()}
+
+
           {/* Game Screen */}
           {view === "game" && currentWord && (
             <motion.div
@@ -1497,27 +1585,57 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Power-ups toolbar */}
-              {["classic", "listening", "reverse"].includes(selectedMode!) && (
-                <div className="flex justify-center gap-2 mb-3">
-                  {(selectedMode === "classic" || selectedMode === "listening" || selectedMode === "reverse") && powerUps.fifty_fifty > 0 && hiddenOptions.length === 0 && !selectedAnswer && (
-                    <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      ✂️ 50/50 <span className="bg-amber-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.fifty_fifty}</span>
-                    </motion.button>
-                  )}
-                  {powerUps.skip > 0 && !selectedAnswer && (
-                    <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-xl text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      ⏭️ {t.skip} <span className="bg-blue-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.skip}</span>
-                    </motion.button>
-                  )}
-                </div>
-              )}
+              {/* Power-ups toolbar — mirrors the real app's PowerUpToolbar.
+                  Each power-up has its own eligibility rules:
+                    • 50/50 — hides two wrong options in multiple-choice
+                      modes (classic / listening / reverse). Needs options
+                      on screen and no answer selected yet.
+                    • Skip  — advances to next word in every mode. Only
+                      hidden on the flashcards self-pacing screen (which
+                      has its own "next" button) and at the final word.
+                    • Hint  — types the first letter for the student in
+                      text-input modes (spelling / scramble / letter-sounds).
+                      Only when the input is still empty.
+                  Before this change, demo only surfaced 50/50 + Skip and
+                  only on three modes, so most of the demo played without
+                  any power-up buttons at all. */}
+              {(() => {
+                const mode = selectedMode!;
+                const isMultiChoice = mode === 'classic' || mode === 'listening' || mode === 'reverse';
+                const isTextInput = mode === 'spelling' || mode === 'scramble' || mode === 'letter-sounds';
+                const canSkip = mode !== 'flashcards' && !selectedAnswer && powerUps.skip > 0 && currentWordIndex < DEMO_WORDS.length - 1;
+                const canFiftyFifty = isMultiChoice && powerUps.fifty_fifty > 0 && hiddenOptions.length === 0 && !selectedAnswer;
+                const canHint = isTextInput && powerUps.reveal_letter > 0 && !selectedAnswer && spellingInput.length === 0;
+                if (!canSkip && !canFiftyFifty && !canHint) return null;
+                return (
+                  <div className="flex justify-center gap-2 mb-3">
+                    {canFiftyFifty && (
+                      <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        ✂️ 50/50 <span className="bg-amber-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.fifty_fifty}</span>
+                      </motion.button>
+                    )}
+                    {canSkip && (
+                      <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-xl text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        ⏭️ {t.skip} <span className="bg-blue-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.skip}</span>
+                      </motion.button>
+                    )}
+                    {canHint && (
+                      <motion.button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-xl text-xs font-bold hover:from-green-200 hover:to-green-300 transition-all flex items-center gap-1 border border-green-300 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        💡 Hint <span className="bg-green-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.reveal_letter}</span>
+                      </motion.button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Progress bar now lives INSIDE each mode card (matches real
                   app's GameActiveView). Older per-mode standalone progress
