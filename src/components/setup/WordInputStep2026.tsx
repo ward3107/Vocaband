@@ -1467,6 +1467,16 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     if (newWords.length > 0) {
       onSelectedWordsChange([...selectedWords, ...newWords]);
       showToast?.(`Added ${newWords.length} words`, 'success');
+      // Scroll to the "N words selected" section so the teacher actually
+      // sees the new words land. Without this the Topic Packs / Saved
+      // Groups modals close back onto the source-cards view and the
+      // teacher has no visual confirmation — it feels like nothing happened.
+      // Short timeout so the section has mounted/rerendered first.
+      setTimeout(() => {
+        selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else {
+      showToast?.('Those words are already selected', 'info');
     }
   }, [selectedWords, onSelectedWordsChange, showToast]);
 

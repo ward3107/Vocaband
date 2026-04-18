@@ -62,26 +62,26 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
 
   return (
     <header
-      className={`fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md flex justify-between items-center px-6 py-4 border-b border-stone-100 transition-transform duration-300 ${
+      className={`fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-100 transition-transform duration-300 ${
         isVisible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
         {showBack && (
           <button
             onClick={onBack}
-            className="w-10 h-10 flex items-center justify-center rounded-full signature-gradient shadow-lg shadow-blue-500/20 text-white hover:scale-105 active:scale-95 transition-transform"
+            className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full signature-gradient shadow-lg shadow-blue-500/20 text-white hover:scale-105 active:scale-95 transition-transform"
             aria-label="Go back"
           >
             <ChevronLeft size={18} />
           </button>
         )}
-        <div className="flex flex-col">
-          <span className="text-2xl font-black font-headline tracking-tight signature-gradient-text">
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-lg sm:text-2xl font-black font-headline tracking-tight signature-gradient-text truncate">
             {title}
           </span>
           {subtitle && (
-            <span className="text-[10px] font-bold tracking-widest text-on-surface-variant uppercase">
+            <span className="hidden sm:inline-block text-[10px] font-bold tracking-widest text-on-surface-variant uppercase truncate">
               {subtitle}
             </span>
           )}
