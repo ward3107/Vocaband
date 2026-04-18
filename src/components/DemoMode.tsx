@@ -24,6 +24,7 @@ import {
   Repeat,
   Globe,
   GraduationCap,
+  Star,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
@@ -31,6 +32,7 @@ import { useLanguage, Language } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
 import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
+import { DIFFICULTY_META, getModeDifficulty } from "./setup/types";
 
 interface DemoModeProps {
   onClose: () => void;
@@ -1438,6 +1440,33 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-500/80">Then practise with</p>
               </div>
 
+              {/* Difficulty legend — 3 tiers, each with 1/2/3 filled
+                  stars. Same pattern as the real app's mode picker so
+                  demo players learn the difficulty vocabulary that
+                  carries over once they sign up. */}
+              <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 flex-wrap">
+                {(['easy', 'medium', 'hard'] as const).map(tier => {
+                  const m = DIFFICULTY_META[tier];
+                  return (
+                    <div
+                      key={tier}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${m.badgeBg} ${m.badgeText}`}
+                      title={m.description}
+                    >
+                      <span className="inline-flex items-center gap-0.5">
+                        {[0, 1, 2].map(i => (
+                          <Star key={i} size={12} strokeWidth={2}
+                            className={i < m.stars ? m.starColor : 'text-stone-300'}
+                            fill={i < m.stars ? 'currentColor' : 'none'}
+                          />
+                        ))}
+                      </span>
+                      {m.label}
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Practice modes grid — matches GameModeSelectionView */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                 {GAME_MODES_CONFIG.filter(m => !m.isLearnMode).map((mode, idx) => {
@@ -1459,7 +1488,21 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         {mode.icon}
                       </div>
                       <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
-                      <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
+                      <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug mb-2">{mode.desc}</p>
+                      {(() => {
+                        const tier = getModeDifficulty(mode.id);
+                        const meta = DIFFICULTY_META[tier];
+                        return (
+                          <span className="inline-flex items-center gap-0.5">
+                            {[0, 1, 2].map(i => (
+                              <Star key={i} size={12} strokeWidth={2}
+                                className={i < meta.stars ? meta.starColor : 'text-stone-300'}
+                                fill={i < meta.stars ? 'currentColor' : 'none'}
+                              />
+                            ))}
+                          </span>
+                        );
+                      })()}
 
                       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Zap size={20} className="animate-pulse" />

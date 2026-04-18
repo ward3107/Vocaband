@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar,
+  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar, Star,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
-import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig } from './types';
+import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
 import { DateTimePicker } from '../DateTimePicker';
 
 // ── Derive assignment meta from selected modes ───────────────────────────────
@@ -375,6 +375,32 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           </button>
         </div>
 
+        {/* Difficulty legend — teachers see the same 1/2/3-star rating
+            their students will see on the mode picker, so picking
+            modes for an assignment they can mentally weight by level. */}
+        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
+          {(['easy', 'medium', 'hard'] as const).map(tier => {
+            const m = DIFFICULTY_META[tier];
+            return (
+              <div
+                key={tier}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${m.badgeBg} ${m.badgeText}`}
+                title={m.description}
+              >
+                <span className="inline-flex items-center gap-0.5">
+                  {[0, 1, 2].map(i => (
+                    <Star key={i} size={10} strokeWidth={2}
+                      className={i < m.stars ? m.starColor : 'text-stone-300'}
+                      fill={i < m.stars ? 'currentColor' : 'none'}
+                    />
+                  ))}
+                </span>
+                {m.label}
+              </div>
+            );
+          })}
+        </div>
+
         {/* Compact grid layout — 5 columns for all modes */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {Object.values(GAME_MODE_LEVELS).flat().map((gameMode) => {
@@ -402,6 +428,22 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-stone-600'}`}>
                   {gameMode.name}
                 </div>
+                {/* Star rating under the name — same 1/2/3 scale the
+                    student sees on their mode picker. */}
+                {(() => {
+                  const tier = getModeDifficulty(gameMode.id);
+                  const meta = DIFFICULTY_META[tier];
+                  return (
+                    <span className="inline-flex items-center gap-0.5 mt-1">
+                      {[0, 1, 2].map(i => (
+                        <Star key={i} size={10} strokeWidth={2}
+                          className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-stone-300')}
+                          fill={i < meta.stars ? 'currentColor' : 'none'}
+                        />
+                      ))}
+                    </span>
+                  );
+                })()}
                 {isSelected && (
                   <motion.div
                     initial={{ scale: 0, rotate: -180 }}
