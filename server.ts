@@ -728,15 +728,23 @@ ${JSON.stringify(validWords)}`;
           ? "image/jpeg"
           : rawMime;
 
-      const prompt = `Extract ALL English words from this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
+      // Prompt tuned to minimize hallucinations on mobile photos. The old
+      // prompt told Gemini to "include words even if partially obscured or
+      // blurry," which explicitly invited it to guess — teachers reported
+      // ghost words that weren't on the page. Flip the instruction: only
+      // return words you can read with certainty, and NEVER invent.
+      const prompt = `Extract English words that are clearly visible in this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
 
-Rules:
-- Include every English word you can read, no matter how small
+Strict rules:
+- Only include words you can read with high confidence
+- If a word is blurry, cropped, partially covered, or ambiguous, OMIT it
+- NEVER invent, guess, autocomplete, or infer words that are not visibly present
+- Do not merge two adjacent letters or fragments into a word
+- Do not split a single word into two (e.g., "sunshine" stays as one word, not "sun" + "shine")
 - Lowercase all words
 - Remove duplicates
 - Skip numbers, symbols, and non-English text (Hebrew, Arabic, etc.)
-- Include words even if partially obscured or blurry
-- If you cannot read any English words, return []`;
+- If you cannot read any English words with confidence, return []`;
 
       const result = await model.generateContent([
         prompt,

@@ -2576,6 +2576,18 @@ export default function App() {
       const extractedWords = ocrData.words || [];
       const rawText = ocrData.raw_text || '';
 
+      // Dictionary cross-check to catch Gemini hallucinations. Any OCR result
+      // that matches a curriculum word (ALL_WORDS, ~9k entries) is treated as
+      // high confidence; anything else could be a ghost word the model made
+      // up, or a legitimate non-curriculum word (proper noun, slang). We keep
+      // BOTH in the custom words list so teachers don't lose real words, but
+      // only auto-select the known ones. Unknown words show up unchecked so
+      // the teacher can dismiss obvious nonsense with a glance instead of it
+      // silently joining the assignment.
+      const normalizeWord = (w: string) => w.toLowerCase().trim();
+      const knownEnglishSet = new Set(ALL_WORDS.map(w => normalizeWord(w.english)));
+      const isKnownWord = (w: string) => knownEnglishSet.has(normalizeWord(w));
+
 
       // Auto-translate OCR words to Hebrew + Arabic via Gemini so teachers
       // don't have to fill them in manually. Done BEFORE creating the Word
@@ -2607,10 +2619,18 @@ export default function App() {
           "error"
         );
       } else {
-        // Add all detected words to the Custom tab and select them
+        // Add all detected words to the Custom tab, but only auto-select the
+        // ones that match our curriculum dictionary. Unknown words (possible
+        // hallucinations) appear unchecked for the teacher to review.
         setCustomWords(customWordsFromOCR);
         setSelectedLevel("Custom");
-        setSelectedWords(customWordsFromOCR.map(w => w.id));
+        const knownCustomIds = customWordsFromOCR
+          .filter(w => isKnownWord(w.english))
+          .map(w => w.id);
+        const autoSelectIds = knownCustomIds.length > 0
+          ? knownCustomIds
+          : customWordsFromOCR.map(w => w.id);
+        setSelectedWords(autoSelectIds);
 
         // Fire off Neural2 audio generation so students hear real pronunciations.
         void requestCustomWordAudio(customWordsFromOCR);
@@ -2621,7 +2641,11 @@ export default function App() {
           setView("create-assignment");
         }
 
-        showToast(`Found ${customWordsFromOCR.length} words from the image!`, "success");
+        const unknownCount = customWordsFromOCR.length - knownCustomIds.length;
+        const successMsg = knownCustomIds.length > 0 && unknownCount > 0
+          ? `Found ${customWordsFromOCR.length} words — ${knownCustomIds.length} curriculum matches auto-selected, ${unknownCount} need review.`
+          : `Found ${customWordsFromOCR.length} words from the image!`;
+        showToast(successMsg, "success");
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
