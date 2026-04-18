@@ -225,6 +225,25 @@ async function startServer() {
     keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
   });
 
+  // Translate endpoint rate limiter — per-teacher (Bearer token).  A normal
+  // teacher will hit /api/translate a handful of times per assignment; a
+  // spammer churning through Gemini quota will hit hundreds.  We also log
+  // the offender so abuse patterns show up in Render logs for follow-up.
+  const translateRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many translation requests. Please wait a minute before trying again." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+    handler: (req, res, _next, options) => {
+      const ip = req.ip || "unknown";
+      const keyPreview = (req.headers.authorization?.substring(7, 17) || "no-auth") + "…";
+      console.warn(`[abuse] /api/translate rate-limited: ip=${ip} token=${keyPreview}`);
+      res.status(options.statusCode).json(options.message);
+    },
+  });
+
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).
   // This way 100+ students behind the same school WiFi aren't blocked.
   // A lightweight IP-based pre-auth limiter still stops unauthenticated flooding.
@@ -500,20 +519,24 @@ async function startServer() {
   //
   // Response shape is unchanged: { hebrew: string[], arabic: string[] } in
   // input order, so existing frontend code keeps working.
-  app.post("/api/translate", async (req, res) => {
+  app.post("/api/translate", translateRateLimiter, async (req, res) => {
+    const ip = req.ip || "unknown";
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
+      console.warn(`[abuse] /api/translate missing auth header: ip=${ip}`);
       return res.status(401).json({ error: "Authentication required" });
     }
 
     const token = authHeader.substring(7);
     const uid = await verifyToken(token);
     if (!uid) {
+      console.warn(`[abuse] /api/translate invalid token: ip=${ip}`);
       return res.status(401).json({ error: "Invalid token" });
     }
 
     const userData = await getUserRoleAndClass(uid);
     if (!userData || userData.role !== "teacher") {
+      console.warn(`[abuse] /api/translate non-teacher caller: ip=${ip} uid=${uid} role=${userData?.role ?? 'none'}`);
       return res.status(403).json({ error: "Only teachers can translate" });
     }
 
