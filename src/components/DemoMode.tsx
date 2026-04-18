@@ -835,7 +835,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setMatchingCards(prev => prev.map(c =>
         c.id === cardId ? { ...c, selected: true } : c
       ));
-      // Play audio when selecting a card
+      // Every card tap plays the English audio for that word — works
+      // whether the student tapped the English side OR the translation
+      // side. speak(wordId) resolves to the English MP3 by id.
       speak(card.wordId);
     } else if (selectedCards.length === 1) {
       const firstCard = selectedCards[0];
@@ -844,7 +846,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           c.id === firstCard.id ? { ...c, selected: false } :
           c.id === cardId ? { ...c, selected: true } : c
         ));
-        // No auto-speak - user can click speaker icon to hear the word
+        // Student swapped their first pick for another card of the same
+        // side (e.g. switched which English card to try). Speak the new
+        // pick so every card tap in matching gives audio feedback.
+        speak(card.wordId);
       } else {
         const firstIndex = parseInt(firstCard.id.slice(1));
         const secondIndex = parseInt(card.id.slice(1));
@@ -860,6 +865,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           setXp(prev => prev + 15);
           setScore(prev => prev + 1);
           confetti({ particleCount: 30, spread: 40, origin: { y: 0.6 } });
+          // Play the English audio for the matched pair so the student
+          // hears the word they just connected.
+          speak(card.wordId);
 
           if (matchedPairs + 1 >= 4) {
             setTimeout(() => setView("results"), 500);
@@ -868,6 +876,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           setMatchingCards(prev => prev.map(c =>
             c.id === cardId ? { ...c, selected: true } : c
           ));
+          // Even on a wrong pair, speak the second card's English so the
+          // student hears what they tapped and can self-correct.
+          speak(card.wordId);
           setTimeout(() => {
             setMatchingCards(prev => prev.map(c =>
               c.id === firstCard.id || c.id === cardId
@@ -1049,7 +1060,21 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     setView("mode-intro");
   };
 
-  const beginGameplay = () => setView("game");
+  const beginGameplay = () => {
+    setView("game");
+    // Speak the first word synchronously inside the click handler so
+    // we stay inside the browser's "user-gesture" window. The auto-speak
+    // useEffect handles later words (which fire on user answers — also
+    // gestures), but the FIRST word used to race with the view
+    // transition: the useEffect ran after commit, which some browsers
+    // treat as outside the gesture window and silently swallow the
+    // audio. Speaking here guarantees the opening word plays.
+    const firstWord = DEMO_WORDS[0];
+    if (!firstWord || !selectedMode) return;
+    const silentModes = ['flashcards', 'letter-sounds', 'sentence-builder', 'matching'];
+    if (silentModes.includes(selectedMode)) return;
+    speak(firstWord.id);
+  };
 
   const resetDemo = () => {
     setView("welcome");
