@@ -318,7 +318,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="grid grid-cols-1 gap-3">
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-stone-600 mb-1.5">
+            <label htmlFor="assignment-title" className="block text-xs font-bold text-stone-600 mb-1.5">
               {isAssignment ? 'Assignment title ' : 'Session title '}
               {isAssignment ? (
                 <span className="text-red-500">*</span>
@@ -328,6 +328,9 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             </label>
             <input
               type="text"
+              id="assignment-title"
+              name="title"
+              autoComplete="off"
               value={assignmentTitle}
               onChange={(e) => {
                 titleManuallyEditedRef.current = true;
@@ -342,10 +345,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 
           {/* Instructions */}
           <div>
-            <label className="block text-xs font-bold text-stone-600 mb-1.5">
+            <label htmlFor="assignment-instructions" className="block text-xs font-bold text-stone-600 mb-1.5">
               {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
             </label>
             <textarea
+              id="assignment-instructions"
+              name="instructions"
+              autoComplete="off"
               value={assignmentInstructions}
               onChange={(e) => {
                 instructionsManuallyEditedRef.current = true;

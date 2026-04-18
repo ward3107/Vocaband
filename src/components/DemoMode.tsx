@@ -1327,11 +1327,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* Name field — styled to match signup screen */}
               <div className="mb-4">
-                <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                <label htmlFor="demo-nickname" className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
                   {t.yourName}
                 </label>
                 <input
                   type="text"
+                  id="demo-nickname"
+                  name="nickname"
+                  autoComplete="nickname"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder={t.enterNickname}
@@ -1928,6 +1931,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <input
                       autoFocus
                       type="text"
+                      id="demo-spelling-answer"
+                      name="answer"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
@@ -1987,6 +1995,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <input
                       autoFocus
                       type="text"
+                      id="demo-scramble-answer"
+                      name="answer"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
@@ -2193,6 +2206,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <input
                       autoFocus
                       type="text"
+                      id="demo-reverse-answer"
+                      name="answer"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
@@ -2271,6 +2289,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <input
                         autoFocus
                         type="text"
+                        id="demo-reverse-reveal-answer"
+                        name="answer"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
                         value={spellingInput}
                         onChange={(e) => setSpellingInput(e.target.value)}
                         placeholder="Type the word..."

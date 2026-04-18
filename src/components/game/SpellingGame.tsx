@@ -20,6 +20,11 @@ export default function SpellingGame({
       <input
         autoFocus
         type="text"
+        id="spelling-answer"
+        name="answer"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         value={spellingInput}
         onChange={(e) => setSpellingInput(e.target.value)}
         disabled={feedback === "show-answer" || feedback === "correct"}
