@@ -108,6 +108,30 @@ jobs:
             20260410093922 \
             20260410102931 || echo "No phantom entries to repair (already clean)."
 
+      - name: Mark already-applied migrations as applied
+        # Migrations 20260406 through 20260427 have their SQL bodies
+        # already run on the remote (proven by the NOTICE lines
+        # "relation ... already exists, skipping" in earlier CI logs),
+        # but their bookkeeping rows in schema_migrations either never
+        # landed or got wiped by earlier repair attempts. Without a row
+        # for each, `db push` treats them as pending, re-runs the
+        # idempotent SQL (no-op), then hits a duplicate-key error when
+        # inserting the bookkeeping row.
+        #
+        # Mark every 20260406–20260427 version as "applied" so the CLI
+        # stops trying to re-push them. The genuinely-new migrations
+        # (20260428+) remain in the pending list and get applied
+        # normally by the next step. Each `repair` is independent — a
+        # failure on any one version doesn't abort the rest.
+        run: |
+          for v in 20260406 20260407 20260408 20260409 20260410 \
+                   20260411 20260412 20260413 20260414 20260415 \
+                   20260416 20260417 20260418 20260419 20260420 \
+                   20260421 20260422 20260423 20260424 20260425 \
+                   20260426 20260427; do
+            supabase migration repair --status applied "$v" 2>&1 || echo "  (repair $v skipped — already applied or unknown)"
+          done
+
       - name: Push migrations (non-interactive)
         # `db push` reads SUPABASE_DB_PASSWORD from env. Without
         # --include-all the CLI compares local files against the remote
