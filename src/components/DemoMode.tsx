@@ -23,6 +23,7 @@ import {
   Shuffle,
   Repeat,
   Globe,
+  GraduationCap,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
@@ -417,7 +418,10 @@ const MODE_ICONS: Record<string, React.ReactNode> = {
   "sentence-builder":     <span className="text-2xl">🧩</span>,
 };
 
-// Game mode configuration with tooltips — matching GameModeSelectionView exactly
+// Game mode configuration with tooltips — matching GameModeSelectionView exactly.
+// Flashcards is flagged as the LEARNING mode (isLearnMode) so the demo's
+// mode picker can render it as a hero card above the practice grid, just
+// like the real game does.
 const GAME_MODES_CONFIG: Array<{
   id: string;
   name: string;
@@ -425,7 +429,17 @@ const GAME_MODES_CONFIG: Array<{
   color: string;
   icon: React.ReactNode;
   tooltip: string[];
+  isLearnMode?: boolean;
 }> = [
+    {
+      id: "flashcards",
+      name: "Flashcards",
+      desc: "Learn the words first — flip, listen, and earn XP at your own pace.",
+      color: "cyan",
+      icon: <Layers size={28} />,
+      tooltip: ["Learn before you practice", "Flip cards to see answers", "No pressure — still earns XP"],
+      isLearnMode: true,
+    },
     {
       id: "classic",
       name: "Classic Mode",
@@ -465,14 +479,6 @@ const GAME_MODES_CONFIG: Array<{
       color: "rose",
       icon: <CheckCircle2 size={24} />,
       tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"]
-    },
-    {
-      id: "flashcards",
-      name: "Flashcards",
-      desc: "Review words at your own pace. No pressure.",
-      color: "cyan",
-      icon: <Layers size={24} />,
-      tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"]
     },
     {
       id: "scramble",
@@ -1373,9 +1379,56 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Mode grid — matching GameModeSelectionView exactly */}
+              {/* Learning hero — Flashcards is promoted above the
+                  practice grid with its own big card so the demo
+                  visitor sees the same "Start here · Learn first"
+                  positioning as the real app's mode selection. */}
+              {(() => {
+                const learn = GAME_MODES_CONFIG.find(m => m.isLearnMode);
+                if (!learn) return null;
+                return (
+                  <motion.button
+                    key={learn.id}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                    whileHover={{ scale: 1.02, translateY: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => startGame(learn.id)}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
+                  >
+                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+                    <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
+                      <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+                        <Sparkles size={12} />
+                        Start here · Learn first
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 sm:gap-6 mt-10 sm:mt-6">
+                      <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                        <GraduationCap size={32} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-xl sm:text-3xl mb-1">{learn.name}</p>
+                        <p className="text-white/90 text-sm sm:text-base font-semibold leading-snug">{learn.desc}</p>
+                      </div>
+                      <div className="hidden sm:flex shrink-0 opacity-60">
+                        <Layers size={28} />
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })()}
+
+              <div className="mb-3 text-left">
+                <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-500/80">Then practise with</p>
+              </div>
+
+              {/* Practice modes grid — matches GameModeSelectionView */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-                {GAME_MODES_CONFIG.map((mode, idx) => {
+                {GAME_MODES_CONFIG.filter(m => !m.isLearnMode).map((mode, idx) => {
                   const modeColor = MODE_COLORS[mode.id] || "emerald";
                   return (
                     <motion.button
