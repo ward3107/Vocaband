@@ -38,3 +38,10 @@ tmp/
 tmp/
 
 temp-audio/
+
+# Migration secrets + dumps — never commit (except the template file).
+# The top-of-file .env* wildcard catches .env.migrate.example too, so the
+# explicit negation below re-includes just the template.
+.env.migrate
+migrate-dumps/
+!.env.migrate.example
