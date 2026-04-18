@@ -3312,7 +3312,7 @@ export default function App() {
     const { data: { session: _liveSession } } = await supabase.auth.getSession();
     const liveAuthUid = _liveSession?.user?.id;
     if (!liveAuthUid) {
-      setError("Session expired. Please sign in again.");
+      setError("Just tap your name below to sign back in 👋");
       return;
     }
 
@@ -3568,7 +3568,7 @@ export default function App() {
 
       const { data: { user: supabaseUser } } = await supabase.auth.getUser();
       if (!supabaseUser) {
-        setError('Session expired. Please sign in again.');
+        setError('Just tap your name below to sign back in 👋');
         return;
       }
 
