@@ -2186,6 +2186,14 @@ export default function App() {
   const viewRef = useRef(view);
   useEffect(() => { viewRef.current = view; }, [view]);
 
+  // Broadcast the current view so the global AccessibilityWidget knows
+  // whether to render its floating trigger. Per the product owner the
+  // trigger should only appear on public/landing pages, not while a
+  // student is mid-game or a teacher is in their dashboard.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
+  }, [view]);
+
   // Push a full dashboard trap: refill the pad buffer, then push the
   // dashboard on top.  Called on login transitions and whenever a pad
   // entry is popped so the buffer is always replenished.
@@ -4330,21 +4338,45 @@ export default function App() {
   };
 
   // Remove Quick Play guest from teacher's dashboard (delete progress, clear localStorage)
+  // Full guest exit cleanup. Called whenever a Quick Play student
+  // explicitly leaves the game (Exit button on mode picker, header
+  // Back button, finish-screen "Exit Quick Play", session-end overlay).
+  //
+  // Deletes the student's progress rows so they vanish from the
+  // teacher's podium AND so a re-join with the same name doesn't hit
+  // the "name already taken" guard. Also signs out the anon Supabase
+  // session so a fresh re-entry from the same device gets a new
+  // auth.uid (the old one's progress rows are already deleted, but
+  // signOut prevents stale localStorage from auto-restoring).
   const cleanupQuickPlayGuest = async () => {
     if (!user?.isGuest || !quickPlayActiveSession) return;
+    const studentName = user.displayName;
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       const authUid = authSession?.user?.id;
-      if (authUid) {
+      // Delete by uid AND by name. uid catches the rows the active
+      // session inserted; name catches any rows that earlier rotated
+      // auth uids inserted under the same display name (the dedup
+      // post-pass on the teacher side merges by name, so deleting by
+      // name removes them all in one go).
+      const orFilters: string[] = [];
+      if (authUid) orFilters.push(`student_uid.eq.${authUid}`);
+      if (studentName) orFilters.push(`student_name.eq.${studentName}`);
+      if (orFilters.length > 0) {
         await supabase
           .from('progress')
           .delete()
           .eq('assignment_id', quickPlayActiveSession.id)
-          .eq('student_uid', authUid);
+          .or(orFilters.join(','));
       }
     } catch {}
     try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
     setQuickPlayCompletedModes(new Set());
+    // Sign out the anon Supabase session — without this the next visit
+    // from the same device silently restores the same auth.uid via
+    // localStorage, so the "fresh" re-join would still be linked to
+    // the deleted progress rows in confusing ways.
+    try { await supabase.auth.signOut(); } catch {}
   };
 
   const handleExitGame = () => {
@@ -4377,11 +4409,13 @@ export default function App() {
     } else if (user?.isGuest) {
       if (showModeSelection) {
         // Already on mode selection — second Exit tap leaves Quick Play
-        // entirely. Before, this branch always set showModeSelection(true)
-        // which was a no-op from the mode picker, so the guest had no way
-        // out of the game without closing the tab.
+        // entirely. cleanupQuickPlayGuest deletes the student's progress
+        // rows (so they disappear from the teacher's podium) and signs
+        // out the anon Supabase session (so re-entering from the same
+        // phone gets a fresh state instead of restoring the old one
+        // and failing the "name already taken" guard).
         cleanupSessionData();
-        try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+        cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
         setQuickPlayActiveSession(null);
         setQuickPlayStudentName("");
         setUser(null);
@@ -6158,7 +6192,7 @@ export default function App() {
           setView={setView}
           onQuickPlayExit={() => {
             cleanupSessionData();
-            try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+            cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
             setQuickPlayActiveSession(null);
             setQuickPlayStudentName("");
             setUser(null);
