@@ -109,8 +109,14 @@ jobs:
             20260410102931 || echo "No phantom entries to repair (already clean)."
 
       - name: Push migrations (non-interactive)
-        # `db push` reads SUPABASE_DB_PASSWORD from the env and exits
-        # non-zero on any failure. Piping `yes` answers the "do you want
-        # to apply these migrations?" prompt with y so we don't need
-        # a flag that may not exist in every CLI version.
-        run: yes | supabase db push --include-all
+        # `db push` reads SUPABASE_DB_PASSWORD from env. Without
+        # --include-all the CLI compares local files against the remote
+        # schema_migrations table and only applies versions that aren't
+        # there yet — exactly the behaviour we want. --include-all
+        # forced every local file to re-run, which collided with rows
+        # already in schema_migrations (duplicate-key on the bookkeeping
+        # insert) even though the SQL itself was idempotent.
+        # Piping `yes` answers the "do you want to push these
+        # migrations?" confirmation without depending on a flag name
+        # that varies between CLI versions.
+        run: yes | supabase db push
