@@ -164,8 +164,33 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   });
   const [settings, setSettings] = useState<A11ySettings>(loadSettings);
   const [lang, setLang] = useState<Lang>(detectLang);
+  // Tracks the current App view so we can hide the floating trigger
+  // on game / dashboard pages. Set by App.tsx via a 'vocaband-view-change'
+  // CustomEvent. The panel itself is still openable from anywhere via
+  // the existing 'open-a11y-panel' event (footer / nav links).
+  const [currentView, setCurrentView] = useState<string>('');
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => setCurrentView((e as CustomEvent<string>).detail || '');
+    window.addEventListener('vocaband-view-change', handler);
+    return () => window.removeEventListener('vocaband-view-change', handler);
+  }, []);
+
+  // Pages where the floating trigger should appear. Public-facing
+  // pages only — once a student is in a game or a teacher is doing
+  // teacher work, the trigger gets out of the way. Footer link still
+  // opens the panel from anywhere if needed.
+  const TRIGGER_VIEWS = new Set([
+    'public-landing',
+    'public-terms',
+    'public-privacy',
+    'accessibility-statement',
+    'landing',
+    'student-account-login',
+  ]);
+  const showTrigger = currentView === '' || TRIGGER_VIEWS.has(currentView);
 
   // Apply CSS overrides whenever settings change
   useEffect(() => {
@@ -371,12 +396,14 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
 
   return createPortal(
     <div data-a11y-widget-root>
-      {/* Always-visible trigger — hidden only when the student has
-          dismissed it for the session (sessionStorage). The widget
-          always re-appears on next page load, so it remains reachable
-          on every visit per Israeli accessibility law. Footer links
-          and nav triggers also un-dismiss and reopen it. */}
-      {!dismissed && (
+      {/* Floating trigger — only rendered on public/landing pages
+          (public-landing, terms, privacy, accessibility-statement,
+          login). Hidden inside games and dashboards per product owner
+          request: students mid-game don't need it in their face.
+          Anywhere it's hidden, the panel can still be opened via the
+          'open-a11y-panel' custom event, so footer / nav "Accessibility"
+          links remain functional everywhere. */}
+      {!dismissed && showTrigger && (
         <button
           ref={triggerRef}
           data-a11y-widget
