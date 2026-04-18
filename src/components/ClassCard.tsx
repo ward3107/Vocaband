@@ -73,6 +73,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // Avatar picker popover state
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const avatarPickerRef = useRef<HTMLDivElement>(null);
+  // Ref on the assignments list so we can scroll it into view when the
+  // teacher expands it (otherwise it often opens below the fold and the
+  // click looks like it did nothing).
+  const assignmentsListRef = useRef<HTMLDivElement>(null);
 
   // Reset edited name when prop changes
   useEffect(() => {
@@ -86,6 +90,28 @@ const ClassCard: React.FC<ClassCardProps> = ({
       nameInputRef.current.select();
     }
   }, [isEditingName]);
+
+  // Bring the assignments dropdown into view the first render after it
+  // opens. `block: 'nearest'` only scrolls if needed, so if the list is
+  // already visible we don't jump the page around.
+  useEffect(() => {
+    if (!showAssignments) return;
+    const id = requestAnimationFrame(() => {
+      assignmentsListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [showAssignments]);
+
+  // Same treatment for the avatar picker popover — without it the grid
+  // opens below the fold on taller class cards and teachers don't
+  // realise the picker is there until they scroll.
+  useEffect(() => {
+    if (!avatarPickerOpen) return;
+    const id = requestAnimationFrame(() => {
+      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [avatarPickerOpen]);
 
   // Close avatar picker on outside click
   useEffect(() => {
@@ -371,9 +397,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
         </div>
       </div>
 
-      {/* Assignments dropdown */}
+      {/* Assignments dropdown. The wrapper ref lets us auto-scroll the
+          list into view when the teacher expands it — on a dashboard
+          with many classes the dropdown often opens below the fold,
+          so the click looked like a no-op unless the teacher remembered
+          to scroll. */}
       {assignments.length > 0 && showAssignments && (
-        <div className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl">
+        <div
+          ref={assignmentsListRef}
+          className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl"
+        >
           {assignments.map((assignment) => (
             <div
               key={assignment.id}

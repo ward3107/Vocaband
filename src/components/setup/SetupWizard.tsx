@@ -161,6 +161,20 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // ── Step State ─────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
+  // Scroll the viewport to the top whenever the step changes. The old
+  // AnimatePresence transition just swapped the content underneath,
+  // which often left the teacher looking at the bottom of step 1 when
+  // step 2 rendered — they had to scroll up to see "Configure assignment"
+  // or "Review" heading. Using window.scrollTo on currentStep change
+  // keeps the next step's heading aligned with the top of the viewport.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const id = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [currentStep]);
+
   // ── Core Shared State ───────────────────────────────────────────────────────
   const [selectedWords, setSelectedWords] = useState<Word[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>(
