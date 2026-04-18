@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, RefreshCw, AlertTriangle, CheckCircle2, Info, Home, Grid3X3 } from "lucide-react";
+import { Trophy, RefreshCw, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut } from "lucide-react";
 import type { AppUser } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
@@ -52,6 +52,8 @@ interface GameFinishedViewProps {
   setAssignmentWords: React.Dispatch<React.SetStateAction<Word[]>>;
   setShowModeSelection: React.Dispatch<React.SetStateAction<boolean>>;
   setView: React.Dispatch<React.SetStateAction<View>>;
+  /** Exit Quick Play entirely — only used for guest users. */
+  onQuickPlayExit?: () => void;
 }
 
 export default function GameFinishedView({
@@ -60,7 +62,21 @@ export default function GameFinishedView({
   setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
   setWordAttempts, setHiddenOptions, setSpellingInput,
   setAssignmentWords, setShowModeSelection, setView,
+  onQuickPlayExit,
 }: GameFinishedViewProps) {
+  const isGuest = !!user?.isGuest;
+  // Shared reset used by every action button below — clears per-round
+  // state so the next mode starts clean.
+  const resetRound = () => {
+    setIsFinished(false);
+    setScore(0);
+    setCurrentIndex(0);
+    setMistakes([]);
+    setFeedback(null);
+    setWordAttempts({});
+    setHiddenOptions([]);
+    setSpellingInput("");
+  };
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
   const t = activeThemeConfig.colors;
   const isDark = t.bg.includes('gray-9') || t.bg.includes('gray-950');
@@ -166,82 +182,110 @@ export default function GameFinishedView({
         </p>
 
         <div className="flex flex-col gap-2.5">
-          {/* Primary — Try Again (same mode + words) */}
-          <button
-            onClick={() => {
-              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-              setSpellingInput("");
-            }}
-            disabled={isSaving}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
-          >
-            <RefreshCw size={20} />
-            Try Again
-          </button>
+          {isGuest ? (
+            // Guest (Quick Play) layout.  Logged-in students get Try Again
+            // + Review, but for a Quick Play guest "Try Again" on the same
+            // mode just replays words they've already finished, and the
+            // old Dashboard / Assignment-words paths don't exist for them
+            // — those buttons sent them to a blank view. Give guests the
+            // two actions that actually make sense: play a different
+            // mode, or leave Quick Play.
+            <>
+              <button
+                onClick={() => {
+                  resetRound();
+                  setShowModeSelection(true);
+                }}
+                disabled={isSaving}
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                <Grid3X3 size={20} />
+                Play Another Mode
+              </button>
+              <button
+                onClick={() => {
+                  resetRound();
+                  if (onQuickPlayExit) onQuickPlayExit();
+                }}
+                disabled={isSaving}
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-stone-700 border-2 border-stone-200 hover:bg-stone-50'}`}
+              >
+                <LogOut size={16} />
+                Exit Quick Play
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Primary — Try Again (same mode + words) */}
+              <button
+                onClick={resetRound}
+                disabled={isSaving}
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                <RefreshCw size={20} />
+                Try Again
+              </button>
 
-          {/* Secondary — Back to Game Modes (NEW).  Keeps the student
-              inside the same assignment but returns them to the mode
-              selection screen so they don't have to bounce through the
-              dashboard + assignment picker every time. */}
-          <button
-            onClick={() => {
-              // Reset game state but keep activeAssignment + gameWords
-              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-              setSpellingInput("");
-              // Show the mode selection screen while staying in view="game"
-              setShowModeSelection(true);
-            }}
-            disabled={isSaving}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600' : 'bg-white text-stone-900 border-2 border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
-          >
-            <Grid3X3 size={18} />
-            Choose Another Mode
-          </button>
+              {/* Secondary — Back to Game Modes.  Keeps the student
+                  inside the same assignment but returns them to the mode
+                  selection screen so they don't have to bounce through
+                  the dashboard + assignment picker every time. */}
+              <button
+                onClick={() => {
+                  resetRound();
+                  setShowModeSelection(true);
+                }}
+                disabled={isSaving}
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600' : 'bg-white text-stone-900 border-2 border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
+              >
+                <Grid3X3 size={18} />
+                Choose Another Mode
+              </button>
 
-          {/* Review missed words — only when mistakes > 0.  Sits between
-              secondary and tertiary because it's game-specific. */}
-          {mistakes.length > 0 && (
-            <button
-              onClick={() => {
-                const missedWords = gameWords.filter(w => mistakes.includes(w.id));
-                if (missedWords.length > 0) {
-                  setAssignmentWords(missedWords);
-                }
-                setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setWordAttempts({}); setHiddenOptions([]);
-                setSpellingInput("");
-              }}
-              disabled={isSaving}
-              type="button"
-              style={{ touchAction: 'manipulation' }}
-              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-rose-900/40 text-rose-200 hover:bg-rose-900/60' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`}
-            >
-              Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}
-            </button>
+              {/* Review missed words — only when mistakes > 0. */}
+              {mistakes.length > 0 && (
+                <button
+                  onClick={() => {
+                    const missedWords = gameWords.filter(w => mistakes.includes(w.id));
+                    if (missedWords.length > 0) {
+                      setAssignmentWords(missedWords);
+                    }
+                    resetRound();
+                  }}
+                  disabled={isSaving}
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-rose-900/40 text-rose-200 hover:bg-rose-900/60' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`}
+                >
+                  Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}
+                </button>
+              )}
+
+              {/* Tertiary — Back to Dashboard, de-emphasised link-style. */}
+              <button
+                onClick={() => {
+                  resetRound();
+                  setShowModeSelection(true);
+                  setView("student-dashboard");
+                }}
+                disabled={isSaving}
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}
+              >
+                <Home size={14} />
+                Back to Dashboard
+              </button>
+            </>
           )}
-
-          {/* Tertiary — Back to Dashboard, de-emphasised link-style so
-              students see it as the "exit" option, not the primary. */}
-          <button
-            onClick={() => {
-              setIsFinished(false); setScore(0); setCurrentIndex(0); setMistakes([]); setFeedback(null); setShowModeSelection(true);
-              if (user?.isGuest) {
-                setView("game");
-              } else {
-                setView("student-dashboard");
-              }
-            }}
-            disabled={isSaving}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}
-          >
-            <Home size={14} />
-            Back to Dashboard
-          </button>
         </div>
       </motion.div>
 
