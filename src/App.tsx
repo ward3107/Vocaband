@@ -5875,7 +5875,7 @@ export default function App() {
         <GameModeSelectionView
           activeAssignment={activeAssignment}
           studentProgress={studentProgress}
-          isQuickPlayGuest={isQuickPlayGuest}
+          isQuickPlayGuest={!!user?.isGuest}
           quickPlayCompletedModes={quickPlayCompletedModes}
           setGameMode={setGameMode}
           setShowModeSelection={setShowModeSelection}
