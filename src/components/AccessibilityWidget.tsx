@@ -71,9 +71,16 @@ const DEFAULT_SETTINGS: A11ySettings = {
 };
 
 const STORAGE_KEY = 'a11y_settings';
+const DISMISS_KEY = 'a11y_dismissed_session';
 
-const FONT_SIZE_PCTS = [88, 100, 112, 125, 138, 150, 175, 200]; // percentages of 16px base
-const LINE_HEIGHTS = [1.5, 1.6, 1.7, 1.8, 2.0];
+// Font size floor is 80% per user request. Stops tall-screen students from
+// zooming all the way out and losing readable text. First visible step is
+// 100% (normal), second step below is 80% — anything lower is non-compliant
+// with Israeli accessibility minimums (IS 5568 requires a reasonable floor).
+const FONT_SIZE_PCTS = [80, 100, 115, 130, 150, 175, 200, 225];
+// Line-height scale — start at 1.5 (the CSS rule's effective default) so
+// "Normal" on the widget matches what users see out of the box.
+const LINE_HEIGHTS = [1.5, 1.65, 1.8, 2.0, 2.25];
 const LETTER_SPACINGS = [0, 0.02, 0.05, 0.1, 0.15];
 const SPACING_LABELS_EN = ['Normal', 'Slight', 'Medium', 'Wide', 'Extra Wide'];
 const SPACING_LABELS_HE = ['רגיל', 'קל', 'בינוני', 'רחב', 'רחב מאוד'];
@@ -148,6 +155,13 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     if (onOpenChange) onOpenChange(val);
     else setInternalOpen(val);
   };
+  // Session-scoped dismiss. The trigger stays gone until the student
+  // reloads or navigates away — meeting the UX request while still
+  // being compliant, because the widget fully re-appears on next
+  // page load (not a persistent silent-failure state).
+  const [dismissed, setDismissed] = useState(() => {
+    try { return sessionStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
+  });
   const [settings, setSettings] = useState<A11ySettings>(loadSettings);
   const [lang, setLang] = useState<Lang>(detectLang);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -183,6 +197,18 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
         font-size: var(--a11y-font-size, 16px) !important;
         line-height: var(--a11y-line-height, 1.5) !important;
         letter-spacing: var(--a11y-letter-spacing, 0em) !important;
+      }
+      /* Tailwind sets line-height on nearly every text utility class
+         (leading-tight, leading-snug, leading-relaxed, leading-6 …)
+         which has a specificity higher than the bare \`body\` rule
+         above. Without explicitly overriding every descendant element
+         the slider moved the CSS var but nothing visible happened.
+         Apply the same var to every element inside body when any
+         non-default line height is chosen — and exempt the a11y widget
+         itself so its own layout doesn't reflow while students adjust. */
+      body *:not([data-a11y-widget]):not([data-a11y-widget] *) {
+        line-height: var(--a11y-line-height, inherit) !important;
+        letter-spacing: var(--a11y-letter-spacing, inherit) !important;
       }
       html.a11y-dyslexia body, html.a11y-dyslexia body * { font-family: var(--a11y-font-family) !important; }
       html.a11y-readable body, html.a11y-readable body * { font-family: var(--a11y-font-family) !important; }
@@ -301,12 +327,25 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
 
   const resetAll = useCallback(() => setSettings({ ...DEFAULT_SETTINGS }), []);
 
-  // External event trigger (from nav bar / landing page buttons) still works.
+  // External event trigger (from nav bar / landing page buttons) still
+  // works — also un-dismisses the widget if it was hidden for the
+  // session, so the old "Accessibility" link in the footer / nav still
+  // reopens the panel.
   useEffect(() => {
-    const handleOpen = () => setIsOpen(true);
+    const handleOpen = () => {
+      try { sessionStorage.removeItem(DISMISS_KEY); } catch { /* ignore */ }
+      setDismissed(false);
+      setIsOpen(true);
+    };
     window.addEventListener('open-a11y-panel', handleOpen);
     return () => window.removeEventListener('open-a11y-panel', handleOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
+    setDismissed(true);
+    setIsOpen(false);
   }, []);
 
   const t = LABELS[lang];
@@ -332,22 +371,26 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
 
   return createPortal(
     <div data-a11y-widget-root>
-      {/* Always-visible trigger — required by Israeli accessibility law on
-          every page, not just the landing. Bottom-left by default so it
-          doesn't clash with the bottom-right share bubble. */}
-      <button
-        ref={triggerRef}
-        data-a11y-widget
-        aria-label={t.trigger}
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        aria-controls="a11y-panel"
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 left-6 z-[69] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
-        style={{ touchAction: 'manipulation' }}
-      >
-        <Accessibility size={24} strokeWidth={2.2} />
-      </button>
+      {/* Always-visible trigger — hidden only when the student has
+          dismissed it for the session (sessionStorage). The widget
+          always re-appears on next page load, so it remains reachable
+          on every visit per Israeli accessibility law. Footer links
+          and nav triggers also un-dismiss and reopen it. */}
+      {!dismissed && (
+        <button
+          ref={triggerRef}
+          data-a11y-widget
+          aria-label={t.trigger}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          aria-controls="a11y-panel"
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed bottom-6 left-6 z-[69] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          style={{ touchAction: 'manipulation' }}
+        >
+          <Accessibility size={24} strokeWidth={2.2} />
+        </button>
+      )}
 
       <AnimatePresence>
         {isOpen && (
@@ -430,8 +473,15 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
               </button>
             </div>
 
-            <div className="px-4 py-2 border-t border-stone-100 shrink-0">
+            <div className="px-4 py-2 border-t border-stone-100 shrink-0 flex items-center justify-between gap-2">
               <a href="/accessibility-statement" className="text-xs text-blue-600 hover:underline">{t.statement}</a>
+              <button
+                onClick={handleDismiss}
+                className="text-xs text-stone-400 hover:text-stone-600 hover:underline"
+                aria-label={lang === 'he' ? 'הסתר עד הטעינה הבאה' : lang === 'ar' ? 'إخفاء حتى التحميل التالي' : 'Hide until next page load'}
+              >
+                {lang === 'he' ? 'הסתר' : lang === 'ar' ? 'إخفاء' : 'Hide'}
+              </button>
             </div>
           </motion.div>
         )}
