@@ -56,10 +56,15 @@ export default function GameModeSelectionView({
 
   const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
   const filteredModes = modes.filter(m => allowedModes.includes(m.id));
-  const learnMode = filteredModes.find(m => m.isLearnMode);
+  // Flashcards is special-cased: it's the LEARNING mode, not a practice
+  // mode, so even when a teacher's assignment doesn't include it in
+  // allowedModes the student should still be able to learn the words
+  // before tackling the practice modes. Pull it from the unfiltered
+  // `modes` list so the hero card always shows.
+  const learnMode = modes.find(m => m.isLearnMode);
   const practiceModes = filteredModes.filter(m => !m.isLearnMode);
 
-  if (filteredModes.length === 0) {
+  if (filteredModes.length === 0 && !learnMode) {
     console.error('[Mode Selection] No modes available!');
   }
 
