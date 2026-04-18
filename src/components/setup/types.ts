@@ -35,6 +35,69 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
 
 export const ALL_GAME_MODE_IDS = Object.values(GAME_MODE_LEVELS).flat().map(m => m.id);
 
+// ── Difficulty tiers ─────────────────────────────────────────────────────────
+// Three-tier difficulty used across every mode picker (assignment, quick
+// play, demo) so students + teachers know at a glance how hard a mode is
+// before they pick it. Ordered by cognitive load, NOT by how fun the mode
+// is — flashcards are "easy" because they're the learning mode with no
+// pressure, sentence-builder is "hard" because it needs vocab AND grammar.
+export type ModeDifficulty = 'easy' | 'medium' | 'hard';
+
+export const MODE_DIFFICULTY: Record<string, ModeDifficulty> = {
+  flashcards:       'easy',      // Learning mode, no testing
+  matching:         'easy',      // Pairs visible on screen, pure recognition
+  classic:          'easy',      // Multi-choice with audio help
+  'true-false':     'easy',      // Binary decision
+  listening:        'medium',    // Audio-only recognition
+  reverse:          'medium',    // Translation-to-English recognition
+  scramble:         'hard',      // Recall with letter hints
+  'letter-sounds':  'hard',      // Phonics + spelling
+  spelling:         'hard',      // Pure recall + exact spelling
+  'sentence-builder': 'hard',    // Vocab + grammar + syntax
+};
+
+export const DIFFICULTY_META: Record<ModeDifficulty, {
+  label: string;              // localise in the UI by reading these keys
+  stars: number;              // how many filled stars out of 3 — telegraphs difficulty visually without needing a legend
+  starColor: string;          // tailwind class for the filled star colour
+  tint: string;               // ring / border tint if needed
+  badgeBg: string;            // small chip background on each tile
+  badgeText: string;          // small chip text colour
+  description: string;        // one-line explanation for the legend tooltip
+}> = {
+  easy: {
+    label: 'Easy',
+    stars: 1,
+    starColor: 'text-emerald-500',
+    tint: 'ring-emerald-200',
+    badgeBg: 'bg-emerald-50',
+    badgeText: 'text-emerald-700',
+    description: 'Recognition only — the answer is in front of you.',
+  },
+  medium: {
+    label: 'Medium',
+    stars: 2,
+    starColor: 'text-amber-500',
+    tint: 'ring-amber-200',
+    badgeBg: 'bg-amber-50',
+    badgeText: 'text-amber-700',
+    description: 'Some clues, but you need to think.',
+  },
+  hard: {
+    label: 'Hard',
+    stars: 3,
+    starColor: 'text-rose-500',
+    tint: 'ring-rose-200',
+    badgeBg: 'bg-rose-50',
+    badgeText: 'text-rose-700',
+    description: 'Type or build the answer from memory.',
+  },
+};
+
+export function getModeDifficulty(modeId: string): ModeDifficulty {
+  return MODE_DIFFICULTY[modeId] ?? 'medium';
+}
+
 // --- Wizard Result ---
 export interface WizardResult {
   words: Word[];

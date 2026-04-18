@@ -12,9 +12,54 @@ import {
   X,
   GraduationCap,
   Sparkles,
+  Star,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
+import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
+
+// Small star-rating component — 3 stars with N filled. Same visual
+// vocabulary as app-store difficulty ratings, so it reads as a
+// difficulty indicator with no legend required. Used on every mode
+// tile AND in the legend row.
+function DifficultyStars({ filled, colour, size = 12 }: { filled: number; colour: string; size?: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`Difficulty ${filled} of 3`}>
+      {[0, 1, 2].map(i => (
+        <Star
+          key={i}
+          size={size}
+          strokeWidth={2}
+          className={i < filled ? colour : 'text-stone-300'}
+          fill={i < filled ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  );
+}
+
+// 3-pill legend shown above the mode grid. Same star pattern as each
+// tile, so the player learns the vocabulary once.
+function DifficultyLegend() {
+  const tiers: Array<keyof typeof DIFFICULTY_META> = ['easy', 'medium', 'hard'];
+  return (
+    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 flex-wrap">
+      {tiers.map(tier => {
+        const m = DIFFICULTY_META[tier];
+        return (
+          <div
+            key={tier}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${m.badgeBg} ${m.badgeText}`}
+            title={m.description}
+          >
+            <DifficultyStars filled={m.stars} colour={m.starColor} />
+            {m.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 interface GameModeSelectionViewProps {
   activeAssignment: AssignmentData | null;
@@ -175,6 +220,11 @@ export default function GameModeSelectionView({
           </div>
         )}
 
+        {/* Difficulty legend — tells the player what the coloured dots on
+            each tile below mean. Only renders when there are tiles to
+            label. */}
+        {practiceModes.length > 0 && <DifficultyLegend />}
+
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {practiceModes.map((mode, idx) => {
             const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
@@ -216,7 +266,18 @@ export default function GameModeSelectionView({
                   )}
                 </div>
                 <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
-                <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
+                <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug mb-2">{mode.desc}</p>
+                {/* Difficulty stars — N filled out of 3. Same visual
+                    language the legend above uses, so players see a
+                    tile's star count and instantly know its difficulty
+                    without a colour lookup. */}
+                {(() => {
+                  const tier = getModeDifficulty(mode.id);
+                  const meta = DIFFICULTY_META[tier];
+                  return (
+                    <DifficultyStars filled={meta.stars} colour={meta.starColor} size={12} />
+                  );
+                })()}
 
                 <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Zap size={20} className="animate-pulse" />
