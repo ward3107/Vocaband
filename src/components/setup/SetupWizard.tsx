@@ -40,7 +40,7 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
                     ? 'bg-emerald-500 text-white'
                     : isCurrent
                     ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
-                    : 'bg-white text-stone-400 border border-stone-200'
+                    : 'bg-stone-100 text-stone-600 border border-stone-300'
                 }`}
               >
                 {isCompleted ? '✓' : step}
@@ -245,7 +245,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const isAssignment = mode === 'assignment';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-28 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-36 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
       <TopAppBar
         title={isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}
