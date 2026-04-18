@@ -272,8 +272,17 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   onBack={handleBack}
                   onTranslateWord={onTranslateWord}
                   onOcrUpload={async (file) => {
-                    // Use the existing /api/ocr endpoint with FormData
-                    const token = localStorage.getItem('vocaband-token') || localStorage.getItem('sb-access-token');
+                    // The OCR handler used to read localStorage keys that
+                    // never existed ('vocaband-token' / 'sb-access-token'),
+                    // which made `token` null, threw "No auth token", and
+                    // aborted before the fetch ever fired. That's why no
+                    // /api/ocr request showed up in DevTools Network tab.
+                    // Fix: use the live Supabase session directly — that's
+                    // the only reliable source of the current access_token
+                    // regardless of how Supabase stores it locally.
+                    const { supabase: sb } = await import('../../core/supabase');
+                    const { data: { session } } = await sb.auth.getSession();
+                    const token = session?.access_token;
                     if (!token) {
                       showToast?.('Authentication required', 'error');
                       throw new Error('No auth token');
