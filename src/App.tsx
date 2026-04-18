@@ -4050,13 +4050,23 @@ export default function App() {
     if (!user || user.role !== "teacher") return;
     const now = Date.now();
     if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-    lastFetchRef.current.scores = now;
 
+    // Don't mark the fetch as done if classes haven't loaded yet.
+    // Teacher dashboard load order is: setUser() → classes arrive async →
+    // Analytics view reads from allScores. If fetchScores fired before
+    // classes were populated, the old code still set lastFetchRef.current
+    // and returned with setAllScores([]), locking in an empty array for
+    // the next 10 seconds. When classes finally loaded, the retry was
+    // throttled away — so Analytics and Gradebook saw "no data" even
+    // though the DB had 100+ rows. Move the timestamp update below the
+    // classes-length guard so it only marks SUCCESSFUL fetches.
     if (classes.length === 0) {
       setAllScores([]);
       setClassStudents([]);
       return;
     }
+
+    lastFetchRef.current.scores = now;
 
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
