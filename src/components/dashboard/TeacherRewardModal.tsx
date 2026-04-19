@@ -84,8 +84,18 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
       onRewardGiven?.();
       onClose();
     } catch (err) {
+      // Surface the real PostgREST error text so we can tell an auth
+      // gate ("Only teachers can award rewards") from an unknown-student
+      // case ("Student not found") from a cap ("XP value exceeds") —
+      // the previous generic "Failed to give reward. Try again." hid
+      // exactly the diagnostic we needed.
+      const e = err as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const reason =
+        (e?.message && !e.message.includes('JWT')) ? e.message :
+        e?.details ? e.details :
+        'unknown error';
       console.error('Failed to give reward:', err);
-      showToast?.('Failed to give reward. Try again.', 'error');
+      showToast?.(`Couldn't give reward: ${reason}`, 'error');
     } finally {
       setGiving(false);
     }
