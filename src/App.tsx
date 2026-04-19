@@ -4645,7 +4645,12 @@ export default function App() {
           });
 
         if (error) {
+          // Surface to the student. Prior behaviour was console-only, so
+          // a silent insert rejection (trigger, legacy anon key, stale
+          // session) looked identical to "all good" on-screen while the
+          // teacher monitor stayed empty.
           console.error('[Quick Play] Failed to save progress:', error);
+          showToast(`Couldn't save your score: ${error.message}`, 'error');
         } else {
           // Mark this mode as completed so it gets locked in mode selection
           setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
