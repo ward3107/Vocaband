@@ -10,6 +10,7 @@ import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
 import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
+import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
@@ -86,6 +87,10 @@ export default function StudentDashboardView({
       <div className="max-w-4xl mx-auto">
         {classNotFoundBanner}
         <StudentTopBar />
+        {/* Teacher rewards land here FIRST so the student sees the
+            celebration before anything else on the dashboard. Hides
+            itself when the inbox is empty. */}
+        <RewardInboxCard onXpGranted={(delta) => onGrantXp(delta, `+${delta} XP from your teacher`)} />
         <StudentGreetingCard
           user={user}
           xp={xp}
