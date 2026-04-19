@@ -28,7 +28,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
           Vocaband
         </span>
         <span className="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-full">
-          Israeli English Curriculum
+          CEFR A1–B2
         </span>
       </button>
 

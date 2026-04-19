@@ -93,7 +93,7 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     demoMode: "Demo Mode — a hands-on preview of Vocaband",
     signUpFree: "",
     welcomeTitle: "Welcome to Vocaband",
-    welcomeDesc: "An English vocabulary app students actually want to play — built for Israeli classrooms.",
+    welcomeDesc: "An English vocabulary app students actually want to play — built for ESL classrooms.",
     introHook: "Why Vocaband?",
     introHookBody: "Most vocabulary practice feels like homework. Vocaband turns it into a game: XP, streaks, avatars, mystery eggs, and 10 game modes keep students coming back. Teachers get clear analytics on every word each student is learning.",
     forTeachersTitle: "For English Teachers",
