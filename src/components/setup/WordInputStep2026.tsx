@@ -1450,14 +1450,56 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   }, []);
 
   const handleConfirmOcr = useCallback((words: string[]) => {
-    // Match words against vocabulary and add to selection
-    const matchedWords = words
-      .map(w => allWords.find(aw => aw.english.toLowerCase() === w.toLowerCase()))
-      .filter(Boolean) as Word[];
-    const newWords = matchedWords.filter(w => !selectedWords.find(sw => sw.id === w.id));
-    onSelectedWordsChange([...selectedWords, ...newWords]);
+    // Two-tier handling so multi-word phrases ("why don't you?",
+    // "wonder if / whether", "ice cream") aren't silently dropped when
+    // the curriculum doesn't contain them verbatim.
+    //   Tier 1: exact curriculum match → reuse the canonical Word row.
+    //   Tier 2: unmatched entries → synthesise a Custom Word so the
+    //           phrase still lands on the assignment. Teacher can
+    //           translate it later (or ai-translate runs on save).
+    const matchedWords: Word[] = [];
+    const unmatchedStrings: string[] = [];
+    for (const w of words) {
+      const trimmed = w.trim();
+      if (!trimmed) continue;
+      const hit = allWords.find(aw => aw.english.toLowerCase() === trimmed.toLowerCase());
+      if (hit) matchedWords.push(hit);
+      else unmatchedStrings.push(trimmed);
+    }
+
+    // Drop duplicates that are already in the selection.
+    const existingIds = new Set(selectedWords.map(w => w.id));
+    const existingEnglish = new Set(selectedWords.map(w => w.english.toLowerCase()));
+    const newCurriculumWords = matchedWords.filter(w => !existingIds.has(w.id));
+
+    // Synthesise Custom Word rows for unmatched entries. Negative IDs
+    // follow the same convention used elsewhere in the app for
+    // custom-added words (so they don't collide with real curriculum
+    // IDs from vocabulary.ts).
+    const now = Date.now();
+    const customWords: Word[] = unmatchedStrings
+      .filter(s => !existingEnglish.has(s.toLowerCase()))
+      .map((s, i) => ({
+        id: -(now + i),
+        english: s,
+        hebrew: '',
+        arabic: '',
+        level: 'Custom' as const,
+      }));
+
+    const totalAdded = newCurriculumWords.length + customWords.length;
+    onSelectedWordsChange([...selectedWords, ...newCurriculumWords, ...customWords]);
     setOcrModalOpen(false);
-    showToast?.(`Added ${newWords.length} words`, 'success');
+
+    if (totalAdded === 0) {
+      showToast?.('No new words to add — all items already selected.', 'info');
+    } else if (customWords.length === 0) {
+      showToast?.(`Added ${newCurriculumWords.length} curriculum words`, 'success');
+    } else if (newCurriculumWords.length === 0) {
+      showToast?.(`Added ${customWords.length} custom words / phrases`, 'success');
+    } else {
+      showToast?.(`Added ${newCurriculumWords.length} curriculum + ${customWords.length} custom`, 'success');
+    }
   }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
   // Add words from panels (Topic Packs, Saved Groups, Browse Library)
