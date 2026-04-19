@@ -195,7 +195,7 @@ export default function QuickPlaySetupView({
                 type="button"
               >
                 <QrCode size={18} />
-                Open live monitor
+                Open live podium
               </button>
               <button
                 onClick={handlePlayAnother}

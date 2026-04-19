@@ -526,7 +526,7 @@ export default function QuickPlayMonitor({
       <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
         <div className={`flex flex-col items-center p-2 ${t.accent}`}>
           <Users size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Monitor</span>
+          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Podium</span>
         </div>
         <button
           onClick={() => setShowWordsModal(true)}
