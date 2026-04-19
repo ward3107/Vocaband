@@ -625,6 +625,38 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const responseStartTime = useRef(Date.now());
   const averageResponseMs = useRef(3000); // start at moderate pace
 
+  // Mobile back-button handling. Without this, pressing back in demo
+  // either exited the app or got clobbered by App.tsx's history trap.
+  // Approach: push a history entry per internal view, and on popstate
+  // move to whatever demo view the browser popped into — OR close the
+  // demo cleanly when the user backs out of the first entry.
+  // stopImmediatePropagation in the capture phase keeps App.tsx's popstate
+  // handler from re-pushing public-landing underneath us.
+  const demoPopStateInProgress = useRef(false);
+  useEffect(() => {
+    if (demoPopStateInProgress.current) {
+      demoPopStateInProgress.current = false;
+      return;
+    }
+    window.history.pushState({ demoView: view }, '');
+  }, [view]);
+
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      const state = e.state as { demoView?: DemoView } | null;
+      if (state?.demoView) {
+        e.stopImmediatePropagation();
+        demoPopStateInProgress.current = true;
+        setView(state.demoView);
+      } else {
+        e.stopImmediatePropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('popstate', handler, { capture: true });
+    return () => window.removeEventListener('popstate', handler, { capture: true });
+  }, [onClose]);
+
   // Get current word
   const currentWord = DEMO_WORDS[currentWordIndex];
 

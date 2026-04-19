@@ -3841,7 +3841,10 @@ export default function App() {
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
     const trimmedName = name.trim().slice(0, 30);
-    const trimmedCode = code.trim().slice(0, 20);
+    // Strip ALL whitespace (including inner spaces that .trim() misses) and
+    // uppercase — students sometimes type "MG2 ZQPLA" or "mg2zqpla". Server
+    // RPC does the same normalization so the two ends agree.
+    const trimmedCode = code.replace(/\s+/g, '').toUpperCase().slice(0, 20);
     if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
 
     // Client-side rate limit: max 5 attempts per 60 seconds
@@ -3894,18 +3897,37 @@ export default function App() {
         }
       } catch { /* ignore cache errors */ }
 
-      const classResult = classData ? null : await supabase.from('classes').select(CLASS_COLUMNS).eq('code', trimmedCode);
-      if (classResult?.error) throw classResult.error;
-
-      if (classResult?.data && classResult.data.length > 0) {
-        classData = mapClass(classResult.data[0]);
-        // Update cache with fresh data
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            data: classData,
-            cached: Date.now(),
-          }));
-        } catch { /* ignore */ }
+      // Use the RPC instead of a direct classes SELECT. Migration 20260430
+      // tightened the classes RLS to only allow teachers + enrolled students.
+      // New anonymous students don't have a users row yet, so the direct
+      // SELECT returned empty even for real codes — teachers saw the class
+      // in their dashboard but students got "Invalid Class Code!". The RPC
+      // (SECURITY DEFINER, rate-limited) is the supported discovery path.
+      if (!classData) {
+        const lookupResult = await supabase.rpc('class_lookup_by_code', { p_code: trimmedCode });
+        if (lookupResult.error) {
+          const msg = lookupResult.error.message || 'unknown error';
+          setError(msg.includes('Rate limit') ? 'Too many attempts. Please wait a minute.' : `Couldn't verify class code (${msg}).`);
+          return;
+        }
+        const row = Array.isArray(lookupResult.data) ? lookupResult.data[0] : null;
+        if (row) {
+          classData = {
+            id: row.id,
+            name: row.name,
+            code: row.code,
+            // teacher_uid is intentionally not returned by the RPC — students
+            // don't need it and it stays protected by RLS. Leave empty.
+            teacherUid: '',
+            avatar: row.avatar ?? null,
+          };
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              data: classData,
+              cached: Date.now(),
+            }));
+          } catch { /* ignore */ }
+        }
       }
 
       if (!classData) {
