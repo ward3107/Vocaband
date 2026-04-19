@@ -6,7 +6,17 @@
 // A one-shot reload (guarded by sessionStorage timestamp) fixes it by
 // picking up the fresh index.html with current chunk names.
 
-const CHUNK_ERROR_RE = /Failed to fetch dynamically imported module|Loading chunk \d+ failed|ChunkLoadError|Failed to load module script|Importing a module script failed/i;
+// Each browser phrases the same "stale hashed bundle" failure differently:
+//   Chrome:   "Failed to fetch dynamically imported module"
+//   Firefox:  "error loading dynamically imported module"
+//             "Loading module from … was blocked because of a disallowed
+//              MIME type (text/html)"  — server served SPA fallback
+//   Safari:   "Importing a module script failed"
+//   Vite HMR: "Loading chunk NN failed" / "ChunkLoadError"
+// Any of these mean the browser has a cached index.html pointing at
+// hashes that no longer exist on the new deploy; the fix is always a
+// hard reload that picks up the fresh index.html.
+const CHUNK_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Loading chunk \d+ failed|ChunkLoadError|Failed to load module script|Importing a module script failed|disallowed MIME type/i;
 
 const RELOAD_GUARD_KEY = "vocaband_chunk_reload_attempted_at";
 const RELOAD_GUARD_WINDOW_MS = 60_000;
@@ -38,9 +48,24 @@ export function attemptChunkReload(): boolean {
     navigator.serviceWorker.getRegistrations()
       .then(regs => Promise.all(regs.map(r => r.unregister())))
       .catch(() => {})
-      .finally(() => window.location.reload());
+      .finally(reloadWithCacheBust);
   } else {
-    window.location.reload();
+    reloadWithCacheBust();
   }
   return true;
+}
+
+// Append a cache-buster so Cloudflare's edge and the browser memory cache
+// both fetch a fresh index.html instead of the stale one pointing at
+// hashes that no longer exist. The ?_r= value is timestamp-based so it's
+// always unique; the reload itself scrubs the URL after the new bundle
+// boots (handled by any router that strips unknown query params).
+function reloadWithCacheBust(): void {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("_r", String(Date.now()));
+    window.location.replace(url.toString());
+  } catch {
+    window.location.reload();
+  }
 }

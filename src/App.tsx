@@ -5597,14 +5597,17 @@ export default function App() {
   const handleConfirmClassSwitch = async () => {
     if (!pendingClassSwitch) return;
     const { toCode, supabaseUser } = pendingClassSwitch;
-    const email = supabaseUser.email ?? "";
     try {
-      // Update both tables atomically from the client — no RPC needed, the
-      // student owns both rows (RLS keyed on email/uid).  Run in parallel.
-      await Promise.all([
-        supabase.from('student_profiles').update({ class_code: toCode, status: 'approved' }).eq('email', email),
-        supabase.from('users').update({ class_code: toCode }).eq('uid', supabaseUser.id),
-      ]);
+      // Use the SECURITY DEFINER RPC instead of direct UPDATEs. The
+      // users_update RLS policy (migration 20260340) freezes class_code for
+      // non-admins to prevent casual class hopping via .update(). A direct
+      // .update({class_code: newCode}) therefore 403s here. The RPC
+      // validates target class exists + updates both users + student_profiles
+      // atomically for the caller only. Added in migration 20260506.
+      const { error: rpcErr } = await supabase.rpc('switch_student_class', {
+        p_new_code: toCode,
+      });
+      if (rpcErr) throw rpcErr;
 
       // Load the new class's data and navigate to its dashboard.
       const { data: classRows } = await supabase
