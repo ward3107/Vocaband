@@ -3897,12 +3897,13 @@ export default function App() {
         }
       } catch { /* ignore cache errors */ }
 
-      // Use the RPC instead of a direct classes SELECT. Migration 20260430
-      // tightened the classes RLS to only allow teachers + enrolled students.
-      // New anonymous students don't have a users row yet, so the direct
-      // SELECT returned empty even for real codes — teachers saw the class
-      // in their dashboard but students got "Invalid Class Code!". The RPC
-      // (SECURITY DEFINER, rate-limited) is the supported discovery path.
+      // Existence check via the RPC. Migration 20260430 tightened the
+      // classes SELECT RLS to only allow enrolled members, so a direct
+      // .from('classes').select() fails for a student who hasn't been
+      // enrolled yet — which is exactly what's happening here. The RPC
+      // (SECURITY DEFINER, rate-limited) bypasses RLS for the narrow
+      // lookup. Full class data is re-fetched via direct SELECT later,
+      // after the users-row upsert makes the student a member.
       if (!classData) {
         const lookupResult = await supabase.rpc('class_lookup_by_code', { p_code: trimmedCode });
         if (lookupResult.error) {
@@ -3912,21 +3913,19 @@ export default function App() {
         }
         const row = Array.isArray(lookupResult.data) ? lookupResult.data[0] : null;
         if (row) {
+          // Build a partial ClassData — id/avatar may be missing if the
+          // server still has the pre-20260503 RPC that only returns
+          // {code, name}. Those fields get populated by the post-upsert
+          // SELECT below; for now we just need enough to continue.
           classData = {
-            id: row.id,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            id: (row as any).id ?? '',
             name: row.name,
             code: row.code,
-            // teacher_uid is intentionally not returned by the RPC — students
-            // don't need it and it stays protected by RLS. Leave empty.
             teacherUid: '',
-            avatar: row.avatar ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            avatar: (row as any).avatar ?? null,
           };
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              data: classData,
-              cached: Date.now(),
-            }));
-          } catch { /* ignore */ }
         }
       }
 
@@ -3999,6 +3998,25 @@ export default function App() {
         };
         const { error: insertErr } = await supabase.from('users').insert(mapUserToDb(userData));
         if (insertErr) throw insertErr;
+      }
+
+      // Now that the users row exists with class_code = trimmedCode, the
+      // tightened classes RLS (20260430) will let us read the full row.
+      // Re-fetch so we have the canonical id + teacher_uid + avatar —
+      // the RPC earlier gave us partial data to validate existence but
+      // classData.id is needed for get_assignments_for_class below.
+      if (!classData.id) {
+        const { data: fullRows } = await supabase
+          .from('classes').select(CLASS_COLUMNS).eq('code', trimmedCode);
+        if (fullRows && fullRows.length > 0) {
+          classData = mapClass(fullRows[0]);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              data: classData,
+              cached: Date.now(),
+            }));
+          } catch { /* ignore */ }
+        }
       }
 
       // OPTIMISTIC UI: Set user and show dashboard IMMEDIATELY
