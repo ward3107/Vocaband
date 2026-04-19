@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import confetti from "canvas-confetti";
+import { celebrate } from "../utils/celebrate";
 import {
   X,
   Volume2,
@@ -623,6 +623,27 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const responseStartTime = useRef(Date.now());
   const averageResponseMs = useRef(3000); // start at moderate pace
 
+  // Refs + watchers so the avatar screen auto-scrolls the user from
+  // "type your name" → "pick your avatar" → "Continue". On small phones
+  // the Continue button sits below the fold, and students were getting
+  // stuck not realising they had to scroll.
+  const avatarPickerRef = useRef<HTMLDivElement>(null);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const prevAvatarRef = useRef(avatar);
+  useEffect(() => {
+    if (view !== 'avatar') return;
+    // When the avatar changes (student just picked), scroll to the CTA.
+    // Guarded against the initial mount — prevAvatarRef starts with the
+    // default emoji, so first render is a no-op.
+    if (prevAvatarRef.current !== avatar) {
+      prevAvatarRef.current = avatar;
+      requestAnimationFrame(() => {
+        continueButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  }, [avatar, view]);
+
   // Mobile back-button handling. Without this, pressing back in demo
   // either exited the app or got clobbered by App.tsx's history trap.
   // Approach: push a history entry per internal view, and on popstate
@@ -865,8 +886,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
     if (newBadges.length > badges.length) {
       setBadges(newBadges);
-      // Confetti burst for new badge
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      // Random big celebration for new badge
+      celebrate('big');
     }
   };
 
@@ -889,10 +910,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setMatchingCards(prev => prev.map(c =>
         c.id === cardId ? { ...c, selected: true } : c
       ));
-      // Every card tap plays the English audio for that word — works
-      // whether the student tapped the English side OR the translation
-      // side. speak(wordId) resolves to the English MP3 by id.
-      speak(card.wordId);
+      // Speak only when the tapped card is the English word. Playing the
+      // English pronunciation on a Hebrew/Arabic card confused students —
+      // they expected the card's own language to sound, not the English
+      // equivalent. Silence on the translation side matches what Matching
+      // does in the main app.
+      if (card.type === 'word') speak(card.wordId);
     } else if (selectedCards.length === 1) {
       const firstCard = selectedCards[0];
       if (firstCard.type === card.type) {
@@ -900,10 +923,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           c.id === firstCard.id ? { ...c, selected: false } :
           c.id === cardId ? { ...c, selected: true } : c
         ));
-        // Student swapped their first pick for another card of the same
-        // side (e.g. switched which English card to try). Speak the new
-        // pick so every card tap in matching gives audio feedback.
-        speak(card.wordId);
+        if (card.type === 'word') speak(card.wordId);
       } else {
         const firstIndex = parseInt(firstCard.id.slice(1));
         const secondIndex = parseInt(card.id.slice(1));
@@ -918,10 +938,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           setMatchedPairs(prev => prev + 1);
           setXp(prev => prev + 15);
           setScore(prev => prev + 1);
-          confetti({ particleCount: 30, spread: 40, origin: { y: 0.6 } });
-          // Play the English audio for the matched pair so the student
-          // hears the word they just connected.
-          speak(card.wordId);
+          celebrate('small');
+          // Speak only if the pair was completed by tapping the English
+          // card (not the translation card). Keeps the "only English
+          // cards speak" rule consistent.
+          if (card.type === 'word') speak(card.wordId);
 
           if (matchedPairs + 1 >= 4) {
             setTimeout(() => setView("results"), 500);
@@ -930,9 +951,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           setMatchingCards(prev => prev.map(c =>
             c.id === cardId ? { ...c, selected: true } : c
           ));
-          // Even on a wrong pair, speak the second card's English so the
-          // student hears what they tapped and can self-correct.
-          speak(card.wordId);
+          if (card.type === 'word') speak(card.wordId);
           setTimeout(() => {
             setMatchingCards(prev => prev.map(c =>
               c.id === firstCard.id || c.id === cardId
@@ -1035,7 +1054,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       checkAndAwardBadges(true, newXp);
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+      celebrate();
     } else {
       setStreak(0);
     }
@@ -1055,7 +1074,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     const toHide = shuffle(wrong).slice(0, 2).map(w => w.id);
     setHiddenOptions(toHide);
     setPowerUps(prev => ({ ...prev, fifty_fifty: prev.fifty_fifty - 1 }));
-    confetti({ particleCount: 20, spread: 30, origin: { y: 0.7 } });
+    celebrate('small');
   };
 
   const handleSkip = () => {
@@ -1363,12 +1382,28 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   {t.yourName}
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   id="demo-nickname"
                   name="nickname"
                   autoComplete="nickname"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
+                  onBlur={() => {
+                    if (displayName.trim().length >= 2) {
+                      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Soft-keyboard "Enter" typically commits + would
+                    // submit a form if this were inside one. Here we
+                    // just treat it as "done typing" and scroll on.
+                    if (e.key === 'Enter' && displayName.trim().length >= 2) {
+                      e.preventDefault();
+                      nameInputRef.current?.blur();
+                      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
                   placeholder={t.enterNickname}
                   className={`w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 ${textAlign}`}
                   maxLength={15}
@@ -1380,7 +1415,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   so the demo inherits every future tweak automatically. XP is
                   passed in so categories still lock/unlock based on the demo
                   sandbox's XP progression. */}
-              <div className="mb-6">
+              <div className="mb-6" ref={avatarPickerRef}>
                 <AvatarPicker
                   value={avatar}
                   onChange={setAvatar}
@@ -1401,6 +1436,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               )}
 
               <button
+                ref={continueButtonRef}
                 onClick={() => setView("game-select")}
                 disabled={!displayName.trim()}
                 className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
