@@ -35,6 +35,11 @@ interface AnalyticsViewProps {
   setSelectedClass: React.Dispatch<React.SetStateAction<{ name: string; code: string; studentCount?: number; id?: string } | null>>;
   selectedWords: number[];
   setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
+  /** When true, render without the page-level TopAppBar / outer min-h-screen
+   *  so the parent (ClassroomView) can host its own header + tab bar.
+   *  Defaults to false so the standalone /analytics route still works as
+   *  a regular full-page view. */
+  embedded?: boolean;
 }
 
 export default function AnalyticsView({
@@ -47,6 +52,7 @@ export default function AnalyticsView({
   setSelectedClass: setAppSelectedClass,
   selectedWords: appSelectedWords,
   setSelectedWords: setAppSelectedWords,
+  embedded = false,
 }: AnalyticsViewProps) {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
@@ -371,18 +377,20 @@ export default function AnalyticsView({
   }, [selectedClass]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24">
-      <TopAppBar
-        title="Analytics"
-        subtitle="CLASSROOM INSIGHTS"
-        showBack
-        onBack={() => setView("teacher-dashboard")}
-        userName={user?.displayName}
-        userAvatar={user?.avatar}
-        onLogout={() => supabase.auth.signOut()}
-      />
+    <div className={embedded ? "pb-24" : "min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24"}>
+      {!embedded && (
+        <TopAppBar
+          title="Analytics"
+          subtitle="CLASSROOM INSIGHTS"
+          showBack
+          onBack={() => setView("teacher-dashboard")}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
+      )}
 
-      <main className="pt-24 px-4 max-w-5xl mx-auto">
+      <main className={`${embedded ? 'pt-4' : 'pt-24'} px-4 max-w-5xl mx-auto`}>
         {/* Class Filter Tabs */}
         <div className="flex flex-wrap gap-2 mb-8">
           <button

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 
 interface Assignment {
@@ -358,6 +358,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 >
                   <Copy size={14} className="text-stone-500" />
                   Copy class code
+                </button>
+                <button
+                  onClick={() => {
+                    // Open the printable poster in a new tab. Includes the
+                    // class code in the QR so when students scan, they
+                    // land on the join flow already pre-filled. The page
+                    // itself uses window.print() — teacher chooses Print
+                    // or Save as PDF in the browser dialog.
+                    const url = `/poster.html?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
+                    window.open(url, '_blank', 'noopener');
+                    setMenuOpen(false);
+                  }}
+                  type="button"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                >
+                  <Printer size={14} className="text-indigo-600" />
+                  Print classroom poster
                 </button>
                 <div className="h-px bg-stone-100 my-1" />
                 <button

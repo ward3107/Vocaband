@@ -35,8 +35,9 @@ const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
 const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
-const GradebookView = lazy(() => import("./views/GradebookView"));
-const AnalyticsView = lazy(() => import("./views/AnalyticsView"));
+// AnalyticsView + GradebookView are no longer routed directly here —
+// they're now lazy-loaded inside ClassroomView and rendered as tabs.
+const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
@@ -4264,7 +4265,7 @@ export default function App() {
     if (user?.role !== "teacher") return;
     if (classes.length === 0) return;
     if (allScores.length > 0) return;
-    if (view !== "analytics" && view !== "gradebook") return;
+    if (view !== "classroom" && view !== "analytics" && view !== "gradebook") return;
     fetchScores();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes.length, view, user?.role]);
@@ -5950,8 +5951,7 @@ export default function App() {
               setView("live-challenge-class-select");
             }
           }}
-          onAnalyticsClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
-          onGradebookClick={() => { fetchScores(); setView("gradebook"); }}
+          onClassroomClick={() => { fetchScores(); fetchTeacherAssignments(); setView("classroom"); }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onNewClass={() => setShowCreateClassModal(true)}
           onAssignClass={(c) => {
@@ -6337,36 +6337,32 @@ export default function App() {
     );
   }
 
-  if (view === "analytics") {
+  // Single "Classroom" entry point now wraps Analytics + Gradebook under
+  // a tabbed UI (Pulse / Mastery / Records). Legacy /analytics and
+  // /gradebook view strings still resolve here so existing dashboard
+  // buttons + history-stack entries keep working — they just land on
+  // the matching tab inside the merged view.
+  if (view === "classroom" || view === "analytics" || view === "gradebook") {
+    // Legacy /analytics → Mastery tab, legacy /gradebook → Pulse tab
+    // (Records tab was removed — its content lived inside Pulse anyway).
+    const initialTab = view === "analytics" ? "mastery" : "pulse";
     return (
-      <LazyWrapper loadingMessage="Loading analytics...">
-        <AnalyticsView
+      <LazyWrapper loadingMessage="Loading classroom...">
+        <ClassroomView
           user={user}
           classes={classes}
           allScores={allScores}
           teacherAssignments={teacherAssignments}
-          setView={setView}
+          classStudents={classStudents}
           selectedClass={selectedClass}
           setSelectedClass={setSelectedClass}
           selectedWords={selectedWords}
           setSelectedWords={setSelectedWords}
-        />
-      </LazyWrapper>
-    );
-  }
-  if (view === "gradebook") {
-    return (
-      <LazyWrapper loadingMessage="Loading gradebook...">
-        <GradebookView
-          user={user}
-          allScores={allScores}
-          teacherAssignments={teacherAssignments}
-          classStudents={classStudents}
-          classes={classes}
           expandedStudent={expandedStudent}
           setExpandedStudent={setExpandedStudent}
           setView={setView}
           showToast={showToast}
+          initialTab={initialTab}
         />
       </LazyWrapper>
     );
