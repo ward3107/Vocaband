@@ -728,23 +728,44 @@ ${JSON.stringify(validWords)}`;
           ? "image/jpeg"
           : rawMime;
 
-      // Prompt tuned to minimize hallucinations on mobile photos. The old
-      // prompt told Gemini to "include words even if partially obscured or
-      // blurry," which explicitly invited it to guess — teachers reported
-      // ghost words that weren't on the page. Flip the instruction: only
-      // return words you can read with certainty, and NEVER invent.
-      const prompt = `Extract English words that are clearly visible in this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
+      // Prompt tuned to minimize hallucinations on mobile photos AND
+      // preserve multi-word phrases as single entries. The old version
+      // implicitly treated every token as a single word, so teachers
+      // writing "turn on / look forward to / ice cream" on the board
+      // got three separate flash-card entries instead of one phrase.
+      //
+      // Two core instructions now:
+      //   1. Never invent.
+      //   2. Keep phrases together: idioms, phrasal verbs, compound
+      //      nouns, fixed expressions — whatever reads as a single
+      //      unit on the page.
+      const prompt = `Extract English vocabulary items from this image. Return ONLY a JSON array of lowercase strings, nothing else. Example: ["apple","turn on","ice cream","look forward to"]
 
-Strict rules:
-- Only include words you can read with high confidence
-- If a word is blurry, cropped, partially covered, or ambiguous, OMIT it
-- NEVER invent, guess, autocomplete, or infer words that are not visibly present
-- Do not merge two adjacent letters or fragments into a word
-- Do not split a single word into two (e.g., "sunshine" stays as one word, not "sun" + "shine")
-- Lowercase all words
-- Remove duplicates
+Each array entry is ONE vocabulary item, which may be a single word OR a multi-word phrase. Preserve phrases intact — do not split them.
+
+What counts as a multi-word phrase (keep together as ONE string):
+- Phrasal verbs:        "turn on", "give up", "look forward to", "run out of"
+- Compound nouns:       "ice cream", "post office", "high school", "best friend"
+- Fixed expressions:    "at the same time", "on the other hand", "by the way"
+- Prepositional phrases: "in front of", "next to", "because of"
+- Hyphenated/joined words on the page: keep as written ("well-known", "sunshine")
+
+How to tell phrase from separate words:
+- Same line, close together, visually grouped (arrow, bullet, bracket) → probably a phrase
+- Separated by commas, newlines, numbered bullets, or wide gaps → separate items
+- Translation list where left column shows "turn on → להדליק": left column is ONE item "turn on"
+
+Strict quality rules:
+- Only include items you can read with high confidence
+- If blurry, cropped, partially covered, or ambiguous → OMIT
+- NEVER invent, guess, autocomplete, or infer items that aren't visibly present
+- Do not merge two adjacent unrelated words into a phrase
+- Do not split a phrase into its component words
+- Do not split a single word into two ("sunshine" stays one word, not "sun" + "shine")
+- Lowercase every string
+- Remove exact duplicates (case-insensitive)
 - Skip numbers, symbols, and non-English text (Hebrew, Arabic, etc.)
-- If you cannot read any English words with confidence, return []`;
+- If no English items are confidently readable, return []`;
 
       const result = await model.generateContent([
         prompt,
@@ -758,26 +779,42 @@ Strict rules:
 
       const responseText = result.response.text();
 
-      // Parse the JSON array from Gemini's response
+      // Parse the JSON array from Gemini's response.
+      // Entries may be multi-word phrases ("turn on", "ice cream") so
+      // we preserve inner whitespace — only collapse runs of spaces
+      // and trim the ends.
       let words: string[] = [];
       try {
         const cleaned = responseText.replace(/```json?\s*|\s*```/g, "").trim();
         const parsed = JSON.parse(cleaned);
         if (Array.isArray(parsed)) {
           words = parsed
-            .filter((w: unknown): w is string => typeof w === "string" && w.length >= 2)
-            .map((w: string) => w.toLowerCase().trim());
+            .filter((w: unknown): w is string => typeof w === "string" && w.trim().length >= 2)
+            .map((w: string) => w.toLowerCase().replace(/\s+/g, " ").trim());
         }
       } catch {
-        // Fallback: split by common delimiters
+        // Fallback: Gemini didn't return valid JSON. Split on commas +
+        // newlines (the natural item separators), NOT whitespace, so
+        // phrases stay together. Strip surrounding brackets/quotes, then
+        // keep only tokens that look like English text (letters + spaces
+        // + hyphens + apostrophes for contractions).
         words = responseText
-          .replace(/[\[\]"`,]/g, " ")
-          .split(/\s+/)
-          .filter((w) => /^[a-zA-Z]{2,}$/.test(w))
-          .map((w) => w.toLowerCase());
+          .replace(/[\[\]"`]/g, "")
+          .split(/[,\n\r]+/)
+          .map(s => s.trim().toLowerCase())
+          .filter(s => /^[a-z][a-z '\-]{1,}[a-z]$/i.test(s));
       }
 
-      const uniqueWords = [...new Set(words)];
+      // Case-insensitive dedup that keeps the first occurrence's casing.
+      const seen = new Set<string>();
+      const uniqueWords: string[] = [];
+      for (const w of words) {
+        const key = w.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueWords.push(w);
+        }
+      }
 
       const sizeKB = Math.round(req.file.size / 1024);
       console.log(`[OCR] ${authData.email}: Gemini Flash found ${uniqueWords.length} English words (image: ${sizeKB} KB, ${mimeType})`);
