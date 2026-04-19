@@ -49,7 +49,8 @@ const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
-import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
+import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
+import { celebrate } from "./utils/celebrate";
 import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
@@ -1599,6 +1600,19 @@ export default function App() {
         // (is_anonymous IS FALSE). Instead of querying the DB, restore
         // directly from localStorage which was saved on login.
         const isAnonymous = supabaseUser.is_anonymous || supabaseUser.app_metadata?.provider === 'anonymous';
+        // Speculatively fetch teacher-owned classes in parallel with the
+        // users row. For teachers this halves login latency — the two
+        // round-trips overlap instead of running back-to-back. For
+        // students it's a cheap RLS-filtered query that returns []
+        // (they're not the teacher_uid owner of any class) so no harm.
+        const speculativeClassesPromise = isAnonymous
+          ? Promise.resolve([] as ClassData[])
+          : supabase
+              .from('classes')
+              .select(CLASS_COLUMNS)
+              .eq('teacher_uid', supabaseUser.id)
+              .then(r => (r.data ?? []).map(mapClass))
+              .catch(() => [] as ClassData[]);
         let userData = await fetchUserProfile(supabaseUser.id);
 
         if (!userData && isAnonymous) {
@@ -1633,9 +1647,16 @@ export default function App() {
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
-            // Await so the dashboard has data before we show it — prevents
-            // the "empty dashboard until refresh" bug.
-            const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
+            // The speculative parallel fetch above already has the classes
+            // ready by now (it started at the same time as fetchUserProfile,
+            // not after). Fall back to a direct fetch only if the speculative
+            // one failed or returned nothing.
+            let fetchedClasses = await speculativeClassesPromise;
+            if (fetchedClasses.length === 0) {
+              fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
+            } else {
+              setClasses(fetchedClasses);
+            }
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
             // Restore Quick Play session if teacher was monitoring one before refresh
             // Skip if the "Quick Online Challenge" button set the skip flag
@@ -4094,15 +4115,7 @@ export default function App() {
 
     const newBadges = [...badges, badge];
     setBadges(newBadges);
-    // Lazy load and use confetti
-    loadConfetti().then(confettiModule => {
-      const confetti = confettiModule.default || confettiModule;
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.3 }
-      });
-    });
+    celebrate('big');
 
     try {
       const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
@@ -4440,6 +4453,7 @@ export default function App() {
     const built = builtSentence.join(" ").toLowerCase();
     if (built === target) {
       setSentenceFeedback("correct");
+      celebrate('small');
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
       setScore(newScore);
@@ -4700,13 +4714,7 @@ export default function App() {
     // Streak milestone celebrations
     const streakMilestones = [7, 14, 30, 50, 100];
     if (streakMilestones.includes(newStreak)) {
-      loadConfetti().then(confettiModule => {
-        const confetti = confettiModule.default || confettiModule;
-        // Big celebration burst
-        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
-        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.2, y: 0.5 } }), 300);
-        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.8, y: 0.5 } }), 600);
-      });
+      celebrate('big');
       showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
     }
 
@@ -4794,11 +4802,8 @@ export default function App() {
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
 
-      // Lazy load and use confetti
-      loadConfetti().then(confettiModule => {
-        const confetti = confettiModule.default || confettiModule;
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-      });
+      // Random celebration from the full pool — big flavour for finishing a mode
+      celebrate('big');
     } catch (error) {
       console.error("Error saving score:", error);
       // Log detailed error for debugging
@@ -4893,6 +4898,7 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
+      celebrate('small');
       const newScore = score + 10;
       setScore(newScore);
 
@@ -5008,6 +5014,7 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
+      celebrate('small');
       const newScore = score + 15;
       setScore(newScore);
 
@@ -5124,6 +5131,7 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
+      celebrate('small');
       const newScore = score + 20;
       setScore(newScore);
 
