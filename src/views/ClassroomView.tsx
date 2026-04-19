@@ -33,7 +33,7 @@
  */
 import { Suspense, lazy, useState } from "react";
 import { motion } from "motion/react";
-import { Activity, Brain, FileSpreadsheet } from "lucide-react";
+import { Activity, Brain } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
@@ -42,7 +42,7 @@ import type { Word } from "../data/vocabulary";
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
 
-type Tab = "pulse" | "mastery" | "records";
+type Tab = "pulse" | "mastery";
 
 interface ClassStudent {
   name: string;
@@ -71,9 +71,8 @@ interface ClassroomViewProps {
 }
 
 const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode; gradient: string }> = [
-  { id: "pulse",   label: "Pulse",   icon: <Activity size={16} />,        gradient: "from-emerald-500 to-teal-600" },
-  { id: "mastery", label: "Mastery", icon: <Brain size={16} />,           gradient: "from-violet-500 to-fuchsia-600" },
-  { id: "records", label: "Records", icon: <FileSpreadsheet size={16} />, gradient: "from-amber-500 to-orange-600" },
+  { id: "pulse",   label: "Pulse",   icon: <Activity size={16} />, gradient: "from-emerald-500 to-teal-600" },
+  { id: "mastery", label: "Mastery", icon: <Brain size={16} />,    gradient: "from-violet-500 to-fuchsia-600" },
 ];
 
 export default function ClassroomView(props: ClassroomViewProps) {
@@ -90,7 +89,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
     <div className="min-h-screen bg-background pb-12">
       <TopAppBar
         title="Classroom"
-        subtitle="PULSE · MASTERY · RECORDS"
+        subtitle="PULSE · MASTERY"
         showBack
         onBack={() => setView("teacher-dashboard")}
         userName={user?.displayName}
@@ -159,7 +158,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
               setView={setView}
               showToast={showToast}
               embedded
-              focus={tab === "records" ? "records" : "pulse"}
+              focus="pulse"
             />
           )}
         </Suspense>

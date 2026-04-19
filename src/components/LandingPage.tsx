@@ -1139,8 +1139,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </nav>
             </div>
 
+            {/* Teacher resources — subtle internal links to the /answers
+                guides. Not a hero section; just enough to give Google's
+                crawler + AI assistants the internal-link signal that
+                these pages are real first-party content, and to help
+                teachers already browsing the footer discover them. */}
+            <div className="pt-8 pb-4 border-t border-white/10">
+              <p className="text-white/50 text-xs font-black uppercase tracking-[0.2em] text-center mb-3">
+                Teacher resources
+              </p>
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+                <a href="/answers/cefr-a1-vocabulary-list.html" className="text-white/70 hover:text-white transition-colors">CEFR A1 vocabulary</a>
+                <a href="/answers/cefr-a1-vs-a2-vocabulary.html" className="text-white/70 hover:text-white transition-colors">A1 vs A2</a>
+                <a href="/answers/free-quizlet-alternative-for-teachers.html" className="text-white/70 hover:text-white transition-colors">Quizlet alternative</a>
+                <a href="/answers/best-gamified-esl-vocabulary-app.html" className="text-white/70 hover:text-white transition-colors">Compare apps</a>
+                <a href="/answers/best-english-vocabulary-app-grade-5.html" className="text-white/70 hover:text-white transition-colors">Best for Grade 5</a>
+              </div>
+            </div>
+
             {/* Copyright */}
-            <div className="pt-8 text-center">
+            <div className="pt-6 text-center">
               <p className="text-white text-sm font-bold">
                 © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for English learners everywhere.
               </p>

@@ -6343,7 +6343,9 @@ export default function App() {
   // buttons + history-stack entries keep working — they just land on
   // the matching tab inside the merged view.
   if (view === "classroom" || view === "analytics" || view === "gradebook") {
-    const initialTab = view === "analytics" ? "mastery" : view === "gradebook" ? "records" : "pulse";
+    // Legacy /analytics → Mastery tab, legacy /gradebook → Pulse tab
+    // (Records tab was removed — its content lived inside Pulse anyway).
+    const initialTab = view === "analytics" ? "mastery" : "pulse";
     return (
       <LazyWrapper loadingMessage="Loading classroom...">
         <ClassroomView
