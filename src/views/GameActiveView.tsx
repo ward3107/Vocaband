@@ -16,7 +16,6 @@ import FlashcardsGame from "../components/game/FlashcardsGame";
 import LetterSoundsGame from "../components/game/LetterSoundsGame";
 import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
 import SpellingGame from "../components/game/SpellingGame";
-import LiveLeaderboardWidget from "../components/game/LiveLeaderboardWidget";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -61,6 +60,9 @@ interface GameActiveViewProps {
   setBuiltSentence: React.Dispatch<React.SetStateAction<string[]>>;
   availableWords: string[];
   setAvailableWords: React.Dispatch<React.SetStateAction<string[]>>;
+  /** Kept in the prop shape so App.tsx's existing wiring doesn't need
+   *  to change, but no longer rendered — the per-game "Live Rank"
+   *  sidebar was removed at teacher request (noisy during solo play). */
   leaderboard: Record<string, LeaderboardEntry>;
   isFinished: boolean;
   handleExitGame: () => void;
@@ -89,7 +91,7 @@ export default function GameActiveView({
   spellingInput, setSpellingInput,
   activeAssignment, sentenceIndex, sentenceFeedback,
   builtSentence, setBuiltSentence, availableWords, setAvailableWords,
-  leaderboard, isFinished,
+  leaderboard: _leaderboard, isFinished,
   handleExitGame, handleAnswer, handleMatchClick, handleTFAnswer,
   handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
   handleSentenceCheck, speakWord, speak, shuffle,
@@ -258,8 +260,6 @@ export default function GameActiveView({
             )}
           </AnimatePresence>
         </div>
-
-        <LiveLeaderboardWidget user={user} leaderboard={leaderboard} />
       </div>
 
       {gameMode !== "matching" && (
