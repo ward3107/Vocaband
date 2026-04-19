@@ -363,6 +363,9 @@ export default function QuickPlayMonitor({
             </button>
             <input
               type="range"
+              id="quick-play-monitor-volume"
+              name="musicVolume"
+              aria-label="Background music volume"
               min="0"
               max="1"
               step="0.05"
