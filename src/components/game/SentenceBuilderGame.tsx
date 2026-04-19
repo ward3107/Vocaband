@@ -70,8 +70,12 @@ export default function SentenceBuilderGame({
       <div className="flex gap-2">
         <button
           onClick={() => {
+            // Return the words the user built back to the pool WITHOUT
+            // re-shuffling. The old behaviour called shuffle() on the
+            // whole sentence, which also scrambled the words the user
+            // hadn't touched — felt like a cheat / bug.
+            setAvailableWords(prev => [...prev, ...builtSentence]);
             setBuiltSentence([]);
-            setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean)));
           }}
           disabled={sentenceFeedback !== null}
           className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"

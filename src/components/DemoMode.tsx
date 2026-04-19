@@ -2439,9 +2439,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <div className="flex gap-2">
                       <motion.button
                         onClick={() => {
+                          // Return built words to the pool without re-shuffling
+                          // the untouched ones — old behaviour was a full re-shuffle
+                          // which users read as cheating / a bug.
+                          setAvailableWords(prev => [...prev, ...builtSentence]);
                           setBuiltSentence([]);
-                          const target = currentSentence.split(/\s+/).filter(Boolean);
-                          setAvailableWords([...target].sort(() => Math.random() - 0.5));
                         }}
                         disabled={sentenceFeedback !== null}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
