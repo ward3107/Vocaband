@@ -313,14 +313,28 @@ export default function QuickPlayStudentView({
                         }));
                       } catch {}
 
-                      // Record that student joined — so teacher sees them in live stats immediately
-                      supabase.auth.getSession().then(({ data: { session } }) => {
-                        const authUid = session?.user?.id;
+                      // Record that student joined — so teacher sees them in live stats immediately.
+                      // Run with retries + surface failures via showToast: errors previously
+                      // only hit the console (invisible to the student) and on the teacher
+                      // side showed up as an empty monitor with no hint why.
+                      (async () => {
+                        let authUid: string | null = null;
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (session?.user?.id) {
+                            authUid = session.user.id;
+                            break;
+                          }
+                          // Session not ready yet — sign in anonymously, wait, retry.
+                          await supabase.auth.signInAnonymously().catch(() => {});
+                          await new Promise(r => setTimeout(r, 300));
+                        }
                         if (!authUid) {
-                          console.error('[Quick Play] No auth session - cannot record join');
+                          console.error('[Quick Play] No auth session after retries — cannot record join');
+                          showToast('Could not connect to the session. Please refresh and try again.', 'error');
                           return;
                         }
-                        supabase.from('progress').insert({
+                        const { error } = await supabase.from('progress').insert({
                           student_name: trimmedName,
                           student_uid: authUid,
                           assignment_id: quickPlayActiveSession.id,
@@ -330,12 +344,12 @@ export default function QuickPlayStudentView({
                           completed_at: new Date().toISOString(),
                           mistakes: [],
                           avatar: guestUser.avatar || "🦊",
-                        }).then(({ error }) => {
-                          if (error) {
-                            console.error('[Quick Play] Failed to record join:', error);
-                          }
                         });
-                      });
+                        if (error) {
+                          console.error('[Quick Play] Failed to record join:', error);
+                          showToast(`Couldn't join the leaderboard: ${error.message}`, 'error');
+                        }
+                      })();
                     }, 100);
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
