@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Users, Trophy, GraduationCap, ChevronDown, Download, Gift,
-  RefreshCcw, AlertTriangle, CheckCircle2, Moon, Flame, Calendar,
+  AlertTriangle, CheckCircle2, Moon, Flame, Calendar,
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { HelpTooltip } from "../components/HelpTooltip";
@@ -395,8 +395,6 @@ export default function GradebookView({
     });
   };
 
-  const openReAssign = () => setView('create-assignment');
-
   const selectedClassName = classes.find(c => c.code === selectedClassCode)?.name ?? selectedClassCode;
 
   return (
@@ -576,15 +574,6 @@ export default function GradebookView({
                         className="p-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 transition-colors"
                       >
                         <Gift size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={openReAssign}
-                        title="Create assignment"
-                        aria-label="Create an assignment"
-                        className="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 transition-colors"
-                      >
-                        <RefreshCcw size={16} />
                       </button>
                       <button
                         type="button"
