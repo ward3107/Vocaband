@@ -1105,7 +1105,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, playWrong } = useAudio();
+  const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
   const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
@@ -1338,18 +1338,15 @@ export default function App() {
     }
   }, [view]);
 
-  // Speak congratulatory message when a mode is finished — only in game view
+  // Play a random pre-recorded female-voice praise phrase when a mode
+  // finishes. Previous behaviour passed a template string to speak(),
+  // which routed through window.speechSynthesis — and the browser's
+  // default voice on desktop is usually male, which didn't match the
+  // female voice used for the curated /motivational/*.mp3 library.
+  // playMotivational picks one of ~74 phrases from that library.
   useEffect(() => {
     if (isFinished && user?.displayName && view === "game") {
-      const phrases = [
-        `Kol Hakavod ${user.displayName}! You did amazing!`,
-        `Excellent work ${user.displayName}! You're a superstar!`,
-        `Wow ${user.displayName}! That was fantastic!`,
-        `Great job ${user.displayName}! Keep going!`,
-        `Well done ${user.displayName}! You're getting better and better!`,
-      ];
-      const phrase = phrases[secureRandomInt( phrases.length)];
-      setTimeout(() => speak(phrase), 500);
+      setTimeout(() => playMotivational(), 500);
 
       // Force emit final score to server (bypass throttle)
       if (socket && user?.classCode) {
