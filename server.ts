@@ -131,9 +131,28 @@ async function startServer() {
   const httpServer = createServer(app);
   const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
   const allowedOrigins = allowedOrigin.split(",").map(o => o.trim());
+
+  // Match Cloudflare preview URLs (per-branch + per-version) without having
+  // to list every branch name in ALLOWED_ORIGIN. Every preview URL lands on
+  // https://<hash-or-branch>-vocaband.wasya92.workers.dev — this regex covers
+  // all of them. Keeps the explicit prod origin list intact for everything else.
+  const PREVIEW_ORIGIN_RE = /^https:\/\/[a-z0-9-]+-vocaband\.wasya92\.workers\.dev$/i;
+  const isOriginAllowed = (origin: string | undefined): boolean => {
+    if (!origin) return false;
+    if (allowedOrigins.includes(origin)) return true;
+    if (PREVIEW_ORIGIN_RE.test(origin)) return true;
+    return false;
+  };
+
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
+      // Use a function so socket.io accepts both the static prod list AND
+      // the dynamic preview-URL pattern. Same source of truth as the
+      // Express CORS middleware below.
+      origin: (origin, callback) => {
+        if (!origin || isOriginAllowed(origin)) callback(null, true);
+        else callback(new Error(`CORS: origin ${origin} not allowed`));
+      },
     },
     // Performance tuning for 1500 concurrent users (classroom scenario)
     transports: ["websocket", "polling"], // prefer WebSocket, fallback to polling
@@ -184,13 +203,16 @@ async function startServer() {
     }));
   }
 
-  // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages)
+  // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages
+  // or a preview URL on workers.dev). Uses the shared isOriginAllowed helper
+  // so static prod origins + dynamic preview-URL pattern both work.
   app.use('/api', (req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && allowedOrigins.some(o => o === origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
+    if (isOriginAllowed(origin)) {
+      res.header('Access-Control-Allow-Origin', origin!);
       res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.header('Vary', 'Origin');
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
