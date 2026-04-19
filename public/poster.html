@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classroom Poster — Vocaband</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <!-- QR code generator: tiny, no build step, no dependency on react -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    /* Screen styles — readable on a teacher's phone before printing */
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+    .toolbar { position: sticky; top: 0; z-index: 10; background: white; border-bottom: 1px solid #e5e7eb; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .toolbar h1 { font-size: 1rem; margin: 0 1rem 0 0; color: #4f46e5; }
+    .toolbar .help { color: #6b7280; font-size: 0.875rem; }
+    .toolbar button { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 0.6rem 1.25rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
+    .toolbar button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.4); }
+
+    /* The actual poster — sized to A4 portrait. Printable as-is. */
+    .poster {
+      width: 210mm;
+      height: 297mm;
+      margin: 1rem auto;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+      color: white;
+      padding: 18mm 14mm;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Decorative blobs — purely visual, hidden if user prints b&w */
+    .poster::before, .poster::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+    }
+    .poster::before { width: 160mm; height: 160mm; top: -60mm; right: -60mm; }
+    .poster::after  { width: 100mm; height: 100mm; bottom: -30mm; left: -30mm; }
+
+    .poster .brand { font-size: 14pt; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.9; }
+    .poster h1 { font-size: 56pt; line-height: 1; margin: 8mm 0 4mm; font-weight: 900; letter-spacing: -0.02em; }
+    .poster h2 { font-size: 22pt; line-height: 1.15; margin: 0 0 8mm; font-weight: 700; opacity: 0.95; }
+
+    .features { display: flex; flex-direction: column; gap: 4mm; margin-bottom: auto; }
+    .feature { display: flex; align-items: center; gap: 4mm; font-size: 14pt; font-weight: 600; }
+    .feature .ico {
+      width: 12mm; height: 12mm; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16pt; flex-shrink: 0;
+    }
+
+    .qr-block {
+      background: white;
+      color: #1f2937;
+      border-radius: 8mm;
+      padding: 8mm;
+      display: flex;
+      gap: 6mm;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      position: relative;
+      z-index: 1;
+    }
+    .qr-block canvas, .qr-block #qr-img {
+      width: 50mm; height: 50mm; border-radius: 4mm;
+    }
+    .qr-block .qr-text { flex: 1; }
+    .qr-block .qr-text h3 { margin: 0 0 2mm; font-size: 18pt; color: #4f46e5; font-weight: 800; }
+    .qr-block .qr-text p { margin: 0; font-size: 11pt; color: #4b5563; line-height: 1.5; }
+    .qr-block .qr-text .url { display: block; margin-top: 3mm; font-family: ui-monospace, "SF Mono", monospace; font-size: 10pt; color: #4f46e5; word-break: break-all; }
+
+    .footer-bar { margin-top: 6mm; text-align: center; font-size: 10pt; opacity: 0.85; font-weight: 600; }
+
+    /* Print: hide the toolbar, no margins */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      body { background: white; }
+      .toolbar { display: none !important; }
+      .poster { margin: 0; box-shadow: none; page-break-after: always; }
+    }
+
+    /* Mobile: scale the poster down to fit */
+    @media (max-width: 240mm) {
+      .poster { transform-origin: top center; transform: scale(0.85); margin-top: 0.5rem; }
+    }
+    @media (max-width: 200mm) {
+      .poster { transform: scale(0.7); }
+    }
+    @media (max-width: 160mm) {
+      .poster { transform: scale(0.55); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <h1>📋 Classroom poster</h1>
+    <span class="help">Click Print → save as PDF, or print straight to paper. A4.</span>
+    <button onclick="window.print()" type="button">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="poster">
+    <div class="brand">Vocaband</div>
+    <h1>Free<br>English<br>games.</h1>
+    <h2>Scan the code. Join the class. Beat your friends.</h2>
+
+    <div class="features">
+      <div class="feature"><span class="ico">⚡</span> 10 game modes — matching, spelling, scramble, more</div>
+      <div class="feature"><span class="ico">🏆</span> Live class leaderboard during sessions</div>
+      <div class="feature"><span class="ico">🎯</span> 9,000+ words across CEFR A1 to B2</div>
+      <div class="feature"><span class="ico">🆓</span> 100% free · no ads · no email</div>
+    </div>
+
+    <div class="qr-block">
+      <canvas id="qr-canvas"></canvas>
+      <div class="qr-text">
+        <h3>Scan to play</h3>
+        <p>Open your phone's camera, point at the code. Or type it in:</p>
+        <span class="url" id="poster-url">vocaband.com</span>
+      </div>
+    </div>
+
+    <div class="footer-bar">vocaband.com · gamified English vocabulary for ESL classrooms</div>
+  </div>
+
+  <script>
+    // Read ?ref=<id> + ?class=<code> from the URL so the poster carries
+    // the teacher's referral attribution. Falls back to the bare site URL
+    // if neither is present (anonymous classroom poster).
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var ref = params.get('ref');
+      var classCode = params.get('class');
+      var url = 'https://www.vocaband.com/';
+      var qs = [];
+      if (classCode) qs.push('class=' + encodeURIComponent(classCode));
+      if (ref)       qs.push('ref=' + encodeURIComponent(ref));
+      if (qs.length) url += '?' + qs.join('&');
+
+      // Render the URL line + QR
+      var label = url.replace(/^https?:\/\//, '');
+      document.getElementById('poster-url').textContent = label;
+
+      QRCode.toCanvas(document.getElementById('qr-canvas'), url, {
+        width: 480,                // high-res so it scales cleanly when printed
+        margin: 2,
+        color: { dark: '#1f2937', light: '#ffffff' },
+        errorCorrectionLevel: 'M', // medium — good balance of density vs scan-from-distance
+      }, function (err) {
+        if (err) console.error('QR generation failed:', err);
+      });
+
+      // Update window title with class code so the saved PDF filename
+      // includes it (most browsers default to the page title).
+      if (classCode) document.title = 'Vocaband poster — class ' + classCode;
+    })();
+  </script>
+</body>
+</html>
