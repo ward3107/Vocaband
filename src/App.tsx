@@ -2452,10 +2452,16 @@ export default function App() {
 
   // Load pending students for teachers
   useEffect(() => {
-    if (user?.role === "teacher" && view === "teacher-dashboard") {
+    // Trigger pending-students fetch on any of: fresh teacher dashboard
+    // mount, dashboard re-entry, OR the async classes list finally
+    // arriving (common race — loadPendingStudents early-returns when
+    // classes.length === 0, so without this dep the teacher sees a
+    // permanent empty state if they land on the dashboard before the
+    // classes fetch resolves).
+    if (user?.role === "teacher" && view === "teacher-dashboard" && classes.length > 0) {
       loadPendingStudents();
     }
-  }, [user?.role, view]);
+  }, [user?.role, view, classes.length]);
 
   const fetchTeacherData = async (uid: string) => {
     const { data, error } = await supabase.from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
@@ -3739,7 +3745,18 @@ export default function App() {
 
   // Teacher Approval System
   const loadPendingStudents = async () => {
+    // Guard: the query below must be scoped by the teacher's class codes,
+    // both as a belt-and-suspenders against RLS misconfig and so we can
+    // render the class name next to each pending student. If classes
+    // haven't loaded yet (common race on fresh teacher dashboard mount),
+    // clear the list and bail — the effect below will re-invoke us once
+    // classes populates.
+    if (classes.length === 0) {
+      setPendingStudents([]);
+      return;
+    }
     try {
+      const classCodes = classes.map(c => c.code);
       const { data, error } = await supabase
         .from('student_profiles')
         .select(`
@@ -3749,6 +3766,7 @@ export default function App() {
           joined_at
         `)
         .eq('status', 'pending_approval')
+        .in('class_code', classCodes)
         .order('joined_at', { ascending: false });
 
       if (error) throw error;
@@ -3765,7 +3783,13 @@ export default function App() {
         };
       }));
     } catch (error) {
+      // Surface instead of swallow — teachers reported seeing "All caught
+      // up!" even when students were waiting. If RLS blocks the query or
+      // the network dies, the teacher needs to know there's a problem
+      // rather than silently seeing an empty list.
       trackAutoError(error, 'Failed to load pending students list');
+      const message = error instanceof Error ? error.message : 'unknown error';
+      showToast(`Couldn't load pending students: ${message}`, 'error');
     }
   };
 
@@ -5225,7 +5249,11 @@ export default function App() {
           } catch { /* silent retry */ }
         };
 
-        const id = setInterval(checkStatus, 10_000);
+        // Poll aggressively (3s) so the moment the teacher approves,
+        // the student sees the transition without thinking nothing
+        // is happening. 10s felt dead. Query is a single indexed
+        // row select so 3s is cheap.
+        const id = setInterval(checkStatus, 3_000);
         return () => clearInterval(id);
       }, []);
 
@@ -5807,7 +5835,12 @@ export default function App() {
           setConfirmDialog={setConfirmDialog}
           onQuickPlayClick={() => {
             try { sessionStorage.setItem('vocaband_skip_restore', 'true'); } catch (e) { /* ignore */ }
-            window.history.replaceState({ view: 'quick-play-setup' }, '', window.location.pathname);
+            // Previously we called history.replaceState({view:'quick-play-setup'}) here,
+            // which clobbered the teacher-dashboard history entry. As a result the
+            // mobile browser back button couldn't return the teacher to their
+            // dashboard — it jumped past into pad buffer / landing territory.
+            // Let the view-change effect push the new entry naturally on top of
+            // the dashboard so back pops cleanly back to it.
             try { localStorage.removeItem('vocaband_quick_play_session'); } catch (e) { /* ignore */ }
             cleanupSessionData();
             setQuickPlayActiveSession(null);
