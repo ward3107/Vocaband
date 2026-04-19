@@ -835,6 +835,11 @@ export default function App() {
         console.error('[Quick Play Monitor] Error fetching progress:', error);
         return;
       }
+      // Log the row count so we can tell "students haven't finished any
+      // mode yet" from "RLS is silently filtering everything out". The
+      // latter was happening before 20260504 when the quick_play_progress
+      // select policy had a uuid/text cast mismatch.
+      console.log('[Quick Play Monitor] fetched progress rows:', data?.length ?? 0, 'for session', sessionId);
       if (data) {
         setQuickPlayJoinedStudents(aggregateProgress(data));
       }
