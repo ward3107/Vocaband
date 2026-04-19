@@ -1599,7 +1599,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ duration: 0.35 }}
-                className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto"
+                dir="ltr"
+                className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
               >
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
