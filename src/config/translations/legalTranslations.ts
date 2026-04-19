@@ -70,8 +70,8 @@ export const uiTranslations: Record<Language, {
       "Audit logging",
     ],
     serviceDescription: [
-      "Designed for use in Israeli schools under teacher supervision",
-      "Aligned with the Israeli Ministry of Education English curriculum (Set 1, 2, 3)",
+      "Designed for use in ESL classrooms under teacher supervision",
+      "Vocabulary levels aligned with CEFR A1–B2 (three comprehensive sets)",
       "Built to support anonymous student accounts",
       "Intended for educational purposes only",
     ],
@@ -287,7 +287,7 @@ export const privacyTranslations: Record<Language, {
     legalBasis: "Legal Basis: Privacy Protection Law, 5741-1981 (Israel), Amendment 13",
     summary: {
       badge: "Summary",
-      text: "Vocaband is designed for Israeli schools. Student accounts are anonymous—no email or personal identification required. Teachers sign in with Google. We don't sell data, show ads, or track users for marketing.",
+      text: "Vocaband is designed for ESL classrooms worldwide. Student accounts are anonymous—no email or personal identification required. Teachers sign in with Google. We don't sell data, show ads, or track users for marketing.",
     },
     footer: {
       haveQuestions: "Have Questions?",

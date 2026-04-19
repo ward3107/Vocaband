@@ -120,7 +120,7 @@ export default function TeacherDashboardView({
 
         <TopAppBar
           title="Vocaband"
-          subtitle="ISRAELI ENGLISH CURRICULUM • BANDS VOCABULARY"
+          subtitle="CEFR A1–B2 • ESL VOCABULARY"
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}

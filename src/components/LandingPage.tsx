@@ -115,7 +115,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
                 >
-                  The digital playground where Israeli students become vocabulary legends through play.
+                  The digital playground where ESL students become vocabulary legends through play.
                 </motion.p>
 
                 {/* 3D CTA Buttons */}
@@ -165,7 +165,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </div>
                   <div className="text-left">
                     <p className="text-white font-bold text-sm">10,000+ Students</p>
-                    <p className="text-white/60 text-xs">Learning across Israel</p>
+                    <p className="text-white/60 text-xs">Learning English worldwide</p>
                   </div>
                 </motion.div>
               </div>
@@ -869,7 +869,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               Your Journey to Mastery
             </h2>
             <p className="text-lg text-white/80 font-bold">
-              Aligned with the Israeli English curriculum — three comprehensive vocabulary sets.
+              Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 9,000+ words.
             </p>
           </motion.div>
 
@@ -1045,7 +1045,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </h2>
 
                 <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto">
-                  Join thousands of Israeli students leveling up their English — one word at a time.
+                  Join thousands of students leveling up their English — one word at a time.
                 </p>
 
                 {/* 3D Buttons */}
@@ -1086,7 +1086,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 >
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    Aligned with Ministry of Education
+                    Aligned with CEFR A1–B2
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
@@ -1142,7 +1142,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* Copyright */}
             <div className="pt-8 text-center">
               <p className="text-white text-sm font-bold">
-                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for Israeli students.
+                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for English learners everywhere.
               </p>
             </div>
           </div>
