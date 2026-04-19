@@ -52,6 +52,13 @@ interface GradebookViewProps {
   setExpandedStudent: (key: string | null) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  /** When true, render without the page-level TopAppBar / outer wrapper.
+   *  Used by ClassroomView which provides its own header + tab bar. */
+  embedded?: boolean;
+  /** Hint about which scroll-anchor to land on. "pulse" = top of the
+   *  page (default), "records" = scroll to the records / per-student
+   *  table on mount. */
+  focus?: "pulse" | "records";
 }
 
 interface MasteryApiRow {
@@ -123,7 +130,11 @@ export default function GradebookView({
   setExpandedStudent,
   setView,
   showToast,
+  embedded = false,
+  focus = "pulse",
 }: GradebookViewProps) {
+  void focus; // reserved for future scroll-anchor wiring; kept in
+              // the prop signature so callers can plumb intent now
   const [selectedClassCode, setSelectedClassCode] = useState<string>(() =>
     classes[0]?.code ?? ''
   );
@@ -398,18 +409,20 @@ export default function GradebookView({
   const selectedClassName = classes.find(c => c.code === selectedClassCode)?.name ?? selectedClassCode;
 
   return (
-    <div className="min-h-screen bg-background pb-8">
-      <TopAppBar
-        title="Gradebook"
-        subtitle="PROGRESS · DECISION SUPPORT"
-        showBack
-        onBack={() => setView('teacher-dashboard')}
-        userName={user?.displayName}
-        userAvatar={user?.avatar}
-        onLogout={() => supabase.auth.signOut()}
-      />
+    <div className={embedded ? "pb-8" : "min-h-screen bg-background pb-8"}>
+      {!embedded && (
+        <TopAppBar
+          title="Gradebook"
+          subtitle="PROGRESS · DECISION SUPPORT"
+          showBack
+          onBack={() => setView('teacher-dashboard')}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={() => supabase.auth.signOut()}
+        />
+      )}
 
-      <main className="pt-36 sm:pt-32 px-4 sm:px-6 max-w-5xl mx-auto">
+      <main className={`${embedded ? 'pt-4' : 'pt-36 sm:pt-32'} px-4 sm:px-6 max-w-5xl mx-auto`}>
         {/* Class + window selectors */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <label className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm border border-stone-100">

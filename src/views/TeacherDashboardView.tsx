@@ -58,8 +58,8 @@ interface TeacherDashboardViewProps {
   // Quick actions
   onQuickPlayClick: () => void;
   onLiveChallengeClick: () => void;
-  onAnalyticsClick: () => void;
-  onGradebookClick: () => void;
+  /** Single entry point that opens the merged Classroom view. */
+  onClassroomClick: () => void;
   onApprovalsClick: () => void;
 
   // Classes section handlers
@@ -92,7 +92,7 @@ export default function TeacherDashboardView({
   deleteConfirmModal, setDeleteConfirmModal, onConfirmDeleteAssignment,
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
-  onQuickPlayClick, onLiveChallengeClick, onAnalyticsClick, onGradebookClick, onApprovalsClick,
+  onQuickPlayClick, onLiveChallengeClick, onClassroomClick, onApprovalsClick,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
@@ -144,8 +144,7 @@ export default function TeacherDashboardView({
             pendingStudentsCount={pendingStudentsCount}
             onQuickPlayClick={onQuickPlayClick}
             onLiveChallengeClick={onLiveChallengeClick}
-            onAnalyticsClick={onAnalyticsClick}
-            onGradebookClick={onGradebookClick}
+            onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
           />
 
