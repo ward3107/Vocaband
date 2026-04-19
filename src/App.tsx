@@ -1715,9 +1715,17 @@ export default function App() {
               // that bypasses RLS — the student isn't a member yet, so a
               // direct .from('classes').select(...) would return empty even
               // for valid codes. RPC only returns code + name (safe to expose).
-              const { data: intendedClassRows } = await supabase
+              const { data: intendedClassRows, error: lookupErr } = await supabase
                 .rpc('class_lookup_by_code', { p_code: intendedNorm });
-              if (intendedClassRows && intendedClassRows.length > 0) {
+              if (lookupErr) {
+                // RPC errored rather than returned empty. Log + show the
+                // reason so a misconfigured server (missing migration, rate
+                // limit, legacy API key, etc.) isn't misdiagnosed as a
+                // bad class code by the user.
+                console.error('[restoreSession class switch] RPC failed:', lookupErr);
+                setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
+                clearIntendedClassCode();
+              } else if (intendedClassRows && intendedClassRows.length > 0) {
                 const { data: currentClassRows } = await supabase
                   .from('classes').select('code, name').eq('code', code);
                 setUser(userData);
@@ -1734,13 +1742,14 @@ export default function App() {
                 setView("student-dashboard");
                 clearIntendedClassCode();
                 return; // stop here — modal drives the next step
+              } else {
+                // RPC returned zero rows AND no error: class genuinely
+                // doesn't exist. Sticky banner (NOT a toast — toasts
+                // auto-dismiss and students miss them). ClassNotFoundBanner
+                // on the dashboard renders this until acknowledged.
+                setClassNotFoundIntent(intendedNorm);
+                clearIntendedClassCode();
               }
-              // Intended code was typed but doesn't match a real class.
-              // Set a sticky banner (NOT a toast — toasts auto-dismiss and
-              // students miss them).  ClassNotFoundBanner on the dashboard
-              // renders this until the student acknowledges it.
-              setClassNotFoundIntent(intendedNorm);
-              clearIntendedClassCode();
             } else if (intendedCode) {
               // Same class — just clear the flag
               clearIntendedClassCode();
@@ -3676,9 +3685,17 @@ export default function App() {
       if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
         // Same RLS workaround as above — use the SECURITY DEFINER RPC so
         // non-member students can still verify the target class exists.
-        const { data: intendedClassRows } = await supabase
+        const { data: intendedClassRows, error: lookupErr } = await supabase
           .rpc('class_lookup_by_code', { p_code: intendedNorm });
-        if (intendedClassRows && intendedClassRows.length > 0) {
+        if (lookupErr) {
+          // Surface the real reason instead of the generic "not found"
+          // banner. Common causes: migration 20260428 requires auth but
+          // auth.uid() was null mid-OAuth; rate limit hit; migration
+          // 20260426 never applied so the RPC doesn't exist server-side.
+          console.error('[OAuth class switch] RPC failed:', lookupErr);
+          setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
+          clearIntendedClassCode();
+        } else if (intendedClassRows && intendedClassRows.length > 0) {
           const { data: currentClassRows } = await supabase
             .from('classes').select('code, name').eq('code', studentData.class_code);
           setIsOAuthCallback(false);
@@ -3705,11 +3722,13 @@ export default function App() {
           setView("student-dashboard");
           clearIntendedClassCode();
           return;
+        } else if (!lookupErr) {
+          // RPC succeeded with zero rows — the class genuinely doesn't
+          // exist. Show the standard not-found banner. (Error branch
+          // already set its own more informative banner above.)
+          setClassNotFoundIntent(intendedNorm);
+          clearIntendedClassCode();
         }
-        // Typed a code that doesn't exist — sticky banner on dashboard so
-        // the student can actually see the problem (toasts get missed).
-        setClassNotFoundIntent(intendedNorm);
-        clearIntendedClassCode();
       } else if (intendedCode) {
         clearIntendedClassCode();
       }
