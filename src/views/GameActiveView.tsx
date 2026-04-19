@@ -189,8 +189,15 @@ export default function GameActiveView({
         onExit={handleExitGame}
       />
 
-      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-6">
-        <div className="lg:col-span-3">
+      {/* After the Live Rank sidebar was removed, the old 4-column grid
+          left the cards hugging the left edge with a blank 4th column
+          where the widget used to be. Collapse to a single centered
+          column so matching cards + quiz cards sit centered on the
+          screen. Matching mode also gets vertical breathing room via
+          a min-height so the grid sits mid-viewport instead of pinned
+          under the header. */}
+      <div className={`w-full max-w-4xl mx-auto ${gameMode === 'matching' ? 'min-h-[60vh] flex items-center justify-center' : ''}`}>
+        <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
               <MatchingModeGame
