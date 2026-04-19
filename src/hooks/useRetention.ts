@@ -69,10 +69,24 @@ export function useRetention(uid: string | null | undefined, xp: number): Retent
   // pseudo-uid so the hook returns sane defaults without throwing.
   const userKey = uid || '__anon__';
 
+  // IMPORTANT: `useState(() => localStorage…)` only runs ONCE at mount.
+  // On first render `user?.uid` is undefined (auth hasn't restored yet),
+  // so every persisted state initially reads under '__anon__' — missing
+  // every claim the real user has ever made. Then the FIRST in-session
+  // claim writes under the real uid with a partial set, silently
+  // clobbering the full localStorage record of prior claims. Next
+  // refresh: the state re-initialises empty again, the already-reached
+  // milestone looks unclaimed, and the bonus re-pays on every refresh.
+  // Fix: after userKey settles to the real uid, re-sync each state
+  // from that user's localStorage.
+
   // --- DAILY CHEST: last-claim date ---
   const [lastDaily, setLastDaily] = useState<string>(() => {
     try { return localStorage.getItem(k(userKey, 'daily_last')) ?? ''; } catch { return ''; }
   });
+  useEffect(() => {
+    try { setLastDaily(localStorage.getItem(k(userKey, 'daily_last')) ?? ''); } catch {}
+  }, [userKey]);
   const dailyChestAvailable = lastDaily !== todayKey();
 
   const claimDailyChest = useCallback(() => {
@@ -95,6 +109,19 @@ export function useRetention(uid: string | null | undefined, xp: number): Retent
     } catch {/* malformed json */}
     return { week: isoWeekKey(), plays: 0, claimed: false };
   });
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(k(userKey, 'weekly'));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.week === isoWeekKey()) {
+          setWeeklyState(parsed);
+          return;
+        }
+      }
+      setWeeklyState({ week: isoWeekKey(), plays: 0, claimed: false });
+    } catch {}
+  }, [userKey]);
 
   const recordPlay = useCallback(() => {
     setWeeklyState(prev => {
@@ -159,6 +186,9 @@ export function useRetention(uid: string | null | undefined, xp: number): Retent
   const [petClaimsRaw, setPetClaimsRaw] = useState<string>(() => {
     try { return localStorage.getItem(k(userKey, 'pet_claims')) ?? ''; } catch { return ''; }
   });
+  useEffect(() => {
+    try { setPetClaimsRaw(localStorage.getItem(k(userKey, 'pet_claims')) ?? ''); } catch {}
+  }, [userKey]);
   const petClaims = useMemo<Set<string>>(() => new Set(petClaimsRaw ? petClaimsRaw.split(',') : []), [petClaimsRaw]);
 
   const currentPetStage = useMemo(() => {
@@ -179,10 +209,20 @@ export function useRetention(uid: string | null | undefined, xp: number): Retent
   }, [xp, petClaims]);
 
   const claimPetMilestone = useCallback((milestone: PetMilestone) => {
-    if (petClaims.has(milestone.stage)) return;
-    const next = new Set(petClaims);
-    next.add(milestone.stage);
-    const csv = Array.from(next).join(',');
+    // Read CURRENT localStorage state first rather than trusting the
+    // in-memory petClaims set. If the user taps before the userKey
+    // re-sync effect has run, petClaims in state could be empty while
+    // localStorage actually has a full history — naively writing
+    // `petClaims + new` would clobber the history. Merge both sources
+    // and de-dup before writing so no earlier claim is lost.
+    let existing = new Set<string>(petClaims);
+    try {
+      const raw = localStorage.getItem(k(userKey, 'pet_claims')) ?? '';
+      raw.split(',').filter(Boolean).forEach(s => existing.add(s));
+    } catch {}
+    if (existing.has(milestone.stage)) return;
+    existing.add(milestone.stage);
+    const csv = Array.from(existing).join(',');
     try { localStorage.setItem(k(userKey, 'pet_claims'), csv); } catch {}
     setPetClaimsRaw(csv);
   }, [petClaims, userKey]);
