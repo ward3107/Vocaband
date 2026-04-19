@@ -3541,6 +3541,19 @@ export default function App() {
         p_class_id: classData.id
       });
 
+    if (assignError) {
+      // Surface the real PostgREST error body — the plain 400 line in
+      // the network tab says nothing; the body has the actual cause
+      // (function overload missing, column renamed, auth gate, etc.).
+      console.error('[get_assignments_for_class] RPC failed:', {
+        code: assignError.code,
+        message: assignError.message,
+        details: assignError.details,
+        hint: assignError.hint,
+        classId: classData.id,
+      });
+    }
+
     // Progress still uses direct query (should work for student's own progress)
     const { data: progressResult, error: progressError } = await supabase
       .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
