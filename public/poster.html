@@ -6,26 +6,27 @@
   <title>Classroom Poster — Vocaband</title>
   <meta name="robots" content="noindex">
   <link rel="icon" href="/favicon.ico">
-  <!-- QR code generator: tiny, no build step, no dependency on react -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
-    /* Screen styles — readable on a teacher's phone before printing */
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+
     .toolbar { position: sticky; top: 0; z-index: 10; background: white; border-bottom: 1px solid #e5e7eb; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     .toolbar h1 { font-size: 1rem; margin: 0 1rem 0 0; color: #4f46e5; }
     .toolbar .help { color: #6b7280; font-size: 0.875rem; }
     .toolbar button { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 0.6rem 1.25rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
     .toolbar button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.4); }
 
-    /* The actual poster — sized to A4 portrait. Printable as-is. */
+    /* A4 portrait poster. Fixed height + flex column so the QR block
+       cannot get pushed off the bottom on print. Middle features block
+       absorbs the slack via margin:auto 0. */
     .poster {
       width: 210mm;
       height: 297mm;
       margin: 1rem auto;
       background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
       color: white;
-      padding: 18mm 14mm;
+      padding: 14mm;
       position: relative;
       overflow: hidden;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
@@ -33,7 +34,7 @@
       flex-direction: column;
     }
 
-    /* Decorative blobs — purely visual, hidden if user prints b&w */
+    /* Decorative background blobs */
     .poster::before, .poster::after {
       content: '';
       position: absolute;
@@ -42,58 +43,107 @@
       pointer-events: none;
     }
     .poster::before { width: 160mm; height: 160mm; top: -60mm; right: -60mm; }
-    .poster::after  { width: 100mm; height: 100mm; bottom: -30mm; left: -30mm; }
+    .poster::after  { width: 100mm; height: 100mm; bottom: -20mm; left: -20mm; }
 
-    .poster .brand { font-size: 14pt; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.9; }
-    .poster h1 { font-size: 56pt; line-height: 1; margin: 8mm 0 4mm; font-weight: 900; letter-spacing: -0.02em; }
-    .poster h2 { font-size: 22pt; line-height: 1.15; margin: 0 0 8mm; font-weight: 700; opacity: 0.95; }
+    /* All real content above the blobs */
+    .poster-header, .poster-hero, .poster-features, .qr-block, .footer-bar { position: relative; z-index: 1; }
 
-    .features { display: flex; flex-direction: column; gap: 4mm; margin-bottom: auto; }
-    .feature { display: flex; align-items: center; gap: 4mm; font-size: 14pt; font-weight: 600; }
-    .feature .ico {
-      width: 12mm; height: 12mm; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16pt; flex-shrink: 0;
+    /* Header — brand text + V logo */
+    .poster-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4mm;
+    }
+    .brand {
+      font-size: 16pt;
+      font-weight: 900;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .logo {
+      width: 28mm;
+      height: 28mm;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
     }
 
+    /* Hero */
+    .poster-hero { margin: 4mm 0; }
+    .poster-hero h1 {
+      font-size: 72pt;
+      line-height: 0.92;
+      margin: 0 0 4mm;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+    .poster-hero h2 {
+      font-size: 18pt;
+      line-height: 1.25;
+      margin: 0;
+      font-weight: 700;
+      opacity: 0.95;
+      max-width: 150mm;
+    }
+
+    /* Features */
+    .poster-features {
+      margin: auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+    }
+    .feature { display: flex; align-items: center; gap: 4mm; font-size: 13pt; font-weight: 600; }
+    .feature .ico {
+      width: 11mm; height: 11mm;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15pt;
+      flex-shrink: 0;
+    }
+
+    /* QR block — always at the bottom */
     .qr-block {
       background: white;
       color: #1f2937;
       border-radius: 8mm;
-      padding: 8mm;
+      padding: 7mm;
       display: flex;
       gap: 6mm;
       align-items: center;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-      position: relative;
-      z-index: 1;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     }
-    .qr-block canvas, .qr-block #qr-img {
-      width: 50mm; height: 50mm; border-radius: 4mm;
+    .qr-block canvas, .qr-block #qr-canvas {
+      width: 44mm !important;
+      height: 44mm !important;
+      border-radius: 3mm;
+      flex-shrink: 0;
     }
-    .qr-block .qr-text { flex: 1; }
-    .qr-block .qr-text h3 { margin: 0 0 2mm; font-size: 18pt; color: #4f46e5; font-weight: 800; }
-    .qr-block .qr-text p { margin: 0; font-size: 11pt; color: #4b5563; line-height: 1.5; }
-    .qr-block .qr-text .url { display: block; margin-top: 3mm; font-family: ui-monospace, "SF Mono", monospace; font-size: 10pt; color: #4f46e5; word-break: break-all; }
+    .qr-block .qr-text { flex: 1; min-width: 0; }
+    .qr-block .qr-text h3 { margin: 0 0 2mm; font-size: 17pt; color: #4f46e5; font-weight: 800; }
+    .qr-block .qr-text p { margin: 0; font-size: 10pt; color: #4b5563; line-height: 1.45; }
+    .qr-block .qr-text .url {
+      display: block; margin-top: 2.5mm;
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 10pt; color: #4f46e5; word-break: break-all; font-weight: 700;
+    }
 
-    .footer-bar { margin-top: 6mm; text-align: center; font-size: 10pt; opacity: 0.85; font-weight: 600; }
+    .footer-bar { margin-top: 4mm; text-align: center; font-size: 9pt; opacity: 0.88; font-weight: 600; }
 
-    /* Print: hide the toolbar, no margins */
+    /* Print: force colors, zero page margin, stay on one page */
     @media print {
       @page { size: A4 portrait; margin: 0; }
-      body { background: white; }
+      html, body { background: white; margin: 0; padding: 0; }
       .toolbar { display: none !important; }
-      .poster { margin: 0; box-shadow: none; page-break-after: always; }
+      .poster { margin: 0; box-shadow: none; page-break-inside: avoid; }
+      /* Colored backgrounds + gradients don't print by default — force them */
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
 
-    /* Mobile: scale the poster down to fit */
-    @media (max-width: 240mm) {
-      .poster { transform-origin: top center; transform: scale(0.85); margin-top: 0.5rem; }
-    }
-    @media (max-width: 200mm) {
-      .poster { transform: scale(0.7); }
-    }
-    @media (max-width: 160mm) {
-      .poster { transform: scale(0.55); }
-    }
+    /* Screen preview scaling */
+    @media (max-width: 240mm) { .poster { transform-origin: top center; transform: scale(0.85); margin-top: 0.5rem; } }
+    @media (max-width: 200mm) { .poster { transform: scale(0.7); } }
+    @media (max-width: 160mm) { .poster { transform: scale(0.55); } }
   </style>
 </head>
 <body>
@@ -105,11 +155,18 @@
   </div>
 
   <div class="poster">
-    <div class="brand">Vocaband</div>
-    <h1>Free<br>English<br>games.</h1>
-    <h2>Scan the code. Join the class. Beat your friends.</h2>
 
-    <div class="features">
+    <div class="poster-header">
+      <div class="brand">Vocaband</div>
+      <img src="/icon.svg" alt="Vocaband" class="logo" />
+    </div>
+
+    <div class="poster-hero">
+      <h1>Free<br>English<br>games.</h1>
+      <h2>Scan the code. Join the class. Beat your friends.</h2>
+    </div>
+
+    <div class="poster-features">
       <div class="feature"><span class="ico">⚡</span> 10 game modes — matching, spelling, scramble, more</div>
       <div class="feature"><span class="ico">🏆</span> Live class leaderboard during sessions</div>
       <div class="feature"><span class="ico">🎯</span> 9,000+ words across CEFR A1 to B2</div>
@@ -120,18 +177,16 @@
       <canvas id="qr-canvas"></canvas>
       <div class="qr-text">
         <h3>Scan to play</h3>
-        <p>Open your phone's camera, point at the code. Or type it in:</p>
+        <p>Open your phone's camera, point at the code. Or type the link below:</p>
         <span class="url" id="poster-url">vocaband.com</span>
       </div>
     </div>
 
     <div class="footer-bar">vocaband.com · gamified English vocabulary for ESL classrooms</div>
+
   </div>
 
   <script>
-    // Read ?ref=<id> + ?class=<code> from the URL so the poster carries
-    // the teacher's referral attribution. Falls back to the bare site URL
-    // if neither is present (anonymous classroom poster).
     (function () {
       var params = new URLSearchParams(window.location.search);
       var ref = params.get('ref');
@@ -142,21 +197,32 @@
       if (ref)       qs.push('ref=' + encodeURIComponent(ref));
       if (qs.length) url += '?' + qs.join('&');
 
-      // Render the URL line + QR
-      var label = url.replace(/^https?:\/\//, '');
-      document.getElementById('poster-url').textContent = label;
+      document.getElementById('poster-url').textContent = url.replace(/^https?:\/\//, '');
+
+      // If the QR library failed to load (CDN block, offline, CSP),
+      // substitute a plain boxed URL so the poster is still printable
+      // instead of a blank square. Silently degrades.
+      if (typeof QRCode === 'undefined') {
+        var canvas = document.getElementById('qr-canvas');
+        if (canvas) canvas.remove();
+        var fallback = document.createElement('div');
+        fallback.textContent = 'Type the link →';
+        fallback.style.cssText = 'width:44mm;height:44mm;border:1px dashed #9ca3af;border-radius:3mm;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;font-size:11pt;text-align:center;padding:2mm;flex-shrink:0;';
+        var qrBlock = document.querySelector('.qr-block');
+        if (qrBlock) qrBlock.insertBefore(fallback, qrBlock.firstChild);
+        console.warn('[poster] QR library failed to load — URL-only fallback shown.');
+        return;
+      }
 
       QRCode.toCanvas(document.getElementById('qr-canvas'), url, {
-        width: 480,                // high-res so it scales cleanly when printed
+        width: 480,
         margin: 2,
         color: { dark: '#1f2937', light: '#ffffff' },
-        errorCorrectionLevel: 'M', // medium — good balance of density vs scan-from-distance
+        errorCorrectionLevel: 'M',
       }, function (err) {
         if (err) console.error('QR generation failed:', err);
       });
 
-      // Update window title with class code so the saved PDF filename
-      // includes it (most browsers default to the page title).
       if (classCode) document.title = 'Vocaband poster — class ' + classCode;
     })();
   </script>
