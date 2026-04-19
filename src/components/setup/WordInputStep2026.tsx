@@ -474,11 +474,14 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Hebrew translation */}
           {(translationLang === 'both' || translationLang === 'hebrew') && (
             <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <label htmlFor="custom-word-hebrew" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
                 <span>🇮🇱</span> Hebrew {translationLang === 'hebrew' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
                 type="text"
+                id="custom-word-hebrew"
+                name="hebrew"
+                autoComplete="off"
                 value={hebrew}
                 onChange={(e) => setHebrew(e.target.value)}
                 placeholder="Enter Hebrew translation"
@@ -491,11 +494,14 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Arabic translation */}
           {(translationLang === 'both' || translationLang === 'arabic') && (
             <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <label htmlFor="custom-word-arabic" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
                 <span>🇸🇦</span> Arabic {translationLang === 'arabic' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
                 type="text"
+                id="custom-word-arabic"
+                name="arabic"
+                autoComplete="off"
                 value={arabic}
                 onChange={(e) => setArabic(e.target.value)}
                 placeholder="Enter Arabic translation"
@@ -591,6 +597,8 @@ const OcrModal: React.FC<OcrModalProps> = ({
               <input
                 ref={cameraInputRef}
                 type="file"
+                id="ocr-camera-input"
+                name="cameraImage"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
@@ -604,6 +612,8 @@ const OcrModal: React.FC<OcrModalProps> = ({
               <input
                 ref={galleryInputRef}
                 type="file"
+                id="ocr-gallery-input"
+                name="galleryImage"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
@@ -677,6 +687,9 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   <input
                     key={i}
                     type="text"
+                    id={`ocr-word-${i}`}
+                    name={`ocrWord-${i}`}
+                    autoComplete="off"
                     value={word}
                     onChange={(e) => onEditWord(i, e.target.value)}
                     className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
@@ -1180,6 +1193,9 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
             <input
               type="text"
+              id="word-library-search"
+              name="search"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={TEXT.searchPlaceholder}
@@ -1451,6 +1467,16 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     if (newWords.length > 0) {
       onSelectedWordsChange([...selectedWords, ...newWords]);
       showToast?.(`Added ${newWords.length} words`, 'success');
+      // Scroll to the "N words selected" section so the teacher actually
+      // sees the new words land. Without this the Topic Packs / Saved
+      // Groups modals close back onto the source-cards view and the
+      // teacher has no visual confirmation — it feels like nothing happened.
+      // Short timeout so the section has mounted/rerendered first.
+      setTimeout(() => {
+        selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else {
+      showToast?.('Those words are already selected', 'info');
     }
   }, [selectedWords, onSelectedWordsChange, showToast]);
 

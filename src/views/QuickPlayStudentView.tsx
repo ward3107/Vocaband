@@ -180,6 +180,7 @@ export default function QuickPlayStudentView({
                       <>
                         <input
                           id="quick-play-name-input"
+                          name="nickname"
                           type="text"
                           value={lockedName}
                           readOnly
@@ -190,6 +191,7 @@ export default function QuickPlayStudentView({
                     ) : (
                       <input
                         id="quick-play-name-input"
+                        name="nickname"
                         type="text"
                         inputMode="text"
                         autoCapitalize="words"

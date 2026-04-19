@@ -112,6 +112,9 @@ export default function PrivacySettingsView({
                 <div className="flex items-center gap-2 flex-1">
                   <input
                     type="text"
+                    id="privacy-display-name"
+                    name="displayName"
+                    autoComplete="name"
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
                     maxLength={30}

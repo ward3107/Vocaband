@@ -133,11 +133,14 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
       {/* Class Code Input */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-bold text-on-surface mb-2">
+          <label htmlFor="oauth-class-code" className="block text-sm font-bold text-on-surface mb-2">
             Enter your class code:
           </label>
           <input
             type="text"
+            id="oauth-class-code"
+            name="classCode"
+            autoComplete="off"
             value={classCode}
             onChange={(e) => setClassCode(e.target.value.toUpperCase())}
             placeholder="MATH101"

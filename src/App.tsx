@@ -2161,6 +2161,14 @@ export default function App() {
   // actually leave — so popstate should NOT re-trap during that window.
   const exitIntentRef = useRef(false);
 
+  // Mirror of showExitConfirmModal so the popstate handler (attached once
+  // with empty deps) can see the latest value without a closure re-attach.
+  // Used to detect a "double back press" at the dashboard floor: if the
+  // confirm modal is already open and the user presses back again, we
+  // treat that as confirmation and log out — matching the mobile idiom
+  // where repeated back presses mean "I really want to exit."
+  const exitModalOpenRef = useRef(false);
+
   // Views that a logged-in user should never land on via back button.
   // If popstate would navigate to one of these, we block it.
   const AUTH_VIEWS = new Set([
@@ -2185,6 +2193,8 @@ export default function App() {
   // mount) always sees the latest value without a closure re-attach.
   const viewRef = useRef(view);
   useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => { exitModalOpenRef.current = showExitConfirmModal; }, [showExitConfirmModal]);
 
   // Broadcast the current view so the global AccessibilityWidget knows
   // whether to render its floating trigger. Per the product owner the
@@ -2271,7 +2281,21 @@ export default function App() {
       //         This also handles the case where rapid back presses
       //         pop past the pad buffer into pre-login entries like
       //         {view:'student-account-login'} or external URLs.
+      //
+      //         Double-back = logout: if the confirm modal is already
+      //         visible and the user presses back AGAIN, treat it as
+      //         "yes, really leave." This matches the mobile idiom where
+      //         repeated back presses mean the user wants to exit, and
+      //         saves them from having to aim for the small Leave button.
       if (atDashboardFloor) {
+        if (exitModalOpenRef.current) {
+          setShowExitConfirmModal(false);
+          exitIntentRef.current = true;
+          supabase.auth.signOut().catch(() => {});
+          try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
+          setTimeout(() => { exitIntentRef.current = false; }, 500);
+          return;
+        }
         pushDashboardTrap();
         setShowExitConfirmModal(true);
         return;

@@ -275,6 +275,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <input
                     ref={nameInputRef}
                     type="text"
+                    id={`class-rename-${code}`}
+                    name="className"
+                    autoComplete="off"
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
                     onKeyDown={handleNameKeyDown}
