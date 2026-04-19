@@ -380,15 +380,52 @@ export const useAudio = () => {
     wordIds.filter(id => id > 0).forEach(preload)
   }
 
-  // Preload motivational phrases - NO-OP (feature removed)
+  // Preload a handful of motivational phrases on first gesture so the
+  // first mode-finish plays instantly. Bounded so we don't fetch all ~74
+  // MP3s up front.
   const preloadMotivational = () => {
-    // Motivational sounds removed - do nothing
+    if (preloadedMotivational) return
+    preloadedMotivational = true
+    // Preload 5 random phrases — enough for several mode completions
+    // without spending bandwidth on the whole library.
+    const sample = new Set<string>()
+    while (sample.size < 5 && sample.size < PHRASES.length) sample.add(pick())
+    sample.forEach(key => {
+      if (!motivationalCache[key]) {
+        motivationalCache[key] = new Howl({
+          src: [getMotivationalUrl(key)],
+          preload: true,
+          onloaderror: () => { delete motivationalCache[key] },
+        })
+      }
+    })
   }
 
-  // Play motivational sound - NO-OP (feature removed)
+  // Play a random female-voice praise phrase from /motivational/*.mp3.
+  // Returns the phrase key so the caller can render the matching label
+  // on screen. Falls back to no-op if the file fails to load — we do
+  // NOT fall back to speechSynthesis because the browser's default TTS
+  // voice is male on most desktops, which is exactly the regression
+  // we're fixing (students were hearing a male voice after finishing
+  // a mode, but the app was set up with a female voice).
   const playMotivational = (): string => {
-    // Motivational sounds removed - return empty key
-    return ''
+    const key = pick()
+    if (!motivationalCache[key]) {
+      motivationalCache[key] = new Howl({
+        src: [getMotivationalUrl(key)],
+        preload: true,
+        onloaderror: () => { delete motivationalCache[key] },
+      })
+    }
+    try {
+      // Stop any previously-playing phrase so they don't overlap on
+      // rapid-fire correct answers / streak milestones.
+      currentMotivational?.stop()
+      const h = motivationalCache[key]
+      currentMotivational = h
+      h.play()
+    } catch {/* Howl plays async; transient errors are non-fatal */}
+    return key
   }
 
   const getMotivationalLabel = (key: string): string => {
