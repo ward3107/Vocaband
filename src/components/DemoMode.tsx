@@ -1458,18 +1458,34 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </p>
               </motion.div>
 
-              {/* Power-ups strip — demo-specific but styled to feel native */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-3 mb-5 border border-white/50 shadow-sm">
-                <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">
-                  ⚡ Power-ups (free in demo)
+              {/* Power-ups strip — redesigned off the old white card. Each
+                  chip now carries its own gradient that matches the
+                  power-up's flavour (skip=blue, 50/50=amber, hint=emerald)
+                  so they read as live game tokens rather than paper icons
+                  on a white tray. */}
+              <div className="mb-5">
+                <p className="text-[11px] font-black text-white/90 mb-2 text-center uppercase tracking-[0.2em] drop-shadow-sm">
+                  ⚡ Power-ups · free in demo
                 </p>
-                <div className="flex justify-center gap-2">
-                  {POWER_UPS.map((pu) => (
-                    <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
-                      <span className="text-xl block">{pu.emoji}</span>
-                      <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
-                    </div>
-                  ))}
+                <div className="flex justify-center gap-2.5">
+                  {POWER_UPS.map((pu) => {
+                    const theme: Record<string, string> = {
+                      skip: 'from-sky-400 to-blue-600 shadow-blue-500/40 ring-white/40',
+                      fifty_fifty: 'from-amber-400 to-orange-500 shadow-amber-500/40 ring-white/40',
+                      reveal_letter: 'from-emerald-400 to-teal-500 shadow-emerald-500/40 ring-white/40',
+                    };
+                    return (
+                      <div
+                        key={pu.id}
+                        className={`relative bg-gradient-to-br ${theme[pu.id] ?? 'from-stone-300 to-stone-500'} px-3.5 py-2 rounded-2xl text-center shadow-lg ring-1 min-w-[64px] backdrop-blur-sm`}
+                      >
+                        <span className="text-2xl block leading-none drop-shadow-sm">{pu.emoji}</span>
+                        <p className="text-[11px] font-black text-white/95 mt-1 tracking-wide">
+                          ×{powerUps[pu.id as keyof typeof powerUps]}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
