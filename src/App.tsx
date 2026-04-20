@@ -5326,8 +5326,35 @@ export default function App() {
         return () => clearInterval(id);
       }, []);
 
-      // Auto-poll every 10 seconds
+      // Approval detection: Realtime subscription + visibility-aware polling.
+      //
+      // Polling alone is unreliable on mobile: iOS/Android aggressively throttle
+      // or fully pause setInterval when the tab is backgrounded or the phone is
+      // locked. That's why students kept needing to refresh to "see" their
+      // approval land — the 3s poll had stopped firing while the phone was
+      // asleep and resumed stale when unlocked.
+      //
+      // Fix is defence-in-depth:
+      //   1. Realtime UPDATE subscription on student_profiles filtered by
+      //      (class_code, display_name) — fires instantly when the teacher
+      //      approves, regardless of tab visibility.
+      //   2. visibilitychange handler — the moment the tab becomes visible
+      //      again (screen unlocked, app foregrounded), do an immediate
+      //      fetch so we recover from any missed events.
+      //   3. The 3s poll stays as a final safety net for environments where
+      //      Realtime WebSockets can't connect (strict school firewalls).
       React.useEffect(() => {
+        let cancelled = false;
+
+        const applyApprovedRow = (row: { id: string; auth_uid: string | null; status: string } | null | undefined) => {
+          if (cancelled) return;
+          if (row && row.status === 'approved') {
+            try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
+            showToast("You've been approved! Logging in...", "success");
+            handleLoginAsStudent(row.id);
+          }
+        };
+
         const checkStatus = async () => {
           try {
             const { data } = await supabase
@@ -5337,21 +5364,48 @@ export default function App() {
               .eq('display_name', pendingApprovalInfo.name)
               .order('joined_at', { ascending: false })
               .limit(1);
-
-            if (data && data.length > 0 && data[0].status === 'approved') {
-              try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-              showToast("You've been approved! Logging in...", "success");
-              handleLoginAsStudent(data[0].id);
-            }
+            applyApprovedRow(data?.[0]);
           } catch { /* silent retry */ }
         };
 
-        // Poll aggressively (3s) so the moment the teacher approves,
-        // the student sees the transition without thinking nothing
-        // is happening. 10s felt dead. Query is a single indexed
-        // row select so 3s is cheap.
-        const id = setInterval(checkStatus, 3_000);
-        return () => clearInterval(id);
+        // (1) Realtime — fires the instant the teacher's UPDATE lands.
+        const channel = supabase
+          .channel(`pending-approval-${pendingApprovalInfo.classCode}-${pendingApprovalInfo.name}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'student_profiles',
+              filter: `class_code=eq.${pendingApprovalInfo.classCode}`,
+            },
+            (payload) => {
+              const row = payload.new as { id: string; auth_uid: string | null; status: string; display_name: string } | undefined;
+              if (row && row.display_name === pendingApprovalInfo.name) {
+                applyApprovedRow(row);
+              }
+            }
+          )
+          .subscribe();
+
+        // (2) Visibility recovery — the moment the student unlocks their phone,
+        // do an immediate check so they don't have to wait for the next poll.
+        const handleVisibility = () => {
+          if (!document.hidden) checkStatus();
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        // (3) Poll fallback — 3s while the tab is visible; cheap single-row
+        // select, guards against Realtime WebSocket being blocked.
+        checkStatus();
+        const pollId = setInterval(checkStatus, 3_000);
+
+        return () => {
+          cancelled = true;
+          clearInterval(pollId);
+          document.removeEventListener('visibilitychange', handleVisibility);
+          supabase.removeChannel(channel);
+        };
       }, []);
 
       const handleManualCheck = async () => {
