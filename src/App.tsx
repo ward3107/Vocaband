@@ -6339,6 +6339,14 @@ export default function App() {
           });
 
           try {
+            // Session just successfully launched — clear the skip-restore
+            // flag that was set when the teacher clicked "Quick Play" from
+            // the dashboard. If we leave it set, the next auth state change
+            // (tab refocus, token refresh) will hit the restore branch at
+            // the top of fetchUserProfile, see the flag, and silently wipe
+            // this brand-new session + kick the teacher back to the
+            // dashboard. That's the "monitor keeps disappearing" bug.
+            sessionStorage.removeItem('vocaband_skip_restore');
             localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
               id: session.id,
               words,
