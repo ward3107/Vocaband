@@ -872,7 +872,9 @@ export default function App() {
       // select policy had a uuid/text cast mismatch.
       console.log('[Quick Play Monitor] fetched progress rows:', data?.length ?? 0, 'for session', sessionId);
       if (data) {
-        setQuickPlayJoinedStudents(aggregateProgress(data));
+        const aggregated = aggregateProgress(data);
+        console.log('[Quick Play Monitor] aggregated students:', aggregated.length, aggregated);
+        setQuickPlayJoinedStudents(aggregated);
       }
     };
 
