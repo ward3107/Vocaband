@@ -508,9 +508,22 @@ export default function App() {
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
-        // Ensure we have at least an anonymous auth session — RLS requires it
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        if (!existingSession) {
+        // Validate the session with the server — `getSession()` only reads
+        // localStorage, so a stale token passes unnoticed. The first real
+        // auth call then fails with `session_not_found` (403), the client
+        // fires SIGNED_OUT, and the student is bounced to the login page
+        // mid-Quick-Play-join. Verifying with `getUser()` up front lets us
+        // recover by clearing the stale token and signing in fresh.
+        const { data: { session: cachedSession } } = await supabase.auth.getSession();
+        let hasValidSession = false;
+        if (cachedSession) {
+          const { error } = await supabase.auth.getUser();
+          hasValidSession = !error;
+          if (error) {
+            await supabase.auth.signOut().catch(() => {});
+          }
+        }
+        if (!hasValidSession) {
           await supabase.auth.signInAnonymously().catch(() => {});
         }
 
