@@ -4553,45 +4553,22 @@ export default function App() {
     }
   };
 
-  // Remove Quick Play guest from teacher's dashboard (delete progress, clear localStorage)
   // Full guest exit cleanup. Called whenever a Quick Play student
   // explicitly leaves the game (Exit button on mode picker, header
   // Back button, finish-screen "Exit Quick Play", session-end overlay).
   //
-  // Deletes the student's progress rows so they vanish from the
-  // teacher's podium AND so a re-join with the same name doesn't hit
-  // the "name already taken" guard. Also signs out the anon Supabase
-  // session so a fresh re-entry from the same device gets a new
-  // auth.uid (the old one's progress rows are already deleted, but
-  // signOut prevents stale localStorage from auto-restoring).
+  // Progress rows are intentionally left in place so the student stays
+  // visible on the teacher's podium after leaving — teachers need to see
+  // who actually played. Row removal happens in two places instead:
+  //   (a) teacher kick — QuickPlayMonitor.removeStudent
+  //   (b) re-join with same name — QuickPlayStudentView join-time delete
+  // This function only signs out the anon auth session + clears the
+  // guest localStorage entry so a fresh re-entry from the same device
+  // starts cleanly.
   const cleanupQuickPlayGuest = async () => {
     if (!user?.isGuest || !quickPlayActiveSession) return;
-    const studentName = user.displayName;
-    try {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      const authUid = authSession?.user?.id;
-      // Delete by uid AND by name. uid catches the rows the active
-      // session inserted; name catches any rows that earlier rotated
-      // auth uids inserted under the same display name (the dedup
-      // post-pass on the teacher side merges by name, so deleting by
-      // name removes them all in one go).
-      const orFilters: string[] = [];
-      if (authUid) orFilters.push(`student_uid.eq.${authUid}`);
-      if (studentName) orFilters.push(`student_name.eq.${studentName}`);
-      if (orFilters.length > 0) {
-        await supabase
-          .from('progress')
-          .delete()
-          .eq('assignment_id', quickPlayActiveSession.id)
-          .or(orFilters.join(','));
-      }
-    } catch {}
     try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
     setQuickPlayCompletedModes(new Set());
-    // Sign out the anon Supabase session — without this the next visit
-    // from the same device silently restores the same auth.uid via
-    // localStorage, so the "fresh" re-join would still be linked to
-    // the deleted progress rows in confusing ways.
     try { await supabase.auth.signOut(); } catch {}
   };
 
