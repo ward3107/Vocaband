@@ -126,7 +126,7 @@ export default function TeacherDashboardView({
           onLogout={() => supabase.auth.signOut()}
         />
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Welcome hero — sets a calm, personal tone */}
           <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
             <p className="text-xs sm:text-sm font-bold uppercase tracking-widest text-indigo-500 mb-2">
