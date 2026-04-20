@@ -1,16 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Public fallback values — these are the production Supabase URL + anon
+// ("publishable") key. They're already visible inside every shipped JS
+// bundle; Supabase labelled the key "publishable" precisely because it
+// is safe for browser exposure (gated by RLS, not secret).
+//
+// Using them as fallbacks instead of relying solely on import.meta.env
+// because Cloudflare Workers Builds can inject empty-string values for
+// VITE_* secrets scoped to production only — which leaks into
+// non-production (preview) builds as empty strings, overrides
+// .env.production, and leaves the app in "Supabase is not configured"
+// mode on every preview URL even when the .env.production file IS in
+// the repo. Source-level fallbacks sidestep that entirely: if the env
+// var is empty/missing for any reason, this still works.
+const FALLBACK_SUPABASE_URL = 'https://auth.vocaband.com';
+const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_O1immSThDxWWI6PNXPNi1w__27CAThD';
 
-// Guard: warn loudly if Supabase env vars are missing so the app doesn't
-// silently hang on a loading spinner forever.
+const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+const supabaseUrl = (envUrl && envUrl.length > 0) ? envUrl : FALLBACK_SUPABASE_URL;
+const supabaseAnonKey = (envKey && envKey.length > 0) ? envKey : FALLBACK_SUPABASE_ANON_KEY;
+
+// Guard kept for true dev-shell edge cases where even the fallback is
+// somehow empty (should not happen in practice).
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 if (!isSupabaseConfigured) {
   console.error(
-    '[Vocaband] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are not set. ' +
-    'The app will run in offline/unconfigured mode. ' +
-    'Copy .env.example to .env and fill in your Supabase credentials.'
+    '[Vocaband] Neither VITE_SUPABASE_URL/ANON_KEY nor the in-source fallback was available. ' +
+    'This should not happen — check src/core/supabase.ts.'
   );
 }
 
@@ -70,6 +88,22 @@ export async function handleDbError(
   console.error(`Supabase ${operationType} error on ${path}: ${errorMsg}`);
   throw new Error('Database error — please try again.');
 }
+
+// ---------------------------------------------------------------------------
+// Explicit column lists for `.select(...)` calls.
+//
+// Prefer these over `.select('*')` so the mapper and the query stay in sync
+// and the client doesn't waste bandwidth hauling a row's full surface area
+// (e.g. users' full cosmetic state) on every dashboard refresh. Each
+// constant lists exactly the columns the matching mapper below reads.
+// ---------------------------------------------------------------------------
+export const USER_COLUMNS =
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme';
+export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
+export const ASSIGNMENT_COLUMNS =
+  'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
+export const PROGRESS_COLUMNS =
+  'id,student_name,student_uid,assignment_id,class_code,score,mode,completed_at,mistakes,avatar,play_count';
 
 // ---------------------------------------------------------------------------
 // Row-to-interface mappers (DB uses snake_case, TS uses camelCase)

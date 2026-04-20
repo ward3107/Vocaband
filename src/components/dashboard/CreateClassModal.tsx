@@ -26,6 +26,9 @@ export default function CreateClassModal({
             <input
               autoFocus
               type="text"
+              id="create-class-name"
+              name="className"
+              autoComplete="off"
               value={newClassName}
               onChange={(e) => setNewClassName(e.target.value)}
               placeholder="Class Name"

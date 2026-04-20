@@ -10,9 +10,56 @@ import {
   Shuffle,
   Repeat,
   X,
+  GraduationCap,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
+import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
+
+// Small star-rating component — 3 stars with N filled. Same visual
+// vocabulary as app-store difficulty ratings, so it reads as a
+// difficulty indicator with no legend required. Used on every mode
+// tile AND in the legend row.
+function DifficultyStars({ filled, colour, size = 12 }: { filled: number; colour: string; size?: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`Difficulty ${filled} of 3`}>
+      {[0, 1, 2].map(i => (
+        <Star
+          key={i}
+          size={size}
+          strokeWidth={2}
+          className={i < filled ? colour : 'text-stone-300'}
+          fill={i < filled ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  );
+}
+
+// 3-pill legend shown above the mode grid. Same star pattern as each
+// tile, so the player learns the vocabulary once.
+function DifficultyLegend() {
+  const tiers: Array<keyof typeof DIFFICULTY_META> = ['easy', 'medium', 'hard'];
+  return (
+    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 flex-wrap">
+      {tiers.map(tier => {
+        const m = DIFFICULTY_META[tier];
+        return (
+          <div
+            key={tier}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${m.badgeBg} ${m.badgeText}`}
+            title={m.description}
+          >
+            <DifficultyStars filled={m.stars} colour={m.starColor} />
+            {m.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 interface GameModeSelectionViewProps {
   activeAssignment: AssignmentData | null;
@@ -35,13 +82,17 @@ export default function GameModeSelectionView({
   setShowModeIntro,
   handleExitGame,
 }: GameModeSelectionViewProps) {
-  const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[] }> = [
+  // Flashcards is flagged as the "learning" mode — it's where students
+  // are meant to START before practising.  It's rendered as a big hero
+  // card above the rest so a first-time player sees it before the
+  // practice grid.  The other nine modes are laid out normally.
+  const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[]; isLearnMode?: boolean }> = [
+    { id: "flashcards", name: "Flashcards", desc: "Learn the words first — flip, listen, and earn XP at your own pace.", color: "cyan", icon: <Layers size={28} />, tooltip: ["Learn before you practice", "Flip cards to see answers", "No pressure — still earns XP"], isLearnMode: true },
     { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
     { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
     { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
     { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
     { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} />, tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"] },
-    { id: "flashcards", name: "Flashcards", desc: "Review words at your own pace. No pressure.", color: "cyan", icon: <Layers size={24} />, tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"] },
     { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
     { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
     { id: "letter-sounds", name: "Letter Sounds", desc: "Watch each letter light up and hear its sound.", color: "violet", icon: <span className="text-2xl">🔡</span>, tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"] },
@@ -50,8 +101,15 @@ export default function GameModeSelectionView({
 
   const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
   const filteredModes = modes.filter(m => allowedModes.includes(m.id));
+  // Flashcards is special-cased: it's the LEARNING mode, not a practice
+  // mode, so even when a teacher's assignment doesn't include it in
+  // allowedModes the student should still be able to learn the words
+  // before tackling the practice modes. Pull it from the unfiltered
+  // `modes` list so the hero card always shows.
+  const learnMode = modes.find(m => m.isLearnMode);
+  const practiceModes = filteredModes.filter(m => !m.isLearnMode);
 
-  if (filteredModes.length === 0) {
+  if (filteredModes.length === 0 && !learnMode) {
     console.error('[Mode Selection] No modes available!');
   }
 
@@ -97,14 +155,78 @@ export default function GameModeSelectionView({
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 sm:mb-12 mt-4 sm:mt-0"
+          className="mb-6 sm:mb-10 mt-4 sm:mt-0"
         >
           <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">Choose Your Mode</h2>
-          <p className="text-stone-500 text-base sm:text-xl font-medium">How do you want to learn today?</p>
+          <p className="text-stone-500 text-base sm:text-xl font-medium">Start with Flashcards to learn — then practise with the other modes.</p>
         </motion.div>
 
+        {/* Learning hero — Flashcards is promoted above the practice grid
+            with its own big card so new students know to start here.
+            Still earns XP and counts as a completed mode. */}
+        {learnMode && (() => {
+          const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === learnMode.id);
+          const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(learnMode.id);
+          return (
+            <motion.button
+              key={learnMode.id}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+              whileHover={!isQpLocked ? { scale: 1.02, translateY: -4 } : undefined}
+              whileTap={!isQpLocked ? { scale: 0.98 } : undefined}
+              disabled={isQpLocked}
+              onClick={() => {
+                if (isQpLocked) return;
+                console.log('[Mode Selection] Tapped learn mode:', learnMode.id);
+                setGameMode(learnMode.id);
+                setShowModeSelection(false);
+                setShowModeIntro(true);
+              }}
+              className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
+              style={{ touchAction: 'manipulation' }}
+            >
+              <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+              <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
+                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+                  <Sparkles size={12} />
+                  Start here · Learn first
+                </span>
+                {(isCompleted || isQpLocked) && (
+                  <span className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                    <CheckCircle2 size={16} className="text-white" />
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-4 sm:gap-6 mt-10 sm:mt-6">
+                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                  <GraduationCap size={32} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-xl sm:text-3xl mb-1">{learnMode.name}</p>
+                  <p className="text-white/90 text-sm sm:text-base font-semibold leading-snug">{learnMode.desc}</p>
+                </div>
+                <div className="hidden sm:flex shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                  <Layers size={28} />
+                </div>
+              </div>
+            </motion.button>
+          );
+        })()}
+
+        {practiceModes.length > 0 && (
+          <div className="mb-3 text-left">
+            <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">Then practise with</p>
+          </div>
+        )}
+
+        {/* Difficulty legend — tells the player what the coloured dots on
+            each tile below mean. Only renders when there are tiles to
+            label. */}
+        {practiceModes.length > 0 && <DifficultyLegend />}
+
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {filteredModes.map((mode, idx) => {
+          {practiceModes.map((mode, idx) => {
             const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
             // In Quick Play: lock modes that were already completed this session
             const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
@@ -144,7 +266,18 @@ export default function GameModeSelectionView({
                   )}
                 </div>
                 <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
-                <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
+                <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug mb-2">{mode.desc}</p>
+                {/* Difficulty stars — N filled out of 3. Same visual
+                    language the legend above uses, so players see a
+                    tile's star count and instantly know its difficulty
+                    without a colour lookup. */}
+                {(() => {
+                  const tier = getModeDifficulty(mode.id);
+                  const meta = DIFFICULTY_META[tier];
+                  return (
+                    <DifficultyStars filled={meta.stars} colour={meta.starColor} size={12} />
+                  );
+                })()}
 
                 <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Zap size={20} className="animate-pulse" />

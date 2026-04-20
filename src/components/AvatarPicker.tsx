@@ -117,8 +117,12 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
         )}
       </div>
 
-      {/* BIG Avatar Cards Grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-3 bg-white rounded-2xl border-2 border-surface-container-highest">
+      {/* BIG Avatar Cards Grid. Inner max-height only kicks in on sm+ —
+          on mobile the grid grows naturally so the page is the single
+          scroll container. Without this users couldn't find an
+          outside-the-grid gutter on their phone to swipe down past
+          the picker toward the Continue button. */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:max-h-64 sm:overflow-y-auto p-3 bg-white rounded-2xl border-2 border-surface-container-highest">
         {AVATAR_CATEGORIES[selectedCategory].map((avatar) => (
           <motion.button
             key={avatar}

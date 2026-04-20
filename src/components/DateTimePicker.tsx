@@ -288,6 +288,9 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
             <Clock size={16} className="text-primary shrink-0" />
             <span className="text-xs font-bold text-stone-600 uppercase tracking-wide">Time</span>
             <select
+              id="deadline-hour"
+              name="hour"
+              aria-label="Hour"
               value={draftHour}
               onChange={(e) => setHour(parseInt(e.target.value, 10))}
               className="flex-1 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm font-bold text-stone-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
@@ -298,6 +301,9 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
             </select>
             <span className="text-stone-400 font-black">:</span>
             <select
+              id="deadline-minute"
+              name="minute"
+              aria-label="Minute"
               value={draftMinute}
               onChange={(e) => setMinute(parseInt(e.target.value, 10))}
               className="flex-1 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm font-bold text-stone-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"

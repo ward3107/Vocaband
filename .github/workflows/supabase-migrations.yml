@@ -1,0 +1,146 @@
+# Supabase migrations auto-apply
+#
+# Runs on every push to main that touches supabase/migrations/**.sql.
+# Pushes all new migrations to the linked Supabase project using the
+# Supabase CLI.  Idempotent: the CLI tracks which migrations have been
+# applied via the `supabase_migrations.schema_migrations` bookkeeping
+# table, so re-running is a no-op if nothing is new.
+#
+# Why this exists:
+#   Before this workflow, schema changes were pasted into the Supabase
+#   dashboard SQL editor by hand after deploy.  A deploy could land
+#   before the migration was run, producing "column does not exist" 500s
+#   for every student for the few minutes it took to notice and paste.
+#
+# Required GitHub Actions secrets:
+#   SUPABASE_ACCESS_TOKEN   — a personal access token from
+#                             https://supabase.com/dashboard/account/tokens
+#                             (gives the CLI permission to link + push)
+#   SUPABASE_PROJECT_REF    — the short project ref (e.g. "abcdxyz123")
+#                             visible in the Supabase dashboard URL
+#   SUPABASE_DB_PASSWORD    — the database password from
+#                             Project Settings → Database → Connection string
+#
+# Set all three under GitHub → Settings → Secrets and variables → Actions
+# before enabling this workflow in production.
+
+name: Apply Supabase migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**.sql"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One migration run at a time per branch — Supabase serialises DDL
+  # but overlapping CI jobs could race on the bookkeeping table.
+  group: supabase-migrations-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Set Supabase env vars once for every step in this job. The CLI
+    # picks them up automatically so we don't need to re-pass them on
+    # every command (avoids the `--yes` / `--password` flag issues that
+    # change between CLI releases).
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate secrets before calling CLI
+        # Catch the "Invalid project ref format" error early with a clear
+        # message, instead of letting the CLI fail with a cryptic one.
+        run: |
+          REF="${{ secrets.SUPABASE_PROJECT_REF }}"
+          if [ -z "$REF" ]; then
+            echo "::error::SUPABASE_PROJECT_REF is empty. Add the 20-char project ref from the Supabase dashboard URL."
+            exit 1
+          fi
+          if ! echo "$REF" | grep -Eq '^[a-z0-9]{20}$'; then
+            echo "::error::SUPABASE_PROJECT_REF must be the 20-char project ref (lowercase letters + digits), not the URL. Got length ${#REF}."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is empty. Generate one at https://supabase.com/dashboard/account/tokens"
+            exit 1
+          fi
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::SUPABASE_DB_PASSWORD is empty. Reset the DB password in Supabase → Project Settings → Database, then add it as a GitHub secret."
+            exit 1
+          fi
+          echo "All three secrets are set (ref length ${#REF})."
+
+      - name: Link to Supabase project
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: Repair phantom remote migration entries
+        # The remote schema_migrations table has rows from earlier
+        # `supabase db push` runs that used full HHMMSS timestamps
+        # (e.g. 20260403142757) — but our local files use the short
+        # date format (20260403_*.sql). The CLI sees the mismatch and
+        # refuses to push with "Remote migration versions not found in
+        # local migrations directory". Mark those phantom rows as
+        # reverted so the CLI ignores them and pushes only the current
+        # local migrations. `|| true` keeps the step idempotent — once
+        # the rows are gone, repair returns non-zero and we don't care.
+        run: |
+          supabase migration repair --status reverted \
+            20260325 \
+            20260403142757 \
+            20260410093834 \
+            20260410093847 \
+            20260410093922 \
+            20260410102931 || echo "No phantom entries to repair (already clean)."
+
+      - name: Mark already-applied migrations as applied
+        # Migrations 20260406 through 20260427 have their SQL bodies
+        # already run on the remote (proven by the NOTICE lines
+        # "relation ... already exists, skipping" in earlier CI logs),
+        # but their bookkeeping rows in schema_migrations either never
+        # landed or got wiped by earlier repair attempts. Without a row
+        # for each, `db push` treats them as pending, re-runs the
+        # idempotent SQL (no-op), then hits a duplicate-key error when
+        # inserting the bookkeeping row.
+        #
+        # Mark every 20260406–20260427 version as "applied" so the CLI
+        # stops trying to re-push them. The genuinely-new migrations
+        # (20260428+) remain in the pending list and get applied
+        # normally by the next step. Each `repair` is independent — a
+        # failure on any one version doesn't abort the rest.
+        run: |
+          for v in 20260406 20260407 20260408 20260409 20260410 \
+                   20260411 20260412 20260413 20260414 20260415 \
+                   20260416 20260417 20260418 20260419 20260420 \
+                   20260421 20260422 20260423 20260424 20260425 \
+                   20260426 20260427; do
+            supabase migration repair --status applied "$v" 2>&1 || echo "  (repair $v skipped — already applied or unknown)"
+          done
+
+      - name: Push migrations (non-interactive)
+        # `db push` reads SUPABASE_DB_PASSWORD from env. Without
+        # --include-all the CLI compares local files against the remote
+        # schema_migrations table and only applies versions that aren't
+        # there yet — exactly the behaviour we want. --include-all
+        # forced every local file to re-run, which collided with rows
+        # already in schema_migrations (duplicate-key on the bookkeeping
+        # insert) even though the SQL itself was idempotent.
+        # Piping `yes` answers the "do you want to push these
+        # migrations?" confirmation without depending on a flag name
+        # that varies between CLI versions.
+        run: yes | supabase db push

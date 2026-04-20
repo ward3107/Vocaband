@@ -40,7 +40,7 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
                     ? 'bg-emerald-500 text-white'
                     : isCurrent
                     ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
-                    : 'bg-white text-stone-400 border border-stone-200'
+                    : 'bg-stone-100 text-stone-600 border border-stone-300'
                 }`}
               >
                 {isCompleted ? '✓' : step}
@@ -161,6 +161,20 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // ── Step State ─────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
+  // Scroll the viewport to the top whenever the step changes. The old
+  // AnimatePresence transition just swapped the content underneath,
+  // which often left the teacher looking at the bottom of step 1 when
+  // step 2 rendered — they had to scroll up to see "Configure assignment"
+  // or "Review" heading. Using window.scrollTo on currentStep change
+  // keeps the next step's heading aligned with the top of the viewport.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const id = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [currentStep]);
+
   // ── Core Shared State ───────────────────────────────────────────────────────
   const [selectedWords, setSelectedWords] = useState<Word[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>(
@@ -231,7 +245,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const isAssignment = mode === 'assignment';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-28 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-36 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
       <TopAppBar
         title={isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}
@@ -258,8 +272,17 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   onBack={handleBack}
                   onTranslateWord={onTranslateWord}
                   onOcrUpload={async (file) => {
-                    // Use the existing /api/ocr endpoint with FormData
-                    const token = localStorage.getItem('vocaband-token') || localStorage.getItem('sb-access-token');
+                    // The OCR handler used to read localStorage keys that
+                    // never existed ('vocaband-token' / 'sb-access-token'),
+                    // which made `token` null, threw "No auth token", and
+                    // aborted before the fetch ever fired. That's why no
+                    // /api/ocr request showed up in DevTools Network tab.
+                    // Fix: use the live Supabase session directly — that's
+                    // the only reliable source of the current access_token
+                    // regardless of how Supabase stores it locally.
+                    const { supabase: sb } = await import('../../core/supabase');
+                    const { data: { session } } = await sb.auth.getSession();
+                    const token = session?.access_token;
                     if (!token) {
                       showToast?.('Authentication required', 'error');
                       throw new Error('No auth token');

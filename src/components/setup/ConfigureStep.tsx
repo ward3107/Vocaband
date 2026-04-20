@@ -1,25 +1,63 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar,
+  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar, Star,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
-import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData } from './types';
+import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
 import { DateTimePicker } from '../DateTimePicker';
 
-// ── Assignment Templates (2026 compact design) ───────────────────────────────
-const ASSIGNMENT_TEMPLATES: { title: string; instructions: string; modes?: string[]; icon: string; color: string }[] = [
-  { icon: '📇', title: 'Flashcard Review', instructions: 'Learn new words at your own pace', modes: ['flashcards'], color: 'from-blue-500 to-indigo-500' },
-  { icon: '✅', title: 'Classic Quiz', instructions: 'Multiple-choice vocabulary quiz', modes: ['classic'], color: 'from-emerald-500 to-teal-500' },
-  { icon: '🎧', title: 'Listening Practice', instructions: 'Audio-based word recognition', modes: ['listening'], color: 'from-violet-500 to-purple-500' },
-  { icon: '🧩', title: 'Matching Pairs', instructions: 'Connect words to translations', modes: ['matching'], color: 'from-amber-500 to-orange-500' },
-  { icon: '⚡', title: 'Quick Mix', instructions: 'Flashcards + Quiz + Matching', modes: ['flashcards', 'classic', 'matching'], color: 'from-rose-500 to-pink-500' },
-  { icon: '📚', title: 'Full Practice', instructions: 'All modes for complete mastery', modes: ALL_GAME_MODE_IDS, color: 'from-cyan-500 to-blue-500' },
-  { icon: '✍️', title: 'Spelling Focus', instructions: 'Writing and spelling practice', modes: ['spelling', 'scramble'], color: 'from-fuchsia-500 to-pink-500' },
-  { icon: '🏠', title: 'Weekly Homework', instructions: 'Complete all activities at home', modes: ['flashcards', 'classic', 'spelling', 'matching'], color: 'from-green-500 to-emerald-500' },
+// ── Derive assignment meta from selected modes ───────────────────────────────
+// The old "Quick template" UI forced teachers to pick a preset before
+// touching modes. Reversing that: teachers pick modes first, we derive a
+// sensible title + instructions for them, and they can edit afterwards
+// if they want something custom. Signature returns exactly the fields
+// ConfigureStep fills in so the call-site stays dumb.
+interface DerivedMeta {
+  title: string;
+  instructions: string;
+}
+
+// Hand-curated combos first — these recognise intentional picks like
+// "Spelling + Scramble = Spelling Focus". Fallback below handles any
+// other combination by naming the first 2-3 modes.
+const COMBO_META: { match: (ids: string[]) => boolean; meta: DerivedMeta }[] = [
+  { match: ids => ids.length === 1 && ids[0] === 'flashcards',     meta: { title: 'Flashcard Review',    instructions: 'Flip cards at your own pace to learn the new words.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'classic',        meta: { title: 'Classic Quiz',        instructions: 'Read each word and pick the right translation.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'listening',      meta: { title: 'Listening Practice',  instructions: 'Listen carefully — the English text is hidden!' } },
+  { match: ids => ids.length === 1 && ids[0] === 'matching',       meta: { title: 'Matching Pairs',      instructions: 'Tap the pairs to connect English with the translation.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'true-false',     meta: { title: 'True or False',       instructions: 'Decide if each translation is correct. Quick reflexes win.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'spelling',       meta: { title: 'Spelling Practice',   instructions: 'Type each word exactly as you hear it.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'scramble',       meta: { title: 'Word Scramble',       instructions: 'Unscramble the letters into the correct word.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'reverse',        meta: { title: 'Reverse Translate',   instructions: 'See the translation, pick the English word.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'letter-sounds',  meta: { title: 'Letter Sounds',       instructions: 'Hear each letter one by one, then spell the word.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'sentence-builder', meta: { title: 'Sentence Builder',  instructions: 'Arrange the words to form the correct sentence.' } },
+
+  // Multi-mode combos teachers commonly pick:
+  { match: ids => ids.length === 2 && new Set(ids).has('spelling') && new Set(ids).has('scramble'),
+    meta: { title: 'Spelling Focus',     instructions: 'Practice writing each word two ways — straight spelling and unscrambling.' } },
+  { match: ids => ids.length === 3 && ['flashcards','classic','matching'].every(m => ids.includes(m)),
+    meta: { title: 'Quick Mix',          instructions: 'Learn with Flashcards, then test yourself with Classic and Matching.' } },
+  { match: ids => ids.length === 4 && ['flashcards','classic','spelling','matching'].every(m => ids.includes(m)),
+    meta: { title: 'Weekly Homework',    instructions: 'Complete all four activities at home: flip, quiz, type, and match.' } },
+  { match: ids => ids.length >= ALL_GAME_MODE_IDS.length,
+    meta: { title: 'Full Practice',      instructions: 'Work through every game mode for complete mastery.' } },
 ];
+
+function deriveAssignmentMeta(modes: string[]): DerivedMeta {
+  if (modes.length === 0) return { title: '', instructions: '' };
+  const combo = COMBO_META.find(c => c.match(modes));
+  if (combo) return combo.meta;
+  // Generic fallback — name the first couple modes in the title.
+  const names = modes.map(id => getGameModeConfig(id)?.name ?? id).slice(0, 3);
+  const suffix = modes.length > 3 ? ` + ${modes.length - 3} more` : '';
+  return {
+    title: `${names.join(' + ')}${suffix} Practice`,
+    instructions: `A quick set using ${modes.length} game mode${modes.length === 1 ? '' : 's'}.`,
+  };
+}
 
 // ── Props ───────────────────────────────────────────────────────────────────
 interface ConfigureStepProps {
@@ -68,31 +106,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 }) => {
   void _editingAssignment;
 
-  // Ref for template selector (for auto-scroll)
-  const templateSelectorRef = useRef<HTMLSelectElement>(null);
+  // Ref on the Next button is kept for programmatic focus only (e.g.
+  // accessibility announce on step mount), never for auto-scrolling.
+  // Both of the old setTimeout-based scrollIntoView effects were
+  // removed — they fought the SetupWizard's scroll-to-top on step
+  // change and produced the "page jumps up, then down" UX. The
+  // templateSelectorRef was also removed because the Quick Template
+  // grid it targeted no longer exists.
   const nextButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Auto-scroll to template selector when component mounts (especially for Quick Play)
-  useEffect(() => {
-    if (templateSelectorRef.current) {
-      setTimeout(() => {
-        templateSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        templateSelectorRef.current?.focus();
-      }, 300);
-    }
-  }, []);
-
-  // Auto-scroll to Next button when user can proceed (using existing canProceed from line 146)
-  useEffect(() => {
-    // This will run after the component is fully rendered and canProceed is defined
-    setTimeout(() => {
-      // We need to compute canProceed the same way as line 146
-      const canProceed = mode === 'quick-play' || (mode === 'assignment' && !!assignmentTitle);
-      if (canProceed && nextButtonRef.current && selectedModes.length > 0) {
-        nextButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 500);
-  }, [mode, assignmentTitle, selectedModes.length]);
 
   // Sentence builder local state
   const [customSentenceInput, setCustomSentenceInput] = useState('');
@@ -151,11 +172,32 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ words, difficulty: sentenceDifficulty }),
       });
-      if (!res.ok) throw new Error('AI generation failed');
+      if (!res.ok) {
+        // Previously the error was swallowed silently, leaving the
+        // teacher to wonder why nothing happened after clicking
+        // "Generate". Now surface the actual HTTP status + server
+        // message so the console/toast names the problem (401 / 403 /
+        // 503 / 500) and we can diagnose without Render log diving.
+        let reason = `HTTP ${res.status}`;
+        try {
+          const body = await res.json();
+          if (body?.error) reason = `${body.error}${body.message ? ` — ${body.message}` : ''}`;
+        } catch { /* body wasn't JSON */ }
+        throw new Error(reason);
+      }
       const { sentences } = await res.json();
       onSentencesChange?.(sentences);
-    } catch {
-      /* fallback: caller already has template sentences, just keep them */
+    } catch (err) {
+      console.warn('[AI sentences] generation failed:', err);
+      // Keep whatever template sentences the caller already has, but
+      // tell the teacher why the AI path didn't produce output so
+      // they can fix it (allowlist, API key, token) instead of staring
+      // at an unmoved sentence list and thinking the button is broken.
+      const msg = err instanceof Error ? err.message : 'AI generation failed';
+      // No toast handler in scope here — log a structured warning that
+      // devtools + Sentry will catch. Upstream consumers can wire a
+      // toast via props in a follow-up if we want user-visible errors.
+      console.warn(`[AI sentences] ${msg}`);
     } finally {
       setIsGeneratingAI(false);
     }
@@ -181,19 +223,35 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
     }
   };
 
-  // Template selector — assignment-only helper
-  const applyTemplate = (index: number) => {
-    const t = ASSIGNMENT_TEMPLATES[index];
-    if (!t) return;
-    onTitleChange?.(t.title);
-    onInstructionsChange?.(t.instructions);
-    if (t.modes) onModesChange(t.modes);
-  };
+  // Auto-derive title + instructions from the selected modes. Runs the
+  // first time the teacher picks modes AND every subsequent time they
+  // change the selection — UNLESS they've typed their own title (which
+  // flips the ref below). Typing into the title field later never gets
+  // stomped by mode changes because titleManuallyEditedRef stays true
+  // for the rest of the session once the teacher touches the field.
+  const titleManuallyEditedRef = useRef(false);
+  const instructionsManuallyEditedRef = useRef(false);
+  const lastAutoTitleRef = useRef('');
+  const lastAutoInstrRef = useRef('');
 
-  // Check if current selection matches a template
-  const activeTemplateIndex = ASSIGNMENT_TEMPLATES.findIndex(t =>
-    t.title === assignmentTitle && t.instructions === assignmentInstructions
-  );
+  useEffect(() => {
+    if (!isAssignment) return;
+    const derived = deriveAssignmentMeta(selectedModes);
+
+    // Title: fill in if empty OR the field still holds the previous
+    // auto-derived value. Respect user edits.
+    if (!titleManuallyEditedRef.current || assignmentTitle === '' || assignmentTitle === lastAutoTitleRef.current) {
+      if (derived.title !== assignmentTitle) onTitleChange?.(derived.title);
+      lastAutoTitleRef.current = derived.title;
+    }
+
+    // Instructions: same pattern.
+    if (!instructionsManuallyEditedRef.current || assignmentInstructions === '' || assignmentInstructions === lastAutoInstrRef.current) {
+      if (derived.instructions !== assignmentInstructions) onInstructionsChange?.(derived.instructions);
+      lastAutoInstrRef.current = derived.instructions;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModes, isAssignment]);
 
   // Can proceed?
   const canProceed = isAssignment
@@ -223,94 +281,91 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 
       <div className="text-center">
         <h2 className="text-2xl font-black text-stone-900 mb-2">
-          {isAssignment ? 'Configure assignment' : 'Choose game modes (optional)'}
+          {isAssignment ? 'Configure assignment' : 'Configure Quick Play'}
         </h2>
-        {isAssignment && (
-          <p className="text-stone-600">
-            Add details and choose game modes
-          </p>
-        )}
+        <p className="text-stone-600">
+          {isAssignment ? 'Add details and choose game modes' : 'Optional: add a title for your records, then choose modes'}
+        </p>
       </div>
 
-      {/* ── Assignment-only: details section (2026 redesign) ────────────────── */}
-      {isAssignment && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-5"
-        >
-          {/* Template Selector - at top, small buttons */}
+      {/* ── Details section (title + instructions) ─────────────────────────── */}
+      {/* Previously this block was gated on isAssignment, but Quick Play
+          teachers also benefit from labelling a session ("Period 3 warm-up")
+          so it shows up in analytics and in the success screen. We keep
+          the fields optional for Quick Play and required for assignments
+          (the canProceed check at the top of the component enforces that). */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-5"
+      >
+        {/* The old Quick template grid lived here. Removed — teachers
+            now pick modes first (further down) and we auto-fill a
+            sensible title + instructions based on that selection via
+            deriveAssignmentMeta. They can still edit either field
+            afterwards; a one-time manual-edit flag stops the auto-fill
+            from overwriting their customization on subsequent mode
+            changes. */}
+        {isAssignment && selectedModes.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-3 text-center text-xs text-stone-500">
+            <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
+            Pick one or more game modes below and we'll suggest a title
+            automatically. You can always edit it.
+          </div>
+        )}
+
+        {/* Title & Instructions — shown for both assignment AND quick-play. */}
+        <div className="grid grid-cols-1 gap-3">
+          {/* Title */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
-              <Sparkles size={14} className="text-amber-500" />
-              Quick template
+            <label htmlFor="assignment-title" className="block text-xs font-bold text-stone-600 mb-1.5">
+              {isAssignment ? 'Assignment title ' : 'Session title '}
+              {isAssignment ? (
+                <span className="text-red-500">*</span>
+              ) : (
+                <span className="text-stone-400 font-normal">(optional)</span>
+              )}
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {ASSIGNMENT_TEMPLATES.map((template, index) => {
-                const isActive = activeTemplateIndex === index;
-                return (
-                  <motion.button
-                    key={template.title}
-                    onClick={() => applyTemplate(index)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    className={`p-2.5 rounded-xl border-2 text-left transition-all ${
-                      isActive
-                        ? `border-transparent bg-gradient-to-r ${template.color} text-white shadow-md`
-                        : 'border-stone-200 bg-white hover:border-stone-300'
-                    }`}
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{template.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-stone-800'}`}>
-                          {template.title}
-                        </p>
-                        <p className={`text-[10px] truncate ${isActive ? 'text-white/80' : 'text-stone-500'}`}>
-                          {template.instructions}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
+            <input
+              type="text"
+              id="assignment-title"
+              name="title"
+              autoComplete="off"
+              value={assignmentTitle}
+              onChange={(e) => {
+                titleManuallyEditedRef.current = true;
+                onTitleChange?.(e.target.value);
+              }}
+              placeholder={isAssignment
+                ? 'e.g., Fruits Vocabulary - Unit 5'
+                : 'e.g., Period 3 warm-up'}
+              className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
+            />
           </div>
 
-          {/* Title & Instructions - compact inputs */}
-          <div className="grid grid-cols-1 gap-3">
-            {/* Assignment Title */}
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1.5">
-                Assignment title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={assignmentTitle}
-                onChange={(e) => onTitleChange?.(e.target.value)}
-                placeholder="e.g., Fruits Vocabulary - Unit 5"
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
-              />
-            </div>
-
-            {/* Instructions */}
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1.5">
-                Instructions for students
-              </label>
-              <textarea
-                value={assignmentInstructions}
-                onChange={(e) => onInstructionsChange?.(e.target.value)}
-                placeholder="Add a note for your students..."
-                rows={2}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
-              />
-            </div>
+          {/* Instructions */}
+          <div>
+            <label htmlFor="assignment-instructions" className="block text-xs font-bold text-stone-600 mb-1.5">
+              {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
+            </label>
+            <textarea
+              id="assignment-instructions"
+              name="instructions"
+              autoComplete="off"
+              value={assignmentInstructions}
+              onChange={(e) => {
+                instructionsManuallyEditedRef.current = true;
+                onInstructionsChange?.(e.target.value);
+              }}
+              placeholder={isAssignment
+                ? 'Add a note for your students...'
+                : 'e.g., Remember to use headphones'}
+              rows={2}
+              className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
+            />
           </div>
-        </motion.div>
-      )}
+        </div>
+      </motion.div>
 
       {/* ── Game Modes by Level ───────────────────────────────────────────── */}
       <motion.div
@@ -328,6 +383,32 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           >
             {selectedModes.length >= ALL_GAME_MODE_IDS.length ? 'Clear all' : 'Select all'}
           </button>
+        </div>
+
+        {/* Difficulty legend — teachers see the same 1/2/3-star rating
+            their students will see on the mode picker, so picking
+            modes for an assignment they can mentally weight by level. */}
+        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
+          {(['easy', 'medium', 'hard'] as const).map(tier => {
+            const m = DIFFICULTY_META[tier];
+            return (
+              <div
+                key={tier}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${m.badgeBg} ${m.badgeText}`}
+                title={m.description}
+              >
+                <span className="inline-flex items-center gap-0.5">
+                  {[0, 1, 2].map(i => (
+                    <Star key={i} size={10} strokeWidth={2}
+                      className={i < m.stars ? m.starColor : 'text-stone-300'}
+                      fill={i < m.stars ? 'currentColor' : 'none'}
+                    />
+                  ))}
+                </span>
+                {m.label}
+              </div>
+            );
+          })}
         </div>
 
         {/* Compact grid layout — 5 columns for all modes */}
@@ -357,6 +438,22 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-stone-600'}`}>
                   {gameMode.name}
                 </div>
+                {/* Star rating under the name — same 1/2/3 scale the
+                    student sees on their mode picker. */}
+                {(() => {
+                  const tier = getModeDifficulty(gameMode.id);
+                  const meta = DIFFICULTY_META[tier];
+                  return (
+                    <span className="inline-flex items-center gap-0.5 mt-1">
+                      {[0, 1, 2].map(i => (
+                        <Star key={i} size={10} strokeWidth={2}
+                          className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-stone-300')}
+                          fill={i < meta.stars ? 'currentColor' : 'none'}
+                        />
+                      ))}
+                    </span>
+                  );
+                })()}
                 {isSelected && (
                   <motion.div
                     initial={{ scale: 0, rotate: -180 }}

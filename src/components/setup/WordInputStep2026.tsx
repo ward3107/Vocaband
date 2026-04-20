@@ -474,11 +474,14 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Hebrew translation */}
           {(translationLang === 'both' || translationLang === 'hebrew') && (
             <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <label htmlFor="custom-word-hebrew" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
                 <span>🇮🇱</span> Hebrew {translationLang === 'hebrew' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
                 type="text"
+                id="custom-word-hebrew"
+                name="hebrew"
+                autoComplete="off"
                 value={hebrew}
                 onChange={(e) => setHebrew(e.target.value)}
                 placeholder="Enter Hebrew translation"
@@ -491,11 +494,14 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Arabic translation */}
           {(translationLang === 'both' || translationLang === 'arabic') && (
             <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <label htmlFor="custom-word-arabic" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
                 <span>🇸🇦</span> Arabic {translationLang === 'arabic' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
                 type="text"
+                id="custom-word-arabic"
+                name="arabic"
+                autoComplete="off"
                 value={arabic}
                 onChange={(e) => setArabic(e.target.value)}
                 placeholder="Enter Arabic translation"
@@ -591,6 +597,8 @@ const OcrModal: React.FC<OcrModalProps> = ({
               <input
                 ref={cameraInputRef}
                 type="file"
+                id="ocr-camera-input"
+                name="cameraImage"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
@@ -604,6 +612,8 @@ const OcrModal: React.FC<OcrModalProps> = ({
               <input
                 ref={galleryInputRef}
                 type="file"
+                id="ocr-gallery-input"
+                name="galleryImage"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
@@ -677,6 +687,9 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   <input
                     key={i}
                     type="text"
+                    id={`ocr-word-${i}`}
+                    name={`ocrWord-${i}`}
+                    autoComplete="off"
                     value={word}
                     onChange={(e) => onEditWord(i, e.target.value)}
                     className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
@@ -1180,6 +1193,9 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
             <input
               type="text"
+              id="word-library-search"
+              name="search"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={TEXT.searchPlaceholder}
@@ -1434,14 +1450,56 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   }, []);
 
   const handleConfirmOcr = useCallback((words: string[]) => {
-    // Match words against vocabulary and add to selection
-    const matchedWords = words
-      .map(w => allWords.find(aw => aw.english.toLowerCase() === w.toLowerCase()))
-      .filter(Boolean) as Word[];
-    const newWords = matchedWords.filter(w => !selectedWords.find(sw => sw.id === w.id));
-    onSelectedWordsChange([...selectedWords, ...newWords]);
+    // Two-tier handling so multi-word phrases ("why don't you?",
+    // "wonder if / whether", "ice cream") aren't silently dropped when
+    // the curriculum doesn't contain them verbatim.
+    //   Tier 1: exact curriculum match → reuse the canonical Word row.
+    //   Tier 2: unmatched entries → synthesise a Custom Word so the
+    //           phrase still lands on the assignment. Teacher can
+    //           translate it later (or ai-translate runs on save).
+    const matchedWords: Word[] = [];
+    const unmatchedStrings: string[] = [];
+    for (const w of words) {
+      const trimmed = w.trim();
+      if (!trimmed) continue;
+      const hit = allWords.find(aw => aw.english.toLowerCase() === trimmed.toLowerCase());
+      if (hit) matchedWords.push(hit);
+      else unmatchedStrings.push(trimmed);
+    }
+
+    // Drop duplicates that are already in the selection.
+    const existingIds = new Set(selectedWords.map(w => w.id));
+    const existingEnglish = new Set(selectedWords.map(w => w.english.toLowerCase()));
+    const newCurriculumWords = matchedWords.filter(w => !existingIds.has(w.id));
+
+    // Synthesise Custom Word rows for unmatched entries. Negative IDs
+    // follow the same convention used elsewhere in the app for
+    // custom-added words (so they don't collide with real curriculum
+    // IDs from vocabulary.ts).
+    const now = Date.now();
+    const customWords: Word[] = unmatchedStrings
+      .filter(s => !existingEnglish.has(s.toLowerCase()))
+      .map((s, i) => ({
+        id: -(now + i),
+        english: s,
+        hebrew: '',
+        arabic: '',
+        level: 'Custom' as const,
+      }));
+
+    const totalAdded = newCurriculumWords.length + customWords.length;
+    onSelectedWordsChange([...selectedWords, ...newCurriculumWords, ...customWords]);
     setOcrModalOpen(false);
-    showToast?.(`Added ${newWords.length} words`, 'success');
+
+    if (totalAdded === 0) {
+      showToast?.('No new words to add — all items already selected.', 'info');
+    } else if (customWords.length === 0) {
+      showToast?.(`Added ${newCurriculumWords.length} curriculum words`, 'success');
+    } else if (newCurriculumWords.length === 0) {
+      showToast?.(`Added ${customWords.length} custom words / phrases`, 'success');
+    } else {
+      showToast?.(`Added ${newCurriculumWords.length} curriculum + ${customWords.length} custom`, 'success');
+    }
   }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
   // Add words from panels (Topic Packs, Saved Groups, Browse Library)
@@ -1451,6 +1509,16 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     if (newWords.length > 0) {
       onSelectedWordsChange([...selectedWords, ...newWords]);
       showToast?.(`Added ${newWords.length} words`, 'success');
+      // Scroll to the "N words selected" section so the teacher actually
+      // sees the new words land. Without this the Topic Packs / Saved
+      // Groups modals close back onto the source-cards view and the
+      // teacher has no visual confirmation — it feels like nothing happened.
+      // Short timeout so the section has mounted/rerendered first.
+      setTimeout(() => {
+        selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else {
+      showToast?.('Those words are already selected', 'info');
     }
   }, [selectedWords, onSelectedWordsChange, showToast]);
 

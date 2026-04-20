@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import confetti from "canvas-confetti";
+import { celebrate } from "../utils/celebrate";
 import {
   X,
   Volume2,
@@ -23,19 +23,23 @@ import {
   Shuffle,
   Repeat,
   Globe,
+  GraduationCap,
+  Star,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
 import { useLanguage, Language } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
+import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
 import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
+import { DIFFICULTY_META, getModeDifficulty } from "./setup/types";
 
 interface DemoModeProps {
   onClose: () => void;
 }
 
-type DemoView = "welcome" | "avatar" | "game-select" | "game" | "results" | "shop";
+type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop";
 type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
 // Avatar categories pulled from the real app constants so the demo shop
@@ -67,17 +71,21 @@ const POWER_UPS = [
   { id: 'reveal_letter', name: 'Hint', emoji: '💡', desc: 'Reveal first letter', cost: 0, freeInDemo: 3 },
 ];
 
-// Demo words — a 100-word slice of Set 1 vocabulary so students get
-// a real taste of the app instead of looping the same 10 words.  Pulled
-// from ALL_WORDS so the demo always stays in sync with what the full
-// app teaches.  100 keeps the demo lightweight while feeling expansive.
+// Demo words — 50 carefully-curated Set 1 words presented in a gentle
+// ramp from easiest to hardest so a brand-new visitor succeeds on the
+// first handful and only slowly meets trickier words.  Difficulty is
+// approximated by English word length (shortest first) — not perfect
+// but a good proxy for "cat/dog/run" vs "butterfly/understand".
 //
 // IMPORTANT: the vocabulary data uses level: "Set 1" (see
 // src/data/vocabulary.ts).  An earlier version of this filter said
 // 'Band 1' (legacy terminology) which matched NO words and left the
 // demo with an empty pool — rendering every game mode screen blank.
-// That's the bug the user reported as "no content in each mode".
-const DEMO_WORDS: Word[] = ALL_WORDS.filter(w => w.level === 'Set 1').slice(0, 100);
+const DEMO_WORDS: Word[] = ALL_WORDS
+  .filter(w => w.level === 'Set 1')
+  .slice()
+  .sort((a, b) => a.english.length - b.english.length || a.english.localeCompare(b.english))
+  .slice(0, 50);
 
 // Translations
 const demoTranslations: Record<Language, Record<string, string>> = {
@@ -85,7 +93,7 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     demoMode: "Demo Mode — a hands-on preview of Vocaband",
     signUpFree: "",
     welcomeTitle: "Welcome to Vocaband",
-    welcomeDesc: "An English vocabulary app students actually want to play — built for Israeli classrooms.",
+    welcomeDesc: "An English vocabulary app students actually want to play — built for ESL classrooms.",
     introHook: "Why Vocaband?",
     introHookBody: "Most vocabulary practice feels like homework. Vocaband turns it into a game: XP, streaks, avatars, mystery eggs, and 10 game modes keep students coming back. Teachers get clear analytics on every word each student is learning.",
     forTeachersTitle: "For English Teachers",
@@ -413,7 +421,10 @@ const MODE_ICONS: Record<string, React.ReactNode> = {
   "sentence-builder":     <span className="text-2xl">🧩</span>,
 };
 
-// Game mode configuration with tooltips — matching GameModeSelectionView exactly
+// Game mode configuration with tooltips — matching GameModeSelectionView exactly.
+// Flashcards is flagged as the LEARNING mode (isLearnMode) so the demo's
+// mode picker can render it as a hero card above the practice grid, just
+// like the real game does.
 const GAME_MODES_CONFIG: Array<{
   id: string;
   name: string;
@@ -421,7 +432,17 @@ const GAME_MODES_CONFIG: Array<{
   color: string;
   icon: React.ReactNode;
   tooltip: string[];
+  isLearnMode?: boolean;
 }> = [
+    {
+      id: "flashcards",
+      name: "Flashcards",
+      desc: "Learn the words first — flip, listen, and earn XP at your own pace.",
+      color: "cyan",
+      icon: <Layers size={28} />,
+      tooltip: ["Learn before you practice", "Flip cards to see answers", "No pressure — still earns XP"],
+      isLearnMode: true,
+    },
     {
       id: "classic",
       name: "Classic Mode",
@@ -461,14 +482,6 @@ const GAME_MODES_CONFIG: Array<{
       color: "rose",
       icon: <CheckCircle2 size={24} />,
       tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"]
-    },
-    {
-      id: "flashcards",
-      name: "Flashcards",
-      desc: "Review words at your own pace. No pressure.",
-      color: "cyan",
-      icon: <Layers size={24} />,
-      tooltip: ["Review at your own pace", "Flip cards to see answers", "No scoring - just practice"]
     },
     {
       id: "scramble",
@@ -612,8 +625,77 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const responseStartTime = useRef(Date.now());
   const averageResponseMs = useRef(3000); // start at moderate pace
 
+  // Refs + watchers so the avatar screen auto-scrolls the user from
+  // "type your name" → "pick your avatar" → "Continue". On small phones
+  // the Continue button sits below the fold, and students were getting
+  // stuck not realising they had to scroll.
+  const avatarPickerRef = useRef<HTMLDivElement>(null);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const prevAvatarRef = useRef(avatar);
+  useEffect(() => {
+    if (view !== 'avatar') return;
+    // When the avatar changes (student just picked), scroll to the CTA.
+    // Guarded against the initial mount — prevAvatarRef starts with the
+    // default emoji, so first render is a no-op.
+    if (prevAvatarRef.current !== avatar) {
+      prevAvatarRef.current = avatar;
+      requestAnimationFrame(() => {
+        continueButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  }, [avatar, view]);
+
+  // Mobile back-button handling. Without this, pressing back in demo
+  // either exited the app or got clobbered by App.tsx's history trap.
+  // Approach: push a history entry per internal view, and on popstate
+  // move to whatever demo view the browser popped into — OR close the
+  // demo cleanly when the user backs out of the first entry.
+  // stopImmediatePropagation in the capture phase keeps App.tsx's popstate
+  // handler from re-pushing public-landing underneath us.
+  const demoPopStateInProgress = useRef(false);
+  useEffect(() => {
+    if (demoPopStateInProgress.current) {
+      demoPopStateInProgress.current = false;
+      return;
+    }
+    window.history.pushState({ demoView: view }, '');
+  }, [view]);
+
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      const state = e.state as { demoView?: DemoView } | null;
+      if (state?.demoView) {
+        e.stopImmediatePropagation();
+        demoPopStateInProgress.current = true;
+        setView(state.demoView);
+      } else {
+        e.stopImmediatePropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('popstate', handler, { capture: true });
+    return () => window.removeEventListener('popstate', handler, { capture: true });
+  }, [onClose]);
+
   // Get current word
   const currentWord = DEMO_WORDS[currentWordIndex];
+
+  // Pick a real, grammatically-correct sentence for the current demo
+  // word instead of the old `${word} is great!` template, which worked
+  // only for nouns and produced nonsense for verbs/adjectives/adverbs
+  // ("run is great!", "happy is great!"). getSentencesForWord consults
+  // the hand-written SENTENCE_BANK first, then per-POS level templates,
+  // so every demo word gets a sentence that actually parses. Memoised
+  // on currentWord so the same word always picks the same sentence for
+  // a given mount — otherwise every render would re-shuffle and the
+  // user would see the target change mid-build.
+  const currentSentence = useMemo(() => {
+    if (!currentWord) return "";
+    const pool = getSentencesForWord(currentWord, 2);
+    return pool[0] ?? `${currentWord.english}.`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWordIndex]);
 
   // Preload next word's audio for seamless transitions
   useEffect(() => {
@@ -651,10 +733,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           // Don't generate options - the full app reveals letters one by one
           setRevealedLetters(0);
           break;
-        case "sentence":
-          // Initialize sentence builder with shuffled words
-          const sentence = `${currentWord.english} is great!`;
-          const words = shuffle(sentence.split(" "));
+        case "sentence-builder":
+          // Initialize sentence builder with a real sentence from the
+          // sentence bank. Old code used case "sentence" (never matched —
+          // the mode id is "sentence-builder") with the silly
+          // "${word} is great!" template. Fixed to use currentSentence.
+          const words = shuffle(currentSentence.split(/\s+/).filter(Boolean));
           setAvailableWords(words);
           setBuiltSentence([]);
           setSentenceFeedback(null);
@@ -677,15 +761,18 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     speak(currentWord.id);
   }, [view, selectedMode, currentWordIndex]);
 
-  // Sentence Builder: speak the full sentence so the learner hears it
+  // Sentence Builder: speak the full sentence so the learner hears it.
+  // Mode id is "sentence-builder" (was wrongly checked as "sentence" and
+  // never fired). Uses currentSentence from the bank, not the old
+  // "${word} is great!" template.
   useEffect(() => {
-    if (view !== "game" || selectedMode !== "sentence" || !currentWord) return;
+    if (view !== "game" || selectedMode !== "sentence-builder" || !currentWord) return;
     responseStartTime.current = Date.now();
     window.speechSynthesis?.cancel();
-    const utter = new SpeechSynthesisUtterance(`${currentWord.english} is great!`);
+    const utter = new SpeechSynthesisUtterance(currentSentence);
     utter.rate = 0.9;
     window.speechSynthesis?.speak(utter);
-  }, [view, selectedMode, currentWordIndex]);
+  }, [view, selectedMode, currentWordIndex, currentSentence]);
 
   // Flashcards: speak when card is flipped to reveal meaning
   useEffect(() => {
@@ -801,8 +888,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
     if (newBadges.length > badges.length) {
       setBadges(newBadges);
-      // Confetti burst for new badge
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      // Random big celebration for new badge
+      celebrate('big');
     }
   };
 
@@ -825,8 +912,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setMatchingCards(prev => prev.map(c =>
         c.id === cardId ? { ...c, selected: true } : c
       ));
-      // Play audio when selecting a card
-      speak(card.wordId);
+      // Speak only when the tapped card is the English word. Playing the
+      // English pronunciation on a Hebrew/Arabic card confused students —
+      // they expected the card's own language to sound, not the English
+      // equivalent. Silence on the translation side matches what Matching
+      // does in the main app.
+      if (card.type === 'word') speak(card.wordId);
     } else if (selectedCards.length === 1) {
       const firstCard = selectedCards[0];
       if (firstCard.type === card.type) {
@@ -834,7 +925,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           c.id === firstCard.id ? { ...c, selected: false } :
           c.id === cardId ? { ...c, selected: true } : c
         ));
-        // No auto-speak - user can click speaker icon to hear the word
+        if (card.type === 'word') speak(card.wordId);
       } else {
         const firstIndex = parseInt(firstCard.id.slice(1));
         const secondIndex = parseInt(card.id.slice(1));
@@ -849,7 +940,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           setMatchedPairs(prev => prev + 1);
           setXp(prev => prev + 15);
           setScore(prev => prev + 1);
-          confetti({ particleCount: 30, spread: 40, origin: { y: 0.6 } });
+          celebrate('small');
+          // Speak only if the pair was completed by tapping the English
+          // card (not the translation card). Keeps the "only English
+          // cards speak" rule consistent.
+          if (card.type === 'word') speak(card.wordId);
 
           if (matchedPairs + 1 >= 4) {
             setTimeout(() => setView("results"), 500);
@@ -858,6 +953,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           setMatchingCards(prev => prev.map(c =>
             c.id === cardId ? { ...c, selected: true } : c
           ));
+          if (card.type === 'word') speak(card.wordId);
           setTimeout(() => {
             setMatchingCards(prev => prev.map(c =>
               c.id === firstCard.id || c.id === cardId
@@ -960,7 +1056,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       checkAndAwardBadges(true, newXp);
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+      celebrate();
     } else {
       setStreak(0);
     }
@@ -980,7 +1076,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     const toHide = shuffle(wrong).slice(0, 2).map(w => w.id);
     setHiddenOptions(toHide);
     setPowerUps(prev => ({ ...prev, fifty_fifty: prev.fifty_fifty - 1 }));
-    confetti({ particleCount: 20, spread: 30, origin: { y: 0.7 } });
+    celebrate('small');
   };
 
   const handleSkip = () => {
@@ -1032,7 +1128,27 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     setAvailableWords([]);
     setBuiltSentence([]);
     setSentenceFeedback(null);
+    // Show the mode-intro screen first — matches the real app's flow where
+    // a tap on a mode card takes you to GameModeIntroView (rules / steps /
+    // "Let's go!") before gameplay. Without this, demo players were dropped
+    // straight into the first question with zero orientation.
+    setView("mode-intro");
+  };
+
+  const beginGameplay = () => {
     setView("game");
+    // Speak the first word synchronously inside the click handler so
+    // we stay inside the browser's "user-gesture" window. The auto-speak
+    // useEffect handles later words (which fire on user answers — also
+    // gestures), but the FIRST word used to race with the view
+    // transition: the useEffect ran after commit, which some browsers
+    // treat as outside the gesture window and silently swallow the
+    // audio. Speaking here guarantees the opening word plays.
+    const firstWord = DEMO_WORDS[0];
+    if (!firstWord || !selectedMode) return;
+    const silentModes = ['flashcards', 'letter-sounds', 'sentence-builder', 'matching'];
+    if (silentModes.includes(selectedMode)) return;
+    speak(firstWord.id);
   };
 
   const resetDemo = () => {
@@ -1080,7 +1196,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       {/* Width scales per view: narrow for welcome/avatar (focused UX),
           wide for game-select/game/results/shop (needs room for 4-col grids
           and real-app parity on desktop). */}
-      <div className={`${['game-select', 'game', 'results', 'shop'].includes(view) ? 'max-w-5xl' : 'max-w-lg'} mx-auto px-4 py-6 pt-16`}>
+      {/* The demo's outer content container used a fixed max-w-lg (512px)
+          for welcome / avatar / mode-intro. On mobile that fills the
+          screen nicely, but on a 1920px desktop the card floats as a
+          narrow strip with huge empty sides. Widen non-game views to
+          max-w-2xl (672px) so they read as a proper centred card on
+          laptops without hurting the mobile layout. */}
+      <div className={`${['game-select', 'game', 'results', 'shop'].includes(view) ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 py-6 pt-16`}>
         <AnimatePresence mode="wait">
           {/* Welcome screen — short, no marketing.  The demo's job is to let
               students taste the product immediately, not pitch them; the
@@ -1258,13 +1380,32 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* Name field — styled to match signup screen */}
               <div className="mb-4">
-                <label className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                <label htmlFor="demo-nickname" className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
                   {t.yourName}
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
+                  id="demo-nickname"
+                  name="nickname"
+                  autoComplete="nickname"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
+                  onBlur={() => {
+                    if (displayName.trim().length >= 2) {
+                      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Soft-keyboard "Enter" typically commits + would
+                    // submit a form if this were inside one. Here we
+                    // just treat it as "done typing" and scroll on.
+                    if (e.key === 'Enter' && displayName.trim().length >= 2) {
+                      e.preventDefault();
+                      nameInputRef.current?.blur();
+                      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
                   placeholder={t.enterNickname}
                   className={`w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 ${textAlign}`}
                   maxLength={15}
@@ -1276,7 +1417,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   so the demo inherits every future tweak automatically. XP is
                   passed in so categories still lock/unlock based on the demo
                   sandbox's XP progression. */}
-              <div className="mb-6">
+              <div className="mb-6" ref={avatarPickerRef}>
                 <AvatarPicker
                   value={avatar}
                   onChange={setAvatar}
@@ -1297,6 +1438,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               )}
 
               <button
+                ref={continueButtonRef}
                 onClick={() => setView("game-select")}
                 disabled={!displayName.trim()}
                 className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
@@ -1354,24 +1496,114 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </p>
               </motion.div>
 
-              {/* Power-ups strip — demo-specific but styled to feel native */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-3 mb-5 border border-white/50 shadow-sm">
-                <p className="text-xs font-black text-amber-800 mb-2 text-center uppercase tracking-widest">
-                  ⚡ Power-ups (free in demo)
+              {/* Power-ups strip — redesigned off the old white card. Each
+                  chip now carries its own gradient that matches the
+                  power-up's flavour (skip=blue, 50/50=amber, hint=emerald)
+                  so they read as live game tokens rather than paper icons
+                  on a white tray. */}
+              <div className="mb-5">
+                <p className="text-[11px] font-black text-white/90 mb-2 text-center uppercase tracking-[0.2em] drop-shadow-sm">
+                  ⚡ Power-ups · free in demo
                 </p>
-                <div className="flex justify-center gap-2">
-                  {POWER_UPS.map((pu) => (
-                    <div key={pu.id} className="bg-white px-3 py-1.5 rounded-xl text-center shadow-sm border border-amber-100 min-w-[60px]">
-                      <span className="text-xl block">{pu.emoji}</span>
-                      <p className="text-[10px] font-black text-stone-600 mt-0.5">×{powerUps[pu.id as keyof typeof powerUps]}</p>
-                    </div>
-                  ))}
+                <div className="flex justify-center gap-2.5">
+                  {POWER_UPS.map((pu) => {
+                    const theme: Record<string, string> = {
+                      skip: 'from-sky-400 to-blue-600 shadow-blue-500/40 ring-white/40',
+                      fifty_fifty: 'from-amber-400 to-orange-500 shadow-amber-500/40 ring-white/40',
+                      reveal_letter: 'from-emerald-400 to-teal-500 shadow-emerald-500/40 ring-white/40',
+                    };
+                    return (
+                      <div
+                        key={pu.id}
+                        className={`relative bg-gradient-to-br ${theme[pu.id] ?? 'from-stone-300 to-stone-500'} px-3.5 py-2 rounded-2xl text-center shadow-lg ring-1 min-w-[64px] backdrop-blur-sm`}
+                      >
+                        <span className="text-2xl block leading-none drop-shadow-sm">{pu.emoji}</span>
+                        <p className="text-[11px] font-black text-white/95 mt-1 tracking-wide">
+                          ×{powerUps[pu.id as keyof typeof powerUps]}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Mode grid — matching GameModeSelectionView exactly */}
+              {/* Learning hero — Flashcards is promoted above the
+                  practice grid with its own big card so the demo
+                  visitor sees the same "Start here · Learn first"
+                  positioning as the real app's mode selection. */}
+              {(() => {
+                const learn = GAME_MODES_CONFIG.find(m => m.isLearnMode);
+                if (!learn) return null;
+                return (
+                  <motion.button
+                    key={learn.id}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                    whileHover={{ scale: 1.02, translateY: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => startGame(learn.id)}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
+                  >
+                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+                    <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
+                      <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+                        <Sparkles size={12} />
+                        Start here · Learn first
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 sm:gap-6 mt-10 sm:mt-6">
+                      <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                        <GraduationCap size={32} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-xl sm:text-3xl mb-1">{learn.name}</p>
+                        <p className="text-white/90 text-sm sm:text-base font-semibold leading-snug">{learn.desc}</p>
+                      </div>
+                      <div className="hidden sm:flex shrink-0 opacity-60">
+                        <Layers size={28} />
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })()}
+
+              <div className="mb-3 text-left">
+                <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-500/80">Then practise with</p>
+              </div>
+
+              {/* Difficulty legend — 3 tiers, each with 1/2/3 filled
+                  stars. Same pattern as the real app's mode picker so
+                  demo players learn the difficulty vocabulary that
+                  carries over once they sign up. */}
+              <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 flex-wrap">
+                {(['easy', 'medium', 'hard'] as const).map(tier => {
+                  const m = DIFFICULTY_META[tier];
+                  return (
+                    <div
+                      key={tier}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${m.badgeBg} ${m.badgeText}`}
+                      title={m.description}
+                    >
+                      <span className="inline-flex items-center gap-0.5">
+                        {[0, 1, 2].map(i => (
+                          <Star key={i} size={12} strokeWidth={2}
+                            className={i < m.stars ? m.starColor : 'text-stone-300'}
+                            fill={i < m.stars ? 'currentColor' : 'none'}
+                          />
+                        ))}
+                      </span>
+                      {m.label}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Practice modes grid — matches GameModeSelectionView */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-                {GAME_MODES_CONFIG.map((mode, idx) => {
+                {GAME_MODES_CONFIG.filter(m => !m.isLearnMode).map((mode, idx) => {
                   const modeColor = MODE_COLORS[mode.id] || "emerald";
                   return (
                     <motion.button
@@ -1390,7 +1622,21 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         {mode.icon}
                       </div>
                       <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
-                      <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug">{mode.desc}</p>
+                      <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug mb-2">{mode.desc}</p>
+                      {(() => {
+                        const tier = getModeDifficulty(mode.id);
+                        const meta = DIFFICULTY_META[tier];
+                        return (
+                          <span className="inline-flex items-center gap-0.5">
+                            {[0, 1, 2].map(i => (
+                              <Star key={i} size={12} strokeWidth={2}
+                                className={i < meta.stars ? meta.starColor : 'text-stone-300'}
+                                fill={i < meta.stars ? 'currentColor' : 'none'}
+                              />
+                            ))}
+                          </span>
+                        );
+                      })()}
 
                       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Zap size={20} className="animate-pulse" />
@@ -1401,6 +1647,89 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               </div>
             </motion.div>
           )}
+
+          {/* Mode Intro — shown between mode pick and gameplay. Ports the
+              real app's GameModeIntroView pattern (gradient hero + 3
+              numbered steps + big "Let's go!" CTA) into demo so a
+              first-time player gets the same orientation as a logged-in
+              student does on a real assignment. We use a trimmed in-place
+              version instead of importing GameModeIntroView so the demo
+              stays self-contained and its language strings stay in
+              demoTranslations. */}
+          {view === "mode-intro" && selectedMode && (() => {
+            const modeIntros: Record<string, { icon: string; steps: string[]; cardClass: string; accentClass: string; stepBgClass: string; stepNumClass: string; ctaClass: string }> = {
+              classic:           { icon: '📖', steps: ['See the English word', 'Listen to the pronunciation', 'Pick the correct translation'], cardClass: 'from-emerald-400 to-emerald-600', accentClass: 'text-emerald-700', stepBgClass: 'bg-emerald-50 border-emerald-100', stepNumClass: 'bg-emerald-500', ctaClass: 'from-emerald-500 to-emerald-600' },
+              listening:         { icon: '🎧', steps: ['Listen carefully to the word', 'The English is hidden!', 'Choose the correct translation'], cardClass: 'from-blue-400 to-indigo-600', accentClass: 'text-blue-700', stepBgClass: 'bg-blue-50 border-blue-100', stepNumClass: 'bg-blue-500', ctaClass: 'from-blue-500 to-indigo-600' },
+              spelling:          { icon: '✏️', steps: ['See the translation', 'Type the English word', 'Spelling must be exact!'], cardClass: 'from-purple-400 to-fuchsia-600', accentClass: 'text-purple-700', stepBgClass: 'bg-purple-50 border-purple-100', stepNumClass: 'bg-purple-500', ctaClass: 'from-purple-500 to-fuchsia-600' },
+              matching:          { icon: '⚡', steps: ['Find the matching pairs', 'Tap English then translation', 'Clear the board to finish!'], cardClass: 'from-amber-400 to-orange-500', accentClass: 'text-amber-700', stepBgClass: 'bg-amber-50 border-amber-100', stepNumClass: 'bg-amber-500', ctaClass: 'from-amber-500 to-orange-500' },
+              "true-false":      { icon: '✅', steps: ['See a word and a translation', 'Decide if the pair is correct', 'Think fast!'], cardClass: 'from-rose-400 to-pink-500', accentClass: 'text-rose-700', stepBgClass: 'bg-rose-50 border-rose-100', stepNumClass: 'bg-rose-500', ctaClass: 'from-rose-500 to-pink-500' },
+              flashcards:        { icon: '🃏', steps: ['Go at your own pace', 'Flip to see the answer', 'No pressure — just learn!'], cardClass: 'from-cyan-400 to-teal-500', accentClass: 'text-cyan-700', stepBgClass: 'bg-cyan-50 border-cyan-100', stepNumClass: 'bg-cyan-500', ctaClass: 'from-cyan-500 to-teal-500' },
+              scramble:          { icon: '🔤', steps: ['The letters are scrambled', 'Type the correct English word', 'Unscramble them all!'], cardClass: 'from-indigo-400 to-violet-600', accentClass: 'text-indigo-700', stepBgClass: 'bg-indigo-50 border-indigo-100', stepNumClass: 'bg-indigo-500', ctaClass: 'from-indigo-500 to-violet-600' },
+              reverse:           { icon: '🔄', steps: ['See the Hebrew/Arabic word', 'Pick the English translation', 'Reverse of classic!'], cardClass: 'from-fuchsia-400 to-purple-600', accentClass: 'text-fuchsia-700', stepBgClass: 'bg-fuchsia-50 border-fuchsia-100', stepNumClass: 'bg-fuchsia-500', ctaClass: 'from-fuchsia-500 to-purple-600' },
+              "letter-sounds":   { icon: '🔡', steps: ['Each letter lights up', 'Listen to each letter sound', 'Type the full word when ready'], cardClass: 'from-violet-400 to-purple-500', accentClass: 'text-violet-700', stepBgClass: 'bg-violet-50 border-violet-100', stepNumClass: 'bg-violet-500', ctaClass: 'from-violet-500 to-purple-500' },
+              "sentence-builder":{ icon: '🧩', steps: ['Words are shuffled below', 'Tap them in the correct order', 'Build the full sentence!'], cardClass: 'from-teal-400 to-emerald-500', accentClass: 'text-teal-700', stepBgClass: 'bg-teal-50 border-teal-100', stepNumClass: 'bg-teal-500', ctaClass: 'from-teal-500 to-emerald-500' },
+            };
+            const info = modeIntros[selectedMode] ?? modeIntros.classic;
+            const modeName = GAME_MODES_CONFIG.find(m => m.id === selectedMode)?.name ?? selectedMode;
+            return (
+              <motion.div
+                key="mode-intro"
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.35 }}
+                dir="ltr"
+                className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
+              >
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.1 }}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-[22px] sm:rounded-[28px] bg-gradient-to-br ${info.cardClass} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
+                >
+                  {info.icon}
+                </motion.div>
+                <h2 className={`text-2xl sm:text-4xl font-black ${info.accentClass} mb-6 sm:mb-8 text-center`}>
+                  {modeName}
+                </h2>
+                <div className="space-y-2.5 sm:space-y-3 mb-6 sm:mb-8">
+                  {info.steps.map((step, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + i * 0.1 }}
+                      className={`flex items-center gap-3 sm:gap-4 ${info.stepBgClass} border p-3 sm:p-4 rounded-2xl`}
+                    >
+                      <span className={`w-8 h-8 sm:w-10 sm:h-10 ${info.stepNumClass} text-white rounded-full flex items-center justify-center text-sm sm:text-base font-black flex-shrink-0 shadow-sm`}>
+                        {i + 1}
+                      </span>
+                      <span className="text-stone-700 font-semibold text-sm sm:text-base leading-snug">
+                        {step}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 + info.steps.length * 0.1 }}
+                  onClick={beginGameplay}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className={`w-full py-4 sm:py-5 bg-gradient-to-br ${info.ctaClass} text-white rounded-2xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
+                >
+                  Let's Go! →
+                </motion.button>
+                <button
+                  onClick={() => setView('game-select')}
+                  className="w-full mt-3 py-2 text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+                >
+                  ← Back to Modes
+                </button>
+              </motion.div>
+            );
+          })()}
+
 
           {/* Game Screen */}
           {view === "game" && currentWord && (
@@ -1440,27 +1769,57 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Power-ups toolbar */}
-              {["classic", "listening", "reverse"].includes(selectedMode!) && (
-                <div className="flex justify-center gap-2 mb-3">
-                  {(selectedMode === "classic" || selectedMode === "listening" || selectedMode === "reverse") && powerUps.fifty_fifty > 0 && hiddenOptions.length === 0 && !selectedAnswer && (
-                    <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      ✂️ 50/50 <span className="bg-amber-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.fifty_fifty}</span>
-                    </motion.button>
-                  )}
-                  {powerUps.skip > 0 && !selectedAnswer && (
-                    <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-xl text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      ⏭️ {t.skip} <span className="bg-blue-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.skip}</span>
-                    </motion.button>
-                  )}
-                </div>
-              )}
+              {/* Power-ups toolbar — mirrors the real app's PowerUpToolbar.
+                  Each power-up has its own eligibility rules:
+                    • 50/50 — hides two wrong options in multiple-choice
+                      modes (classic / listening / reverse). Needs options
+                      on screen and no answer selected yet.
+                    • Skip  — advances to next word in every mode. Only
+                      hidden on the flashcards self-pacing screen (which
+                      has its own "next" button) and at the final word.
+                    • Hint  — types the first letter for the student in
+                      text-input modes (spelling / scramble / letter-sounds).
+                      Only when the input is still empty.
+                  Before this change, demo only surfaced 50/50 + Skip and
+                  only on three modes, so most of the demo played without
+                  any power-up buttons at all. */}
+              {(() => {
+                const mode = selectedMode!;
+                const isMultiChoice = mode === 'classic' || mode === 'listening' || mode === 'reverse';
+                const isTextInput = mode === 'spelling' || mode === 'scramble' || mode === 'letter-sounds';
+                const canSkip = mode !== 'flashcards' && !selectedAnswer && powerUps.skip > 0 && currentWordIndex < DEMO_WORDS.length - 1;
+                const canFiftyFifty = isMultiChoice && powerUps.fifty_fifty > 0 && hiddenOptions.length === 0 && !selectedAnswer;
+                const canHint = isTextInput && powerUps.reveal_letter > 0 && !selectedAnswer && spellingInput.length === 0;
+                if (!canSkip && !canFiftyFifty && !canHint) return null;
+                return (
+                  <div className="flex justify-center gap-2 mb-3">
+                    {canFiftyFifty && (
+                      <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        ✂️ 50/50 <span className="bg-amber-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.fifty_fifty}</span>
+                      </motion.button>
+                    )}
+                    {canSkip && (
+                      <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-xl text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        ⏭️ {t.skip} <span className="bg-blue-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.skip}</span>
+                      </motion.button>
+                    )}
+                    {canHint && (
+                      <motion.button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-xl text-xs font-bold hover:from-green-200 hover:to-green-300 transition-all flex items-center gap-1 border border-green-300 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        💡 Hint <span className="bg-green-300 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.reveal_letter}</span>
+                      </motion.button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Progress bar now lives INSIDE each mode card (matches real
                   app's GameActiveView). Older per-mode standalone progress
@@ -1700,6 +2059,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <input
                       autoFocus
                       type="text"
+                      id="demo-spelling-answer"
+                      name="answer"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
@@ -1759,6 +2123,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <input
                       autoFocus
                       type="text"
+                      id="demo-scramble-answer"
+                      name="answer"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
@@ -1965,6 +2334,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <input
                       autoFocus
                       type="text"
+                      id="demo-reverse-answer"
+                      name="answer"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder="Type in English..."
@@ -2043,6 +2417,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <input
                         autoFocus
                         type="text"
+                        id="demo-reverse-reveal-answer"
+                        name="answer"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
                         value={spellingInput}
                         onChange={(e) => setSpellingInput(e.target.value)}
                         placeholder="Type the word..."
@@ -2101,7 +2480,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => {
                         window.speechSynthesis?.cancel();
-                        const utter = new SpeechSynthesisUtterance(`${currentWord.english} is great!`);
+                        const utter = new SpeechSynthesisUtterance(currentSentence);
                         utter.rate = 0.9;
                         window.speechSynthesis.speak(utter);
                       }}
@@ -2156,9 +2535,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <div className="flex gap-2">
                       <motion.button
                         onClick={() => {
+                          // Return built words to the pool without re-shuffling
+                          // the untouched ones — old behaviour was a full re-shuffle
+                          // which users read as cheating / a bug.
+                          setAvailableWords(prev => [...prev, ...builtSentence]);
                           setBuiltSentence([]);
-                          const target = `${currentWord.english} is great!`.split(" ").filter(Boolean);
-                          setAvailableWords([...target].sort(() => Math.random() - 0.5));
                         }}
                         disabled={sentenceFeedback !== null}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
@@ -2168,7 +2549,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       >Clear</motion.button>
                       <motion.button
                         onClick={() => {
-                          const target = `${currentWord.english} is great!`;
+                          const target = currentSentence;
                           const built = builtSentence.join(" ");
                           if (built.toLowerCase() === target.toLowerCase()) {
                             setSentenceFeedback("correct");

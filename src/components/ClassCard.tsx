@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 
 interface Assignment {
@@ -73,6 +73,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // Avatar picker popover state
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const avatarPickerRef = useRef<HTMLDivElement>(null);
+  // Ref on the assignments list so we can scroll it into view when the
+  // teacher expands it (otherwise it often opens below the fold and the
+  // click looks like it did nothing).
+  const assignmentsListRef = useRef<HTMLDivElement>(null);
 
   // Reset edited name when prop changes
   useEffect(() => {
@@ -86,6 +90,28 @@ const ClassCard: React.FC<ClassCardProps> = ({
       nameInputRef.current.select();
     }
   }, [isEditingName]);
+
+  // Bring the assignments dropdown into view the first render after it
+  // opens. `block: 'nearest'` only scrolls if needed, so if the list is
+  // already visible we don't jump the page around.
+  useEffect(() => {
+    if (!showAssignments) return;
+    const id = requestAnimationFrame(() => {
+      assignmentsListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [showAssignments]);
+
+  // Same treatment for the avatar picker popover — without it the grid
+  // opens below the fold on taller class cards and teachers don't
+  // realise the picker is there until they scroll.
+  useEffect(() => {
+    if (!avatarPickerOpen) return;
+    const id = requestAnimationFrame(() => {
+      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [avatarPickerOpen]);
 
   // Close avatar picker on outside click
   useEffect(() => {
@@ -184,18 +210,25 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     </button>
                   </div>
 
-                  {/* Default option */}
+                  {/* Default option — sits inline with "Default" label so it
+                      looks like a picker tile, not a giant hero preview. The
+                      previous version used `aspect-square w-full` which
+                      stretched this single tile to 288×288 inside a 288px
+                      popover, burying the emoji grid below the fold. */}
                   <button
                     onClick={() => handleAvatarPick(null)}
                     type="button"
                     style={{ touchAction: 'manipulation' }}
-                    className={`aspect-square rounded-xl flex items-center justify-center transition-all border-2 mb-3 w-full ${
+                    className={`w-full mb-3 px-3 py-2 rounded-xl flex items-center gap-2 transition-all border-2 ${
                       avatar === null
-                        ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200'
-                        : 'bg-white border-stone-200 hover:border-stone-300'
+                        ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200 text-indigo-700'
+                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700'
                     }`}
                   >
-                    <GraduationCap size={20} className="text-stone-600" />
+                    <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
+                      <GraduationCap size={18} className="text-stone-600" />
+                    </span>
+                    <span className="text-sm font-bold">Default</span>
                   </button>
 
                   {/* Emoji grid - scrollable */}
@@ -242,6 +275,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <input
                     ref={nameInputRef}
                     type="text"
+                    id={`class-rename-${code}`}
+                    name="className"
+                    autoComplete="off"
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
                     onKeyDown={handleNameKeyDown}
@@ -323,6 +359,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <Copy size={14} className="text-stone-500" />
                   Copy class code
                 </button>
+                <button
+                  onClick={() => {
+                    // Open the printable poster in a new tab. Includes the
+                    // class code in the QR so when students scan, they
+                    // land on the join flow already pre-filled. The page
+                    // itself uses window.print() — teacher chooses Print
+                    // or Save as PDF in the browser dialog.
+                    const url = `/poster.html?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
+                    window.open(url, '_blank', 'noopener');
+                    setMenuOpen(false);
+                  }}
+                  type="button"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                >
+                  <Printer size={14} className="text-indigo-600" />
+                  Print classroom poster
+                </button>
                 <div className="h-px bg-stone-100 my-1" />
                 <button
                   onClick={() => { onDelete(); setMenuOpen(false); }}
@@ -364,9 +417,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
         </div>
       </div>
 
-      {/* Assignments dropdown */}
+      {/* Assignments dropdown. The wrapper ref lets us auto-scroll the
+          list into view when the teacher expands it — on a dashboard
+          with many classes the dropdown often opens below the fold,
+          so the click looked like a no-op unless the teacher remembered
+          to scroll. */}
       {assignments.length > 0 && showAssignments && (
-        <div className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl">
+        <div
+          ref={assignmentsListRef}
+          className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl"
+        >
           {assignments.map((assignment) => (
             <div
               key={assignment.id}

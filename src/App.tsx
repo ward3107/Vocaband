@@ -11,7 +11,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
@@ -35,8 +35,9 @@ const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
 const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
-const GradebookView = lazy(() => import("./views/GradebookView"));
-const AnalyticsView = lazy(() => import("./views/AnalyticsView"));
+// AnalyticsView + GradebookView are no longer routed directly here —
+// they're now lazy-loaded inside ClassroomView and rendered as tabs.
+const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
@@ -49,7 +50,8 @@ const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
-import { loadMammoth, loadSocketIO, loadConfetti } from "./utils/lazyLoad";
+import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
+import { celebrate } from "./utils/celebrate";
 import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
@@ -120,6 +122,11 @@ export default function App() {
   const [studentDataLoading, setStudentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
+  // Detect "share" param — set by the social-share buttons in
+  // FloatingButtons so shared links always render the landing page even
+  // for logged-in visitors (whose auth would otherwise redirect them to
+  // their dashboard and make the preview useless).
+  const fromShareLinkRef = useRef(new URLSearchParams(window.location.search).get('share') === '1');
 
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
@@ -829,6 +836,11 @@ export default function App() {
         console.error('[Quick Play Monitor] Error fetching progress:', error);
         return;
       }
+      // Log the row count so we can tell "students haven't finished any
+      // mode yet" from "RLS is silently filtering everything out". The
+      // latter was happening before 20260504 when the quick_play_progress
+      // select policy had a uuid/text cast mismatch.
+      console.log('[Quick Play Monitor] fetched progress rows:', data?.length ?? 0, 'for session', sessionId);
       if (data) {
         setQuickPlayJoinedStudents(aggregateProgress(data));
       }
@@ -839,8 +851,14 @@ export default function App() {
       fetchProgress();
     }
 
-    // 2. Subscribe to realtime changes on progress table for this session
-    // OPTIMIZED: Use payload data directly instead of re-fetching, only when visible
+    // 2. Subscribe to realtime changes on progress table for this session.
+    // We can't safely merge `payload.new` into the already-aggregated state
+    // (previously we fed aggregated entries back into aggregateProgress,
+    // which reads raw column names like student_name/student_uid — the
+    // camelCase aggregated fields became undefined, producing a phantom
+    // "no-name, 0 pts" student on the podium next to the real one).
+    // Re-fetching on each INSERT is cheap at classroom scale and keeps
+    // the dedup logic in one place.
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
@@ -851,30 +869,12 @@ export default function App() {
           table: 'progress',
           filter: `assignment_id=eq.${sessionId}`
         },
-        (payload) => {
-          // Only process if page is visible (save resources when hidden)
+        () => {
           if (document.hidden) return;
-
-          if (payload.new && payload.eventType === 'INSERT') {
-            const newRecord = payload.new as any;
-            setQuickPlayJoinedStudents(prev => {
-              const updated = aggregateProgress([...prev, {
-                student_name: newRecord.student_name,
-                student_uid: newRecord.student_uid,
-                score: newRecord.score,
-                avatar: newRecord.avatar,
-                completed_at: newRecord.completed_at,
-                mode: newRecord.mode
-              }]);
-              return updated;
-            });
-          }
+          fetchProgress();
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-        }
-      });
+      .subscribe();
 
     // OPTIMIZED: Re-fetch when tab becomes visible after being hidden
     const handleVisibilityChange = () => {
@@ -890,48 +890,51 @@ export default function App() {
     };
   }, [view, quickPlayActiveSession?.id, aggregateProgress]);
 
-  // Quick Play student: subscribe to session status (end) and progress deletes (kick)
+  // Quick Play student: one channel, two listeners — session-end + kick.
+  //
+  // Previously this useEffect opened TWO channels (`qp-session-*` and
+  // `qp-kick-*`) per student. Combined with the teacher-side progress
+  // channel that makes 3 concurrent postgres_changes subscriptions every
+  // time a Quick Play session is running. Supabase Starter allows 10
+  // concurrent realtime subscribers per project, so a classroom of 10+
+  // students would exhaust the slots and start dropping mid-game.
+  //
+  // One channel can hold multiple `.on(...)` listeners, each watching a
+  // different table/filter, so fold them together.
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
 
     const sessionCode = quickPlayActiveSession.sessionCode;
     const sessionId = quickPlayActiveSession.id;
+    const uid = user.uid;
 
-    // 1. Subscribe to session end
-    const sessionChannel = supabase
-      .channel(`qp-session-${sessionCode}`)
+    const channel = supabase
+      .channel(`qp-student-${sessionCode}-${uid}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'quick_play_sessions',
-          filter: `session_code=eq.${sessionCode}`
+          filter: `session_code=eq.${sessionCode}`,
         },
         (payload) => {
           if (payload.new && !(payload.new as any).is_active) {
-            // Show session end screen instead of just redirecting
             setQuickPlaySessionEnded(true);
             setActiveAssignment(null);
           }
         }
       )
-      .subscribe();
-
-    // 2. Subscribe to progress deletes for THIS student only (teacher kicked)
-    const kickChannel = supabase
-      .channel(`qp-kick-${sessionId}-${user.uid}`)
       .on(
         'postgres_changes',
         {
           event: 'DELETE',
           schema: 'public',
           table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`
+          filter: `assignment_id=eq.${sessionId}`,
         },
         (payload) => {
-          // Only kick if the deleted row belongs to THIS student
-          if (payload.old && (payload.old as any).student_uid === user.uid) {
+          if (payload.old && (payload.old as any).student_uid === uid) {
             setQuickPlayKicked(true);
             setActiveAssignment(null);
           }
@@ -940,10 +943,9 @@ export default function App() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(sessionChannel);
-      supabase.removeChannel(kickChannel);
+      supabase.removeChannel(channel);
     };
-  }, [user?.isGuest, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
+  }, [user?.isGuest, user?.uid, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
 
   const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   // --- HELPER: Create Guest User ---
@@ -1104,7 +1106,7 @@ export default function App() {
     return THEMES.find(t => t.id === themeId) ?? THEMES[0];
   }, [user?.activeTheme]);
 
-  const { speak: speakWordRaw, preloadMany, playWrong } = useAudio();
+  const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
   const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
@@ -1130,7 +1132,11 @@ export default function App() {
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
   // --- NEW MODES STATE ---
-  const [tfOption, setTfOption] = useState<Word | null>(null);
+  // tfOption is derived (useMemo below) so it's populated SYNCHRONOUSLY on
+  // the first render of True/False. Previously it was useState+useEffect,
+  // which left tfOption null for one render cycle after entering the mode
+  // — the first tap was swallowed (handleTFAnswer guards against null) and
+  // the buttons felt dead until the student backed out and re-entered.
   const [isFlipped, setIsFlipped] = useState(false);
 
   // --- MATCHING MODE STATE ---
@@ -1333,18 +1339,15 @@ export default function App() {
     }
   }, [view]);
 
-  // Speak congratulatory message when a mode is finished — only in game view
+  // Play a random pre-recorded female-voice praise phrase when a mode
+  // finishes. Previous behaviour passed a template string to speak(),
+  // which routed through window.speechSynthesis — and the browser's
+  // default voice on desktop is usually male, which didn't match the
+  // female voice used for the curated /motivational/*.mp3 library.
+  // playMotivational picks one of ~74 phrases from that library.
   useEffect(() => {
     if (isFinished && user?.displayName && view === "game") {
-      const phrases = [
-        `Kol Hakavod ${user.displayName}! You did amazing!`,
-        `Excellent work ${user.displayName}! You're a superstar!`,
-        `Wow ${user.displayName}! That was fantastic!`,
-        `Great job ${user.displayName}! Keep going!`,
-        `Well done ${user.displayName}! You're getting better and better!`,
-      ];
-      const phrase = phrases[secureRandomInt( phrases.length)];
-      setTimeout(() => speak(phrase), 500);
+      setTimeout(() => playMotivational(), 500);
 
       // Force emit final score to server (bypass throttle)
       if (socket && user?.classCode) {
@@ -1582,7 +1585,7 @@ export default function App() {
     // Helper: fetch user profile with a single retry for transient errors.
     const fetchUserProfile = async (uid: string, retries = 1): Promise<ReturnType<typeof mapUser> | null> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
-        const { data: userRow, error } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
+        const { data: userRow, error } = await supabase.from('users').select(USER_COLUMNS).eq('uid', uid).maybeSingle();
         if (userRow) return mapUser(userRow);
         if (!error) return null; // No row exists — don't retry
         if (attempt < retries) await new Promise(r => setTimeout(r, 500));
@@ -1600,6 +1603,19 @@ export default function App() {
         // (is_anonymous IS FALSE). Instead of querying the DB, restore
         // directly from localStorage which was saved on login.
         const isAnonymous = supabaseUser.is_anonymous || supabaseUser.app_metadata?.provider === 'anonymous';
+        // Speculatively fetch teacher-owned classes in parallel with the
+        // users row. For teachers this halves login latency — the two
+        // round-trips overlap instead of running back-to-back. For
+        // students it's a cheap RLS-filtered query that returns []
+        // (they're not the teacher_uid owner of any class) so no harm.
+        const speculativeClassesPromise = isAnonymous
+          ? Promise.resolve([] as ClassData[])
+          : supabase
+              .from('classes')
+              .select(CLASS_COLUMNS)
+              .eq('teacher_uid', supabaseUser.id)
+              .then(r => (r.data ?? []).map(mapClass))
+              .catch(() => [] as ClassData[]);
         let userData = await fetchUserProfile(supabaseUser.id);
 
         if (!userData && isAnonymous) {
@@ -1634,9 +1650,16 @@ export default function App() {
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
-            // Await so the dashboard has data before we show it — prevents
-            // the "empty dashboard until refresh" bug.
-            const fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
+            // The speculative parallel fetch above already has the classes
+            // ready by now (it started at the same time as fetchUserProfile,
+            // not after). Fall back to a direct fetch only if the speculative
+            // one failed or returned nothing.
+            let fetchedClasses = await speculativeClassesPromise;
+            if (fetchedClasses.length === 0) {
+              fetchedClasses = await fetchTeacherData(supabaseUser.id).catch(() => [] as Awaited<ReturnType<typeof fetchTeacherData>>);
+            } else {
+              setClasses(fetchedClasses);
+            }
             fetchTeacherAssignments(fetchedClasses.map(c => c.id));
             // Restore Quick Play session if teacher was monitoring one before refresh
             // Skip if the "Quick Online Challenge" button set the skip flag
@@ -1695,9 +1718,17 @@ export default function App() {
               // that bypasses RLS — the student isn't a member yet, so a
               // direct .from('classes').select(...) would return empty even
               // for valid codes. RPC only returns code + name (safe to expose).
-              const { data: intendedClassRows } = await supabase
+              const { data: intendedClassRows, error: lookupErr } = await supabase
                 .rpc('class_lookup_by_code', { p_code: intendedNorm });
-              if (intendedClassRows && intendedClassRows.length > 0) {
+              if (lookupErr) {
+                // RPC errored rather than returned empty. Log + show the
+                // reason so a misconfigured server (missing migration, rate
+                // limit, legacy API key, etc.) isn't misdiagnosed as a
+                // bad class code by the user.
+                console.error('[restoreSession class switch] RPC failed:', lookupErr);
+                setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
+                clearIntendedClassCode();
+              } else if (intendedClassRows && intendedClassRows.length > 0) {
                 const { data: currentClassRows } = await supabase
                   .from('classes').select('code, name').eq('code', code);
                 setUser(userData);
@@ -1714,27 +1745,28 @@ export default function App() {
                 setView("student-dashboard");
                 clearIntendedClassCode();
                 return; // stop here — modal drives the next step
+              } else {
+                // RPC returned zero rows AND no error: class genuinely
+                // doesn't exist. Sticky banner (NOT a toast — toasts
+                // auto-dismiss and students miss them). ClassNotFoundBanner
+                // on the dashboard renders this until acknowledged.
+                setClassNotFoundIntent(intendedNorm);
+                clearIntendedClassCode();
               }
-              // Intended code was typed but doesn't match a real class.
-              // Set a sticky banner (NOT a toast — toasts auto-dismiss and
-              // students miss them).  ClassNotFoundBanner on the dashboard
-              // renders this until the student acknowledges it.
-              setClassNotFoundIntent(intendedNorm);
-              clearIntendedClassCode();
             } else if (intendedCode) {
               // Same class — just clear the flag
               clearIntendedClassCode();
             }
 
             const { data: classRows } = await supabase
-              .from('classes').select('*').eq('code', code);
+              .from('classes').select(CLASS_COLUMNS).eq('code', code);
             if (classRows && classRows.length > 0) {
               const classData = mapClass(classRows[0]);
               // Fetch assignments + progress in parallel for faster restore.
               // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
               const [assignResult, progressResult] = await Promise.all([
                 supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                supabase.from('progress').select('*').eq('class_code', code).eq('student_uid', supabaseUser.id),
+                supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', supabaseUser.id),
               ]);
               setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
               setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -1775,12 +1807,12 @@ export default function App() {
               setUser(studentUser);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
-                  .from('classes').select('*').eq('code', studentProfile.class_code);
+                  .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
                 if (classRows && classRows.length > 0) {
                   const classData = mapClass(classRows[0]);
                   const [assignResult, progressResult] = await Promise.all([
                     supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                    supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
+                    supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
                   ]);
                   setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -1817,7 +1849,7 @@ export default function App() {
               if (savedCode && savedName && savedUid && UUID_RE.test(savedUid)) {
                 // Look up the users row by the OLD uid
                 const { data: existingUser } = await supabase
-                  .from('users').select('*').eq('uid', savedUid).maybeSingle();
+                  .from('users').select(USER_COLUMNS).eq('uid', savedUid).maybeSingle();
                 if (existingUser) {
                   // Migrate the row to the new anonymous UID
                   await supabase.from('users')
@@ -1830,12 +1862,12 @@ export default function App() {
                     checkConsent(restored);
                     if (restored.role === "student" && restored.classCode) {
                       const { data: classRows } = await supabase
-                        .from('classes').select('*').eq('code', restored.classCode);
+                        .from('classes').select(CLASS_COLUMNS).eq('code', restored.classCode);
                       if (classRows && classRows.length > 0) {
                         const c = mapClass(classRows[0]);
                         const [a, p] = await Promise.all([
                           supabase.rpc('get_assignments_for_class', { p_class_id: c.id }),
-                          supabase.from('progress').select('*').eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
+                          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', restored.classCode).eq('student_uid', supabaseUser.id),
                         ]);
                         setStudentAssignments((a.data ?? []).map(mapAssignment));
                         setStudentProgress((p.data ?? []).map(mapProgress));
@@ -1884,12 +1916,12 @@ export default function App() {
               setUser(studentUser);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
-                  .from('classes').select('*').eq('code', studentProfile.class_code);
+                  .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
                 if (classRows && classRows.length > 0) {
                   const classData = mapClass(classRows[0]);
                   const [assignResult, progressResult] = await Promise.all([
                     supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                    supabase.from('progress').select('*').eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
+                    supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentProfile.class_code).eq('student_uid', supabaseUser.id),
                   ]);
                   setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -1996,8 +2028,14 @@ export default function App() {
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && !manualLoginInProgress.current && !restoreInProgress.current) {
+        if (session?.user && !manualLoginInProgress.current && !restoreInProgress.current && !fromShareLinkRef.current) {
           restoreSession(session.user);
+        } else if (fromShareLinkRef.current) {
+          // Shared-link visitor is already logged in. Keep them on the
+          // landing page so the preview they were sent to is what they
+          // actually see — they can click "Start Learning" or "Teacher
+          // Login" to jump back to their dashboard if they want.
+          setLoading(false);
         }
       } catch { /* getSession failed — let onAuthStateChange handle it */ }
     })();
@@ -2009,6 +2047,12 @@ export default function App() {
       if (session?.user) {
         // Fire-and-forget: releases the auth lock immediately, then
         // does the slow DB work asynchronously.
+        if (fromShareLinkRef.current && event === 'INITIAL_SESSION') {
+          // Same reasoning as the getSession path above: don't hijack a
+          // shared-link visit with an auto-dashboard redirect.
+          setLoading(false);
+          return;
+        }
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
@@ -2150,6 +2194,14 @@ export default function App() {
   // actually leave — so popstate should NOT re-trap during that window.
   const exitIntentRef = useRef(false);
 
+  // Mirror of showExitConfirmModal so the popstate handler (attached once
+  // with empty deps) can see the latest value without a closure re-attach.
+  // Used to detect a "double back press" at the dashboard floor: if the
+  // confirm modal is already open and the user presses back again, we
+  // treat that as confirmation and log out — matching the mobile idiom
+  // where repeated back presses mean "I really want to exit."
+  const exitModalOpenRef = useRef(false);
+
   // Views that a logged-in user should never land on via back button.
   // If popstate would navigate to one of these, we block it.
   const AUTH_VIEWS = new Set([
@@ -2174,6 +2226,16 @@ export default function App() {
   // mount) always sees the latest value without a closure re-attach.
   const viewRef = useRef(view);
   useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => { exitModalOpenRef.current = showExitConfirmModal; }, [showExitConfirmModal]);
+
+  // Broadcast the current view so the global AccessibilityWidget knows
+  // whether to render its floating trigger. Per the product owner the
+  // trigger should only appear on public/landing pages, not while a
+  // student is mid-game or a teacher is in their dashboard.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
+  }, [view]);
 
   // Push a full dashboard trap: refill the pad buffer, then push the
   // dashboard on top.  Called on login transitions and whenever a pad
@@ -2252,7 +2314,21 @@ export default function App() {
       //         This also handles the case where rapid back presses
       //         pop past the pad buffer into pre-login entries like
       //         {view:'student-account-login'} or external URLs.
+      //
+      //         Double-back = logout: if the confirm modal is already
+      //         visible and the user presses back AGAIN, treat it as
+      //         "yes, really leave." This matches the mobile idiom where
+      //         repeated back presses mean the user wants to exit, and
+      //         saves them from having to aim for the small Leave button.
       if (atDashboardFloor) {
+        if (exitModalOpenRef.current) {
+          setShowExitConfirmModal(false);
+          exitIntentRef.current = true;
+          supabase.auth.signOut().catch(() => {});
+          try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
+          setTimeout(() => { exitIntentRef.current = false; }, 500);
+          return;
+        }
         pushDashboardTrap();
         setShowExitConfirmModal(true);
         return;
@@ -2409,13 +2485,19 @@ export default function App() {
 
   // Load pending students for teachers
   useEffect(() => {
-    if (user?.role === "teacher" && view === "teacher-dashboard") {
+    // Trigger pending-students fetch on any of: fresh teacher dashboard
+    // mount, dashboard re-entry, OR the async classes list finally
+    // arriving (common race — loadPendingStudents early-returns when
+    // classes.length === 0, so without this dep the teacher sees a
+    // permanent empty state if they land on the dashboard before the
+    // classes fetch resolves).
+    if (user?.role === "teacher" && view === "teacher-dashboard" && classes.length > 0) {
       loadPendingStudents();
     }
-  }, [user?.role, view]);
+  }, [user?.role, view, classes.length]);
 
   const fetchTeacherData = async (uid: string) => {
-    const { data, error } = await supabase.from('classes').select('*').eq('teacher_uid', uid);
+    const { data, error } = await supabase.from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
     if (!error && data) {
       const mappedClasses = data.map(mapClass);
       setClasses(mappedClasses);
@@ -2557,6 +2639,18 @@ export default function App() {
       const extractedWords = ocrData.words || [];
       const rawText = ocrData.raw_text || '';
 
+      // Dictionary cross-check to catch Gemini hallucinations. Any OCR result
+      // that matches a curriculum word (ALL_WORDS, ~9k entries) is treated as
+      // high confidence; anything else could be a ghost word the model made
+      // up, or a legitimate non-curriculum word (proper noun, slang). We keep
+      // BOTH in the custom words list so teachers don't lose real words, but
+      // only auto-select the known ones. Unknown words show up unchecked so
+      // the teacher can dismiss obvious nonsense with a glance instead of it
+      // silently joining the assignment.
+      const normalizeWord = (w: string) => w.toLowerCase().trim();
+      const knownEnglishSet = new Set(ALL_WORDS.map(w => normalizeWord(w.english)));
+      const isKnownWord = (w: string) => knownEnglishSet.has(normalizeWord(w));
+
 
       // Auto-translate OCR words to Hebrew + Arabic via Gemini so teachers
       // don't have to fill them in manually. Done BEFORE creating the Word
@@ -2588,10 +2682,18 @@ export default function App() {
           "error"
         );
       } else {
-        // Add all detected words to the Custom tab and select them
+        // Add all detected words to the Custom tab, but only auto-select the
+        // ones that match our curriculum dictionary. Unknown words (possible
+        // hallucinations) appear unchecked for the teacher to review.
         setCustomWords(customWordsFromOCR);
         setSelectedLevel("Custom");
-        setSelectedWords(customWordsFromOCR.map(w => w.id));
+        const knownCustomIds = customWordsFromOCR
+          .filter(w => isKnownWord(w.english))
+          .map(w => w.id);
+        const autoSelectIds = knownCustomIds.length > 0
+          ? knownCustomIds
+          : customWordsFromOCR.map(w => w.id);
+        setSelectedWords(autoSelectIds);
 
         // Fire off Neural2 audio generation so students hear real pronunciations.
         void requestCustomWordAudio(customWordsFromOCR);
@@ -2602,7 +2704,11 @@ export default function App() {
           setView("create-assignment");
         }
 
-        showToast(`Found ${customWordsFromOCR.length} words from the image!`, "success");
+        const unknownCount = customWordsFromOCR.length - knownCustomIds.length;
+        const successMsg = knownCustomIds.length > 0 && unknownCount > 0
+          ? `Found ${customWordsFromOCR.length} words — ${knownCustomIds.length} curriculum matches auto-selected, ${unknownCount} need review.`
+          : `Found ${customWordsFromOCR.length} words from the image!`;
+        showToast(successMsg, "success");
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
@@ -3312,7 +3418,7 @@ export default function App() {
     const { data: { session: _liveSession } } = await supabase.auth.getSession();
     const liveAuthUid = _liveSession?.user?.id;
     if (!liveAuthUid) {
-      setError("Session expired. Please sign in again.");
+      setError("Just tap your name below to sign back in 👋");
       return;
     }
 
@@ -3345,7 +3451,7 @@ export default function App() {
     // Ensure user record exists in users table (for XP/streak tracking)
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .select('*')
+      .select(USER_COLUMNS)
       .eq('uid', studentUid)
       .maybeSingle();
 
@@ -3401,7 +3507,7 @@ export default function App() {
       console.error('Class RPC error:', classError);
       // Fallback: try direct query (might fail due to RLS, but worth trying)
       const { data: fallbackClassRows } = await supabase
-        .from('classes').select('*').eq('code', code);
+        .from('classes').select(CLASS_COLUMNS).eq('code', code);
 
       if (fallbackClassRows && fallbackClassRows.length > 0) {
         await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
@@ -3433,16 +3539,29 @@ export default function App() {
         p_class_id: classData.id
       });
 
+    if (assignError) {
+      // Surface the real PostgREST error body — the plain 400 line in
+      // the network tab says nothing; the body has the actual cause
+      // (function overload missing, column renamed, auth gate, etc.).
+      console.error('[get_assignments_for_class] RPC failed:', {
+        code: assignError.code,
+        message: assignError.message,
+        details: assignError.details,
+        hint: assignError.hint,
+        classId: classData.id,
+      });
+    }
+
     // Progress still uses direct query (should work for student's own progress)
     const { data: progressResult, error: progressError } = await supabase
-      .from('progress').select('*').eq('class_code', code).eq('student_uid', studentUid);
+      .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
 
 
     if (assignError) {
       console.error('Assignments RPC error:', assignError);
       // Fallback to direct query
       const { data: fallbackData, error: fallbackError } = await supabase
-        .from('assignments').select('*').eq('class_id', classData.id);
+        .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
       setStudentAssignments((fallbackData ?? []).map(mapAssignment));
     } else {
       setStudentAssignments((assignResult ?? []).map(mapAssignment));
@@ -3568,7 +3687,7 @@ export default function App() {
 
       const { data: { user: supabaseUser } } = await supabase.auth.getUser();
       if (!supabaseUser) {
-        setError('Session expired. Please sign in again.');
+        setError('Just tap your name below to sign back in 👋');
         return;
       }
 
@@ -3582,9 +3701,17 @@ export default function App() {
       if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
         // Same RLS workaround as above — use the SECURITY DEFINER RPC so
         // non-member students can still verify the target class exists.
-        const { data: intendedClassRows } = await supabase
+        const { data: intendedClassRows, error: lookupErr } = await supabase
           .rpc('class_lookup_by_code', { p_code: intendedNorm });
-        if (intendedClassRows && intendedClassRows.length > 0) {
+        if (lookupErr) {
+          // Surface the real reason instead of the generic "not found"
+          // banner. Common causes: migration 20260428 requires auth but
+          // auth.uid() was null mid-OAuth; rate limit hit; migration
+          // 20260426 never applied so the RPC doesn't exist server-side.
+          console.error('[OAuth class switch] RPC failed:', lookupErr);
+          setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
+          clearIntendedClassCode();
+        } else if (intendedClassRows && intendedClassRows.length > 0) {
           const { data: currentClassRows } = await supabase
             .from('classes').select('code, name').eq('code', studentData.class_code);
           setIsOAuthCallback(false);
@@ -3611,11 +3738,13 @@ export default function App() {
           setView("student-dashboard");
           clearIntendedClassCode();
           return;
+        } else if (!lookupErr) {
+          // RPC succeeded with zero rows — the class genuinely doesn't
+          // exist. Show the standard not-found banner. (Error branch
+          // already set its own more informative banner above.)
+          setClassNotFoundIntent(intendedNorm);
+          clearIntendedClassCode();
         }
-        // Typed a code that doesn't exist — sticky banner on dashboard so
-        // the student can actually see the problem (toasts get missed).
-        setClassNotFoundIntent(intendedNorm);
-        clearIntendedClassCode();
       } else if (intendedCode) {
         clearIntendedClassCode();
       }
@@ -3639,12 +3768,12 @@ export default function App() {
       // Load class assignments and progress
       if (studentData.class_code) {
         const { data: classRows } = await supabase
-          .from('classes').select('*').eq('code', studentData.class_code);
+          .from('classes').select(CLASS_COLUMNS).eq('code', studentData.class_code);
         if (classRows && classRows.length > 0) {
           const classData = mapClass(classRows[0]);
           const [assignResult, progressResult] = await Promise.all([
             supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-            supabase.from('progress').select('*').eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
+            supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
           ]);
           setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
           setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -3672,7 +3801,18 @@ export default function App() {
 
   // Teacher Approval System
   const loadPendingStudents = async () => {
+    // Guard: the query below must be scoped by the teacher's class codes,
+    // both as a belt-and-suspenders against RLS misconfig and so we can
+    // render the class name next to each pending student. If classes
+    // haven't loaded yet (common race on fresh teacher dashboard mount),
+    // clear the list and bail — the effect below will re-invoke us once
+    // classes populates.
+    if (classes.length === 0) {
+      setPendingStudents([]);
+      return;
+    }
     try {
+      const classCodes = classes.map(c => c.code);
       const { data, error } = await supabase
         .from('student_profiles')
         .select(`
@@ -3682,6 +3822,7 @@ export default function App() {
           joined_at
         `)
         .eq('status', 'pending_approval')
+        .in('class_code', classCodes)
         .order('joined_at', { ascending: false });
 
       if (error) throw error;
@@ -3698,7 +3839,13 @@ export default function App() {
         };
       }));
     } catch (error) {
+      // Surface instead of swallow — teachers reported seeing "All caught
+      // up!" even when students were waiting. If RLS blocks the query or
+      // the network dies, the teacher needs to know there's a problem
+      // rather than silently seeing an empty list.
       trackAutoError(error, 'Failed to load pending students list');
+      const message = error instanceof Error ? error.message : 'unknown error';
+      showToast(`Couldn't load pending students: ${message}`, 'error');
     }
   };
 
@@ -3750,7 +3897,10 @@ export default function App() {
   const handleStudentLogin = async (code: string, name: string) => {
     if (loading) return;
     const trimmedName = name.trim().slice(0, 30);
-    const trimmedCode = code.trim().slice(0, 20);
+    // Strip ALL whitespace (including inner spaces that .trim() misses) and
+    // uppercase — students sometimes type "MG2 ZQPLA" or "mg2zqpla". Server
+    // RPC does the same normalization so the two ends agree.
+    const trimmedCode = code.replace(/\s+/g, '').toUpperCase().slice(0, 20);
     if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
 
     // Client-side rate limit: max 5 attempts per 60 seconds
@@ -3803,18 +3953,36 @@ export default function App() {
         }
       } catch { /* ignore cache errors */ }
 
-      const classResult = classData ? null : await supabase.from('classes').select('*').eq('code', trimmedCode);
-      if (classResult?.error) throw classResult.error;
-
-      if (classResult?.data && classResult.data.length > 0) {
-        classData = mapClass(classResult.data[0]);
-        // Update cache with fresh data
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            data: classData,
-            cached: Date.now(),
-          }));
-        } catch { /* ignore */ }
+      // Existence check via the RPC. Migration 20260430 tightened the
+      // classes SELECT RLS to only allow enrolled members, so a direct
+      // .from('classes').select() fails for a student who hasn't been
+      // enrolled yet — which is exactly what's happening here. The RPC
+      // (SECURITY DEFINER, rate-limited) bypasses RLS for the narrow
+      // lookup. Full class data is re-fetched via direct SELECT later,
+      // after the users-row upsert makes the student a member.
+      if (!classData) {
+        const lookupResult = await supabase.rpc('class_lookup_by_code', { p_code: trimmedCode });
+        if (lookupResult.error) {
+          const msg = lookupResult.error.message || 'unknown error';
+          setError(msg.includes('Rate limit') ? 'Too many attempts. Please wait a minute.' : `Couldn't verify class code (${msg}).`);
+          return;
+        }
+        const row = Array.isArray(lookupResult.data) ? lookupResult.data[0] : null;
+        if (row) {
+          // Build a partial ClassData — id/avatar may be missing if the
+          // server still has the pre-20260503 RPC that only returns
+          // {code, name}. Those fields get populated by the post-upsert
+          // SELECT below; for now we just need enough to continue.
+          classData = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            id: (row as any).id ?? '',
+            name: row.name,
+            code: row.code,
+            teacherUid: '',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            avatar: (row as any).avatar ?? null,
+          };
+        }
       }
 
       if (!classData) {
@@ -3823,7 +3991,7 @@ export default function App() {
       }
 
       const [userResult] = await Promise.all([
-        supabase.from('users').select('*').eq('uid', studentUid).maybeSingle(),
+        supabase.from('users').select(USER_COLUMNS).eq('uid', studentUid).maybeSingle(),
       ]);
 
       // Cache class info in localStorage for faster future logins
@@ -3888,6 +4056,25 @@ export default function App() {
         if (insertErr) throw insertErr;
       }
 
+      // Now that the users row exists with class_code = trimmedCode, the
+      // tightened classes RLS (20260430) will let us read the full row.
+      // Re-fetch so we have the canonical id + teacher_uid + avatar —
+      // the RPC earlier gave us partial data to validate existence but
+      // classData.id is needed for get_assignments_for_class below.
+      if (!classData.id) {
+        const { data: fullRows } = await supabase
+          .from('classes').select(CLASS_COLUMNS).eq('code', trimmedCode);
+        if (fullRows && fullRows.length > 0) {
+          classData = mapClass(fullRows[0]);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              data: classData,
+              cached: Date.now(),
+            }));
+          } catch { /* ignore */ }
+        }
+      }
+
       // OPTIMISTIC UI: Set user and show dashboard IMMEDIATELY
       // This makes the login feel instant while data loads in background
       setUser(userData);
@@ -3913,7 +4100,7 @@ export default function App() {
       setStudentDataLoading(true);
       Promise.all([
         supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-        supabase.from('progress').select('*').eq('class_code', trimmedCode).eq('student_uid', studentUid),
+        supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', trimmedCode).eq('student_uid', studentUid),
       ]).then(([assignResult, progressResult]) => {
         if (assignResult.error) {
           console.error('Error loading assignments:', assignResult.error);
@@ -3963,15 +4150,7 @@ export default function App() {
 
     const newBadges = [...badges, badge];
     setBadges(newBadges);
-    // Lazy load and use confetti
-    loadConfetti().then(confettiModule => {
-      const confetti = confettiModule.default || confettiModule;
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.3 }
-      });
-    });
+    celebrate('big');
 
     try {
       const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
@@ -4031,13 +4210,23 @@ export default function App() {
     if (!user || user.role !== "teacher") return;
     const now = Date.now();
     if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-    lastFetchRef.current.scores = now;
 
+    // Don't mark the fetch as done if classes haven't loaded yet.
+    // Teacher dashboard load order is: setUser() → classes arrive async →
+    // Analytics view reads from allScores. If fetchScores fired before
+    // classes were populated, the old code still set lastFetchRef.current
+    // and returned with setAllScores([]), locking in an empty array for
+    // the next 10 seconds. When classes finally loaded, the retry was
+    // throttled away — so Analytics and Gradebook saw "no data" even
+    // though the DB had 100+ rows. Move the timestamp update below the
+    // classes-length guard so it only marks SUCCESSFUL fetches.
     if (classes.length === 0) {
       setAllScores([]);
       setClassStudents([]);
       return;
     }
+
+    lastFetchRef.current.scores = now;
 
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
@@ -4066,11 +4255,26 @@ export default function App() {
     lastFetchRef.current.students = now;
   };
 
+  // Re-run fetchScores when classes transitions from 0 → non-zero while the
+  // teacher is viewing Analytics or Gradebook. Without this, clicking the
+  // Analytics card before the async classes fetch completes locks in an
+  // empty state: fetchScores sees classes=[] and returns early, and nothing
+  // else re-triggers it. Guarded by allScores.length === 0 so this fires
+  // at most once per session.
+  useEffect(() => {
+    if (user?.role !== "teacher") return;
+    if (classes.length === 0) return;
+    if (allScores.length > 0) return;
+    if (view !== "classroom" && view !== "analytics" && view !== "gradebook") return;
+    fetchScores();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes.length, view, user?.role]);
+
   const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data, error } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };
@@ -4115,22 +4319,24 @@ export default function App() {
     return shuffle([...shuffledOthers, correct]);
   }, [currentWord, gameWords]);
 
-  useEffect(() => {
-    if (currentWord) {
-      // 50% chance to show correct translation, 50% chance to show wrong translation
-      if (secureRandomInt(2) === 0) {
-        setTfOption(currentWord);
-      } else {
-        let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
-        if (possibleDistractors.length === 0) {
-          const allPossibleWords = [...ALL_WORDS, ...gameWords];
-          possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
-        }
-        setTfOption(possibleDistractors[secureRandomInt( possibleDistractors.length)]);
-      }
-      setIsFlipped(false);
+  // Synchronously derive tfOption so it is never null on the first render
+  // of a True/False round (see note next to the isFlipped declaration).
+  const tfOption = useMemo<Word | null>(() => {
+    if (!currentWord) return null;
+    // 50% correct translation, 50% distractor
+    if (secureRandomInt(2) === 0) return currentWord;
+    let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
+    if (possibleDistractors.length === 0) {
+      const allPossibleWords = [...ALL_WORDS, ...gameWords];
+      possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
     }
+    return possibleDistractors[secureRandomInt(possibleDistractors.length)] ?? currentWord;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, currentWord, gameWords]);
+
+  useEffect(() => {
+    if (currentWord) setIsFlipped(false);
+  }, [currentIndex, currentWord]);
 
   const scrambledWord = useMemo(() => {
     if (!currentWord) return "";
@@ -4282,6 +4488,7 @@ export default function App() {
     const built = builtSentence.join(" ").toLowerCase();
     if (built === target) {
       setSentenceFeedback("correct");
+      celebrate('small');
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
       setScore(newScore);
@@ -4317,21 +4524,45 @@ export default function App() {
   };
 
   // Remove Quick Play guest from teacher's dashboard (delete progress, clear localStorage)
+  // Full guest exit cleanup. Called whenever a Quick Play student
+  // explicitly leaves the game (Exit button on mode picker, header
+  // Back button, finish-screen "Exit Quick Play", session-end overlay).
+  //
+  // Deletes the student's progress rows so they vanish from the
+  // teacher's podium AND so a re-join with the same name doesn't hit
+  // the "name already taken" guard. Also signs out the anon Supabase
+  // session so a fresh re-entry from the same device gets a new
+  // auth.uid (the old one's progress rows are already deleted, but
+  // signOut prevents stale localStorage from auto-restoring).
   const cleanupQuickPlayGuest = async () => {
     if (!user?.isGuest || !quickPlayActiveSession) return;
+    const studentName = user.displayName;
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       const authUid = authSession?.user?.id;
-      if (authUid) {
+      // Delete by uid AND by name. uid catches the rows the active
+      // session inserted; name catches any rows that earlier rotated
+      // auth uids inserted under the same display name (the dedup
+      // post-pass on the teacher side merges by name, so deleting by
+      // name removes them all in one go).
+      const orFilters: string[] = [];
+      if (authUid) orFilters.push(`student_uid.eq.${authUid}`);
+      if (studentName) orFilters.push(`student_name.eq.${studentName}`);
+      if (orFilters.length > 0) {
         await supabase
           .from('progress')
           .delete()
           .eq('assignment_id', quickPlayActiveSession.id)
-          .eq('student_uid', authUid);
+          .or(orFilters.join(','));
       }
     } catch {}
     try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
     setQuickPlayCompletedModes(new Set());
+    // Sign out the anon Supabase session — without this the next visit
+    // from the same device silently restores the same auth.uid via
+    // localStorage, so the "fresh" re-join would still be linked to
+    // the deleted progress rows in confusing ways.
+    try { await supabase.auth.signOut(); } catch {}
   };
 
   const handleExitGame = () => {
@@ -4345,7 +4576,6 @@ export default function App() {
     setMatchedIds([]);
     setSelectedMatch(null);
     setIsFlipped(false);
-    setTfOption(null);
     setRevealedLetters(0);
     setSentenceIndex(0);
     setAvailableWords([]);
@@ -4363,9 +4593,23 @@ export default function App() {
         setFeedback(null); // Clear feedback when showing mode selection
       }
     } else if (user?.isGuest) {
-      // Quick Play guest: go back to mode selection so they can pick another mode
-      setShowModeSelection(true);
-      setFeedback(null); // Clear feedback when showing mode selection
+      if (showModeSelection) {
+        // Already on mode selection — second Exit tap leaves Quick Play
+        // entirely. cleanupQuickPlayGuest deletes the student's progress
+        // rows (so they disappear from the teacher's podium) and signs
+        // out the anon Supabase session (so re-entering from the same
+        // phone gets a fresh state instead of restoring the old one
+        // and failing the "name already taken" guard).
+        cleanupSessionData();
+        cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
+        setQuickPlayActiveSession(null);
+        setQuickPlayStudentName("");
+        setUser(null);
+        setView("public-landing");
+      } else {
+        setShowModeSelection(true);
+        setFeedback(null); // Clear feedback when showing mode selection
+      }
     } else {
       setUser(null);
       setView("public-landing");
@@ -4412,7 +4656,12 @@ export default function App() {
           });
 
         if (error) {
+          // Surface to the student. Prior behaviour was console-only, so
+          // a silent insert rejection (trigger, legacy anon key, stale
+          // session) looked identical to "all good" on-screen while the
+          // teacher monitor stayed empty.
           console.error('[Quick Play] Failed to save progress:', error);
+          showToast(`Couldn't save your score: ${error.message}`, 'error');
         } else {
           // Mark this mode as completed so it gets locked in mode selection
           setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
@@ -4505,13 +4754,7 @@ export default function App() {
     // Streak milestone celebrations
     const streakMilestones = [7, 14, 30, 50, 100];
     if (streakMilestones.includes(newStreak)) {
-      loadConfetti().then(confettiModule => {
-        const confetti = confettiModule.default || confettiModule;
-        // Big celebration burst
-        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
-        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.2, y: 0.5 } }), 300);
-        setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { x: 0.8, y: 0.5 } }), 600);
-      });
+      celebrate('big');
       showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
     }
 
@@ -4599,11 +4842,8 @@ export default function App() {
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
 
-      // Lazy load and use confetti
-      loadConfetti().then(confettiModule => {
-        const confetti = confettiModule.default || confettiModule;
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-      });
+      // Random celebration from the full pool — big flavour for finishing a mode
+      celebrate('big');
     } catch (error) {
       console.error("Error saving score:", error);
       // Log detailed error for debugging
@@ -4698,6 +4938,7 @@ export default function App() {
 
     if (selectedWord.id === currentWord.id) {
       setFeedback("correct");
+      celebrate('small');
       const newScore = score + 10;
       setScore(newScore);
 
@@ -4813,6 +5054,7 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
+      celebrate('small');
       const newScore = score + 15;
       setScore(newScore);
 
@@ -4929,6 +5171,7 @@ export default function App() {
 
     if (isCorrect) {
       setFeedback("correct");
+      celebrate('small');
       const newScore = score + 20;
       setScore(newScore);
 
@@ -5094,7 +5337,11 @@ export default function App() {
           } catch { /* silent retry */ }
         };
 
-        const id = setInterval(checkStatus, 10_000);
+        // Poll aggressively (3s) so the moment the teacher approves,
+        // the student sees the transition without thinking nothing
+        // is happening. 10s felt dead. Query is a single indexed
+        // row select so 3s is cheap.
+        const id = setInterval(checkStatus, 3_000);
         return () => clearInterval(id);
       }, []);
 
@@ -5271,6 +5518,7 @@ export default function App() {
           createGuestUser={createGuestUser}
           cleanupSessionData={cleanupSessionData}
           showToast={showToast}
+          userIsActiveGuest={!!user?.isGuest}
         />
       </LazyWrapper>
     );
@@ -5365,23 +5613,26 @@ export default function App() {
   const handleConfirmClassSwitch = async () => {
     if (!pendingClassSwitch) return;
     const { toCode, supabaseUser } = pendingClassSwitch;
-    const email = supabaseUser.email ?? "";
     try {
-      // Update both tables atomically from the client — no RPC needed, the
-      // student owns both rows (RLS keyed on email/uid).  Run in parallel.
-      await Promise.all([
-        supabase.from('student_profiles').update({ class_code: toCode, status: 'approved' }).eq('email', email),
-        supabase.from('users').update({ class_code: toCode }).eq('uid', supabaseUser.id),
-      ]);
+      // Use the SECURITY DEFINER RPC instead of direct UPDATEs. The
+      // users_update RLS policy (migration 20260340) freezes class_code for
+      // non-admins to prevent casual class hopping via .update(). A direct
+      // .update({class_code: newCode}) therefore 403s here. The RPC
+      // validates target class exists + updates both users + student_profiles
+      // atomically for the caller only. Added in migration 20260506.
+      const { error: rpcErr } = await supabase.rpc('switch_student_class', {
+        p_new_code: toCode,
+      });
+      if (rpcErr) throw rpcErr;
 
       // Load the new class's data and navigate to its dashboard.
       const { data: classRows } = await supabase
-        .from('classes').select('*').eq('code', toCode);
+        .from('classes').select(CLASS_COLUMNS).eq('code', toCode);
       if (classRows && classRows.length > 0) {
         const classData = mapClass(classRows[0]);
         const [assignResult, progressResult] = await Promise.all([
           supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select('*').eq('class_code', toCode).eq('student_uid', supabaseUser.id),
+          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', toCode).eq('student_uid', supabaseUser.id),
         ]);
         setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
         setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -5406,12 +5657,12 @@ export default function App() {
     // as if the intended-code was never there.
     try {
       const { data: classRows } = await supabase
-        .from('classes').select('*').eq('code', fromCode);
+        .from('classes').select(CLASS_COLUMNS).eq('code', fromCode);
       if (classRows && classRows.length > 0) {
         const classData = mapClass(classRows[0]);
         const [assignResult, progressResult] = await Promise.all([
           supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select('*').eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
+          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
         ]);
         setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
         setStudentProgress((progressResult.data ?? []).map(mapProgress));
@@ -5675,7 +5926,12 @@ export default function App() {
           setConfirmDialog={setConfirmDialog}
           onQuickPlayClick={() => {
             try { sessionStorage.setItem('vocaband_skip_restore', 'true'); } catch (e) { /* ignore */ }
-            window.history.replaceState({ view: 'quick-play-setup' }, '', window.location.pathname);
+            // Previously we called history.replaceState({view:'quick-play-setup'}) here,
+            // which clobbered the teacher-dashboard history entry. As a result the
+            // mobile browser back button couldn't return the teacher to their
+            // dashboard — it jumped past into pad buffer / landing territory.
+            // Let the view-change effect push the new entry naturally on top of
+            // the dashboard so back pops cleanly back to it.
             try { localStorage.removeItem('vocaband_quick_play_session'); } catch (e) { /* ignore */ }
             cleanupSessionData();
             setQuickPlayActiveSession(null);
@@ -5695,8 +5951,7 @@ export default function App() {
               setView("live-challenge-class-select");
             }
           }}
-          onAnalyticsClick={() => { fetchScores(); fetchTeacherAssignments(); setView("analytics"); }}
-          onGradebookClick={() => { fetchScores(); setView("gradebook"); }}
+          onClassroomClick={() => { fetchScores(); fetchTeacherAssignments(); setView("classroom"); }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onNewClass={() => setShowCreateClassModal(true)}
           onAssignClass={(c) => {
@@ -5968,11 +6223,28 @@ export default function App() {
     return (
       <LazyWrapper loadingMessage="Loading quick play setup...">
       <QuickPlaySetupView
-        mode="quick-play"
         allWords={ALL_WORDS}
-        onComplete={async (result) => {
-          const dbWords = result.words.filter(w => w.id >= 0);
-          const customWords = result.words.filter(w => w.id < 0);
+        // use2026WordInput + OCR/DOCX handlers + custom-words state make
+        // Quick Play's step 1 look and behave identically to Assignment's.
+        // Without these the QP teacher got the older WordInputStep UI
+        // (just paste + topics) while assignment teachers got the richer
+        // 2026 redesign (library, OCR photo, DOCX upload, custom words).
+        use2026WordInput={true}
+        onOcrUpload={handleOcrUpload}
+        isOcrProcessing={isOcrProcessing}
+        ocrProgress={ocrProgress}
+        onDocxUpload={handleDocxUpload}
+        customWords={customWords}
+        onCustomWordsChange={setCustomWords}
+        onCreateSession={async (words, modes) => {
+          // Creates the Quick Play session in the DB and returns the 6-char
+          // session code so QuickPlaySetupView can render its success
+          // screen. The title/notes parameters are accepted by the
+          // prop signature but not yet persisted — we can add columns to
+          // quick_play_sessions in a follow-up if teachers want to see
+          // labelled sessions in their history.
+          const dbWords = words.filter(w => w.id >= 0);
+          const customWords = words.filter(w => w.id < 0);
           const wordIds = dbWords.map(w => w.id);
 
           const customWordsJson = customWords.length > 0 ? JSON.stringify(
@@ -5986,34 +6258,33 @@ export default function App() {
           const { data, error } = await supabase.rpc('create_quick_play_session', {
             p_word_ids: wordIds.length > 0 ? wordIds : null,
             p_custom_words: customWordsJson,
-            p_allowed_modes: result.modes
+            p_allowed_modes: modes
           });
 
           if (error) {
             showToast("Failed to create session: " + error.message, "error");
-            return;
+            throw error;
           }
 
           const session = data as { id: string; session_code: string; allowed_modes?: string[] };
           setQuickPlaySessionCode(session.session_code);
-          const newSession = {
+          setQuickPlayActiveSession({
             id: session.id,
             sessionCode: session.session_code,
             wordIds: wordIds,
-            words: result.words
-          };
-          setQuickPlayActiveSession(newSession);
+            words,
+          });
 
           try {
             localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
               id: session.id,
-              words: result.words
+              words,
             }));
-          } catch (e) {
-          }
+          } catch { /* quota exceeded — safe to ignore, UI still works */ }
 
-          setView("quick-play-teacher-monitor");
+          return session.session_code;
         }}
+        onOpenMonitor={() => setView("quick-play-teacher-monitor")}
         onBack={() => setView("teacher-dashboard")}
         autoMatchPartial={true}
         showLevelFilter={false}
@@ -6023,6 +6294,18 @@ export default function App() {
         topicPacks={TOPIC_PACKS}
         user={user}
         onLogout={() => supabase.auth.signOut()}
+        // Sentence Builder config — without these props the Sentence
+        // Difficulty buttons in ConfigureStep call an undefined handler
+        // and silently no-op (user-reported "not clickable"), and the
+        // AI-sentences button generates fine but has nowhere to store
+        // the output because onSentencesChange is undefined.
+        // QuickPlaySetupView spreads {...rest} into SetupWizard, so
+        // forwarding them here reaches ConfigureStep without further
+        // plumbing.
+        assignmentSentences={assignmentSentences}
+        onSentencesChange={setAssignmentSentences}
+        sentenceDifficulty={sentenceDifficulty}
+        onSentenceDifficultyChange={setSentenceDifficulty}
       />
       </LazyWrapper>
     );
@@ -6054,36 +6337,32 @@ export default function App() {
     );
   }
 
-  if (view === "analytics") {
+  // Single "Classroom" entry point now wraps Analytics + Gradebook under
+  // a tabbed UI (Pulse / Mastery / Records). Legacy /analytics and
+  // /gradebook view strings still resolve here so existing dashboard
+  // buttons + history-stack entries keep working — they just land on
+  // the matching tab inside the merged view.
+  if (view === "classroom" || view === "analytics" || view === "gradebook") {
+    // Legacy /analytics → Mastery tab, legacy /gradebook → Pulse tab
+    // (Records tab was removed — its content lived inside Pulse anyway).
+    const initialTab = view === "analytics" ? "mastery" : "pulse";
     return (
-      <LazyWrapper loadingMessage="Loading analytics...">
-        <AnalyticsView
+      <LazyWrapper loadingMessage="Loading classroom...">
+        <ClassroomView
           user={user}
           classes={classes}
           allScores={allScores}
           teacherAssignments={teacherAssignments}
-          setView={setView}
+          classStudents={classStudents}
           selectedClass={selectedClass}
           setSelectedClass={setSelectedClass}
           selectedWords={selectedWords}
           setSelectedWords={setSelectedWords}
-        />
-      </LazyWrapper>
-    );
-  }
-  if (view === "gradebook") {
-    return (
-      <LazyWrapper loadingMessage="Loading gradebook...">
-        <GradebookView
-          user={user}
-          allScores={allScores}
-          teacherAssignments={teacherAssignments}
-          classStudents={classStudents}
-          classes={classes}
           expandedStudent={expandedStudent}
           setExpandedStudent={setExpandedStudent}
           setView={setView}
           showToast={showToast}
+          initialTab={initialTab}
         />
       </LazyWrapper>
     );
@@ -6131,6 +6410,14 @@ export default function App() {
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
           setView={setView}
+          onQuickPlayExit={() => {
+            cleanupSessionData();
+            cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
+            setQuickPlayActiveSession(null);
+            setQuickPlayStudentName("");
+            setUser(null);
+            setView("public-landing");
+          }}
         />
       </LazyWrapper>
     );

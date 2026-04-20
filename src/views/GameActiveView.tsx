@@ -16,7 +16,6 @@ import FlashcardsGame from "../components/game/FlashcardsGame";
 import LetterSoundsGame from "../components/game/LetterSoundsGame";
 import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
 import SpellingGame from "../components/game/SpellingGame";
-import LiveLeaderboardWidget from "../components/game/LiveLeaderboardWidget";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -61,6 +60,9 @@ interface GameActiveViewProps {
   setBuiltSentence: React.Dispatch<React.SetStateAction<string[]>>;
   availableWords: string[];
   setAvailableWords: React.Dispatch<React.SetStateAction<string[]>>;
+  /** Kept in the prop shape so App.tsx's existing wiring doesn't need
+   *  to change, but no longer rendered — the per-game "Live Rank"
+   *  sidebar was removed at teacher request (noisy during solo play). */
   leaderboard: Record<string, LeaderboardEntry>;
   isFinished: boolean;
   handleExitGame: () => void;
@@ -89,7 +91,7 @@ export default function GameActiveView({
   spellingInput, setSpellingInput,
   activeAssignment, sentenceIndex, sentenceFeedback,
   builtSentence, setBuiltSentence, availableWords, setAvailableWords,
-  leaderboard, isFinished,
+  leaderboard: _leaderboard, isFinished,
   handleExitGame, handleAnswer, handleMatchClick, handleTFAnswer,
   handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
   handleSentenceCheck, speakWord, speak, shuffle,
@@ -187,8 +189,15 @@ export default function GameActiveView({
         onExit={handleExitGame}
       />
 
-      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-6">
-        <div className="lg:col-span-3">
+      {/* After the Live Rank sidebar was removed, the old 4-column grid
+          left the cards hugging the left edge with a blank 4th column
+          where the widget used to be. Collapse to a single centered
+          column so matching cards + quiz cards sit centered on the
+          screen. Matching mode also gets vertical breathing room via
+          a min-height so the grid sits mid-viewport instead of pinned
+          under the header. */}
+      <div className={`w-full max-w-4xl mx-auto ${gameMode === 'matching' ? 'min-h-[60vh] flex items-center justify-center' : ''}`}>
+        <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
               <MatchingModeGame
@@ -258,8 +267,6 @@ export default function GameActiveView({
             )}
           </AnimatePresence>
         </div>
-
-        <LiveLeaderboardWidget user={user} leaderboard={leaderboard} />
       </div>
 
       {gameMode !== "matching" && (

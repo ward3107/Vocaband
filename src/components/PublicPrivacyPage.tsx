@@ -376,9 +376,9 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               {language === 'en' ? "Children's Privacy" : language === 'he' ? 'פרטיות ילדים' : 'خصوصية الأطفال'}
             </h2>
             <p className={`text-on-surface-variant leading-relaxed mb-4`}>
-              {language === 'en' ? 'Vocaband is designed for students in Israeli schools. The educational institution (school) authorizes student use. By providing a class code, the teacher (on behalf of the school) authorizes student access.' :
-               language === 'he' ? 'Vocaband מיועד לתלמידים בבתי ספר בישראל. המוסד החינוכי (בית הספר) מאשר שימוש תלמידים. על ידי מתן קוד כיתה, המורה (מטעם בית הספר) מאשר גישת תלמידים.' :
-               'Vocaband مصمم للطلاب في المدارس الإسرائيلية. المؤسسة التعليمية (المدرسة) تصرح باستخدام الطلاب. من خلال تقديم رمز الفصل، يصرح المعلم (نيابة عن المدرسة) بوصول الطلاب.'}
+              {language === 'en' ? 'Vocaband is designed for students in schools worldwide. The educational institution (school) authorizes student use. By providing a class code, the teacher (on behalf of the school) authorizes student access.' :
+               language === 'he' ? 'Vocaband מיועד לתלמידים בבתי ספר ברחבי העולם. המוסד החינוכי (בית הספר) מאשר שימוש תלמידים. על ידי מתן קוד כיתה, המורה (מטעם בית הספר) מאשר גישת תלמידים.' :
+               'Vocaband مصمم للطلاب في المدارس حول العالم. المؤسسة التعليمية (المدرسة) تصرح باستخدام الطلاب. من خلال تقديم رمز الفصل، يصرح المعلم (نيابة عن المدرسة) بوصول الطلاب.'}
             </p>
             <div className="bg-green-50 p-4 rounded-xl">
               <p className={`text-sm text-green-800 font-medium`}>

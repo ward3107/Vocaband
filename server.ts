@@ -131,9 +131,28 @@ async function startServer() {
   const httpServer = createServer(app);
   const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
   const allowedOrigins = allowedOrigin.split(",").map(o => o.trim());
+
+  // Match Cloudflare preview URLs (per-branch + per-version) without having
+  // to list every branch name in ALLOWED_ORIGIN. Every preview URL lands on
+  // https://<hash-or-branch>-vocaband.wasya92.workers.dev — this regex covers
+  // all of them. Keeps the explicit prod origin list intact for everything else.
+  const PREVIEW_ORIGIN_RE = /^https:\/\/[a-z0-9-]+-vocaband\.wasya92\.workers\.dev$/i;
+  const isOriginAllowed = (origin: string | undefined): boolean => {
+    if (!origin) return false;
+    if (allowedOrigins.includes(origin)) return true;
+    if (PREVIEW_ORIGIN_RE.test(origin)) return true;
+    return false;
+  };
+
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
+      // Use a function so socket.io accepts both the static prod list AND
+      // the dynamic preview-URL pattern. Same source of truth as the
+      // Express CORS middleware below.
+      origin: (origin, callback) => {
+        if (!origin || isOriginAllowed(origin)) callback(null, true);
+        else callback(new Error(`CORS: origin ${origin} not allowed`));
+      },
     },
     // Performance tuning for 1500 concurrent users (classroom scenario)
     transports: ["websocket", "polling"], // prefer WebSocket, fallback to polling
@@ -184,13 +203,16 @@ async function startServer() {
     }));
   }
 
-  // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages)
+  // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages
+  // or a preview URL on workers.dev). Uses the shared isOriginAllowed helper
+  // so static prod origins + dynamic preview-URL pattern both work.
   app.use('/api', (req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && allowedOrigins.some(o => o === origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
+    if (isOriginAllowed(origin)) {
+      res.header('Access-Control-Allow-Origin', origin!);
       res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.header('Vary', 'Origin');
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
@@ -223,6 +245,25 @@ async function startServer() {
     legacyHeaders: false,
     message: { error: "Too many OCR requests. Please wait a minute before trying again." },
     keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  // Translate endpoint rate limiter — per-teacher (Bearer token).  A normal
+  // teacher will hit /api/translate a handful of times per assignment; a
+  // spammer churning through Gemini quota will hit hundreds.  We also log
+  // the offender so abuse patterns show up in Render logs for follow-up.
+  const translateRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many translation requests. Please wait a minute before trying again." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+    handler: (req, res, _next, options) => {
+      const ip = req.ip || "unknown";
+      const keyPreview = (req.headers.authorization?.substring(7, 17) || "no-auth") + "…";
+      console.warn(`[abuse] /api/translate rate-limited: ip=${ip} token=${keyPreview}`);
+      res.status(options.statusCode).json(options.message);
+    },
   });
 
   // Rate limit socket joins by AUTHENTICATED USER ID (not IP).
@@ -500,20 +541,24 @@ async function startServer() {
   //
   // Response shape is unchanged: { hebrew: string[], arabic: string[] } in
   // input order, so existing frontend code keeps working.
-  app.post("/api/translate", async (req, res) => {
+  app.post("/api/translate", translateRateLimiter, async (req, res) => {
+    const ip = req.ip || "unknown";
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
+      console.warn(`[abuse] /api/translate missing auth header: ip=${ip}`);
       return res.status(401).json({ error: "Authentication required" });
     }
 
     const token = authHeader.substring(7);
     const uid = await verifyToken(token);
     if (!uid) {
+      console.warn(`[abuse] /api/translate invalid token: ip=${ip}`);
       return res.status(401).json({ error: "Invalid token" });
     }
 
     const userData = await getUserRoleAndClass(uid);
     if (!userData || userData.role !== "teacher") {
+      console.warn(`[abuse] /api/translate non-teacher caller: ip=${ip} uid=${uid} role=${userData?.role ?? 'none'}`);
       return res.status(403).json({ error: "Only teachers can translate" });
     }
 
@@ -705,15 +750,44 @@ ${JSON.stringify(validWords)}`;
           ? "image/jpeg"
           : rawMime;
 
-      const prompt = `Extract ALL English words from this image. Return ONLY a JSON array of lowercase English words, nothing else. Example: ["apple","banana","cat"]
+      // Prompt tuned to minimize hallucinations on mobile photos AND
+      // preserve multi-word phrases as single entries. The old version
+      // implicitly treated every token as a single word, so teachers
+      // writing "turn on / look forward to / ice cream" on the board
+      // got three separate flash-card entries instead of one phrase.
+      //
+      // Two core instructions now:
+      //   1. Never invent.
+      //   2. Keep phrases together: idioms, phrasal verbs, compound
+      //      nouns, fixed expressions — whatever reads as a single
+      //      unit on the page.
+      const prompt = `Extract English vocabulary items from this image. Return ONLY a JSON array of lowercase strings, nothing else. Example: ["apple","turn on","ice cream","look forward to"]
 
-Rules:
-- Include every English word you can read, no matter how small
-- Lowercase all words
-- Remove duplicates
+Each array entry is ONE vocabulary item, which may be a single word OR a multi-word phrase. Preserve phrases intact — do not split them.
+
+What counts as a multi-word phrase (keep together as ONE string):
+- Phrasal verbs:        "turn on", "give up", "look forward to", "run out of"
+- Compound nouns:       "ice cream", "post office", "high school", "best friend"
+- Fixed expressions:    "at the same time", "on the other hand", "by the way"
+- Prepositional phrases: "in front of", "next to", "because of"
+- Hyphenated/joined words on the page: keep as written ("well-known", "sunshine")
+
+How to tell phrase from separate words:
+- Same line, close together, visually grouped (arrow, bullet, bracket) → probably a phrase
+- Separated by commas, newlines, numbered bullets, or wide gaps → separate items
+- Translation list where left column shows "turn on → להדליק": left column is ONE item "turn on"
+
+Strict quality rules:
+- Only include items you can read with high confidence
+- If blurry, cropped, partially covered, or ambiguous → OMIT
+- NEVER invent, guess, autocomplete, or infer items that aren't visibly present
+- Do not merge two adjacent unrelated words into a phrase
+- Do not split a phrase into its component words
+- Do not split a single word into two ("sunshine" stays one word, not "sun" + "shine")
+- Lowercase every string
+- Remove exact duplicates (case-insensitive)
 - Skip numbers, symbols, and non-English text (Hebrew, Arabic, etc.)
-- Include words even if partially obscured or blurry
-- If you cannot read any English words, return []`;
+- If no English items are confidently readable, return []`;
 
       const result = await model.generateContent([
         prompt,
@@ -727,26 +801,42 @@ Rules:
 
       const responseText = result.response.text();
 
-      // Parse the JSON array from Gemini's response
+      // Parse the JSON array from Gemini's response.
+      // Entries may be multi-word phrases ("turn on", "ice cream") so
+      // we preserve inner whitespace — only collapse runs of spaces
+      // and trim the ends.
       let words: string[] = [];
       try {
         const cleaned = responseText.replace(/```json?\s*|\s*```/g, "").trim();
         const parsed = JSON.parse(cleaned);
         if (Array.isArray(parsed)) {
           words = parsed
-            .filter((w: unknown): w is string => typeof w === "string" && w.length >= 2)
-            .map((w: string) => w.toLowerCase().trim());
+            .filter((w: unknown): w is string => typeof w === "string" && w.trim().length >= 2)
+            .map((w: string) => w.toLowerCase().replace(/\s+/g, " ").trim());
         }
       } catch {
-        // Fallback: split by common delimiters
+        // Fallback: Gemini didn't return valid JSON. Split on commas +
+        // newlines (the natural item separators), NOT whitespace, so
+        // phrases stay together. Strip surrounding brackets/quotes, then
+        // keep only tokens that look like English text (letters + spaces
+        // + hyphens + apostrophes for contractions).
         words = responseText
-          .replace(/[\[\]"`,]/g, " ")
-          .split(/\s+/)
-          .filter((w) => /^[a-zA-Z]{2,}$/.test(w))
-          .map((w) => w.toLowerCase());
+          .replace(/[\[\]"`]/g, "")
+          .split(/[,\n\r]+/)
+          .map(s => s.trim().toLowerCase())
+          .filter(s => /^[a-z][a-z '\-]{1,}[a-z]$/i.test(s));
       }
 
-      const uniqueWords = [...new Set(words)];
+      // Case-insensitive dedup that keeps the first occurrence's casing.
+      const seen = new Set<string>();
+      const uniqueWords: string[] = [];
+      for (const w of words) {
+        const key = w.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueWords.push(w);
+        }
+      }
 
       const sizeKB = Math.round(req.file.size / 1024);
       console.log(`[OCR] ${authData.email}: Gemini Flash found ${uniqueWords.length} English words (image: ${sizeKB} KB, ${mimeType})`);

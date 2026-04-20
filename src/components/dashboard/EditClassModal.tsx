@@ -71,10 +71,13 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             </div>
 
             {/* Name */}
-            <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Class name</label>
+            <label htmlFor="edit-class-name" className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Class name</label>
             <input
               autoFocus
               type="text"
+              id="edit-class-name"
+              name="className"
+              autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Grade 8-B"

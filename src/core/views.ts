@@ -19,6 +19,7 @@ export type View =
   | "student-dashboard"
   | "create-assignment"
   | "gradebook"
+  | "classroom"
   | "live-challenge"
   | "live-challenge-class-select"
   | "analytics"

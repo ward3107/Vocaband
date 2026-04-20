@@ -76,7 +76,12 @@ export default function TeacherClassesSection({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        // items-start stops CSS grid's default "stretch" alignment, so
+        // expanding one card's assignment list doesn't force the sibling
+        // card in the same row to grow to match. Without this, clicking
+        // the assignments icon on the right card leaves the left card
+        // stretched with a huge empty footer — user-reported bug.
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-start">
           {[...classes].reverse().map(c => {
             const classAssignments = teacherAssignments.filter(a => a.classId === c.id);
             return (

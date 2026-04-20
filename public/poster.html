@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classroom Poster — Vocaband</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+
+    .toolbar { position: sticky; top: 0; z-index: 10; background: white; border-bottom: 1px solid #e5e7eb; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .toolbar h1 { font-size: 1rem; margin: 0 1rem 0 0; color: #4f46e5; }
+    .toolbar .help { color: #6b7280; font-size: 0.875rem; }
+    .toolbar button { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 0.6rem 1.25rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
+    .toolbar button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.4); }
+
+    /* A4 portrait. Fixed height + flex column so the QR block can't be
+       pushed off the bottom. Features block absorbs slack via `margin:
+       auto 0` so spacing breathes between hero and QR. */
+    .poster {
+      width: 210mm;
+      height: 297mm;
+      margin: 1rem auto;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+      color: white;
+      padding: 14mm;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Decorative blobs */
+    .poster::before, .poster::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+    }
+    .poster::before { width: 160mm; height: 160mm; top: -60mm; right: -60mm; }
+    .poster::after  { width: 100mm; height: 100mm; bottom: -20mm; left: -20mm; }
+
+    /* Every real content region above the blobs */
+    .brand, .hero, .features, .qr-block, .footer-bar { position: relative; z-index: 1; }
+
+    .brand {
+      font-size: 14pt;
+      font-weight: 900;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      margin-bottom: 8mm;
+    }
+
+    /* Hero — V logo sits LEFT of the "Free English games" text, reading
+       together as a single branded headline. Logo is ~50mm (big), shifts
+       up a bit to align with the first text line. */
+    .hero {
+      display: flex;
+      align-items: center;
+      gap: 10mm;
+      margin-bottom: 6mm;
+    }
+    .hero .logo {
+      width: 52mm;
+      height: 52mm;
+      flex-shrink: 0;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.25));
+    }
+    .hero .hero-copy {
+      flex: 1;
+      min-width: 0;
+    }
+    .hero h1 {
+      font-size: 64pt;
+      line-height: 0.92;
+      margin: 0;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+    .hero .subhead {
+      font-size: 17pt;
+      line-height: 1.25;
+      margin: 5mm 0 0;
+      font-weight: 700;
+      opacity: 0.95;
+      max-width: 170mm;
+    }
+
+    /* Features */
+    .features {
+      margin: auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+    }
+    .feature { display: flex; align-items: center; gap: 4mm; font-size: 13pt; font-weight: 600; }
+    .feature .ico {
+      width: 11mm; height: 11mm;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15pt;
+      flex-shrink: 0;
+    }
+
+    /* QR block — BIGGER QR so it scans from across a classroom */
+    .qr-block {
+      background: white;
+      color: #1f2937;
+      border-radius: 8mm;
+      padding: 7mm;
+      display: flex;
+      gap: 7mm;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    .qr-block .qr-img {
+      width: 62mm;
+      height: 62mm;
+      border-radius: 3mm;
+      flex-shrink: 0;
+      object-fit: contain;
+    }
+    .qr-block .qr-text { flex: 1; min-width: 0; }
+    .qr-block .qr-text h3 { margin: 0 0 2mm; font-size: 18pt; color: #4f46e5; font-weight: 800; }
+    .qr-block .qr-text p { margin: 0; font-size: 10pt; color: #4b5563; line-height: 1.45; }
+    .qr-block .qr-text .url {
+      display: block; margin-top: 3mm;
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 10pt; color: #4f46e5; word-break: break-all; font-weight: 700;
+    }
+
+    .footer-bar { margin-top: 4mm; text-align: center; font-size: 9pt; opacity: 0.88; font-weight: 600; }
+
+    /* Print: gradient prints, zero margins, one page */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      html, body { background: white; margin: 0; padding: 0; }
+      .toolbar { display: none !important; }
+      .poster { margin: 0; box-shadow: none; page-break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    /* Screen preview scaling */
+    @media (max-width: 240mm) { .poster { transform-origin: top center; transform: scale(0.85); margin-top: 0.5rem; } }
+    @media (max-width: 200mm) { .poster { transform: scale(0.7); } }
+    @media (max-width: 160mm) { .poster { transform: scale(0.55); } }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <h1>📋 Classroom poster</h1>
+    <span class="help">Click Print → save as PDF, or print straight to paper. A4.</span>
+    <button onclick="window.print()" type="button">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="poster">
+
+    <div class="brand">Vocaband</div>
+
+    <div class="hero">
+      <img src="/icon.svg" alt="Vocaband V logo" class="logo" />
+      <div class="hero-copy">
+        <h1>Free<br>English<br>games.</h1>
+        <p class="subhead">Scan the code. Join the class. Beat your friends.</p>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><span class="ico">⚡</span> 10 game modes — matching, spelling, scramble, more</div>
+      <div class="feature"><span class="ico">🏆</span> Live class leaderboard during sessions</div>
+      <div class="feature"><span class="ico">🎯</span> 9,000+ words across CEFR A1 to B2</div>
+      <div class="feature"><span class="ico">🆓</span> 100% free · no ads · no email</div>
+    </div>
+
+    <div class="qr-block">
+      <!-- QR is generated by api.qrserver.com (free, no API key, no JS
+           library, no CSP-allowlisted CDN needed — just a plain <img>
+           tag that our CSP already permits via img-src https:). Keeps
+           the poster working even if every third-party JS CDN on the
+           planet is blocked. src is set by the inline script below so
+           we can inject the current-page's ?class=...&ref=... params. -->
+      <img id="qr-img" class="qr-img" alt="QR code linking to vocaband.com" />
+      <div class="qr-text">
+        <h3>Scan to play</h3>
+        <p>Open your phone's camera and point it at the code. Or type the link below:</p>
+        <span class="url" id="poster-url">vocaband.com</span>
+      </div>
+    </div>
+
+    <div class="footer-bar">vocaband.com · gamified English vocabulary for ESL classrooms</div>
+
+  </div>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var ref = params.get('ref');
+      var classCode = params.get('class');
+      var url = 'https://www.vocaband.com/';
+      var qs = [];
+      if (classCode) qs.push('class=' + encodeURIComponent(classCode));
+      if (ref)       qs.push('ref=' + encodeURIComponent(ref));
+      if (qs.length) url += '?' + qs.join('&');
+
+      document.getElementById('poster-url').textContent = url.replace(/^https?:\/\//, '');
+
+      // QR code via api.qrserver.com — high-res PNG at 720x720 so it
+      // scales cleanly up to the 62mm print size. 1F2937 for the dark
+      // squares matches the poster palette; margin=1 keeps white
+      // quiet-zone small so the code reads big. Our CSP's
+      //   img-src 'self' data: blob: https:
+      // already allows any HTTPS image source, so no allowlisting needed.
+      var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/'
+        + '?size=720x720'
+        + '&data=' + encodeURIComponent(url)
+        + '&color=1F2937'
+        + '&bgcolor=FFFFFF'
+        + '&margin=1'
+        + '&format=png';
+      var img = document.getElementById('qr-img');
+      img.src = qrSrc;
+      img.onerror = function () {
+        // Degrade gracefully if the QR service is blocked / offline:
+        // swap for a clearly-marked box telling the teacher to type
+        // the URL below, rather than printing a broken image icon.
+        var fallback = document.createElement('div');
+        fallback.textContent = 'Type the link →';
+        fallback.style.cssText = 'width:62mm;height:62mm;border:1px dashed #9ca3af;border-radius:3mm;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;font-size:12pt;text-align:center;padding:4mm;flex-shrink:0;';
+        img.parentNode.replaceChild(fallback, img);
+        console.warn('[poster] QR image failed — URL-only fallback shown.');
+      };
+
+      if (classCode) document.title = 'Vocaband poster — class ' + classCode;
+    })();
+  </script>
+</body>
+</html>

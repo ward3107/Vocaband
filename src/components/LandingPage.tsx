@@ -23,8 +23,6 @@ import {
   Clock,
   CheckCircle2,
   Layers,
-  Accessibility,
-  X,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -45,17 +43,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
     { icon: <Flame size={24} />, name: "Daily Streaks", color: "from-amber-500 to-orange-500", delay: 0.4 },
     { icon: <Gift size={24} />, name: "Mystery Eggs", color: "from-emerald-500 to-teal-500", delay: 0.6 },
   ];
-
-  // Allow users to dismiss the floating accessibility button for the
-  // current session — it returns on next session (sessionStorage). The
-  // a11y panel itself is still reachable via the nav bar's A11y icon.
-  const [a11yButtonHidden, setA11yButtonHidden] = useState<boolean>(() => {
-    try { return sessionStorage.getItem('a11y_button_hidden') === '1'; } catch { return false; }
-  });
-  const hideA11yButton = () => {
-    try { sessionStorage.setItem('a11y_button_hidden', '1'); } catch { /* ignore */ }
-    setA11yButtonHidden(true);
-  };
 
   return (
     // `data-landing-ready` is the signal `scripts/prerender.ts` waits on
@@ -131,7 +118,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
                 >
-                  The digital playground where Israeli students become vocabulary legends through play.
+                  The digital playground where ESL students become vocabulary legends through play.
                 </motion.p>
 
                 {/* 3D CTA Buttons */}
@@ -181,7 +168,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </div>
                   <div className="text-left">
                     <p className="text-white font-bold text-sm">10,000+ Students</p>
-                    <p className="text-white/60 text-xs">Learning across Israel</p>
+                    <p className="text-white/60 text-xs">Learning English worldwide</p>
                   </div>
                 </motion.div>
               </div>
@@ -885,7 +872,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               Your Journey to Mastery
             </h2>
             <p className="text-lg text-white/80 font-bold">
-              Aligned with the Israeli English curriculum — three comprehensive vocabulary sets.
+              Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 9,000+ words.
             </p>
           </motion.div>
 
@@ -1061,7 +1048,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </h2>
 
                 <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto">
-                  Join thousands of Israeli students leveling up their English — one word at a time.
+                  Join thousands of students leveling up their English — one word at a time.
                 </p>
 
                 {/* 3D Buttons */}
@@ -1102,7 +1089,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 >
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    Aligned with Ministry of Education
+                    Aligned with CEFR A1–B2
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
@@ -1155,10 +1142,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </nav>
             </div>
 
+            {/* Teacher resources — subtle internal links to the /answers
+                guides. Not a hero section; just enough to give Google's
+                crawler + AI assistants the internal-link signal that
+                these pages are real first-party content, and to help
+                teachers already browsing the footer discover them. */}
+            <div className="pt-8 pb-4 border-t border-white/10">
+              <p className="text-white/50 text-xs font-black uppercase tracking-[0.2em] text-center mb-3">
+                Teacher resources
+              </p>
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+                <a href="/answers/cefr-a1-vocabulary-list.html" className="text-white/70 hover:text-white transition-colors">CEFR A1 vocabulary</a>
+                <a href="/answers/cefr-a1-vs-a2-vocabulary.html" className="text-white/70 hover:text-white transition-colors">A1 vs A2</a>
+                <a href="/answers/free-quizlet-alternative-for-teachers.html" className="text-white/70 hover:text-white transition-colors">Quizlet alternative</a>
+                <a href="/answers/best-gamified-esl-vocabulary-app.html" className="text-white/70 hover:text-white transition-colors">Compare apps</a>
+                <a href="/answers/best-english-vocabulary-app-grade-5.html" className="text-white/70 hover:text-white transition-colors">Best for Grade 5</a>
+              </div>
+            </div>
+
             {/* Copyright */}
-            <div className="pt-8 text-center">
+            <div className="pt-6 text-center">
               <p className="text-white text-sm font-bold">
-                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for Israeli students.
+                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for English learners everywhere.
               </p>
             </div>
           </div>
@@ -1167,32 +1172,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <FloatingButtons />
 
-      {/* Floating A11y Button — opens global widget. Has a small X in the
-          top-right corner for users who don't need it; dismissing stores
-          a session-only flag so the button returns on next visit. The
-          panel is still reachable via the nav bar A11y icon. */}
-      {!a11yButtonHidden && (
-        <div className="fixed bottom-28 right-6 z-50">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => window.dispatchEvent(new CustomEvent('open-a11y-panel'))}
-            aria-label="Open accessibility options"
-            className="w-12 h-12 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-lg transition-all hover:bg-white/30"
-            type="button"
-          >
-            <Accessibility size={22} strokeWidth={2.5} aria-hidden="true" />
-          </motion.button>
-          <button
-            onClick={hideA11yButton}
-            aria-label="Hide accessibility button"
-            type="button"
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-stone-900 text-white border border-white/40 shadow-md flex items-center justify-center hover:bg-stone-700 hover:scale-110 transition-all"
-          >
-            <X size={10} strokeWidth={3} aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      {/* The floating accessibility button that used to live here has been
+          removed — it duplicated the global one rendered by
+          <AccessibilityWidget /> in main.tsx, which is now visible on every
+          page. Two triggers at different positions was confusing. */}
     </div>
   );
 };
