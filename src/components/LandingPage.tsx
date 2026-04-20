@@ -1154,9 +1154,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
                 <a href="/answers/cefr-a1-vocabulary-list.html" className="text-white/70 hover:text-white transition-colors">CEFR A1 vocabulary</a>
                 <a href="/answers/cefr-a1-vs-a2-vocabulary.html" className="text-white/70 hover:text-white transition-colors">A1 vs A2</a>
-                <a href="/answers/free-quizlet-alternative-for-teachers.html" className="text-white/70 hover:text-white transition-colors">Quizlet alternative</a>
-                <a href="/answers/best-gamified-esl-vocabulary-app.html" className="text-white/70 hover:text-white transition-colors">Compare apps</a>
-                <a href="/answers/best-english-vocabulary-app-grade-5.html" className="text-white/70 hover:text-white transition-colors">Best for Grade 5</a>
+                <a href="/answers/best-english-vocabulary-app-grade-5.html" className="text-white/70 hover:text-white transition-colors">Best for school ESL — Grades 1 to 12</a>
               </div>
             </div>
 
