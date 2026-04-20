@@ -508,20 +508,39 @@ export default function App() {
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
-        // Ensure we have at least an anonymous auth session — RLS requires it.
+        // Ensure we have a VALID anonymous auth session — RLS requires it.
         //
-        // NOTE: a previous attempt validated the cached session with
-        // `supabase.auth.getUser()` and called `signOut()` on failure, to
-        // recover from stale tokens that slip past `getSession()`.  That
-        // crashed 8/10 students in a classroom test because `signOut()`
-        // fires the `SIGNED_OUT` listener (App.tsx ~line 2070) which runs
-        // `cleanupSessionData()` + `setUser(null)` + history resets MID
-        // Quick-Play-join, tearing down state underneath the live component
-        // tree.  Keeping this guard minimal until we have a non-disruptive
-        // way to recover stale tokens (e.g. clear the sb-*-auth-token entry
-        // in localStorage directly before signInAnonymously).
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        if (!existingSession) {
+        // `getSession()` only reads localStorage, so a stale token (from a
+        // previous Quick Play whose anon user has since been deleted by the
+        // 20260429 cleanup cron) sneaks past unnoticed.  The first real
+        // auth-aware call then fails with `session_not_found` (403),
+        // Supabase fires SIGNED_OUT, and the student is bounced to login
+        // mid-Quick-Play-join.
+        //
+        // Recover silently: validate with `getUser()` (which actually hits
+        // the server).  If the server rejects, surgically remove the
+        // sb-*-auth-token entry from localStorage and create a fresh anon
+        // session.  We deliberately do NOT call `supabase.auth.signOut()`
+        // — that fires the SIGNED_OUT listener at line ~2070 which runs
+        // cleanup + setUser(null) + history reset MID-join and tears
+        // down the live component tree (caused 8/10 student crashes in a
+        // classroom test).
+        const { data: { session: cachedSession } } = await supabase.auth.getSession();
+        let stale = false;
+        if (cachedSession) {
+          const { error } = await supabase.auth.getUser();
+          stale = !!error;
+        }
+        if (stale) {
+          try {
+            for (const key of Object.keys(localStorage)) {
+              if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                localStorage.removeItem(key);
+              }
+            }
+          } catch { /* private mode / disabled storage — fall through */ }
+        }
+        if (!cachedSession || stale) {
           await supabase.auth.signInAnonymously().catch(() => {});
         }
 
