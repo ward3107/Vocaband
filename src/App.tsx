@@ -916,7 +916,20 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Polling fallback — Supabase Realtime has been unreliable in practice
+    // (UnableToConnectToProject errors, silent subscription drops). Without
+    // polling, the only way a teacher sees new scores land on the podium is
+    // if the Realtime INSERT event actually gets delivered — when it doesn't,
+    // the monitor stays blank and the teacher has to F5. Polling every 5s
+    // guarantees a worst-case 5s delay to see new scores, regardless of
+    // Realtime health. Query is a single indexed SELECT scoped to one
+    // session, so cost is negligible even at classroom scale.
+    const pollId = setInterval(() => {
+      if (!document.hidden) fetchProgress();
+    }, 5_000);
+
     return () => {
+      clearInterval(pollId);
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -2523,9 +2536,32 @@ export default function App() {
     // classes.length === 0, so without this dep the teacher sees a
     // permanent empty state if they land on the dashboard before the
     // classes fetch resolves).
-    if (user?.role === "teacher" && view === "teacher-dashboard" && classes.length > 0) {
-      loadPendingStudents();
+    //
+    // Also polls every 10s + refetches on tab refocus. Without these,
+    // a teacher sitting on the dashboard sees no new pending students
+    // until they navigate away and back (or relogin) — because the
+    // Supabase Realtime channel we'd normally lean on to push the
+    // notification has been unreliable in practice. Polling is cheap
+    // (single indexed query) and means the approval tray always reflects
+    // reality within ~10 seconds regardless of realtime health.
+    if (!(user?.role === "teacher" && view === "teacher-dashboard" && classes.length > 0)) {
+      return;
     }
+    loadPendingStudents();
+
+    const pollId = setInterval(() => {
+      if (!document.hidden) loadPendingStudents();
+    }, 10_000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) loadPendingStudents();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(pollId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [user?.role, view, classes.length]);
 
   const fetchTeacherData = async (uid: string) => {
