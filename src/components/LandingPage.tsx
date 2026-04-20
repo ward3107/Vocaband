@@ -45,10 +45,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   ];
 
   return (
-    // `data-landing-ready` is the signal `scripts/prerender.ts` waits on
-    // before capturing the rendered HTML.  Removing it will silently
-    // break the post-build prerender step.
-    <div className="min-h-screen signature-gradient overflow-x-hidden" data-landing-ready>
+    <div className="min-h-screen signature-gradient overflow-x-hidden">
       <PublicNav
         currentPage="home"
         onNavigate={onNavigate}
