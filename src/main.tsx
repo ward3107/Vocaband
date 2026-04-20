@@ -94,9 +94,28 @@ async function bootstrap() {
   );
 }
 
-// If we're redirecting to the canonical host, let the navigation tear the
-// page down — do not kick off bootstrap (it would race the redirect and
-// potentially consume the `?code=` on the wrong origin).
-if (!canonicalizeHost()) {
+// Prerender short-circuit: the post-build `scripts/prerender.ts` runs a
+// headless Chrome against the built SPA with a custom UA so we can
+// skip the PKCE exchange + www→apex redirect.  During prerender we
+// just mount React straight away so the landing page tree paints and
+// can be captured.  Detected by UA, not env, because Vite builds the
+// bundle once and the same JS runs in both prerender and production.
+const isPrerender =
+  typeof navigator !== 'undefined' &&
+  navigator.userAgent.includes('VocabandPrerender');
+
+if (isPrerender) {
+  createRoot(document.getElementById('root')!).render(
+    <ErrorBoundary>
+      <Suspense fallback={<Loading />}>
+        <App />
+        <AccessibilityWidget />
+      </Suspense>
+    </ErrorBoundary>,
+  );
+} else if (!canonicalizeHost()) {
+  // If we're redirecting to the canonical host, let the navigation tear the
+  // page down — do not kick off bootstrap (it would race the redirect and
+  // potentially consume the `?code=` on the wrong origin).
   bootstrap();
 }
