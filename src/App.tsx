@@ -2601,6 +2601,69 @@ export default function App() {
     return uninstall;
   }, []);
 
+  // Teacher-side notifications — diff the polling snapshots and fire a
+  // toast when something new lands.  Purely passive: no additional
+  // network traffic (the polling effects already fetch these lists).
+  //
+  // Two diffs tracked via refs:
+  //   pendingStudentsPrev — IDs we already told the teacher about
+  //   allScoresPrev       — score-row IDs already seen
+  // First snapshot seeds the ref without notifying (no "everyone
+  // who existed before you logged in just joined" noise).
+  //
+  // Toast is throttled by the natural polling interval (10s / 20s),
+  // so even a burst of new students / scores gets batched into at
+  // most one notification per cycle per type.
+  const pendingStudentsPrevRef = useRef<Set<string>>(new Set());
+  const pendingStudentsSeededRef = useRef(false);
+  useEffect(() => {
+    if (user?.role !== 'teacher') return;
+    const currentIds = new Set(pendingStudents.map(p => p.id));
+    if (!pendingStudentsSeededRef.current) {
+      pendingStudentsPrevRef.current = currentIds;
+      pendingStudentsSeededRef.current = true;
+      return;
+    }
+    const newOnes = pendingStudents.filter(p => !pendingStudentsPrevRef.current.has(p.id));
+    pendingStudentsPrevRef.current = currentIds;
+    if (newOnes.length === 1) {
+      showToast(`🔔 ${newOnes[0].displayName} wants to join ${newOnes[0].className}`, 'info');
+    } else if (newOnes.length > 1) {
+      showToast(`🔔 ${newOnes.length} new students waiting for approval`, 'info');
+    }
+  }, [pendingStudents, user?.role, showToast]);
+
+  const allScoresPrevRef = useRef<Set<string>>(new Set());
+  const allScoresSeededRef = useRef(false);
+  useEffect(() => {
+    if (user?.role !== 'teacher') return;
+    const currentIds = new Set(allScores.map(s => s.id).filter(Boolean) as string[]);
+    if (!allScoresSeededRef.current) {
+      allScoresPrevRef.current = currentIds;
+      allScoresSeededRef.current = true;
+      return;
+    }
+    const newOnes = allScores.filter(s => s.id && !allScoresPrevRef.current.has(s.id));
+    allScoresPrevRef.current = currentIds;
+    // Only toast when the teacher is on a view where a notification
+    // makes sense — dashboard/classroom/analytics/gradebook.  During
+    // a Quick Play session or inside another modal it would just be
+    // noise; the podium updates already cover that.
+    const notifiableViews = ['teacher-dashboard', 'classroom', 'analytics', 'gradebook'];
+    if (!notifiableViews.includes(view)) return;
+    if (newOnes.length === 1) {
+      const s = newOnes[0];
+      if (s.studentName && s.mode && s.mode !== 'joined') {
+        showToast(`✅ ${s.studentName} finished ${s.mode} — ${s.score} pts`, 'success');
+      }
+    } else if (newOnes.length > 1) {
+      const scoring = newOnes.filter(s => s.mode && s.mode !== 'joined');
+      if (scoring.length > 0) {
+        showToast(`✅ ${scoring.length} new results just came in`, 'success');
+      }
+    }
+  }, [allScores, user?.role, view, showToast]);
+
   // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
   // are stored on Supabase Storage; downloading them up-front means
   // gameplay never has to wait on the network mid-question — even on
