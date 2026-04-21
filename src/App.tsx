@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { enqueueQuickPlaySave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
@@ -2591,6 +2592,32 @@ export default function App() {
     retryPending();
   }, []);
 
+  // Quick Play score queue flusher.  Runs once for the app lifetime —
+  // listens to window 'online' + document 'visibilitychange' + a 30s
+  // poll and flushes any pending Quick Play score rows that failed
+  // their first send.  See src/core/saveQueue.ts for details.
+  useEffect(() => {
+    const uninstall = installQuickPlayQueueFlusher();
+    return uninstall;
+  }, []);
+
+  // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
+  // are stored on Supabase Storage; downloading them up-front means
+  // gameplay never has to wait on the network mid-question — even on
+  // 3G or a weak classroom Wi-Fi the audio clip is already local.
+  // This is what lets the student experience feel 'Kahoot-smooth'
+  // regardless of connectivity: gameplay is a local-only loop and
+  // only the score save has to talk to the server (and that's
+  // queued — see above).  Fire-and-forget; preload failures don't
+  // block the game, the live TTS fallback handles those.
+  useEffect(() => {
+    if (!user?.isGuest) return;
+    if (!quickPlayActiveSession?.words?.length) return;
+    const ids = quickPlayActiveSession.words.map(w => w.id).filter(id => id > 0);
+    if (ids.length === 0) return;
+    preloadMany(ids);
+  }, [user?.isGuest, quickPlayActiveSession?.id, preloadMany]);
+
   // Auto-refresh student assignments every 30s while on the dashboard
   // so new assignments from the teacher appear without re-login
   useEffect(() => {
@@ -4792,37 +4819,37 @@ export default function App() {
           avatar: user.avatar || "\uD83E\uDD8A"
         };
 
-        // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
-        const { error } = await supabase
-          .from('progress')
-          .insert({
-            student_name: progress.studentName,
-            student_uid: progress.studentUid,
-            assignment_id: progress.assignmentId,
-            class_code: progress.classCode,
-            score: progress.score,
-            mode: progress.mode,
-            completed_at: progress.completedAt,
-            mistakes: Array.isArray(mistakes) ? mistakes : [],
-            avatar: progress.avatar
-          });
-
-        if (error) {
-          // Surface to the student. Prior behaviour was console-only, so
-          // a silent insert rejection (trigger, legacy anon key, stale
-          // session) looked identical to "all good" on-screen while the
-          // teacher monitor stayed empty.
-          console.error('[Quick Play] Failed to save progress:', error);
-          showToast(`Couldn't save your score: ${error.message}`, 'error');
-        } else {
-          // Mark this mode as completed so it gets locked in mode selection
-          setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-        }
+        // Optimistic save-and-queue.  Previously we awaited the INSERT
+        // and showed a red 'Couldn't save your score' toast on failure;
+        // on flaky classroom Wi-Fi that fired often and shook students'
+        // trust in the game.  Now we drop the row into a local retry
+        // queue and let the background flusher (installQuickPlayQueue-
+        // Flusher, wired on app mount) push it to Supabase whenever the
+        // network is cooperating.  Student sees the mode credited
+        // instantly; no error toast ever fires for them.  If the send
+        // really can't complete after 20 retries we give up silently —
+        // the alternative would be nagging about something they can't
+        // act on.
+        enqueueQuickPlaySave({
+          student_name: progress.studentName,
+          student_uid: progress.studentUid,
+          assignment_id: progress.assignmentId,
+          class_code: progress.classCode,
+          score: progress.score,
+          mode: progress.mode,
+          completed_at: progress.completedAt,
+          mistakes: Array.isArray(mistakes) ? mistakes : [],
+          avatar: progress.avatar,
+        });
+        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
 
         setIsSaving(false);
         return;
       } catch (err) {
-        console.error('[Quick Play] Error saving progress:', err);
+        // Only reachable if localStorage itself is broken (private
+        // browsing, quota exhausted).  Don't surface — the UI has
+        // already credited the mode; a toast here would just confuse.
+        console.error('[Quick Play] enqueue failed:', err);
         setIsSaving(false);
         return;
       }
