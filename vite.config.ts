@@ -64,25 +64,31 @@ export default defineConfig(() => {
             /^\/rest\/v1/,
             /^\/realtime\/v1/,
             // Standalone static HTML pages — not part of the SPA shell.
-            // Without these the SW would serve index.html when teachers
-            // hit /poster.html, /terms.html, or /privacy.html.
-            /^\/poster\.html/,
-            /^\/terms\.html/,
-            /^\/privacy\.html/,
+            // Match BOTH the plain and .html forms, because Cloudflare
+            // Workers Assets defaults to auto-trailing-slash handling
+            // which 301-redirects /foo.html → /foo.  Matching only
+            // `.html` meant the redirected target was still intercepted
+            // by the SW, defeating the fix.  Using a non-anchored
+            // optional `.html` suffix covers every combination.
+            /^\/poster(\.html)?(\?|$)/,
+            /^\/terms(\.html)?(\?|$)/,
+            /^\/privacy(\.html)?(\?|$)/,
           ],
           runtimeCaching: [
             {
               // Standalone static HTML pages.  Handled BEFORE the
               // generic navigate rule below so we bypass SW caching
               // entirely.  Reason: cached navigation responses that
-              // went through a redirect (e.g. apex→www on first fetch)
-              // can't be served back to a navigation request whose
-              // redirect mode is "manual" — the browser rejects them
-              // with "a redirected response was used for a request
-              // whose redirect mode is not 'follow'", and the teacher
-              // sees a broken page until they hard-refresh. NetworkOnly
-              // + don't-cache sidesteps the whole class of bugs.
-              urlPattern: /\/(poster|privacy|terms)\.html(\?.*)?$/,
+              // went through a redirect (e.g. apex→www, or Cloudflare
+              // auto-trailing-slash's /poster.html → /poster) can't be
+              // served back to a navigation request whose redirect
+              // mode is "manual" — the browser rejects them with
+              // "a redirected response was used for a request whose
+              // redirect mode is not 'follow'", and the teacher sees
+              // a broken page until they hard-refresh.  NetworkOnly +
+              // don't-cache sidesteps the whole class of bugs, for
+              // both the .html and no-extension URL forms.
+              urlPattern: /\/(poster|privacy|terms)(\.html)?(\?|$)/,
               handler: 'NetworkOnly',
             },
             {
