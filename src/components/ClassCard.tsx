@@ -366,7 +366,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     // land on the join flow already pre-filled. The page
                     // itself uses window.print() — teacher chooses Print
                     // or Save as PDF in the browser dialog.
-                    const url = `/poster.html?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
+                    //
+                    // Link to /poster (no .html) because Cloudflare
+                    // Workers Assets defaults to `auto-trailing-slash`,
+                    // which 301-redirects /poster.html → /poster.  That
+                    // redirect was getting cached by the Service Worker
+                    // and then rejected by the browser on subsequent
+                    // navigations ("a redirected response was used for
+                    // a request whose redirect mode is not 'follow'").
+                    // Hitting /poster directly skips the redirect hop.
+                    const url = `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
                     window.open(url, '_blank', 'noopener');
                     setMenuOpen(false);
                   }}
