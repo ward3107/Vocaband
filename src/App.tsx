@@ -18,6 +18,7 @@ import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
+import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
@@ -5560,174 +5561,15 @@ export default function App() {
 
   // ── Student Pending Approval Screen ────────────────────────────────────────
   if (view === "student-pending-approval" && pendingApprovalInfo) {
-    // Auto-check approval status every 10 seconds
-    const PendingApprovalScreen = () => {
-      const [checking, setChecking] = React.useState(false);
-      const [dots, setDots] = React.useState('');
-
-      // Animated dots
-      React.useEffect(() => {
-        const id = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 600);
-        return () => clearInterval(id);
-      }, []);
-
-      // Approval detection: Realtime subscription + visibility-aware polling.
-      //
-      // Polling alone is unreliable on mobile: iOS/Android aggressively throttle
-      // or fully pause setInterval when the tab is backgrounded or the phone is
-      // locked. That's why students kept needing to refresh to "see" their
-      // approval land — the 3s poll had stopped firing while the phone was
-      // asleep and resumed stale when unlocked.
-      //
-      // Fix is defence-in-depth:
-      //   1. Realtime UPDATE subscription on student_profiles filtered by
-      //      (class_code, display_name) — fires instantly when the teacher
-      //      approves, regardless of tab visibility.
-      //   2. visibilitychange handler — the moment the tab becomes visible
-      //      again (screen unlocked, app foregrounded), do an immediate
-      //      fetch so we recover from any missed events.
-      //   3. The 3s poll stays as a final safety net for environments where
-      //      Realtime WebSockets can't connect (strict school firewalls).
-      React.useEffect(() => {
-        let cancelled = false;
-
-        const applyApprovedRow = (row: { id: string; auth_uid: string | null; status: string } | null | undefined) => {
-          if (cancelled) return;
-          if (row && row.status === 'approved') {
-            try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-            showToast("You've been approved! Logging in...", "success");
-            handleLoginAsStudent(row.id);
-          }
-        };
-
-        const checkStatus = async () => {
-          try {
-            const { data } = await supabase
-              .from('student_profiles')
-              .select('status, id, auth_uid')
-              .eq('class_code', pendingApprovalInfo.classCode)
-              .eq('display_name', pendingApprovalInfo.name)
-              .order('joined_at', { ascending: false })
-              .limit(1);
-            applyApprovedRow(data?.[0]);
-          } catch { /* silent retry */ }
-        };
-
-        // (1) Realtime — fires the instant the teacher's UPDATE lands.
-        const channel = supabase
-          .channel(`pending-approval-${pendingApprovalInfo.classCode}-${pendingApprovalInfo.name}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'student_profiles',
-              filter: `class_code=eq.${pendingApprovalInfo.classCode}`,
-            },
-            (payload) => {
-              const row = payload.new as { id: string; auth_uid: string | null; status: string; display_name: string } | undefined;
-              if (row && row.display_name === pendingApprovalInfo.name) {
-                applyApprovedRow(row);
-              }
-            }
-          )
-          .subscribe();
-
-        // (2) Visibility recovery — the moment the student unlocks their phone,
-        // do an immediate check so they don't have to wait for the next poll.
-        const handleVisibility = () => {
-          if (!document.hidden) checkStatus();
-        };
-        document.addEventListener('visibilitychange', handleVisibility);
-
-        // (3) Poll fallback — 3s while the tab is visible; cheap single-row
-        // select, guards against Realtime WebSocket being blocked.
-        checkStatus();
-        const pollId = setInterval(checkStatus, 3_000);
-
-        return () => {
-          cancelled = true;
-          clearInterval(pollId);
-          document.removeEventListener('visibilitychange', handleVisibility);
-          supabase.removeChannel(channel);
-        };
-      }, []);
-
-      const handleManualCheck = async () => {
-        setChecking(true);
-        try {
-          const { data } = await supabase
-            .from('student_profiles')
-            .select('status, id, auth_uid')
-            .eq('class_code', pendingApprovalInfo.classCode)
-            .eq('display_name', pendingApprovalInfo.name)
-            .order('joined_at', { ascending: false })
-            .limit(1);
-
-          if (data && data.length > 0 && data[0].status === 'approved') {
-            try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-            showToast("You've been approved! Logging in...", "success");
-            handleLoginAsStudent(data[0].id);
-          } else {
-            showToast("Not approved yet. Ask your teacher!", "info");
-          }
-        } catch {
-          showToast("Could not check. Try again.", "error");
-        } finally {
-          setChecking(false);
-        }
-      };
-
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
-            <div className="text-6xl mb-4">
-              <span className="inline-block animate-bounce">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              </span>
-            </div>
-            <h2 className="text-2xl font-black text-stone-800 mb-2">
-              Waiting for approval{dots}
-            </h2>
-            <p className="text-stone-500 mb-6">
-              Your teacher needs to approve <strong>"{pendingApprovalInfo.name}"</strong> in class <strong>{pendingApprovalInfo.classCode}</strong> before you can play.
-            </p>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
-              <p className="text-sm font-bold text-amber-800 mb-2">What to do:</p>
-              <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-                <li>Tell your teacher you signed up</li>
-                <li>They'll approve you from their dashboard</li>
-                <li>This screen will update automatically</li>
-              </ol>
-            </div>
-
-            <button
-              onClick={handleManualCheck}
-              disabled={checking}
-              className="w-full py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 mb-3"
-            >
-              {checking ? "Checking..." : "Check now"}
-            </button>
-
-            <button
-              onClick={() => {
-                setPendingApprovalInfo(null);
-                try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-                setView("student-account-login");
-              }}
-              className="text-stone-400 text-sm hover:text-stone-600 transition-colors"
-            >
-              Use a different account
-            </button>
-          </div>
-        </div>
-      );
-    };
-
-    return <PendingApprovalScreen />;
+    return (
+      <PendingApprovalScreen
+        pendingApprovalInfo={pendingApprovalInfo}
+        setPendingApprovalInfo={setPendingApprovalInfo}
+        handleLoginAsStudent={handleLoginAsStudent}
+        setView={setView}
+        showToast={showToast}
+      />
+    );
   }
 
   if (view === "student-account-login") {
