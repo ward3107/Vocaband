@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, X, Sparkles } from 'lucide-react';
 
@@ -52,9 +52,19 @@ interface Props {
   onComplete: () => void;
 }
 
+// Breakpoint below which we use the mobile layout (card anchored to the
+// bottom of the screen instead of floating next to the target). 640px
+// matches Tailwind's `sm:` so the behaviour flips at the same width the
+// rest of the UI changes.
+const MOBILE_BREAKPOINT = 640;
+
 export default function DashboardOnboarding({ onComplete }: Props) {
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+  );
 
   const updateRect = useCallback(() => {
     const el = document.querySelector(`[data-tour="${STEPS[step].target}"]`);
@@ -65,12 +75,27 @@ export default function DashboardOnboarding({ onComplete }: Props) {
     }
   }, [step]);
 
+  // On every step change scroll the target into view so the spotlight
+  // isn't pointing at something the teacher has to hunt for.  Without
+  // this the tooltip was correctly drawn at the target's position but
+  // the target itself could be below the fold on mobile.
+  useEffect(() => {
+    const el = document.querySelector(`[data-tour="${STEPS[step].target}"]`);
+    if (el && 'scrollIntoView' in el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [step]);
+
   useEffect(() => {
     updateRect();
-    window.addEventListener('resize', updateRect);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+      updateRect();
+    };
+    window.addEventListener('resize', onResize);
     window.addEventListener('scroll', updateRect, true);
     return () => {
-      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', updateRect, true);
     };
   }, [updateRect]);
@@ -79,22 +104,40 @@ export default function DashboardOnboarding({ onComplete }: Props) {
   const isLast = step === STEPS.length - 1;
   const padding = 8;
 
-  // Position tooltip below or above the target
+  // Tooltip positioning — mobile anchors the card to the bottom of the
+  // screen (like Duolingo / Airbnb tours) so it never gets cut off.
+  // Desktop floats it next to the target as before.
   const getTooltipStyle = (): React.CSSProperties => {
-    if (!rect) return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const tooltipHeight = 200;
-    if (spaceBelow > tooltipHeight + 20) {
-      // Below
+    if (isMobile) {
+      // Bottom-sheet style: full-width card with comfortable side margins.
+      // Safe-area inset handles iPhone home indicators.
       return {
-        top: rect.bottom + 12,
-        left: Math.max(16, Math.min(rect.left, window.innerWidth - 340)),
+        left: 12,
+        right: 12,
+        bottom: 'max(16px, env(safe-area-inset-bottom))',
+        width: 'auto',
       };
     }
-    // Above
+    if (!rect) return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+    // Desktop: use the tooltip's real measured height instead of a
+    // guessed 200px — prevents clipping when the card grows (e.g.
+    // long description + multi-line title).
+    const measuredHeight = tooltipRef.current?.offsetHeight ?? 220;
+    const cardWidth = Math.min(320, window.innerWidth - 32);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const verticalGap = 12;
+    const horizontalMargin = 16;
+    const left = Math.max(
+      horizontalMargin,
+      Math.min(rect.left, window.innerWidth - cardWidth - horizontalMargin)
+    );
+    if (spaceBelow > measuredHeight + verticalGap) {
+      return { top: rect.bottom + verticalGap, left, width: cardWidth };
+    }
     return {
-      top: rect.top - tooltipHeight - 12,
-      left: Math.max(16, Math.min(rect.left, window.innerWidth - 340)),
+      top: Math.max(horizontalMargin, rect.top - measuredHeight - verticalGap),
+      left,
+      width: cardWidth,
     };
   };
 
@@ -135,15 +178,19 @@ export default function DashboardOnboarding({ onComplete }: Props) {
         />
       )}
 
-      {/* Tooltip card */}
+      {/* Tooltip card — width comes from getTooltipStyle() so desktop
+          and mobile can size it differently (fixed 320px near the
+          target on desktop; full-width minus 24px margin, anchored to
+          the bottom of the screen on mobile). */}
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
+          ref={tooltipRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="absolute bg-white rounded-2xl shadow-2xl p-5 w-[320px] border border-stone-200"
+          className="absolute bg-white rounded-2xl shadow-2xl p-5 border border-stone-200 max-w-[calc(100vw-24px)]"
           style={getTooltipStyle()}
         >
           {/* Step counter */}
