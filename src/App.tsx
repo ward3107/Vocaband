@@ -268,7 +268,7 @@ export default function App() {
   const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
   const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
   const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
+  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
@@ -679,7 +679,7 @@ export default function App() {
 
               const { data } = await supabase
                 .from('quick_play_sessions')
-                .select('id, session_code, word_ids, is_active, custom_words')
+                .select('id, session_code, word_ids, allowed_modes, is_active, custom_words')
                 .eq('id', sessionId)
                 .eq('is_active', true)
                 .maybeSingle();
@@ -697,7 +697,13 @@ export default function App() {
                 }
                 const allSessionWords = [...dbWords, ...customWords];
                 if (allSessionWords.length > 0) {
-                  setQuickPlayActiveSession({ id: data.id, sessionCode: data.session_code, wordIds: data.word_ids || [], words: allSessionWords });
+                  setQuickPlayActiveSession({
+                    id: data.id,
+                    sessionCode: data.session_code,
+                    wordIds: data.word_ids || [],
+                    words: allSessionWords,
+                    allowedModes: (data as { allowed_modes?: string[] }).allowed_modes || undefined,
+                  });
                   setQuickPlayStudentName(name);
                   setQuickPlayAvatar(avatar || '\uD83E\uDD8A');
                   // Go straight to mode selection (they already joined)
@@ -1720,17 +1726,26 @@ export default function App() {
                   const parsed = JSON.parse(savedSession);
                   const { data: sessionData } = await supabase
                     .from('quick_play_sessions')
-                    .select('id, session_code, word_ids, is_active')
+                    .select('id, session_code, word_ids, allowed_modes, is_active')
                     .eq('id', parsed.id)
                     .eq('is_active', true)
                     .maybeSingle();
                   if (sessionData) {
                     const dbWords = ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
+                    // allowed_modes can come from either the DB (source of
+                    // truth on refresh) or the cached localStorage blob
+                    // (fallback if the column was added after the session
+                    // was created). DB wins when both present.
+                    const restoredAllowedModes =
+                      (sessionData as { allowed_modes?: string[] }).allowed_modes
+                      || parsed.allowedModes
+                      || undefined;
                     setQuickPlayActiveSession({
                       id: sessionData.id,
                       sessionCode: sessionData.session_code,
                       wordIds: sessionData.word_ids || [],
                       words: parsed.words?.length ? parsed.words : dbWords,
+                      allowedModes: restoredAllowedModes,
                     });
                     setQuickPlaySessionCode(sessionData.session_code);
                     setView("quick-play-teacher-monitor");
@@ -6366,12 +6381,20 @@ export default function App() {
           }
 
           const session = data as { id: string; session_code: string; allowed_modes?: string[] };
+          // Prefer the server's echoed allowed_modes over the local `modes`
+          // array so we're always in agreement with what the DB actually
+          // persisted — if the RPC future-normalises or validates modes,
+          // we inherit that.
+          const effectiveAllowedModes = session.allowed_modes && session.allowed_modes.length > 0
+            ? session.allowed_modes
+            : modes;
           setQuickPlaySessionCode(session.session_code);
           setQuickPlayActiveSession({
             id: session.id,
             sessionCode: session.session_code,
             wordIds: wordIds,
             words,
+            allowedModes: effectiveAllowedModes,
           });
 
           try {
@@ -6386,6 +6409,7 @@ export default function App() {
             localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
               id: session.id,
               words,
+              allowedModes: effectiveAllowedModes,
             }));
           } catch { /* quota exceeded — safe to ignore, UI still works */ }
 
