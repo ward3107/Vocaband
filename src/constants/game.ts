@@ -29,6 +29,12 @@ export const FIRST_COMPLETION_BONUS = 50;
 // Streak bonus: streak × this value added to each game's XP
 // Bumped from 5 → 8 to reward daily habit harder (was ~+50 @ 10-day, now +80).
 export const STREAK_XP_MULTIPLIER = 8;
+
+// Streaks worth a confetti + toast celebration.  Hit any of these and
+// the save-progress handler fires celebrate('big') + a "X-day streak!"
+// toast.  Tuned to reward the weekly cadence (7), the two-week habit
+// (14), month-long commitment (30), and the rarer long hauls (50, 100).
+export const STREAK_CELEBRATION_MILESTONES: readonly number[] = [7, 14, 30, 50, 100];
 // Perfect-score bonus: flat XP for scoring 100/100 on an assignment.  Gives
 // strong students a reason to retry a mode after a 90 instead of moving on.
 export const PERFECT_SCORE_BONUS = 25;
