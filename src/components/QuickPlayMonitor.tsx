@@ -273,6 +273,48 @@ export default function QuickPlayMonitor({
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
+  // ─── Celebration SFX when the #1 spot changes ────────────────────────────
+  //
+  // Teachers projecting the monitor to a classroom want ambient energy when
+  // a new leader takes over — otherwise the podium rearranges silently.  A
+  // short WebAudio chime is plenty; no external asset needed.  We suppress
+  // the sound on the first non-empty board (when there was no previous
+  // leader to dethrone) so the teacher doesn't hear a chime the instant
+  // the first student finishes a mode.
+  const prevLeaderUidRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  useEffect(() => {
+    const currentLeaderUid = sorted[0]?.studentUid ?? null;
+    const prev = prevLeaderUidRef.current;
+    // Only chime when leader actually changes AND we had a previous leader
+    // (skip the initial 0→someone transition).
+    if (currentLeaderUid && prev && currentLeaderUid !== prev) {
+      try {
+        if (!audioCtxRef.current) {
+          // Lazy-create — some browsers require a user gesture to first
+          // construct an AudioContext, so we guard the whole thing.
+          audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        }
+        const ctx = audioCtxRef.current;
+        // C major triad arpeggio: E5, G5, C6 — a quick "dun-dun-DUN".
+        [659.25, 783.99, 1046.50].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const start = ctx.currentTime + i * 0.12;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.3);
+        });
+      } catch { /* silent fail — sound is a nice-to-have */ }
+    }
+    prevLeaderUidRef.current = currentLeaderUid;
+  }, [sorted]);
+
   // ─── Get student's chosen avatar (from DB) with fallback ───────────────────
   const getStudentAvatar = (student: Student) => student.avatar || '\uD83E\uDD8A';
 
