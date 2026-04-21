@@ -11,7 +11,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
@@ -27,7 +27,6 @@ import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
-import { type WordAnalysisResult} from "./utils/wordAnalysis";
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
 import { LazyWrapper} from "./components/SuspenseWrapper";
@@ -84,11 +83,6 @@ function secureRandomInt(max: number): number {
   return arr[0] % max;
 }
 
-// Generate a unique negative ID for custom words (not security-sensitive, just needs uniqueness)
-function uniqueNegativeId(offset = 0): number {
-  return -(Date.now() + offset + secureRandomInt(10000));
-}
-
 // Fire-and-forget request to have the server generate + upload MP3s for
 // custom words (OCR, paste, quick-play). Students will then hear a natural
 // Neural2 voice instead of the robotic browser SpeechSynthesis fallback.
@@ -140,15 +134,6 @@ export default function App() {
   });
   const previousViewRef = useRef<string>("public-landing");
 
-  // Custom setView that tracks previous view for back navigation
-  const handleSetView = (newView: typeof view) => {
-    // Only track previous view when navigating TO privacy/terms pages
-    if (newView === "public-privacy" || newView === "public-terms") {
-      previousViewRef.current = view;
-    }
-    setView(newView);
-  };
-
   const goBack = () => {
     setView(previousViewRef.current as any);
   };
@@ -174,8 +159,6 @@ export default function App() {
         ? JSON.stringify(preferences)
         : JSON.stringify({ essential: true, analytics: true, functional: true });
       localStorage.setItem("vocaband_cookie_consent", consentData);
-      // Verify it was saved
-      const verify = localStorage.getItem("vocaband_cookie_consent");
     } catch (e) {
       console.error('[Cookie Banner] Failed to save consent:', e);
     }
@@ -268,8 +251,12 @@ export default function App() {
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
 
   // --- QUICK PLAY STATE ---
-  const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
-  const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
+  // Only the setters are used — the values themselves are never read in
+  // this component or any child that gets them passed down. The state
+  // still exists so the teacher-monitor cleanup path can reset it to
+  // null/[] on session end.
+  const [, setQuickPlaySessionCode] = useState<string | null>(null);
+  const [, setQuickPlaySelectedWords] = useState<Word[]>([]);
   const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
@@ -969,7 +956,6 @@ export default function App() {
     };
   }, [user?.isGuest, user?.uid, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
 
-  const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   // --- HELPER: Create Guest User ---
   // Centralized function to create guest user objects with consistent structure
   const createGuestUser = (name: string, prefix: string = 'guest', avatar: string = '\uD83E\uDD8A'): AppUser => {
@@ -1094,26 +1080,6 @@ export default function App() {
   const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
     const result = await translateWordsBatch([englishWord]);
     return result.get(englishWord.toLowerCase().trim()) || null;
-  };
-
-  const handleAutoTranslate = async (term: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-    const newTranslating = new Set(quickPlayTranslating);
-    newTranslating.add(term);
-    setQuickPlayTranslating(newTranslating);
-
-    const translations = await translateWord(term);
-
-    if (translations) {
-      const newMap = new Map(quickPlayCustomWords);
-      newMap.set(term, translations);
-      setQuickPlayCustomWords(newMap);
-    }
-    // Silent failure - don't show error toast, just log for debugging
-    console.warn("Translation service unavailable for word:", term);
-
-    const newTranslatingDone = new Set(quickPlayTranslating);
-    newTranslatingDone.delete(term);
-    setQuickPlayTranslating(newTranslatingDone);
   };
 
   // --- STUDENT DATA STATE ---
@@ -3091,93 +3057,6 @@ export default function App() {
     e.target.value = "";
   };
 
-  // Google Sheets URL import
-  const handleGSheetsImport = async () => {
-    if (!gSheetsUrl.trim()) return;
-    try {
-      const parsed = new URL(gSheetsUrl.trim());
-      if (parsed.hostname !== "google.com" && !parsed.hostname.endsWith(".google.com")) {
-        showToast("Only Google Sheets URLs are allowed.", "error");
-        return;
-      }
-    } catch {
-      showToast("Invalid URL.", "error");
-      return;
-    }
-    setGSheetsLoading(true);
-    try {
-      const csvUrl = gSheetsUrl.replace(/\/edit.*$/, "/export?format=csv");
-      const res = await fetch(csvUrl);
-      if (!res.ok) throw new Error("Could not fetch sheet");
-      const text = await res.text();
-      const lines = text.split("\n");
-      const words: Word[] = lines.slice(1).map((line, idx) => {
-        const [english, hebrew, arabic] = line.split(",");
-        return { id: 7000 + idx, english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
-      }).filter(w => w.english);
-      if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
-      const limited = words.slice(0, MAX_IMPORT_WORDS);
-      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
-      setCustomWords(prev => [...prev, ...limited]);
-      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
-      setSelectedLevel("Custom");
-      setGSheetsUrl("");
-      showToast(`Imported ${limited.length} words from Google Sheets.`, "success");
-    } catch {
-      showToast("Could not import from Google Sheets. Make sure the sheet is public and the URL is correct.", "error");
-    } finally {
-      setGSheetsLoading(false);
-    }
-  };
-
-  // --- PERFORMANCE: Memoized toggle function to prevent re-renders
-  const toggleWordSelection = useCallback((wordId: number) => {
-    setSelectedWords(prev => {
-      if (prev.includes(wordId)) {
-        return prev.filter(id => id !== wordId);
-      } else {
-        return [...prev, wordId];
-      }
-    });
-  }, []);
-
-  const currentLevelWords = useMemo(() => {
-    // When searching, search ALL words (both bands + custom) regardless of selected tab
-    let words = wordSearchQuery.trim()
-      ? [...ALL_WORDS, ...customWords.filter(cw => !ALL_WORDS.some(aw => aw.id === cw.id))]
-      : selectedLevel === "Set 1" ? SET_1_WORDS
-      : selectedLevel === "Set 2" ? SET_2_WORDS : customWords;
-
-    // Enhanced multi-language search with fuzzy matching
-    if (wordSearchQuery.trim()) {
-      const searchResults = searchWords(wordSearchQuery, words, {
-        fuzzy: enableFuzzyMatch,
-        includeWordFamilies: enableWordFamilies,
-        maxResults: 500
-      });
-      words = searchResults.map(m => m.word);
-    }
-
-    // Core filter
-    if (selectedCore) {
-      words = words.filter(w => w.core === selectedCore);
-    }
-
-    // Part of speech filter
-    if (selectedPos) {
-      words = words.filter(w => w.pos && w.pos.includes(selectedPos));
-    }
-
-    // Rec/Prod filter
-    if (selectedRecProd) {
-      words = words.filter(w => w.recProd === selectedRecProd);
-    }
-
-    // Deduplicate by word.id to prevent React key warnings
-    const uniqueWords = Array.from(new Map(words.map(w => [w.id, w])).values());
-
-    return uniqueWords;
-  }, [selectedLevel, customWords, wordSearchQuery, selectedCore, selectedPos, selectedRecProd, enableFuzzyMatch, enableWordFamilies]);
   const handleSaveAssignment = async (wordsOverride?: number[], modesOverride?: string[]) => {
     // Use override values if provided (from SetupWizard completion), otherwise use state
     const wordsToCheck = wordsOverride ?? selectedWords;
@@ -3309,38 +3188,6 @@ export default function App() {
   };
 
   // Preview the assignment with selected words and modes (for teachers)
-  const handlePreviewAssignment = () => {
-    if (selectedWords.length === 0) {
-      showToast("Please select at least one word to preview.", "error");
-      return;
-    }
-
-    // Get the selected words
-    const allPossibleWords = [...ALL_WORDS, ...customWords];
-    const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToPreview = uniqueWords.filter(w => selectedWordsSet.has(w.id));
-
-    // Create a temporary assignment object with selected modes
-    const previewAssignment: AssignmentData = {
-      id: "preview",
-      classId: selectedClass?.id || "",
-      wordIds: selectedWords.filter(id => id > 0), // Filter out custom words for consistency
-      words: wordsToPreview,
-      title: assignmentTitle || "Preview Assignment",
-      deadline: null,
-      createdAt: new Date().toISOString(),
-      allowedModes: assignmentModes,
-      sentences: assignmentSentences.filter(s => s.trim()),
-      sentenceDifficulty,
-    };
-
-    // Set up the game with the preview assignment
-    setAssignmentWords(wordsToPreview);
-    setActiveAssignment(previewAssignment);
-    setView("game");
-    setShowModeSelection(true);
-  };
-
   const handleDeleteClass = async (classId: string) => {
     setConfirmDialog({
       show: true,
@@ -3405,8 +3252,6 @@ export default function App() {
     setNeedsConsent(false);
     setConsentChecked(false);
   };
-
-  const loginAttemptsRef = useRef<number[]>([]);
 
   // Student Account Login System
   const loadStudentsInClass = async (classCode: string) => {
@@ -4037,256 +3882,6 @@ export default function App() {
     }
   };
 
-  const handleStudentLogin = async (code: string, name: string) => {
-    if (loading) return;
-    const trimmedName = name.trim().slice(0, 30);
-    // Strip ALL whitespace (including inner spaces that .trim() misses) and
-    // uppercase — students sometimes type "MG2 ZQPLA" or "mg2zqpla". Server
-    // RPC does the same normalization so the two ends agree.
-    const trimmedCode = code.replace(/\s+/g, '').toUpperCase().slice(0, 20);
-    if (!trimmedName || !trimmedCode) { setError("Please enter both code and name."); return; }
-
-    // Client-side rate limit: max 5 attempts per 60 seconds
-    const now = Date.now();
-    loginAttemptsRef.current = loginAttemptsRef.current.filter(t => now - t < 60_000);
-    if (loginAttemptsRef.current.length >= 5) {
-      setError("Too many login attempts. Please wait a minute and try again.");
-      return;
-    }
-    loginAttemptsRef.current.push(now);
-    manualLoginInProgress.current = true;
-    setLoading(true);
-    setError(null);
-
-    // Safety: if the whole login takes longer than 20 seconds on a slow
-    // mobile network, stop the spinner and show an error.
-    const loginTimeout = setTimeout(() => {
-      if (manualLoginInProgress.current) {
-        manualLoginInProgress.current = false;
-        setLoading(false);
-        setError("Login is taking too long. Please check your connection and try again.");
-      }
-    }, 20000);
-
-    try {
-      // Step 1: Sign in anonymously — reuse existing anonymous session if present.
-      // signInAnonymously() acquires the Supabase auth lock, so we avoid
-      // calling getSession() first (that would acquire the lock twice).
-      const { data, error: signInError } = await supabase.auth.signInAnonymously();
-      if (signInError || !data.session) {
-        setError("Login failed: " + (signInError?.message ?? "Could not create session"));
-        return;
-      }
-      const session = data.session;
-      const studentUid = session.user.id;
-
-      // Step 2: Look up class + existing user profile in parallel
-      // OPTIMIZATION: Check cache first to avoid database query
-      let classData: ClassData | undefined;
-      const cacheKey = `vocaband_class_${trimmedCode}`;
-
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          const { data, cached: cacheTime } = JSON.parse(cached);
-          // Use cache if less than 5 minutes old
-          if (Date.now() - cacheTime < 5 * 60 * 1000) {
-            classData = data;
-          }
-        }
-      } catch { /* ignore cache errors */ }
-
-      // Existence check via the RPC. Migration 20260430 tightened the
-      // classes SELECT RLS to only allow enrolled members, so a direct
-      // .from('classes').select() fails for a student who hasn't been
-      // enrolled yet — which is exactly what's happening here. The RPC
-      // (SECURITY DEFINER, rate-limited) bypasses RLS for the narrow
-      // lookup. Full class data is re-fetched via direct SELECT later,
-      // after the users-row upsert makes the student a member.
-      if (!classData) {
-        const lookupResult = await supabase.rpc('class_lookup_by_code', { p_code: trimmedCode });
-        if (lookupResult.error) {
-          const msg = lookupResult.error.message || 'unknown error';
-          setError(msg.includes('Rate limit') ? 'Too many attempts. Please wait a minute.' : `Couldn't verify class code (${msg}).`);
-          return;
-        }
-        const row = Array.isArray(lookupResult.data) ? lookupResult.data[0] : null;
-        if (row) {
-          // Build a partial ClassData — id/avatar may be missing if the
-          // server still has the pre-20260503 RPC that only returns
-          // {code, name}. Those fields get populated by the post-upsert
-          // SELECT below; for now we just need enough to continue.
-          classData = {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            id: (row as any).id ?? '',
-            name: row.name,
-            code: row.code,
-            teacherUid: '',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            avatar: (row as any).avatar ?? null,
-          };
-        }
-      }
-
-      if (!classData) {
-        setError("Invalid Class Code!");
-        return;
-      }
-
-      const [userResult] = await Promise.all([
-        supabase.from('users').select(USER_COLUMNS).eq('uid', studentUid).maybeSingle(),
-      ]);
-
-      // Cache class info in localStorage for faster future logins
-      try {
-        localStorage.setItem(`vocaband_class_${trimmedCode}`, JSON.stringify({
-          data: classData,
-          cached: Date.now(),
-        }));
-      } catch { /* ignore */ }
-
-      // Step 2.5: Check if student is approved (for student_profiles workflow)
-      // OPTIMIZATION: Check both formats in parallel instead of sequentially
-      const studentUniqueIdNew = trimmedCode.toLowerCase() + trimmedName.toLowerCase() + ':' + studentUid;
-      const studentUniqueIdLegacy = trimmedCode.toLowerCase() + trimmedName.toLowerCase();
-
-      // Check both new and legacy formats in parallel - much faster!
-      // Select all fields we need (status, id, display_name, class_code)
-      // because the pending_approval path uses them.
-      const [newFormatResult, legacyFormatResult] = await Promise.all([
-        supabase.from('student_profiles').select('status, id, display_name, class_code').eq('unique_id', studentUniqueIdNew).maybeSingle(),
-        supabase.from('student_profiles').select('status, id, display_name, class_code').eq('unique_id', studentUniqueIdLegacy).maybeSingle(),
-      ]);
-
-      // Use new format result if found, otherwise fall back to legacy
-      const studentProfile = newFormatResult.data || legacyFormatResult.data;
-      const profileError = newFormatResult.error || legacyFormatResult.error;
-
-      if (profileError) {
-        console.error('Error checking student approval:', profileError);
-      } else if (studentProfile) {
-        if (studentProfile.status === 'pending_approval') {
-          showPendingApproval({
-            name: studentProfile.display_name || '',
-            classCode: studentProfile.class_code || '',
-            profileId: studentProfile.id,
-          });
-          return;
-        }
-        if (studentProfile.status === 'rejected') {
-          setError("Your account was not approved. Please contact your teacher.");
-          return;
-        }
-      }
-
-      // Step 3: Upsert student profile (must happen before fetching assignments — RLS needs class membership)
-      let userData: AppUser;
-      if (userResult.data) {
-        userData = { ...mapUser(userResult.data), classCode: trimmedCode, role: "student", displayName: trimmedName };
-        const { error: updateErr } = await supabase
-          .from('users').update({ class_code: trimmedCode, role: "student", display_name: trimmedName }).eq('uid', studentUid);
-        if (updateErr) throw updateErr;
-      } else {
-        userData = {
-          uid: studentUid,
-          role: "student",
-          displayName: trimmedName,
-          classCode: trimmedCode,
-          avatar: studentAvatar,
-          badges: [],
-        };
-        const { error: insertErr } = await supabase.from('users').insert(mapUserToDb(userData));
-        if (insertErr) throw insertErr;
-      }
-
-      // Now that the users row exists with class_code = trimmedCode, the
-      // tightened classes RLS (20260430) will let us read the full row.
-      // Re-fetch so we have the canonical id + teacher_uid + avatar —
-      // the RPC earlier gave us partial data to validate existence but
-      // classData.id is needed for get_assignments_for_class below.
-      if (!classData.id) {
-        const { data: fullRows } = await supabase
-          .from('classes').select(CLASS_COLUMNS).eq('code', trimmedCode);
-        if (fullRows && fullRows.length > 0) {
-          classData = mapClass(fullRows[0]);
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              data: classData,
-              cached: Date.now(),
-            }));
-          } catch { /* ignore */ }
-        }
-      }
-
-      // OPTIMISTIC UI: Set user and show dashboard IMMEDIATELY
-      // This makes the login feel instant while data loads in background
-      setUser(userData);
-      setBadges(userData.badges || []);
-      setXp(userData.xp ?? 0);
-      setStreak(userData.streak ?? 0);
-      setView("student-dashboard");
-      setLoading(false); // Hide the loading spinner immediately
-
-      // Join Live Challenge immediately (doesn't need to wait for data)
-      if (socket) {
-        socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
-          classCode: trimmedCode, name: trimmedName, uid: studentUid,
-        });
-      }
-
-      // Check consent early (before background data load)
-      checkConsent(userData);
-
-      // BACKGROUND: Fetch assignments + progress after UI is visible
-      // This makes the login feel much faster!
-      // Use RPC for assignments to bypass RLS (SECURITY DEFINER).
-      setStudentDataLoading(true);
-      Promise.all([
-        supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-        supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', trimmedCode).eq('student_uid', studentUid),
-      ]).then(([assignResult, progressResult]) => {
-        if (assignResult.error) {
-          console.error('Error loading assignments:', assignResult.error);
-        } else {
-          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        }
-
-        if (progressResult.error) {
-          console.error('Error loading progress:', progressResult.error);
-        } else {
-          setStudentProgress((progressResult.data ?? []).map(mapProgress));
-        }
-
-        setStudentDataLoading(false);
-      }).catch((error) => {
-        console.error('Background data load error:', error);
-        setStudentDataLoading(false);
-      });
-
-      // Persist student credentials so we can auto-restore on page refresh
-      // (anonymous Supabase sessions don't reliably survive mobile/PWA restarts)
-      try {
-        localStorage.setItem('vocaband_student_login', JSON.stringify({
-          classCode: trimmedCode,
-          displayName: trimmedName,
-          uid: studentUid,
-        }));
-      } catch { /* localStorage unavailable — non-critical */ }
-    } catch (error) {
-      trackAutoError(error, 'Student login failed');
-      const errorMsg = error && typeof error === 'object' && 'message' in error
-        ? (String((error as { message: unknown }).message).includes('fetch') || String((error as { message: unknown }).message).includes('network')
-          ? "Network error. Please check your connection."
-          : "Could not log in. Please try again.")
-        : "Could not log in. Please try again.";
-      setError(errorMsg);
-    } finally {
-      clearTimeout(loginTimeout);
-      manualLoginInProgress.current = false;
-      setLoading(false);
-      setStudentDataLoading(false);
-    }
-  };
 
   const awardBadge = async (badge: string) => {
     if (!user || badges.includes(badge)) return;
@@ -4302,52 +3897,6 @@ export default function App() {
       console.error("Error saving badge:", error);
       setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
     }
-  };
-  const fetchStudents = async () => {
-    if (!user || user.role !== "teacher" || classes.length === 0) return;
-    const now = Date.now();
-    if (now - (lastFetchRef.current.students ?? 0) < 10000) return;
-    lastFetchRef.current.students = now;
-    const codes = classes.map(c => c.code);
-    const chunks = chunkArray(codes, 30);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allRows: any[] = [];
-
-    for (const chunk of chunks) {
-      const { data } = await supabase.from('progress').select('student_name, class_code, completed_at').in('class_code', chunk).limit(500);
-      if (data) allRows.push(...data);
-    }
-
-    const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    allRows.forEach(row => {
-      const key = `${row.student_name}-${row.class_code}`;
-      if (!studentMap[key] || new Date(row.completed_at) > new Date(studentMap[key].lastActive)) {
-        studentMap[key] = {
-          name: row.student_name,
-          classCode: row.class_code,
-          lastActive: row.completed_at,
-        };
-      }
-    });
-
-    setClassStudents(Object.values(studentMap));
-  };
-  const fetchGlobalLeaderboard = async () => {
-    const classCode = user?.classCode;
-    if (!classCode) return;
-    const now = Date.now();
-    if (now - (lastFetchRef.current.leaderboard ?? 0) < 10000) return;
-    lastFetchRef.current.leaderboard = now;
-    const { data } = await supabase
-      .from('progress').select('student_name, score, avatar')
-      .eq('class_code', classCode)
-      .order('score', { ascending: false }).limit(10);
-    const scores = (data ?? []).map(row => ({
-      name: row.student_name,
-      score: row.score,
-      avatar: row.avatar || "🦊",
-    }));
-    setGlobalLeaderboard(scores);
   };
   const fetchScores = async () => {
     if (!user || user.role !== "teacher") return;
