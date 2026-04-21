@@ -63,9 +63,11 @@ import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
   MAX_ASSIGNMENT_ROUNDS,
   THEMES,
+  STREAK_CELEBRATION_MILESTONES,
   type GameMode,
 } from "./constants/game";
 import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } from "./hooks/useAssignmentPlays";
+import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
@@ -296,59 +298,12 @@ export default function App() {
   const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
   const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
-  // Game music player state
-  const [gameMusicTrack, setGameMusicTrack] = useState(0);
-  const [gameMusicVolume, setGameMusicVolume] = useState(0.5);
-  const [gameMusicPlaying, setGameMusicPlaying] = useState(false);
-  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
-
-  const GAME_MUSIC_TRACKS = useMemo(() => [
-    { label: "🎯 Steady Focus", file: "/game-music/bgm-steady-focus.mp3" },
-    { label: "⚡ Upbeat Energy", file: "/game-music/bgm-upbeat-energy.mp3" },
-    { label: "🌊 Chill Vibes", file: "/game-music/bgm-chill-vibes.mp3" },
-    { label: "🗺️ Adventure Quest", file: "/game-music/bgm-adventure-quest.mp3" },
-    { label: "🎸 Funky Groove", file: "/game-music/bgm-funky-groove.mp3" },
-    { label: "🚀 Space Explorer", file: "/game-music/bgm-space-explorer.mp3" },
-    { label: "🏆 Victory March", file: "/game-music/bgm-victory-march.mp3" },
-  ], []);
-
-  // Handle music track/volume changes
-  useEffect(() => {
-    if (!gameMusicPlaying) {
-      if (gameMusicRef.current) {
-        gameMusicRef.current.pause();
-        gameMusicRef.current = null;
-      }
-      return;
-    }
-    // Create or update audio
-    if (gameMusicRef.current) {
-      gameMusicRef.current.pause();
-    }
-    const audio = new Audio(GAME_MUSIC_TRACKS[gameMusicTrack].file);
-    audio.volume = gameMusicVolume;
-    audio.loop = true;
-    audio.play().catch(() => {});
-    gameMusicRef.current = audio;
-    return () => {
-      audio.pause();
-      audio.currentTime = 0;
-    };
-  }, [gameMusicPlaying, gameMusicTrack, GAME_MUSIC_TRACKS]);  
-
-  // Update volume without restarting track
-  useEffect(() => {
-    if (gameMusicRef.current) {
-      gameMusicRef.current.volume = gameMusicVolume;
-    }
-  }, [gameMusicVolume]);
-
-  // Stop music when leaving the monitor view
-  useEffect(() => {
-    if (view !== "quick-play-teacher-monitor") {
-      setGameMusicPlaying(false);
-    }
-  }, [view]);
+  // Game music player state (previously defined here) was dead code —
+  // the track/volume setters were never called from anywhere, so the
+  // player sat in its default "not playing" branch forever. The music
+  // player the teacher actually sees on the Quick Play monitor lives
+  // inside src/components/QuickPlayMonitor.tsx with its own independent
+  // Howler.js-based player. Removed to drop ~55 lines of no-op state.
 
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -4619,24 +4574,9 @@ export default function App() {
     return scrambled;
   }, [currentWord]);
 
-  // Cache the selected voice so the same voice is used consistently
-  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const getVoice = () => {
-    if (cachedVoiceRef.current) return cachedVoiceRef.current;
-    const voices = window.speechSynthesis.getVoices();
-    const picked = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Natural") || v.name.includes("Neural")))
-      || voices.find(v => v.lang.startsWith("en-US"));
-    if (picked) cachedVoiceRef.current = picked;
-    return picked ?? null;
-  };
-  // Re-cache when voices load (they load asynchronously in some browsers)
-  useEffect(() => {
-    if (!("speechSynthesis" in window)) return;
-    const onVoicesChanged = () => { cachedVoiceRef.current = null; getVoice(); };
-    window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
-    getVoice();
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
-  }, []);
+  // Voice selection + caching + voiceschanged listener are bundled in
+  // a hook so this component doesn't hold browser-API plumbing.
+  const { getVoice } = useSpeechVoiceManager();
 
   const speak = (text: string) => {
     if (!("speechSynthesis" in window)) return;
@@ -5000,8 +4940,7 @@ export default function App() {
     if (newXp >= 500 && !badges.includes("💎 XP Hunter")) queueSaveOperation(() => awardBadge("💎 XP Hunter"));
 
     // Streak milestone celebrations
-    const streakMilestones = [7, 14, 30, 50, 100];
-    if (streakMilestones.includes(newStreak)) {
+    if (STREAK_CELEBRATION_MILESTONES.includes(newStreak)) {
       celebrate('big');
       showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
     }
