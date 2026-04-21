@@ -3388,37 +3388,41 @@ export default function App() {
       return;
     }
 
-    // RLS on public.users requires auth.uid()::text = uid on INSERT.
-    // If profile.auth_uid drifted from the current session (rare, but
-    // happens after some auth migrations / re-signins), a naive INSERT
-    // using profile.auth_uid gets a 401. Always pull the live session
-    // uid and prefer it — that's the only value RLS will accept.
+    // SECURITY: The caller's live Supabase session must belong to THIS
+    // student's auth_uid. Without this check, anyone who knows a class
+    // code could tap a name in the "Is that you?" list and the app
+    // would happily create a new users row with that student's
+    // display_name/xp/badges — letting them see the victim's dashboard
+    // and appear under their name in the class leaderboard.
     //
-    // If there's NO live session (the student's anonymous session
-    // expired between visits), silently create a fresh one instead of
-    // bouncing them to a red "Just tap your name below" error. That
-    // message used to show up every time a returning student tapped
-    // their name without a valid session, with no clear recovery path.
-    let { data: { session: _liveSession } } = await supabase.auth.getSession();
-    let liveAuthUid = _liveSession?.user?.id;
-    if (!liveAuthUid) {
-      const { data: anon, error: anonErr } = await supabase.auth.signInAnonymously();
-      if (anonErr || !anon?.user?.id) {
-        setError("Couldn't start a session. Please refresh and try again.");
-        return;
-      }
-      liveAuthUid = anon.user.id;
+    // Previous revisions:
+    //   * Auto-created a fresh anonymous session on mismatch (shipped
+    //     2026-04 and caused the impersonation hole reported on
+    //     2026-04-21). REVERTED — never silently create a session
+    //     tied to someone else's profile.
+    //   * Showed "Just tap your name below to sign back in 👋" with no
+    //     recovery path. UX was confusing but at least blocked
+    //     impersonation.
+    //
+    // Current behaviour: if the session is missing or doesn't match,
+    // refuse the login and point the student at OAuth / teacher help.
+    // Re-authentication for anonymous students who lost their session
+    // is an open problem — the only safe paths today are Google
+    // sign-in or a teacher-mediated reset.
+    const { data: { session: liveSession } } = await supabase.auth.getSession();
+    const liveAuthUid = liveSession?.user?.id ?? null;
+    if (!liveAuthUid || liveAuthUid !== profile.auth_uid) {
+      console.warn('[processStudentProfile] blocked login — session/profile auth_uid mismatch', {
+        profileAuthUid: profile.auth_uid,
+        sessionAuthUid: liveAuthUid,
+      });
+      setError(
+        "Can't sign you in as this student on this device. " +
+        "Try Google sign-in, or ask your teacher to reset your account."
+      );
+      return;
     }
-
-    // For students with approved accounts (from teacher approval workflow):
-    // We use their profile.auth_uid directly without creating a Supabase auth session.
-    // The save_student_progress RPC bypasses RLS, so we don't need a valid session.
-    // Use the live session uid (not profile.auth_uid) so RLS on INSERT
-    // always passes — see comment above where liveAuthUid was grabbed.
     const studentUid = liveAuthUid;
-    if (liveAuthUid !== profile.auth_uid) {
-      console.warn('[processStudentProfile] auth uid mismatch — profile=', profile.auth_uid, 'session=', liveAuthUid);
-    }
 
     // Create user data with the profile's auth_uid
     const userData: AppUser = {
