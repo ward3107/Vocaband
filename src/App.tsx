@@ -280,6 +280,13 @@ export default function App() {
   const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
   const [quickPlayKicked, setQuickPlayKicked] = useState(false);
   const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
+  // Tracks whether the teacher monitor's Realtime channel is actually
+  // receiving events.  'live' = subscribed, 'connecting' = transient,
+  // 'polling' = subscription failed or was closed (polling-only mode).
+  // Shown as a discrete status dot on the monitor header so the teacher
+  // can tell instant updates from polling-delayed ones.
+  const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
+    useState<'connecting' | 'live' | 'polling'>('connecting');
   const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
@@ -897,6 +904,7 @@ export default function App() {
     // "no-name, 0 pts" student on the podium next to the real one).
     // Re-fetching on each INSERT is cheap at classroom scale and keeps
     // the dedup logic in one place.
+    setQuickPlayRealtimeStatus('connecting');
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
@@ -912,7 +920,15 @@ export default function App() {
           fetchProgress();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // supabase-js yields 'SUBSCRIBED' on success, 'CHANNEL_ERROR' /
+        // 'TIMED_OUT' / 'CLOSED' when the channel can't deliver events.
+        // Map those to a simple three-state indicator.
+        if (status === 'SUBSCRIBED') setQuickPlayRealtimeStatus('live');
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setQuickPlayRealtimeStatus('polling');
+        }
+      });
 
     // OPTIMIZED: Re-fetch when tab becomes visible after being hidden
     const handleVisibilityChange = () => {
@@ -6465,6 +6481,7 @@ export default function App() {
           setQuickPlayTranslating={setQuickPlayTranslating}
           cleanupSessionData={cleanupSessionData}
           showToast={showToast}
+          realtimeStatus={quickPlayRealtimeStatus}
         />
       </LazyWrapper>
     );

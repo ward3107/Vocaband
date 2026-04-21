@@ -34,6 +34,7 @@ interface QuickPlayTeacherMonitorViewProps {
   setQuickPlayTranslating: (s: Set<string>) => void;
   cleanupSessionData: () => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  realtimeStatus?: "connecting" | "live" | "polling";
 }
 
 export default function QuickPlayTeacherMonitorView({
@@ -49,12 +50,14 @@ export default function QuickPlayTeacherMonitorView({
   setQuickPlayTranslating,
   cleanupSessionData,
   showToast,
+  realtimeStatus,
 }: QuickPlayTeacherMonitorViewProps) {
   return (
     <QuickPlayMonitor
       session={quickPlayActiveSession}
       students={quickPlayJoinedStudents}
       setStudents={setQuickPlayJoinedStudents}
+      realtimeStatus={realtimeStatus}
       onBack={() => {
         cleanupSessionData(); // Clear save queue and timers
         setView("teacher-dashboard");

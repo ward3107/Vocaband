@@ -33,6 +33,7 @@ interface QuickPlayMonitorProps {
   onBack: () => void;
   onEndSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  realtimeStatus?: 'connecting' | 'live' | 'polling';
 }
 
 // ─── Theme definitions (light surface + accent colors) ────────────────────────
@@ -136,6 +137,7 @@ export default function QuickPlayMonitor({
   onBack,
   onEndSession,
   showToast,
+  realtimeStatus = 'connecting',
 }: QuickPlayMonitorProps) {
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [endModal, setEndModal] = useState(false);
@@ -339,6 +341,35 @@ export default function QuickPlayMonitor({
           >
             Vocaband
           </button>
+
+          {/* Realtime status indicator.  Tells the teacher whether the
+              podium is getting instant pushes or leaning on the polling
+              fallback (up to ~5s delayed).  Silent for the happy path;
+              loud only when degraded. */}
+          <div
+            title={
+              realtimeStatus === 'live'
+                ? 'Live updates: on'
+                : realtimeStatus === 'polling'
+                ? 'Live updates unavailable — refreshing every 5s'
+                : 'Connecting…'
+            }
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10 text-xs font-bold"
+          >
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${
+                realtimeStatus === 'live'
+                  ? 'bg-green-400 animate-pulse'
+                  : realtimeStatus === 'polling'
+                  ? 'bg-amber-400'
+                  : 'bg-gray-400 animate-pulse'
+              }`}
+            />
+            <span className={t.headerText}>
+              {realtimeStatus === 'live' ? 'Live' : realtimeStatus === 'polling' ? 'Polling' : 'Connecting'}
+            </span>
+          </div>
+
           {/* Theme color dots */}
           <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-2 sm:px-3 py-1.5 gap-1.5`}>
             <Palette size={14} className={t.headerText} />
