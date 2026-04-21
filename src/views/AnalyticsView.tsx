@@ -15,6 +15,7 @@ import {
 import TopAppBar from "../components/TopAppBar";
 import TeacherRewardModal from "../components/dashboard/TeacherRewardModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
+import { ClassPatternsSection } from "../components/analytics/ClassPatternsSection";
 import { ALL_WORDS } from "../data/vocabulary";
 import {
   supabase,
@@ -715,6 +716,14 @@ export default function AnalyticsView({
                 </div>
               </>
             )}
+
+            {/* Class patterns — activity heatmap + hardest-words list.
+                Purely derived from allScores already in state; no new
+                fetch.  Filtered by the currently selected class when
+                the teacher has narrowed the view. */}
+            <div className="mt-6">
+              <ClassPatternsSection scores={allScores} classCode={selectedClass} />
+            </div>
           </>
         )}
       </main>

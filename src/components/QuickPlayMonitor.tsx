@@ -5,6 +5,7 @@ import {
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause
 } from 'lucide-react';
 import { Howl } from 'howler';
+import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
 import { supabase } from '../core/supabase';
 
@@ -459,11 +460,22 @@ export default function QuickPlayMonitor({
           <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-6 sm:p-8 flex items-center gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
             <div className="bg-white p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`}
-                alt="Quick Play QR Code"
-                className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
-              />
+              {/* Client-side QR generator — replaces api.qrserver.com.
+                  That external service was failing in production (net::ERR_FAILED
+                  seen repeatedly on strict classroom Wi-Fi), leaving teachers
+                  with a broken QR and students unable to scan-to-join.
+                  qrcode.react renders the matrix in SVG locally — zero network
+                  calls, works fully offline, no rate limits. */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+                <QRCodeSVG
+                  value={qrUrl}
+                  size={96}
+                  level="M"
+                  marginSize={0}
+                  style={{ width: '100%', height: '100%' }}
+                  aria-label="Quick Play QR Code"
+                />
+              </div>
             </div>
             <div className="flex flex-col justify-center text-white min-w-0">
               <span className="font-label text-[10px] uppercase tracking-[0.2em] opacity-80">Join at {window.location.host}</span>
@@ -634,11 +646,17 @@ export default function QuickPlayMonitor({
               className="bg-white rounded-3xl p-6 sm:p-10 max-w-lg w-full shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
-              <div className="aspect-square w-full mx-auto">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(qrUrl)}`}
-                  alt="Quick Play QR Code"
-                  className="w-full h-full object-contain"
+              <div className="aspect-square w-full mx-auto flex items-center justify-center">
+                {/* Enlarged QR (click-to-zoom).  Same client-side generator
+                    as the header version — SVG scales cleanly to any
+                    projector resolution. */}
+                <QRCodeSVG
+                  value={qrUrl}
+                  size={600}
+                  level="M"
+                  marginSize={2}
+                  style={{ width: '100%', height: '100%' }}
+                  aria-label="Quick Play QR Code (enlarged)"
                 />
               </div>
               <p className="text-center text-purple-600 font-mono font-black text-2xl sm:text-3xl mt-4">

@@ -12,12 +12,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { enqueueQuickPlaySave, installQuickPlayQueueFlusher } from "./core/saveQueue";
+import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
+import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
@@ -2601,6 +2602,69 @@ export default function App() {
     return uninstall;
   }, []);
 
+  // Teacher-side notifications — diff the polling snapshots and fire a
+  // toast when something new lands.  Purely passive: no additional
+  // network traffic (the polling effects already fetch these lists).
+  //
+  // Two diffs tracked via refs:
+  //   pendingStudentsPrev — IDs we already told the teacher about
+  //   allScoresPrev       — score-row IDs already seen
+  // First snapshot seeds the ref without notifying (no "everyone
+  // who existed before you logged in just joined" noise).
+  //
+  // Toast is throttled by the natural polling interval (10s / 20s),
+  // so even a burst of new students / scores gets batched into at
+  // most one notification per cycle per type.
+  const pendingStudentsPrevRef = useRef<Set<string>>(new Set());
+  const pendingStudentsSeededRef = useRef(false);
+  useEffect(() => {
+    if (user?.role !== 'teacher') return;
+    const currentIds = new Set(pendingStudents.map(p => p.id));
+    if (!pendingStudentsSeededRef.current) {
+      pendingStudentsPrevRef.current = currentIds;
+      pendingStudentsSeededRef.current = true;
+      return;
+    }
+    const newOnes = pendingStudents.filter(p => !pendingStudentsPrevRef.current.has(p.id));
+    pendingStudentsPrevRef.current = currentIds;
+    if (newOnes.length === 1) {
+      showToast(`🔔 ${newOnes[0].displayName} wants to join ${newOnes[0].className}`, 'info');
+    } else if (newOnes.length > 1) {
+      showToast(`🔔 ${newOnes.length} new students waiting for approval`, 'info');
+    }
+  }, [pendingStudents, user?.role, showToast]);
+
+  const allScoresPrevRef = useRef<Set<string>>(new Set());
+  const allScoresSeededRef = useRef(false);
+  useEffect(() => {
+    if (user?.role !== 'teacher') return;
+    const currentIds = new Set(allScores.map(s => s.id).filter(Boolean) as string[]);
+    if (!allScoresSeededRef.current) {
+      allScoresPrevRef.current = currentIds;
+      allScoresSeededRef.current = true;
+      return;
+    }
+    const newOnes = allScores.filter(s => s.id && !allScoresPrevRef.current.has(s.id));
+    allScoresPrevRef.current = currentIds;
+    // Only toast when the teacher is on a view where a notification
+    // makes sense — dashboard/classroom/analytics/gradebook.  During
+    // a Quick Play session or inside another modal it would just be
+    // noise; the podium updates already cover that.
+    const notifiableViews = ['teacher-dashboard', 'classroom', 'analytics', 'gradebook'];
+    if (!notifiableViews.includes(view)) return;
+    if (newOnes.length === 1) {
+      const s = newOnes[0];
+      if (s.studentName && s.mode && s.mode !== 'joined') {
+        showToast(`✅ ${s.studentName} finished ${s.mode} — ${s.score} pts`, 'success');
+      }
+    } else if (newOnes.length > 1) {
+      const scoring = newOnes.filter(s => s.mode && s.mode !== 'joined');
+      if (scoring.length > 0) {
+        showToast(`✅ ${scoring.length} new results just came in`, 'success');
+      }
+    }
+  }, [allScores, user?.role, view, showToast]);
+
   // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
   // are stored on Supabase Storage; downloading them up-front means
   // gameplay never has to wait on the network mid-question — even on
@@ -4832,14 +4896,14 @@ export default function App() {
         // act on.
         enqueueQuickPlaySave({
           student_name: progress.studentName,
-          student_uid: progress.studentUid,
+          student_uid: progress.studentUid || authUid,
           assignment_id: progress.assignmentId,
           class_code: progress.classCode,
           score: progress.score,
           mode: progress.mode,
           completed_at: progress.completedAt,
           mistakes: Array.isArray(mistakes) ? mistakes : [],
-          avatar: progress.avatar,
+          avatar: progress.avatar || '🦊',
         });
         setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
 
@@ -4965,74 +5029,86 @@ export default function App() {
       avatar: user.avatar || "🦊"
     };
 
-    try {
-      // OPTIMIZED: Only save progress immediately (critical data)
-      // Queue user stats updates (XP/streak) to be batched with other saves
-      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', {
-        p_student_name: user.displayName,
-        p_student_uid: studentUid,
-        p_assignment_id: activeAssignment.id,
-        p_class_code: user.classCode || "",
-        p_score: cappedScore,
-        p_mode: gameMode,
-        p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-        p_avatar: user.avatar || "🦊",
-        // Per-word attempt batch — the migration 20260423 added support for
-        // this arg.  Older DBs without the migration will fail the RPC call;
-        // catch below logs and falls back.  Empty array is fine (no attempts).
-        p_word_attempts: wordAttemptBatch,
-      });
+    // Optimistic save pattern for regular class assignments (mirrors
+    // the Kahoot-style behaviour we shipped for Quick Play).  We write
+    // local state immediately, attempt the RPC, and fall back to the
+    // background retry queue on any error — no red banner, no toast.
+    //
+    // Why no error UI: the student can't act on a network failure
+    // mid-game and they already see their score + XP update.  The
+    // flusher (installQuickPlayQueueFlusher, wired on mount) retries
+    // the save on 'online', tab refocus, and a 30s interval.  If the
+    // save ultimately can't be sent after 20 attempts we give up
+    // silently — the alternative is nagging the student about a state
+    // they can't fix.
+    //
+    // word_attempts batch is preserved: storing RPC args (rather than
+    // a raw progress row) in the queue means the retried save goes
+    // through save_student_progress and still appends word_attempts +
+    // increments play_count the same way the first attempt would.
+    const rpcArgs = {
+      p_student_name: user.displayName,
+      p_student_uid: studentUid,
+      p_assignment_id: activeAssignment.id,
+      p_class_code: user.classCode || "",
+      p_score: cappedScore,
+      p_mode: gameMode,
+      p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+      p_avatar: user.avatar || "🦊",
+      p_word_attempts: wordAttemptBatch,
+    };
 
+    // Optimistic local-state update — UI reflects the save immediately
+    // so the student never sees "saving..." spinners or error banners.
+    // If the real server-assigned id arrives later we reconcile below;
+    // if the save ends up routed through the queue it still lands
+    // eventually, and the local row will be overwritten on the next
+    // fetch with the server's version.
+    const optimisticProgress: ProgressData = {
+      id: `local-${Date.now()}`,
+      ...progress,
+    };
+    setStudentProgress(prev => {
+      const existingIndex = prev.findIndex(
+        p => p.assignmentId === activeAssignment.id
+          && p.mode === gameMode
+          && p.studentUid === studentUid
+      );
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = optimisticProgress;
+        return updated;
+      }
+      return [...prev, optimisticProgress];
+    });
+    celebrate('big');
+
+    try {
+      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', rpcArgs);
       if (rpcError) throw rpcError;
 
-      // OPTIMIZED: Queue user stats update instead of immediate
-      // This batches multiple updates together, reducing DB writes by ~50%
+      // Reconcile the optimistic row with the server's id.
+      setStudentProgress(prev => prev.map(p =>
+        p.id === optimisticProgress.id ? { ...p, id: progressId } : p
+      ));
+
+      // XP/streak write is batched with other queued saves — cheap,
+      // non-critical to the game loop, survives a failed flush the
+      // next time it runs.
       queueSaveOperation(async () => {
         await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
       });
 
-      // Update local state immediately (UI stays snappy)
-
-      // Update local state with the saved progress
-      const newProgress = {
-        id: progressId,
-        ...progress
-      };
-
-      setStudentProgress(prev => {
-        const existingIndex = prev.findIndex(
-          p => p.assignmentId === activeAssignment.id
-            && p.mode === gameMode
-            && p.studentUid === studentUid
-        );
-
-        if (existingIndex >= 0) {
-          // Update existing if found
-          const updated = [...prev];
-          updated[existingIndex] = newProgress;
-          return updated;
-        } else {
-          // Add new progress
-          return [...prev, newProgress];
-        }
-      });
-
-      // Clear any queued retry for this assignment+mode
+      // Clear any legacy retry key for this assignment+mode — the new
+      // save queue (enqueueAssignmentSave) uses a different storage
+      // key, so both systems can coexist while old keys drain.
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
-
-      // Random celebration from the full pool — big flavour for finishing a mode
-      celebrate('big');
     } catch (error) {
-      console.error("Error saving score:", error);
-      // Log detailed error for debugging
-      if (error && typeof error === 'object' && 'message' in error) {
-        console.error("Supabase error details:", error);
-      }
-      // Queue for retry on next load
-      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.setItem(retryKey, JSON.stringify(mapProgressToDb(progress)));
-      setSaveError(`Your score couldn't be saved. Check your connection — it will retry automatically.`);
+      // Silent.  Log for dev console but never surface a banner to the
+      // student — the queue will retry in the background.
+      console.error("[assignment save] queued for retry:", error);
+      enqueueAssignmentSave(rpcArgs);
     } finally {
       setIsSaving(false);
     }
@@ -5485,174 +5561,15 @@ export default function App() {
 
   // ── Student Pending Approval Screen ────────────────────────────────────────
   if (view === "student-pending-approval" && pendingApprovalInfo) {
-    // Auto-check approval status every 10 seconds
-    const PendingApprovalScreen = () => {
-      const [checking, setChecking] = React.useState(false);
-      const [dots, setDots] = React.useState('');
-
-      // Animated dots
-      React.useEffect(() => {
-        const id = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 600);
-        return () => clearInterval(id);
-      }, []);
-
-      // Approval detection: Realtime subscription + visibility-aware polling.
-      //
-      // Polling alone is unreliable on mobile: iOS/Android aggressively throttle
-      // or fully pause setInterval when the tab is backgrounded or the phone is
-      // locked. That's why students kept needing to refresh to "see" their
-      // approval land — the 3s poll had stopped firing while the phone was
-      // asleep and resumed stale when unlocked.
-      //
-      // Fix is defence-in-depth:
-      //   1. Realtime UPDATE subscription on student_profiles filtered by
-      //      (class_code, display_name) — fires instantly when the teacher
-      //      approves, regardless of tab visibility.
-      //   2. visibilitychange handler — the moment the tab becomes visible
-      //      again (screen unlocked, app foregrounded), do an immediate
-      //      fetch so we recover from any missed events.
-      //   3. The 3s poll stays as a final safety net for environments where
-      //      Realtime WebSockets can't connect (strict school firewalls).
-      React.useEffect(() => {
-        let cancelled = false;
-
-        const applyApprovedRow = (row: { id: string; auth_uid: string | null; status: string } | null | undefined) => {
-          if (cancelled) return;
-          if (row && row.status === 'approved') {
-            try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-            showToast("You've been approved! Logging in...", "success");
-            handleLoginAsStudent(row.id);
-          }
-        };
-
-        const checkStatus = async () => {
-          try {
-            const { data } = await supabase
-              .from('student_profiles')
-              .select('status, id, auth_uid')
-              .eq('class_code', pendingApprovalInfo.classCode)
-              .eq('display_name', pendingApprovalInfo.name)
-              .order('joined_at', { ascending: false })
-              .limit(1);
-            applyApprovedRow(data?.[0]);
-          } catch { /* silent retry */ }
-        };
-
-        // (1) Realtime — fires the instant the teacher's UPDATE lands.
-        const channel = supabase
-          .channel(`pending-approval-${pendingApprovalInfo.classCode}-${pendingApprovalInfo.name}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'student_profiles',
-              filter: `class_code=eq.${pendingApprovalInfo.classCode}`,
-            },
-            (payload) => {
-              const row = payload.new as { id: string; auth_uid: string | null; status: string; display_name: string } | undefined;
-              if (row && row.display_name === pendingApprovalInfo.name) {
-                applyApprovedRow(row);
-              }
-            }
-          )
-          .subscribe();
-
-        // (2) Visibility recovery — the moment the student unlocks their phone,
-        // do an immediate check so they don't have to wait for the next poll.
-        const handleVisibility = () => {
-          if (!document.hidden) checkStatus();
-        };
-        document.addEventListener('visibilitychange', handleVisibility);
-
-        // (3) Poll fallback — 3s while the tab is visible; cheap single-row
-        // select, guards against Realtime WebSocket being blocked.
-        checkStatus();
-        const pollId = setInterval(checkStatus, 3_000);
-
-        return () => {
-          cancelled = true;
-          clearInterval(pollId);
-          document.removeEventListener('visibilitychange', handleVisibility);
-          supabase.removeChannel(channel);
-        };
-      }, []);
-
-      const handleManualCheck = async () => {
-        setChecking(true);
-        try {
-          const { data } = await supabase
-            .from('student_profiles')
-            .select('status, id, auth_uid')
-            .eq('class_code', pendingApprovalInfo.classCode)
-            .eq('display_name', pendingApprovalInfo.name)
-            .order('joined_at', { ascending: false })
-            .limit(1);
-
-          if (data && data.length > 0 && data[0].status === 'approved') {
-            try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-            showToast("You've been approved! Logging in...", "success");
-            handleLoginAsStudent(data[0].id);
-          } else {
-            showToast("Not approved yet. Ask your teacher!", "info");
-          }
-        } catch {
-          showToast("Could not check. Try again.", "error");
-        } finally {
-          setChecking(false);
-        }
-      };
-
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
-            <div className="text-6xl mb-4">
-              <span className="inline-block animate-bounce">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              </span>
-            </div>
-            <h2 className="text-2xl font-black text-stone-800 mb-2">
-              Waiting for approval{dots}
-            </h2>
-            <p className="text-stone-500 mb-6">
-              Your teacher needs to approve <strong>"{pendingApprovalInfo.name}"</strong> in class <strong>{pendingApprovalInfo.classCode}</strong> before you can play.
-            </p>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
-              <p className="text-sm font-bold text-amber-800 mb-2">What to do:</p>
-              <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-                <li>Tell your teacher you signed up</li>
-                <li>They'll approve you from their dashboard</li>
-                <li>This screen will update automatically</li>
-              </ol>
-            </div>
-
-            <button
-              onClick={handleManualCheck}
-              disabled={checking}
-              className="w-full py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 mb-3"
-            >
-              {checking ? "Checking..." : "Check now"}
-            </button>
-
-            <button
-              onClick={() => {
-                setPendingApprovalInfo(null);
-                try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-                setView("student-account-login");
-              }}
-              className="text-stone-400 text-sm hover:text-stone-600 transition-colors"
-            >
-              Use a different account
-            </button>
-          </div>
-        </div>
-      );
-    };
-
-    return <PendingApprovalScreen />;
+    return (
+      <PendingApprovalScreen
+        pendingApprovalInfo={pendingApprovalInfo}
+        setPendingApprovalInfo={setPendingApprovalInfo}
+        handleLoginAsStudent={handleLoginAsStudent}
+        setView={setView}
+        showToast={showToast}
+      />
+    );
   }
 
   if (view === "student-account-login") {
