@@ -16,6 +16,7 @@ import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsLi
 import { StructureHero } from "../components/structure/StructureHero";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
+import { ShoppingBag } from "lucide-react";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
@@ -157,6 +158,31 @@ export default function StudentDashboardView({
               masteryProgress={structure.masteryProgress}
             />
           )}
+
+          {/* Shop access — visible button so students keep one-tap access
+              to avatars, eggs, power-ups, boosters, cosmetics.  Previously
+              buried on the old GreetingCard; brought forward in the
+              Structure UX layout so the shop isn't orphaned. */}
+          <button
+            type="button"
+            onClick={() => { setShopTab("hub"); setView("shop"); }}
+            style={{ touchAction: 'manipulation' }}
+            className="w-full mb-4 flex items-center justify-between gap-3 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 text-white rounded-3xl px-5 py-4 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <ShoppingBag size={22} />
+              </div>
+              <div className="text-left">
+                <p className="text-[11px] font-black uppercase tracking-widest opacity-80">Shop</p>
+                <p className="text-base font-black">Eggs · Power-ups · Avatars</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 bg-white/15 rounded-full px-2.5 py-1 text-xs font-bold">
+              {xp.toLocaleString()} XP
+            </span>
+          </button>
+
           <StudentAssignmentsList
             studentAssignments={studentAssignments}
             studentProgress={studentProgress}
@@ -168,6 +194,27 @@ export default function StudentDashboardView({
             setShowModeSelection={setShowModeSelection}
           />
         </div>
+
+        {/* Pet companion — keeps the egg/fox/dragon progression visible.
+            Lives as a floating bubble on the right so it doesn't compete
+            with the structure hero.  Clicking it opens the evolution +
+            claim-reward card (grants XP / cosmetics on milestone). */}
+        <PetCompanion
+          xp={xp}
+          displayName={user.displayName}
+          currentStage={retention.currentPetStage}
+          nextStage={retention.nextPetStage}
+          claimableMilestone={retention.claimablePetMilestone}
+          onClaim={(milestone) => {
+            if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
+              onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+            } else {
+              onGrantReward(milestone.reward.kind, milestone.reward.value);
+            }
+            retention.claimPetMilestone(milestone);
+          }}
+        />
+
         <FloatingButtons
           showBackToTop={false}
           shareLevel={{

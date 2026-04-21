@@ -118,6 +118,34 @@ export default function StudentAccountLoginView({
     }
   }, [isOAuthCallback, showOAuthClassCode, showNewStudentForm]);
 
+  // QR-code / teacher-shared-link pre-fill.
+  //
+  // The classroom poster's QR encodes a URL like:
+  //   https://www.vocaband.com/?class=ABC12345&ref=teacher-ABC12345
+  // Without this effect, a student scanning the QR landed on the login
+  // form with an empty class-code field and had to type the 8 chars
+  // manually — a friction point that defeats the purpose of the QR.
+  //
+  // On mount, read `?class=` from the current URL.  If present and
+  // the code field is still empty, pre-fill it + trigger the same
+  // "Is that you?" roster load the student would otherwise get after
+  // typing.  Only runs once per mount.
+  useEffect(() => {
+    if (studentLoginClassCode) return; // Already filled — don't clobber.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('class');
+      if (!raw) return;
+      const normalized = normalizeClassCode(raw).slice(0, 20);
+      if (normalized.length >= 3) {
+        setStudentLoginClassCode(normalized);
+        loadStudentsInClass(normalized);
+      }
+    } catch { /* URLSearchParams unavailable — noop */ }
+    // Only runs once on mount; subsequent code typing is user-driven.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleCodeChange = (raw: string) => {
     const normalized = normalizeClassCode(raw).slice(0, 20);
     setStudentLoginClassCode(normalized);
