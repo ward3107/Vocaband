@@ -268,7 +268,7 @@ export default function App() {
   const [quickPlaySessionCode, setQuickPlaySessionCode] = useState<string | null>(null);
   const [quickPlaySelectedWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
   const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[]} | null>(null);
+  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
@@ -280,6 +280,13 @@ export default function App() {
   const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
   const [quickPlayKicked, setQuickPlayKicked] = useState(false);
   const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
+  // Tracks whether the teacher monitor's Realtime channel is actually
+  // receiving events.  'live' = subscribed, 'connecting' = transient,
+  // 'polling' = subscription failed or was closed (polling-only mode).
+  // Shown as a discrete status dot on the monitor header so the teacher
+  // can tell instant updates from polling-delayed ones.
+  const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
+    useState<'connecting' | 'live' | 'polling'>('connecting');
   const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
@@ -679,7 +686,7 @@ export default function App() {
 
               const { data } = await supabase
                 .from('quick_play_sessions')
-                .select('id, session_code, word_ids, is_active, custom_words')
+                .select('id, session_code, word_ids, allowed_modes, is_active, custom_words')
                 .eq('id', sessionId)
                 .eq('is_active', true)
                 .maybeSingle();
@@ -697,7 +704,13 @@ export default function App() {
                 }
                 const allSessionWords = [...dbWords, ...customWords];
                 if (allSessionWords.length > 0) {
-                  setQuickPlayActiveSession({ id: data.id, sessionCode: data.session_code, wordIds: data.word_ids || [], words: allSessionWords });
+                  setQuickPlayActiveSession({
+                    id: data.id,
+                    sessionCode: data.session_code,
+                    wordIds: data.word_ids || [],
+                    words: allSessionWords,
+                    allowedModes: (data as { allowed_modes?: string[] }).allowed_modes || undefined,
+                  });
                   setQuickPlayStudentName(name);
                   setQuickPlayAvatar(avatar || '\uD83E\uDD8A');
                   // Go straight to mode selection (they already joined)
@@ -891,6 +904,7 @@ export default function App() {
     // "no-name, 0 pts" student on the podium next to the real one).
     // Re-fetching on each INSERT is cheap at classroom scale and keeps
     // the dedup logic in one place.
+    setQuickPlayRealtimeStatus('connecting');
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
@@ -906,7 +920,15 @@ export default function App() {
           fetchProgress();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // supabase-js yields 'SUBSCRIBED' on success, 'CHANNEL_ERROR' /
+        // 'TIMED_OUT' / 'CLOSED' when the channel can't deliver events.
+        // Map those to a simple three-state indicator.
+        if (status === 'SUBSCRIBED') setQuickPlayRealtimeStatus('live');
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setQuickPlayRealtimeStatus('polling');
+        }
+      });
 
     // OPTIMIZED: Re-fetch when tab becomes visible after being hidden
     const handleVisibilityChange = () => {
@@ -1454,8 +1476,20 @@ export default function App() {
       const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
       const sock = io(socketUrl || "/", {
         reconnection: true,
-        reconnectionAttempts: 10,
+        // Retry indefinitely.  A Live Challenge can run for 20+ minutes
+        // and students may briefly lose Wi-Fi (classroom networks are
+        // flaky).  Before: capped at 10 attempts * 1s = 10s window and
+        // then the socket gave up forever — student stayed "offline"
+        // for the rest of the session.
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
+        // Cap back-off at 10s so we retry often enough that a brief
+        // outage is invisible, but don't hammer the server if it's
+        // genuinely down.
+        reconnectionDelayMax: 10_000,
+        // Jitter so 30 students all reconnecting after a Render restart
+        // don't thunder at the same millisecond.
+        randomizationFactor: 0.5,
         // Async callback ensures a fresh token is fetched on every reconnect,
         // so the handshake never carries a stale/expired JWT.
         auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
@@ -1720,17 +1754,26 @@ export default function App() {
                   const parsed = JSON.parse(savedSession);
                   const { data: sessionData } = await supabase
                     .from('quick_play_sessions')
-                    .select('id, session_code, word_ids, is_active')
+                    .select('id, session_code, word_ids, allowed_modes, is_active')
                     .eq('id', parsed.id)
                     .eq('is_active', true)
                     .maybeSingle();
                   if (sessionData) {
                     const dbWords = ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
+                    // allowed_modes can come from either the DB (source of
+                    // truth on refresh) or the cached localStorage blob
+                    // (fallback if the column was added after the session
+                    // was created). DB wins when both present.
+                    const restoredAllowedModes =
+                      (sessionData as { allowed_modes?: string[] }).allowed_modes
+                      || parsed.allowedModes
+                      || undefined;
                     setQuickPlayActiveSession({
                       id: sessionData.id,
                       sessionCode: sessionData.session_code,
                       wordIds: sessionData.word_ids || [],
                       words: parsed.words?.length ? parsed.words : dbWords,
+                      allowedModes: restoredAllowedModes,
                     });
                     setQuickPlaySessionCode(sessionData.session_code);
                     setView("quick-play-teacher-monitor");
@@ -5571,6 +5614,21 @@ export default function App() {
           setView("public-landing");
           try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         }}
+        // Only offer rejoin when we still have the session context.  The
+        // rejoin path clears the guest identity (localStorage + anon auth
+        // sign-out) so the student picks up a fresh uid, then drops them
+        // back on the Quick Play student view where the same session is
+        // still active — name-change happens there via the join form.
+        onRejoin={quickPlayActiveSession ? () => {
+          cleanupSessionData();
+          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+          supabase.auth.signOut().catch(() => { /* best-effort */ });
+          setQuickPlayKicked(false);
+          setActiveAssignment(null);
+          setUser(null);
+          setQuickPlayStudentName("");
+          setView("quick-play-student");
+        } : undefined}
       />
     );
   }
@@ -5581,6 +5639,8 @@ export default function App() {
       <QuickPlaySessionEndScreen
         studentName={user?.displayName || quickPlayStudentName || "Player"}
         finalScore={score || 0}
+        sessionId={quickPlayActiveSession?.id}
+        studentUid={user?.uid}
         onGoHome={() => {
           cleanupSessionData(); // Clear save queue and timers
           setQuickPlaySessionEnded(false);
@@ -6366,12 +6426,20 @@ export default function App() {
           }
 
           const session = data as { id: string; session_code: string; allowed_modes?: string[] };
+          // Prefer the server's echoed allowed_modes over the local `modes`
+          // array so we're always in agreement with what the DB actually
+          // persisted — if the RPC future-normalises or validates modes,
+          // we inherit that.
+          const effectiveAllowedModes = session.allowed_modes && session.allowed_modes.length > 0
+            ? session.allowed_modes
+            : modes;
           setQuickPlaySessionCode(session.session_code);
           setQuickPlayActiveSession({
             id: session.id,
             sessionCode: session.session_code,
             wordIds: wordIds,
             words,
+            allowedModes: effectiveAllowedModes,
           });
 
           try {
@@ -6386,6 +6454,7 @@ export default function App() {
             localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
               id: session.id,
               words,
+              allowedModes: effectiveAllowedModes,
             }));
           } catch { /* quota exceeded — safe to ignore, UI still works */ }
 
@@ -6439,6 +6508,7 @@ export default function App() {
           setQuickPlayTranslating={setQuickPlayTranslating}
           cleanupSessionData={cleanupSessionData}
           showToast={showToast}
+          realtimeStatus={quickPlayRealtimeStatus}
         />
       </LazyWrapper>
     );

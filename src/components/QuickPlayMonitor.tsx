@@ -33,6 +33,7 @@ interface QuickPlayMonitorProps {
   onBack: () => void;
   onEndSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  realtimeStatus?: 'connecting' | 'live' | 'polling';
 }
 
 // ─── Theme definitions (light surface + accent colors) ────────────────────────
@@ -136,6 +137,7 @@ export default function QuickPlayMonitor({
   onBack,
   onEndSession,
   showToast,
+  realtimeStatus = 'connecting',
 }: QuickPlayMonitorProps) {
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [endModal, setEndModal] = useState(false);
@@ -273,6 +275,48 @@ export default function QuickPlayMonitor({
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
+  // ─── Celebration SFX when the #1 spot changes ────────────────────────────
+  //
+  // Teachers projecting the monitor to a classroom want ambient energy when
+  // a new leader takes over — otherwise the podium rearranges silently.  A
+  // short WebAudio chime is plenty; no external asset needed.  We suppress
+  // the sound on the first non-empty board (when there was no previous
+  // leader to dethrone) so the teacher doesn't hear a chime the instant
+  // the first student finishes a mode.
+  const prevLeaderUidRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  useEffect(() => {
+    const currentLeaderUid = sorted[0]?.studentUid ?? null;
+    const prev = prevLeaderUidRef.current;
+    // Only chime when leader actually changes AND we had a previous leader
+    // (skip the initial 0→someone transition).
+    if (currentLeaderUid && prev && currentLeaderUid !== prev) {
+      try {
+        if (!audioCtxRef.current) {
+          // Lazy-create — some browsers require a user gesture to first
+          // construct an AudioContext, so we guard the whole thing.
+          audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        }
+        const ctx = audioCtxRef.current;
+        // C major triad arpeggio: E5, G5, C6 — a quick "dun-dun-DUN".
+        [659.25, 783.99, 1046.50].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const start = ctx.currentTime + i * 0.12;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.3);
+        });
+      } catch { /* silent fail — sound is a nice-to-have */ }
+    }
+    prevLeaderUidRef.current = currentLeaderUid;
+  }, [sorted]);
+
   // ─── Get student's chosen avatar (from DB) with fallback ───────────────────
   const getStudentAvatar = (student: Student) => student.avatar || '\uD83E\uDD8A';
 
@@ -297,6 +341,35 @@ export default function QuickPlayMonitor({
           >
             Vocaband
           </button>
+
+          {/* Realtime status indicator.  Tells the teacher whether the
+              podium is getting instant pushes or leaning on the polling
+              fallback (up to ~5s delayed).  Silent for the happy path;
+              loud only when degraded. */}
+          <div
+            title={
+              realtimeStatus === 'live'
+                ? 'Live updates: on'
+                : realtimeStatus === 'polling'
+                ? 'Live updates unavailable — refreshing every 5s'
+                : 'Connecting…'
+            }
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10 text-xs font-bold"
+          >
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${
+                realtimeStatus === 'live'
+                  ? 'bg-green-400 animate-pulse'
+                  : realtimeStatus === 'polling'
+                  ? 'bg-amber-400'
+                  : 'bg-gray-400 animate-pulse'
+              }`}
+            />
+            <span className={t.headerText}>
+              {realtimeStatus === 'live' ? 'Live' : realtimeStatus === 'polling' ? 'Polling' : 'Connecting'}
+            </span>
+          </div>
+
           {/* Theme color dots */}
           <div className={`flex items-center ${theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-surface-container'} rounded-full px-2 sm:px-3 py-1.5 gap-1.5`}>
             <Palette size={14} className={t.headerText} />
