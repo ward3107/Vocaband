@@ -256,7 +256,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         onLogout={onLogout}
       />
 
-      <div className="max-w-2xl mx-auto">
+      <div className={`mx-auto ${currentStep === 3 && isQuickPlay ? 'max-w-5xl' : 'max-w-2xl'}`}>
         <Stepper currentStep={currentStep} mode={mode} />
 
         <AnimatePresence mode="wait">

@@ -111,6 +111,13 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </p>
       </div>
 
+      {/* On desktop for Quick Play, hero + summary sit side-by-side so the
+          whole Review fits a 1080p viewport without scrolling. Mobile keeps
+          the vertical stack. */}
+      <div className={isQuickPlay && selectedWords.length > 0
+        ? 'lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start space-y-6 lg:space-y-0'
+        : 'space-y-6'}>
+
       {mode === 'quick-play' && onQuickStart && selectedWords.length > 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -270,6 +277,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             ))}
           </div>
         </div>
+      </div>
       </div>
 
       <div className="flex gap-3">
