@@ -5596,6 +5596,8 @@ export default function App() {
       <QuickPlaySessionEndScreen
         studentName={user?.displayName || quickPlayStudentName || "Player"}
         finalScore={score || 0}
+        sessionId={quickPlayActiveSession?.id}
+        studentUid={user?.uid}
         onGoHome={() => {
           cleanupSessionData(); // Clear save queue and timers
           setQuickPlaySessionEnded(false);
