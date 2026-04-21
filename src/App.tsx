@@ -17,7 +17,6 @@ import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
-import FloatingButtons from "./components/FloatingButtons";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -25,7 +24,7 @@ import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import { LandingPageWrapper, TermsPageWrapper, PrivacyPageWrapper, DemoModeWrapper, AccessibilityStatementWrapper } from "./components/LazyComponents";
+import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
 // Lazy-loaded views (code-split into separate chunks)
@@ -4878,69 +4877,28 @@ export default function App() {
   ) : null;
 
   // --- PUBLIC VIEWS (No authentication required) ---
-  if (view === "public-landing") {
-    return (
-      <>
-        {configErrorBanner}
-        <LandingPageWrapper
-          onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("student-account-login")}
-          onTeacherLogin={() => supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.origin },
-          })}
-          onTryDemo={() => setShowDemo(true)}
-          isAuthenticated={!!user}
-        />
-        {showDemo && (
-          <DemoModeWrapper
-            onClose={() => setShowDemo(false)}
-          />
-        )}
-        {cookieBannerOverlay}
-        <FloatingButtons showBackToTop={true} />
-      </>
-    );
-  }
-
-  if (view === "public-terms") {
-    return (
-      <>
-        <TermsPageWrapper
-          onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("student-account-login")}
-          onBack={goBack}
-        />
-        {cookieBannerOverlay}
-      </>
-    );
-  }
-
-  if (view === "public-privacy") {
-    return (
-      <>
-        <PrivacyPageWrapper
-          onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("student-account-login")}
-          onBack={goBack}
-        />
-        {cookieBannerOverlay}
-      </>
-    );
-  }
-
-  if (view === "accessibility-statement") {
-    return (
-      <>
-        <AccessibilityStatementWrapper
-          onNavigate={handlePublicNavigate}
-          onGetStarted={() => setView("student-account-login")}
-          onBack={goBack}
-        />
-        {cookieBannerOverlay}
-      </>
-    );
-  }
+  // The four public view blocks (landing / terms / privacy /
+  // accessibility) moved to src/views/PublicViews.tsx. Helper returns
+  // the right JSX or null; keeping the early-return pattern means no
+  // downstream hooks/effects run when a public view is showing.
+  const publicView = renderPublicView({
+    view,
+    user,
+    showDemo,
+    setShowDemo,
+    setView,
+    goBack,
+    onPublicNavigate: handlePublicNavigate,
+    onTeacherOAuth: () => {
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+    },
+    configErrorBanner,
+    cookieBannerOverlay,
+  });
+  if (publicView) return publicView;
 
   // ── Student Pending Approval Screen ────────────────────────────────────────
   if (view === "student-pending-approval" && pendingApprovalInfo) {
