@@ -2145,7 +2145,41 @@ export default function App() {
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
         setUser(null);
+        // Reset all game-playing state so the back button can't resurrect
+        // a ghost of the previous session.  Symptom before this clear:
+        // teacher signs out, taps back a few times on mobile, and lands
+        // on a "practice 789 words" game (those 789 being an
+        // assignmentWords array left over from whatever was loaded last)
+        // even though auth.user is null.  Popstate restores the old view
+        // string but the render falls through to stale state in these
+        // variables if we don't null them out in lockstep.
+        setActiveAssignment(null);
+        setAssignmentWords([]);
+        setIsFinished(false);
+        setCurrentIndex(0);
+        setScore(0);
+        setMistakes([]);
+        setWordAttemptBatch([]);
+        setFeedback(null);
+        setSpellingInput("");
+        setMatchedIds([]);
+        setSelectedMatch(null);
+        setIsFlipped(false);
+        setRevealedLetters(0);
+        setSentenceIndex(0);
+        setAvailableWords([]);
+        setBuiltSentence([]);
+        setSentenceFeedback(null);
+        setHiddenOptions([]);
+        setShowModeSelection(false);
+        setQuickPlayActiveSession(null);
+        setQuickPlaySessionCode(null);
+        setQuickPlayJoinedStudents([]);
+        setQuickPlayKicked(false);
+        setQuickPlaySessionEnded(false);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
+        try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         // Reset history state so the back-button trap doesn't persist
         // into the logged-out experience (otherwise pad entries from
         // the previous session would still block navigation).
@@ -4375,9 +4409,27 @@ export default function App() {
   useEffect(() => {
     if (user?.role !== "teacher") return;
     if (classes.length === 0) return;
-    if (allScores.length > 0) return;
     if (view !== "classroom" && view !== "analytics" && view !== "gradebook") return;
-    fetchScores();
+    // Initial fetch — only if we haven't already loaded this session.
+    // Without this guard, every view-switch inside Classroom would
+    // re-hit the DB.
+    if (allScores.length === 0) fetchScores();
+    // Live refresh — students complete assignments at any moment while
+    // the teacher is on Classroom/Analytics/Gradebook.  Before this,
+    // the teacher had to leave and re-enter the view to see a new
+    // score land (or full refresh the page).  Poll every 20 seconds
+    // and re-fetch when the tab becomes visible.  Cheap single query.
+    const pollId = setInterval(() => {
+      if (!document.hidden) fetchScores();
+    }, 20_000);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchScores();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(pollId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes.length, view, user?.role]);
 
