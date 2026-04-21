@@ -4,17 +4,24 @@ export type Language = 'en' | 'he' | 'ar';
 
 export const LANGUAGE_KEY = 'vocaband_legal_language';
 
-// Global state singleton - default to Hebrew (primary target audience for Israeli schools)
-let globalLanguage: Language = 'he';
+// Global state singleton — default to English.
+//
+// Previously defaulted to Hebrew because Israeli schools are the primary
+// audience, but the app teaches ENGLISH vocabulary, and the UI is the
+// learner's main exposure to the target language during a lesson. An
+// English-default surface reinforces the learning context; the user
+// can still switch to Hebrew or Arabic from the language picker, and
+// the choice persists in localStorage under LANGUAGE_KEY.
+let globalLanguage: Language = 'en';
 const listeners: Set<(lang: Language) => void> = new Set();
 
 const getInitialLanguage = (): Language => {
-  if (typeof window === 'undefined') return 'he';
+  if (typeof window === 'undefined') return 'en';
   const saved = localStorage.getItem(LANGUAGE_KEY);
   if (saved && ['en', 'he', 'ar'].includes(saved)) {
     return saved as Language;
   }
-  return 'he';
+  return 'en';
 };
 
 // Initialize global state and set initial lang attribute
@@ -44,7 +51,7 @@ export const useLanguage = () => {
     if (typeof window !== 'undefined') {
       return getInitialLanguage();
     }
-    return 'he';
+    return 'en';
   });
 
   useEffect(() => {

@@ -23,12 +23,15 @@ import {
   Clock,
   CheckCircle2,
   Layers,
+  FileText,
+  ShieldCheck,
+  Accessibility,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 
 interface LandingPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy") => void;
+  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility") => void;
   onGetStarted: () => void;
   onTeacherLogin: () => void;
   onTryDemo?: () => void;
@@ -1114,26 +1117,36 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 <span className="text-white font-black text-xl">Vocaband</span>
               </div>
 
-              {/* Legal Links */}
-              <nav className="flex flex-wrap items-center justify-center gap-6">
+              {/* Legal Links — three matching pill buttons, each with
+                  an icon + label. Previously they were three plain text
+                  links with inconsistent styling (only Accessibility had
+                  an icon, and its button wrongly navigated to Privacy).
+                  Now each gets the same pill treatment for a tidier
+                  footer row + the Accessibility button routes correctly. */}
+              <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3" aria-label="Legal and accessibility">
                 <button
                   onClick={() => onNavigate("terms")}
-                  className="text-white/70 hover:text-white font-bold text-sm transition-colors flex items-center gap-2"
+                  type="button"
+                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
                 >
+                  <FileText size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
                   <span>Terms of Service</span>
                 </button>
                 <button
                   onClick={() => onNavigate("privacy")}
-                  className="text-white/70 hover:text-white font-bold text-sm transition-colors flex items-center gap-2"
+                  type="button"
+                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
                 >
+                  <ShieldCheck size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
                   <span>Privacy Policy</span>
                 </button>
                 <button
-                  onClick={() => onNavigate("privacy")}
-                  className="text-white/70 hover:text-white font-bold text-sm transition-colors flex items-center gap-2"
+                  onClick={() => onNavigate("accessibility")}
+                  type="button"
                   title="Accessibility Statement"
+                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
                 >
-                  <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">Aa</span>
+                  <Accessibility size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
                   <span>Accessibility</span>
                 </button>
               </nav>

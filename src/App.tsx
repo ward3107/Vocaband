@@ -165,11 +165,12 @@ export default function App() {
     handleCookieAccept(preferences);
   };
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
+      accessibility: "accessibility-statement",
     } as const;
     setView(viewMap[page]);
   };
