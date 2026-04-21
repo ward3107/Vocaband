@@ -1,4 +1,5 @@
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import type { LeaderboardEntry } from "../core/types";
 import type { ClassData } from "../core/supabase";
 import type { View } from "../core/views";
@@ -31,17 +32,71 @@ export default function LiveChallengeView({
   const top3 = sortedLeaderboard.slice(0, 3);
   const rest = sortedLeaderboard.slice(3);
 
+  // ─── Celebration chime on leader change (parity with Quick Play monitor)
+  // C-major triad arpeggio via WebAudio whenever the uid at position #1
+  // changes.  Suppressed on the initial non-empty render so teachers don't
+  // hear a chime the moment the first score lands.
+  const prevLeaderUidRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  useEffect(() => {
+    const currentLeaderUid = sortedLeaderboard[0]?.uid ?? null;
+    const prev = prevLeaderUidRef.current;
+    if (currentLeaderUid && prev && currentLeaderUid !== prev) {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        }
+        const ctx = audioCtxRef.current;
+        [659.25, 783.99, 1046.50].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const start = ctx.currentTime + i * 0.12;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.3);
+        });
+      } catch { /* silent fail — sound is a nice-to-have */ }
+    }
+    prevLeaderUidRef.current = currentLeaderUid;
+  }, [sortedLeaderboard]);
+
+  // ─── Final-results modal when teacher ends the challenge
+  // Instead of navigating away the instant "End Challenge" is clicked,
+  // show a proper wrap-up modal: top 3 with medals, total players, dismiss
+  // button that then does the exit.  Gives the class a sense of closure.
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const exitChallenge = () => {
+    setView("live-challenge-class-select");
+    setIsLiveChallenge(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
-          <button onClick={() => { setView("live-challenge-class-select"); setIsLiveChallenge(false); }} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Class Selection</button>
+          <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Class Selection</button>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
               <span className={`w-3 h-3 rounded-full ${socketConnected ? "bg-green-400 shadow-lg shadow-green-400/50" : "bg-red-400 animate-pulse"}`} />
               <span className="font-bold">{socketConnected ? "🔴 LIVE" : "Reconnecting..."}</span>
             </div>
-            <button onClick={() => { setView("live-challenge-class-select"); setIsLiveChallenge(false); }} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105">End Challenge</button>
+            <button
+              onClick={() => {
+                // Only show the results modal if anyone actually played.
+                // Otherwise just exit — a ceremonial "everybody scored 0"
+                // screen feels silly.
+                if (sortedLeaderboard.length > 0) setShowResultsModal(true);
+                else exitChallenge();
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
+            >
+              End Challenge
+            </button>
           </div>
         </div>
 
@@ -210,6 +265,79 @@ export default function LiveChallengeView({
           </div>
         </div>
       </div>
+
+      {/* Final-results modal — shown when the teacher clicks "End Challenge"
+          with at least one player on the board.  Dismissing the modal
+          navigates back to the class-select view. */}
+      <AnimatePresence>
+        {showResultsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => { setShowResultsModal(false); exitChallenge(); }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white text-stone-900 rounded-3xl p-6 sm:p-10 max-w-md w-full shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="text-5xl sm:text-6xl mb-3">🏁</div>
+                <h2 className="text-2xl sm:text-3xl font-black mb-1">Challenge Complete!</h2>
+                <p className="text-stone-500 font-bold text-sm">{selectedClass.name}</p>
+              </div>
+
+              {/* Top 3 medal rows */}
+              <div className="space-y-2 mb-6">
+                {sortedLeaderboard.slice(0, 3).map((entry, idx) => {
+                  const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+                  const bg = idx === 0
+                    ? 'bg-gradient-to-r from-yellow-100 to-amber-50 border-amber-300'
+                    : idx === 1
+                    ? 'bg-gradient-to-r from-slate-100 to-slate-50 border-slate-300'
+                    : 'bg-gradient-to-r from-orange-100 to-orange-50 border-orange-300';
+                  return (
+                    <motion.div
+                      key={entry.uid}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.1 + idx * 0.1 }}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${bg}`}
+                    >
+                      <div className="text-3xl">{medal}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-base truncate">
+                          {entry.name}{entry.isGuest && <span className="ml-1">🎭</span>}
+                        </p>
+                        <p className="text-xs font-bold text-stone-500">#{idx + 1} place</p>
+                      </div>
+                      <div className="text-2xl font-black text-indigo-600">{entry.totalScore}</div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <div className="text-center text-sm font-bold text-stone-500 mb-6">
+                {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'student' : 'students'} played
+              </div>
+
+              <button
+                onClick={() => { setShowResultsModal(false); exitChallenge(); }}
+                type="button"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

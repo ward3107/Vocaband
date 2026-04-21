@@ -1476,8 +1476,20 @@ export default function App() {
       const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
       const sock = io(socketUrl || "/", {
         reconnection: true,
-        reconnectionAttempts: 10,
+        // Retry indefinitely.  A Live Challenge can run for 20+ minutes
+        // and students may briefly lose Wi-Fi (classroom networks are
+        // flaky).  Before: capped at 10 attempts * 1s = 10s window and
+        // then the socket gave up forever — student stayed "offline"
+        // for the rest of the session.
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
+        // Cap back-off at 10s so we retry often enough that a brief
+        // outage is invisible, but don't hammer the server if it's
+        // genuinely down.
+        reconnectionDelayMax: 10_000,
+        // Jitter so 30 students all reconnecting after a Render restart
+        // don't thunder at the same millisecond.
+        randomizationFactor: 0.5,
         // Async callback ensures a fresh token is fetched on every reconnect,
         // so the handshake never carries a stale/expired JWT.
         auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
