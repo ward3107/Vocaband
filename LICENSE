@@ -2,38 +2,79 @@ MIT License with Commons Clause
 
 Copyright (c) 2026 Vocaband
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, and/or sublicense copies
-of the Software, subject to the following conditions:
+---
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+MIT LICENSE
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, and/or sublicense
+copies of the Software, subject to the conditions in this file.
+
+The above copyright notice, this permission notice, and the Commons Clause
+restriction below shall be included in all copies or substantial portions of
+the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
 
 ---
 
-COMMONS CLAUSE LICENSE
+COMMONS CLAUSE ADDENDUM
 
-The Software is provided to you by the Licensor under the License, as defined
-below, subject to the following condition.
+The Software is provided to you by the Licensor under the License, as
+defined above, subject to the following condition.
 
-Without limiting other conditions in the License, the grant of rights under the
-License will not include, and the License does not grant to you, the right to
-Sell the Software.
+Without limiting other conditions in the License, the grant of rights under
+the License will not include, and the License does not grant to you, the
+right to Sell the Software.
 
-For purposes of the foregoing, "Sell" means practicing any or all of the rights
-granted to you under the License to provide to third parties, for a fee or
-other consideration, a product or service whose value derives, entirely or
-substantially, from the functionality of the Software.
+For purposes of the foregoing, "Sell" means practicing any or all of the
+rights granted to you under the License to provide to third parties, for a
+fee or other consideration (including, without limitation, fees for hosting,
+support, or consulting services related to the Software), a product or
+service whose value derives, entirely or substantially, from the
+functionality of the Software. Any license notice or attribution required
+by the License must also include this Commons Clause.
 
-For licensing inquiries, commercial use, or to purchase a commercial license,
-please contact: vocaband.app@gmail.com
+Software: Vocaband — the gamified English-vocabulary platform for Israeli
+schools contained in this repository, including all source code, SQL
+migrations, configuration, and documentation.
+
+License: MIT License (the text above this Commons Clause Addendum).
+
+Licensor: Vocaband.
+
+---
+
+PERMITTED USES (without a separate commercial license)
+
+- Reading and studying the source code for educational purposes.
+- Forking the repository for non-commercial learning, research, or
+  personal experimentation.
+- Contributing improvements back via pull requests to the original
+  repository.
+- Running a local copy for development, testing, or classroom
+  demonstration purposes that are not monetised.
+
+USES THAT REQUIRE A SEPARATE COMMERCIAL LICENSE
+
+- Hosting Vocaband (modified or unmodified) as a paid or ad-supported
+  service available to third parties.
+- Bundling Vocaband (modified or unmodified) into a commercial product
+  or offering.
+- Reselling, sublicensing, or redistributing the Software for
+  commercial gain.
+- Using the Vocaband name, logo, or visual identity in any commercial
+  context.
+
+For commercial licensing, partnership inquiries, or questions about
+whether a specific use is permitted, contact:
+
+    contact@vocaband.com
