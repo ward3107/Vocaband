@@ -17,6 +17,7 @@ import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
 import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
+import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -5137,57 +5138,22 @@ export default function App() {
   };
 
   // Sticky banner the student sees on the dashboard when they typed a
-  // class code that doesn't exist.  Now has a direct "Sign out & retry"
-  // button so the student doesn't need to hunt for the logout control.
-  const classNotFoundBanner = classNotFoundIntent ? (
-    <div className="max-w-4xl mx-auto mb-4">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-rose-500 to-pink-500 text-white shadow-lg p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="shrink-0 w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">⚠️</div>
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-sm sm:text-base">Class code "{classNotFoundIntent}" not found</p>
-            <p className="text-xs sm:text-sm text-white/90 mt-0.5 leading-relaxed">
-              That class doesn't exist. You're still signed in to your current class.
-            </p>
-          </div>
-          <button
-            onClick={() => setClassNotFoundIntent(null)}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="shrink-0 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black transition-colors"
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={async () => {
-              // Sign out + navigate back to the student login so they
-              // can type the correct code.  Also clear the dismiss-state
-              // so the banner doesn't linger past the redirect.
-              setClassNotFoundIntent(null);
-              try { await supabase.auth.signOut(); } catch {/* noop */}
-              setView('student-account-login');
-            }}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-rose-700 bg-white hover:bg-rose-50 px-4 py-2 rounded-xl shadow-md transition-all"
-          >
-            Sign out & try again
-          </button>
-          <button
-            onClick={() => setClassNotFoundIntent(null)}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-white bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition-all"
-          >
-            Stay here
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  // class code that doesn't exist.  Rendered-variable pattern mirrors
+  // the other modals (consentModal / exitConfirmModal / classSwitchModal)
+  // so it can be passed as a prop to whichever view hosts it.
+  const classNotFoundBanner = (
+    <ClassNotFoundBanner
+      classCode={classNotFoundIntent}
+      onDismiss={() => setClassNotFoundIntent(null)}
+      onSignOutAndLogin={async () => {
+        // Clear the dismiss-state first so the banner doesn't linger
+        // past the redirect, then sign out and route to the login.
+        setClassNotFoundIntent(null);
+        try { await supabase.auth.signOut(); } catch { /* noop */ }
+        setView('student-account-login');
+      }}
+    />
+  );
 
   const classSwitchModal = (
     <ClassSwitchModal
