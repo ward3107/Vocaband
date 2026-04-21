@@ -237,9 +237,7 @@ export default function App() {
   const [studentAvatar, setStudentAvatar] = useState("🦊");
   const [needsConsent, setNeedsConsent] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [newDisplayName, setNewDisplayName] = useState("");
-  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);      
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   // --- OAUTH STATE ---
   const [isOAuthCallback, setIsOAuthCallback] = useState(false);
@@ -277,12 +275,10 @@ export default function App() {
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
-  const quickPlayNameInputRef = useRef<HTMLInputElement | null>(null);
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
-  const [quickPlayWordEditorOpen, setQuickPlayWordEditorOpen] = useState(false);
   const [quickPlayKicked, setQuickPlayKicked] = useState(false);
   const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
   // Tracks whether the teacher monitor's Realtime channel is actually
@@ -293,10 +289,6 @@ export default function App() {
   const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
     useState<'connecting' | 'live' | 'polling'>('connecting');
   const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
-  const [draggedWord, setDraggedWord] = useState<string | null>(null);
-  const [quickPlayStatusMessage, setQuickPlayStatusMessage] = useState("");
-  const [showQuickPlayPreview, setShowQuickPlayPreview] = useState(false);
-  const [quickPlayPreviewAnalysis, setQuickPlayPreviewAnalysis] = useState<WordAnalysisResult | null>(null);
 
   // Game music player state (previously defined here) was dead code —
   // the track/volume setters were never called from anywhere, so the
@@ -342,9 +334,8 @@ export default function App() {
   const [selectedCore, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
   const [selectedPos, setSelectedPos] = useState<string>("");
   const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
-  const [showWordBank, setShowWordBank] = useState(false);
-  const [enableFuzzyMatch, setEnableFuzzyMatch] = useState(true);
-  const [enableWordFamilies, setEnableWordFamilies] = useState(false);
+  const [enableFuzzyMatch] = useState(true);
+  const [enableWordFamilies] = useState(false);
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
@@ -3064,67 +3055,11 @@ export default function App() {
     setPasteMatchedCount(0);
   };
 
-  // --- QUICK PLAY PREVIEW HANDLERS ---
-
-  const handleQuickPlayPreviewConfirm = (customTranslations?: Map<string, { hebrew: string; arabic: string }>, addedSuggestionIds?: Set<number>) => {
-    if (!quickPlayPreviewAnalysis) return;
-
-    const { matchedWords, unmatchedTerms } = quickPlayPreviewAnalysis;
-
-    // Only add exact, hebrew, arabic, and phrase matches automatically.
-    // Fuzzy, starts-with, and family matches are suggestions — only add if teacher clicked them.
-    const autoAddTypes = new Set(['exact', 'hebrew', 'arabic', 'phrase']);
-    const newSelectedWords = [...quickPlaySelectedWords];
-    matchedWords.forEach(mw => {
-      const shouldAdd = autoAddTypes.has(mw.matchType) || (addedSuggestionIds && addedSuggestionIds.has(mw.word.id));
-      if (shouldAdd && !newSelectedWords.some(w => w.id === mw.word.id)) {
-        newSelectedWords.push(mw.word);
-      }
-    });
-    // Also add family suggestion words that were manually selected
-    if (addedSuggestionIds && addedSuggestionIds.size > 0 && quickPlayPreviewAnalysis.wordFamilySuggestions) {
-      for (const family of quickPlayPreviewAnalysis.wordFamilySuggestions) {
-        for (const w of family.familyMembers) {
-          if (addedSuggestionIds.has(w.id) && !newSelectedWords.some(sw => sw.id === w.id)) {
-            newSelectedWords.push(w);
-          }
-        }
-      }
-    }
-    setQuickPlaySelectedWords(newSelectedWords);
-
-    // Add custom words from translations (either from Translate All or manual entry)
-    const customWordsToGenerate: { id: number; english: string }[] = [];
-    if (unmatchedTerms.length > 0 && customTranslations) {
-      unmatchedTerms.forEach(term => {
-        const translation = customTranslations.get(term.term);
-        if (translation && (translation.hebrew || translation.arabic)) {
-          const customWord: Word = {
-            id: uniqueNegativeId(),
-            english: term.term.charAt(0).toUpperCase() + term.term.slice(1).toLowerCase(),
-            hebrew: translation.hebrew || "",
-            arabic: translation.arabic || "",
-            level: "Custom"
-          };
-          setQuickPlaySelectedWords(prev => [...prev, customWord]);
-          customWordsToGenerate.push({ id: customWord.id, english: customWord.english });
-        }
-      });
-    }
-    // Fire off Neural2 audio generation for any new custom words.
-    void requestCustomWordAudio(customWordsToGenerate);
-
-    // Clear preview state
-    setShowQuickPlayPreview(false);
-    setQuickPlayPreviewAnalysis(null);
-    setQuickPlaySearchQuery("");
-  };
-
-  const handleQuickPlayPreviewCancel = () => {
-    setShowQuickPlayPreview(false);
-    setQuickPlayPreviewAnalysis(null);
-  };
-
+  // Quick-play preview handlers (handleQuickPlayPreviewConfirm +
+  // handleQuickPlayPreviewCancel) previously lived here but were never
+  // wired to any UI. Removed along with their backing state
+  // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
+  // dead code TypeScript had been flagging with TS6133.
 
   // Tag-style single word entry
   const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
