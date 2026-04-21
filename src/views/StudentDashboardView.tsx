@@ -154,6 +154,7 @@ export default function StudentDashboardView({
               slots={structure.slots}
               nextLocked={structure.nextLocked}
               celebrateKeys={celebrateStructureKeys}
+              masteryProgress={structure.masteryProgress}
             />
           )}
           <StudentAssignmentsList

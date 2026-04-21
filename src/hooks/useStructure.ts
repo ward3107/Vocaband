@@ -92,6 +92,10 @@ export interface StructureState {
   slots: Array<{ part: StructurePart; earned: boolean; earnedAt: string | null }>;
   /** The next locked part, with a human hint of what unlocks it. */
   nextLocked: StructurePart | null;
+  /** Progress toward the next mastery-event unlock: good games played /
+   *  games needed.  Used to render "2 / 2 games toward next piece" so
+   *  the student sees a counter moving even before a full unlock. */
+  masteryProgress: { played: number; needed: number };
   /** Pick the metaphor permanently (first-run flow). */
   chooseKind: (kind: StructureKind) => void;
   /**
@@ -124,75 +128,80 @@ export function useStructure(uid: string | null | undefined): StructureState {
 
   const reportGameResult = useCallback((args: { score: number; newStreak: number; prevStreak: number }): string[] => {
     const { score, newStreak, prevStreak } = args;
+
+    // IMPORTANT: compute the next state + unlock list OUTSIDE the
+    // setState updater so React StrictMode's double-invocation of the
+    // updater can't run our side effects twice.  Reads the live value
+    // from localStorage (source of truth) rather than stale React state.
+    const prev = readPersisted(userKey);
+    if (!prev.kind) return []; // No metaphor chosen yet — ignore.
+
+    const partsForKind = STRUCTURE_PARTS[prev.kind];
+    const earnedKeys = new Set(prev.earned.map(e => e.key));
+    const newlyEarned: Array<{ key: string; at: string }> = [];
     const unlockedKeys: string[] = [];
+    const now = new Date().toISOString();
 
-    setState(prev => {
-      if (!prev.kind) return prev; // No metaphor chosen yet — ignore.
+    const counts = { ...prev.counts };
+    let gamesSinceMastery = prev.gamesSinceMasteryEvent;
+    let highestStreak = prev.highestStreakUnlocked;
 
-      const partsForKind = STRUCTURE_PARTS[prev.kind];
-      const earnedKeys = new Set(prev.earned.map(e => e.key));
-      const newlyEarned: Array<{ key: string; at: string }> = [];
-      const now = new Date().toISOString();
+    // Helper: look up the Nth ordinal part for a given event, mark it
+    // earned if not already.
+    const tryUnlockOrdinal = (event: UnlockEvent, ordinal: number) => {
+      const part = partsForKind.find(p => p.unlockEvent === event && p.unlockOrdinal === ordinal);
+      if (!part) return;
+      if (earnedKeys.has(part.key)) return;
+      newlyEarned.push({ key: part.key, at: now });
+      unlockedKeys.push(part.key);
+    };
 
-      const counts = { ...prev.counts };
-      let gamesSinceMastery = prev.gamesSinceMasteryEvent;
-      let highestStreak = prev.highestStreakUnlocked;
-
-      // Helper: look up the Nth ordinal part for a given event, mark it
-      // earned if not already.
-      const tryUnlockOrdinal = (event: UnlockEvent, ordinal: number) => {
-        const part = partsForKind.find(p => p.unlockEvent === event && p.unlockOrdinal === ordinal);
-        if (!part) return;
-        if (earnedKeys.has(part.key)) return;
-        newlyEarned.push({ key: part.key, at: now });
-        unlockedKeys.push(part.key);
-      };
-
-      // EVENT 1 — mastered_5_words: high-quality games (>=80) count up;
-      // every STRUCTURE_WORDS_PER_EVENT-th one fires the event.
-      if (score >= 80) {
-        gamesSinceMastery += 1;
-        if (gamesSinceMastery >= STRUCTURE_WORDS_PER_EVENT) {
-          gamesSinceMastery = 0;
-          counts.mastered_5_words += 1;
-          tryUnlockOrdinal('mastered_5_words', counts.mastered_5_words);
-        }
+    // EVENT 1 — mastered_5_words: high-quality games (>=80) count up;
+    // every STRUCTURE_WORDS_PER_EVENT-th one fires the event.  Use a
+    // WHILE loop so if the threshold is lowered between builds (Phase 1
+    // tuning), students with a backed-up counter catch up on multiple
+    // ordinals at once instead of losing their earned progress.
+    if (score >= 80) {
+      gamesSinceMastery += 1;
+      while (gamesSinceMastery >= STRUCTURE_WORDS_PER_EVENT) {
+        gamesSinceMastery -= STRUCTURE_WORDS_PER_EVENT;
+        counts.mastered_5_words += 1;
+        tryUnlockOrdinal('mastered_5_words', counts.mastered_5_words);
       }
+    }
 
-      // EVENT 2 — perfect_assignment: score === 100 fires immediately.
-      if (score >= 100) {
-        counts.perfect_assignment += 1;
-        tryUnlockOrdinal('perfect_assignment', counts.perfect_assignment);
+    // EVENT 2 — perfect_assignment: score === 100 fires immediately.
+    if (score >= 100) {
+      counts.perfect_assignment += 1;
+      tryUnlockOrdinal('perfect_assignment', counts.perfect_assignment);
+    }
+
+    // EVENT 3 — streak_7: fires every time the streak crosses a new
+    // multiple of 7 (7, 14, 21, ...).  Guarded by highestStreakUnlocked
+    // so re-rendering with the same streak never double-fires.
+    const prevMultiple = Math.floor(prevStreak / 7);
+    const newMultiple = Math.floor(newStreak / 7);
+    if (newMultiple > prevMultiple && newStreak > highestStreak) {
+      highestStreak = newStreak;
+      // Fire once per new multiple crossed (usually just 1).
+      for (let m = prevMultiple + 1; m <= newMultiple; m++) {
+        counts.streak_7 += 1;
+        tryUnlockOrdinal('streak_7', counts.streak_7);
       }
+    }
 
-      // EVENT 3 — streak_7: fires every time the streak crosses a new
-      // multiple of 7 (7, 14, 21, ...).  Guarded by highestStreakUnlocked
-      // so re-rendering with the same streak never double-fires.
-      const prevMultiple = Math.floor(prevStreak / 7);
-      const newMultiple = Math.floor(newStreak / 7);
-      if (newMultiple > prevMultiple && newStreak > highestStreak) {
-        highestStreak = newStreak;
-        // Fire once per new multiple crossed (usually just 1).
-        for (let m = prevMultiple + 1; m <= newMultiple; m++) {
-          counts.streak_7 += 1;
-          tryUnlockOrdinal('streak_7', counts.streak_7);
-        }
-      }
-
-      if (newlyEarned.length === 0 && gamesSinceMastery === prev.gamesSinceMasteryEvent) {
-        return prev; // Nothing changed.
-      }
-
-      const next: PersistedStructure = {
-        ...prev,
-        earned: [...prev.earned, ...newlyEarned],
-        counts,
-        gamesSinceMasteryEvent: gamesSinceMastery,
-        highestStreakUnlocked: highestStreak,
-      };
-      writePersisted(userKey, next);
-      return next;
-    });
+    // Always persist — even a "no unlock" game bumps the
+    // gamesSinceMastery counter so the dashboard progress-to-next hint
+    // updates in real time.
+    const next: PersistedStructure = {
+      ...prev,
+      earned: [...prev.earned, ...newlyEarned],
+      counts,
+      gamesSinceMasteryEvent: gamesSinceMastery,
+      highestStreakUnlocked: highestStreak,
+    };
+    writePersisted(userKey, next);
+    setState(next);
 
     return unlockedKeys;
   }, [userKey]);
@@ -212,12 +221,18 @@ export function useStructure(uid: string | null | undefined): StructureState {
     return STRUCTURE_PARTS[state.kind].find(part => !state.earned.some(e => e.key === part.key)) ?? null;
   }, [state.kind, state.earned]);
 
+  const masteryProgress = useMemo(() => ({
+    played: state.gamesSinceMasteryEvent,
+    needed: STRUCTURE_WORDS_PER_EVENT,
+  }), [state.gamesSinceMasteryEvent]);
+
   return {
     kind: state.kind,
     earned: state.earned,
     isReady: state.kind !== null,
     slots,
     nextLocked,
+    masteryProgress,
     chooseKind,
     reportGameResult,
   };
