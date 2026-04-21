@@ -905,6 +905,28 @@ export default function App() {
     // Re-fetching on each INSERT is cheap at classroom scale and keeps
     // the dedup logic in one place.
     setQuickPlayRealtimeStatus('connecting');
+
+    // Adaptive polling — only run when Realtime isn't delivering.  When
+    // the subscription callback reports SUBSCRIBED we stop the poll and
+    // let the doorbell handle it; when it reports an error/closed we
+    // resume the 5s knock as a safety net.  Status transitions toggle
+    // this interval on and off.  Variable lives outside the channel
+    // callback so both .subscribe() and cleanup can reach it.
+    let pollId: ReturnType<typeof setInterval> | null = null;
+    const startPoll = () => {
+      if (pollId) return;
+      pollId = setInterval(() => {
+        if (!document.hidden) fetchProgress();
+      }, 5_000);
+    };
+    const stopPoll = () => {
+      if (pollId) { clearInterval(pollId); pollId = null; }
+    };
+    // Start polling immediately — we're in 'connecting' until the
+    // subscribe callback confirms SUBSCRIBED.  No gap where the teacher
+    // is unprotected.
+    startPoll();
+
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
@@ -921,12 +943,14 @@ export default function App() {
         }
       )
       .subscribe((status) => {
-        // supabase-js yields 'SUBSCRIBED' on success, 'CHANNEL_ERROR' /
-        // 'TIMED_OUT' / 'CLOSED' when the channel can't deliver events.
-        // Map those to a simple three-state indicator.
-        if (status === 'SUBSCRIBED') setQuickPlayRealtimeStatus('live');
-        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        if (status === 'SUBSCRIBED') {
+          setQuickPlayRealtimeStatus('live');
+          // Realtime is now delivering — polling is redundant.
+          stopPoll();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setQuickPlayRealtimeStatus('polling');
+          // Realtime degraded — resume polling as a safety net.
+          startPoll();
         }
       });
 
@@ -938,20 +962,8 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Polling fallback — Supabase Realtime has been unreliable in practice
-    // (UnableToConnectToProject errors, silent subscription drops). Without
-    // polling, the only way a teacher sees new scores land on the podium is
-    // if the Realtime INSERT event actually gets delivered — when it doesn't,
-    // the monitor stays blank and the teacher has to F5. Polling every 5s
-    // guarantees a worst-case 5s delay to see new scores, regardless of
-    // Realtime health. Query is a single indexed SELECT scoped to one
-    // session, so cost is negligible even at classroom scale.
-    const pollId = setInterval(() => {
-      if (!document.hidden) fetchProgress();
-    }, 5_000);
-
     return () => {
-      clearInterval(pollId);
+      stopPoll();
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
