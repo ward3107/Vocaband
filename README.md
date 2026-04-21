@@ -21,7 +21,7 @@
 
 Vocaband turns vocabulary drills into a short, competitive classroom experience. Students join a class with a 6-character code (or scan a QR code for a Quick Play session — no account needed), pick from **10 interactive game modes**, and their progress streams live to the teacher's dashboard.
 
-Every word is available in **English + Hebrew + Arabic** so the UI fits Israel's two dominant first languages. Vocabulary is aligned to the **Israeli Ministry of Education English curriculum** — 6,482 words across **Set 1 / Set 2 / Set 3** (A1 → B2).
+Every word is available in **English + Hebrew + Arabic** so the UI fits Israel's two dominant first languages.  across **Set 1 / Set 2 / Set 3** (A1 → B2).
 
 No app store. No personal data required for students. Works on any device with a browser.
 
