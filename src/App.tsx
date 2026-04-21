@@ -4,9 +4,6 @@ import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
-  searchWords
-} from "./data/vocabulary-matching";
-import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
@@ -61,7 +58,6 @@ import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
   MAX_ASSIGNMENT_ROUNDS,
-  THEMES,
   STREAK_CELEBRATION_MILESTONES,
   type GameMode,
 } from "./constants/game";
@@ -118,7 +114,7 @@ export default function App() {
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [studentDataLoading, setStudentDataLoading] = useState(false);
+  const [studentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
   // Detect "share" param — set by the social-share buttons in
@@ -169,11 +165,12 @@ export default function App() {
     handleCookieAccept(preferences);
   };
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
+      accessibility: "accessibility-statement",
     } as const;
     setView(viewMap[page]);
   };
@@ -186,7 +183,7 @@ export default function App() {
   const manualLoginInProgress = useRef(false);
   const restoreInProgress = useRef(false);
   const restoreRetried = useRef(false);
-  const [landingTab, setLandingTab] = useState<"student" | "teacher">("student");
+  const [, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [studentLoginName, setStudentLoginName] = useState("");
   const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
@@ -257,15 +254,15 @@ export default function App() {
   // null/[] on session end.
   const [, setQuickPlaySessionCode] = useState<string | null>(null);
   const [, setQuickPlaySelectedWords] = useState<Word[]>([]);
-  const [quickPlaySearchQuery, setQuickPlaySearchQuery] = useState("");
+  const [quickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
-  const [quickPlayCustomWords, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
-  const [quickPlayAddingCustom, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
-  const [quickPlayTranslating, setQuickPlayTranslating] = useState<Set<string>>(new Set());
+  const [, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
+  const [, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
+  const [, setQuickPlayTranslating] = useState<Set<string>>(new Set());
   const [quickPlayKicked, setQuickPlayKicked] = useState(false);
   const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
   // Tracks whether the teacher monitor's Realtime channel is actually
@@ -296,7 +293,7 @@ export default function App() {
   const [ocrPendingFile, setOcrPendingFile] = useState<{ file: File; inputRef: React.ChangeEvent<HTMLInputElement> | null } | null>(null);
   const [allScores, setAllScores] = useState<ProgressData[]>([]);
   const [classStudents, setClassStudents] = useState<{name: string, classCode: string, lastActive: string}[]>([]);
-  const [globalLeaderboard, setGlobalLeaderboard] = useState<{name: string, score: number, avatar: string}[]>([]);
+  const [globalLeaderboard] = useState<{name: string, score: number, avatar: string}[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
@@ -304,7 +301,7 @@ export default function App() {
   const [assignmentSentences, setAssignmentSentences] = useState<string[]>([]);
   const [sentenceDifficulty, setSentenceDifficulty] = useState<1 | 2 | 3 | 4>(2);
   const [sentencesAutoGenerated, setSentencesAutoGenerated] = useState(false);
-  const [assignmentStep, setAssignmentStep] = useState(1);
+  const [, setAssignmentStep] = useState(1);
 
   // --- SMART PASTE STATE ---
   const [pastedText, setPastedText] = useState("");
@@ -312,17 +309,13 @@ export default function App() {
   const [pasteMatchedCount, setPasteMatchedCount] = useState(0);
   const [pasteUnmatched, setPasteUnmatched] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [gSheetsUrl, setGSheetsUrl] = useState("");
-  const [gSheetsLoading, setGSheetsLoading] = useState(false);
   const [showTopicPacks, setShowTopicPacks] = useState(false);
 
   // --- QUICK SEARCH & FILTERS STATE ---
-  const [wordSearchQuery, setWordSearchQuery] = useState("");
-  const [selectedCore, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
-  const [selectedPos, setSelectedPos] = useState<string>("");
-  const [selectedRecProd, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
-  const [enableFuzzyMatch] = useState(true);
-  const [enableWordFamilies] = useState(false);
+  const [, setWordSearchQuery] = useState("");
+  const [, setSelectedCore] = useState<"Core I" | "Core II" | "">("");
+  const [, setSelectedPos] = useState<string>("");
+  const [, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
@@ -391,39 +384,6 @@ export default function App() {
     return parseSearchTerms(quickPlaySearchQuery);
   }, [quickPlaySearchQuery, parseSearchTerms]);
 
-  const searchResults = useMemo(() => {
-    const results: Map<string, Word[]> = new Map();
-    const matchedWordIds = new Set<number>();
-
-    searchTerms.forEach(term => {
-      // Priority 1: Exact match
-      let matches = ALL_WORDS.filter(w =>
-        w.english.toLowerCase() === term
-      );
-
-      // Priority 2: Starts with match (e.g., "app" matches "apple" but not "snap")
-      if (matches.length < 20) {
-        const startsWithMatches = ALL_WORDS.filter(w =>
-          w.english.toLowerCase().startsWith(term) &&
-          !matches.some(m => m.id === w.id)
-        );
-        matches.push(...startsWithMatches.slice(0, 20 - matches.length));
-      }
-
-      // Limit results to max 20 per search term to prevent overwhelming results
-      matches = matches.slice(0, 20);
-
-      // Deduplicate words (same word might match multiple search terms)
-      const uniqueMatches = matches.filter(w => !matchedWordIds.has(w.id));
-      uniqueMatches.forEach(w => matchedWordIds.add(w.id));
-
-      if (uniqueMatches.length > 0) {
-        results.set(term, uniqueMatches);
-      }
-    });
-
-    return results;
-  }, [searchTerms]);
 
   // Auto-generate sentences for Sentence Builder when words are selected or difficulty changes
   useEffect(() => {
@@ -1088,12 +1048,6 @@ export default function App() {
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
 
-  // --- THEME ---
-  const activeThemeConfig = useMemo(() => {
-    const themeId = user?.activeTheme ?? 'default';
-    return THEMES.find(t => t.id === themeId) ?? THEMES[0];
-  }, [user?.activeTheme]);
-
   const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
   const speakWord = speakWordRaw;
 
@@ -1141,7 +1095,7 @@ export default function App() {
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
   const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
-  const [teacherAssignmentsLoading, setTeacherAssignmentsLoading] = useState(false);
+  const [, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
 
 
@@ -1422,7 +1376,7 @@ export default function App() {
       sock.on("connect", () => {
         setSocketConnected(true);
       });
-      sock.on("disconnect", (reason: any) => {
+      sock.on("disconnect", () => {
         setSocketConnected(false);
       });
       sock.on("reconnect", () => {
@@ -2698,7 +2652,6 @@ export default function App() {
   };
 
   const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
-  const MAX_IMPORT_WORDS = 500;
 
   /**
    * handleOcrUpload
@@ -2939,7 +2892,7 @@ export default function App() {
 
     // Combine each group into a single word with merged translations
     const matched: Word[] = [];
-    for (const [baseWord, group] of groupedMatches) {
+    for (const [, group] of groupedMatches) {
       // Merge Hebrew translations (combine non-empty ones, unique)
       const hebrewParts = group
         .map(w => w.hebrew.trim())
@@ -3545,14 +3498,14 @@ export default function App() {
     }
 
     // Progress still uses direct query (should work for student's own progress)
-    const { data: progressResult, error: progressError } = await supabase
+    const { data: progressResult } = await supabase
       .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
 
 
     if (assignError) {
       console.error('Assignments RPC error:', assignError);
       // Fallback to direct query
-      const { data: fallbackData, error: fallbackError } = await supabase
+      const { data: fallbackData } = await supabase
         .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
       setStudentAssignments((fallbackData ?? []).map(mapAssignment));
     } else {
@@ -3602,8 +3555,6 @@ export default function App() {
       }
 
       const profile = result[0].profile;
-      const isNew = result[0].is_new;
-
 
       if (profile.status === 'approved') {
         // Already approved, just log them in
@@ -3844,7 +3795,7 @@ export default function App() {
   const handleApproveStudent = async (studentId: string, displayName: string) => {
     try {
       // Call the approve_student function
-      const { data, error } = await supabase.rpc('approve_student', {
+      const { error } = await supabase.rpc('approve_student', {
         p_profile_id: studentId
       });
 
@@ -3988,7 +3939,7 @@ export default function App() {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data, error } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
+    const { data } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };
