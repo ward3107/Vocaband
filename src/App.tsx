@@ -5971,6 +5971,24 @@ export default function App() {
             }
             showToast(reason, 'success');
           }}
+          onApplyServerRewards={({ xpToAdd, badgesToAppend }) => {
+            // Teacher-given rewards arrive already-applied on the server
+            // (award_reward RPC increments users.xp and appends badges in
+            // the same transaction as the teacher_rewards insert).  This
+            // callback exists to sync the dashboard's LOCAL snapshot to
+            // the DB when RewardInboxCard detects a newly-polled reward.
+            // Writing to Supabase here would double-count — do NOT.
+            if (xpToAdd > 0) setXp(prev => prev + xpToAdd);
+            if (badgesToAppend.length > 0) {
+              setBadges(prev => {
+                const next = [...prev];
+                for (const b of badgesToAppend) {
+                  if (!next.includes(b)) next.push(b);
+                }
+                return next;
+              });
+            }
+          }}
           onGrantReward={(kind, value) => {
             // Apply a non-XP reward (title/frame/avatar unlock) into
             // user state + DB.  Gets called from the pet milestone claim.

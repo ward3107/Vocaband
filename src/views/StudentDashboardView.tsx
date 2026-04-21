@@ -43,6 +43,14 @@ interface StudentDashboardViewProps {
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
+  /**
+   * Called by RewardInboxCard when a new teacher reward is polled in
+   * while the student is already on the dashboard.  The award_reward
+   * RPC has already written the reward to the DB — this callback just
+   * syncs the dashboard's in-memory xp/badges to match.  Implementation
+   * must NOT write to the users table (that'd double-count).
+   */
+  onApplyServerRewards: (summary: { xpToAdd: number; badgesToAppend: string[] }) => void;
   /** Active booster snapshot for the dashboard chip strip. */
   boosters: {
     isXpBoosterActive: boolean;
@@ -61,7 +69,7 @@ export default function StudentDashboardView({
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
-  retention, onGrantXp, onGrantReward, boosters,
+  retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -90,7 +98,14 @@ export default function StudentDashboardView({
         {/* Teacher rewards land here FIRST so the student sees the
             celebration before anything else on the dashboard. Hides
             itself when the inbox is empty. */}
-        <RewardInboxCard onXpGranted={(delta) => onGrantXp(delta, `+${delta} XP from your teacher`)} />
+        <RewardInboxCard
+          onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
+            // RPC already wrote to the DB — just mirror locally so the
+            // dashboard reflects it without a page refresh.  Never writes
+            // back to Supabase.
+            onApplyServerRewards({ xpToAdd, badgesToAppend });
+          }}
+        />
         <StudentGreetingCard
           user={user}
           xp={xp}
