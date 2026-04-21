@@ -881,14 +881,8 @@ export default function App() {
         console.error('[Quick Play Monitor] Error fetching progress:', error);
         return;
       }
-      // Log the row count so we can tell "students haven't finished any
-      // mode yet" from "RLS is silently filtering everything out". The
-      // latter was happening before 20260504 when the quick_play_progress
-      // select policy had a uuid/text cast mismatch.
-      console.log('[Quick Play Monitor] fetched progress rows:', data?.length ?? 0, 'for session', sessionId);
       if (data) {
         const aggregated = aggregateProgress(data);
-        console.log('[Quick Play Monitor] aggregated students:', aggregated.length, aggregated);
         setQuickPlayJoinedStudents(aggregated);
       }
     };
@@ -3663,11 +3657,21 @@ export default function App() {
     // happens after some auth migrations / re-signins), a naive INSERT
     // using profile.auth_uid gets a 401. Always pull the live session
     // uid and prefer it — that's the only value RLS will accept.
-    const { data: { session: _liveSession } } = await supabase.auth.getSession();
-    const liveAuthUid = _liveSession?.user?.id;
+    //
+    // If there's NO live session (the student's anonymous session
+    // expired between visits), silently create a fresh one instead of
+    // bouncing them to a red "Just tap your name below" error. That
+    // message used to show up every time a returning student tapped
+    // their name without a valid session, with no clear recovery path.
+    let { data: { session: _liveSession } } = await supabase.auth.getSession();
+    let liveAuthUid = _liveSession?.user?.id;
     if (!liveAuthUid) {
-      setError("Just tap your name below to sign back in 👋");
-      return;
+      const { data: anon, error: anonErr } = await supabase.auth.signInAnonymously();
+      if (anonErr || !anon?.user?.id) {
+        setError("Couldn't start a session. Please refresh and try again.");
+        return;
+      }
+      liveAuthUid = anon.user.id;
     }
 
     // For students with approved accounts (from teacher approval workflow):

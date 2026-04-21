@@ -348,7 +348,9 @@ export default function StudentAccountLoginView({
                         )}
                       </div>
 
-                      {/* Existing students in this class */}
+                      {/* Existing students in this class — the PRIMARY flow.
+                          Most students are returning to a class they've joined
+                          before; tapping their name is the fastest path in. */}
                       {studentLoginClassCode && existingStudents.length > 0 && (
                         <div className="mb-5">
                           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2.5">
@@ -372,12 +374,18 @@ export default function StudentAccountLoginView({
                               </button>
                             ))}
                           </div>
+                          {/* Intent-based copy: "I don't see my name" reads
+                              naturally for both brand-new students AND returning
+                              students whose teacher just created the class.
+                              The old "I'm new — create my account" required the
+                              student to mentally classify themselves first. */}
                           <button
                             type="button"
                             onClick={() => setShowNewStudentForm(true)}
-                            className="w-full mt-3 py-2.5 text-sm font-bold text-indigo-600 hover:text-indigo-800 border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-xl transition-colors"
+                            className="w-full mt-3 py-3 text-sm font-bold text-indigo-600 hover:text-indigo-800 border-2 border-dashed border-indigo-300 hover:border-indigo-500 rounded-xl transition-colors flex items-center justify-center gap-2"
                           >
-                            I'm new — create my account
+                            <span className="text-base">👋</span>
+                            I don't see my name
                           </button>
                         </div>
                       )}
@@ -400,7 +408,12 @@ export default function StudentAccountLoginView({
                         </div>
                       )}
 
-                      {/* Divider + Google OAuth as secondary option */}
+                      {/* Google OAuth — demoted to a clearly-secondary option
+                          with an intent label that tells students WHY they'd
+                          pick it. Most classroom students stick with the name
+                          list above; Google is only useful for cross-device
+                          progress sync (kid uses the school Chromebook at
+                          school, their parent's iPad at home). */}
                       <div className="relative flex items-center my-5">
                         <div className="flex-1 h-px bg-stone-200" />
                         <span className="px-3 text-[11px] font-black uppercase tracking-[0.2em] text-stone-400">
@@ -409,6 +422,9 @@ export default function StudentAccountLoginView({
                         <div className="flex-1 h-px bg-stone-200" />
                       </div>
 
+                      <p className="text-xs font-bold text-stone-500 text-center mb-2.5">
+                        Coming back from another device?
+                      </p>
                       <OAuthButton
                         onSuccess={(_email, _isNewUser) => {
                           setIsOAuthCallback(true);
