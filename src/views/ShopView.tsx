@@ -569,7 +569,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {NAME_TITLES.map(title => {
                 const isOwned = (user.unlockedAvatars ?? []).includes(`title_${title.id}`);
-                const isActive = (user as any).activeTitle === title.id;
+                const isActive = user.activeTitle === title.id;
                 const canAfford = xp >= title.cost;
                 const style = TITLE_STYLES[title.id] ?? TITLE_STYLES._default;
                 return (
@@ -602,8 +602,8 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                         ) : isOwned ? (
                           <button
                             onClick={async () => {
-                              setUser(prev => prev ? { ...prev, activeTitle: title.id } as any : prev);
-                              await supabase.from('users').update({ active_title: title.id } as any).eq('uid', user.uid);
+                              setUser(prev => prev ? { ...prev, activeTitle: title.id } : prev);
+                              await supabase.from('users').update({ active_title: title.id }).eq('uid', user.uid);
                               showToast("Title equipped!", "success");
                             }}
                             type="button"
@@ -649,7 +649,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {NAME_FRAMES.map(frame => {
                 const isOwned = (user.unlockedAvatars ?? []).includes(`frame_${frame.id}`);
-                const isActive = (user as any).activeFrame === frame.id;
+                const isActive = user.activeFrame === frame.id;
                 const canAfford = xp >= frame.cost;
                 return (
                   <div
@@ -682,8 +682,8 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                           ) : isOwned ? (
                             <button
                               onClick={async () => {
-                                setUser(prev => prev ? { ...prev, activeFrame: frame.id } as any : prev);
-                                await supabase.from('users').update({ active_frame: frame.id } as any).eq('uid', user.uid);
+                                setUser(prev => prev ? { ...prev, activeFrame: frame.id } : prev);
+                                await supabase.from('users').update({ active_frame: frame.id }).eq('uid', user.uid);
                                 showToast("Frame equipped!", "success");
                               }}
                               type="button"

@@ -98,7 +98,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
@@ -123,6 +123,10 @@ export interface AppUser {
   unlockedThemes?: string[];
   powerUps?: Record<string, number>;
   activeTheme?: string;
+  /** Id of the currently-equipped frame cosmetic (NAME_FRAMES), or null/undefined. */
+  activeFrame?: string | null;
+  /** Id of the currently-equipped title cosmetic (TITLES_CATALOG), or null/undefined. */
+  activeTitle?: string | null;
   isGuest?: boolean;
   createdAt?: string;
 }
@@ -184,6 +188,8 @@ export function mapUser(row: any): AppUser {
     unlockedThemes: row.unlocked_themes ?? [],
     powerUps: row.power_ups ?? {},
     activeTheme: row.active_theme ?? 'default',
+    activeFrame: row.active_frame ?? null,
+    activeTitle: row.active_title ?? null,
   };
 }
 
@@ -202,6 +208,8 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.unlockedThemes !== undefined && { unlocked_themes: u.unlockedThemes }),
     ...(u.powerUps !== undefined && { power_ups: u.powerUps }),
     ...(u.activeTheme !== undefined && { active_theme: u.activeTheme }),
+    ...(u.activeFrame !== undefined && { active_frame: u.activeFrame }),
+    ...(u.activeTitle !== undefined && { active_title: u.activeTitle }),
   };
 }
 
