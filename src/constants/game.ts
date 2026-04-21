@@ -229,87 +229,85 @@ export const THEMES = [
 // the UI surfaces the shop entries and the open action will just show
 // a coming-soon toast. No behavioural breakage.
 export const MYSTERY_EGGS = [
-  // 2026 rebalance: eggs now average near break-even on XP — students
-  // open them for the excitement of a rare drop, not guaranteed profit.
-  // Rainbow is the 2-month endgame goal at 2000 XP.
+  // 2026-04 rebalance (v2): maximum payout now >= cost so profit is
+  // possible.  Previously every egg had max payout < cost — mathematically
+  // impossible to profit, so the "gamble" was actually a tax.  Now
+  // students can sometimes profit, sometimes lose a little, plus the
+  // cosmetic rolls at the bigger eggs make them worth it regardless.
   {
     id: 'starter_egg',
     name: 'Starter Egg',
     emoji: '🥚',
-    desc: 'A simple egg. Drops 15-40 XP.',
+    desc: 'A simple egg. Drops 25-80 XP — roughly break-even.',
     cost: 50,
     rarity: 'common' as const,
-    minXp: 15, maxXp: 40,
+    minXp: 25, maxXp: 80,
   },
   {
     id: 'golden_egg',
     name: 'Golden Egg',
     emoji: '🐣',
-    desc: 'Sparkles gold. Drops 50-120 XP + a small chance of a rare avatar.',
+    desc: 'Sparkles gold. Drops 80-220 XP + a chance of a rare avatar.',
     cost: 150,
     rarity: 'rare' as const,
-    minXp: 50, maxXp: 120,
+    minXp: 80, maxXp: 220,
   },
   {
     id: 'dragon_egg',
     name: 'Dragon Egg',
     emoji: '🐉',
-    desc: 'Something mighty inside. Drops 150-280 XP.',
+    desc: 'Something mighty inside. Drops 200-550 XP.',
     cost: 350,
     rarity: 'epic' as const,
-    minXp: 150, maxXp: 280,
+    minXp: 200, maxXp: 550,
   },
   {
     id: 'treasure_chest',
     name: 'Treasure Chest',
     emoji: '🎁',
-    desc: 'Premium loot. Drops 300-500 XP + guaranteed cosmetic.',
+    desc: 'Premium loot. Drops 350-800 XP + guaranteed cosmetic.',
     cost: 600,
     rarity: 'legendary' as const,
-    minXp: 300, maxXp: 500,
+    minXp: 350, maxXp: 800,
   },
   {
     id: 'cosmic_egg',
     name: 'Cosmic Egg',
     emoji: '🌟',
-    desc: 'Made of stardust. Drops 600-900 XP + a premium title.',
+    desc: 'Made of stardust. Drops 600-1400 XP + a premium title.',
     cost: 1000,
     rarity: 'legendary' as const,
-    minXp: 600, maxXp: 900,
+    minXp: 600, maxXp: 1400,
   },
   {
     id: 'rainbow_egg',
     name: 'Rainbow Egg',
     emoji: '🌈',
-    desc: 'The rarest egg. Drops 1200-1800 XP + a random premium avatar.',
+    desc: 'The rarest egg. Drops 1200-2600 XP + a random premium avatar.',
     cost: 2000,
     rarity: 'mythic' as const,
-    minXp: 1200, maxXp: 1800,
+    minXp: 1200, maxXp: 2600,
   },
 ];
 
 // --- SHOP: POWER-UPS & BOOSTERS ---
 // Power-ups consume on use (inventory count) — students stack them.
 // Boosters are one-shot buffs with a duration (handled in App.tsx).
-// 2026 rebalance: power-ups were too cheap (25-50) — one assignment
-// bought 3 of them, making games trivial.  Bumped across the board.
+// 2026-04 rebalance (v2): removed 3 placeholder power-ups (Double
+// Points, Time Freeze, Peek) that took XP but had NO gameplay hook.
+// Only shipping items we actually wire end-to-end.
 export const POWER_UP_DEFS = [
   { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 50 },
   { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 60 },
   { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 40 },
-  { id: 'double_points', name: 'Double Points', emoji: '2️⃣', desc: 'Next correct answer = 2× XP', cost: 80 },
-  { id: 'time_freeze', name: 'Time Freeze', emoji: '⏰', desc: 'Add 10 seconds on timed modes', cost: 60 },
-  { id: 'peek', name: 'Peek', emoji: '👁️', desc: 'Reveal the correct answer for 1 second', cost: 70 },
 ];
 
-// 2026 rebalance: streak_freeze dropped (it's defensive), xp_booster
-// bumped (it's very strong at 2×), weekend_warrior bumped (full weekend).
+// 2026-04 rebalance (v2): removed Focus Mode (no UI effect wired) and
+// Lucky Spin Token (no spin wheel exists).  Both were XP black holes.
 export const BOOSTERS_DEFS = [
   { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 150 },
-  { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
   { id: 'xp_booster', name: '2× XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 400 },
   { id: 'lucky_charm', name: 'Lucky Charm', emoji: '🍀', desc: 'Your first wrong answer in the next game is forgiven', cost: 180 },
-  { id: 'focus_mode', name: 'Focus Mode', emoji: '🎯', desc: 'Distraction-free theme for 1 hour', cost: 120 },
   { id: 'weekend_warrior', name: 'Weekend Warrior', emoji: '📅', desc: '2× XP for an entire weekend', cost: 500 },
 ];
 
