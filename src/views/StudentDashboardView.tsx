@@ -13,11 +13,15 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import { StructureHero } from "../components/structure/StructureHero";
+import { StructureKindPicker } from "../components/structure/StructureKindPicker";
+import { TodayStrip } from "../components/structure/TodayStrip";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View, ShopTab } from "../core/views";
 import type { RetentionState } from "../hooks/useRetention";
+import type { StructureState } from "../hooks/useStructure";
 
 interface StudentDashboardViewProps {
   user: AppUser;
@@ -59,7 +63,23 @@ interface StudentDashboardViewProps {
     streakFreezes: number;
     luckyCharms: number;
   };
+  /**
+   * Structure progression state (Phase 1 of the "build something
+   * meaningful" system).  When `structure` is provided AND the
+   * VITE_STRUCTURE_UX feature flag is enabled, the dashboard renders
+   * the StructureHero + TodayStrip + StudentAssignmentsList trio
+   * INSTEAD of the legacy 14-widget pile.  When flag is off, the
+   * prop is ignored and the old layout renders unchanged.
+   */
+  structure?: StructureState;
+  /** Keys of parts newly unlocked this render — for the bounce pop. */
+  celebrateStructureKeys?: string[];
 }
+
+// Feature flag — set VITE_STRUCTURE_UX=true to enable the Phase 1
+// structure-progression dashboard. Default false so the existing
+// legacy dashboard is what production ships until we're ready.
+const STRUCTURE_UX_ENABLED = import.meta.env.VITE_STRUCTURE_UX === 'true';
 
 export default function StudentDashboardView({
   user, xp, streak, badges,
@@ -70,6 +90,7 @@ export default function StudentDashboardView({
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
   retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
+  structure, celebrateStructureKeys,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -81,6 +102,85 @@ export default function StudentDashboardView({
     ? 'bg-gradient-to-b from-violet-50 via-stone-50 to-white'
     : activeThemeConfig.colors.bg;
 
+  // ── STRUCTURE UX (Phase 1 — feature-flagged) ──────────────────────
+  // Simpler composition: StructureKindPicker (first-run) + TodayStrip
+  // + StructureHero + StudentAssignmentsList. No widget soup.
+  if (STRUCTURE_UX_ENABLED && structure) {
+    const showPicker = structure.kind === null;
+    return (
+      <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
+        {consentModal}
+        {exitConfirmModal}
+        {classSwitchModal}
+        {showStudentOnboarding && (
+          <StudentOnboarding
+            userName={user.displayName}
+            onComplete={() => setShowStudentOnboarding(false)}
+          />
+        )}
+        <StructureKindPicker
+          open={showPicker}
+          onPick={(k) => structure.chooseKind(k)}
+        />
+        <div className="max-w-4xl mx-auto">
+          {classNotFoundBanner}
+          <RewardInboxCard
+            onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
+              onApplyServerRewards({ xpToAdd, badgesToAppend });
+            }}
+          />
+          <TodayStrip
+            user={user}
+            xp={xp}
+            streak={streak}
+            studentAssignments={studentAssignments}
+            studentProgress={studentProgress}
+            onPlayNextAssignment={(a) => {
+              setActiveAssignment(a);
+              setAssignmentWords(a.words ?? []);
+              setShowModeSelection(true);
+              setView('game');
+            }}
+            onPractice={() => {
+              // No assignments left — send the student to the shop for
+              // now; a dedicated "free practice" view is Phase 3.
+              setShopTab('hub');
+              setView('shop');
+            }}
+          />
+          {structure.kind && (
+            <StructureHero
+              kind={structure.kind}
+              slots={structure.slots}
+              nextLocked={structure.nextLocked}
+              celebrateKeys={celebrateStructureKeys}
+            />
+          )}
+          <StudentAssignmentsList
+            studentAssignments={studentAssignments}
+            studentProgress={studentProgress}
+            studentDataLoading={studentDataLoading}
+            userUid={user.uid}
+            setActiveAssignment={setActiveAssignment}
+            setAssignmentWords={setAssignmentWords}
+            setView={setView}
+            setShowModeSelection={setShowModeSelection}
+          />
+        </div>
+        <FloatingButtons
+          showBackToTop={false}
+          shareLevel={{
+            displayName: user.displayName,
+            xp,
+            title: getXpTitle(xp).title,
+            emoji: getXpTitle(xp).emoji,
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ── LEGACY DASHBOARD (default until flag flips in Phase 4) ────────
   return (
     <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
       {consentModal}

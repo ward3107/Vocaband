@@ -424,3 +424,114 @@ export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
 };
 
 export type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder";
+
+// ═════════════════════════════════════════════════════════════════════════
+// STRUCTURE PROGRESSION — "build something meaningful" system
+// ═════════════════════════════════════════════════════════════════════════
+//
+// Students earn pieces of a persistent creation through SPECIFIC LEARNING
+// ACHIEVEMENTS — not raw XP.  Phase 1 supports 10 pieces per metaphor and
+// 3 unlock events.  Phase 2 expands to 7 events + server-backed state.
+
+export type StructureKind = 'garden' | 'city' | 'rocket' | 'castle';
+
+/** Unlock events that grow a student's structure.  Phase 1 ships three; */
+/** phase 2 adds streak_30, class_pulse_on_track_week, teacher_badge, */
+/** mistake_mastered.  Each part points at one of these. */
+export type UnlockEvent = 'mastered_5_words' | 'perfect_assignment' | 'streak_7';
+
+export interface StructurePart {
+  /** Stable id used as storage key AND to look up the metaphor SVG slot. */
+  key: string;
+  /** Human label shown in the origin sheet. */
+  label: string;
+  /** Emoji shown on the origin sheet + optionally overlaid on the SVG. */
+  emoji: string;
+  /** What the student did to earn it — used in the origin sheet. */
+  origin: string;
+  /** Which event qualifies the student for this piece. */
+  unlockEvent: UnlockEvent;
+  /** The Nth unlock for this unlockEvent (1 = first time it fires). */
+  unlockOrdinal: number;
+}
+
+/**
+ * Each metaphor has 10 slots across three unlock events:
+ *   * 5× mastered_5_words   (foundation pieces — come most often)
+ *   * 3× perfect_assignment (landmarks — rarer)
+ *   * 2× streak_7           (commitment pieces — track streaks)
+ *
+ * Phase 1 ships the labels + origin copy only; the metaphor SVG
+ * components map their slots to these keys by slot index (0–9, in the
+ * order below).  Swapping a metaphor's art never touches this array.
+ */
+export const STRUCTURE_PARTS: Record<StructureKind, StructurePart[]> = {
+  garden: [
+    { key: 'g_seedling_1', label: 'Sprout',       emoji: '🌱', origin: 'You mastered 5 new words.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'g_flower_1',   label: 'First Bloom',  emoji: '🌸', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'g_seedling_2', label: 'Second Sprout',emoji: '🌿', origin: 'You mastered 10 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'g_tree_1',     label: 'Young Tree',   emoji: '🌳', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'g_seedling_3', label: 'Third Sprout', emoji: '🌿', origin: 'You mastered 15 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'g_flower_2',   label: 'Rose Garden',  emoji: '🌹', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'g_seedling_4', label: 'Fourth Sprout',emoji: '🌱', origin: 'You mastered 20 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'g_tree_2',     label: 'Oak Tree',     emoji: '🌳', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'g_seedling_5', label: 'Fifth Sprout', emoji: '🌻', origin: 'You mastered 25 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'g_flower_3',   label: 'Crown Bloom',  emoji: '🌺', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+  city: [
+    { key: 'c_house_1',    label: 'First House',  emoji: '🏠', origin: 'You mastered 5 new words.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'c_landmark_1', label: 'Library',      emoji: '📚', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'c_house_2',    label: 'Corner Shop',  emoji: '🏪', origin: 'You mastered 10 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'c_streak_1',   label: 'Street Lights',emoji: '💡', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'c_house_3',    label: 'Town Hall',    emoji: '🏛️', origin: 'You mastered 15 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'c_landmark_2', label: 'Clock Tower',  emoji: '🕰️', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'c_house_4',    label: 'Cafe',         emoji: '☕', origin: 'You mastered 20 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'c_streak_2',   label: 'Fountain',     emoji: '⛲', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'c_house_5',    label: 'School',       emoji: '🏫', origin: 'You mastered 25 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'c_landmark_3', label: 'Tower',        emoji: '🗼', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+  rocket: [
+    { key: 'r_body_1',     label: 'Fuel Tank',    emoji: '🛢️', origin: 'You mastered 5 new words.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'r_nose',       label: 'Nose Cone',    emoji: '🔺', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'r_body_2',     label: 'Body Segment', emoji: '🟧', origin: 'You mastered 10 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'r_streak_1',   label: 'Booster Flame',emoji: '🔥', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'r_fin_1',      label: 'Left Fin',     emoji: '◀️', origin: 'You mastered 15 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'r_engine',     label: 'Main Engine',  emoji: '⚙️', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'r_fin_2',      label: 'Right Fin',    emoji: '▶️', origin: 'You mastered 20 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'r_streak_2',   label: 'Booster Trail',emoji: '✨', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'r_cockpit',    label: 'Cockpit',      emoji: '🪟', origin: 'You mastered 25 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'r_flag',       label: 'Name Flag',    emoji: '🏁', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+  castle: [
+    { key: 'k_wall_1',     label: 'First Wall',   emoji: '🧱', origin: 'You mastered 5 new words.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'k_tower_1',    label: 'Watch Tower',  emoji: '🗼', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'k_wall_2',     label: 'West Wall',    emoji: '🧱', origin: 'You mastered 10 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'k_streak_1',   label: 'Royal Flag',   emoji: '🚩', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'k_wall_3',     label: 'East Wall',    emoji: '🧱', origin: 'You mastered 15 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'k_tower_2',    label: 'Keep',         emoji: '🏰', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'k_wall_4',     label: 'Gatehouse',    emoji: '🚪', origin: 'You mastered 20 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'k_streak_2',   label: 'Torches',      emoji: '🔥', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'k_wall_5',     label: 'Moat Bridge',  emoji: '🌉', origin: 'You mastered 25 words.',                    unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'k_tower_3',    label: 'Throne Room',  emoji: '👑', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+};
+
+export interface StructureKindMeta {
+  kind: StructureKind;
+  label: string;
+  emoji: string;
+  tagline: string;
+}
+
+export const STRUCTURE_KINDS: StructureKindMeta[] = [
+  { kind: 'garden', label: 'Garden',   emoji: '🌱', tagline: 'Grow plants, flowers, and trees.' },
+  { kind: 'city',   label: 'City',     emoji: '🏙️', tagline: 'Build houses, shops, and landmarks.' },
+  { kind: 'rocket', label: 'Rocket',   emoji: '🚀', tagline: 'Assemble a rocket, piece by piece.' },
+  { kind: 'castle', label: 'Castle',   emoji: '🏰', tagline: 'Raise walls, towers, and a throne room.' },
+];
+
+/** Words needed to qualify as one `mastered_5_words` event.  Keep in sync */
+/** with the unlock cadence — 5 means the student gets a foundation piece  */
+/** every ~5 games (assuming one new word-mastery per game in easier       */
+/** assignments, slower in harder ones).                                   */
+export const STRUCTURE_WORDS_PER_EVENT = 5;

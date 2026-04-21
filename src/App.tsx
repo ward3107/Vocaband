@@ -12,6 +12,7 @@ import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, 
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
+import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
@@ -209,6 +210,17 @@ export default function App() {
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
+
+  // Structure progression (Phase 1 of "build something meaningful").
+  // Tracks a per-user persisted creation (garden/city/rocket/castle)
+  // that grows as the student learns.  Gated behind the
+  // VITE_STRUCTURE_UX feature flag at the dashboard render level —
+  // this hook runs either way so the localStorage state is always
+  // consistent if the flag flips mid-session.
+  const structure = useStructure(user?.uid);
+  // Keys of parts that were just unlocked — used to bounce-animate
+  // them on the next render, then cleared after a short delay.
+  const [celebrateStructureKeys, setCelebrateStructureKeys] = useState<string[]>([]);
 
   // Active boosters (xp_booster, weekend_warrior, streak_freeze,
   // lucky_charm, focus_mode).  Scoped per-user via uid; persists in
@@ -4369,6 +4381,25 @@ export default function App() {
       showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
     }
 
+    // STRUCTURE PROGRESSION — report the game result to the hook so it
+    // can evaluate whether a new piece of the student's creation has
+    // been earned (mastered_5_words / perfect_assignment / streak_7).
+    // Returns the list of newly-unlocked part keys; we celebrate each
+    // one with a toast + confetti + bounce-animation flag.
+    const unlockedParts = structure.reportGameResult({
+      score: cappedScore,
+      newStreak,
+      prevStreak: streak,
+    });
+    if (unlockedParts.length > 0) {
+      setCelebrateStructureKeys(unlockedParts);
+      celebrate('big');
+      showToast(`✨ New piece unlocked! Check your ${structure.kind ?? 'creation'}.`, 'success');
+      // Clear the celebration flag after 4s so a subsequent unlock
+      // still triggers a fresh bounce rather than being suppressed.
+      setTimeout(() => setCelebrateStructureKeys([]), 4000);
+    }
+
     // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
     // For regular students, we try to get the session UID
     const { data: { session } } = await supabase.auth.getSession();
@@ -5221,6 +5252,8 @@ export default function App() {
               setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${value}`] } : prev);
             }
           }}
+          structure={structure}
+          celebrateStructureKeys={celebrateStructureKeys}
         />
       </LazyWrapper>
     );
