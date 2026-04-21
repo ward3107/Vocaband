@@ -192,6 +192,46 @@ export default function StudentAccountLoginView({
                     </p>
                   </div>
 
+                  {/* Returning vs New toggle.  Previously the "Request
+                      Account" form lived in the code (showNewStudentForm
+                      branch) but nothing in the UI flipped that flag to
+                      true, so new students had no visible path and the
+                      form was effectively dead code.  This segmented
+                      control exposes it as a clear, mutually-exclusive
+                      choice at the top of the card. */}
+                  <div className="grid grid-cols-2 gap-2 p-1 mb-6 bg-surface-container-highest rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewStudentForm(false);
+                        setError(null);
+                      }}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      className={`py-3 px-4 rounded-xl text-sm font-black transition-all ${
+                        !showNewStudentForm
+                          ? "bg-white shadow-md text-primary"
+                          : "text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      I'm returning
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewStudentForm(true);
+                        setError(null);
+                      }}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      className={`py-3 px-4 rounded-xl text-sm font-black transition-all ${
+                        showNewStudentForm
+                          ? "bg-white shadow-md text-primary"
+                          : "text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      I'm new
+                    </button>
+                  </div>
+
                   {!showNewStudentForm ? (
                     <>
                       {/* Class Code Input */}
@@ -307,19 +347,23 @@ export default function StudentAccountLoginView({
                     <>
                       {/* New Student Form */}
                       <div className="space-y-4 mb-6">
-                        <div className="p-4 bg-surface-container-highest rounded-xl">
-                          <p className="text-sm font-bold text-on-surface-variant mb-1">
-                            Class: <span className="text-primary font-black">{studentLoginClassCode}</span>
-                          </p>
-                          <button
-                            onClick={() => {
-                              setShowNewStudentForm(false);
-                              setStudentLoginClassCode("");
-                            }}
-                            className="text-xs text-primary hover:underline"
+                        <div>
+                          <label
+                            htmlFor="new-student-class-code-input"
+                            className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide"
                           >
-                            Change class code
-                          </button>
+                            Class Code
+                          </label>
+                          <input
+                            id="new-student-class-code-input"
+                            type="text"
+                            value={studentLoginClassCode}
+                            onChange={(e) => setStudentLoginClassCode(e.target.value.toUpperCase())}
+                            placeholder="MATH101"
+                            maxLength={20}
+                            autoFocus
+                            className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 uppercase"
+                          />
                         </div>
 
                         <div>
@@ -380,14 +424,6 @@ export default function StudentAccountLoginView({
                           Tell your teacher to approve your account. Once approved, you can log in and start earning XP!
                         </p>
                       </div>
-
-                      {/* Back Button */}
-                      <button
-                        onClick={() => setShowNewStudentForm(false)}
-                        className="w-full mt-4 py-3 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors"
-                      >
-                        ← Back to student list
-                      </button>
                     </>
                   )}
 
