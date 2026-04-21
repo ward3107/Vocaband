@@ -63,6 +63,7 @@ import {
 } from "./constants/game";
 import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } from "./hooks/useAssignmentPlays";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
+import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
@@ -2404,29 +2405,13 @@ export default function App() {
     setView("public-landing");
   }, [view, quickPlayActiveSession, loading]);
 
-  // Quick Play guest: keep localStorage intact on refresh for session recovery
-  // Only clear on explicit exit, not on refresh/navigation
-  useEffect(() => {
-    if (!user?.isGuest || !quickPlayActiveSession) return;
-    const handleUnload = () => {
-      // Do NOT clear localStorage on refresh - this allows students to stay logged in
-      // Only clear on explicit exit via handleExitGame or teacher kick
-    };
-    window.addEventListener('beforeunload', handleUnload);
-    return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [user?.isGuest, quickPlayActiveSession?.id]);
-
-  // Warn before leaving while a score save is in flight
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isSaving) {
-        e.preventDefault();
-        e.returnValue = "Your score is still saving. Are you sure you want to leave?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isSaving]);
+  // Warn before leaving while a score save is in flight.  Extracted
+  // into a hook so the "don't let the user leave while unsaved state
+  // is pending" pattern is reusable.  Previously there was also a
+  // no-op beforeunload handler whose only purpose was documenting
+  // "we intentionally don't clear localStorage here" — removed since
+  // the comment was the handler.
+  useBeforeUnloadWhileSaving(isSaving);
 
   // Retry any progress writes that failed during a previous session
   useEffect(() => {
