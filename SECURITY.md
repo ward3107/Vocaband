@@ -133,8 +133,10 @@ For transparency, a summary of Vocaband's internal controls:
   `CHECK` constraints on enums
 - **`SECURITY DEFINER` RPCs** run with explicit `SET search_path` and
   ownership checks
-- **Internal audit** logged in
-  [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
+- **Internal security audits** are conducted periodically.  A redacted
+  public summary is kept in
+  [SECURITY_AUDIT.md](./SECURITY_AUDIT.md); implementation-level detail
+  is available to researchers on request.
 
 ## Bug-bounty
 

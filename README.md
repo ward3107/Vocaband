@@ -274,7 +274,7 @@ Supabase
 ## Security
 
 - Vulnerability disclosure policy: [SECURITY.md](./SECURITY.md)
-- Latest internal security audit report: [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
+- Public audit summary (redacted): [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
 - Report a vulnerability privately: [contact@vocaband.com](mailto:contact@vocaband.com)
 
 ---

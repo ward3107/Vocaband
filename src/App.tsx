@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { enqueueQuickPlaySave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
@@ -905,6 +906,28 @@ export default function App() {
     // Re-fetching on each INSERT is cheap at classroom scale and keeps
     // the dedup logic in one place.
     setQuickPlayRealtimeStatus('connecting');
+
+    // Adaptive polling — only run when Realtime isn't delivering.  When
+    // the subscription callback reports SUBSCRIBED we stop the poll and
+    // let the doorbell handle it; when it reports an error/closed we
+    // resume the 5s knock as a safety net.  Status transitions toggle
+    // this interval on and off.  Variable lives outside the channel
+    // callback so both .subscribe() and cleanup can reach it.
+    let pollId: ReturnType<typeof setInterval> | null = null;
+    const startPoll = () => {
+      if (pollId) return;
+      pollId = setInterval(() => {
+        if (!document.hidden) fetchProgress();
+      }, 5_000);
+    };
+    const stopPoll = () => {
+      if (pollId) { clearInterval(pollId); pollId = null; }
+    };
+    // Start polling immediately — we're in 'connecting' until the
+    // subscribe callback confirms SUBSCRIBED.  No gap where the teacher
+    // is unprotected.
+    startPoll();
+
     const channel = supabase
       .channel(`qp-progress-${sessionId}`)
       .on(
@@ -921,12 +944,14 @@ export default function App() {
         }
       )
       .subscribe((status) => {
-        // supabase-js yields 'SUBSCRIBED' on success, 'CHANNEL_ERROR' /
-        // 'TIMED_OUT' / 'CLOSED' when the channel can't deliver events.
-        // Map those to a simple three-state indicator.
-        if (status === 'SUBSCRIBED') setQuickPlayRealtimeStatus('live');
-        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        if (status === 'SUBSCRIBED') {
+          setQuickPlayRealtimeStatus('live');
+          // Realtime is now delivering — polling is redundant.
+          stopPoll();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setQuickPlayRealtimeStatus('polling');
+          // Realtime degraded — resume polling as a safety net.
+          startPoll();
         }
       });
 
@@ -938,20 +963,8 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Polling fallback — Supabase Realtime has been unreliable in practice
-    // (UnableToConnectToProject errors, silent subscription drops). Without
-    // polling, the only way a teacher sees new scores land on the podium is
-    // if the Realtime INSERT event actually gets delivered — when it doesn't,
-    // the monitor stays blank and the teacher has to F5. Polling every 5s
-    // guarantees a worst-case 5s delay to see new scores, regardless of
-    // Realtime health. Query is a single indexed SELECT scoped to one
-    // session, so cost is negligible even at classroom scale.
-    const pollId = setInterval(() => {
-      if (!document.hidden) fetchProgress();
-    }, 5_000);
-
     return () => {
-      clearInterval(pollId);
+      stopPoll();
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -2145,7 +2158,41 @@ export default function App() {
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
         setUser(null);
+        // Reset all game-playing state so the back button can't resurrect
+        // a ghost of the previous session.  Symptom before this clear:
+        // teacher signs out, taps back a few times on mobile, and lands
+        // on a "practice 789 words" game (those 789 being an
+        // assignmentWords array left over from whatever was loaded last)
+        // even though auth.user is null.  Popstate restores the old view
+        // string but the render falls through to stale state in these
+        // variables if we don't null them out in lockstep.
+        setActiveAssignment(null);
+        setAssignmentWords([]);
+        setIsFinished(false);
+        setCurrentIndex(0);
+        setScore(0);
+        setMistakes([]);
+        setWordAttemptBatch([]);
+        setFeedback(null);
+        setSpellingInput("");
+        setMatchedIds([]);
+        setSelectedMatch(null);
+        setIsFlipped(false);
+        setRevealedLetters(0);
+        setSentenceIndex(0);
+        setAvailableWords([]);
+        setBuiltSentence([]);
+        setSentenceFeedback(null);
+        setHiddenOptions([]);
+        setShowModeSelection(false);
+        setQuickPlayActiveSession(null);
+        setQuickPlaySessionCode(null);
+        setQuickPlayJoinedStudents([]);
+        setQuickPlayKicked(false);
+        setQuickPlaySessionEnded(false);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
+        try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         // Reset history state so the back-button trap doesn't persist
         // into the logged-out experience (otherwise pad entries from
         // the previous session would still block navigation).
@@ -2544,6 +2591,32 @@ export default function App() {
     };
     retryPending();
   }, []);
+
+  // Quick Play score queue flusher.  Runs once for the app lifetime —
+  // listens to window 'online' + document 'visibilitychange' + a 30s
+  // poll and flushes any pending Quick Play score rows that failed
+  // their first send.  See src/core/saveQueue.ts for details.
+  useEffect(() => {
+    const uninstall = installQuickPlayQueueFlusher();
+    return uninstall;
+  }, []);
+
+  // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
+  // are stored on Supabase Storage; downloading them up-front means
+  // gameplay never has to wait on the network mid-question — even on
+  // 3G or a weak classroom Wi-Fi the audio clip is already local.
+  // This is what lets the student experience feel 'Kahoot-smooth'
+  // regardless of connectivity: gameplay is a local-only loop and
+  // only the score save has to talk to the server (and that's
+  // queued — see above).  Fire-and-forget; preload failures don't
+  // block the game, the live TTS fallback handles those.
+  useEffect(() => {
+    if (!user?.isGuest) return;
+    if (!quickPlayActiveSession?.words?.length) return;
+    const ids = quickPlayActiveSession.words.map(w => w.id).filter(id => id > 0);
+    if (ids.length === 0) return;
+    preloadMany(ids);
+  }, [user?.isGuest, quickPlayActiveSession?.id, preloadMany]);
 
   // Auto-refresh student assignments every 30s while on the dashboard
   // so new assignments from the teacher appear without re-login
@@ -4375,9 +4448,27 @@ export default function App() {
   useEffect(() => {
     if (user?.role !== "teacher") return;
     if (classes.length === 0) return;
-    if (allScores.length > 0) return;
     if (view !== "classroom" && view !== "analytics" && view !== "gradebook") return;
-    fetchScores();
+    // Initial fetch — only if we haven't already loaded this session.
+    // Without this guard, every view-switch inside Classroom would
+    // re-hit the DB.
+    if (allScores.length === 0) fetchScores();
+    // Live refresh — students complete assignments at any moment while
+    // the teacher is on Classroom/Analytics/Gradebook.  Before this,
+    // the teacher had to leave and re-enter the view to see a new
+    // score land (or full refresh the page).  Poll every 20 seconds
+    // and re-fetch when the tab becomes visible.  Cheap single query.
+    const pollId = setInterval(() => {
+      if (!document.hidden) fetchScores();
+    }, 20_000);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchScores();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(pollId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes.length, view, user?.role]);
 
@@ -4728,37 +4819,37 @@ export default function App() {
           avatar: user.avatar || "\uD83E\uDD8A"
         };
 
-        // Insert progress for Quick Play (direct insert since no RLS for guest sessions)
-        const { error } = await supabase
-          .from('progress')
-          .insert({
-            student_name: progress.studentName,
-            student_uid: progress.studentUid,
-            assignment_id: progress.assignmentId,
-            class_code: progress.classCode,
-            score: progress.score,
-            mode: progress.mode,
-            completed_at: progress.completedAt,
-            mistakes: Array.isArray(mistakes) ? mistakes : [],
-            avatar: progress.avatar
-          });
-
-        if (error) {
-          // Surface to the student. Prior behaviour was console-only, so
-          // a silent insert rejection (trigger, legacy anon key, stale
-          // session) looked identical to "all good" on-screen while the
-          // teacher monitor stayed empty.
-          console.error('[Quick Play] Failed to save progress:', error);
-          showToast(`Couldn't save your score: ${error.message}`, 'error');
-        } else {
-          // Mark this mode as completed so it gets locked in mode selection
-          setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-        }
+        // Optimistic save-and-queue.  Previously we awaited the INSERT
+        // and showed a red 'Couldn't save your score' toast on failure;
+        // on flaky classroom Wi-Fi that fired often and shook students'
+        // trust in the game.  Now we drop the row into a local retry
+        // queue and let the background flusher (installQuickPlayQueue-
+        // Flusher, wired on app mount) push it to Supabase whenever the
+        // network is cooperating.  Student sees the mode credited
+        // instantly; no error toast ever fires for them.  If the send
+        // really can't complete after 20 retries we give up silently —
+        // the alternative would be nagging about something they can't
+        // act on.
+        enqueueQuickPlaySave({
+          student_name: progress.studentName,
+          student_uid: progress.studentUid,
+          assignment_id: progress.assignmentId,
+          class_code: progress.classCode,
+          score: progress.score,
+          mode: progress.mode,
+          completed_at: progress.completedAt,
+          mistakes: Array.isArray(mistakes) ? mistakes : [],
+          avatar: progress.avatar,
+        });
+        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
 
         setIsSaving(false);
         return;
       } catch (err) {
-        console.error('[Quick Play] Error saving progress:', err);
+        // Only reachable if localStorage itself is broken (private
+        // browsing, quota exhausted).  Don't surface — the UI has
+        // already credited the mode; a toast here would just confuse.
+        console.error('[Quick Play] enqueue failed:', err);
         setIsSaving(false);
         return;
       }
