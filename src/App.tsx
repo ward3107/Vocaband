@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, mapProgressToDb, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { enqueueQuickPlaySave, installQuickPlayQueueFlusher } from "./core/saveQueue";
+import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { useBoosters } from "./hooks/useBoosters";
@@ -4832,14 +4832,14 @@ export default function App() {
         // act on.
         enqueueQuickPlaySave({
           student_name: progress.studentName,
-          student_uid: progress.studentUid,
+          student_uid: progress.studentUid || authUid,
           assignment_id: progress.assignmentId,
           class_code: progress.classCode,
           score: progress.score,
           mode: progress.mode,
           completed_at: progress.completedAt,
           mistakes: Array.isArray(mistakes) ? mistakes : [],
-          avatar: progress.avatar,
+          avatar: progress.avatar || '🦊',
         });
         setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
 
@@ -4965,74 +4965,86 @@ export default function App() {
       avatar: user.avatar || "🦊"
     };
 
-    try {
-      // OPTIMIZED: Only save progress immediately (critical data)
-      // Queue user stats updates (XP/streak) to be batched with other saves
-      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', {
-        p_student_name: user.displayName,
-        p_student_uid: studentUid,
-        p_assignment_id: activeAssignment.id,
-        p_class_code: user.classCode || "",
-        p_score: cappedScore,
-        p_mode: gameMode,
-        p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-        p_avatar: user.avatar || "🦊",
-        // Per-word attempt batch — the migration 20260423 added support for
-        // this arg.  Older DBs without the migration will fail the RPC call;
-        // catch below logs and falls back.  Empty array is fine (no attempts).
-        p_word_attempts: wordAttemptBatch,
-      });
+    // Optimistic save pattern for regular class assignments (mirrors
+    // the Kahoot-style behaviour we shipped for Quick Play).  We write
+    // local state immediately, attempt the RPC, and fall back to the
+    // background retry queue on any error — no red banner, no toast.
+    //
+    // Why no error UI: the student can't act on a network failure
+    // mid-game and they already see their score + XP update.  The
+    // flusher (installQuickPlayQueueFlusher, wired on mount) retries
+    // the save on 'online', tab refocus, and a 30s interval.  If the
+    // save ultimately can't be sent after 20 attempts we give up
+    // silently — the alternative is nagging the student about a state
+    // they can't fix.
+    //
+    // word_attempts batch is preserved: storing RPC args (rather than
+    // a raw progress row) in the queue means the retried save goes
+    // through save_student_progress and still appends word_attempts +
+    // increments play_count the same way the first attempt would.
+    const rpcArgs = {
+      p_student_name: user.displayName,
+      p_student_uid: studentUid,
+      p_assignment_id: activeAssignment.id,
+      p_class_code: user.classCode || "",
+      p_score: cappedScore,
+      p_mode: gameMode,
+      p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+      p_avatar: user.avatar || "🦊",
+      p_word_attempts: wordAttemptBatch,
+    };
 
+    // Optimistic local-state update — UI reflects the save immediately
+    // so the student never sees "saving..." spinners or error banners.
+    // If the real server-assigned id arrives later we reconcile below;
+    // if the save ends up routed through the queue it still lands
+    // eventually, and the local row will be overwritten on the next
+    // fetch with the server's version.
+    const optimisticProgress: ProgressData = {
+      id: `local-${Date.now()}`,
+      ...progress,
+    };
+    setStudentProgress(prev => {
+      const existingIndex = prev.findIndex(
+        p => p.assignmentId === activeAssignment.id
+          && p.mode === gameMode
+          && p.studentUid === studentUid
+      );
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = optimisticProgress;
+        return updated;
+      }
+      return [...prev, optimisticProgress];
+    });
+    celebrate('big');
+
+    try {
+      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', rpcArgs);
       if (rpcError) throw rpcError;
 
-      // OPTIMIZED: Queue user stats update instead of immediate
-      // This batches multiple updates together, reducing DB writes by ~50%
+      // Reconcile the optimistic row with the server's id.
+      setStudentProgress(prev => prev.map(p =>
+        p.id === optimisticProgress.id ? { ...p, id: progressId } : p
+      ));
+
+      // XP/streak write is batched with other queued saves — cheap,
+      // non-critical to the game loop, survives a failed flush the
+      // next time it runs.
       queueSaveOperation(async () => {
         await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
       });
 
-      // Update local state immediately (UI stays snappy)
-
-      // Update local state with the saved progress
-      const newProgress = {
-        id: progressId,
-        ...progress
-      };
-
-      setStudentProgress(prev => {
-        const existingIndex = prev.findIndex(
-          p => p.assignmentId === activeAssignment.id
-            && p.mode === gameMode
-            && p.studentUid === studentUid
-        );
-
-        if (existingIndex >= 0) {
-          // Update existing if found
-          const updated = [...prev];
-          updated[existingIndex] = newProgress;
-          return updated;
-        } else {
-          // Add new progress
-          return [...prev, newProgress];
-        }
-      });
-
-      // Clear any queued retry for this assignment+mode
+      // Clear any legacy retry key for this assignment+mode — the new
+      // save queue (enqueueAssignmentSave) uses a different storage
+      // key, so both systems can coexist while old keys drain.
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
-
-      // Random celebration from the full pool — big flavour for finishing a mode
-      celebrate('big');
     } catch (error) {
-      console.error("Error saving score:", error);
-      // Log detailed error for debugging
-      if (error && typeof error === 'object' && 'message' in error) {
-        console.error("Supabase error details:", error);
-      }
-      // Queue for retry on next load
-      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.setItem(retryKey, JSON.stringify(mapProgressToDb(progress)));
-      setSaveError(`Your score couldn't be saved. Check your connection — it will retry automatically.`);
+      // Silent.  Log for dev console but never surface a banner to the
+      // student — the queue will retry in the background.
+      console.error("[assignment save] queued for retry:", error);
+      enqueueAssignmentSave(rpcArgs);
     } finally {
       setIsSaving(false);
     }
