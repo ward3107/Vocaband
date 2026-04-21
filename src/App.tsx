@@ -5602,6 +5602,21 @@ export default function App() {
           setView("public-landing");
           try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         }}
+        // Only offer rejoin when we still have the session context.  The
+        // rejoin path clears the guest identity (localStorage + anon auth
+        // sign-out) so the student picks up a fresh uid, then drops them
+        // back on the Quick Play student view where the same session is
+        // still active — name-change happens there via the join form.
+        onRejoin={quickPlayActiveSession ? () => {
+          cleanupSessionData();
+          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+          supabase.auth.signOut().catch(() => { /* best-effort */ });
+          setQuickPlayKicked(false);
+          setActiveAssignment(null);
+          setUser(null);
+          setQuickPlayStudentName("");
+          setView("quick-play-student");
+        } : undefined}
       />
     );
   }
