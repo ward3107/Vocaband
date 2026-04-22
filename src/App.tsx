@@ -1602,6 +1602,40 @@ export default function App() {
         }
 
         if (userData) {
+          // OAuth role-intent enforcement.  If the user clicked
+          // "Log in as Teacher" on the landing page, we stamped
+          // sessionStorage.oauth_intended_role='teacher' BEFORE the
+          // Google redirect.  Google signs them in with whatever
+          // account they have active (which might be the one they
+          // previously signed up as a STUDENT with).  Without this
+          // guard, restoreSession would silently drop them into the
+          // student dashboard even though they clearly pressed the
+          // teacher button.  Reject with a clear error + sign out.
+          //
+          // Guard clears after 10 minutes to avoid a stale flag
+          // surviving across unrelated logins.
+          try {
+            const intendedRole = sessionStorage.getItem('oauth_intended_role');
+            const intendedAt = Number(sessionStorage.getItem('oauth_intended_role_at') || 0);
+            const fresh = intendedAt > 0 && (Date.now() - intendedAt) < 10 * 60 * 1000;
+            if (intendedRole === 'teacher' && fresh && userData.role !== 'teacher') {
+              sessionStorage.removeItem('oauth_intended_role');
+              sessionStorage.removeItem('oauth_intended_role_at');
+              setError(
+                `This Google account (${userData.email ?? 'unknown'}) is registered as a ${userData.role}, not a teacher. ` +
+                `Sign in from the student page instead, or use a different Google account for teacher access.`
+              );
+              await supabase.auth.signOut().catch(() => {});
+              setLoading(false);
+              return;
+            }
+            // Consumed — clear so subsequent logins don't re-trigger.
+            if (intendedRole) {
+              sessionStorage.removeItem('oauth_intended_role');
+              sessionStorage.removeItem('oauth_intended_role_at');
+            }
+          } catch { /* storage unavailable — skip enforcement */ }
+
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
@@ -4876,6 +4910,22 @@ export default function App() {
     goBack,
     onPublicNavigate: handlePublicNavigate,
     onTeacherOAuth: () => {
+      // Stamp the user's intent BEFORE the Google redirect so we can
+      // honour it on the way back.  Without this, "Log in as Teacher"
+      // and "Sign in with Google" on the student page fire the same
+      // OAuth flow — and restoreSession then routes based purely on
+      // whatever role exists in the users table for that email.  If
+      // the Google account has a student profile, the teacher button
+      // silently logs you in as the student.  Not good.
+      //
+      // After OAuth returns, restoreSession reads this flag and will
+      // refuse to complete login when the intent is 'teacher' but the
+      // found profile is not a teacher — the user sees an error and
+      // stays signed out instead of being dropped into the wrong role.
+      try {
+        sessionStorage.setItem('oauth_intended_role', 'teacher');
+        sessionStorage.setItem('oauth_intended_role_at', String(Date.now()));
+      } catch { /* storage unavailable — fall through, flag absent = legacy behavior */ }
       supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },
