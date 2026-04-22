@@ -21,6 +21,34 @@ export interface IdentityHeroProps {
   streak: number;
 }
 
+/**
+ * Hero gradient per theme — the IdentityHero card's background
+ * reskins when the student equips a shop theme so the whole
+ * dashboard (outer bg + hero card) feels coherent.  Each mapping
+ * is hand-picked to visually COMPLEMENT the theme's dashboard
+ * background colours (not match them), so the hero still pops
+ * against whatever backdrop the theme provides.
+ *
+ * Unknown theme ids fall back to the default warm amber-to-rose
+ * gradient, so adding a new theme without updating this map is
+ * non-breaking.
+ */
+const HERO_GRADIENTS: Record<string, string> = {
+  default: 'from-amber-400 via-orange-500 to-rose-500',
+  dark:    'from-indigo-500 via-violet-600 to-fuchsia-600',
+  ocean:   'from-cyan-500 via-sky-500 to-indigo-600',
+  sunset:  'from-purple-500 via-pink-500 to-rose-500',
+  neon:    'from-green-400 via-emerald-500 to-teal-500',
+  forest:  'from-emerald-500 via-lime-500 to-amber-400',
+  royal:   'from-amber-400 via-yellow-500 to-orange-500',
+  galaxy:  'from-fuchsia-500 via-violet-500 to-indigo-600',
+  aurora:  'from-emerald-400 via-cyan-500 to-violet-500',
+  retro80: 'from-fuchsia-500 via-pink-500 to-cyan-500',
+  sakura:  'from-rose-400 via-pink-400 to-fuchsia-400',
+  chill:   'from-sky-400 via-amber-400 to-rose-400',
+  esports: 'from-green-500 via-emerald-500 to-teal-600',
+};
+
 export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) => {
   const firstName = user.displayName?.split(' ')[0] ?? 'Friend';
   const avatar = user.avatar || '🦊';
@@ -32,15 +60,17 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
     ? NAME_TITLES.find(t => t.id === user.activeTitle)
     : null;
   const xpTitle = getXpTitle(xp);
-  // The equipped frame's ring classes wrap the avatar medallion so the
-  // purchased frame is instantly readable.  No frame equipped = a quiet
-  // white halo so the avatar still pops.
   const frameRingClass = equippedFrame?.border ?? 'ring-2 ring-white/50';
+
+  // Pick the hero gradient for the equipped theme (or the default
+  // warm amber if the theme is unknown / not purchased yet).
+  const themeId = user.activeTheme ?? 'default';
+  const heroGradient = HERO_GRADIENTS[themeId] ?? HERO_GRADIENTS.default;
 
   return (
     <section
       aria-label="Your profile"
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white shadow-xl ring-1 ring-white/10 p-5 sm:p-7 mb-4"
+      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${heroGradient} text-white shadow-xl ring-1 ring-white/10 p-5 sm:p-7 mb-4`}
     >
       {/* Decorative corner blobs — soft atmosphere, not busy */}
       <div aria-hidden className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/15 blur-3xl" />
@@ -51,7 +81,10 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
             ring classes wrap it so equipped cosmetics are instantly
             visible.  Ring-offset-2 gives every frame a breathing gap
             so the colour reads even on the warm gradient behind. */}
-        <div className={`shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-3xl bg-white flex items-center justify-center shadow-2xl ${frameRingClass} ring-offset-2 ring-offset-orange-400`}>
+        {/* ring-offset-transparent lets the hero gradient show through
+            the 2px offset gap; avoids the ring reading as an orange
+            "collar" when the theme is cool-toned (Ocean, Galaxy, …). */}
+        <div className={`shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-3xl bg-white flex items-center justify-center shadow-2xl ${frameRingClass} ring-offset-2 ring-offset-transparent`}>
           <span className="text-6xl sm:text-7xl" aria-hidden>{avatar}</span>
         </div>
 
