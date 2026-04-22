@@ -59,6 +59,18 @@ interface GradebookViewProps {
    *  page (default), "records" = scroll to the records / per-student
    *  table on mount. */
   focus?: "pulse" | "records";
+  /** When set, render only the named content sections. Default (omitted)
+   *  renders everything — that's the standalone /gradebook route and
+   *  the legacy Pulse tab in the 2-tab classroom layout.
+   *
+   *  Used by the 4-tab classroom v2 to slice this view across tabs:
+   *    Today       → ['pulse', 'activity']
+   *    Students    → ['students']
+   *    Assignments → ['assignments'] */
+  sections?: Array<'pulse' | 'activity' | 'students' | 'assignments'>;
+  /** When true, hide the CSV-export button. The 4-tab classroom v2
+   *  moves export to the Reports tab so it doesn't duplicate. */
+  hideExport?: boolean;
 }
 
 interface MasteryApiRow {
@@ -132,9 +144,15 @@ export default function GradebookView({
   showToast,
   embedded = false,
   focus = "pulse",
+  sections,
+  hideExport = false,
 }: GradebookViewProps) {
   void focus; // reserved for future scroll-anchor wiring; kept in
               // the prop signature so callers can plumb intent now
+  const showPulse       = !sections || sections.includes('pulse');
+  const showActivity    = !sections || sections.includes('activity');
+  const showStudents    = !sections || sections.includes('students');
+  const showAssignments = !sections || sections.includes('assignments');
   const [selectedClassCode, setSelectedClassCode] = useState<string>(() =>
     classes[0]?.code ?? ''
   );
@@ -454,19 +472,22 @@ export default function GradebookView({
               </button>
             ))}
           </div>
-          <div className="ml-auto">
-            <button
-              onClick={handleExportCsv}
-              type="button"
-              className="px-4 py-2 bg-stone-900 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-stone-800 transition-colors shadow-sm"
-            >
-              <Download size={14} />
-              Export CSV
-            </button>
-          </div>
+          {!hideExport && (
+            <div className="ml-auto">
+              <button
+                onClick={handleExportCsv}
+                type="button"
+                className="px-4 py-2 bg-stone-900 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-stone-800 transition-colors shadow-sm"
+              >
+                <Download size={14} />
+                Export CSV
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── 1. CLASS PULSE ─────────────────────────────────────────────── */}
+        {showPulse && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <PulseCard
             kind="on-track"
@@ -490,8 +511,10 @@ export default function GradebookView({
             icon={<Moon size={22} />}
           />
         </div>
+        )}
 
         {/* ── 2. ACTIVITY CHART ──────────────────────────────────────────── */}
+        {showActivity && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -532,8 +555,10 @@ export default function GradebookView({
             })}
           </div>
         </div>
+        )}
 
         {/* ── 3. STUDENT LIST ────────────────────────────────────────────── */}
+        {showStudents && (
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-stone-100 mb-6">
           <h3 className="text-base font-black text-stone-800 mb-4 flex items-center gap-2">
             <Users size={16} className="text-violet-500" />
@@ -656,9 +681,10 @@ export default function GradebookView({
             </div>
           )}
         </div>
+        )}
 
         {/* ── 4. PER-ASSIGNMENT rollup ───────────────────────────────────── */}
-        {assignmentRollups.length > 0 && (
+        {showAssignments && assignmentRollups.length > 0 && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
             <h3 className="text-base font-black text-stone-800 mb-4 flex items-center gap-2">
               <Trophy size={16} className="text-amber-500" />
