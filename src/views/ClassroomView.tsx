@@ -176,6 +176,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 embedded
                 sections={["students"]}
                 hideExport
+                useDrawerDrill
               />
             )}
             {v2Tab === "assignments" && (
@@ -192,6 +193,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 embedded
                 sections={["assignments"]}
                 hideExport
+                useDrawerDrill
               />
             )}
             {v2Tab === "reports" && (
