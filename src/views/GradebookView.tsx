@@ -79,6 +79,13 @@ interface GradebookViewProps {
    *  4-tab classroom uses this on its Students + Assignments tabs for
    *  the plan's adaptive drill pattern. */
   useDrawerDrill?: boolean;
+  /** Controlled class selection. When provided, the view reflects this
+   *  code and calls `onSelectedClassChange` on changes (e.g. the
+   *  4-tab classroom shares class selection across Today / Students /
+   *  Assignments). When omitted, the view owns the selection locally
+   *  (standalone /gradebook route, legacy Pulse tab). */
+  selectedClassCode?: string;
+  onSelectedClassChange?: (code: string) => void;
 }
 
 interface MasteryApiRow {
@@ -155,6 +162,8 @@ export default function GradebookView({
   sections,
   hideExport = false,
   useDrawerDrill = false,
+  selectedClassCode: controlledClassCode,
+  onSelectedClassChange,
 }: GradebookViewProps) {
   void focus; // reserved for future scroll-anchor wiring; kept in
               // the prop signature so callers can plumb intent now
@@ -167,9 +176,17 @@ export default function GradebookView({
   // expand path is untouched on the standalone /gradebook route.
   const [drillStudent, setDrillStudent] = useState<StudentRollup | null>(null);
   const [drillAssignmentId, setDrillAssignmentId] = useState<string | null>(null);
-  const [selectedClassCode, setSelectedClassCode] = useState<string>(() =>
-    classes[0]?.code ?? ''
+
+  // Class selection is controlled when the parent passes it in (4-tab
+  // classroom) and uncontrolled otherwise (standalone /gradebook route).
+  const [localClassCode, setLocalClassCode] = useState<string>(() =>
+    controlledClassCode ?? classes[0]?.code ?? ''
   );
+  const selectedClassCode = controlledClassCode ?? localClassCode;
+  const setSelectedClassCode = (code: string) => {
+    if (onSelectedClassChange) onSelectedClassChange(code);
+    else setLocalClassCode(code);
+  };
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(7);
 
   const [masteryRows, setMasteryRows] = useState<MasteryApiRow[]>([]);

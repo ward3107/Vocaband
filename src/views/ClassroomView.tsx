@@ -19,12 +19,14 @@
  * Legacy `initialTab` values ("pulse" / "mastery") still work — they
  * map onto the closest v2 tab when the flag is on.
  */
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Activity, Brain } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
+import StatChip from "../components/classroom/StatChip";
+import TodayActionList from "../components/classroom/TodayActionList";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -94,6 +96,44 @@ export default function ClassroomView(props: ClassroomViewProps) {
   const [legacyTab, setLegacyTab] = useState<LegacyTab>(initialTab);
   const [v2Tab, setV2Tab] = useState<V2Tab>(legacyToV2[initialTab]);
 
+  // Shared class selection across the v2 tabs so picking a class on
+  // Today keeps it selected when the teacher jumps to Students /
+  // Assignments / Reports. Stays in sync with whatever the parent
+  // page passed in as `classes`.
+  const [classCode, setClassCode] = useState<string>(() => classes[0]?.code ?? "");
+  useEffect(() => {
+    if (classes.length === 0) return;
+    if (!classes.some(c => c.code === classCode)) {
+      setClassCode(classes[0].code);
+    }
+  }, [classes, classCode]);
+
+  // Derived stats for the Today tab — cheap and pure from props. Scoped
+  // to the currently selected class only; "all classes" view isn't a
+  // goal of Today (it's about a concrete class right now).
+  const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const classScores = useMemo(
+    () => allScores.filter(s => s.classCode === classCode),
+    [allScores, classCode]
+  );
+  const todayStats = useMemo(() => {
+    const weekScores = classScores.filter(
+      s => new Date(s.completedAt).getTime() >= sevenDaysAgoMs
+    );
+    const activeStudents = new Set(
+      weekScores.map(s => s.studentName.trim().toLowerCase())
+    ).size;
+    const rosterSize = classStudents.filter(cs => cs.classCode === classCode).length;
+    const avgScore = weekScores.length === 0
+      ? null
+      : Math.round(weekScores.reduce((sum, s) => sum + s.score, 0) / weekScores.length);
+    const playsThisWeek = weekScores.length;
+    return { activeStudents, rosterSize, avgScore, playsThisWeek };
+    // sevenDaysAgoMs is computed inline on every render and is stable
+    // enough for a stats panel; no memo dep on it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classScores, classStudents, classCode]);
+
   if (CLASSROOM_V2) {
     return (
       <div className="min-h-screen bg-background pb-28 sm:pb-12">
@@ -148,19 +188,82 @@ export default function ClassroomView(props: ClassroomViewProps) {
             <div className="text-center py-16 text-stone-400 text-sm">Loading…</div>
           }>
             {v2Tab === "today" && (
-              <GradebookView
-                user={user}
-                allScores={allScores}
-                teacherAssignments={teacherAssignments}
-                classStudents={classStudents}
-                classes={classes}
-                expandedStudent={expandedStudent}
-                setExpandedStudent={setExpandedStudent}
-                setView={setView}
-                showToast={showToast}
-                embedded
-                sections={["pulse", "activity"]}
-              />
+              <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-5">
+                {/* StatChip row — the plan's "big labeled numbers +
+                    plain-English explainers" pattern. Each tile has an
+                    "i" tooltip so teachers never see a number without
+                    knowing what it means. */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatChip
+                    value={todayStats.activeStudents}
+                    label="active students"
+                    caption={`this week · ${todayStats.rosterSize || "?"} enrolled`}
+                    tone="indigo"
+                    tooltip="Students who completed at least one game in the last 7 days. Counts unique students, not total plays."
+                  />
+                  <StatChip
+                    value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
+                    label="avg score"
+                    caption="across every play this week"
+                    score={todayStats.avgScore ?? undefined}
+                    tone={todayStats.avgScore == null ? "stone" : undefined}
+                    tooltip="The mean score across every completed game in the last 7 days. Green ≥80, amber 70–79, rose under 70."
+                  />
+                  <StatChip
+                    value={todayStats.playsThisWeek}
+                    label="plays this week"
+                    caption="total completed games"
+                    tone="violet"
+                    tooltip="Every time a student finishes a game mode counts as one play. One student can contribute multiple plays a day."
+                  />
+                  <StatChip
+                    value={todayStats.rosterSize || "—"}
+                    label="enrolled"
+                    caption="students on the roster"
+                    tone="stone"
+                    tooltip="Everyone who has joined this class with the class code, regardless of whether they've played yet."
+                  />
+                </div>
+
+                {/* The existing pulse cards + activity chart come from
+                    GradebookView, sliced via the sections prop. Class
+                    selection is controlled so switching tabs doesn't
+                    lose the teacher's pick. */}
+                <GradebookView
+                  user={user}
+                  allScores={allScores}
+                  teacherAssignments={teacherAssignments}
+                  classStudents={classStudents}
+                  classes={classes}
+                  expandedStudent={expandedStudent}
+                  setExpandedStudent={setExpandedStudent}
+                  setView={setView}
+                  showToast={showToast}
+                  embedded
+                  sections={["pulse", "activity"]}
+                  selectedClassCode={classCode}
+                  onSelectedClassChange={setClassCode}
+                />
+
+                {/* Action list — derived from the same class's data.
+                    Tapping an item switches tab (and, for assignments,
+                    primes the drill via a tiny query-string hand-off
+                    the v2 Assignments tab listens for). */}
+                <TodayActionList
+                  classCode={classCode}
+                  scores={classScores}
+                  classStudents={classStudents}
+                  teacherAssignments={teacherAssignments}
+                  onGoToStudents={() => setV2Tab("students")}
+                  onGoToReports={() => setV2Tab("reports")}
+                  onOpenAssignment={() => {
+                    // Phase 3 scope: switch to the Assignments tab. Pre-
+                    // opening the specific assignment's drill is Phase 4
+                    // once the class-scoped selection flows through.
+                    setV2Tab("assignments");
+                  }}
+                />
+              </div>
             )}
             {v2Tab === "students" && (
               <GradebookView
@@ -177,6 +280,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 sections={["students"]}
                 hideExport
                 useDrawerDrill
+                selectedClassCode={classCode}
+                onSelectedClassChange={setClassCode}
               />
             )}
             {v2Tab === "assignments" && (
@@ -194,6 +299,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 sections={["assignments"]}
                 hideExport
                 useDrawerDrill
+                selectedClassCode={classCode}
+                onSelectedClassChange={setClassCode}
               />
             )}
             {v2Tab === "reports" && (
