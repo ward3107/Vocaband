@@ -127,6 +127,19 @@ export default function App() {
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
     if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    // Classroom-poster QR code / teacher-shared invite link.  When the
+    // URL carries a `?class=XXX` parameter and there's no already-active
+    // session, skip the landing page and drop the visitor straight on
+    // the student-login screen so they can tap their name.  Without
+    // this, QR-scanners land on the generic landing page, see no
+    // obvious "enter my classroom" CTA, and give up.  Auth restore
+    // still runs afterwards — a logged-in user's session override
+    // this initial view (they'll go to their dashboard, and if their
+    // classCode differs, the class-switch modal handles the rest).
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('class')) return "student-account-login";
+    } catch { /* URLSearchParams unavailable — fall through */ }
     return "public-landing";
   });
   const previousViewRef = useRef<string>("public-landing");
