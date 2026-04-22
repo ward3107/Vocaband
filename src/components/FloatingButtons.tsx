@@ -183,17 +183,20 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Build the shared URL. HARDCODED to www.vocaband.com rather than
-  // window.location.origin because students (and teachers testing the
-  // share flow) sometimes have the app open on a Cloudflare preview
-  // URL, a staging deploy, or localhost — and those URLs were ending
-  // up in shared messages, giving recipients broken links.  The
-  // canonical URL always works.
+  // Build the shared URL. HARDCODED to www.vocaband.com (no query
+  // params) for maximum compatibility with link-preview scrapers and
+  // in-app webviews.  Teacher reported intermittent "site can't be
+  // reached" errors when recipients clicked the shared link — the
+  // fewer moving parts in the URL, the less can go wrong.
   //
-  // `?share=1` keeps logged-in visitors on the landing page instead
-  // of auto-redirecting them to their own dashboard (see the
-  // fromShareLinkRef handling in App.tsx).
-  const shareUrl = "https://www.vocaband.com/?share=1";
+  // Previously included `?share=1` which told App.tsx to keep
+  // logged-in visitors on the landing page (so they'd see what their
+  // friend was sharing).  Dropped it: WhatsApp/Facebook strip query
+  // params when the recipient clicks the preview CARD anyway (they
+  // use the og:url canonical), and the few visitors who land with
+  // a session will see their own dashboard — which is actually fine,
+  // not a regression worth the URL complexity.
+  const shareUrl = "https://www.vocaband.com/";
 
   // Share text flips between "level flex" (when shareLevel is provided
   // from the student dashboard) and the generic landing-page teaser
