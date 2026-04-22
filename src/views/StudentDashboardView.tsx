@@ -10,6 +10,7 @@ import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
+import PowerUpsStrip from "../components/dashboard/PowerUpsStrip";
 import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
@@ -148,6 +149,23 @@ export default function StudentDashboardView({
               readable at the top of the screen. */}
           <IdentityHero user={user} xp={xp} streak={streak} />
 
+          {/* ── Inventory strips ─────────────────────────────────
+              What the student owns + what's active.  Previously
+              rendered only on the legacy dashboard; restored here
+              so purchases made in the shop actually show up on
+              the main screen:
+                * ActiveBoostersStrip — 2×XP / Weekend Warrior /
+                  Streak Freeze count / Lucky Charm count
+                * PowerUpsStrip — Skip / 50-50 / Reveal Letter
+                  inventory counts (new component — these had no
+                  display anywhere before this)
+                * BadgesStrip — earned badges carousel
+              Each strip hides itself when empty, so a brand-new
+              student with no purchases sees a clean hero + garden
+              without clutter. */}
+          <ActiveBoostersStrip {...boosters} />
+          <PowerUpsStrip powerUps={user.powerUps} />
+
           {/* ── Structure preview + Shop side-by-side ─────────────
               Garden / City / Rocket / Castle renders as a compact
               tappable preview on the left (opens the fullscreen
@@ -186,6 +204,12 @@ export default function StudentDashboardView({
               setView('shop');
             }}
           />
+
+          {/* ── Earned badges ──────────────────────────────────────
+              Collection of achievements (auto-awarded + teacher-
+              awarded).  Hides itself when the student has none,
+              so day-one students don't see an empty strip. */}
+          {badges.length > 0 && <BadgesStrip earned={badges} />}
 
           <StudentAssignmentsList
             studentAssignments={studentAssignments}
