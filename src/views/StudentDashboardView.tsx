@@ -1,4 +1,5 @@
 import StudentOnboarding from "../components/StudentOnboarding";
+import { useState } from "react";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
@@ -13,11 +14,12 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
-import { StructureHero } from "../components/structure/StructureHero";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
-import { IdentitySquare } from "../components/structure/IdentitySquare";
+import { IdentityHero } from "../components/structure/IdentityHero";
 import { ShopSquare } from "../components/structure/ShopSquare";
+import { StructurePreviewTile } from "../components/structure/StructurePreviewTile";
+import { StructureDetailModal } from "../components/structure/StructureDetailModal";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
@@ -96,6 +98,13 @@ export default function StudentDashboardView({
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
+  // Controls the fullscreen detail modal for the student's structure
+  // (garden / city / rocket / castle).  Declared here at the top of
+  // the component — NOT inside the STRUCTURE_UX branch — so hook
+  // order stays stable regardless of whether the flag is on or the
+  // structure prop is provided.
+  const [showStructureDetail, setShowStructureDetail] = useState(false);
+
   // The default theme now uses a soft gradient instead of flat stone-100 —
   // sets a warmer tone for the vibrant greeting hero that follows. Other
   // themes still pick their own bg from THEMES.
@@ -132,29 +141,34 @@ export default function StudentDashboardView({
             }}
           />
 
-          {/* ── Identity + Shop squares (top pair) ─────────────────
-              Two matching colourful squares: avatar+name on the
-              left, shop on the right.  Stacks vertically on mobile.
-              This is the "redesign the whole page" layout the
-              teacher asked for — name visible, shop obvious, garden
-              free to take the full width below. */}
+          {/* ── IDENTITY HERO (full-width, prominent) ───────────────
+              Big avatar medallion wrapped in the equipped frame's
+              ring, first name, title badge, XP + streak.  Primary
+              job: make "who I am + what I've equipped" instantly
+              readable at the top of the screen. */}
+          <IdentityHero user={user} xp={xp} streak={streak} />
+
+          {/* ── Structure preview + Shop side-by-side ─────────────
+              Garden / City / Rocket / Castle renders as a compact
+              tappable preview on the left (opens the fullscreen
+              detail modal when tapped).  Shop on the right.  Both
+              stack on mobile.  Frees vertical room below for
+              Today strip + Assignments. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-            <IdentitySquare user={user} xp={xp} streak={streak} />
+            {structure.kind ? (
+              <StructurePreviewTile
+                kind={structure.kind}
+                slots={structure.slots}
+                onOpen={() => setShowStructureDetail(true)}
+              />
+            ) : (
+              /* Picker hasn't fired yet — render a placeholder slot so
+                 the shop tile doesn't slide across the full width. */
+              <div className="rounded-3xl bg-stone-100 min-h-[200px]" aria-hidden />
+            )}
             <ShopSquare xp={xp} onOpen={() => { setShopTab('hub'); setView('shop'); }} />
           </div>
 
-          {/* ── Garden / City / Rocket / Castle — full width ────── */}
-          {structure.kind && (
-            <StructureHero
-              kind={structure.kind}
-              slots={structure.slots}
-              nextLocked={structure.nextLocked}
-              celebrateKeys={celebrateStructureKeys}
-              masteryProgress={structure.masteryProgress}
-            />
-          )}
-
-          {/* ── Today's play strip (the "what now?" CTA) ────────── */}
           <TodayStrip
             user={user}
             xp={xp}
@@ -184,6 +198,22 @@ export default function StudentDashboardView({
             setShowModeSelection={setShowModeSelection}
           />
         </div>
+
+        {/* ── Structure detail modal ─────────────────────────────
+            Lifted out of the main column so the overlay sits on top
+            of everything (including PetCompanion).  Only renders
+            when the student taps the preview tile. */}
+        {structure.kind && (
+          <StructureDetailModal
+            open={showStructureDetail}
+            onClose={() => setShowStructureDetail(false)}
+            kind={structure.kind}
+            slots={structure.slots}
+            nextLocked={structure.nextLocked}
+            celebrateKeys={celebrateStructureKeys}
+            masteryProgress={structure.masteryProgress}
+          />
+        )}
 
         {/* Pet companion — keeps the egg/fox/dragon progression visible.
             Lives as a floating bubble on the right so it doesn't compete
