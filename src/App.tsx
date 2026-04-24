@@ -431,7 +431,7 @@ export default function App() {
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
-        // ─── Legacy anon-auth bootstrap (v2 skips this) ────────────────
+        // ─── Legacy anon-auth bootstrap (v2 skips the anon sign-in) ────
         // Ensure we have a VALID anonymous auth session — RLS requires it.
         //
         // `getSession()` only reads localStorage, so a stale token (from a
@@ -450,27 +450,29 @@ export default function App() {
         // down the live component tree (caused 8/10 student crashes in a
         // classroom test).
         //
-        // v2 doesn't need any of this — Quick Play no longer uses anon
-        // auth — so the entire block is skipped under the flag.
-        if (!QUICKPLAY_V2) {
-          const { data: { session: cachedSession } } = await supabase.auth.getSession();
-          let stale = false;
-          if (cachedSession) {
-            const { error } = await supabase.auth.getUser();
-            stale = !!error;
-          }
-          if (stale) {
-            try {
-              for (const key of Object.keys(localStorage)) {
-                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-                  localStorage.removeItem(key);
-                }
+        // Under v2: we still wipe stale sb-*-auth-token entries, because
+        // they'd otherwise be sent as the `authorization` header on every
+        // Supabase query — including the quick_play_sessions lookup below
+        // — and a server-rejected token returns an error that bounces the
+        // student to landing. Skip only the signInAnonymously step, so no
+        // new anon auth.users row is created.
+        const { data: { session: cachedSession } } = await supabase.auth.getSession();
+        let stale = false;
+        if (cachedSession) {
+          const { error } = await supabase.auth.getUser();
+          stale = !!error;
+        }
+        if (stale) {
+          try {
+            for (const key of Object.keys(localStorage)) {
+              if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                localStorage.removeItem(key);
               }
-            } catch { /* private mode / disabled storage — fall through */ }
-          }
-          if (!cachedSession || stale) {
-            await supabase.auth.signInAnonymously().catch(() => {});
-          }
+            }
+          } catch { /* private mode / disabled storage — fall through */ }
+        }
+        if (!QUICKPLAY_V2 && (!cachedSession || stale)) {
+          await supabase.auth.signInAnonymously().catch(() => {});
         }
 
         const { data, error } = await supabase
@@ -481,7 +483,17 @@ export default function App() {
           .single();
 
         if (error || !data) {
-          console.error('Failed to load Quick Play session:', error);
+          // Verbose logging — this path is where we lose Quick Play
+          // students to the landing page, so make the reason obvious
+          // in DevTools on every failure mode.
+          console.error('[Quick Play Load] session lookup failed', {
+            sessionCode,
+            error: error ? {
+              message: error.message, code: error.code, details: error.details, hint: error.hint,
+            } : null,
+            dataIsNull: !data,
+            quickPlayV2: QUICKPLAY_V2,
+          });
           showToast("Invalid or expired Quick Play session. Please scan the QR code again.", "error");
           window.history.replaceState({}, '', window.location.pathname);
           setView("public-landing");
