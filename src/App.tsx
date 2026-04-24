@@ -73,6 +73,7 @@ import { useTeacherData } from "./hooks/useTeacherData";
 import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
+import { useClassSwitch } from "./hooks/useClassSwitch";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1354,6 +1355,15 @@ export default function App() {
     setClassNotFoundIntent, setPendingClassSwitch,
     setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
     showPendingApproval, readIntendedClassCode, clearIntendedClassCode,
+  });
+
+  // Class-switch modal confirm/cancel handlers — extracted to a hook
+  // since both branches hydrate the dashboard after the choice.
+  const { handleConfirmClassSwitch, handleCancelClassSwitch } = useClassSwitch({
+    pendingClassSwitch, setPendingClassSwitch,
+    setUser, setView, setLoading,
+    setStudentAssignments, setStudentProgress,
+    showToast,
   });
 
   // --- AUTH LOGIC ---
@@ -3225,69 +3235,6 @@ export default function App() {
   // differs from their current class_code.  Approve = update profile +
   // users row to the new class and land on the new dashboard (no teacher
   // re-approval per Approach 1).  Cancel = keep the current class.
-  const handleConfirmClassSwitch = async () => {
-    if (!pendingClassSwitch) return;
-    const { toCode, supabaseUser } = pendingClassSwitch;
-    try {
-      // Use the SECURITY DEFINER RPC instead of direct UPDATEs. The
-      // users_update RLS policy (migration 20260340) freezes class_code for
-      // non-admins to prevent casual class hopping via .update(). A direct
-      // .update({class_code: newCode}) therefore 403s here. The RPC
-      // validates target class exists + updates both users + student_profiles
-      // atomically for the caller only. Added in migration 20260506.
-      const { error: rpcErr } = await supabase.rpc('switch_student_class', {
-        p_new_code: toCode,
-      });
-      if (rpcErr) throw rpcErr;
-
-      // Load the new class's data and navigate to its dashboard.
-      const { data: classRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', toCode);
-      if (classRows && classRows.length > 0) {
-        const classData = mapClass(classRows[0]);
-        const [assignResult, progressResult] = await Promise.all([
-          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', toCode).eq('student_uid', supabaseUser.id),
-        ]);
-        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        setStudentProgress((progressResult.data ?? []).map(mapProgress));
-      }
-
-      // Update in-memory user.classCode so the dashboard header shows the new code.
-      setUser(prev => prev ? { ...prev, classCode: toCode } : prev);
-      setPendingClassSwitch(null);
-      setView("student-dashboard");
-      setLoading(false);
-    } catch (err) {
-      console.error('Class switch failed:', err);
-      showToast('Could not switch class. Please try again.', 'error');
-      setPendingClassSwitch(null);
-    }
-  };
-
-  const handleCancelClassSwitch = async () => {
-    if (!pendingClassSwitch) return;
-    const { fromCode, supabaseUser } = pendingClassSwitch;
-    // User chose to stay in their current class — load that class's data
-    // as if the intended-code was never there.
-    try {
-      const { data: classRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', fromCode);
-      if (classRows && classRows.length > 0) {
-        const classData = mapClass(classRows[0]);
-        const [assignResult, progressResult] = await Promise.all([
-          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
-        ]);
-        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        setStudentProgress((progressResult.data ?? []).map(mapProgress));
-      }
-    } catch { /* non-fatal — dashboard still renders */ }
-    setPendingClassSwitch(null);
-    setView("student-dashboard");
-    setLoading(false);
-  };
-
   // Sticky banner the student sees on the dashboard when they typed a
   // class code that doesn't exist.  Rendered-variable pattern mirrors
   // the other modals (consentModal / exitConfirmModal / classSwitchModal)
