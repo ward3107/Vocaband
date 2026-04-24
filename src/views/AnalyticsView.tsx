@@ -392,31 +392,40 @@ export default function AnalyticsView({
       )}
 
       <main className={`${embedded ? 'pt-4' : 'pt-24'} px-4 max-w-5xl mx-auto`}>
-        {/* Class Filter Tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <button
-            onClick={() => { setSelectedClass(null); setReteachWords(new Set()); }}
-            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
-              selectedClass === null
-                ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
-                : "bg-white text-stone-600 hover:bg-stone-100 border-2 border-stone-200"
-            }`}
-          >
-            All Classes
-          </button>
-          {classes.map(c => (
+        {/* Class filter — explicitly labelled as a filter so teachers
+            don't read the pills as a second row of tabs ("what does
+            clicking my class do?" was the confusion report).  Filter
+            state is persisted via setSelectedClass, same as before —
+            only the presentation changed. */}
+        <div className="mb-6">
+          <div className="text-[11px] font-black uppercase tracking-wider text-stone-500 mb-2">
+            Filter by class
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
-              key={c.code}
-              onClick={() => { setSelectedClass(c.code); setReteachWords(new Set()); }}
-              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
-                selectedClass === c.code
-                  ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
-                  : "bg-white text-stone-600 hover:bg-stone-100 border-2 border-stone-200"
+              onClick={() => { setSelectedClass(null); setReteachWords(new Set()); }}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                selectedClass === null
+                  ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                  : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
               }`}
             >
-              {c.name}
+              All classes
             </button>
-          ))}
+            {classes.map(c => (
+              <button
+                key={c.code}
+                onClick={() => { setSelectedClass(c.code); setReteachWords(new Set()); }}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                  selectedClass === c.code
+                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                    : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {allScores.length === 0 ? (

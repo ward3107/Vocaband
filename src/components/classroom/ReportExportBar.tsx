@@ -1,0 +1,325 @@
+/**
+ * ReportExportBar — the single export surface for the Classroom area.
+ *
+ * Before this, CSV export lived at the bottom of the Today tab and was
+ * hidden on Students / Assignments / Reports.  Teachers hunted for
+ * "where's the download" and found it in three places — or not at all
+ * if they were on Reports.  Consolidating here means:
+ *   - Reports is the only place the export buttons live.
+ *   - CSV + PDF share the same row builder so the two files always
+ *     line up; no divergent "CSV had mistakes column, PDF didn't"
+ *     confusion.
+ *   - The export scope follows the tab's class picker — switching
+ *     class on Reports re-filters the rows that get exported.
+ *
+ * PDF is rendered client-side via jspdf + jspdf-autotable.  One
+ * branded cover page with class + date + headline stats, then a
+ * per-play table and a per-student summary.  autoTable handles the
+ * pagination + header repetition automatically so a class with 200
+ * plays doesn't clip.
+ */
+import { useMemo, useState } from 'react';
+import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
+import type { ProgressData, AssignmentData, ClassData } from '../../core/supabase';
+// jspdf + jspdf-autotable add ~300 KB gzipped — too expensive to pull
+// into the initial Classroom bundle when most teachers never tap the
+// PDF button in a given session.  Lazy-import on first click.
+
+interface ClassStudent {
+  name: string;
+  classCode: string;
+  lastActive: string;
+}
+
+export interface ReportExportBarProps {
+  /** Current class scope. Blank / unknown means "all classes". */
+  classCode: string;
+  classes: ClassData[];
+  scores: ProgressData[];
+  assignments: AssignmentData[];
+  classStudents: ClassStudent[];
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+}
+
+interface PlayRow {
+  studentName: string;
+  classCode: string;
+  assignment: string;
+  mode: string;
+  score: number;
+  mistakes: number;
+  date: string;
+  ts: number;
+}
+
+interface StudentSummaryRow {
+  studentName: string;
+  plays: number;
+  avgScore: number;
+  bestScore: number;
+  lastActive: string;
+  totalMistakes: number;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function buildRows(
+  scores: ProgressData[],
+  assignments: AssignmentData[],
+  classCode: string,
+): { plays: PlayRow[]; students: StudentSummaryRow[] } {
+  const filtered = classCode
+    ? scores.filter(s => s.classCode === classCode)
+    : scores;
+  const assignmentTitle = new Map<string, string>();
+  assignments.forEach(a => assignmentTitle.set(a.id, a.title));
+
+  const plays: PlayRow[] = filtered.map(s => ({
+    studentName: s.studentName,
+    classCode: s.classCode,
+    assignment: assignmentTitle.get(s.assignmentId) ?? (s.assignmentId?.startsWith('quickplay-') ? 'Quick Play' : '—'),
+    mode: s.mode,
+    score: s.score,
+    mistakes: s.mistakes?.length ?? 0,
+    date: new Date(s.completedAt).toLocaleDateString(),
+    ts: new Date(s.completedAt).getTime(),
+  })).sort((a, b) => b.ts - a.ts);
+
+  // Per-student roll-up
+  const byName = new Map<string, { plays: number; sum: number; best: number; mistakes: number; lastTs: number }>();
+  for (const p of plays) {
+    const key = p.studentName;
+    const prev = byName.get(key) ?? { plays: 0, sum: 0, best: 0, mistakes: 0, lastTs: 0 };
+    prev.plays += 1;
+    prev.sum += p.score;
+    prev.best = Math.max(prev.best, p.score);
+    prev.mistakes += p.mistakes;
+    prev.lastTs = Math.max(prev.lastTs, p.ts);
+    byName.set(key, prev);
+  }
+
+  const students: StudentSummaryRow[] = Array.from(byName.entries())
+    .map(([studentName, v]) => ({
+      studentName,
+      plays: v.plays,
+      avgScore: v.plays === 0 ? 0 : Math.round(v.sum / v.plays),
+      bestScore: v.best,
+      totalMistakes: v.mistakes,
+      lastActive: v.lastTs ? new Date(v.lastTs).toLocaleDateString() : '—',
+    }))
+    .sort((a, b) => b.avgScore - a.avgScore);
+
+  return { plays, students };
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsvCell(value: string | number): string {
+  const s = String(value ?? '');
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+export default function ReportExportBar({
+  classCode,
+  classes,
+  scores,
+  assignments,
+  classStudents,
+  showToast,
+}: ReportExportBarProps) {
+  const [busy, setBusy] = useState<'csv' | 'pdf' | null>(null);
+
+  const { plays, students } = useMemo(
+    () => buildRows(scores, assignments, classCode),
+    [scores, assignments, classCode],
+  );
+  const className = classes.find(c => c.code === classCode)?.name ?? classCode ?? 'All classes';
+  const rosterSize = classCode
+    ? classStudents.filter(cs => cs.classCode === classCode).length
+    : classStudents.length;
+
+  const disabled = plays.length === 0;
+
+  const handleCsv = () => {
+    if (disabled) {
+      showToast('Nothing to export yet — no gameplay in this class.', 'info');
+      return;
+    }
+    setBusy('csv');
+    try {
+      const lines: string[] = [];
+      lines.push(`"Vocaband gradebook — ${className}"`);
+      lines.push(`"Exported ${new Date().toLocaleString()}"`);
+      lines.push('');
+      lines.push(['Student', 'Class', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date']
+        .map(escapeCsvCell).join(','));
+      plays.forEach(p => {
+        lines.push([p.studentName, p.classCode, p.assignment, p.mode, p.score, p.mistakes, p.date]
+          .map(escapeCsvCell).join(','));
+      });
+      lines.push('');
+      lines.push(['Student', 'Plays', 'Avg score', 'Best score', 'Total mistakes', 'Last active']
+        .map(escapeCsvCell).join(','));
+      students.forEach(s => {
+        lines.push([s.studentName, s.plays, s.avgScore, s.bestScore, s.totalMistakes, s.lastActive]
+          .map(escapeCsvCell).join(','));
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      downloadBlob(blob, `vocaband-${classCode || 'all'}-${today()}.csv`);
+      showToast('CSV exported', 'success');
+    } catch (err) {
+      console.error('[export] CSV failed', err);
+      showToast('CSV export failed — try again.', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handlePdf = async () => {
+    if (disabled) {
+      showToast('Nothing to export yet — no gameplay in this class.', 'info');
+      return;
+    }
+    setBusy('pdf');
+    try {
+      // Dynamic import so jspdf + autotable don't weigh down the
+      // Classroom bundle for teachers who never export.
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+      const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+      const pageW = doc.internal.pageSize.getWidth();
+
+      // Branded header
+      doc.setFillColor(79, 70, 229); // indigo-600 to match the app's signature gradient anchor
+      doc.rect(0, 0, pageW, 80, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('Vocaband Gradebook', 40, 38);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.text(`Class: ${className}`, 40, 58);
+      doc.text(`Exported ${new Date().toLocaleString()}`, 40, 74);
+
+      // Headline stats block
+      const avgAll = students.length === 0
+        ? 0
+        : Math.round(students.reduce((sum, s) => sum + s.avgScore, 0) / students.length);
+      doc.setTextColor(28, 25, 23);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text(`${students.length} students  ·  ${plays.length} plays  ·  avg ${avgAll}%  ·  roster ${rosterSize}`, 40, 108);
+
+      // Per-student summary table
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Student summary', 40, 140);
+      autoTable(doc, {
+        startY: 150,
+        head: [['Student', 'Plays', 'Avg', 'Best', 'Mistakes', 'Last active']],
+        body: students.map(s => [
+          s.studentName,
+          s.plays,
+          `${s.avgScore}%`,
+          `${s.bestScore}%`,
+          s.totalMistakes,
+          s.lastActive,
+        ]),
+        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 243, 255] },
+        styles: { fontSize: 10, cellPadding: 6 },
+        theme: 'grid',
+        margin: { left: 40, right: 40 },
+      });
+
+      // Per-play detail table on a fresh page
+      doc.addPage();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('All plays (newest first)', 40, 44);
+      autoTable(doc, {
+        startY: 54,
+        head: [['Student', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date']],
+        body: plays.map(p => [
+          p.studentName,
+          p.assignment,
+          p.mode,
+          `${p.score}%`,
+          p.mistakes,
+          p.date,
+        ]),
+        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 243, 255] },
+        styles: { fontSize: 9, cellPadding: 5 },
+        theme: 'grid',
+        margin: { left: 40, right: 40 },
+      });
+
+      // Footer on every page
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(120, 113, 108);
+        doc.text(`Page ${i} of ${pageCount}`, pageW - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
+        doc.text('vocaband.com', 40, doc.internal.pageSize.getHeight() - 20);
+      }
+
+      doc.save(`vocaband-${classCode || 'all'}-${today()}.pdf`);
+      showToast('PDF exported', 'success');
+    } catch (err) {
+      console.error('[export] PDF failed', err);
+      showToast('PDF export failed — try again.', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-stone-900">
+          <Download size={16} className="text-indigo-500" />
+          <span className="font-bold text-sm">Export this class</span>
+        </div>
+        <p className="text-xs text-stone-500 mt-0.5 truncate">
+          {plays.length === 0
+            ? 'No gameplay in this class yet — exports unlock once students start playing.'
+            : `${students.length} students · ${plays.length} plays · ${className}`}
+        </p>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={handleCsv}
+          disabled={disabled || busy !== null}
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {busy === 'csv' ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
+          CSV
+        </button>
+        <button
+          type="button"
+          onClick={handlePdf}
+          disabled={disabled || busy !== null}
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-bold hover:shadow-md active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {busy === 'pdf' ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+          PDF
+        </button>
+      </div>
+    </div>
+  );
+}
