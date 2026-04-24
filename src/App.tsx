@@ -64,6 +64,12 @@ import {
 import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } from "./hooks/useAssignmentPlays";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
+import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+
+// Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
+// on, Quick Play runs entirely over the /quick-play socket namespace —
+// no Supabase anon auth, no progress-table writes during a session.
+const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
@@ -425,6 +431,7 @@ export default function App() {
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
+        // ─── Legacy anon-auth bootstrap (v2 skips this) ────────────────
         // Ensure we have a VALID anonymous auth session — RLS requires it.
         //
         // `getSession()` only reads localStorage, so a stale token (from a
@@ -442,23 +449,28 @@ export default function App() {
         // cleanup + setUser(null) + history reset MID-join and tears
         // down the live component tree (caused 8/10 student crashes in a
         // classroom test).
-        const { data: { session: cachedSession } } = await supabase.auth.getSession();
-        let stale = false;
-        if (cachedSession) {
-          const { error } = await supabase.auth.getUser();
-          stale = !!error;
-        }
-        if (stale) {
-          try {
-            for (const key of Object.keys(localStorage)) {
-              if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-                localStorage.removeItem(key);
+        //
+        // v2 doesn't need any of this — Quick Play no longer uses anon
+        // auth — so the entire block is skipped under the flag.
+        if (!QUICKPLAY_V2) {
+          const { data: { session: cachedSession } } = await supabase.auth.getSession();
+          let stale = false;
+          if (cachedSession) {
+            const { error } = await supabase.auth.getUser();
+            stale = !!error;
+          }
+          if (stale) {
+            try {
+              for (const key of Object.keys(localStorage)) {
+                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                  localStorage.removeItem(key);
+                }
               }
-            }
-          } catch { /* private mode / disabled storage — fall through */ }
-        }
-        if (!cachedSession || stale) {
-          await supabase.auth.signInAnonymously().catch(() => {});
+            } catch { /* private mode / disabled storage — fall through */ }
+          }
+          if (!cachedSession || stale) {
+            await supabase.auth.signInAnonymously().catch(() => {});
+          }
         }
 
         const { data, error } = await supabase
@@ -886,6 +898,15 @@ export default function App() {
   // different table/filter, so fold them together.
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
+    // v2 routes session-end + kick over the /quick-play socket.io
+    // namespace. Subscribing to the progress-table DELETE stream here
+    // under v2 was the root cause of the "everyone else joining kicks
+    // the two who logged in" bug — any DELETE event (including the
+    // teacher's own kick cleanup) was treated as "you were kicked".
+    // Under v2 we skip this subscription entirely; v2-native KICKED
+    // and SESSION_ENDED events are handled via useQuickPlaySocket in
+    // QuickPlayStudentView.
+    if (QUICKPLAY_V2) return;
 
     const sessionCode = quickPlayActiveSession.sessionCode;
     const sessionId = quickPlayActiveSession.id;
@@ -1273,18 +1294,54 @@ export default function App() {
     return () => clearInterval(flushInterval);
   }, [isSaving, user]); // Added user as dependency
 
-  // Throttled Socket.IO score emit to prevent DB spam
+  // Quick Play v2 socket — only active when the flag is on AND a
+  // session is live. When a student's score changes during gameplay
+  // we forward it here so the teacher's monitor sees live movement.
+  const quickPlaySocket = useQuickPlaySocket({
+    sessionCode: quickPlayActiveSession?.sessionCode ?? null,
+    enabled: QUICKPLAY_V2,
+  });
+
+  // Translate v2-native KICKED / SESSION_ENDED events into the existing
+  // quickPlayKicked / quickPlaySessionEnded UI state. Keeps the screens
+  // that render those states (QuickPlayKickedScreen, QuickPlaySessionEndScreen)
+  // untouched. Dependencies are the hook's on-* methods specifically
+  // (they're useCallback-stable) — depending on the whole socket
+  // object would churn the effect every render.
+  const qpOnKicked = quickPlaySocket.onKicked;
+  const qpOnSessionEnded = quickPlaySocket.onSessionEnded;
+  useEffect(() => {
+    if (!QUICKPLAY_V2) return;
+    const offKicked = qpOnKicked(() => {
+      setQuickPlayKicked(true);
+      setActiveAssignment(null);
+    });
+    const offEnded = qpOnSessionEnded(() => {
+      setQuickPlaySessionEnded(true);
+      setActiveAssignment(null);
+    });
+    return () => { offKicked(); offEnded(); };
+  }, [qpOnKicked, qpOnSessionEnded]);
+
+  // Throttled Socket.IO score emit. Routes to the right transport
+  // depending on context:
+  //   * classroom live challenge — existing `/` namespace, needs classCode
+  //   * Quick Play v2 guest game — new `/quick-play` namespace, no auth
   const emitScoreUpdate = (newScore: number) => {
-    if (!socket || !user?.classCode) return;
     const now = Date.now();
-    // Only emit once per 2 seconds max, or if it's the final score (game finished)
-    if (now - lastScoreEmitRef.current > 2000 || isFinished) {
-      lastScoreEmitRef.current = now;
-      setTimeout(() => {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
-      }, 0);
-    } else {
+    const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
+    if (!shouldEmit) return;
+    lastScoreEmitRef.current = now;
+
+    if (QUICKPLAY_V2 && user?.isGuest && quickPlayActiveSession) {
+      setTimeout(() => quickPlaySocket.updateScore(newScore), 0);
+      return;
     }
+
+    if (!socket || !user?.classCode) return;
+    setTimeout(() => {
+      socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+    }, 0);
   };
 
   // Redirect legacy "students" view to gradebook
@@ -4283,6 +4340,16 @@ export default function App() {
 
     // Quick Play (guest) mode - save progress with session UUID as identifier
     if (user.isGuest && quickPlayActiveSession) {
+      // v2 path: score lives on the /quick-play socket's in-memory
+      // leaderboard, not in the progress table. Emit a final
+      // SCORE_UPDATE so the teacher sees the end-of-game total,
+      // update the completed-modes set, and skip the Supabase insert.
+      if (QUICKPLAY_V2) {
+        quickPlaySocket.updateScore(Math.max(0, finalScore));
+        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
+        setIsSaving(false);
+        return;
+      }
       try {
         // Use the actual Supabase auth UID (not the guest app UID) so RLS allows the insert
         const { data: { session: authSession } } = await supabase.auth.getSession();
