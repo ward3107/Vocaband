@@ -76,6 +76,7 @@ import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
+import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
@@ -692,7 +693,6 @@ export default function App() {
 
   // Timeout ref for cleanup (prevents memory leaks on unmount)
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const lastSpokenWordRef = useRef<number | null>(null);
   const isProcessingRef = useRef<boolean>(false); // Guard against rapid clicks during feedback
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
@@ -1828,87 +1828,20 @@ export default function App() {
   // hook so this file doesn't carry browser-API plumbing.
   const { speak } = useSpeechVoiceManager();
 
-  useEffect(() => {
-    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder" && gameMode !== "matching") {
-      // Only speak if this is a different word than the last one we spoke
-      if (lastSpokenWordRef.current !== currentWord.id) {
-        gameDebug.logPronunciation({ wordId: currentWord.id, word: currentWord.english, method: 'auto', success: true });
-        lastSpokenWordRef.current = currentWord.id;
-        // Small delay to ensure UI has updated before speaking
-        setTimeout(() => {
-          speakWord(currentWord.id, currentWord.english);
-        }, 100);
-      }
-    }
-  }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
+  // Per-game-mode setup effects: auto-speak on word advance,
+  // matching-mode pairs build, letter-sounds reveal animation,
+  // sentence-builder first-sentence load.  All share the same
+  // `view === "game" && !showModeSelection` guard pattern.
+  useGameModeSetup({
+    view, gameMode, currentWord, currentIndex, gameWords,
+    showModeSelection, showModeIntro, isFinished,
+    targetLanguage, activeAssignment,
+    speakWord, speak,
+    setMatchingPairs, setMatchedIds, setSelectedMatch,
+    setRevealedLetters,
+    setSentenceIndex, setAvailableWords, setBuiltSentence, setSentenceFeedback,
+  });
 
-  // Reset last spoken word when game mode changes (to re-pronounce the current word)
-  useEffect(() => {
-    lastSpokenWordRef.current = null;
-  }, [gameMode]);
-
-  useEffect(() => {
-    if (view === "game" && !showModeSelection && gameMode === "matching") {
-      const shuffled = shuffle(gameWords).slice(0, 6);
-      const pairs = shuffle([
-        ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
-        ...shuffled.map(w => ({ id: w.id, text: w[targetLanguage] || w.arabic || w.hebrew || w.english, type: 'arabic' as const }))
-      ]);
-      setMatchingPairs(pairs);
-      setMatchedIds([]);
-      setSelectedMatch(null);
-    }
-  }, [view, showModeSelection, gameMode, gameWords, targetLanguage]);
-
-  // Letter Sounds: reveal one letter at a time, speak each letter
-  // Uses sequential timeouts so each letter's sound plays AFTER the letter
-  // is visually revealed (300ms spring delay) and previous speech finishes.
-  useEffect(() => {
-    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "letter-sounds" || !currentWord || isFinished) return;
-    setRevealedLetters(0);
-    const word = currentWord.english;
-    let cancelled = false;
-    const revealNext = (idx: number) => {
-      if (cancelled || idx >= word.length) return;
-      setRevealedLetters(idx + 1);
-      // Delay speech 250ms so the spring animation shows the letter first
-      setTimeout(() => {
-        if (cancelled) return;
-        // Cancel any ongoing speech before starting the new letter
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(word[idx]);
-        utter.rate = 0.8;
-        utter.onend = () => {
-          if (!cancelled) setTimeout(() => revealNext(idx + 1), 200);
-        };
-        // Fallback if onend doesn't fire (some browsers)
-        const fallbackTimer = setTimeout(() => {
-          if (!cancelled) revealNext(idx + 1);
-        }, 1500);
-        utter.onend = () => { clearTimeout(fallbackTimer); if (!cancelled) setTimeout(() => revealNext(idx + 1), 200); };
-        window.speechSynthesis.speak(utter);
-      }, 250);
-    };
-    // Start after a short initial delay
-    const startTimer = setTimeout(() => revealNext(0), 400);
-    return () => { cancelled = true; clearTimeout(startTimer); window.speechSynthesis.cancel(); };
-  }, [currentIndex, view, showModeSelection, showModeIntro, gameMode, currentWord, isFinished]);
-
-  // Sentence Builder: load sentences from active assignment
-  useEffect(() => {
-    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "sentence-builder" || !activeAssignment) return;
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    if (validSentences.length > 0) {
-      setSentenceIndex(0);
-      const words = shuffle(validSentences[0].split(" ").filter(Boolean));
-      setAvailableWords(words);
-      setBuiltSentence([]);
-      setSentenceFeedback(null);
-      // Speak the target sentence so students know what to build
-      setTimeout(() => speak(validSentences[0]), 400);
-    }
-  }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
 
   // Full guest exit cleanup. Called whenever a Quick Play student
   // explicitly leaves the game (Exit button on mode picker, header
