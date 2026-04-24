@@ -34,6 +34,8 @@ import type { View } from "../core/views";
 import { ALL_WORDS } from "../data/vocabulary";
 import MasteryHeatmap, { type MasteryRow } from "./gradebook/MasteryHeatmap";
 import { TeacherRewardModal, type StudentInfo } from "../components/dashboard/TeacherRewardModal";
+import StudentProfile from "./classroom/StudentProfile";
+import AssignmentDetail from "./classroom/AssignmentDetail";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface ClassStudent {
@@ -59,6 +61,31 @@ interface GradebookViewProps {
    *  page (default), "records" = scroll to the records / per-student
    *  table on mount. */
   focus?: "pulse" | "records";
+  /** When set, render only the named content sections. Default (omitted)
+   *  renders everything — that's the standalone /gradebook route and
+   *  the legacy Pulse tab in the 2-tab classroom layout.
+   *
+   *  Used by the 4-tab classroom v2 to slice this view across tabs:
+   *    Today       → ['pulse', 'activity']
+   *    Students    → ['students']
+   *    Assignments → ['assignments'] */
+  sections?: Array<'pulse' | 'activity' | 'students' | 'assignments'>;
+  /** When true, hide the CSV-export button. The 4-tab classroom v2
+   *  moves export to the Reports tab so it doesn't duplicate. */
+  hideExport?: boolean;
+  /** When true, tapping a student row opens the StudentProfile drawer
+   *  (or fullscreen page on mobile) instead of expanding the row
+   *  inline; tapping an assignment row opens AssignmentDetail. The
+   *  4-tab classroom uses this on its Students + Assignments tabs for
+   *  the plan's adaptive drill pattern. */
+  useDrawerDrill?: boolean;
+  /** Controlled class selection. When provided, the view reflects this
+   *  code and calls `onSelectedClassChange` on changes (e.g. the
+   *  4-tab classroom shares class selection across Today / Students /
+   *  Assignments). When omitted, the view owns the selection locally
+   *  (standalone /gradebook route, legacy Pulse tab). */
+  selectedClassCode?: string;
+  onSelectedClassChange?: (code: string) => void;
 }
 
 interface MasteryApiRow {
@@ -132,12 +159,34 @@ export default function GradebookView({
   showToast,
   embedded = false,
   focus = "pulse",
+  sections,
+  hideExport = false,
+  useDrawerDrill = false,
+  selectedClassCode: controlledClassCode,
+  onSelectedClassChange,
 }: GradebookViewProps) {
   void focus; // reserved for future scroll-anchor wiring; kept in
               // the prop signature so callers can plumb intent now
-  const [selectedClassCode, setSelectedClassCode] = useState<string>(() =>
-    classes[0]?.code ?? ''
+  const showPulse       = !sections || sections.includes('pulse');
+  const showActivity    = !sections || sections.includes('activity');
+  const showStudents    = !sections || sections.includes('students');
+  const showAssignments = !sections || sections.includes('assignments');
+
+  // Drill-mode state (v2 classroom only). Kept local so the inline-
+  // expand path is untouched on the standalone /gradebook route.
+  const [drillStudent, setDrillStudent] = useState<StudentRollup | null>(null);
+  const [drillAssignmentId, setDrillAssignmentId] = useState<string | null>(null);
+
+  // Class selection is controlled when the parent passes it in (4-tab
+  // classroom) and uncontrolled otherwise (standalone /gradebook route).
+  const [localClassCode, setLocalClassCode] = useState<string>(() =>
+    controlledClassCode ?? classes[0]?.code ?? ''
   );
+  const selectedClassCode = controlledClassCode ?? localClassCode;
+  const setSelectedClassCode = (code: string) => {
+    if (onSelectedClassChange) onSelectedClassChange(code);
+    else setLocalClassCode(code);
+  };
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(7);
 
   const [masteryRows, setMasteryRows] = useState<MasteryApiRow[]>([]);
@@ -454,19 +503,22 @@ export default function GradebookView({
               </button>
             ))}
           </div>
-          <div className="ml-auto">
-            <button
-              onClick={handleExportCsv}
-              type="button"
-              className="px-4 py-2 bg-stone-900 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-stone-800 transition-colors shadow-sm"
-            >
-              <Download size={14} />
-              Export CSV
-            </button>
-          </div>
+          {!hideExport && (
+            <div className="ml-auto">
+              <button
+                onClick={handleExportCsv}
+                type="button"
+                className="px-4 py-2 bg-stone-900 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-stone-800 transition-colors shadow-sm"
+              >
+                <Download size={14} />
+                Export CSV
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── 1. CLASS PULSE ─────────────────────────────────────────────── */}
+        {showPulse && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <PulseCard
             kind="on-track"
@@ -490,8 +542,10 @@ export default function GradebookView({
             icon={<Moon size={22} />}
           />
         </div>
+        )}
 
         {/* ── 2. ACTIVITY CHART ──────────────────────────────────────────── */}
+        {showActivity && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -532,8 +586,10 @@ export default function GradebookView({
             })}
           </div>
         </div>
+        )}
 
         {/* ── 3. STUDENT LIST ────────────────────────────────────────────── */}
+        {showStudents && (
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-stone-100 mb-6">
           <h3 className="text-base font-black text-stone-800 mb-4 flex items-center gap-2">
             <Users size={16} className="text-violet-500" />
@@ -564,7 +620,13 @@ export default function GradebookView({
                     <div className="flex items-center gap-3 p-3 sm:p-4">
                       <button
                         type="button"
-                        onClick={() => setExpandedStudent(isExpanded ? null : r.key)}
+                        onClick={() => {
+                          if (useDrawerDrill) {
+                            setDrillStudent(r);
+                          } else {
+                            setExpandedStudent(isExpanded ? null : r.key);
+                          }
+                        }}
                         className="flex items-center gap-3 flex-1 min-w-0 text-left"
                       >
                         <span className="text-2xl shrink-0">{r.avatar}</span>
@@ -590,7 +652,13 @@ export default function GradebookView({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setExpandedStudent(isExpanded ? null : r.key)}
+                        onClick={() => {
+                          if (useDrawerDrill) {
+                            setDrillStudent(r);
+                          } else {
+                            setExpandedStudent(isExpanded ? null : r.key);
+                          }
+                        }}
                         aria-label="Toggle details"
                         className="p-1"
                       >
@@ -602,7 +670,7 @@ export default function GradebookView({
                     </div>
 
                     <AnimatePresence initial={false}>
-                      {isExpanded && (
+                      {isExpanded && !useDrawerDrill && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
@@ -656,9 +724,10 @@ export default function GradebookView({
             </div>
           )}
         </div>
+        )}
 
         {/* ── 4. PER-ASSIGNMENT rollup ───────────────────────────────────── */}
-        {assignmentRollups.length > 0 && (
+        {showAssignments && assignmentRollups.length > 0 && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
             <h3 className="text-base font-black text-stone-800 mb-4 flex items-center gap-2">
               <Trophy size={16} className="text-amber-500" />
@@ -666,22 +735,40 @@ export default function GradebookView({
               <span className="text-xs font-bold text-stone-500">· {assignmentRollups.length}</span>
             </h3>
             <div className="space-y-2">
-              {assignmentRollups.map(a => (
-                <div
-                  key={a.assignmentId}
-                  className="flex items-center gap-3 p-3 bg-stone-50/40 rounded-xl"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-stone-800 truncate">{a.title}</p>
-                    <p className="text-xs text-stone-500">
-                      {a.uniqueStudents.size} student{a.uniqueStudents.size === 1 ? '' : 's'} · {a.attempts} play{a.attempts === 1 ? '' : 's'}
-                    </p>
+              {assignmentRollups.map(a => {
+                const RowInner = (
+                  <>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="font-bold text-stone-800 truncate">{a.title}</p>
+                      <p className="text-xs text-stone-500">
+                        {a.uniqueStudents.size} student{a.uniqueStudents.size === 1 ? '' : 's'} · {a.attempts} play{a.attempts === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-br text-white font-black text-sm ${scoreColor(a.avgScore)}`}>
+                      {a.avgScore}
+                    </div>
+                  </>
+                );
+                return useDrawerDrill ? (
+                  <button
+                    key={a.assignmentId}
+                    type="button"
+                    onClick={() => setDrillAssignmentId(a.assignmentId)}
+                    className="w-full flex items-center gap-3 p-3 bg-stone-50/40 hover:bg-stone-100/60 rounded-xl transition-colors"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                  >
+                    {RowInner}
+                    <ChevronDown size={16} className="text-stone-300 -rotate-90 shrink-0" aria-hidden />
+                  </button>
+                ) : (
+                  <div
+                    key={a.assignmentId}
+                    className="flex items-center gap-3 p-3 bg-stone-50/40 rounded-xl"
+                  >
+                    {RowInner}
                   </div>
-                  <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-br text-white font-black text-sm ${scoreColor(a.avgScore)}`}>
-                    {a.avgScore}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -693,6 +780,68 @@ export default function GradebookView({
         onRewardGiven={() => showToast('Reward sent!', 'success')}
         showToast={(msg, type) => showToast(msg, type)}
       />
+
+      {/* v2 Classroom drill drawers — only active when useDrawerDrill is
+          true. The StudentProfile / AssignmentDetail components render
+          nothing when their `open` is false, so they're cheap to mount. */}
+      {useDrawerDrill && (
+        <>
+          <StudentProfile
+            open={!!drillStudent}
+            onClose={() => setDrillStudent(null)}
+            student={drillStudent && {
+              uid: drillStudent.studentUid,
+              name: drillStudent.studentName,
+              avatar: drillStudent.avatar,
+              classCode: drillStudent.classCode,
+            }}
+            scores={drillStudent?.scores ?? []}
+            masteryRows={
+              drillStudent
+                ? masteryRows
+                    .filter(m => m.student_uid === drillStudent.studentUid)
+                    .map(m => ({
+                      wordId: m.word_id,
+                      correctCount: m.correct_count,
+                      totalCount: m.total_count,
+                      lastAttempt: m.last_attempt,
+                    }))
+                : []
+            }
+            teacherAssignments={teacherAssignments}
+            onReward={
+              drillStudent
+                ? () => openRewardFor(drillStudent)
+                : undefined
+            }
+          />
+          <AssignmentDetail
+            open={!!drillAssignmentId}
+            onClose={() => setDrillAssignmentId(null)}
+            assignment={
+              drillAssignmentId
+                ? {
+                    id: drillAssignmentId,
+                    title:
+                      teacherAssignments.find(a => a.id === drillAssignmentId)?.title
+                      ?? 'Quick Play',
+                    classCode: selectedClassCode,
+                  }
+                : null
+            }
+            scores={allScores.filter(
+              s => s.assignmentId === drillAssignmentId && s.classCode === selectedClassCode
+            )}
+            classStudents={classStudents}
+            onReassign={(names) => {
+              showToast(
+                `Reassign flow coming next: ${names.length} student${names.length === 1 ? '' : 's'} flagged.`,
+                'info'
+              );
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }
