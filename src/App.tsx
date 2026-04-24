@@ -75,6 +75,7 @@ import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPla
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
+import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
@@ -696,57 +697,6 @@ export default function App() {
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
-  useEffect(() => {
-    isProcessingRef.current = !!feedback;
-    gameDebug.logProcessing({ isProcessing: !!feedback, reason: `feedback changed to ${feedback}` });
-  }, [feedback]);
-
-  // FAILSAFE: Clear stuck feedback after 5 seconds (prevents buttons being permanently disabled)
-  useEffect(() => {
-    if (!feedback) return;
-
-    const failsafeTimer = setTimeout(() => {
-      setFeedback(null);
-    }, 5000);
-
-    return () => clearTimeout(failsafeTimer);
-  }, [feedback]);
-
-  // Track feedback state changes
-  const prevFeedbackRef = useRef<string | null>(feedback);
-  useEffect(() => {
-    if (prevFeedbackRef.current !== feedback) {
-      gameDebug.logFeedback({ from: prevFeedbackRef.current, to: feedback, reason: 'state_change' });
-      prevFeedbackRef.current = feedback;
-    }
-  }, [feedback]);
-
-  // Track word changes and log state transitions
-  const prevIndexRef = useRef<number>(currentIndex);
-  useEffect(() => {
-    if (prevIndexRef.current !== currentIndex && view === "game") {
-      const fromIndex = prevIndexRef.current;
-      const toIndex = currentIndex;
-      const word = gameWords[toIndex];
-      gameDebug.logWordChange({
-        fromIndex,
-        toIndex,
-        word: word ? { id: word.id, english: word.english } : undefined,
-      });
-      gameDebug.logState({
-        view,
-        gameMode,
-        showModeSelection,
-        showModeIntro,
-        currentIndex: toIndex,
-        isFinished,
-        feedback,
-        isProcessing: isProcessingRef.current,
-        currentWord: word ? { id: word.id, english: word.english } : undefined,
-      }, 'after_word_change');
-      prevIndexRef.current = toIndex;
-    }
-  }, [currentIndex, view, gameMode, showModeSelection, showModeIntro, isFinished, feedback]);
 
   // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
   // owned by useSaveQueue itself.
@@ -1855,6 +1805,15 @@ export default function App() {
   // Per-round derived data: 4-way options, T/F option, scrambled letters.
   const { options, tfOption, scrambledWord } = useGameRoundOptions({
     currentWord, gameWords, currentIndex,
+  });
+
+  // Feedback instrumentation: 5 s failsafe, processing-ref mirror,
+  // and gameDebug logs for feedback + word-change transitions.
+  useFeedbackTracking({
+    feedback, setFeedback,
+    currentIndex, view, gameMode,
+    showModeSelection, showModeIntro, isFinished,
+    gameWords, isProcessingRef,
   });
 
   useEffect(() => {
