@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
-  ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause
+  ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
+  Share2
 } from 'lucide-react';
 import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
@@ -551,8 +552,12 @@ export default function QuickPlayMonitor({
       <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
         {/* ─── Hero: QR + Podium row ────────────────────────────────────────── */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8">
-          {/* QR Code & Join Info */}
-          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-6 sm:p-8 flex items-center gap-6 shadow-lg relative overflow-hidden`}>
+          {/* QR Code & Join Info.
+              Layout stacks on mobile (avatar+text column) and sits
+              side-by-side from `sm:` up, so the QR is big enough to
+              scan on a phone projector but doesn't crowd the session
+              code on narrow screens. */}
+          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-8 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
             <div className="bg-white p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
               {/* Client-side QR generator — replaces api.qrserver.com.
@@ -561,10 +566,10 @@ export default function QuickPlayMonitor({
                   with a broken QR and students unable to scan-to-join.
                   qrcode.react renders the matrix in SVG locally — zero network
                   calls, works fully offline, no rate limits. */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+              <div className="w-28 h-28 sm:w-24 sm:h-24 flex items-center justify-center">
                 <QRCodeSVG
                   value={qrUrl}
-                  size={96}
+                  size={112}
                   level="M"
                   marginSize={0}
                   style={{ width: '100%', height: '100%' }}
@@ -572,18 +577,63 @@ export default function QuickPlayMonitor({
                 />
               </div>
             </div>
-            <div className="flex flex-col justify-center text-white min-w-0">
+            <div className="flex flex-col justify-center text-white min-w-0 flex-1 text-center sm:text-left">
               <span className="font-label text-[10px] uppercase tracking-[0.2em] opacity-80">Join at {window.location.host}</span>
               <h2 className="font-headline text-3xl sm:text-4xl font-black tracking-tighter">{session.sessionCode}</h2>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                 <span className="text-xs font-medium">{effectiveStudents.length > 0 ? `${effectiveStudents.length} players joined` : 'Waiting for players...'}</span>
               </div>
+              {/* Share button — prominent on both mobile and desktop so
+                  the teacher can fire it with one tap during class.
+                  Prefers the native share sheet on mobile (AirDrop,
+                  Messages, WhatsApp, etc.) and falls back to clipboard
+                  on desktop / browsers without Web Share API. */}
               <button
-                onClick={() => { navigator.clipboard.writeText(qrUrl); showToast('Link copied!', 'success'); }}
-                className="mt-3 flex items-center gap-1.5 text-xs font-bold text-white/80 hover:text-white transition-colors"
+                type="button"
+                onClick={async () => {
+                  const shareData = {
+                    title: 'Join my Vocaband game',
+                    text: `Join my Vocaband Quick Play (code ${session.sessionCode}):`,
+                    url: qrUrl,
+                  };
+                  if (typeof navigator.share === 'function') {
+                    try {
+                      await navigator.share(shareData);
+                      return;
+                    } catch {
+                      // User cancelled or share failed — fall through to clipboard copy.
+                    }
+                  }
+                  try {
+                    await navigator.clipboard.writeText(qrUrl);
+                    showToast('Join link copied!', 'success');
+                  } catch {
+                    showToast('Could not copy link — try long-pressing the QR code.', 'error');
+                  }
+                }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className="mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-stone-900 font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-[0.97] transition-all mx-auto sm:mx-0"
               >
-                <Copy size={12} /> Copy Link
+                <Share2 size={16} />
+                Share join link
+              </button>
+              {/* Small secondary copy affordance for desktop users who
+                  prefer the plain clipboard path over the share sheet. */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(qrUrl);
+                    showToast('Join link copied!', 'success');
+                  } catch {
+                    showToast('Could not copy link.', 'error');
+                  }
+                }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className="mt-2 inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-white/70 hover:text-white transition-colors mx-auto sm:mx-0"
+              >
+                <Copy size={11} /> Copy link
               </button>
             </div>
           </div>
