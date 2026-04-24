@@ -73,6 +73,7 @@ import { useTeacherData } from "./hooks/useTeacherData";
 import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
 import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPlayRealtime";
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
+import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
@@ -87,9 +88,6 @@ import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
-// Types for lazy-loaded modules
-type SocketIOModule = typeof import('socket.io-client');
-type Socket = InstanceType<SocketIOModule['Socket']>;
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -241,9 +239,13 @@ export default function App() {
   // (see src/views/StudentAccountLoginView.tsx; constants live in src/constants/avatars.ts)
 
   // --- LIVE CHALLENGE STATE ---
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
+  // `isLiveChallenge` stays local — views set it imperatively.  The
+  // socket + leaderboard are owned by useLiveChallengeSocket.
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
+  const { socket, socketConnected, leaderboard } = useLiveChallengeSocket({
+    user,
+    isLiveChallenge,
+  });
 
   // --- QUICK PLAY STATE ---
   // Only the setters are used — the values themselves are never read in
@@ -582,7 +584,6 @@ export default function App() {
   // --- RELIABILITY STATE ---
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
 
   // --- QUERY DEDUPLICATION ---
   // Track when data was last fetched to avoid redundant Supabase calls
@@ -686,9 +687,9 @@ export default function App() {
   };
 
 
-  // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
+  // Refs for effects that need the "current" user without re-registering.
+  // (isLiveChallengeRef moved into useLiveChallengeSocket.)
   const userRef = useRef(user);
-  const isLiveChallengeRef = useRef(isLiveChallenge);
   // Tracks which (socketId:classCode:uid) combo has already emitted
   // JOIN_CHALLENGE — prevents duplicate emits when effects re-run.
   // Cleared whenever the socket reconnects (new socket id) so the
@@ -853,7 +854,6 @@ export default function App() {
       }
     }
   }, [isFinished]);
-  useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   // Reset welcome popup when entering assignment creation view
   // Only show if user hasn't seen it before (checked via localStorage)
@@ -869,100 +869,6 @@ export default function App() {
     }
   }, [view]);
 
-  // Defer socket connection until we have a valid auth session.
-  // Connecting immediately on mount (before OAuth exchange completes) would
-  // always fail with "Authentication required" on the first attempt, causing
-  // the console error the teacher sees before the retry succeeds.
-  useEffect(() => {
-    let s: Socket | undefined = undefined;
-    let cancelled = false;
-
-    const getToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      return session?.access_token ?? "";
-    };
-
-    const connectSocket = async () => {
-      // Wait for a valid session before opening the socket
-      const token = await getToken();
-      if (cancelled) return;
-      if (!token) {
-        // No session yet — listen for auth changes and retry
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-          if (cancelled) { subscription.unsubscribe(); return; }
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            subscription.unsubscribe();
-            connectSocket();
-          }
-        });
-        return;
-      }
-
-      // Lazy load socket.io-client
-      const socketIO = await loadSocketIO();
-      const io = socketIO.default || socketIO;
-
-      const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
-      const sock = io(socketUrl || "/", {
-        reconnection: true,
-        // Retry indefinitely.  A Live Challenge can run for 20+ minutes
-        // and students may briefly lose Wi-Fi (classroom networks are
-        // flaky).  Before: capped at 10 attempts * 1s = 10s window and
-        // then the socket gave up forever — student stayed "offline"
-        // for the rest of the session.
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        // Cap back-off at 10s so we retry often enough that a brief
-        // outage is invisible, but don't hammer the server if it's
-        // genuinely down.
-        reconnectionDelayMax: 10_000,
-        // Jitter so 30 students all reconnecting after a Render restart
-        // don't thunder at the same millisecond.
-        randomizationFactor: 0.5,
-        // Async callback ensures a fresh token is fetched on every reconnect,
-        // so the handshake never carries a stale/expired JWT.
-        auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
-      }) as Socket;
-      s = sock;
-
-      setSocket(sock);
-
-      sock.on("connect", () => {
-        setSocketConnected(true);
-      });
-      sock.on("disconnect", () => {
-        setSocketConnected(false);
-      });
-      sock.on("reconnect", () => {
-        setSocketConnected(true);
-        const currentUser = userRef.current;
-        // Allow students to rejoin live challenge on reconnect.
-        // Token is provided via the socket auth callback (line above), not in the payload.
-        if (currentUser?.classCode && isLiveChallengeRef.current) {
-          if (currentUser.role === "student") {
-            sock.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
-          }
-        }
-      });
-      sock.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
-      sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
-        if (typeof data === "object" && data !== null) {
-          setLeaderboard(data as Record<string, LeaderboardEntry>);
-        } else {
-          setLeaderboard({});
-        }
-      });
-    };
-
-    connectSocket();
-
-    return () => {
-      cancelled = true;
-      if (s) {
-        s.disconnect();
-      }
-    };
-  }, []);
 
   // ── Live Challenge: ensure JOIN_CHALLENGE is emitted for students ──
   // Centralised effect that fires whenever (student + socket + classCode)
