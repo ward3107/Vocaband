@@ -75,6 +75,7 @@ import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPla
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
+import { useViewGuards } from "./hooks/useViewGuards";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
@@ -1743,54 +1744,14 @@ export default function App() {
   }, [view]);
 
 
-  // Redirect orphaned "landing" view — logged-out users go to student login,
-  // logged-in users go to their dashboard (teacher or student).
-  useEffect(() => {
-    if (view !== "landing" || loading) return;
-    if (!user) {
-      setView("student-account-login");
-    } else if (user.role === "teacher") {
-      setView("teacher-dashboard");
-    } else {
-      setView("student-dashboard");
-    }
-  }, [view, user, loading]);
+  // View-state guards: redirect the user out of orphaned / broken
+  // views (landing with auth resolved, game without assignment,
+  // quick-play-student without an active session).
+  useViewGuards({
+    view, setView, user, loading,
+    activeAssignment, quickPlayActiveSession,
+  });
 
-  // Guard: game view needs an active assignment. When popstate restores
-  // view='game' but the assignment was cleared (e.g. after the student
-  // finished or backed out), the render path would return white. Send
-  // them back to the right dashboard instead of showing a blank screen.
-  useEffect(() => {
-    if (view !== "game" || activeAssignment) return;
-    if (user?.isGuest) {
-      setView("quick-play-student");
-    } else if (user?.role === "student") {
-      setView("student-dashboard");
-    } else if (user?.role === "teacher") {
-      setView("teacher-dashboard");
-    } else {
-      setView("public-landing");
-    }
-  }, [view, activeAssignment, user]);
-
-  // Guard: quick-play-student view without an active session = the
-  // infinite "Loading Quick Play session..." spinner. This happens when
-  // the back button restores the view but the session was cleared. If
-  // the URL still has ?session=CODE, send them back to the landing URL
-  // (cleaner than a stuck spinner — they can re-scan the QR). Otherwise
-  // go to public-landing.
-  useEffect(() => {
-    if (view !== "quick-play-student" || quickPlayActiveSession || loading) return;
-    const code = new URLSearchParams(window.location.search).get('session');
-    if (!code) {
-      setView("public-landing");
-      return;
-    }
-    // URL still has ?session= but our state doesn't — stale history entry.
-    // Clear the param and send home; the user can re-scan to rejoin.
-    window.history.replaceState({}, '', window.location.pathname);
-    setView("public-landing");
-  }, [view, quickPlayActiveSession, loading]);
 
   // Warn before leaving while a score save is in flight.  Extracted
   // into a hook so the "don't let the user leave while unsaved state
