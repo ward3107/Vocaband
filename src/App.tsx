@@ -1280,8 +1280,9 @@ export default function App() {
   const {
     handleLoginAsStudent,
     processStudentProfile,
+    renameStudentDisplayName,
   } = useStudentLogin({
-    setUser, setError, setLoading, setView,
+    user, setUser, setError, setLoading, setView,
     setBadges, setXp, setStreak,
     setStudentAssignments, setStudentProgress,
     showPendingApproval,
@@ -3071,6 +3072,7 @@ export default function App() {
               setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${value}`] } : prev);
             }
           }}
+          onRenameDisplayName={renameStudentDisplayName}
         />
       </LazyWrapper>
     );

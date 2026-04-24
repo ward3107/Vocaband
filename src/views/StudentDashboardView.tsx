@@ -59,6 +59,13 @@ interface StudentDashboardViewProps {
     streakFreezes: number;
     luckyCharms: number;
   };
+  /** Inline display-name change from the greeting card. Returns the
+   *  server's authoritative name on success, or an error code + msg. */
+  onRenameDisplayName?: (newName: string) =>
+    Promise<
+      | { ok: true; displayName: string }
+      | { ok: false; code: string; message: string }
+    >;
 }
 
 export default function StudentDashboardView({
@@ -70,6 +77,7 @@ export default function StudentDashboardView({
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
   retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
+  onRenameDisplayName,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -114,6 +122,7 @@ export default function StudentDashboardView({
           copiedCode={copiedCode}
           setCopiedCode={setCopiedCode}
           onShopClick={() => { setShopTab("hub"); setView("shop"); }}
+          onRenameDisplayName={onRenameDisplayName}
         />
         <StudentStatsRow
           xp={xp}

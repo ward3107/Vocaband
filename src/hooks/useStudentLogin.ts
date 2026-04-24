@@ -32,8 +32,15 @@ import {
 import { trackAutoError } from "../errorTracking";
 import type { View } from "../core/views";
 
+/** Result shape for renameStudentDisplayName. Callers that render a
+ *  rename UI use this to surface specific validation errors. */
+export type RenameResult =
+  | { ok: true; displayName: string }
+  | { ok: false; code: 'too_short' | 'too_long' | 'invalid' | 'unauthorized' | 'unknown'; message: string };
+
 export interface UseStudentLoginParams {
   // ─── Output state ──────────────────────────────────────────────────
+  user?: AppUser | null;
   setUser: (u: AppUser | null) => void;
   setError: (msg: string | null) => void;
   setLoading: (v: boolean) => void;
@@ -69,7 +76,7 @@ interface StudentProfileShape {
 
 export function useStudentLogin(params: UseStudentLoginParams) {
   const {
-    setUser, setError, setLoading, setView,
+    user, setUser, setError, setLoading, setView,
     setBadges, setXp, setStreak,
     setStudentAssignments, setStudentProgress,
     showPendingApproval,
@@ -277,8 +284,51 @@ export function useStudentLogin(params: UseStudentLoginParams) {
     }
   }, [processStudentProfile, setError]);
 
+  // ─── Rename — call the SECURITY DEFINER RPC and mirror locally ─────
+  const renameStudentDisplayName = useCallback(async (newName: string): Promise<RenameResult> => {
+    const trimmed = newName.replace(/\s+/g, ' ').trim();
+    // Client-side sanity checks to avoid a round-trip when the input
+    // is obviously bad. The server re-validates (authoritative).
+    if (trimmed.length < 1) {
+      return { ok: false, code: 'too_short', message: 'Please type a name.' };
+    }
+    if (trimmed.length > 30) {
+      return { ok: false, code: 'too_long', message: 'Name is too long — 30 characters max.' };
+    }
+    // eslint-disable-next-line no-control-regex
+    if (/[\x00-\x1f]/.test(trimmed)) {
+      return { ok: false, code: 'invalid', message: 'Name contains invalid characters.' };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('rename_student_display_name', { p_new_name: trimmed });
+      if (error) {
+        const msg = error.message || '';
+        if (msg.includes('name_too_short')) return { ok: false, code: 'too_short', message: 'Please type a name.' };
+        if (msg.includes('name_too_long'))  return { ok: false, code: 'too_long',  message: 'Name is too long — 30 characters max.' };
+        if (msg.includes('invalid_characters')) return { ok: false, code: 'invalid', message: 'Name contains invalid characters.' };
+        if (msg.includes('not_authenticated') || msg.includes('profile_not_found')) {
+          return { ok: false, code: 'unauthorized', message: 'Sign in again to change your name.' };
+        }
+        return { ok: false, code: 'unknown', message: 'Could not change your name. Please try again.' };
+      }
+
+      // Mirror to local user state so the dashboard updates instantly.
+      // The RPC returns the updated student_profiles row; its display_name
+      // is the authoritative value.
+      const serverName = (data as { display_name?: string } | null)?.display_name ?? trimmed;
+      if (user) setUser({ ...user, displayName: serverName });
+
+      return { ok: true, displayName: serverName };
+    } catch (err) {
+      console.error('[rename] unexpected error:', err);
+      return { ok: false, code: 'unknown', message: 'Could not change your name. Please try again.' };
+    }
+  }, [user, setUser]);
+
   return {
     handleLoginAsStudent,
     processStudentProfile,
+    renameStudentDisplayName,
   };
 }
