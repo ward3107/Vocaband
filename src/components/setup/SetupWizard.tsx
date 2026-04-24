@@ -98,7 +98,7 @@ export interface SetupWizardProps {
   // External services
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
-  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
+  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
 
   // Feature flags
   use2026WordInput?: boolean; // Use new 2026 word input design

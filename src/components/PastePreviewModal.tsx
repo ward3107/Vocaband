@@ -10,6 +10,7 @@ import { Check, X, AlertCircle, FileText, Filter, Zap, Edit3, Sparkles, Loader2,
 import { WordMatch, PastedTerm, WordAnalysisResult } from '../utils/wordAnalysis';
 import { applyCorrections, loadCorrectionsForWords, saveCorrection } from '../utils/translationCorrections';
 import type { TranslationCorrection } from '../utils/translationCorrections';
+import { useTranslate } from '../hooks/useTranslate';
 
 interface PastePreviewModalProps {
   analysis: WordAnalysisResult | null;
@@ -42,40 +43,13 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   // Track manually added suggestion word IDs (fuzzy, starts-with matches)
   const [addedSuggestionIds, setAddedSuggestionIds] = useState<Set<number>>(new Set());
 
-  // Translation cache to avoid redundant API calls
-  const translationCache = useRef<Map<string, { hebrew: string; arabic: string }>>(new Map());
-
-  // Translate a single English word to Hebrew and Arabic
-  const translateWord = async (englishWord: string): Promise<{ hebrew: string; arabic: string } | null> => {
-    // Check cache first
-    const cached = translationCache.current.get(englishWord.toLowerCase());
-    if (cached) return cached;
-
-    try {
-      const [hebrewRes, arabicRes] = await Promise.all([
-        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|he`),
-        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|ar`)
-      ]);
-
-      const hebrewData = await hebrewRes.json();
-      const arabicData = await arabicRes.json();
-
-      if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
-        const result = {
-          hebrew: hebrewData.responseData.translatedText,
-          arabic: arabicData.responseData.translatedText
-        };
-        // Cache the result
-        translationCache.current.set(englishWord.toLowerCase(), result);
-        return result;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Translation service error:', error);
-      return null;
-    }
-  };
+  // Gemini-backed batch translator — single round-trip for the whole
+  // unmatched list. Replaces the per-word mymemory.translated.net
+  // pair of calls that used to double-charge Set-1 idioms (e.g.
+  // "in a hurry" returned machine-literal glosses) and sometimes
+  // rate-limited mid-paste.  useTranslate owns its own in-memory
+  // cache, so the ref-based cache is no longer needed.
+  const { translateWordsBatch } = useTranslate();
 
   // Translate all custom words at once
   const handleTranslateAll = async () => {
@@ -84,12 +58,19 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
     setIsTranslating(true);
     const translations = new Map(customWordTranslations);
 
-    for (const term of unmatchedTerms) {
-      const existing = translations.get(term.term);
-      if (!existing || !existing.hebrew || !existing.arabic) {
-        const result = await translateWord(term.term);
-        if (result) {
-          translations.set(term.term, result);
+    const targets = unmatchedTerms
+      .filter(term => {
+        const existing = translations.get(term.term);
+        return !existing || !existing.hebrew || !existing.arabic;
+      })
+      .map(t => t.term);
+
+    if (targets.length > 0) {
+      const batch = await translateWordsBatch(targets);
+      for (const term of unmatchedTerms) {
+        const entry = batch.get(term.term.toLowerCase().trim());
+        if (entry && (entry.hebrew || entry.arabic)) {
+          translations.set(term.term, { hebrew: entry.hebrew, arabic: entry.arabic });
         }
       }
     }

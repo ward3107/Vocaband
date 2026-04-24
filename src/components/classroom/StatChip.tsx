@@ -95,13 +95,17 @@ export default function StatChip({
 
   const body = (
     <>
-      <div className={`text-3xl font-black leading-none ${TEXT_TONE[resolvedTone]} flex items-center gap-1.5`}>
-        {icon && <span className="text-xl" aria-hidden>{icon}</span>}
+      {/* Compacted 2026-04-24: title size 3xl → 2xl, tighter margins.
+          Teachers projecting their monitor to the classroom wanted more
+          data on-screen at once — the huge numbers were elegant but
+          wasteful. */}
+      <div className={`text-2xl font-black leading-none ${TEXT_TONE[resolvedTone]} flex items-center gap-1.5`}>
+        {icon && <span className="text-lg" aria-hidden>{icon}</span>}
         {value}
       </div>
 
-      <div className="flex items-center gap-1 mt-2">
-        <span className="text-[11px] font-black uppercase tracking-wider text-stone-600">
+      <div className="flex items-center gap-1 mt-1.5">
+        <span className="text-[10px] font-black uppercase tracking-wider text-stone-600">
           {label}
         </span>
         {tooltip && (
@@ -115,16 +119,16 @@ export default function StatChip({
             onMouseLeave={() => setTipOpen(false)}
             aria-label={`What "${label}" means`}
             aria-expanded={tipOpen}
-            className="w-5 h-5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
+            className="w-4 h-4 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
-            <Info size={12} />
+            <Info size={10} />
           </button>
         )}
       </div>
 
       {caption && (
-        <div className="text-[10px] text-stone-400 mt-0.5">{caption}</div>
+        <div className="text-[10px] text-stone-400 mt-0.5 leading-tight">{caption}</div>
       )}
 
       {tooltip && tipOpen && (
@@ -150,7 +154,7 @@ export default function StatChip({
         <button
           type="button"
           onClick={onClick}
-          className={`relative w-full text-left bg-white rounded-2xl p-3.5 border transition-colors ${RING_TONE[resolvedTone]}`}
+          className={`relative w-full text-left bg-white rounded-xl p-3 border transition-colors ${RING_TONE[resolvedTone]}`}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
         >
           {body}
@@ -161,7 +165,7 @@ export default function StatChip({
   return (
     <div
       ref={ref}
-      className={`relative bg-white rounded-2xl p-3.5 border ${RING_TONE[resolvedTone]}`}
+      className={`relative bg-white rounded-xl p-3 border ${RING_TONE[resolvedTone]}`}
     >
       {body}
     </div>

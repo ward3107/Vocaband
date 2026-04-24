@@ -18,6 +18,8 @@ import { SentenceDifficulty } from '../constants/game';
 import { supabase } from '../core/supabase';
 import SetupWizard, { SetupWizardProps } from './setup/SetupWizard';
 import { AssignmentData } from './setup/types';
+import { useTranslate } from '../hooks/useTranslate';
+import { saveCorrection } from '../utils/translationCorrections';
 
 // Keep the existing AssignmentData interface for backward compatibility
 export interface AssignmentDataCompat extends AssignmentData {
@@ -129,6 +131,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [instructions, setInstructions] = useState('');
+
+  // Gemini-backed translator shared across the whole wizard — replaces
+  // the older mymemory.translated.net path which gave worse results
+  // for idioms/phrases (e.g. "a shame" → machine-literal).  /api/translate
+  // is the same endpoint the Quick Play flow already uses.
+  const { translateWord: geminiTranslate } = useTranslate();
 
   // ── Convert number[] to Word[] for SetupWizard ───────────────────────────────
   const selectedWords = useMemo(() => {
@@ -343,27 +351,30 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       showToast={showToast}
       onPlayWord={onPlayWord}
       onTranslateWord={async (word) => {
-        // Translation handler - using the same API as before
-        try {
-          const [hebrewRes, arabicRes] = await Promise.all([
-            fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|he`),
-            fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|ar`)
-          ]);
-          const hebrewData = await hebrewRes.json();
-          const arabicData = await arabicRes.json();
-          if (hebrewData.responseStatus === 200 && arabicData.responseStatus === 200) {
-            const heMatch = parseFloat(hebrewData.responseData.match) || 0;
-            const arMatch = parseFloat(arabicData.responseData.match) || 0;
-            return {
-              hebrew: hebrewData.responseData.translatedText,
-              arabic: arabicData.responseData.translatedText,
-              match: Math.min(heMatch, arMatch)
-            };
+        // Route through our Gemini-backed /api/translate.  Also persist
+        // the result to `word_corrections` for real Set-1/2/3 words so
+        // the next assignment that picks this word lands with the
+        // translation already filled in — teachers no longer have to
+        // re-translate the same word twice.  Russian is included in
+        // the correction row when /api/translate returns one.
+        const result = await geminiTranslate(word);
+        if (!result) return null;
+        const lower = word.toLowerCase().trim();
+        const match = allWords.find(w => w.english.toLowerCase().trim() === lower);
+        if (match && match.id > 0 && (result.hebrew || result.arabic || result.russian)) {
+          try {
+            await saveCorrection({
+              wordId: match.id,
+              english: match.english,
+              hebrew: result.hebrew || match.hebrew || undefined,
+              arabic: result.arabic || match.arabic || undefined,
+              russian: result.russian || match.russian || undefined,
+            });
+          } catch {
+            /* non-fatal — translation still flows into the form. */
           }
-          return null;
-        } catch {
-          return null;
         }
+        return result;
       }}
       topicPacks={TOPIC_PACKS}
       onOcrUpload={handleOcrUpload}

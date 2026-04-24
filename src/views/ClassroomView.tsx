@@ -19,14 +19,14 @@
  * Legacy `initialTab` values ("pulse" / "mastery") still work — they
  * map onto the closest v2 tab when the flag is on.
  */
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Activity, Brain } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import StatChip from "../components/classroom/StatChip";
-import TodayActionList from "../components/classroom/TodayActionList";
+import ReportExportBar from "../components/classroom/ReportExportBar";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -94,7 +94,49 @@ export default function ClassroomView(props: ClassroomViewProps) {
   } = props;
 
   const [legacyTab, setLegacyTab] = useState<LegacyTab>(initialTab);
-  const [v2Tab, setV2Tab] = useState<V2Tab>(legacyToV2[initialTab]);
+
+  // V2 tab state is mirrored into `?tab=…` so mobile back steps through
+  // tabs (Reports → Assignments → Students → Today → teacher dashboard)
+  // instead of escaping on the first tap.  Read the initial value from
+  // the URL, fall back to legacy initialTab mapping.  The URL is the
+  // single source of truth; setting the tab pushes a new history entry
+  // so browser back / forward are wired up for free.
+  const readTabFromUrl = (): V2Tab => {
+    if (typeof window === "undefined") return legacyToV2[initialTab];
+    const raw = new URLSearchParams(window.location.search).get("tab");
+    if (raw === "today" || raw === "students" || raw === "assignments" || raw === "reports") {
+      return raw;
+    }
+    return legacyToV2[initialTab];
+  };
+  const [v2Tab, setV2TabState] = useState<V2Tab>(readTabFromUrl);
+
+  const setV2Tab = useCallback((next: V2Tab) => {
+    setV2TabState(prev => {
+      if (prev === next) return prev;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", next);
+        window.history.pushState({ classroomTab: next }, "", url.toString());
+      } catch { /* non-browser env */ }
+      return next;
+    });
+  }, []);
+
+  // Walk tabs in reverse as the back button is pressed.  Keeps the
+  // classroom experience self-contained on mobile; only once the user
+  // is on the Today tab does back pop further up the stack (into the
+  // teacher dashboard).
+  useEffect(() => {
+    if (!CLASSROOM_V2) return;
+    const onPop = () => {
+      const next = readTabFromUrl();
+      setV2TabState(next);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Shared class selection across the v2 tabs so picking a class on
   // Today keeps it selected when the teacher jumps to Students /
@@ -228,7 +270,9 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 {/* The existing pulse cards + activity chart come from
                     GradebookView, sliced via the sections prop. Class
                     selection is controlled so switching tabs doesn't
-                    lose the teacher's pick. */}
+                    lose the teacher's pick.  Export button is hidden
+                    here (CSV + PDF now live exclusively on the Reports
+                    tab per teacher feedback). */}
                 <GradebookView
                   user={user}
                   allScores={allScores}
@@ -241,28 +285,15 @@ export default function ClassroomView(props: ClassroomViewProps) {
                   showToast={showToast}
                   embedded
                   sections={["pulse", "activity"]}
+                  hideExport
                   selectedClassCode={classCode}
                   onSelectedClassChange={setClassCode}
                 />
-
-                {/* Action list — derived from the same class's data.
-                    Tapping an item switches tab (and, for assignments,
-                    primes the drill via a tiny query-string hand-off
-                    the v2 Assignments tab listens for). */}
-                <TodayActionList
-                  classCode={classCode}
-                  scores={classScores}
-                  classStudents={classStudents}
-                  teacherAssignments={teacherAssignments}
-                  onGoToStudents={() => setV2Tab("students")}
-                  onGoToReports={() => setV2Tab("reports")}
-                  onOpenAssignment={() => {
-                    // Phase 3 scope: switch to the Assignments tab. Pre-
-                    // opening the specific assignment's drill is Phase 4
-                    // once the class-scoped selection flows through.
-                    setV2Tab("assignments");
-                  }}
-                />
+                {/* "Suggestions for today" action list was removed 2026-04-24 —
+                    teachers found it cluttered the Today view and its three
+                    inactive-student / most-missed-word / incomplete-assignment
+                    rules already surface via the Students / Reports / Assignments
+                    tabs directly. */}
               </div>
             )}
             {v2Tab === "students" && (
@@ -304,18 +335,33 @@ export default function ClassroomView(props: ClassroomViewProps) {
               />
             )}
             {v2Tab === "reports" && (
-              <AnalyticsView
-                user={user}
-                classes={classes}
-                allScores={allScores}
-                teacherAssignments={teacherAssignments}
-                setView={setView}
-                selectedClass={selectedClass}
-                setSelectedClass={setSelectedClass}
-                selectedWords={selectedWords}
-                setSelectedWords={setSelectedWords}
-                embedded
-              />
+              <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-4">
+                {/* Exports live on the Reports tab only — teachers asked
+                    us to stop showing them on Today / Students because
+                    they hunted for "where's the download" and found it
+                    in three different places.  CSV + PDF both formatted
+                    with the same underlying rows so the numbers line up. */}
+                <ReportExportBar
+                  classCode={classCode}
+                  classes={classes}
+                  scores={allScores}
+                  assignments={teacherAssignments}
+                  classStudents={classStudents}
+                  showToast={showToast}
+                />
+                <AnalyticsView
+                  user={user}
+                  classes={classes}
+                  allScores={allScores}
+                  teacherAssignments={teacherAssignments}
+                  setView={setView}
+                  selectedClass={selectedClass}
+                  setSelectedClass={setSelectedClass}
+                  selectedWords={selectedWords}
+                  setSelectedWords={setSelectedWords}
+                  embedded
+                />
+              </div>
             )}
           </Suspense>
         </motion.div>

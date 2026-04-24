@@ -27,7 +27,11 @@ import { trackAutoError } from "../errorTracking";
 export interface TranslationEntry {
   hebrew: string;
   arabic: string;
-  /** Confidence-ish: 1 when both languages came back, 0.5 when only one. */
+  /** Russian translation. Optional because older deploys of /api/translate
+   *  (pre-2026-04) didn't include it; the client treats `undefined` and
+   *  `""` the same when rendering. */
+  russian?: string;
+  /** Confidence-ish: 1 when all languages came back, ~0.5 when only some. */
   match: number;
 }
 
@@ -72,12 +76,23 @@ export function useTranslate() {
         return out;
       }
 
-      const { hebrew, arabic } = await res.json() as { hebrew?: string[]; arabic?: string[] };
+      const { hebrew, arabic, russian } = await res.json() as {
+        hebrew?: string[]; arabic?: string[]; russian?: string[];
+      };
       uncached.forEach((word, i) => {
         const he = hebrew?.[i]?.trim() || '';
         const ar = arabic?.[i]?.trim() || '';
-        if (!he && !ar) return;
-        const entry: TranslationEntry = { hebrew: he, arabic: ar, match: he && ar ? 1 : 0.5 };
+        const ru = russian?.[i]?.trim() || '';
+        if (!he && !ar && !ru) return;
+        // Confidence is a fraction of the three target languages that
+        // came back non-empty — 1.0 when all three landed.
+        const filled = [he, ar, ru].filter(Boolean).length;
+        const entry: TranslationEntry = {
+          hebrew: he,
+          arabic: ar,
+          russian: ru || undefined,
+          match: filled / 3,
+        };
         const key = word.toLowerCase();
         translationCache.current.set(key, entry);
         out.set(key, entry);
