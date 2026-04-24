@@ -3738,29 +3738,10 @@ export default function App() {
 
   // Voice selection + caching + voiceschanged listener are bundled in
   // a hook so this component doesn't hold browser-API plumbing.
-  const { getVoice } = useSpeechVoiceManager();
-
-  const speak = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-
-    // Clean up text for better pronunciation (remove grammatical markers)
-    const cleanText = text
-      .replace(/\s*\([nva]\)\s*/gi, ' ')  // Remove (n), (v), (adj)
-      .replace(/\s*\([^)]*?\)\s*/g, ' ')   // Remove other parenthetical content
-      .replace(/^['"]+|['"]+$/g, '')        // Remove quotes
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Speak the whole phrase smoothly - no word-by-word pauses
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "en-US";
-    utterance.rate = 0.7;  // Slower for clarity (0.7x)
-    utterance.pitch = 1.0;  // Neutral pitch
-    const voice = getVoice();
-    if (voice) utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
-  };
+  // speak() is provided by the voice manager — same wrapper as before
+  // (cancel-then-speak with parenthetical cleanup), just owned by the
+  // hook so this file doesn't carry browser-API plumbing.
+  const { speak } = useSpeechVoiceManager();
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder" && gameMode !== "matching") {
