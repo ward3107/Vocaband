@@ -20,7 +20,7 @@ import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
 import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
-import { shuffle, chunkArray, addUnique, removeKey } from './utils';
+import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
@@ -51,6 +51,7 @@ const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
+import { createGuestUser } from "./utils/createGuestUser";
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
@@ -74,8 +75,13 @@ import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
 import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPlayRealtime";
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
+import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
+import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
+import { useGameModeSetup } from "./hooks/useGameModeSetup";
+import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
+import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
@@ -94,13 +100,7 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
-// Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
-function secureRandomInt(max: number): number {
-  if (max <= 1) return 0;
-  const arr = new Uint32Array(1);
-  crypto.getRandomValues(arr);
-  return arr[0] % max;
-}
+// secureRandomInt moved to `src/utils.ts` for reuse.
 
 export default function App() {
   // Initialize game debugger
@@ -433,62 +433,6 @@ export default function App() {
     }
   }, [searchTerms, view]);
 
-
-  // --- HELPER: Create Guest User ---
-  // Centralized function to create guest user objects with consistent structure
-  const createGuestUser = (name: string, prefix: string = 'guest', avatar: string = '\uD83E\uDD8A'): AppUser => {
-    // Mobile-compatible UUID generation (crypto.randomUUID() not supported on some mobile browsers)
-    const generateUUID = (): string => {
-      // Prefer native crypto.randomUUID when available
-      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID();
-      }
-
-      // Fallback: generate a UUID-like string using crypto.getRandomValues if available
-      if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
-        const bytes = new Uint8Array(16);
-        crypto.getRandomValues(bytes);
-
-        // Set version (4) and variant bits to match UUID v4 layout
-        bytes[6] = (bytes[6] & 0x0f) | 0x40;
-        bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-        const toHex = (b: number) => b.toString(16).padStart(2, "0");
-        const hex = Array.from(bytes, toHex).join("");
-
-        return [
-          hex.substring(0, 8),
-          hex.substring(8, 12),
-          hex.substring(12, 16),
-          hex.substring(16, 20),
-          hex.substring(20)
-        ].join("-");
-      }
-
-      // Last-resort fallback: use timestamp plus a monotonically increasing counter.
-      // This avoids Math.random but does not provide strong unpredictability.
-      const now = Date.now().toString(36);
-      if (!(generateUUID as any)._counter) {
-        (generateUUID as any)._counter = 0;
-      }
-      (generateUUID as any)._counter = ((generateUUID as any)._counter + 1) | 0;
-      const counter = ((generateUUID as any)._counter as number).toString(36);
-      return `${now}-${counter}`;
-    };
-
-    return {
-      uid: `${prefix}-${generateUUID()}`,
-      displayName: name.trim().slice(0, 30),
-      email: undefined,
-      role: "guest",
-      isGuest: true,
-      avatar,
-      xp: 0,
-      classCode: undefined,
-      createdAt: new Date().toISOString()
-    };
-  };
-
   // Translation helpers — server-proxied EN → HE/AR with an in-session
   // cache. Two callable shapes: batch (paste/OCR/imports) and single-
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
@@ -692,70 +636,13 @@ export default function App() {
   // Refs for effects that need the "current" user without re-registering.
   // (isLiveChallengeRef moved into useLiveChallengeSocket.)
   const userRef = useRef(user);
-  // Tracks which (socketId:classCode:uid) combo has already emitted
-  // JOIN_CHALLENGE — prevents duplicate emits when effects re-run.
-  // Cleared whenever the socket reconnects (new socket id) so the
-  // next join goes through.
-  const joinChallengeEmittedRef = useRef<string>("");
 
   // Timeout ref for cleanup (prevents memory leaks on unmount)
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const lastSpokenWordRef = useRef<number | null>(null);
   const isProcessingRef = useRef<boolean>(false); // Guard against rapid clicks during feedback
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
-  useEffect(() => {
-    isProcessingRef.current = !!feedback;
-    gameDebug.logProcessing({ isProcessing: !!feedback, reason: `feedback changed to ${feedback}` });
-  }, [feedback]);
-
-  // FAILSAFE: Clear stuck feedback after 5 seconds (prevents buttons being permanently disabled)
-  useEffect(() => {
-    if (!feedback) return;
-
-    const failsafeTimer = setTimeout(() => {
-      setFeedback(null);
-    }, 5000);
-
-    return () => clearTimeout(failsafeTimer);
-  }, [feedback]);
-
-  // Track feedback state changes
-  const prevFeedbackRef = useRef<string | null>(feedback);
-  useEffect(() => {
-    if (prevFeedbackRef.current !== feedback) {
-      gameDebug.logFeedback({ from: prevFeedbackRef.current, to: feedback, reason: 'state_change' });
-      prevFeedbackRef.current = feedback;
-    }
-  }, [feedback]);
-
-  // Track word changes and log state transitions
-  const prevIndexRef = useRef<number>(currentIndex);
-  useEffect(() => {
-    if (prevIndexRef.current !== currentIndex && view === "game") {
-      const fromIndex = prevIndexRef.current;
-      const toIndex = currentIndex;
-      const word = gameWords[toIndex];
-      gameDebug.logWordChange({
-        fromIndex,
-        toIndex,
-        word: word ? { id: word.id, english: word.english } : undefined,
-      });
-      gameDebug.logState({
-        view,
-        gameMode,
-        showModeSelection,
-        showModeIntro,
-        currentIndex: toIndex,
-        isFinished,
-        feedback,
-        isProcessing: isProcessingRef.current,
-        currentWord: word ? { id: word.id, english: word.english } : undefined,
-      }, 'after_word_change');
-      prevIndexRef.current = toIndex;
-    }
-  }, [currentIndex, view, gameMode, showModeSelection, showModeIntro, isFinished, feedback]);
 
   // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
   // owned by useSaveQueue itself.
@@ -871,85 +758,16 @@ export default function App() {
     }
   }, [view]);
 
+  // Emits JOIN_CHALLENGE / OBSERVE_CHALLENGE and listens for
+  // challenge_error on the Live Challenge socket.  Pairs with
+  // useLiveChallengeSocket (which owns the connection) — this hook
+  // owns the per-role emit behaviour that triggers off view +
+  // class state.
+  useLiveChallengeEvents({
+    user, socket, socketConnected, selectedClass, isLiveChallenge,
+  });
 
-  // ── Live Challenge: ensure JOIN_CHALLENGE is emitted for students ──
-  // Centralised effect that fires whenever (student + socket + classCode)
-  // are all present, emitting exactly once per unique (socketId, uid)
-  // tuple.  Covers every login path (traditional, click-name, restore).
-  //
-  // CRITICAL: the uid in the payload MUST be the Supabase session's
-  // user.id, not user.uid from app state.  The server middleware
-  // authenticates the socket with the session's JWT and stores the
-  // verified uid in socket.data.uid.  The JOIN_CHALLENGE handler then
-  // rejects (silently!) if payload uid !== socket.data.uid.  On the
-  // click-name student login path, user.uid = profile.auth_uid which
-  // can differ from the current session's user.id — that mismatch was
-  // dropping join events on the floor.  Reading the session uid on
-  // every run guarantees we send whatever matches the JWT.
-  useEffect(() => {
-    if (!user || user.role !== 'student' || !user.classCode) return;
-    if (!socket || !socketConnected) return;
-    let cancelled = false;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const sessionUid = session?.user?.id;
-      if (cancelled) return;
-      if (!sessionUid) {
-        console.warn('[Live] JOIN_CHALLENGE skipped — no Supabase session yet. Students without an anonymous session cannot appear on the podium.');
-        return;
-      }
-      const joinKey = `${socket.id}:${user.classCode}:${sessionUid}`;
-      if (joinChallengeEmittedRef.current === joinKey) return;
-      joinChallengeEmittedRef.current = joinKey;
-      socket.emit(SOCKET_EVENTS.JOIN_CHALLENGE, {
-        classCode: user.classCode!,
-        name: user.displayName,
-        uid: sessionUid,
-      });
-      console.log('[Live] JOIN_CHALLENGE emitted', {
-        classCode: user.classCode,
-        name: user.displayName,
-        sessionUid,
-        userUid: user.uid,
-        match: sessionUid === user.uid,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [user?.uid, user?.role, user?.classCode, user?.displayName, socket, socketConnected]);
 
-  // Teacher re-observe on reconnect: LiveChallengeClassSelectView
-  // emits OBSERVE_CHALLENGE once when the teacher picks a class, but
-  // if the socket drops + reconnects mid-challenge the teacher ends
-  // up in a live-challenge room without being subscribed to its
-  // leaderboard updates.  This effect re-emits on every reconnect
-  // while the teacher is inside the live-challenge view.
-  useEffect(() => {
-    if (!user || user.role !== 'teacher') return;
-    if (!socket || !socketConnected) return;
-    if (!selectedClass || !isLiveChallenge) return;
-    socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: selectedClass.code });
-    console.log('[Live] OBSERVE_CHALLENGE re-emitted for teacher', { classCode: selectedClass.code });
-  }, [user?.role, socket, socketConnected, selectedClass, isLiveChallenge]);
-
-  // Listen for server-side challenge error events so we can surface
-  // the rejection reason in the console (and optionally toast) instead
-  // of the silent-drop behaviour that made podium bugs invisible.
-  useEffect(() => {
-    if (!socket) return;
-    const onError = (payload: { event?: string; reason?: string }) => {
-      console.error('[Live] Server rejected event:', payload);
-    };
-    socket.on('challenge_error', onError);
-    return () => { socket.off('challenge_error', onError); };
-  }, [socket]);
-
-  // Reset the emit-dedupe key on disconnect so the next connect can
-  // re-emit.  Covers reconnects where the socket gets a new id.
-  useEffect(() => {
-    if (!socketConnected) {
-      joinChallengeEmittedRef.current = "";
-    }
-  }, [socketConnected]);
 
   // Helper: set pending approval info and persist to sessionStorage
   const showPendingApproval = (info: { name: string; classCode: string; profileId?: string }) => {
@@ -1820,67 +1638,18 @@ export default function App() {
     preloadMany(ids);
   }, [user?.isGuest, quickPlayActiveSession?.id, preloadMany]);
 
-  // Auto-refresh student assignments every 30s while on the dashboard
-  // so new assignments from the teacher appear without re-login
-  useEffect(() => {
-    if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
-    const code = user.classCode;
-    // Cache class ID to avoid querying classes table every 30s
-    let cachedClassId: string | null = null;
-    const refresh = async () => {
-      // Double-check user still exists and is still logged in (prevents DB calls after logout)
-      if (!user || !user.classCode) return;
+  // Background auto-refresh on dashboards: student assignments (30 s),
+  // teacher pending-student approvals (10 s), teacher class scores
+  // (20 s on Classroom / Analytics / Gradebook).  All three cheap
+  // indexed polls + visibility refetches — Supabase Realtime has
+  // proven unreliable for these lists in practice.
+  useDashboardPolling({
+    user, view, classes, allScores,
+    setStudentAssignments,
+    loadPendingStudents,
+    fetchScores,
+  });
 
-      if (!cachedClassId) {
-        const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
-        if (!classRows || classRows.length === 0) return;
-        cachedClassId = classRows[0].id;
-      }
-      const { data } = await supabase.rpc('get_assignments_for_class', { p_class_id: cachedClassId });
-      setStudentAssignments((data ?? []).map(mapAssignment));
-    };
-    // Fetch immediately on mount (so new assignments appear as soon as the
-    // student navigates to the dashboard), then refresh every 30 seconds.
-    refresh();
-    const id = setInterval(refresh, 30000);
-    return () => clearInterval(id);
-  }, [user?.role, user?.classCode, view, user]);
-
-  // Load pending students for teachers
-  useEffect(() => {
-    // Trigger pending-students fetch on any of: fresh teacher dashboard
-    // mount, dashboard re-entry, OR the async classes list finally
-    // arriving (common race — loadPendingStudents early-returns when
-    // classes.length === 0, so without this dep the teacher sees a
-    // permanent empty state if they land on the dashboard before the
-    // classes fetch resolves).
-    //
-    // Also polls every 10s + refetches on tab refocus. Without these,
-    // a teacher sitting on the dashboard sees no new pending students
-    // until they navigate away and back (or relogin) — because the
-    // Supabase Realtime channel we'd normally lean on to push the
-    // notification has been unreliable in practice. Polling is cheap
-    // (single indexed query) and means the approval tray always reflects
-    // reality within ~10 seconds regardless of realtime health.
-    if (!(user?.role === "teacher" && view === "teacher-dashboard" && classes.length > 0)) {
-      return;
-    }
-    loadPendingStudents();
-
-    const pollId = setInterval(() => {
-      if (!document.hidden) loadPendingStudents();
-    }, 10_000);
-
-    const handleVisibility = () => {
-      if (!document.hidden) loadPendingStudents();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(pollId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [user?.role, view, classes.length]);
 
   // --- SMART PASTE FUNCTIONS ---
 
@@ -1893,107 +1662,29 @@ export default function App() {
   // Hook encapsulates the includes-guard + celebrate + DB upsert.
   const awardBadge = useAwardBadge({ user, badges, setBadges, setSaveError });
 
-  // Re-run fetchScores when classes transitions from 0 → non-zero while the
-  // teacher is viewing Analytics or Gradebook. Without this, clicking the
-  // Analytics card before the async classes fetch completes locks in an
-  // empty state: fetchScores sees classes=[] and returns early, and nothing
-  // else re-triggers it. Guarded by allScores.length === 0 so this fires
-  // at most once per session.
-  useEffect(() => {
-    if (user?.role !== "teacher") return;
-    if (classes.length === 0) return;
-    if (view !== "classroom" && view !== "analytics" && view !== "gradebook") return;
-    // Initial fetch — only if we haven't already loaded this session.
-    // Without this guard, every view-switch inside Classroom would
-    // re-hit the DB.
-    if (allScores.length === 0) fetchScores();
-    // Live refresh — students complete assignments at any moment while
-    // the teacher is on Classroom/Analytics/Gradebook.  Before this,
-    // the teacher had to leave and re-enter the view to see a new
-    // score land (or full refresh the page).  Poll every 20 seconds
-    // and re-fetch when the tab becomes visible.  Cheap single query.
-    const pollId = setInterval(() => {
-      if (!document.hidden) fetchScores();
-    }, 20_000);
-    const handleVisibility = () => {
-      if (!document.hidden) fetchScores();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      clearInterval(pollId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classes.length, view, user?.role]);
 
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
   const currentWord = gameWords[currentIndex];
-  // Debug: verify word count in game
-  if (view === "game" && activeAssignment) {
-  }
 
-  // Debug: log state when in game view
-  if (view === "game") {
-  }
+  // Per-round derived data: 4-way options, T/F option, scrambled letters.
+  const { options, tfOption, scrambledWord } = useGameRoundOptions({
+    currentWord, gameWords, currentIndex,
+  });
 
-  const options = useMemo(() => {
-    if (!currentWord) return [];
-    const correct = currentWord;
-
-    // Use ONLY the assigned gameWords for distractors - students should only see what the teacher assigned
-    let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
-
-    // If fewer than 3 distractors available (teacher assigned <4 words),
-    // cycle through the assigned words instead of borrowing from ALL_WORDS.
-    // Edge case: if the teacher assigned exactly 1 word, possibleDistractors
-    // is empty — the cycle loop would never terminate and freezes the page.
-    // Fall back to ALL_WORDS in that case so we have real distractors to show.
-    if (possibleDistractors.length === 0) {
-      possibleDistractors = ALL_WORDS.filter(w => w.id !== correct.id);
-    }
-    if (possibleDistractors.length < 3) {
-      // Shuffle available distractors first
-      const shuffledDistractors = shuffle(possibleDistractors);
-      // Repeat until we have at least 3
-      while (shuffledDistractors.length < 3) {
-        shuffledDistractors.push(...shuffle(possibleDistractors));
-      }
-      possibleDistractors = shuffledDistractors;
-    }
-
-    const shuffledOthers = possibleDistractors.slice(0, 3);
-    return shuffle([...shuffledOthers, correct]);
-  }, [currentWord, gameWords]);
-
-  // Synchronously derive tfOption so it is never null on the first render
-  // of a True/False round (see note next to the isFlipped declaration).
-  const tfOption = useMemo<Word | null>(() => {
-    if (!currentWord) return null;
-    // 50% correct translation, 50% distractor
-    if (secureRandomInt(2) === 0) return currentWord;
-    let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
-    if (possibleDistractors.length === 0) {
-      const allPossibleWords = [...ALL_WORDS, ...gameWords];
-      possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
-    }
-    return possibleDistractors[secureRandomInt(possibleDistractors.length)] ?? currentWord;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, currentWord, gameWords]);
+  // Feedback instrumentation: 5 s failsafe, processing-ref mirror,
+  // and gameDebug logs for feedback + word-change transitions.
+  useFeedbackTracking({
+    feedback, setFeedback,
+    currentIndex, view, gameMode,
+    showModeSelection, showModeIntro, isFinished,
+    gameWords, isProcessingRef,
+  });
 
   useEffect(() => {
     if (currentWord) setIsFlipped(false);
   }, [currentIndex, currentWord]);
 
-  const scrambledWord = useMemo(() => {
-    if (!currentWord) return "";
-    let scrambled = shuffle(currentWord.english.split('')).join('');
-    // Ensure it's actually scrambled if length > 1
-    while (scrambled === currentWord.english && currentWord.english.length > 1) {
-      scrambled = shuffle(currentWord.english.split('')).join('');
-    }
-    return scrambled;
-  }, [currentWord]);
 
   // Voice selection + caching + voiceschanged listener are bundled in
   // a hook so this component doesn't hold browser-API plumbing.
@@ -2002,87 +1693,20 @@ export default function App() {
   // hook so this file doesn't carry browser-API plumbing.
   const { speak } = useSpeechVoiceManager();
 
-  useEffect(() => {
-    if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder" && gameMode !== "matching") {
-      // Only speak if this is a different word than the last one we spoke
-      if (lastSpokenWordRef.current !== currentWord.id) {
-        gameDebug.logPronunciation({ wordId: currentWord.id, word: currentWord.english, method: 'auto', success: true });
-        lastSpokenWordRef.current = currentWord.id;
-        // Small delay to ensure UI has updated before speaking
-        setTimeout(() => {
-          speakWord(currentWord.id, currentWord.english);
-        }, 100);
-      }
-    }
-  }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
+  // Per-game-mode setup effects: auto-speak on word advance,
+  // matching-mode pairs build, letter-sounds reveal animation,
+  // sentence-builder first-sentence load.  All share the same
+  // `view === "game" && !showModeSelection` guard pattern.
+  useGameModeSetup({
+    view, gameMode, currentWord, currentIndex, gameWords,
+    showModeSelection, showModeIntro, isFinished,
+    targetLanguage, activeAssignment,
+    speakWord, speak,
+    setMatchingPairs, setMatchedIds, setSelectedMatch,
+    setRevealedLetters,
+    setSentenceIndex, setAvailableWords, setBuiltSentence, setSentenceFeedback,
+  });
 
-  // Reset last spoken word when game mode changes (to re-pronounce the current word)
-  useEffect(() => {
-    lastSpokenWordRef.current = null;
-  }, [gameMode]);
-
-  useEffect(() => {
-    if (view === "game" && !showModeSelection && gameMode === "matching") {
-      const shuffled = shuffle(gameWords).slice(0, 6);
-      const pairs = shuffle([
-        ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),
-        ...shuffled.map(w => ({ id: w.id, text: w[targetLanguage] || w.arabic || w.hebrew || w.english, type: 'arabic' as const }))
-      ]);
-      setMatchingPairs(pairs);
-      setMatchedIds([]);
-      setSelectedMatch(null);
-    }
-  }, [view, showModeSelection, gameMode, gameWords, targetLanguage]);
-
-  // Letter Sounds: reveal one letter at a time, speak each letter
-  // Uses sequential timeouts so each letter's sound plays AFTER the letter
-  // is visually revealed (300ms spring delay) and previous speech finishes.
-  useEffect(() => {
-    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "letter-sounds" || !currentWord || isFinished) return;
-    setRevealedLetters(0);
-    const word = currentWord.english;
-    let cancelled = false;
-    const revealNext = (idx: number) => {
-      if (cancelled || idx >= word.length) return;
-      setRevealedLetters(idx + 1);
-      // Delay speech 250ms so the spring animation shows the letter first
-      setTimeout(() => {
-        if (cancelled) return;
-        // Cancel any ongoing speech before starting the new letter
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(word[idx]);
-        utter.rate = 0.8;
-        utter.onend = () => {
-          if (!cancelled) setTimeout(() => revealNext(idx + 1), 200);
-        };
-        // Fallback if onend doesn't fire (some browsers)
-        const fallbackTimer = setTimeout(() => {
-          if (!cancelled) revealNext(idx + 1);
-        }, 1500);
-        utter.onend = () => { clearTimeout(fallbackTimer); if (!cancelled) setTimeout(() => revealNext(idx + 1), 200); };
-        window.speechSynthesis.speak(utter);
-      }, 250);
-    };
-    // Start after a short initial delay
-    const startTimer = setTimeout(() => revealNext(0), 400);
-    return () => { cancelled = true; clearTimeout(startTimer); window.speechSynthesis.cancel(); };
-  }, [currentIndex, view, showModeSelection, showModeIntro, gameMode, currentWord, isFinished]);
-
-  // Sentence Builder: load sentences from active assignment
-  useEffect(() => {
-    if (view !== "game" || showModeSelection || showModeIntro || gameMode !== "sentence-builder" || !activeAssignment) return;
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    if (validSentences.length > 0) {
-      setSentenceIndex(0);
-      const words = shuffle(validSentences[0].split(" ").filter(Boolean));
-      setAvailableWords(words);
-      setBuiltSentence([]);
-      setSentenceFeedback(null);
-      // Speak the target sentence so students know what to build
-      setTimeout(() => speak(validSentences[0]), 400);
-    }
-  }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
 
   // Full guest exit cleanup. Called whenever a Quick Play student
   // explicitly leaves the game (Exit button on mode picker, header
