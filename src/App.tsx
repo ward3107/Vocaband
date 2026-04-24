@@ -52,6 +52,13 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
+import {
+  readIntendedClassCode,
+  clearIntendedClassCode,
+  readIntendedRole,
+  clearIntendedRole,
+  writeIntendedRole,
+} from "./utils/oauthIntent";
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
@@ -791,28 +798,6 @@ export default function App() {
     loadAssignmentsForClass,
   });
 
-
-  // Intended-class-code storage helpers (component-scoped so both the
-  // auth-effect's restoreSession and the component-level OAuth handler
-  // can share them).  We write to BOTH sessionStorage and localStorage
-  // because Google OAuth has been observed to wipe sessionStorage in
-  // some mobile browsers — the localStorage fallback keeps the student's
-  // class-switch intent alive across the Google redirect.
-  const readIntendedClassCode = (): string | null => {
-    try {
-      const s = sessionStorage.getItem('oauth_intended_class_code');
-      if (s) return s;
-    } catch {/* sessionStorage unavailable */}
-    try {
-      return localStorage.getItem('oauth_intended_class_code');
-    } catch {/* localStorage unavailable */}
-    return null;
-  };
-  const clearIntendedClassCode = () => {
-    try { sessionStorage.removeItem('oauth_intended_class_code'); } catch {}
-    try { localStorage.removeItem('oauth_intended_class_code'); } catch {}
-  };
-
   // Google-OAuth post-callback handlers — extracted to a hook so the
   // class-switch detection logic and the upsert-then-hydrate sequence
   // aren't crowding App.tsx. Same behaviour as before.
@@ -936,39 +921,29 @@ export default function App() {
         }
 
         if (userData) {
-          // OAuth role-intent enforcement.  If the user clicked
-          // "Log in as Teacher" on the landing page, we stamped
-          // sessionStorage.oauth_intended_role='teacher' BEFORE the
-          // Google redirect.  Google signs them in with whatever
-          // account they have active (which might be the one they
-          // previously signed up as a STUDENT with).  Without this
-          // guard, restoreSession would silently drop them into the
-          // student dashboard even though they clearly pressed the
-          // teacher button.  Reject with a clear error + sign out.
-          //
-          // Guard clears after 10 minutes to avoid a stale flag
-          // surviving across unrelated logins.
-          try {
-            const intendedRole = sessionStorage.getItem('oauth_intended_role');
-            const intendedAt = Number(sessionStorage.getItem('oauth_intended_role_at') || 0);
-            const fresh = intendedAt > 0 && (Date.now() - intendedAt) < 10 * 60 * 1000;
-            if (intendedRole === 'teacher' && fresh && userData.role !== 'teacher') {
-              sessionStorage.removeItem('oauth_intended_role');
-              sessionStorage.removeItem('oauth_intended_role_at');
-              setError(
-                `This Google account (${userData.email ?? 'unknown'}) is registered as a ${userData.role}, not a teacher. ` +
-                `Sign in from the student page instead, or use a different Google account for teacher access.`
-              );
-              await supabase.auth.signOut().catch(() => {});
-              setLoading(false);
-              return;
-            }
-            // Consumed — clear so subsequent logins don't re-trigger.
-            if (intendedRole) {
-              sessionStorage.removeItem('oauth_intended_role');
-              sessionStorage.removeItem('oauth_intended_role_at');
-            }
-          } catch { /* storage unavailable — skip enforcement */ }
+          // OAuth role-intent enforcement.  If the user clicked "Log in
+          // as Teacher" on the landing page, we stamped an 'oauth_intent'
+          // role='teacher' flag BEFORE the Google redirect.  Google signs
+          // them in with whatever account they have active (which might
+          // be the one they previously signed up as a STUDENT with).
+          // Without this guard, restoreSession would silently drop them
+          // into the student dashboard even though they clearly pressed
+          // the teacher button.  Reject with a clear error + sign out.
+          // Stale flags older than the freshness window are ignored
+          // (see utils/oauthIntent).
+          const intended = readIntendedRole();
+          if (intended?.role === 'teacher' && intended.fresh && userData.role !== 'teacher') {
+            clearIntendedRole();
+            setError(
+              `This Google account (${userData.email ?? 'unknown'}) is registered as a ${userData.role}, not a teacher. ` +
+              `Sign in from the student page instead, or use a different Google account for teacher access.`
+            );
+            await supabase.auth.signOut().catch(() => {});
+            setLoading(false);
+            return;
+          }
+          // Consumed — clear so subsequent logins don't re-trigger.
+          if (intended) clearIntendedRole();
 
           setUser(userData);
           checkConsent(userData);
@@ -1847,10 +1822,7 @@ export default function App() {
       // refuse to complete login when the intent is 'teacher' but the
       // found profile is not a teacher — the user sees an error and
       // stays signed out instead of being dropped into the wrong role.
-      try {
-        sessionStorage.setItem('oauth_intended_role', 'teacher');
-        sessionStorage.setItem('oauth_intended_role_at', String(Date.now()));
-      } catch { /* storage unavailable — fall through, flag absent = legacy behavior */ }
+      writeIntendedRole('teacher');
       supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },

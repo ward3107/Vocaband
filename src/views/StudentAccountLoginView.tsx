@@ -5,6 +5,7 @@ import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
 import type { View } from "../core/views";
+import { writeIntendedClassCode } from "../utils/oauthIntent";
 
 interface StudentAccountLoginViewProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -345,17 +346,9 @@ export default function StudentAccountLoginView({
                     beforeSignIn={() => {
                       // Persist class code so OAuthClassCode can pre-fill
                       // for first-timers + App can detect class-switch
-                      // intent for returning students.
-                      const trimmed = studentLoginClassCode.trim().toUpperCase();
-                      try {
-                        if (trimmed) {
-                          sessionStorage.setItem('oauth_intended_class_code', trimmed);
-                          localStorage.setItem('oauth_intended_class_code', trimmed);
-                        } else {
-                          sessionStorage.removeItem('oauth_intended_class_code');
-                          localStorage.removeItem('oauth_intended_class_code');
-                        }
-                      } catch { /* storage unavailable */ }
+                      // intent for returning students.  writeIntendedClassCode
+                      // normalises empty strings to "clear".
+                      writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
                     }}
                   />
 
