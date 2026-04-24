@@ -71,6 +71,9 @@ import { useTranslate } from "./hooks/useTranslate";
 import { useSaveQueue } from "./hooks/useSaveQueue";
 import { useTeacherData } from "./hooks/useTeacherData";
 import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
+import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPlayRealtime";
+import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
+import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
@@ -85,9 +88,6 @@ import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
-// Types for lazy-loaded modules
-type SocketIOModule = typeof import('socket.io-client');
-type Socket = InstanceType<SocketIOModule['Socket']>;
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -239,9 +239,13 @@ export default function App() {
   // (see src/views/StudentAccountLoginView.tsx; constants live in src/constants/avatars.ts)
 
   // --- LIVE CHALLENGE STATE ---
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
+  // `isLiveChallenge` stays local — views set it imperatively.  The
+  // socket + leaderboard are owned by useLiveChallengeSocket.
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
+  const { socket, socketConnected, leaderboard } = useLiveChallengeSocket({
+    user,
+    isLiveChallenge,
+  });
 
   // --- QUICK PLAY STATE ---
   // Only the setters are used — the values themselves are never read in
@@ -267,7 +271,7 @@ export default function App() {
   // Shown as a discrete status dot on the monitor header so the teacher
   // can tell instant updates from polling-delayed ones.
   const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
-    useState<'connecting' | 'live' | 'polling'>('connecting');
+    useState<QpRealtimeStatus>('connecting');
   const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
 
   // Game music player state (previously defined here) was dead code —
@@ -427,260 +431,6 @@ export default function App() {
     }
   }, [searchTerms, view]);
 
-  // Real-time polling for Quick Play teacher monitor
-  // Polls Supabase for student progress every 3 seconds when in teacher monitor view
-  // Helper: aggregate raw progress rows into the leaderboard format
-  //
-  // Dedupe strategy (two passes):
-  //   1. Group by student_uid — the "correct" key per row.
-  //   2. POST-PASS merge by student_name — catches the case where the
-  //      SAME student ends up with two different uids in the progress
-  //      table (which happens when their Supabase session rotates
-  //      between the "joined" insert and the first mode save, or when
-  //      the JOIN row uses session.user.id but the finish-game path
-  //      falls back to a guest "quickplay-<uuid>" because no session
-  //      was available at that instant).  Previously the teacher saw
-  //      "two students with the same name but different icons" — now
-  //      they collapse into one entry with the most-recent avatar.
-  const aggregateProgress = useCallback((progressData: any[]) => {
-    const studentMap = new Map<string, { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> }>();
-
-    progressData.forEach((p: any) => {
-      // Group by student_uid to avoid merging different students with same name
-      const key = p.student_uid || p.student_name;
-      const existing = studentMap.get(key);
-
-      if (!existing) {
-        const modes = new Map<string, number>();
-        if (p.mode !== 'joined') modes.set(p.mode, Number(p.score));
-        studentMap.set(key, {
-          name: p.student_name,
-          score: p.mode === 'joined' ? 0 : Number(p.score),
-          avatar: p.avatar || '🦊',
-          lastSeen: p.completed_at,
-          mode: p.mode,
-          studentUid: p.student_uid,
-          modes
-        });
-      } else {
-        if (new Date(p.completed_at) > new Date(existing.lastSeen)) {
-          existing.lastSeen = p.completed_at;
-          existing.mode = p.mode;
-          // Update avatar from the most recent entry
-          if (p.avatar) existing.avatar = p.avatar;
-        }
-        // Track best score per mode, then sum for cumulative total
-        if (p.mode !== 'joined') {
-          const prev = existing.modes.get(p.mode) || 0;
-          if (Number(p.score) > prev) existing.modes.set(p.mode, Number(p.score));
-        }
-        let total = 0;
-        existing.modes.forEach(v => { total += v; });
-        existing.score = total;
-      }
-    });
-
-    // POST-PASS: merge entries that share the same student_name but
-    // have different uids (same student, rotated session).  Take the
-    // newer entry's avatar (what the student see themselves as),
-    // union the per-mode scores, and drop the older uid.
-    type Entry = { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string; modes: Map<string, number> };
-    const byName = new Map<string, Entry>();
-    for (const entry of studentMap.values()) {
-      const dup = byName.get(entry.name);
-      if (!dup) {
-        byName.set(entry.name, entry);
-      } else {
-        // Merge the two entries — newer wins on metadata (avatar, mode,
-        // lastSeen); per-mode scores are max-merged.
-        const newer = new Date(entry.lastSeen) > new Date(dup.lastSeen) ? entry : dup;
-        const older = newer === entry ? dup : entry;
-        const mergedModes = new Map(older.modes);
-        newer.modes.forEach((v, mode) => {
-          const prev = mergedModes.get(mode) || 0;
-          if (v > prev) mergedModes.set(mode, v);
-        });
-        let total = 0;
-        mergedModes.forEach(v => { total += v; });
-        byName.set(entry.name, {
-          ...newer,
-          modes: mergedModes,
-          score: total,
-        });
-      }
-    }
-
-    return Array.from(byName.values()).sort((a, b) => b.score - a.score);
-  }, []);
-
-  useEffect(() => {
-    // Only subscribe when in teacher monitor view and have an active session
-    if (view !== "quick-play-teacher-monitor" || !quickPlayActiveSession?.id) return;
-
-    const sessionId = quickPlayActiveSession.id;
-
-    // 1. Initial fetch to hydrate state
-    const fetchProgress = async () => {
-      const { data, error } = await supabase
-        .from('progress')
-        .select('student_name, student_uid, score, avatar, completed_at, mode')
-        .eq('assignment_id', sessionId)
-        .order('completed_at', { ascending: false })
-        .limit(200);
-
-      if (error) {
-        console.error('[Quick Play Monitor] Error fetching progress:', error);
-        return;
-      }
-      if (data) {
-        const aggregated = aggregateProgress(data);
-        setQuickPlayJoinedStudents(aggregated);
-      }
-    };
-
-    // OPTIMIZED: Only fetch when page is visible
-    if (!document.hidden) {
-      fetchProgress();
-    }
-
-    // 2. Subscribe to realtime changes on progress table for this session.
-    // We can't safely merge `payload.new` into the already-aggregated state
-    // (previously we fed aggregated entries back into aggregateProgress,
-    // which reads raw column names like student_name/student_uid — the
-    // camelCase aggregated fields became undefined, producing a phantom
-    // "no-name, 0 pts" student on the podium next to the real one).
-    // Re-fetching on each INSERT is cheap at classroom scale and keeps
-    // the dedup logic in one place.
-    setQuickPlayRealtimeStatus('connecting');
-
-    // Adaptive polling — only run when Realtime isn't delivering.  When
-    // the subscription callback reports SUBSCRIBED we stop the poll and
-    // let the doorbell handle it; when it reports an error/closed we
-    // resume the 5s knock as a safety net.  Status transitions toggle
-    // this interval on and off.  Variable lives outside the channel
-    // callback so both .subscribe() and cleanup can reach it.
-    let pollId: ReturnType<typeof setInterval> | null = null;
-    const startPoll = () => {
-      if (pollId) return;
-      pollId = setInterval(() => {
-        if (!document.hidden) fetchProgress();
-      }, 5_000);
-    };
-    const stopPoll = () => {
-      if (pollId) { clearInterval(pollId); pollId = null; }
-    };
-    // Start polling immediately — we're in 'connecting' until the
-    // subscribe callback confirms SUBSCRIBED.  No gap where the teacher
-    // is unprotected.
-    startPoll();
-
-    const channel = supabase
-      .channel(`qp-progress-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`
-        },
-        () => {
-          if (document.hidden) return;
-          fetchProgress();
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setQuickPlayRealtimeStatus('live');
-          // Realtime is now delivering — polling is redundant.
-          stopPoll();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          setQuickPlayRealtimeStatus('polling');
-          // Realtime degraded — resume polling as a safety net.
-          startPoll();
-        }
-      });
-
-    // OPTIMIZED: Re-fetch when tab becomes visible after being hidden
-    const handleVisibilityChange = () => {
-      if (!document.hidden && view === "quick-play-teacher-monitor") {
-        fetchProgress();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      stopPoll();
-      supabase.removeChannel(channel);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [view, quickPlayActiveSession?.id, aggregateProgress]);
-
-  // Quick Play student: one channel, two listeners — session-end + kick.
-  //
-  // Previously this useEffect opened TWO channels (`qp-session-*` and
-  // `qp-kick-*`) per student. Combined with the teacher-side progress
-  // channel that makes 3 concurrent postgres_changes subscriptions every
-  // time a Quick Play session is running. Supabase Starter allows 10
-  // concurrent realtime subscribers per project, so a classroom of 10+
-  // students would exhaust the slots and start dropping mid-game.
-  //
-  // One channel can hold multiple `.on(...)` listeners, each watching a
-  // different table/filter, so fold them together.
-  useEffect(() => {
-    if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
-    // v2 routes session-end + kick over the /quick-play socket.io
-    // namespace. Subscribing to the progress-table DELETE stream here
-    // under v2 was the root cause of the "everyone else joining kicks
-    // the two who logged in" bug — any DELETE event (including the
-    // teacher's own kick cleanup) was treated as "you were kicked".
-    // Under v2 we skip this subscription entirely; v2-native KICKED
-    // and SESSION_ENDED events are handled via useQuickPlaySocket in
-    // QuickPlayStudentView.
-    if (QUICKPLAY_V2) return;
-
-    const sessionCode = quickPlayActiveSession.sessionCode;
-    const sessionId = quickPlayActiveSession.id;
-    const uid = user.uid;
-
-    const channel = supabase
-      .channel(`qp-student-${sessionCode}-${uid}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'quick_play_sessions',
-          filter: `session_code=eq.${sessionCode}`,
-        },
-        (payload) => {
-          if (payload.new && !(payload.new as any).is_active) {
-            setQuickPlaySessionEnded(true);
-            setActiveAssignment(null);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          if (payload.old && (payload.old as any).student_uid === uid) {
-            setQuickPlayKicked(true);
-            setActiveAssignment(null);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.isGuest, user?.uid, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id]);
 
   // --- HELPER: Create Guest User ---
   // Centralized function to create guest user objects with consistent structure
@@ -755,6 +505,22 @@ export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
 
+  // Quick Play Supabase Realtime plumbing — teacher monitor progress
+  // stream + legacy v1 session-end / kick watchers.  v2 sessions use
+  // useQuickPlaySocket for kick/end instead; the hook no-ops that path
+  // when quickPlayV2 is true.
+  useQuickPlayRealtime({
+    view,
+    user,
+    quickPlayActiveSession,
+    quickPlayV2: QUICKPLAY_V2,
+    setQuickPlayJoinedStudents,
+    setQuickPlayRealtimeStatus,
+    setQuickPlaySessionEnded,
+    setQuickPlayKicked,
+    setActiveAssignment,
+  });
+
   // Handle Quick Play session from URL parameter — extracted to a
   // dedicated hook because the load logic plus the page-refresh
   // recovery branch was ~250 lines of detail.
@@ -818,7 +584,6 @@ export default function App() {
   // --- RELIABILITY STATE ---
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
 
   // --- QUERY DEDUPLICATION ---
   // Track when data was last fetched to avoid redundant Supabase calls
@@ -922,9 +687,9 @@ export default function App() {
   };
 
 
-  // Refs for socket reconnect handler (avoids stale closure on [] deps useEffect)
+  // Refs for effects that need the "current" user without re-registering.
+  // (isLiveChallengeRef moved into useLiveChallengeSocket.)
   const userRef = useRef(user);
-  const isLiveChallengeRef = useRef(isLiveChallenge);
   // Tracks which (socketId:classCode:uid) combo has already emitted
   // JOIN_CHALLENGE — prevents duplicate emits when effects re-run.
   // Cleared whenever the socket reconnects (new socket id) so the
@@ -1089,7 +854,6 @@ export default function App() {
       }
     }
   }, [isFinished]);
-  useEffect(() => { isLiveChallengeRef.current = isLiveChallenge; }, [isLiveChallenge]);
 
   // Reset welcome popup when entering assignment creation view
   // Only show if user hasn't seen it before (checked via localStorage)
@@ -1105,100 +869,6 @@ export default function App() {
     }
   }, [view]);
 
-  // Defer socket connection until we have a valid auth session.
-  // Connecting immediately on mount (before OAuth exchange completes) would
-  // always fail with "Authentication required" on the first attempt, causing
-  // the console error the teacher sees before the retry succeeds.
-  useEffect(() => {
-    let s: Socket | undefined = undefined;
-    let cancelled = false;
-
-    const getToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      return session?.access_token ?? "";
-    };
-
-    const connectSocket = async () => {
-      // Wait for a valid session before opening the socket
-      const token = await getToken();
-      if (cancelled) return;
-      if (!token) {
-        // No session yet — listen for auth changes and retry
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-          if (cancelled) { subscription.unsubscribe(); return; }
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            subscription.unsubscribe();
-            connectSocket();
-          }
-        });
-        return;
-      }
-
-      // Lazy load socket.io-client
-      const socketIO = await loadSocketIO();
-      const io = socketIO.default || socketIO;
-
-      const socketUrl = import.meta.env.VITE_SOCKET_URL || "";
-      const sock = io(socketUrl || "/", {
-        reconnection: true,
-        // Retry indefinitely.  A Live Challenge can run for 20+ minutes
-        // and students may briefly lose Wi-Fi (classroom networks are
-        // flaky).  Before: capped at 10 attempts * 1s = 10s window and
-        // then the socket gave up forever — student stayed "offline"
-        // for the rest of the session.
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        // Cap back-off at 10s so we retry often enough that a brief
-        // outage is invisible, but don't hammer the server if it's
-        // genuinely down.
-        reconnectionDelayMax: 10_000,
-        // Jitter so 30 students all reconnecting after a Render restart
-        // don't thunder at the same millisecond.
-        randomizationFactor: 0.5,
-        // Async callback ensures a fresh token is fetched on every reconnect,
-        // so the handshake never carries a stale/expired JWT.
-        auth: (cb: (data: { token: string }) => void) => { getToken().then(t => cb({ token: t })); },
-      }) as Socket;
-      s = sock;
-
-      setSocket(sock);
-
-      sock.on("connect", () => {
-        setSocketConnected(true);
-      });
-      sock.on("disconnect", () => {
-        setSocketConnected(false);
-      });
-      sock.on("reconnect", () => {
-        setSocketConnected(true);
-        const currentUser = userRef.current;
-        // Allow students to rejoin live challenge on reconnect.
-        // Token is provided via the socket auth callback (line above), not in the payload.
-        if (currentUser?.classCode && isLiveChallengeRef.current) {
-          if (currentUser.role === "student") {
-            sock.emit("join-challenge", { classCode: currentUser.classCode, name: currentUser.displayName, uid: currentUser.uid });
-          }
-        }
-      });
-      sock.on("connect_error", (err: any) => console.error("Socket connection error:", err.message));
-      sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
-        if (typeof data === "object" && data !== null) {
-          setLeaderboard(data as Record<string, LeaderboardEntry>);
-        } else {
-          setLeaderboard({});
-        }
-      });
-    };
-
-    connectSocket();
-
-    return () => {
-      cancelled = true;
-      if (s) {
-        s.disconnect();
-      }
-    };
-  }, []);
 
   // ── Live Challenge: ensure JOIN_CHALLENGE is emitted for students ──
   // Centralised effect that fires whenever (student + socket + classCode)
@@ -2326,68 +1996,12 @@ export default function App() {
     return uninstall;
   }, []);
 
-  // Teacher-side notifications — diff the polling snapshots and fire a
-  // toast when something new lands.  Purely passive: no additional
-  // network traffic (the polling effects already fetch these lists).
-  //
-  // Two diffs tracked via refs:
-  //   pendingStudentsPrev — IDs we already told the teacher about
-  //   allScoresPrev       — score-row IDs already seen
-  // First snapshot seeds the ref without notifying (no "everyone
-  // who existed before you logged in just joined" noise).
-  //
-  // Toast is throttled by the natural polling interval (10s / 20s),
-  // so even a burst of new students / scores gets batched into at
-  // most one notification per cycle per type.
-  const pendingStudentsPrevRef = useRef<Set<string>>(new Set());
-  const pendingStudentsSeededRef = useRef(false);
-  useEffect(() => {
-    if (user?.role !== 'teacher') return;
-    const currentIds = new Set(pendingStudents.map(p => p.id));
-    if (!pendingStudentsSeededRef.current) {
-      pendingStudentsPrevRef.current = currentIds;
-      pendingStudentsSeededRef.current = true;
-      return;
-    }
-    const newOnes = pendingStudents.filter(p => !pendingStudentsPrevRef.current.has(p.id));
-    pendingStudentsPrevRef.current = currentIds;
-    if (newOnes.length === 1) {
-      showToast(`🔔 ${newOnes[0].displayName} wants to join ${newOnes[0].className}`, 'info');
-    } else if (newOnes.length > 1) {
-      showToast(`🔔 ${newOnes.length} new students waiting for approval`, 'info');
-    }
-  }, [pendingStudents, user?.role, showToast]);
+  // Teacher-side toasts: diff `pendingStudents` and `allScores` (both
+  // refreshed by the polling effects) and fire a single toast when
+  // something new lands.  Seeded-ref pattern inside the hook prevents
+  // "everyone who existed before you logged in just joined" spam.
+  useTeacherNotifications({ user, view, pendingStudents, allScores, showToast });
 
-  const allScoresPrevRef = useRef<Set<string>>(new Set());
-  const allScoresSeededRef = useRef(false);
-  useEffect(() => {
-    if (user?.role !== 'teacher') return;
-    const currentIds = new Set(allScores.map(s => s.id).filter(Boolean) as string[]);
-    if (!allScoresSeededRef.current) {
-      allScoresPrevRef.current = currentIds;
-      allScoresSeededRef.current = true;
-      return;
-    }
-    const newOnes = allScores.filter(s => s.id && !allScoresPrevRef.current.has(s.id));
-    allScoresPrevRef.current = currentIds;
-    // Only toast when the teacher is on a view where a notification
-    // makes sense — dashboard/classroom/analytics/gradebook.  During
-    // a Quick Play session or inside another modal it would just be
-    // noise; the podium updates already cover that.
-    const notifiableViews = ['teacher-dashboard', 'classroom', 'analytics', 'gradebook'];
-    if (!notifiableViews.includes(view)) return;
-    if (newOnes.length === 1) {
-      const s = newOnes[0];
-      if (s.studentName && s.mode && s.mode !== 'joined') {
-        showToast(`✅ ${s.studentName} finished ${s.mode} — ${s.score} pts`, 'success');
-      }
-    } else if (newOnes.length > 1) {
-      const scoring = newOnes.filter(s => s.mode && s.mode !== 'joined');
-      if (scoring.length > 0) {
-        showToast(`✅ ${scoring.length} new results just came in`, 'success');
-      }
-    }
-  }, [allScores, user?.role, view, showToast]);
 
   // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
   // are stored on Supabase Storage; downloading them up-front means
