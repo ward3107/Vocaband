@@ -8,6 +8,13 @@ import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
 import { supabase } from '../core/supabase';
+import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
+
+// Match the flag in QuickPlayStudentView. When on, this monitor
+// observes the /quick-play socket.io namespace for leaderboard
+// updates instead of subscribing to progress-table realtime, and
+// kicks students via TEACHER_KICK instead of a Supabase delete.
+const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === 'true';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Student {
@@ -155,7 +162,51 @@ export default function QuickPlayMonitor({
     try { return parseFloat(localStorage.getItem('vocaband-music-volume') || '0.5') || 0.5; } catch { return 0.5; }
   });
   const musicRef = useRef<Howl | null>(null);
-  const prevStudentCountRef = useRef(students.length);
+
+  // ─── v2 socket wiring ─────────────────────────────────────────────────
+  // When VITE_QUICKPLAY_V2 is on, the real student list lives on the
+  // server's in-memory leaderboard, not in the progress table the parent
+  // polls. Subscribe as a teacher observer and override what we render.
+  const socket = useQuickPlaySocket({
+    sessionCode: session.sessionCode,
+    enabled: QUICKPLAY_V2,
+  });
+
+  // Re-observe whenever the socket reconnects so the server grants us
+  // authority on this teacher session and streams the leaderboard back.
+  useEffect(() => {
+    if (!QUICKPLAY_V2) return;
+    if (socket.status !== 'connected') return;
+    let cancelled = false;
+    (async () => {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const token = authSession?.access_token;
+      if (!token || cancelled) return;
+      socket.observeAsTeacher(token);
+    })();
+    return () => { cancelled = true; };
+  }, [socket.status]);
+
+  // Map the socket leaderboard into the Student shape the rest of this
+  // component already understands. Wrapping in useMemo keeps prop-like
+  // referential stability so downstream useEffects don't re-run on
+  // every render.
+  const socketStudents = useMemo<Student[]>(() => {
+    return socket.leaderboard.map(s => ({
+      name: s.nickname,
+      score: s.score,
+      avatar: s.avatar,
+      lastSeen: new Date(s.lastSeen).toISOString(),
+      mode: '',               // mode lives client-side in v2; not reported
+      studentUid: s.clientId, // reuse the field so removeStudent can find clientId by name
+    }));
+  }, [socket.leaderboard]);
+
+  // v2 on → socket is the source of truth; v2 off → fall back to the
+  // parent-fed students prop (legacy Supabase-realtime path).
+  const effectiveStudents = QUICKPLAY_V2 ? socketStudents : students;
+
+  const prevStudentCountRef = useRef(effectiveStudents.length);
 
   const t = THEMES[theme];
 
@@ -181,8 +232,8 @@ export default function QuickPlayMonitor({
   // ─── Join sound effect ────────────────────────────────────────────────────
   // Track student count changes (no sound — teacher requested silence on join)
   useEffect(() => {
-    prevStudentCountRef.current = students.length;
-  }, [students.length]);
+    prevStudentCountRef.current = effectiveStudents.length;
+  }, [effectiveStudents.length]);
 
   // ─── Background music ──────────────────────────────────────────────────────
   const toggleMusic = () => {
@@ -247,6 +298,38 @@ export default function QuickPlayMonitor({
 
   // ─── Remove student ───────────────────────────────────────────────────────
   const removeStudent = async (name: string) => {
+    if (QUICKPLAY_V2) {
+      // v2 path: kick via socket. The server finds the clientId, removes
+      // them from the in-memory leaderboard, emits KICKED to their
+      // socket, and broadcasts the refreshed leaderboard. No DB writes.
+      const target = effectiveStudents.find(s => s.name === name);
+      if (!target) {
+        showToast(`Couldn't find ${name} in the live list.`, 'error');
+        setConfirmKick(null);
+        return;
+      }
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const token = authSession?.access_token;
+      if (!token) {
+        showToast('Your session expired. Please refresh and log in again.', 'error');
+        setConfirmKick(null);
+        return;
+      }
+      socket.kickStudent(target.studentUid, token);
+      // Cache kicked name locally so the legacy-path kid (if any still
+      // running old client) can't rejoin. Harmless under pure v2.
+      try {
+        const key = `vocaband_kicked_${session.id}`;
+        const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+        if (!kicked.includes(name)) kicked.push(name);
+        localStorage.setItem(key, JSON.stringify(kicked));
+      } catch {}
+      showToast(`${name} removed from session`, 'info');
+      setConfirmKick(null);
+      return;
+    }
+
+    // ─── Legacy path ────────────────────────────────────────────────────
     const { error } = await supabase
       .from('progress')
       .delete()
@@ -268,10 +351,22 @@ export default function QuickPlayMonitor({
     setConfirmKick(null);
   };
 
+  // v2: additionally emit TEACHER_END on the socket so all connected
+  // students get notified immediately. The parent still handles the
+  // Supabase is_active=false flip via onEndSession().
+  const handleEndSession = async () => {
+    if (QUICKPLAY_V2) {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const token = authSession?.access_token;
+      if (token) socket.endSession(token);
+    }
+    onEndSession();
+  };
+
   // ─── Sorted students ──────────────────────────────────────────────────────
   const sorted = useMemo(() =>
-    [...students].sort((a, b) => b.score - a.score),
-    [students]
+    [...effectiveStudents].sort((a, b) => b.score - a.score),
+    [effectiveStudents]
   );
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
@@ -482,7 +577,7 @@ export default function QuickPlayMonitor({
               <h2 className="font-headline text-3xl sm:text-4xl font-black tracking-tighter">{session.sessionCode}</h2>
               <div className="mt-2 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs font-medium">{students.length > 0 ? `${students.length} players joined` : 'Waiting for players...'}</span>
+                <span className="text-xs font-medium">{effectiveStudents.length > 0 ? `${effectiveStudents.length} players joined` : 'Waiting for players...'}</span>
               </div>
               <button
                 onClick={() => { navigator.clipboard.writeText(qrUrl); showToast('Link copied!', 'success'); }}
@@ -752,7 +847,7 @@ export default function QuickPlayMonitor({
                     if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }
                     setMusicPlaying(false);
                     setEndModal(false);
-                    onEndSession();
+                    handleEndSession();
                   }}
                   className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
                 >
