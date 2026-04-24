@@ -183,14 +183,20 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Build the shared URL. We always point at the site root + `?share=1`
-  // so OG previews and clicks land on the public landing page — without
-  // the flag, a logged-in visitor would get auto-redirected to their
-  // dashboard by the auth restore effect in App.tsx and never see the
-  // landing that the sharer was trying to show them.
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/?share=1`
-    : "";
+  // Build the shared URL. HARDCODED to www.vocaband.com (no query
+  // params) for maximum compatibility with link-preview scrapers and
+  // in-app webviews.  Teacher reported intermittent "site can't be
+  // reached" errors when recipients clicked the shared link — the
+  // fewer moving parts in the URL, the less can go wrong.
+  //
+  // Previously included `?share=1` which told App.tsx to keep
+  // logged-in visitors on the landing page (so they'd see what their
+  // friend was sharing).  Dropped it: WhatsApp/Facebook strip query
+  // params when the recipient clicks the preview CARD anyway (they
+  // use the og:url canonical), and the few visitors who land with
+  // a session will see their own dashboard — which is actually fine,
+  // not a regression worth the URL complexity.
+  const shareUrl = "https://www.vocaband.com/";
 
   // Share text flips between "level flex" (when shareLevel is provided
   // from the student dashboard) and the generic landing-page teaser
@@ -203,6 +209,27 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     return "Check out Vocaband — the fun way to master English vocabulary!";
   }, [shareLevel]);
 
+  // Prefer the OS native share sheet when available — on mobile it
+  // opens every messaging app the user has installed (WhatsApp,
+  // iMessage, Telegram, Signal, Gmail, …) and passes the URL +
+  // title properly so recipients get a clickable preview card.
+  // Way more reliable than guessing third-party share URL formats.
+  // Falls back silently when unsupported (most desktop browsers);
+  // the per-network buttons still work as manual fallbacks.
+  const tryNativeShare = useCallback(async (): Promise<boolean> => {
+    if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+      return false;
+    }
+    try {
+      await navigator.share({ title: "Vocaband", text: shareText, url: shareUrl });
+      return true;
+    } catch {
+      // User cancelled or share failed — swallow; caller falls back
+      // to the per-network menu.
+      return false;
+    }
+  }, [shareText, shareUrl]);
+
   const shareOptions = useMemo(() => [
     {
       name: "Facebook",
@@ -210,9 +237,14 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       brandColor: BRAND_COLORS.facebook,
       gradient: false,
       action: () => {
+        // Facebook dropped support for the `quote` parameter in 2017 —
+        // passing it is silently ignored, so we don't send it anymore.
+        // The URL itself carries the preview (OG tags on the landing
+        // page supply the title, description, image).
         window.open(
-          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
-          "_blank"
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+          "_blank",
+          "noopener,noreferrer"
         );
       },
     },
@@ -222,7 +254,11 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       brandColor: BRAND_COLORS.whatsapp,
       gradient: false,
       action: () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, "_blank");
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`,
+          "_blank",
+          "noopener,noreferrer"
+        );
       },
     },
     {
@@ -364,12 +400,25 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         style={{ width: 60, height: 60 }}
       />
 
-      {/* Share Button */}
+      {/* Share Button.  On mobile, tries the OS-native share sheet
+          first (WhatsApp / iMessage / Messenger / any installed
+          messaging app).  Falls back to the per-network menu when
+          the browser doesn't support navigator.share (most desktop
+          browsers, older mobile Safari). */}
       <motion.button
-        onClick={(e) => {
+        onClick={async (e) => {
           e.preventDefault();
           e.stopPropagation();
-          setShareOpen(!shareOpen);
+          if (shareOpen) {
+            // Already open — treat as a toggle-close.
+            setShareOpen(false);
+            return;
+          }
+          const used = await tryNativeShare();
+          if (!used) {
+            // No navigator.share support — fall back to the menu.
+            setShareOpen(true);
+          }
         }}
         onMouseEnter={() => setIsHovered('share')}
         onMouseLeave={() => setIsHovered(null)}

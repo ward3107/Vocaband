@@ -52,7 +52,6 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { celebrate } from "./utils/celebrate";
-import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
 import { getGameDebugger } from "./utils/gameDebug";
@@ -62,9 +61,29 @@ import {
   STREAK_CELEBRATION_MILESTONES,
   type GameMode,
 } from "./constants/game";
-import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } from "./hooks/useAssignmentPlays";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
+import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+import { useTeacherActions } from "./hooks/useTeacherActions";
+import { useGameModeActions } from "./hooks/useGameModeActions";
+import { useGameFinish } from "./hooks/useGameFinish";
+import { useTranslate } from "./hooks/useTranslate";
+import { useSaveQueue } from "./hooks/useSaveQueue";
+import { useTeacherData } from "./hooks/useTeacherData";
+import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
+import { useStudentLogin } from "./hooks/useStudentLogin";
+import { useOAuthFlow } from "./hooks/useOAuthFlow";
+import { useClassSwitch } from "./hooks/useClassSwitch";
+import { useConsent } from "./hooks/useConsent";
+import { useOcrUpload } from "./hooks/useOcrUpload";
+import { useCookieConsent } from "./hooks/useCookieConsent";
+import { useAwardBadge } from "./hooks/useAwardBadge";
+import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
+
+// Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
+// on, Quick Play runs entirely over the /quick-play socket namespace —
+// no Supabase anon auth, no progress-table writes during a session.
+const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
 // Types for lazy-loaded modules
 type SocketIOModule = typeof import('socket.io-client');
@@ -80,34 +99,6 @@ function secureRandomInt(max: number): number {
   crypto.getRandomValues(arr);
   return arr[0] % max;
 }
-
-// Fire-and-forget request to have the server generate + upload MP3s for
-// custom words (OCR, paste, quick-play). Students will then hear a natural
-// Neural2 voice instead of the robotic browser SpeechSynthesis fallback.
-// Never await this — it can take 5–10s for a big list and we don't want the
-// teacher UI to block on it.
-async function requestCustomWordAudio(words: { id: number; english: string }[]): Promise<void> {
-  if (words.length === 0) return;
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return;
-    await fetch('/api/tts/custom-words', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        words: words.map(w => ({ id: w.id, english: w.english })),
-      }),
-    });
-  } catch (err) {
-    // Non-critical: if this fails, students just hear browser TTS.
-    console.warn('[TTS] Custom-word audio request failed:', err);
-  }
-}
-
 
 export default function App() {
   // Initialize game debugger
@@ -128,6 +119,19 @@ export default function App() {
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
     if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    // Classroom-poster QR code / teacher-shared invite link.  When the
+    // URL carries a `?class=XXX` parameter and there's no already-active
+    // session, skip the landing page and drop the visitor straight on
+    // the student-login screen so they can tap their name.  Without
+    // this, QR-scanners land on the generic landing page, see no
+    // obvious "enter my classroom" CTA, and give up.  Auth restore
+    // still runs afterwards — a logged-in user's session override
+    // this initial view (they'll go to their dashboard, and if their
+    // classCode differs, the class-switch modal handles the rest).
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('class')) return "student-account-login";
+    } catch { /* URLSearchParams unavailable — fall through */ }
     return "public-landing";
   });
   const previousViewRef = useRef<string>("public-landing");
@@ -136,36 +140,14 @@ export default function App() {
     setView(previousViewRef.current as any);
   };
 
-  // Cookie consent state
-  const [showCookieBanner, setShowCookieBanner] = useState(() => {
-    try {
-      const hasConsented = localStorage.getItem("vocaband_cookie_consent");
-      return !hasConsented;
-    } catch (e) {
-      return true;
-    }
-  });
-
-  const handleCookieAccept = (eventOrPreferences?: CookiePreferences | React.MouseEvent) => {
-    // Ignore React events - they were accidentally passed before the fix
-    const preferences = eventOrPreferences && typeof eventOrPreferences === 'object' && 'nativeEvent' in eventOrPreferences
-      ? undefined
-      : eventOrPreferences as CookiePreferences | undefined;
-
-    try {
-      const consentData = preferences
-        ? JSON.stringify(preferences)
-        : JSON.stringify({ essential: true, analytics: true, functional: true });
-      localStorage.setItem("vocaband_cookie_consent", consentData);
-    } catch (e) {
-      console.error('[Cookie Banner] Failed to save consent:', e);
-    }
-    setShowCookieBanner(false);
-  };
-
-  const handleCookieCustomize = (preferences: CookiePreferences) => {
-    handleCookieAccept(preferences);
-  };
+  // Cookie consent banner — state + accept/customize handlers live
+  // in a dedicated hook so the banner's persistence + quirky React-
+  // event guard aren't in the orchestrator.
+  const {
+    showCookieBanner,
+    handleCookieAccept,
+    handleCookieCustomize,
+  } = useCookieConsent();
 
   const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility") => {
     const viewMap = {
@@ -187,9 +169,6 @@ export default function App() {
   const restoreRetried = useRef(false);
   const [, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
-  const [studentLoginName, setStudentLoginName] = useState("");
-  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
-  const [showNewStudentForm, setShowNewStudentForm] = useState(false);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [pendingApprovalInfo, setPendingApprovalInfo] = useState<{ name: string; classCode: string; profileId?: string } | null>(null);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
@@ -227,7 +206,6 @@ export default function App() {
   // localStorage so boosters survive page refresh.
   const boosters = useBoosters(user?.uid);
 
-  const [studentAvatar, setStudentAvatar] = useState("🦊");
   const [needsConsent, setNeedsConsent] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -237,6 +215,11 @@ export default function App() {
   const [oauthEmail, setOauthEmail] = useState<string | null>(null);
   const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
   const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
+  // Sticky banner: when a student typed a class code that doesn't exist,
+  // surface a persistent banner on the dashboard so they can't miss it
+  // (toasts get dismissed/ignored). Funnel point for both the OAuth
+  // path and the session-restore path.
+  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
 
   // --- CLASS SWITCH STATE ---
   // Set when an already-approved student logs in with a class code that
@@ -415,245 +398,6 @@ export default function App() {
     setAssignmentSentences(generated);
     setSentencesAutoGenerated(true);
   }, [selectedWords, assignmentModes, sentenceDifficulty]);
-
-  // Handle Quick Play session from URL parameter
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionCode = params.get('session');
-
-    if (sessionCode) {
-      // Load Quick Play session
-      const loadQuickPlaySession = async () => {
-        // Ensure we have a VALID anonymous auth session — RLS requires it.
-        //
-        // `getSession()` only reads localStorage, so a stale token (from a
-        // previous Quick Play whose anon user has since been deleted by the
-        // 20260429 cleanup cron) sneaks past unnoticed.  The first real
-        // auth-aware call then fails with `session_not_found` (403),
-        // Supabase fires SIGNED_OUT, and the student is bounced to login
-        // mid-Quick-Play-join.
-        //
-        // Recover silently: validate with `getUser()` (which actually hits
-        // the server).  If the server rejects, surgically remove the
-        // sb-*-auth-token entry from localStorage and create a fresh anon
-        // session.  We deliberately do NOT call `supabase.auth.signOut()`
-        // — that fires the SIGNED_OUT listener at line ~2070 which runs
-        // cleanup + setUser(null) + history reset MID-join and tears
-        // down the live component tree (caused 8/10 student crashes in a
-        // classroom test).
-        const { data: { session: cachedSession } } = await supabase.auth.getSession();
-        let stale = false;
-        if (cachedSession) {
-          const { error } = await supabase.auth.getUser();
-          stale = !!error;
-        }
-        if (stale) {
-          try {
-            for (const key of Object.keys(localStorage)) {
-              if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-                localStorage.removeItem(key);
-              }
-            }
-          } catch { /* private mode / disabled storage — fall through */ }
-        }
-        if (!cachedSession || stale) {
-          await supabase.auth.signInAnonymously().catch(() => {});
-        }
-
-        const { data, error } = await supabase
-          .from('quick_play_sessions')
-          .select('*')
-          .eq('session_code', sessionCode)
-          .eq('is_active', true)
-          .single();
-
-        if (error || !data) {
-          console.error('Failed to load Quick Play session:', error);
-          showToast("Invalid or expired Quick Play session. Please scan the QR code again.", "error");
-          window.history.replaceState({}, '', window.location.pathname);
-          setView("public-landing");
-          return;
-        }
-
-        // Fetch database words from vocabulary
-        const dbWords = ALL_WORDS.filter(w => data.word_ids.includes(w.id));
-
-        // Parse custom words from JSON
-        let customWords: Word[] = [];
-        if (data.custom_words) {
-          try {
-            const customWordsData = typeof data.custom_words === 'string'
-              ? JSON.parse(data.custom_words)
-              : data.custom_words;
-
-            customWords = customWordsData.map((w: any, index: number) => ({
-              id: -(Date.now() + index), // Negative IDs for custom words
-              english: w.english,
-              hebrew: w.hebrew,
-              arabic: w.arabic,
-              sentence: w.sentence || "",
-              example: w.example || "",
-              level: "Custom" as const
-            }));
-          } catch (e) {
-            console.error('Failed to parse custom words:', e);
-          }
-        }
-
-        // Combine database and custom words
-        const allWords = [...dbWords, ...customWords];
-
-
-        if (allWords.length === 0) {
-          console.error('[Quick Play Load] No words in session!');
-          showToast("This Quick Play session has no words. Please contact your teacher.", "error");
-          window.history.replaceState({}, '', window.location.pathname);
-          setView("public-landing");
-          return;
-        }
-
-        setQuickPlayActiveSession({
-          id: data.id,
-          sessionCode: data.session_code,
-          wordIds: data.word_ids,
-          words: allWords,
-          allowedModes: data.allowed_modes || undefined
-        });
-
-        // Check if this student already joined this session (page refresh / re-scan)
-        // Force them to rejoin with the SAME name to prevent name-swapping chaos
-        try {
-          const saved = localStorage.getItem('vocaband_qp_guest');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (parsed.sessionId === data.id && parsed.name) {
-              // Verify they still have a progress record (weren't kicked)
-              const { data: { session: authSession } } = await supabase.auth.getSession();
-              const authUid = authSession?.user?.id;
-              if (authUid) {
-                // Check by uid OR by name to handle auth session refresh
-                const { data: existingRecord } = await supabase
-                  .from('progress')
-                  .select('id, student_uid')
-                  .eq('assignment_id', data.id)
-                  .or(`student_uid.eq.${authUid},student_name.eq.${parsed.name}`)
-                  .limit(1);
-                if (existingRecord && existingRecord.length > 0) {
-                  // Migrate old progress rows to current uid if they differ
-                  const oldRecord = existingRecord[0];
-                  if (oldRecord.student_uid !== authUid) {
-                    await supabase
-                      .from('progress')
-                      .update({ student_uid: authUid })
-                      .eq('assignment_id', data.id)
-                      .eq('student_name', parsed.name);
-                  }
-                  // Auto-rejoin with same name and avatar
-                  const guestUser = createGuestUser(parsed.name, 'quickplay', parsed.avatar || '\uD83E\uDD8A');
-                  setUser(guestUser);
-                  setQuickPlayStudentName(parsed.name);
-                  setQuickPlayAvatar(parsed.avatar || '\uD83E\uDD8A');
-                  const words = allWords.map(w => ({ ...w, hebrew: w.hebrew || '', arabic: w.arabic || '' }));
-                  setAssignmentWords(words);
-                  const quickPlaySentences = generateSentencesForAssignment(words, 2);
-                  setActiveAssignment({
-                    id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
-                    title: "Quick Play",
-                    allowedModes: data.allowed_modes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
-                    sentences: quickPlaySentences, sentenceDifficulty: 2,
-                  });
-                  gameDebug.logGameInit({
-                    wordsCount: words.length,
-                    modesCount: data.allowed_modes?.length || 10,
-                    userId: 'quickplay_guest',
-                  });
-                  setView("game");
-                  setShowModeSelection(true);
-                  window.history.replaceState({}, '', window.location.pathname);
-                  return; // Skip join screen — go straight to game
-                }
-              }
-            }
-          }
-        } catch {}
-
-        setView("quick-play-student");
-      };
-
-      loadQuickPlaySession();
-    } else {
-      // No URL param — try recovering a saved guest session from localStorage
-      try {
-        const saved = localStorage.getItem('vocaband_qp_guest');
-        if (saved) {
-          const { sessionId, sessionCode, name, avatar } = JSON.parse(saved);
-          if (sessionId && sessionCode && name) {
-            // Verify session is still active
-            const loadSaved = async () => {
-              const { data: { session: existingSession } } = await supabase.auth.getSession();
-              if (!existingSession) await supabase.auth.signInAnonymously().catch(() => {});
-
-              const { data } = await supabase
-                .from('quick_play_sessions')
-                .select('id, session_code, word_ids, allowed_modes, is_active, custom_words')
-                .eq('id', sessionId)
-                .eq('is_active', true)
-                .maybeSingle();
-
-              if (data) {
-                const dbWords = ALL_WORDS.filter(w => (data.word_ids || []).includes(w.id));
-                let customWords: Word[] = [];
-                if (data.custom_words) {
-                  try {
-                    const cw = typeof data.custom_words === 'string' ? JSON.parse(data.custom_words) : data.custom_words;
-                    customWords = cw.map((w: any, i: number) => ({
-                      id: -(Date.now() + i), english: w.english, hebrew: w.hebrew, arabic: w.arabic, level: "Custom" as const
-                    }));
-                  } catch {}
-                }
-                const allSessionWords = [...dbWords, ...customWords];
-                if (allSessionWords.length > 0) {
-                  setQuickPlayActiveSession({
-                    id: data.id,
-                    sessionCode: data.session_code,
-                    wordIds: data.word_ids || [],
-                    words: allSessionWords,
-                    allowedModes: (data as { allowed_modes?: string[] }).allowed_modes || undefined,
-                  });
-                  setQuickPlayStudentName(name);
-                  setQuickPlayAvatar(avatar || '\uD83E\uDD8A');
-                  // Go straight to mode selection (they already joined)
-                  const guestUser = createGuestUser(name, 'quickplay', avatar || '\uD83E\uDD8A');
-                  setUser(guestUser);
-                  const words = allSessionWords.map(w => ({ ...w, hebrew: w.hebrew || '', arabic: w.arabic || '' }));
-                  setAssignmentWords(words);
-                  const quickPlaySentences = generateSentencesForAssignment(words, 2);
-                  setActiveAssignment({
-                    id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
-                    title: "Quick Play",
-                    allowedModes: data.allowed_modes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
-                    sentences: quickPlaySentences, sentenceDifficulty: 2,
-                  });
-                  gameDebug.logGameInit({
-                    wordsCount: words.length,
-                    modesCount: data.allowed_modes?.length || 10,
-                    userId: 'quickplay_guest',
-                  });
-                  setView("game");
-                  setShowModeSelection(true);
-                  return;
-                }
-              }
-              // Session ended or invalid — clear saved data
-              localStorage.removeItem('vocaband_qp_guest');
-            };
-            loadSaved();
-          }
-        }
-      } catch {}
-    }
-  }, []);
-
   // Auto-add EXACT matches found in database to Quick Play selection
   // Only words that match exactly what the teacher typed are auto-added
   // Partial matches (starts-with) are shown but NOT auto-added
@@ -885,6 +629,15 @@ export default function App() {
   // different table/filter, so fold them together.
   useEffect(() => {
     if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
+    // v2 routes session-end + kick over the /quick-play socket.io
+    // namespace. Subscribing to the progress-table DELETE stream here
+    // under v2 was the root cause of the "everyone else joining kicks
+    // the two who logged in" bug — any DELETE event (including the
+    // teacher's own kick cleanup) was treated as "you were kicked".
+    // Under v2 we skip this subscription entirely; v2-native KICKED
+    // and SESSION_ENDED events are handled via useQuickPlaySocket in
+    // QuickPlayStudentView.
+    if (QUICKPLAY_V2) return;
 
     const sessionCode = quickPlayActiveSession.sessionCode;
     const sessionId = quickPlayActiveSession.id;
@@ -984,76 +737,10 @@ export default function App() {
     };
   };
 
-  // --- AI TRANSLATION FOR QUICK PLAY ---
-  // Cache for translated words to avoid redundant API calls
-  const translationCache = useRef<Map<string, {hebrew: string, arabic: string, match: number}>>(new Map());
-
-  // Batch-translate English → Hebrew + Arabic via /api/translate (Gemini).
-  // Handles one-or-many words in a single HTTP call so paste of 30 custom
-  // words doesn't fire 30 parallel requests. Results are cached by lowercased
-  // English so subsequent requests (per-word retries, auto-translate button)
-  // don't re-hit the API.
-  const translateWordsBatch = async (
-    englishWords: string[]
-  ): Promise<Map<string, { hebrew: string; arabic: string; match: number }>> => {
-    const out = new Map<string, { hebrew: string; arabic: string; match: number }>();
-    const uncached: string[] = [];
-
-    for (const w of englishWords) {
-      const key = w.toLowerCase().trim();
-      if (!key) continue;
-      const cached = translationCache.current.get(key);
-      if (cached) {
-        out.set(key, cached);
-      } else {
-        uncached.push(w.trim());
-      }
-    }
-
-    if (uncached.length === 0) return out;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return out;
-
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ words: uncached }),
-      });
-
-      if (!res.ok) {
-        console.warn('[translate] /api/translate failed:', res.status);
-        return out;
-      }
-
-      const { hebrew, arabic } = await res.json() as { hebrew?: string[]; arabic?: string[] };
-      uncached.forEach((word, i) => {
-        const he = hebrew?.[i]?.trim() || '';
-        const ar = arabic?.[i]?.trim() || '';
-        if (!he && !ar) return;
-        const entry = { hebrew: he, arabic: ar, match: he && ar ? 1 : 0.5 };
-        const key = word.toLowerCase();
-        translationCache.current.set(key, entry);
-        out.set(key, entry);
-      });
-    } catch (error) {
-      trackAutoError(error, 'Translation service error');
-    }
-
-    return out;
-  };
-
-  // Single-word translator kept for API compatibility with existing callers
-  // (manual "Auto-translate" button, Quick Play). Thin wrapper over the batch.
-  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
-    const result = await translateWordsBatch([englishWord]);
-    return result.get(englishWord.toLowerCase().trim()) || null;
-  };
+  // Translation helpers — server-proxied EN → HE/AR with an in-session
+  // cache. Two callable shapes: batch (paste/OCR/imports) and single-
+  // word (Auto-translate button). Hook owns the cache + fetch plumbing.
+  const { translateWord, translateWordsBatch } = useTranslate();
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -1067,6 +754,22 @@ export default function App() {
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
+
+  // Handle Quick Play session from URL parameter — extracted to a
+  // dedicated hook because the load logic plus the page-refresh
+  // recovery branch was ~250 lines of detail.
+  useQuickPlayUrlBootstrap({
+    setView,
+    setUser,
+    setQuickPlayActiveSession,
+    setQuickPlayStudentName,
+    setQuickPlayAvatar,
+    setActiveAssignment,
+    setAssignmentWords,
+    setShowModeSelection,
+    createGuestUser,
+    showToast,
+  });
   const [showModeIntro, setShowModeIntro] = useState(false);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -1121,52 +824,97 @@ export default function App() {
   // Track when data was last fetched to avoid redundant Supabase calls
   const lastFetchRef = useRef<Record<string, number>>({});
 
+  // Teacher-side handlers extracted into a single hook so the file
+  // doesn't have to maintain duplicate copies of class / assignment /
+  // word-import logic. The hook owns the implementations; this file
+  // just plumbs the state in and destructures the methods out.
+  // handleOcrUpload stays inline below — its hook version is a much
+  // simpler implementation and we'd lose the OCR status UI, custom-
+  // word audio generation, and vocabulary cross-check by swapping it.
+  const {
+    handleCreateClass,
+    handlePasteSubmit,
+    handleAddUnmatchedAsCustom,
+    handleSkipUnmatched,
+    handleTagInputKeyDown,
+    handleDocxUpload,
+    handleSaveAssignment,
+    handleDeleteClass,
+    fetchScores,
+    fetchTeacherAssignments,
+  } = useTeacherActions({
+    user, classes, setClasses,
+    newClassName, setNewClassName,
+    setCreatedClassCode, setCreatedClassName, setShowCreateClassModal,
+    selectedClass, setSelectedClass,
+    editingAssignment, setEditingAssignment,
+    selectedWords, setSelectedWords,
+    customWords, setCustomWords,
+    selectedLevel,
+    // App.tsx narrows level to a 3-value union; hook signature is the wider
+    // string. Casts here keep the bivariance edge cases out of the hook.
+    setSelectedLevel: setSelectedLevel as (v: string) => void,
+    assignmentTitle, setAssignmentTitle,
+    assignmentDeadline, setAssignmentDeadline,
+    assignmentModes, setAssignmentModes,
+    assignmentSentences, setAssignmentSentences,
+    sentenceDifficulty, setSentenceDifficulty,
+    setAssignmentStep,
+    pastedText, setPastedText,
+    setPasteMatchedCount, pasteUnmatched, setPasteUnmatched, setShowPasteDialog,
+    tagInput, setTagInput,
+    setIsOcrProcessing,
+    setOcrProgress: setOcrProgress as (v: string | number) => void,
+    setWordSearchQuery,
+    setSelectedCore,
+    setSelectedRecProd: setSelectedRecProd as (v: string) => void,
+    setSelectedPos,
+    teacherAssignments, setTeacherAssignments, setTeacherAssignmentsLoading,
+    pendingStudents, setPendingStudents,
+    allScores, setAllScores,
+    setClassStudents,
+    // Global leaderboard isn't wired into App.tsx (unused state); hook's
+    // fetchGlobalLeaderboard isn't called from here, so a no-op is safe.
+    setGlobalLeaderboard: () => {},
+    setActiveAssignment, setAssignmentWords, setShowModeSelection,
+    setConfirmDialog, showToast,
+    setView: (v: string) => setView(v as View),
+    lastFetchRef,
+  });
+
+  // Read-only data fetchers + approval-queue actions extracted into a
+  // dedicated hook. Same shapes and behaviours as the inline closures
+  // they replace.
+  const {
+    fetchTeacherData,
+    loadAssignmentsForClass,
+    loadPendingStudents,
+    handleApproveStudent,
+    handleRejectStudent,
+    confirmRejectStudent,
+  } = useTeacherData({
+    classes, setClasses,
+    setStudentAssignments, setStudentProgress,
+    setPendingStudents,
+    setError, showToast,
+    setRejectStudentModal,
+  });
+
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
-  const saveQueueRef = useRef<Array<() => Promise<void>>>([]);
-  const saveQueueTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isProcessingQueueRef = useRef(false);
-
-  // Process save queue in batches (reduces DB round-trips)
-  const processSaveQueue = async () => {
-    if (isProcessingQueueRef.current || saveQueueRef.current.length === 0) return;
-    isProcessingQueueRef.current = true;
-
-    const queue = saveQueueRef.current.splice(0, 10); // Process up to 10 saves at once
-
-    try {
-      await Promise.all(queue.map(fn => fn().catch(err => console.error('[Save Queue] Item failed:', err))));
-    } finally {
-      isProcessingQueueRef.current = false;
-
-      // Process more if queue was refilled
-      if (saveQueueRef.current.length > 0) {
-        saveQueueTimerRef.current = setTimeout(processSaveQueue, 100);
-      }
-    }
-  };
-
-  const queueSaveOperation = (operation: () => Promise<void>) => {
-    saveQueueRef.current.push(operation);
-
-    // Trigger processing after short delay (allows batching)
-    if (!saveQueueTimerRef.current) {
-      saveQueueTimerRef.current = setTimeout(() => {
-        processSaveQueue();
-        saveQueueTimerRef.current = undefined;
-      }, 300); // 300ms delay to accumulate multiple saves
-    }
-  };
+  // queueSaveOperation pushes a closure; the hook batches up to 10 of
+  // them per flush after a 300ms debounce. clearQueue is called from
+  // cleanupSessionData on logout to drop in-flight writes.
+  const {
+    queueSaveOperation,
+    clearQueue: clearSaveQueue,
+    processSaveQueue,
+    hasPending: saveQueueHasPending,
+  } = useSaveQueue();
 
   // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
   const cleanupSessionData = () => {
-    // Clear save queue to prevent any further DB operations
-    saveQueueRef.current = [];
-    // Clear any pending save timer
-    if (saveQueueTimerRef.current) {
-      clearTimeout(saveQueueTimerRef.current);
-      saveQueueTimerRef.current = undefined;
-    }
-    // Clear feedback timeout
+    clearSaveQueue();
+    // Clear feedback timeout (lives outside the save queue's domain).
     if (feedbackTimeoutRef.current) {
       clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = undefined;
@@ -1242,19 +990,12 @@ export default function App() {
     }
   }, [currentIndex, view, gameMode, showModeSelection, showModeIntro, isFinished, feedback]);
 
-  // Cleanup timeout on unmount
+  // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
+  // owned by useSaveQueue itself.
   useEffect(() => {
     return () => {
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
-      }
-      // Flush save queue on unmount to ensure no data is lost
-      if (saveQueueTimerRef.current) {
-        clearTimeout(saveQueueTimerRef.current);
-      }
-      if (saveQueueRef.current.length > 0) {
-        Promise.all(saveQueueRef.current.map(fn => fn().catch(console.error))).catch(console.error);
-        saveQueueRef.current = [];
       }
     };
   }, []);
@@ -1264,26 +1005,62 @@ export default function App() {
   useEffect(() => {
     const flushInterval = setInterval(() => {
       // Only flush if user exists, not actively saving, and queue has items
-      if (user && !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
+      if (user && !isSaving && saveQueueHasPending()) {
         processSaveQueue();
       }
     }, 5000); // Every 5 seconds
 
     return () => clearInterval(flushInterval);
-  }, [isSaving, user]); // Added user as dependency
+  }, [isSaving, user, saveQueueHasPending, processSaveQueue]);
 
-  // Throttled Socket.IO score emit to prevent DB spam
+  // Quick Play v2 socket — only active when the flag is on AND a
+  // session is live. When a student's score changes during gameplay
+  // we forward it here so the teacher's monitor sees live movement.
+  const quickPlaySocket = useQuickPlaySocket({
+    sessionCode: quickPlayActiveSession?.sessionCode ?? null,
+    enabled: QUICKPLAY_V2,
+  });
+
+  // Translate v2-native KICKED / SESSION_ENDED events into the existing
+  // quickPlayKicked / quickPlaySessionEnded UI state. Keeps the screens
+  // that render those states (QuickPlayKickedScreen, QuickPlaySessionEndScreen)
+  // untouched. Dependencies are the hook's on-* methods specifically
+  // (they're useCallback-stable) — depending on the whole socket
+  // object would churn the effect every render.
+  const qpOnKicked = quickPlaySocket.onKicked;
+  const qpOnSessionEnded = quickPlaySocket.onSessionEnded;
+  useEffect(() => {
+    if (!QUICKPLAY_V2) return;
+    const offKicked = qpOnKicked(() => {
+      setQuickPlayKicked(true);
+      setActiveAssignment(null);
+    });
+    const offEnded = qpOnSessionEnded(() => {
+      setQuickPlaySessionEnded(true);
+      setActiveAssignment(null);
+    });
+    return () => { offKicked(); offEnded(); };
+  }, [qpOnKicked, qpOnSessionEnded]);
+
+  // Throttled Socket.IO score emit. Routes to the right transport
+  // depending on context:
+  //   * classroom live challenge — existing `/` namespace, needs classCode
+  //   * Quick Play v2 guest game — new `/quick-play` namespace, no auth
   const emitScoreUpdate = (newScore: number) => {
-    if (!socket || !user?.classCode) return;
     const now = Date.now();
-    // Only emit once per 2 seconds max, or if it's the final score (game finished)
-    if (now - lastScoreEmitRef.current > 2000 || isFinished) {
-      lastScoreEmitRef.current = now;
-      setTimeout(() => {
-        socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
-      }, 0);
-    } else {
+    const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
+    if (!shouldEmit) return;
+    lastScoreEmitRef.current = now;
+
+    if (QUICKPLAY_V2 && user?.isGuest && quickPlayActiveSession) {
+      setTimeout(() => quickPlaySocket.updateScore(newScore), 0);
+      return;
     }
+
+    if (!socket || !user?.classCode) return;
+    setTimeout(() => {
+      socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
+    }, 0);
   };
 
   // Redirect legacy "students" view to gradebook
@@ -1508,6 +1285,22 @@ export default function App() {
     setView("student-pending-approval");
     try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
   };
+  // Student-account login flow — the approved-student finishing path
+  // (processStudentProfile with its SECURITY check against impersonation)
+  // and the profile-id login wrapper used by PendingApprovalScreen and
+  // the OAuth approved-student branch.
+  const {
+    handleLoginAsStudent,
+    processStudentProfile,
+    renameStudentDisplayName,
+  } = useStudentLogin({
+    user, setUser, setError, setLoading, setView,
+    setBadges, setXp, setStreak,
+    setStudentAssignments, setStudentProgress,
+    showPendingApproval,
+    loadAssignmentsForClass,
+  });
+
 
   // Intended-class-code storage helpers (component-scoped so both the
   // auth-effect's restoreSession and the component-level OAuth handler
@@ -1530,12 +1323,51 @@ export default function App() {
     try { localStorage.removeItem('oauth_intended_class_code'); } catch {}
   };
 
-  // Sticky banner state: when a student typed a class code that doesn't
-  // exist, we surface a persistent banner on the dashboard so they can't
-  // miss the problem (toasts get dismissed/ignored).  Setting it here
-  // from either the OAuth-return path or the session-restore path both
-  // funnel into the same UI state.
-  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
+  // Google-OAuth post-callback handlers — extracted to a hook so the
+  // class-switch detection logic and the upsert-then-hydrate sequence
+  // aren't crowding App.tsx. Same behaviour as before.
+  const {
+    handleOAuthTeacherDetected,
+    handleOAuthStudentDetected,
+    handleOAuthNewUser,
+  } = useOAuthFlow({
+    setUser, setError, setLoading, setView, setIsOAuthCallback,
+    setBadges, setXp, setStreak,
+    setStudentAssignments, setStudentProgress,
+    setClassNotFoundIntent, setPendingClassSwitch,
+    setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
+    showPendingApproval, readIntendedClassCode, clearIntendedClassCode,
+  });
+
+  // Class-switch modal confirm/cancel handlers — extracted to a hook
+  // since both branches hydrate the dashboard after the choice.
+  const { handleConfirmClassSwitch, handleCancelClassSwitch } = useClassSwitch({
+    pendingClassSwitch, setPendingClassSwitch,
+    setUser, setView, setLoading,
+    setStudentAssignments, setStudentProgress,
+    showToast,
+  });
+
+  // Privacy-policy consent flow — checkConsent gates the banner,
+  // recordConsent persists the acceptance to both localStorage (fast
+  // path) and consent_log (audit trail).
+  const { checkConsent, recordConsent } = useConsent({
+    user, setNeedsConsent, setConsentChecked,
+  });
+
+  // OCR pipeline — photo → /api/ocr → translate → custom-word tab
+  // with dictionary cross-check. Preserves App.tsx's progress UI,
+  // Neural2 audio generation, and hallucination-guard behaviour.
+  const { handleOcrUpload, processOcrFile } = useOcrUpload({
+    classes, setSelectedClass,
+    setCustomWords, setSelectedWords,
+    // App narrows these with union types; hook takes the wider string.
+    // Same bivariance cast we used for useTeacherActions.
+    setSelectedLevel: setSelectedLevel as (v: string) => void,
+    setView: setView as (v: string) => void,
+    setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
+    showToast, translateWordsBatch,
+  });
 
   // --- AUTH LOGIC ---
   useEffect(() => {
@@ -1614,6 +1446,40 @@ export default function App() {
         }
 
         if (userData) {
+          // OAuth role-intent enforcement.  If the user clicked
+          // "Log in as Teacher" on the landing page, we stamped
+          // sessionStorage.oauth_intended_role='teacher' BEFORE the
+          // Google redirect.  Google signs them in with whatever
+          // account they have active (which might be the one they
+          // previously signed up as a STUDENT with).  Without this
+          // guard, restoreSession would silently drop them into the
+          // student dashboard even though they clearly pressed the
+          // teacher button.  Reject with a clear error + sign out.
+          //
+          // Guard clears after 10 minutes to avoid a stale flag
+          // surviving across unrelated logins.
+          try {
+            const intendedRole = sessionStorage.getItem('oauth_intended_role');
+            const intendedAt = Number(sessionStorage.getItem('oauth_intended_role_at') || 0);
+            const fresh = intendedAt > 0 && (Date.now() - intendedAt) < 10 * 60 * 1000;
+            if (intendedRole === 'teacher' && fresh && userData.role !== 'teacher') {
+              sessionStorage.removeItem('oauth_intended_role');
+              sessionStorage.removeItem('oauth_intended_role_at');
+              setError(
+                `This Google account (${userData.email ?? 'unknown'}) is registered as a ${userData.role}, not a teacher. ` +
+                `Sign in from the student page instead, or use a different Google account for teacher access.`
+              );
+              await supabase.auth.signOut().catch(() => {});
+              setLoading(false);
+              return;
+            }
+            // Consumed — clear so subsequent logins don't re-trigger.
+            if (intendedRole) {
+              sessionStorage.removeItem('oauth_intended_role');
+              sessionStorage.removeItem('oauth_intended_role_at');
+            }
+          } catch { /* storage unavailable — skip enforcement */ }
+
           setUser(userData);
           checkConsent(userData);
           if (userData.role === "teacher") {
@@ -2602,1302 +2468,16 @@ export default function App() {
     };
   }, [user?.role, view, classes.length]);
 
-  const fetchTeacherData = async (uid: string) => {
-    const { data, error } = await supabase.from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
-    if (!error && data) {
-      const mappedClasses = data.map(mapClass);
-      setClasses(mappedClasses);
-      return mappedClasses;
-    }
-    return [];
-  };
-
-  const handleCreateClass = async () => {
-    if (!newClassName || !user) return;
-
-    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
-    const randomValues = crypto.getRandomValues(new Uint32Array(8));
-    const code = Array.from(randomValues)
-      .map(x => {
-        // Rejection sampling to avoid modulo bias
-        const limit = Math.floor(0x100000000 / alphabet.length) * alphabet.length;
-        let val = x;
-        while (val >= limit) {
-          val = crypto.getRandomValues(new Uint32Array(1))[0];
-        }
-        return alphabet[val % alphabet.length];
-      })
-      .join("");
-    const newClass = {
-      name: newClassName,
-      teacherUid: user.uid,
-      code: code
-    };
-
-    try {
-      const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
-      if (error) throw error;
-      setClasses([...classes, mapClass(docRow)]);
-      setCreatedClassName(newClass.name);
-      setShowCreateClassModal(false);
-      setNewClassName("");
-      setCreatedClassCode(code);
-    } catch (error) {
-      console.error("Error creating class:", error);
-      showToast("Failed to create class.", "error");
-    }
-  };
-
-  const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
-
-  /**
-   * handleOcrUpload
-   * Takes an image file (e.g., a photo of a word list), sends it to the
-   * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
-   */
-  // OCR upload — send photo directly to the Worker (no crop modal).
-  // The crop modal's canvas export was corrupting images on mobile.
-  // The Cloudflare Worker OCR works perfectly with raw photos.
-  const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawFile = e.target.files?.[0];
-    if (!rawFile) return;
-    processOcrFile(rawFile, e);
-  };
-
-  // Step 2: User confirms from the preview → run OCR
-  const processOcrFile = async (fileToProcess: File, originalEvent?: React.ChangeEvent<HTMLInputElement> | null) => {
-    setOcrPendingFile(null);
-    setIsOcrProcessing(true);
-    setOcrProgress(5);
-    setOcrStatus("Compressing image...");
-
-    try {
-      const file = await compressImageForUpload(fileToProcess);
-      const fileSizeKB = Math.round(file.size / 1024);
-      setOcrProgress(10);
-      setOcrStatus(`Uploading image... (${fileSizeKB} KB)`);
-
-      // Get auth token for teacher authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { showToast("Please sign in again.", "error"); return; }
-
-      // OCR runs directly in the Cloudflare Worker (same-origin, no Render,
-      // no CORS, no cold starts). The Worker calls Claude Vision API.
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s
-
-      // Simulate smooth progress during the API call (10% → 85%)
-      let simProgress = 15;
-      setOcrProgress(15);
-      const progressInterval = setInterval(() => {
-        simProgress += (85 - simProgress) * 0.08;
-        setOcrProgress(Math.round(simProgress));
-      }, 400);
-
-      // Update status while waiting
-      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 2000);
-      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 6000);
-
-      let response: Response;
-      try {
-        response = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData,
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-        clearTimeout(statusTimer1);
-        clearTimeout(statusTimer2);
-        clearInterval(progressInterval);
-      }
-
-      setOcrProgress(88);
-      setOcrStatus("Processing results...");
-
-      if (!response.ok) {
-        let errorMessage = `OCR failed (${response.status})`;
-        try {
-          const errorData = await response.json();
-          // Prefer the detailed 'message' field (which has the actual
-          // Gemini error reason) over the generic 'error' field.
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch { /* response wasn't JSON */ }
-        throw new Error(errorMessage);
-      }
-
-      let ocrData: any;
-      try {
-        ocrData = await response.json();
-      } catch {
-        throw new Error('Server returned an invalid response. Please try again.');
-      }
-      setOcrProgress(95);
-
-      // Extract words from the OCR service response
-      // The service already returns English-only words (filtered by regex on server)
-      const extractedWords = ocrData.words || [];
-      const rawText = ocrData.raw_text || '';
-
-      // Dictionary cross-check to catch Gemini hallucinations. Any OCR result
-      // that matches a curriculum word (ALL_WORDS, ~9k entries) is treated as
-      // high confidence; anything else could be a ghost word the model made
-      // up, or a legitimate non-curriculum word (proper noun, slang). We keep
-      // BOTH in the custom words list so teachers don't lose real words, but
-      // only auto-select the known ones. Unknown words show up unchecked so
-      // the teacher can dismiss obvious nonsense with a glance instead of it
-      // silently joining the assignment.
-      const normalizeWord = (w: string) => w.toLowerCase().trim();
-      const knownEnglishSet = new Set(ALL_WORDS.map(w => normalizeWord(w.english)));
-      const isKnownWord = (w: string) => knownEnglishSet.has(normalizeWord(w));
-
-
-      // Auto-translate OCR words to Hebrew + Arabic via Gemini so teachers
-      // don't have to fill them in manually. Done BEFORE creating the Word
-      // objects so the translations land on first render. Failure is silent
-      // — teachers see a "Translate" button per word as the fallback.
-      setOcrStatus("Translating to Hebrew + Arabic…");
-      const translations = await translateWordsBatch(extractedWords);
-
-      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => {
-        const t = translations.get(word.toLowerCase().trim());
-        return {
-          id: Date.now() + index,
-          english: word,
-          hebrew: t?.hebrew || '',
-          arabic: t?.arabic || '',
-          level: 'Custom',
-          recProd: 'Prod',
-        };
-      });
-
-      if (customWordsFromOCR.length > 0) {
-      }
-
-      if (customWordsFromOCR.length === 0) {
-        showToast(
-          rawText
-            ? `No English words found. AI saw: "${rawText.substring(0, 120)}${rawText.length > 120 ? '...' : ''}"`
-            : "No words found — the image may be unclear. Try a closer photo with better lighting.",
-          "error"
-        );
-      } else {
-        // Add all detected words to the Custom tab, but only auto-select the
-        // ones that match our curriculum dictionary. Unknown words (possible
-        // hallucinations) appear unchecked for the teacher to review.
-        setCustomWords(customWordsFromOCR);
-        setSelectedLevel("Custom");
-        const knownCustomIds = customWordsFromOCR
-          .filter(w => isKnownWord(w.english))
-          .map(w => w.id);
-        const autoSelectIds = knownCustomIds.length > 0
-          ? knownCustomIds
-          : customWordsFromOCR.map(w => w.id);
-        setSelectedWords(autoSelectIds);
-
-        // Fire off Neural2 audio generation so students hear real pronunciations.
-        void requestCustomWordAudio(customWordsFromOCR);
-
-        // Navigate to create-assignment view so user can see the matched words
-        if (classes.length > 0) {
-          setSelectedClass(classes[0]);
-          setView("create-assignment");
-        }
-
-        const unknownCount = customWordsFromOCR.length - knownCustomIds.length;
-        const successMsg = knownCustomIds.length > 0 && unknownCount > 0
-          ? `Found ${customWordsFromOCR.length} words — ${knownCustomIds.length} curriculum matches auto-selected, ${unknownCount} need review.`
-          : `Found ${customWordsFromOCR.length} words from the image!`;
-        showToast(successMsg, "success");
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        showToast("OCR timed out — the image may be too complex. Try a clearer photo or a smaller area.", "error");
-      } else {
-        trackAutoError(err, 'OCR processing failed');
-        const errorMessage = err instanceof Error ? err.message : 'Error processing image';
-        console.error('OCR error:', errorMessage);
-        showToast(`${errorMessage}. Please try again.`, "error");
-      }
-    } finally {
-      setIsOcrProcessing(false);
-      setOcrProgress(0);
-      setOcrStatus("");
-      // Reset the file input so the same file can be uploaded again if needed
-      if (originalEvent?.target) originalEvent.target.value = '';
-    }
-  };
-
   // --- SMART PASTE FUNCTIONS ---
-
-  // Extract words from pasted text - handles commas, newlines, semicolons, pipes, tabs
-  const extractWordsFromPaste = (text: string): string[] => {
-    // Strip zero-width characters from PDFs/Word documents
-    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-
-    // Split by common delimiters (added tab support for Excel/Google Sheets)
-    const words = cleaned
-      .split(/[,\n;\t\|]+/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length >= 2 && w.length <= 100); // Filter invalid
-
-    const unique = [...new Set(words)];
-
-    // Soft limit for very large pastes
-    if (unique.length > 500) {
-      console.warn(`Large paste: ${unique.length} words (processing first 500)`);
-    }
-
-    return unique.slice(0, 500);
-  };
-
-  // Find matching Set 2 words (EXACT OR PARTIAL MATCH)
-  // Combines duplicates and merges translations (Hebrew+Hebrew, Arabic+Arabic)
-  // Also combines words with/without "(n)" suffix
-  const findMatchesInSet2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
-    const allMatches: Word[] = [];
-    const unmatched: string[] = [];
-
-    // Find ALL matches for each input word
-    for (const word of words) {
-      const matches = SET_2_WORDS.filter(w =>
-        w.english.toLowerCase() === word ||
-        w.english.toLowerCase().startsWith(word) ||
-        w.english.toLowerCase().endsWith(word)
-      );
-      if (matches.length > 0) {
-        allMatches.push(...matches);
-      } else {
-        unmatched.push(word);
-      }
-    }
-
-    // Group matches by base English word (remove "(n)" suffix for grouping)
-    const groupedMatches = new Map<string, Word[]>();
-    for (const match of allMatches) {
-      const baseWord = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
-      if (!groupedMatches.has(baseWord)) {
-        groupedMatches.set(baseWord, []);
-      }
-      groupedMatches.get(baseWord)!.push(match);
-    }
-
-    // Combine each group into a single word with merged translations
-    const matched: Word[] = [];
-    for (const [, group] of groupedMatches) {
-      // Merge Hebrew translations (combine non-empty ones, unique)
-      const hebrewParts = group
-        .map(w => w.hebrew.trim())
-        .filter(h => h.length > 0);
-      const uniqueHebrew = [...new Set(hebrewParts)];
-      const combinedHebrew = uniqueHebrew.join(' | ');
-
-      // Merge Arabic translations (combine non-empty ones, unique)
-      const arabicParts = group
-        .map(w => w.arabic.trim())
-        .filter(a => a.length > 0);
-      const uniqueArabic = [...new Set(arabicParts)];
-      const combinedArabic = uniqueArabic.join(' | ');
-
-      // Use the base word (without "(n)") as the English word
-      const combinedWord: Word = {
-        ...group[0],
-        english: group[0].english.replace(/\(n\)$/, '').trim(),
-        hebrew: combinedHebrew,
-        arabic: combinedArabic
-      };
-      matched.push(combinedWord);
-    }
-
-    return { matched, unmatched };
-  };
-
-  // Handle paste submission
-  const handlePasteSubmit = () => {
-    const words = extractWordsFromPaste(pastedText);
-    if (words.length === 0) return;
-
-    const { matched, unmatched } = findMatchesInSet2(words);
-
-    setPasteMatchedCount(matched.length);
-    setPasteUnmatched(unmatched);
-    setShowPasteDialog(true);
-
-    // Auto-add matched words
-    const newSelected = [...selectedWords];
-    matched.forEach(w => {
-      if (!newSelected.includes(w.id)) {
-        newSelected.push(w.id);
-      }
-    });
-    setSelectedWords(newSelected);
-    setPastedText("");
-  };
-
-  // Add unmatched as custom words
-  const handleAddUnmatchedAsCustom = () => {
-    const newCustomWords = pasteUnmatched.map((word, idx) => ({
-      id: Date.now() + idx,
-      english: word,
-      hebrew: "",
-      arabic: "",
-      level: "Custom" as const
-    }));
-    setCustomWords(prev => [...prev, ...newCustomWords]);
-    setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
-    // Fire off Neural2 audio generation for the new custom words.
-    void requestCustomWordAudio(newCustomWords);
-    // Switch to Custom tab so users can see the added words
-    setSelectedLevel("Custom");
-    // Clear search and filters so all words are visible
-    setWordSearchQuery("");
-    setSelectedCore("");
-    setSelectedPos("");
-    setSelectedRecProd("");
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
-  // Skip unmatched words
-  const handleSkipUnmatched = () => {
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
 
   // Quick-play preview handlers (handleQuickPlayPreviewConfirm +
   // handleQuickPlayPreviewCancel) previously lived here but were never
   // wired to any UI. Removed along with their backing state
   // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
   // dead code TypeScript had been flagging with TS6133.
-
-  // Tag-style single word entry
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter" || !tagInput.trim()) return;
-    e.preventDefault();
-    const word: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
-    setCustomWords(prev => [...prev, word]);
-    setSelectedWords(prev => [...prev, word.id]);
-    setSelectedLevel("Custom");
-    setTagInput("");
-  };
-
-  // Word (.docx) upload — extract text then use smart paste logic
-  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      // Lazy load mammoth
-      const mammothModule = await loadMammoth();
-      const mammoth = mammothModule.default || mammothModule;
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      setPastedText(result.value);
-      showToast("Word document text extracted — click Import Words to continue.", "info");
-    } catch {
-      showToast("Could not read Word document.", "error");
-    }
-    e.target.value = "";
-  };
-
-  const handleSaveAssignment = async (wordsOverride?: number[], modesOverride?: string[]) => {
-    // Use override values if provided (from SetupWizard completion), otherwise use state
-    const wordsToCheck = wordsOverride ?? selectedWords;
-    const modesToCheck = modesOverride ?? assignmentModes;
-
-    // For editing, allow custom-only assignments
-    const hasWords = editingAssignment
-      ? wordsToCheck.length > 0 || customWords.length > 0
-      : wordsToCheck.length > 0;
-
-    if (!selectedClass || !hasWords || !assignmentTitle) {
-      showToast("Please enter a title and select words.", "error");
-      return;
-    }
-
-    // Check if there's at least one database word (not custom/session-only)
-    const hasDbWords = wordsToCheck.some(id => id > 0);
-
-    if (!hasDbWords && !editingAssignment) {
-      console.warn('[handleSaveAssignment] BLOCKED - No DB words for new assignment');
-      showToast("Please select at least one word from the vocabulary database.", "error");
-      return;
-    }
-    // For editing, if no database words, ensure we have at least one custom word
-    if (!hasDbWords && editingAssignment && customWords.length === 0 && wordsToCheck.length === 0) {
-      console.warn('[handleSaveAssignment] BLOCKED - No words at all for edit');
-      showToast("Please select at least one word (database or custom).", "error");
-      return;
-    }
-
-    const allPossibleWords = [...ALL_WORDS, ...customWords];
-    const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    // Use wordsToCheck for filtering, but we need to create a Set from it
-    const wordsToCheckSet = new Set(wordsToCheck);
-    const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
-
-    const assignmentData = {
-      classId: selectedClass.id,
-      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
-      words: wordsToSave,
-      title: assignmentTitle,
-      deadline: assignmentDeadline || null,
-      allowedModes: modesToCheck,
-      sentences: assignmentSentences.filter(s => s.trim()),
-      sentenceDifficulty,
-    };
-
-    try {
-      if (editingAssignment) {
-        // UPDATE existing assignment
-        const updatePayload: Record<string, unknown> = {
-          class_id: assignmentData.classId,
-          word_ids: assignmentData.wordIds,
-          words: assignmentData.words,
-          title: assignmentData.title,
-          deadline: assignmentData.deadline,
-          allowed_modes: assignmentData.allowedModes,
-          sentence_difficulty: assignmentData.sentenceDifficulty,
-        };
-        if (assignmentData.sentences.length > 0) {
-          updatePayload.sentences = assignmentData.sentences;
-        }
-
-        const { error } = await supabase
-          .from('assignments')
-          .update(updatePayload)
-          .eq('id', editingAssignment.id);
-
-        if (error) {
-          console.error('[handleSaveAssignment] UPDATE failed', error);
-          throw error;
-        }
-        showToast("Assignment updated successfully!", "success");
-
-        // Update the assignment in the list
-        setTeacherAssignments(prev =>
-          prev.map(a => a.id === editingAssignment.id
-            ? { ...a, ...assignmentData }
-            : a
-          )
-        );
-        // Also update editingAssignment so the wizard shows the new data
-        setEditingAssignment(prev => prev ? { ...prev, ...assignmentData } : null);
-      } else {
-        // CREATE new assignment
-        const newAssignment = {
-          ...assignmentData,
-          createdAt: new Date().toISOString(),
-        };
-
-        const insertPayload: Record<string, unknown> = {
-          class_id: newAssignment.classId,
-          word_ids: newAssignment.wordIds,
-          words: newAssignment.words,
-          title: newAssignment.title,
-          deadline: newAssignment.deadline,
-          created_at: newAssignment.createdAt,
-          allowed_modes: newAssignment.allowedModes,
-          sentence_difficulty: newAssignment.sentenceDifficulty,
-        };
-        if (newAssignment.sentences.length > 0) {
-          insertPayload.sentences = newAssignment.sentences;
-        }
-
-        const { error } = await supabase.from('assignments').insert(insertPayload);
-        if (error) {
-          console.error('[handleSaveAssignment] INSERT failed', error);
-          throw error;
-        }
-        showToast("Assignment created successfully!", "success");
-
-        // Refresh assignments list
-        await fetchTeacherAssignments();
-
-        // Only redirect and reset form when creating (not when editing)
-        setView("teacher-dashboard");
-        setSelectedWords([]);
-        setAssignmentTitle("");
-        setAssignmentDeadline("");
-        setAssignmentModes([]); // No default selection - teacher must choose
-        setAssignmentStep(1);
-        setAssignmentSentences([]);
-        setSentenceDifficulty(2);
-      }
-    } catch (error) {
-      console.error('[handleSaveAssignment] CATCH - Error occurred:', error);
-      handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
-    }
-  };
-
-  // Preview the assignment with selected words and modes (for teachers)
-  const handleDeleteClass = async (classId: string) => {
-    setConfirmDialog({
-      show: true,
-      message: "Are you sure you want to delete this class? This will also remove access for all students in this class.",
-      onConfirm: async () => {
-        try {
-          const { error } = await supabase.from('classes').delete().eq('id', classId);
-          if (error) throw error;
-          setClasses(prev => prev.filter(c => c.id !== classId));
-          showToast("Class deleted successfully.", "success");
-        } catch (error) {
-          handleDbError(error, OperationType.DELETE, `classes/${classId}`);
-        }
-        setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-      }
-    });
-  };
-
-  // Check if user needs to accept the current privacy policy version.
-  // Fast path: localStorage. Fallback: DB consent_log (handles cleared storage).
-  const checkConsent = (userData: AppUser) => {
-    const accepted = localStorage.getItem('vocaband_consent_version');
-    if (accepted === PRIVACY_POLICY_VERSION) return;
-
-    // localStorage missing — check DB before showing the banner
-    if (userData.uid) {
-      supabase
-        .from('consent_log')
-        .select('policy_version')
-        .eq('uid', userData.uid)
-        .eq('action', 'accept')
-        .eq('policy_version', PRIVACY_POLICY_VERSION)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            // Valid consent found in DB — restore localStorage and skip banner
-            try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
-          } else {
-            setNeedsConsent(true);
-          }
-        });
-    } else {
-      setNeedsConsent(true);
-    }
-  };
-
-  const recordConsent = async () => {
-    localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION);
-    // Also persist to the consent_log DB table for compliance/audit trail
-    if (user?.uid) {
-      try {
-        await supabase.from('consent_log').insert({
-          uid: user.uid,
-          policy_version: PRIVACY_POLICY_VERSION,
-          terms_version: PRIVACY_POLICY_VERSION,
-          action: 'accept',
-        });
-      } catch (error) {
-        trackError('Could not persist consent to database', 'database', 'low', { uid: user?.uid });
-      }
-    }
-    setNeedsConsent(false);
-    setConsentChecked(false);
-  };
-
-  // Student Account Login System
-  const loadStudentsInClass = async (classCode: string) => {
-    const trimmedCode = classCode.trim().toUpperCase();
-    if (!trimmedCode) return;
-
-
-    try {
-      // Use the new RPC function that bypasses RLS
-      const { data, error } = await supabase
-        .rpc('list_students_in_class', {
-          p_class_code: trimmedCode
-        });
-
-
-      if (error) {
-        console.error('RPC error:', error);
-        // Fallback to direct query if RPC doesn't exist yet
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('student_profiles')
-          .select('id, display_name, xp, status, avatar')
-          .eq('class_code', trimmedCode)
-          .eq('status', 'approved')
-          .order('display_name', { ascending: true });
-
-
-        if (fallbackError) {
-          if (fallbackError.code === '42P01') {
-            setExistingStudents([]);
-            return;
-          }
-          throw fallbackError;
-        }
-
-        const mappedStudents = (fallbackData || []).map(s => ({
-          id: s.id,
-          displayName: s.display_name,
-          xp: s.xp || 0,
-          status: s.status,
-          avatar: s.avatar || '🦊'
-        }));
-
-        setExistingStudents(mappedStudents);
-        return;
-      }
-
-      // Map RPC results
-      const mappedStudents = (data || []).map((s: any) => ({
-        id: s.id,
-        displayName: s.display_name,
-        xp: s.xp || 0,
-        status: s.status,
-        avatar: s.avatar || '🦊'
-      }));
-
-      setExistingStudents(mappedStudents);
-    } catch (error) {
-      console.error('Error loading students:', error);
-      setError("Could not load students. Please check the class code.");
-      setExistingStudents([]);
-    }
-  };
-
-  const handleLoginAsStudent = async (studentId: string) => {
-    // Look up the student's full profile including auth_uid
-    try {
-      // Use RPC to bypass RLS for login
-      const { data: rpcResult, error: rpcError } = await supabase
-        .rpc('get_student_profile_for_login', {
-          p_student_id: studentId
-        });
-
-
-      // Handle RPC error (function might not exist yet)
-      if (rpcError) {
-        const { data: profile, error } = await supabase
-          .from('student_profiles')
-          .select('*')
-          .eq('id', studentId)
-          .single();
-
-
-        if (error) {
-          setError("Could not load student profile. Please try again.");
-          return;
-        }
-
-        if (!profile) {
-          setError("Student profile not found. Please ask your teacher to approve your account.");
-          return;
-        }
-
-        // Process profile from fallback
-        await processStudentProfile(profile);
-        return;
-      }
-
-      // Get first result from RPC
-      const profile = rpcResult && rpcResult.length > 0 ? rpcResult[0] : null;
-
-      if (!profile) {
-        setError("Student profile not found. Please ask your teacher to approve your account.");
-        return;
-      }
-
-      // Process profile from RPC
-      await processStudentProfile(profile);
-    } catch (error) {
-      console.error('Error logging in as student:', error);
-      setError("Could not log in. Please try again.");
-    }
-  };
-
-  // Helper function to process student profile and log them in
-  const processStudentProfile = async (profile: any) => {
-
-    // Check approval status — show the waiting screen instead of a generic error
-    if (profile.status === 'pending_approval') {
-      showPendingApproval({
-        name: profile.display_name || '',
-        classCode: profile.class_code || '',
-        profileId: profile.id,
-      });
-      setLoading(false);
-      return;
-    }
-    if (profile.status === 'rejected') {
-      setError("Your account was not approved. Please contact your teacher.");
-      return;
-    }
-
-    if (!profile.auth_uid) {
-      setError("Student account not fully set up. Please ask your teacher to approve your account.");
-      return;
-    }
-
-    // SECURITY: The caller's live Supabase session must belong to THIS
-    // student's auth_uid. Without this check, anyone who knows a class
-    // code could tap a name in the "Is that you?" list and the app
-    // would happily create a new users row with that student's
-    // display_name/xp/badges — letting them see the victim's dashboard
-    // and appear under their name in the class leaderboard.
-    //
-    // Previous revisions:
-    //   * Auto-created a fresh anonymous session on mismatch (shipped
-    //     2026-04 and caused the impersonation hole reported on
-    //     2026-04-21). REVERTED — never silently create a session
-    //     tied to someone else's profile.
-    //   * Showed "Just tap your name below to sign back in 👋" with no
-    //     recovery path. UX was confusing but at least blocked
-    //     impersonation.
-    //
-    // Current behaviour: if the session is missing or doesn't match,
-    // refuse the login and point the student at OAuth / teacher help.
-    // Re-authentication for anonymous students who lost their session
-    // is an open problem — the only safe paths today are Google
-    // sign-in or a teacher-mediated reset.
-    const { data: { session: liveSession } } = await supabase.auth.getSession();
-    const liveAuthUid = liveSession?.user?.id ?? null;
-    if (!liveAuthUid || liveAuthUid !== profile.auth_uid) {
-      console.warn('[processStudentProfile] blocked login — session/profile auth_uid mismatch', {
-        profileAuthUid: profile.auth_uid,
-        sessionAuthUid: liveAuthUid,
-      });
-      setError(
-        "Can't sign you in as this student on this device. " +
-        "Try Google sign-in, or ask your teacher to reset your account."
-      );
-      return;
-    }
-    const studentUid = liveAuthUid;
-
-    // Create user data with the profile's auth_uid
-    const userData: AppUser = {
-      uid: studentUid, // Use profile auth_uid directly
-      displayName: profile.display_name,
-      email: profile.email,
-      role: 'student',
-      classCode: profile.class_code,
-      avatar: profile.avatar || '🦊',
-      badges: profile.badges || [],
-      xp: profile.xp || 0,
-      isGuest: false
-    };
-
-
-    setUser(userData);
-
-    // Ensure user record exists in users table (for XP/streak tracking)
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select(USER_COLUMNS)
-      .eq('uid', studentUid)
-      .maybeSingle();
-
-    if (checkError) {
-      trackAutoError(checkError, 'Student user record check failed during signup');
-    } else if (!existingUser) {
-      // Create user record if it doesn't exist
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          uid: studentUid,
-          email: profile.email,
-          display_name: profile.display_name,
-          role: 'student',
-          class_code: profile.class_code,
-          avatar: profile.avatar || '🦊',
-          badges: profile.badges || [],
-          xp: profile.xp || 0,
-          streak: 0,
-        });
-
-      if (insertError) {
-        trackAutoError(insertError, 'Failed to create student user record during signup');
-      } else {
-      }
-    } else {
-      // Update existing user record with latest profile data
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          avatar: profile.avatar || '🦊',
-          badges: profile.badges || [],
-          xp: profile.xp || existingUser.xp
-        })
-        .eq('uid', studentUid);
-
-      if (updateError) {
-        trackAutoError(updateError, 'Failed to update student user record during login');
-      }
-    }
-
-    // Fetch class data and assignments using RPC to bypass RLS
-    const code = profile.class_code;
-
-    // Use RPC to get class data (bypasses RLS)
-    const { data: classResult, error: classError } = await supabase
-      .rpc('get_class_by_code', {
-        p_class_code: code
-      });
-
-
-    if (classError) {
-      console.error('Class RPC error:', classError);
-      // Fallback: try direct query (might fail due to RLS, but worth trying)
-      const { data: fallbackClassRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', code);
-
-      if (fallbackClassRows && fallbackClassRows.length > 0) {
-        await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
-      } else {
-        setStudentAssignments([]);
-        setStudentProgress([]);
-      }
-    } else if (classResult && classResult.length > 0) {
-      const classData = mapClass(classResult[0]);
-      await loadAssignmentsForClass(classData, code, profile.auth_uid);
-    } else {
-      console.warn('No class found for code:', code);
-      setStudentAssignments([]);
-      setStudentProgress([]);
-    }
-
-    setBadges(profile.badges || []);
-    setXp(profile.xp || 0);
-    setStreak(0); // Will fetch from DB later
-    setView("student-dashboard");
-  };
-
-  // Helper to load assignments for a class
-  const loadAssignmentsForClass = async (classData: any, code: string, studentUid: string) => {
-
-    // Use RPC to bypass RLS for assignments
-    const { data: assignResult, error: assignError } = await supabase
-      .rpc('get_assignments_for_class', {
-        p_class_id: classData.id
-      });
-
-    if (assignError) {
-      // Surface the real PostgREST error body — the plain 400 line in
-      // the network tab says nothing; the body has the actual cause
-      // (function overload missing, column renamed, auth gate, etc.).
-      console.error('[get_assignments_for_class] RPC failed:', {
-        code: assignError.code,
-        message: assignError.message,
-        details: assignError.details,
-        hint: assignError.hint,
-        classId: classData.id,
-      });
-    }
-
-    // Progress still uses direct query (should work for student's own progress)
-    const { data: progressResult } = await supabase
-      .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
-
-
-    if (assignError) {
-      console.error('Assignments RPC error:', assignError);
-      // Fallback to direct query
-      const { data: fallbackData } = await supabase
-        .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
-      setStudentAssignments((fallbackData ?? []).map(mapAssignment));
-    } else {
-      setStudentAssignments((assignResult ?? []).map(mapAssignment));
-    }
-
-    setStudentProgress((progressResult ?? []).map(mapProgress));
-  };
-
-  const handleNewStudentSignup = async () => {
-    const trimmedName = studentLoginName.trim().slice(0, 30);
-    const trimmedCode = studentLoginClassCode.trim().toUpperCase();
-
-    if (!trimmedName || !trimmedCode) {
-      setError("Please enter both class code and your name.");
-      return;
-    }
-
-    // Guard: prevent onAuthStateChange → restoreSession from interfering
-    // while this function owns the login flow.  signInAnonymously() fires
-    // SIGNED_IN, and without this guard restoreSession would run (can't
-    // find the user row yet) and redirect to landing.
-    manualLoginInProgress.current = true;
-
-    try {
-      // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
-      const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
-      if (signInError || !signInData.session) {
-        setError("Could not create account. Please try again.");
-        console.error('Sign-in error:', signInError);
-        return;
-      }
-
-      // Step 2: Use the RPC function which has SECURITY DEFINER to bypass RLS
-      const { data: result, error: rpcError } = await supabase
-        .rpc('get_or_create_student_profile', {
-          p_class_code: trimmedCode,
-          p_display_name: trimmedName,
-          p_avatar: studentAvatar
-        });
-
-
-      if (rpcError) throw rpcError;
-
-      if (!result || result.length === 0) {
-        throw new Error('Failed to create student profile');
-      }
-
-      const profile = result[0].profile;
-
-      if (profile.status === 'approved') {
-        // Already approved, just log them in
-        handleLoginAsStudent(profile.id);
-        return;
-      } else if (profile.status === 'pending_approval') {
-        // Navigate to a dedicated waiting screen instead of just a toast.
-        // The student needs to understand what's happening and what to do next.
-        const info = {
-          name: trimmedName,
-          classCode: trimmedCode,
-          profileId: profile.id,
-        };
-        setPendingApprovalInfo(info);
-        setView("student-pending-approval");
-
-        // Persist so the pending screen survives page refresh
-        try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
-
-        // Clear form
-        setStudentLoginName("");
-        setStudentLoginClassCode("");
-        setStudentAvatar("🦊");
-        setExistingStudents([]);
-        setShowNewStudentForm(false);
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      setError("Could not create account. Please try again.");
-    } finally {
-      manualLoginInProgress.current = false;
-    }
-  };
-
-  // --- OAUTH HANDLERS ---
-  const handleOAuthTeacherDetected = async (_email: string) => {
-    try {
-      // The onAuthStateChange → restoreSession path already handles teacher
-      // login (including auto-creating the users row for allowed Google
-      // sign-ins).  Just close the OAuth UI and let it finish.
-      setIsOAuthCallback(false);
-      setLoading(true);
-      // If restoreSession already ran and set the view, we're done.
-      // If not, the next onAuthStateChange event will trigger it.
-    } catch (error) {
-      console.error('Teacher detection error:', error);
-      setError('Could not load teacher profile.');
-    }
-  };
-
-  const handleOAuthStudentDetected = async (email: string) => {
-    try {
-      // Load student profile from student_profiles table
-      const { data: studentData, error } = await supabase
-        .from('student_profiles')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (error || !studentData) {
-        setError('Student profile not found. Please sign up again.');
-        return;
-      }
-
-      if (studentData.status !== 'active' && studentData.status !== 'approved') {
-        showPendingApproval({
-          name: studentData.display_name || '',
-          classCode: studentData.class_code || '',
-          profileId: studentData.id,
-        });
-        return;
-      }
-
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      if (!supabaseUser) {
-        setError('Just tap your name below to sign back in 👋');
-        return;
-      }
-
-      // Class-switch detection: same logic as the restoreSession path.
-      // If the student entered a class code that differs from their
-      // current one and it's a real class, show the switch modal instead
-      // of logging them into their existing class.
-      const intendedCode = readIntendedClassCode();
-      const intendedNorm = intendedCode?.trim().toUpperCase() || null;
-      const currentNorm = studentData.class_code?.trim().toUpperCase() || '';
-      if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
-        // Same RLS workaround as above — use the SECURITY DEFINER RPC so
-        // non-member students can still verify the target class exists.
-        const { data: intendedClassRows, error: lookupErr } = await supabase
-          .rpc('class_lookup_by_code', { p_code: intendedNorm });
-        if (lookupErr) {
-          // Surface the real reason instead of the generic "not found"
-          // banner. Common causes: migration 20260428 requires auth but
-          // auth.uid() was null mid-OAuth; rate limit hit; migration
-          // 20260426 never applied so the RPC doesn't exist server-side.
-          console.error('[OAuth class switch] RPC failed:', lookupErr);
-          setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
-          clearIntendedClassCode();
-        } else if (intendedClassRows && intendedClassRows.length > 0) {
-          const { data: currentClassRows } = await supabase
-            .from('classes').select('code, name').eq('code', studentData.class_code);
-          setIsOAuthCallback(false);
-          // Populate in-memory user so dashboard can render as the modal's
-          // backdrop rather than flashing landing/loader.
-          const switchUser: AppUser = {
-            uid: supabaseUser.id,
-            email: studentData.email,
-            displayName: studentData.display_name || email.split('@')[0],
-            role: 'student',
-            classCode: studentData.class_code,
-            xp: studentData.xp || 0,
-            avatar: studentData.avatar,
-            createdAt: studentData.created_at,
-          };
-          setUser(switchUser);
-          setPendingClassSwitch({
-            fromCode: studentData.class_code,
-            fromClassName: currentClassRows?.[0]?.name ?? null,
-            toCode: intendedNorm,
-            toClassName: intendedClassRows[0].name ?? null,
-            supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
-          });
-          setView("student-dashboard");
-          clearIntendedClassCode();
-          return;
-        } else if (!lookupErr) {
-          // RPC succeeded with zero rows — the class genuinely doesn't
-          // exist. Show the standard not-found banner. (Error branch
-          // already set its own more informative banner above.)
-          setClassNotFoundIntent(intendedNorm);
-          clearIntendedClassCode();
-        }
-      } else if (intendedCode) {
-        clearIntendedClassCode();
-      }
-
-      // Ensure a users table row exists for this OAuth student (restoreSession needs it)
-      const studentUser: AppUser = {
-        uid: supabaseUser.id,
-        email: studentData.email,
-        displayName: studentData.display_name || email.split('@')[0],
-        role: 'student',
-        classCode: studentData.class_code,
-        xp: studentData.xp || 0,
-        avatar: studentData.avatar,
-        createdAt: studentData.created_at,
-      };
-      await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-
-      setUser(studentUser);
-      setIsOAuthCallback(false);
-
-      // Load class assignments and progress
-      if (studentData.class_code) {
-        const { data: classRows } = await supabase
-          .from('classes').select(CLASS_COLUMNS).eq('code', studentData.class_code);
-        if (classRows && classRows.length > 0) {
-          const classData = mapClass(classRows[0]);
-          const [assignResult, progressResult] = await Promise.all([
-            supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-            supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
-          ]);
-          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-          setStudentProgress((progressResult.data ?? []).map(mapProgress));
-        }
-      }
-
-      setBadges(studentUser.badges || []);
-      setXp(studentUser.xp ?? 0);
-      setStreak(studentUser.streak ?? 0);
-      setView("student-dashboard");
-      setLoading(false);
-    } catch (error) {
-      console.error('Student detection error:', error);
-      setError('Could not load student profile.');
-    }
-  };
-
-  const handleOAuthNewUser = (email: string, authUid: string) => {
-    setOauthEmail(email);
-    setOauthAuthUid(authUid);
-    setShowOAuthClassCode(true);
-    setIsOAuthCallback(false);
-    setLoading(false);
-  };
-
-  // Teacher Approval System
-  const loadPendingStudents = async () => {
-    // Guard: the query below must be scoped by the teacher's class codes,
-    // both as a belt-and-suspenders against RLS misconfig and so we can
-    // render the class name next to each pending student. If classes
-    // haven't loaded yet (common race on fresh teacher dashboard mount),
-    // clear the list and bail — the effect below will re-invoke us once
-    // classes populates.
-    if (classes.length === 0) {
-      setPendingStudents([]);
-      return;
-    }
-    try {
-      const classCodes = classes.map(c => c.code);
-      const { data, error } = await supabase
-        .from('student_profiles')
-        .select(`
-          id,
-          display_name,
-          class_code,
-          joined_at
-        `)
-        .eq('status', 'pending_approval')
-        .in('class_code', classCodes)
-        .order('joined_at', { ascending: false });
-
-      if (error) throw error;
-
-      setPendingStudents((data || []).map(s => {
-        // Find class name from local classes state
-        const classObj = classes.find(c => c.code === s.class_code);
-        return {
-          id: s.id,
-          displayName: s.display_name,
-          classCode: s.class_code,
-          className: classObj?.name || s.class_code,
-          joinedAt: s.joined_at
-        };
-      }));
-    } catch (error) {
-      // Surface instead of swallow — teachers reported seeing "All caught
-      // up!" even when students were waiting. If RLS blocks the query or
-      // the network dies, the teacher needs to know there's a problem
-      // rather than silently seeing an empty list.
-      trackAutoError(error, 'Failed to load pending students list');
-      const message = error instanceof Error ? error.message : 'unknown error';
-      showToast(`Couldn't load pending students: ${message}`, 'error');
-    }
-  };
-
-  const handleApproveStudent = async (studentId: string, displayName: string) => {
-    try {
-      // Call the approve_student function
-      const { error } = await supabase.rpc('approve_student', {
-        p_profile_id: studentId
-      });
-
-
-      if (error) {
-        console.error('RPC error:', error);
-        throw error;
-      }
-
-      // Refresh the list
-      await loadPendingStudents();
-
-      // Show success
-      showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
-    } catch (error) {
-      console.error('Error approving student:', error);
-      showToast("Could not approve student. Please try again.", "error");
-    }
-  };
-
-  const handleRejectStudent = async (studentId: string, displayName: string) => {
-    setRejectStudentModal({ id: studentId, displayName });
-  };
-
-  const confirmRejectStudent = async (studentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('student_profiles')
-        .update({ status: 'rejected' })
-        .eq('id', studentId);
-
-      if (error) throw error;
-
-      // Refresh the list
-      await loadPendingStudents();
-    } catch (error) {
-      console.error('Error rejecting student:', error);
-      showToast("Could not reject student. Please try again.", "error");
-    }
-  };
-
-
-  const awardBadge = async (badge: string) => {
-    if (!user || badges.includes(badge)) return;
-
-    const newBadges = [...badges, badge];
-    setBadges(newBadges);
-    celebrate('big');
-
-    try {
-      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error saving badge:", error);
-      setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
-    }
-  };
-  const fetchScores = async () => {
-    if (!user || user.role !== "teacher") return;
-    const now = Date.now();
-    if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-
-    // Don't mark the fetch as done if classes haven't loaded yet.
-    // Teacher dashboard load order is: setUser() → classes arrive async →
-    // Analytics view reads from allScores. If fetchScores fired before
-    // classes were populated, the old code still set lastFetchRef.current
-    // and returned with setAllScores([]), locking in an empty array for
-    // the next 10 seconds. When classes finally loaded, the retry was
-    // throttled away — so Analytics and Gradebook saw "no data" even
-    // though the DB had 100+ rows. Move the timestamp update below the
-    // classes-length guard so it only marks SUCCESSFUL fetches.
-    if (classes.length === 0) {
-      setAllScores([]);
-      setClassStudents([]);
-      return;
-    }
-
-    lastFetchRef.current.scores = now;
-
-    const codes = classes.map(c => c.code);
-    const chunks = chunkArray(codes, 30);
-    const allRows: ProgressData[] = [];
-
-    for (const chunk of chunks) {
-      const { data } = await supabase
-        .from('progress').select('id, student_name, student_uid, assignment_id, class_code, score, mode, completed_at, mistakes, avatar')
-        .in('class_code', chunk)
-        .order('completed_at', { ascending: false })
-        .limit(1000);
-      if (data) allRows.push(...data.map(mapProgress));
-    }
-
-    setAllScores(allRows);
-
-    // Derive students from the same data — avoids a separate query
-    const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    allRows.forEach(row => {
-      const key = `${row.studentName}-${row.classCode}`;
-      if (!studentMap[key] || new Date(row.completedAt) > new Date(studentMap[key].lastActive)) {
-        studentMap[key] = { name: row.studentName, classCode: row.classCode, lastActive: row.completedAt };
-      }
-    });
-    setClassStudents(Object.values(studentMap));
-    lastFetchRef.current.students = now;
-  };
+  // Idempotent badge grant — used by the save-score milestone checks.
+  // Hook encapsulates the includes-guard + celebrate + DB upsert.
+  const awardBadge = useAwardBadge({ user, badges, setBadges, setSaveError });
 
   // Re-run fetchScores when classes transitions from 0 → non-zero while the
   // teacher is viewing Analytics or Gradebook. Without this, clicking the
@@ -3931,15 +2511,6 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes.length, view, user?.role]);
-
-  const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
-    // Use optional chaining on user state, but don't early return - the caller ensures valid context
-    setTeacherAssignmentsLoading(true);
-    const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
-    setTeacherAssignments((data ?? []).map(mapAssignment));
-    setTeacherAssignmentsLoading(false);
-  };
 
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
@@ -4012,29 +2583,10 @@ export default function App() {
 
   // Voice selection + caching + voiceschanged listener are bundled in
   // a hook so this component doesn't hold browser-API plumbing.
-  const { getVoice } = useSpeechVoiceManager();
-
-  const speak = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-
-    // Clean up text for better pronunciation (remove grammatical markers)
-    const cleanText = text
-      .replace(/\s*\([nva]\)\s*/gi, ' ')  // Remove (n), (v), (adj)
-      .replace(/\s*\([^)]*?\)\s*/g, ' ')   // Remove other parenthetical content
-      .replace(/^['"]+|['"]+$/g, '')        // Remove quotes
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Speak the whole phrase smoothly - no word-by-word pauses
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "en-US";
-    utterance.rate = 0.7;  // Slower for clarity (0.7x)
-    utterance.pitch = 1.0;  // Neutral pitch
-    const voice = getVoice();
-    if (voice) utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
-  };
+  // speak() is provided by the voice manager — same wrapper as before
+  // (cancel-then-speak with parenthetical cleanup), just owned by the
+  // hook so this file doesn't carry browser-API plumbing.
+  const { speak } = useSpeechVoiceManager();
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder" && gameMode !== "matching") {
@@ -4118,58 +2670,6 @@ export default function App() {
     }
   }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
 
-  const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
-    if (fromAvailable) {
-      setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setBuiltSentence(prev => [...prev, word]);
-    } else {
-      setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setAvailableWords(prev => [...prev, word]);
-    }
-  };
-
-  const handleSentenceCheck = () => {
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    const target = validSentences[sentenceIndex]?.trim().toLowerCase();
-    const built = builtSentence.join(" ").toLowerCase();
-    if (built === target) {
-      setSentenceFeedback("correct");
-      celebrate('small');
-      speak(validSentences[sentenceIndex]);
-      const newScore = score + 20;
-      setScore(newScore);
-      emitScoreUpdate(newScore);
-
-      // Use feedbackTimeoutRef for consistent auto-advance
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        const next = sentenceIndex + 1;
-        if (next >= validSentences.length) {
-          setIsFinished(true);
-          saveScore(newScore);
-        } else {
-          setSentenceIndex(next);
-          setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
-          setBuiltSentence([]);
-          setSentenceFeedback(null);
-          // Speak the next sentence so students know what to build
-          setTimeout(() => speak(validSentences[next]), 400);
-        }
-      }, 1800);
-    } else {
-      setSentenceFeedback("wrong");
-
-      // Use feedbackTimeoutRef for consistent feedback clearing
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        setBuiltSentence([]);
-        setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean)));
-        setSentenceFeedback(null);
-      }, 1200);
-    }
-  };
-
   // Full guest exit cleanup. Called whenever a Quick Play student
   // explicitly leaves the game (Exit button on mode picker, header
   // Back button, finish-screen "Exit Quick Play", session-end overlay).
@@ -4189,676 +2689,66 @@ export default function App() {
     try { await supabase.auth.signOut(); } catch {}
   };
 
-  const handleExitGame = () => {
-    setIsFinished(false);
-    setCurrentIndex(0);
-    setScore(0);
-    setMistakes([]);
-    setWordAttemptBatch([]);
-    setFeedback(null);
-    setSpellingInput("");
-    setMatchedIds([]);
-    setSelectedMatch(null);
-    setIsFlipped(false);
-    setRevealedLetters(0);
-    setSentenceIndex(0);
-    setAvailableWords([]);
-    setBuiltSentence([]);
-    setSentenceFeedback(null);
-    setHiddenOptions([]);
-
-    if (user?.role === "teacher") {
-      setView("teacher-dashboard");
-    } else if (user?.role === "student") {
-      if (showModeSelection) {
-        setView("student-dashboard");
-      } else {
-        setShowModeSelection(true);
-        setFeedback(null); // Clear feedback when showing mode selection
-      }
-    } else if (user?.isGuest) {
-      if (showModeSelection) {
-        // Already on mode selection — second Exit tap leaves Quick Play
-        // entirely. cleanupQuickPlayGuest deletes the student's progress
-        // rows (so they disappear from the teacher's podium) and signs
-        // out the anon Supabase session (so re-entering from the same
-        // phone gets a fresh state instead of restoring the old one
-        // and failing the "name already taken" guard).
-        cleanupSessionData();
-        cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
-        setQuickPlayActiveSession(null);
-        setQuickPlayStudentName("");
-        setUser(null);
-        setView("public-landing");
-      } else {
-        setShowModeSelection(true);
-        setFeedback(null); // Clear feedback when showing mode selection
-      }
-    } else {
-      setUser(null);
-      setView("public-landing");
-    }
-  };
-
-  const saveScore = async (scoreOverride?: number) => {
-    const finalScore = scoreOverride !== undefined ? scoreOverride : score;
-    if (!user) return;
-    setIsSaving(true);
-    setSaveError(null);
-
-    // Quick Play (guest) mode - save progress with session UUID as identifier
-    if (user.isGuest && quickPlayActiveSession) {
-      try {
-        // Use the actual Supabase auth UID (not the guest app UID) so RLS allows the insert
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        const authUid = authSession?.user?.id || user.uid;
-        const progress: Omit<ProgressData, "id"> = {
-          studentName: user.displayName,
-          studentUid: authUid,
-          assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
-          classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.max(0, finalScore),
-          mode: gameMode,
-          completedAt: new Date().toISOString(),
-          mistakes: mistakes,
-          avatar: user.avatar || "\uD83E\uDD8A"
-        };
-
-        // Optimistic save-and-queue.  Previously we awaited the INSERT
-        // and showed a red 'Couldn't save your score' toast on failure;
-        // on flaky classroom Wi-Fi that fired often and shook students'
-        // trust in the game.  Now we drop the row into a local retry
-        // queue and let the background flusher (installQuickPlayQueue-
-        // Flusher, wired on app mount) push it to Supabase whenever the
-        // network is cooperating.  Student sees the mode credited
-        // instantly; no error toast ever fires for them.  If the send
-        // really can't complete after 20 retries we give up silently —
-        // the alternative would be nagging about something they can't
-        // act on.
-        enqueueQuickPlaySave({
-          student_name: progress.studentName,
-          student_uid: progress.studentUid || authUid,
-          assignment_id: progress.assignmentId,
-          class_code: progress.classCode,
-          score: progress.score,
-          mode: progress.mode,
-          completed_at: progress.completedAt,
-          mistakes: Array.isArray(mistakes) ? mistakes : [],
-          avatar: progress.avatar || '🦊',
-        });
-        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-
-        setIsSaving(false);
-        return;
-      } catch (err) {
-        // Only reachable if localStorage itself is broken (private
-        // browsing, quota exhausted).  Don't surface — the UI has
-        // already credited the mode; a toast here would just confuse.
-        console.error('[Quick Play] enqueue failed:', err);
-        setIsSaving(false);
-        return;
-      }
-    }
-
-    // Regular assignment mode
-    if (!activeAssignment) return;
-
-    // Anti-farm round cap — new semantics: 1 round = all allowed modes
-    // once; after MAX_ASSIGNMENT_ROUNDS (3) full rounds the assignment
-    // locks.  Total allowed plays = 3 × allowedModes.length.  Tracked
-    // client-side in localStorage per (uid, assignmentId) — see
-    // src/hooks/useAssignmentPlays.ts.  UI lock on the dashboard is the
-    // primary gate; this is belt-and-suspenders.
-    const allowedModesCount = (activeAssignment.allowedModes ?? []).filter(m => m !== 'flashcards').length || 1;
-    // Uses max(DB play_count sum, localStorage cache) so the cap is
-    // honoured across devices but still responds instantly to a fresh
-    // local play before the server round-trips.
-    const playsForThis = resolveAssignmentPlays(user?.uid, activeAssignment.id, studentProgress);
-    const replayLocked = isAssignmentLocked(playsForThis, allowedModesCount);
-
-    // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = gameWords.length * 10;
-    let cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
-
-    // Lucky Charm: forgive the student's first wrong answer (= +10
-    // points up to maxPossible) by consuming one shield from inventory.
-    // Only worth burning if the student actually got something wrong.
-    if (cappedScore < maxPossible && boosters.consumeLuckyCharm()) {
-      const bumped = Math.min(maxPossible, cappedScore + 10);
-      showToast(`🍀 Lucky Charm used! Score ${cappedScore} → ${bumped}`, 'success');
-      cappedScore = bumped;
-    }
-
-    // Apply active booster multipliers — xp_booster (2×) +
-    // weekend_warrior (2× on Sat/Sun) stack multiplicatively.  Only
-    // applies to the actual XP grant, not to the score record itself.
-    const boosterMult = boosters.xpMultiplier();
-
-    // If locked, still record the play for stats but grant zero XP.
-    const baseEarned = replayLocked ? 0 : cappedScore;
-    const xpEarned = Math.round(baseEarned * boosterMult);
-    if (replayLocked) {
-      showToast(`Assignment locked — you've completed all ${MAX_ASSIGNMENT_ROUNDS} rounds. Try another assignment.`, 'info');
-    } else if (boosterMult > 1) {
-      showToast(`${boosterMult}× XP active! ${cappedScore} → ${xpEarned} XP`, 'success');
-    }
-    const newXp = xp + xpEarned;
-    // Streak handling — try to consume a Streak Freeze before resetting.
-    // Lets students keep their streak after a single bad day if they've
-    // bought the shield from the shop.
-    let newStreak: number;
-    if (cappedScore >= 80) {
-      newStreak = streak + 1;
-    } else if (boosters.tryConsumeStreakFreeze()) {
-      newStreak = streak; // freeze consumed — preserve streak
-      showToast('🧊 Streak Freeze used — your streak is safe!', 'success');
-    } else {
-      newStreak = 0;
-    }
-    setXp(newXp);
-    setStreak(newStreak);
-
-    // Advance the retention weekly-challenge counter — any completed
-    // game counts toward the student's weekly-play target.
-    retention.recordPlay();
-
-    // Record this completed game against the assignment's round cap.
-    // Increments even when locked (so the total stays honest for
-    // display) but zero XP was granted above if locked.
-    if (user?.uid) {
-      incrementAssignmentPlays(user.uid, activeAssignment.id);
-    }
-
-    // OPTIMIZED: Queue badge checks instead of immediate execution
-    // Badges are cached server-side, so client checks are fast
-    if (cappedScore === 100 && !badges.includes("🎯 Perfect Score")) queueSaveOperation(() => awardBadge("🎯 Perfect Score"));
-    if (newStreak >= 5 && !badges.includes("🔥 Streak Master")) queueSaveOperation(() => awardBadge("🔥 Streak Master"));
-    if (newXp >= 500 && !badges.includes("💎 XP Hunter")) queueSaveOperation(() => awardBadge("💎 XP Hunter"));
-
-    // Streak milestone celebrations
-    if (STREAK_CELEBRATION_MILESTONES.includes(newStreak)) {
-      celebrate('big');
-      showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
-    }
-
-    // STRUCTURE PROGRESSION — report the game result to the hook so it
-    // can evaluate whether a new piece of the student's creation has
-    // been earned (mastered_5_words / perfect_assignment / streak_7).
-    // Returns the list of newly-unlocked part keys; we celebrate each
-    // one with a toast + confetti + bounce-animation flag.
-    const unlockedParts = structure.reportGameResult({
-      score: cappedScore,
-      newStreak,
-      prevStreak: streak,
-    });
-    if (unlockedParts.length > 0) {
-      setCelebrateStructureKeys(unlockedParts);
-      celebrate('big');
-      showToast(`✨ New piece unlocked! Check your ${structure.kind ?? 'creation'}.`, 'success');
-      // Clear the celebration flag after 4s so a subsequent unlock
-      // still triggers a fresh bounce rather than being suppressed.
-      setTimeout(() => setCelebrateStructureKeys([]), 4000);
-    }
-
-    // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
-    // For regular students, we try to get the session UID
-    const { data: { session } } = await supabase.auth.getSession();
-    const sessionUid = session?.user?.id;
-
-    // Determine the student UID to use for progress tracking
-    // If we have a session, check for a mapped profile UID (for anonymous sessions)
-    // Otherwise, use user.uid directly (which is profile.auth_uid for approved students)
-    let studentUid: string;
-    if (sessionUid) {
-      const mappedUid = localStorage.getItem(`vocaband_student_${sessionUid}`);
-      studentUid = mappedUid || sessionUid;
-    } else {
-      studentUid = user.uid;
-    }
-
-    const progress: Omit<ProgressData, "id"> = {
-      studentName: user.displayName,
-      studentUid: studentUid,
-      assignmentId: activeAssignment.id,
-      classCode: user.classCode || "",
-      score: cappedScore,
-      mode: gameMode,
-      completedAt: new Date().toISOString(),
-      mistakes: mistakes,
-      avatar: user.avatar || "🦊"
-    };
-
-    // Optimistic save pattern for regular class assignments (mirrors
-    // the Kahoot-style behaviour we shipped for Quick Play).  We write
-    // local state immediately, attempt the RPC, and fall back to the
-    // background retry queue on any error — no red banner, no toast.
-    //
-    // Why no error UI: the student can't act on a network failure
-    // mid-game and they already see their score + XP update.  The
-    // flusher (installQuickPlayQueueFlusher, wired on mount) retries
-    // the save on 'online', tab refocus, and a 30s interval.  If the
-    // save ultimately can't be sent after 20 attempts we give up
-    // silently — the alternative is nagging the student about a state
-    // they can't fix.
-    //
-    // word_attempts batch is preserved: storing RPC args (rather than
-    // a raw progress row) in the queue means the retried save goes
-    // through save_student_progress and still appends word_attempts +
-    // increments play_count the same way the first attempt would.
-    const rpcArgs = {
-      p_student_name: user.displayName,
-      p_student_uid: studentUid,
-      p_assignment_id: activeAssignment.id,
-      p_class_code: user.classCode || "",
-      p_score: cappedScore,
-      p_mode: gameMode,
-      p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-      p_avatar: user.avatar || "🦊",
-      p_word_attempts: wordAttemptBatch,
-    };
-
-    // Optimistic local-state update — UI reflects the save immediately
-    // so the student never sees "saving..." spinners or error banners.
-    // If the real server-assigned id arrives later we reconcile below;
-    // if the save ends up routed through the queue it still lands
-    // eventually, and the local row will be overwritten on the next
-    // fetch with the server's version.
-    const optimisticProgress: ProgressData = {
-      id: `local-${Date.now()}`,
-      ...progress,
-    };
-    setStudentProgress(prev => {
-      const existingIndex = prev.findIndex(
-        p => p.assignmentId === activeAssignment.id
-          && p.mode === gameMode
-          && p.studentUid === studentUid
-      );
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = optimisticProgress;
-        return updated;
-      }
-      return [...prev, optimisticProgress];
-    });
-    celebrate('big');
-
-    try {
-      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', rpcArgs);
-      if (rpcError) throw rpcError;
-
-      // Reconcile the optimistic row with the server's id.
-      setStudentProgress(prev => prev.map(p =>
-        p.id === optimisticProgress.id ? { ...p, id: progressId } : p
-      ));
-
-      // XP/streak write is batched with other queued saves — cheap,
-      // non-critical to the game loop, survives a failed flush the
-      // next time it runs.
-      queueSaveOperation(async () => {
-        await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
-      });
-
-      // Clear any legacy retry key for this assignment+mode — the new
-      // save queue (enqueueAssignmentSave) uses a different storage
-      // key, so both systems can coexist while old keys drain.
-      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.removeItem(retryKey);
-    } catch (error) {
-      // Silent.  Log for dev console but never surface a banner to the
-      // student — the queue will retry in the background.
-      console.error("[assignment save] queued for retry:", error);
-      enqueueAssignmentSave(rpcArgs);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
-
-    gameDebug.logButtonClick({
-      button: 'matching_card',
-      gameMode: 'matching',
-      wordId: item.id,
-      disabled: matchedIds.includes(item.id) || isMatchingProcessing,
-      feedback: null,
-    });
-
-    if (matchedIds.includes(item.id) || isMatchingProcessing) {
-      return;
-    }
-
-    // Only pronounce when clicking English cards — Hebrew/Arabic cards
-    // should not trigger English audio (confusing for students)
-    if (item.type === 'english') {
-      const matchWord = gameWords.find(w => w.id === item.id);
-      setTimeout(() => {
-        speakWord(item.id, matchWord?.english);
-        gameDebug.logPronunciation({ wordId: item.id, word: matchWord?.english || '', method: 'manual', success: true });
-      }, 0);
-    }
-
-    if (!selectedMatch) {
-      setSelectedMatch(item);
-    } else {
-      if (selectedMatch.type !== item.type && selectedMatch.id === item.id) {
-        // Correct match - set processing flag to prevent rapid clicks
-        isProcessingRef.current = true;
-        setIsMatchingProcessing(true);
-        setMatchedIds([...matchedIds, item.id]);
-        // Record the correct match as a word attempt for mastery tracking.
-        setWordAttemptBatch(prev => [...prev, { word_id: item.id, is_correct: true }]);
-        const newScore = score + 15;
-        setScore(newScore);
-
-        emitScoreUpdate(newScore);
-
-        setSelectedMatch(null);
-
-        if (matchedIds.length + 1 === matchingPairs.length / 2) {
-          // All matched - finish game
-          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-          feedbackTimeoutRef.current = setTimeout(() => {
-            setIsFinished(true);
-            saveScore(newScore);
-            isProcessingRef.current = false;
-            setIsMatchingProcessing(false);
-          }, 500);
-        } else {
-          // Allow next match after brief delay
-          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-          feedbackTimeoutRef.current = setTimeout(() => {
-            isProcessingRef.current = false;
-            setIsMatchingProcessing(false);
-          }, 300);
-        }
-      } else {
-        // Wrong match - just change selection
-        setSelectedMatch(item);
-      }
-    }
-  };
-
-  const handleAnswer = (selectedWord: Word) => {
-
-    if (feedback) {
-      return;
-    }
-
-    if (!currentWord) {
-      console.error('[handleAnswer] ERROR - No currentWord!', { selectedWordId: selectedWord.id, gameMode, currentIndex, gameWordsCount: gameWords.length });
-      return;
-    }
-
-
-    if (selectedWord.id === currentWord.id) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 10;
-      setScore(newScore);
-
-      // Clear attempts for this word since they got it right
-      setWordAttempts(prev => {
-        const newState = { ...prev };
-        delete newState[currentWord.id];
-        return newState;
-      });
-
-      // Record the correct attempt for per-word mastery tracking.
-      setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: true }]);
-
-      emitScoreUpdate(newScore);
-
-      // Auto-skip quickly after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setHiddenOptions([]);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      // Track attempts for this word
-      const currentAttempts = (wordAttempts[currentWord.id] || 0) + 1;
-      setWordAttempts(prev => ({ ...prev, [currentWord.id]: currentAttempts }));
-
-      if (currentAttempts >= MAX_ATTEMPTS_PER_WORD) {
-        // Show the right answer after max attempts
-        setFeedback("show-answer");
-        setMistakes(prev => addUnique(prev, currentWord.id));
-        // Final incorrect attempt on this word — record for mastery tracking.
-        setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: false }]);
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          if (currentIndex < gameWords.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            setFeedback(null);
-            setHiddenOptions([]);
-            // Clear attempts for next word
-            setWordAttempts(prev => removeKey(prev, currentWord.id));
-          } else {
-            setIsFinished(true);
-            saveScore();
-          }
-        }, SHOW_ANSWER_DELAY_MS);
-      } else {
-        // Show try again with attempt count
-        setFeedback("wrong");
-        playWrong();
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          setFeedback(null);
-        }, WRONG_FEEDBACK_DELAY_MS);
-      }
-    }
-  };
-
-  const handleTFAnswer = (isTrue: boolean) => {
-
-    gameDebug.logButtonClick({
-      button: isTrue ? 'true_button' : 'false_button',
-      gameMode,
-      wordId: currentWord?.id ?? -1,
-      disabled: !!feedback,
-      feedback,
-    });
-
-    if (feedback) {
-      gameDebug.logButtonClick({
-        button: isTrue ? 'true_button' : 'false_button',
-        gameMode,
-        wordId: currentWord?.id ?? -1,
-        disabled: true,
-        feedback,
-      });
-      return;
-    }
-
-    // Guard against null/undefined tfOption
-    if (!tfOption || !currentWord) {
-      gameDebug.logError({
-        error: 'tfOption or currentWord is null',
-        context: 'handleTFAnswer',
-        details: { tfOption, currentWord },
-      });
-      return;
-    }
-
-    const isActuallyTrue = tfOption?.id === currentWord.id;
-    const isCorrect = isTrue === isActuallyTrue;
-
-    gameDebug.logAnswer({
-      gameMode,
-      wordId: currentWord.id,
-      userAnswer: isTrue,
-      correctAnswer: isActuallyTrue,
-      isCorrect,
-      willAutoSkip: isCorrect,
-    });
-
-    // Record the attempt for per-word mastery tracking.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
-
-    if (isCorrect) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 15;
-      setScore(newScore);
-
-      emitScoreUpdate(newScore);
-
-      // Auto-skip after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      gameDebug.logAutoSkip({
-        triggered: true,
-        delay: AUTO_SKIP_DELAY_MS,
-        reason: 'correct_answer',
-      });
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      setFeedback("wrong");
-      playWrong();
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-
-      gameDebug.logAutoSkip({
-        triggered: false,
-        delay: WRONG_FEEDBACK_DELAY_MS,
-        reason: 'wrong_answer_will_clear_after_delay',
-      });
-
-      // Clear feedback after delay (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        setFeedback(null);
-      }, WRONG_FEEDBACK_DELAY_MS);
-    }
-  };
-
-  const handleFlashcardAnswer = (knewIt: boolean) => {
-
-    gameDebug.logButtonClick({
-      button: knewIt ? 'flashcard_got_it' : 'flashcard_still_learning',
-      gameMode: 'flashcards',
-      wordId: currentWord?.id ?? -1,
-      disabled: false,
-      feedback,
-    });
-
-    // Set processing flag to prevent double-clicks
-    isProcessingRef.current = true;
-
-    // Record the flashcard answer for per-word mastery tracking.
-    // Flashcard "Got it" = correct, "Still learning" = incorrect.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: knewIt }]);
-
-    let currentScore = score;
-    if (knewIt) {
-      currentScore = score + 5;
-      setScore(currentScore);
-      emitScoreUpdate(currentScore);
-    } else {
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-    }
-
-    // Auto-advance to next word with brief delay for visual feedback
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    feedbackTimeoutRef.current = setTimeout(() => {
-      if (currentIndex < gameWords.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        setIsFlipped(false);
-        isProcessingRef.current = false;
-      } else {
-        setIsFinished(true);
-        saveScore(currentScore);
-      }
-    }, 400); // Brief delay for user to see their choice registered
-  };
-
-  const handleSpellingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    gameDebug.logButtonClick({
-      button: 'spelling_submit',
-      gameMode: 'spelling',
-      wordId: currentWord?.id ?? -1,
-      disabled: !!feedback,
-      feedback,
-    });
-
-    if (feedback) {
-      return;
-    }
-
-
-    const isCorrect = isAnswerCorrect(spellingInput, currentWord.english);
-
-    gameDebug.logAnswer({
-      gameMode: 'spelling',
-      wordId: currentWord.id,
-      userAnswer: spellingInput,
-      correctAnswer: currentWord.english,
-      isCorrect,
-      willAutoSkip: isCorrect,
-    });
-
-    // Record the spelling attempt for per-word mastery tracking.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
-
-    if (isCorrect) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 20;
-      setScore(newScore);
-
-      emitScoreUpdate(newScore);
-
-      gameDebug.logAutoSkip({
-        triggered: true,
-        delay: AUTO_SKIP_DELAY_MS,
-        reason: 'correct_spelling',
-      });
-
-      // Use feedbackTimeoutRef for consistent auto-advance
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setSpellingInput("");
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      setFeedback("wrong");
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-      // Use feedbackTimeoutRef for consistent feedback clearing
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
-    }
-  };
+  // Game-finish handlers (saveScore + handleExitGame), extracted into a
+  // dedicated hook. saveScore in particular is large — anti-farm cap,
+  // booster math, streak handling, badge checks, optimistic save with
+  // retry queue — and was crowding App.tsx. Behaviour unchanged.
+  const { saveScore, handleExitGame } = useGameFinish({
+    user,
+    score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
+    quickPlayActiveSession,
+    quickPlayV2: QUICKPLAY_V2,
+    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+    xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
+    setIsSaving, setSaveError, setQuickPlayCompletedModes,
+    retention, boosters,
+    showToast, awardBadge, queueSaveOperation,
+    setView, setUser, setIsFinished, setCurrentIndex, setScore, setMistakes,
+    setWordAttemptBatch, setFeedback, setSpellingInput, setMatchedIds,
+    setSelectedMatch, setIsFlipped, setRevealedLetters, setSentenceIndex,
+    setAvailableWords, setBuiltSentence, setSentenceFeedback, setHiddenOptions,
+    showModeSelection, setShowModeSelection,
+    // App's quickPlayActiveSession is wider than the hook needs; the
+    // hook only sets it to null on exit, so the cast is sound.
+    setQuickPlayActiveSession: setQuickPlayActiveSession as React.Dispatch<React.SetStateAction<{ id: string; sessionCode: string; [k: string]: unknown } | null>>,
+    setQuickPlayStudentName,
+    cleanupSessionData, cleanupQuickPlayGuest,
+  });
+
+  // Game-mode handlers, extracted so App.tsx doesn't carry the full
+  // weight of the per-mode answer logic. Same behavior as the inline
+  // versions; the hook just owns the implementation now.
+  //
+  // Must be called AFTER `saveScore` and `emitScoreUpdate` are defined
+  // (the hook closes over them as callbacks), and BEFORE any JSX that
+  // wires the destructured handlers as props.
+  const {
+    handleSentenceWordTap,
+    handleSentenceCheck,
+    handleMatchClick,
+    handleAnswer,
+    handleTFAnswer,
+    handleFlashcardAnswer,
+    handleSpellingSubmit,
+  } = useGameModeActions({
+    score, setScore, currentIndex, setCurrentIndex, setIsFinished,
+    gameWords, currentWord, gameMode,
+    feedback, setFeedback, mistakes, setMistakes, setHiddenOptions,
+    wordAttempts, setWordAttempts, setWordAttemptBatch,
+    tfOption,
+    spellingInput, setSpellingInput,
+    setIsFlipped,
+    selectedMatch, setSelectedMatch,
+    matchedIds, setMatchedIds,
+    isMatchingProcessing, setIsMatchingProcessing,
+    matchingPairs,
+    activeAssignment, sentenceIndex, setSentenceIndex,
+    availableWords, setAvailableWords, builtSentence, setBuiltSentence,
+    setSentenceFeedback,
+    feedbackTimeoutRef, isProcessingRef,
+    emitScoreUpdate, saveScore,
+    speak, speakWord, playWrong,
+  });
 
   // Global cookie banner — renders on top of ANY view until accepted
   // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
@@ -4907,6 +2797,22 @@ export default function App() {
     goBack,
     onPublicNavigate: handlePublicNavigate,
     onTeacherOAuth: () => {
+      // Stamp the user's intent BEFORE the Google redirect so we can
+      // honour it on the way back.  Without this, "Log in as Teacher"
+      // and "Sign in with Google" on the student page fire the same
+      // OAuth flow — and restoreSession then routes based purely on
+      // whatever role exists in the users table for that email.  If
+      // the Google account has a student profile, the teacher button
+      // silently logs you in as the student.  Not good.
+      //
+      // After OAuth returns, restoreSession reads this flag and will
+      // refuse to complete login when the intent is 'teacher' but the
+      // found profile is not a teacher — the user sees an error and
+      // stays signed out instead of being dropped into the wrong role.
+      try {
+        sessionStorage.setItem('oauth_intended_role', 'teacher');
+        sessionStorage.setItem('oauth_intended_role_at', String(Date.now()));
+      } catch { /* storage unavailable — fall through, flag absent = legacy behavior */ }
       supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },
@@ -4939,14 +2845,6 @@ export default function App() {
           setError={setError}
           studentLoginClassCode={studentLoginClassCode}
           setStudentLoginClassCode={setStudentLoginClassCode}
-          studentLoginName={studentLoginName}
-          setStudentLoginName={setStudentLoginName}
-          existingStudents={existingStudents}
-          setExistingStudents={setExistingStudents}
-          showNewStudentForm={showNewStudentForm}
-          setShowNewStudentForm={setShowNewStudentForm}
-          studentAvatar={studentAvatar}
-          setStudentAvatar={setStudentAvatar}
           isOAuthCallback={isOAuthCallback}
           setIsOAuthCallback={setIsOAuthCallback}
           showOAuthClassCode={showOAuthClassCode}
@@ -4958,9 +2856,6 @@ export default function App() {
           handleOAuthTeacherDetected={handleOAuthTeacherDetected}
           handleOAuthStudentDetected={handleOAuthStudentDetected}
           handleOAuthNewUser={handleOAuthNewUser}
-          handleLoginAsStudent={handleLoginAsStudent}
-          handleNewStudentSignup={handleNewStudentSignup}
-          loadStudentsInClass={loadStudentsInClass}
           cookieBannerOverlay={cookieBannerOverlay}
         />
       </LazyWrapper>
@@ -5090,69 +2985,6 @@ export default function App() {
   // differs from their current class_code.  Approve = update profile +
   // users row to the new class and land on the new dashboard (no teacher
   // re-approval per Approach 1).  Cancel = keep the current class.
-  const handleConfirmClassSwitch = async () => {
-    if (!pendingClassSwitch) return;
-    const { toCode, supabaseUser } = pendingClassSwitch;
-    try {
-      // Use the SECURITY DEFINER RPC instead of direct UPDATEs. The
-      // users_update RLS policy (migration 20260340) freezes class_code for
-      // non-admins to prevent casual class hopping via .update(). A direct
-      // .update({class_code: newCode}) therefore 403s here. The RPC
-      // validates target class exists + updates both users + student_profiles
-      // atomically for the caller only. Added in migration 20260506.
-      const { error: rpcErr } = await supabase.rpc('switch_student_class', {
-        p_new_code: toCode,
-      });
-      if (rpcErr) throw rpcErr;
-
-      // Load the new class's data and navigate to its dashboard.
-      const { data: classRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', toCode);
-      if (classRows && classRows.length > 0) {
-        const classData = mapClass(classRows[0]);
-        const [assignResult, progressResult] = await Promise.all([
-          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', toCode).eq('student_uid', supabaseUser.id),
-        ]);
-        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        setStudentProgress((progressResult.data ?? []).map(mapProgress));
-      }
-
-      // Update in-memory user.classCode so the dashboard header shows the new code.
-      setUser(prev => prev ? { ...prev, classCode: toCode } : prev);
-      setPendingClassSwitch(null);
-      setView("student-dashboard");
-      setLoading(false);
-    } catch (err) {
-      console.error('Class switch failed:', err);
-      showToast('Could not switch class. Please try again.', 'error');
-      setPendingClassSwitch(null);
-    }
-  };
-
-  const handleCancelClassSwitch = async () => {
-    if (!pendingClassSwitch) return;
-    const { fromCode, supabaseUser } = pendingClassSwitch;
-    // User chose to stay in their current class — load that class's data
-    // as if the intended-code was never there.
-    try {
-      const { data: classRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', fromCode);
-      if (classRows && classRows.length > 0) {
-        const classData = mapClass(classRows[0]);
-        const [assignResult, progressResult] = await Promise.all([
-          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
-        ]);
-        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        setStudentProgress((progressResult.data ?? []).map(mapProgress));
-      }
-    } catch { /* non-fatal — dashboard still renders */ }
-    setPendingClassSwitch(null);
-    setView("student-dashboard");
-    setLoading(false);
-  };
-
   // Sticky banner the student sees on the dashboard when they typed a
   // class code that doesn't exist.  Rendered-variable pattern mirrors
   // the other modals (consentModal / exitConfirmModal / classSwitchModal)
@@ -5252,8 +3084,7 @@ export default function App() {
               setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${value}`] } : prev);
             }
           }}
-          structure={structure}
-          celebrateStructureKeys={celebrateStructureKeys}
+          onRenameDisplayName={renameStudentDisplayName}
         />
       </LazyWrapper>
     );

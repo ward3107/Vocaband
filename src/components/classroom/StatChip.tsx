@@ -1,0 +1,169 @@
+/**
+ * StatChip — the one statistic widget used everywhere in v2 Classroom.
+ *
+ * Pattern (per plan):
+ *   ┌────────────────────────┐
+ *   │   78%                  │  ← 3xl bold, tone-coloured
+ *   │   avg score ⓘ          │  ← label, plain English, tappable (i)
+ *   │   across 12 students   │  ← small supporting line
+ *   └────────────────────────┘
+ *
+ * The "i" button is part of the card: hover reveals the explainer on
+ * desktop, tap toggles it on mobile (so kids / teachers never see a
+ * stat without knowing what it means). Click-outside + Esc close it.
+ *
+ * Colour tones are semantic, not decorative:
+ *   emerald ≥ 80, amber 70–79, rose < 70
+ * Pass `tone` explicitly to opt out of that scale (e.g. 'indigo' for
+ * neutral counts like "12 active students").
+ */
+import { useEffect, useRef, useState } from "react";
+import { Info } from "lucide-react";
+
+export type StatTone = "emerald" | "amber" | "rose" | "indigo" | "violet" | "stone";
+
+interface StatChipProps {
+  /** Big number at the top. Accepts string so callers can format
+   *  ("78%", "12", "5 days") without re-implementing. */
+  value: string | number;
+  /** Short label, lower-case, plain English. */
+  label: string;
+  /** One-line supporting context. Always visible. */
+  caption?: string;
+  /** Full explainer — shown in the "i" tooltip. */
+  tooltip?: string;
+  /** Colour tone. Omit + pass `score` instead to auto-pick by threshold. */
+  tone?: StatTone;
+  /** Optional numeric score; when `tone` is absent this picks emerald /
+   *  amber / rose by the 80 / 70 thresholds. */
+  score?: number;
+  /** Optional tap handler for the whole card (e.g. jump to a tab). */
+  onClick?: () => void;
+  /** Optional leading emoji / icon rendered left of the big number. */
+  icon?: React.ReactNode;
+}
+
+const TEXT_TONE: Record<StatTone, string> = {
+  emerald: "text-emerald-600",
+  amber:   "text-amber-600",
+  rose:    "text-rose-600",
+  indigo:  "text-indigo-600",
+  violet:  "text-violet-600",
+  stone:   "text-stone-700",
+};
+
+const RING_TONE: Record<StatTone, string> = {
+  emerald: "border-emerald-100 hover:border-emerald-200",
+  amber:   "border-amber-100 hover:border-amber-200",
+  rose:    "border-rose-100 hover:border-rose-200",
+  indigo:  "border-indigo-100 hover:border-indigo-200",
+  violet:  "border-violet-100 hover:border-violet-200",
+  stone:   "border-stone-100 hover:border-stone-200",
+};
+
+function toneFromScore(s: number): StatTone {
+  if (s >= 80) return "emerald";
+  if (s >= 70) return "amber";
+  return "rose";
+}
+
+export default function StatChip({
+  value, label, caption, tooltip, tone, score, onClick, icon,
+}: StatChipProps) {
+  const [tipOpen, setTipOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const resolvedTone: StatTone = tone ?? (score != null ? toneFromScore(score) : "indigo");
+
+  // Close tooltip on outside click + Esc so mobile taps feel natural.
+  useEffect(() => {
+    if (!tipOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setTipOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTipOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [tipOpen]);
+
+  const body = (
+    <>
+      <div className={`text-3xl font-black leading-none ${TEXT_TONE[resolvedTone]} flex items-center gap-1.5`}>
+        {icon && <span className="text-xl" aria-hidden>{icon}</span>}
+        {value}
+      </div>
+
+      <div className="flex items-center gap-1 mt-2">
+        <span className="text-[11px] font-black uppercase tracking-wider text-stone-600">
+          {label}
+        </span>
+        {tooltip && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTipOpen(o => !o);
+            }}
+            onMouseEnter={() => setTipOpen(true)}
+            onMouseLeave={() => setTipOpen(false)}
+            aria-label={`What "${label}" means`}
+            aria-expanded={tipOpen}
+            className="w-5 h-5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+          >
+            <Info size={12} />
+          </button>
+        )}
+      </div>
+
+      {caption && (
+        <div className="text-[10px] text-stone-400 mt-0.5">{caption}</div>
+      )}
+
+      {tooltip && tipOpen && (
+        <div
+          role="tooltip"
+          className="absolute z-20 top-full left-0 right-0 mt-2 p-3 bg-stone-900 text-white text-xs rounded-xl shadow-2xl leading-snug"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="font-bold uppercase tracking-wider text-stone-300 text-[10px] block mb-1">
+            What this means
+          </span>
+          {tooltip}
+        </div>
+      )}
+    </>
+  );
+
+  // When the caller wants the whole card tappable, render as a button
+  // so accessibility + hover come for free.
+  if (onClick) {
+    return (
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={onClick}
+          className={`relative w-full text-left bg-white rounded-2xl p-3.5 border transition-colors ${RING_TONE[resolvedTone]}`}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+        >
+          {body}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div
+      ref={ref}
+      className={`relative bg-white rounded-2xl p-3.5 border ${RING_TONE[resolvedTone]}`}
+    >
+      {body}
+    </div>
+  );
+}

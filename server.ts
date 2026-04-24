@@ -13,6 +13,28 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { synthesizeSpeechMp3 } from "./tts-common";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
+import {
+  QUICK_PLAY_NS,
+  QP_EVENTS,
+  QP_SERVER_EVENTS,
+  QP_MAX_STUDENTS_PER_SESSION,
+  QP_MAX_NICKNAME,
+  QP_MAX_SCORE_DELTA,
+  QP_MAX_SESSION_SCORE,
+  QP_BROADCAST_INTERVAL_MS,
+  QP_IDLE_SWEEP_MS,
+  isValidSessionCode,
+  isValidClientId,
+  isValidNickname,
+  type QpStudentJoinPayload,
+  type QpScoreUpdatePayload,
+  type QpStudentLeavePayload,
+  type QpTeacherObservePayload,
+  type QpTeacherKickPayload,
+  type QpTeacherEndPayload,
+  type QpStudentEntry,
+  type QpErrorCode,
+} from "./src/core/quickPlayProtocol";
 
 // Check if Supabase is configured — server features (auth, socket, API endpoints)
 // require these, but the frontend can still be served without them.
@@ -178,7 +200,7 @@ async function startServer() {
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", ...allowedOrigins],
+          connectSrc: ["'self'", "https://auth.vocaband.com", "wss://auth.vocaband.com", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", ...allowedOrigins],
           frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
           workerSrc: ["'self'", "blob:"],
           mediaSrc: ["'self'", "https://*.supabase.co"],
@@ -520,6 +542,343 @@ async function startServer() {
         delete socketSessions[socket.id];
       }
     });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // QUICK PLAY v2 — unauthenticated namespace
+  //
+  // Kept fully separate from the authenticated `/` namespace above.
+  // Students connect with no JWT, just a client-generated UUID + the
+  // session code the teacher's QR poster shows. Teachers connect with
+  // their Supabase access token and have it verified per-action before
+  // any kick/end takes effect.
+  //
+  // State is in-memory here; survives as long as the Node process
+  // does. The `quick_play_sessions` row in Postgres remains the source
+  // of truth for "does this session exist at all + what words/modes"
+  // — the in-memory map only tracks live leaderboard.
+  // ──────────────────────────────────────────────────────────────────────
+
+  interface QpSessionState {
+    sessionCode: string;
+    students: Map<string, QpStudentEntry>;           // clientId → entry
+    socketToClient: Map<string, string>;              // socket.id → clientId
+    teacherSockets: Set<string>;                      // socket.id of observers
+    lastTeacherSeenAt: number;                        // epoch ms
+  }
+
+  const qpSessions = new Map<string, QpSessionState>();
+  // Throttled broadcast scheduler: one entry per session with pending change.
+  const qpPendingBroadcasts = new Set<string>();
+  let qpBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Rate limiters — sized for a real classroom, not a server-sanity
+  // test. 25 kids all scanning at 08:05 must all succeed.
+  const qpJoinLimiter       = createSocketRateLimiter(60_000, 120, 5 * 60_000); // 120 joins/min/IP
+  const qpScoreLimiter      = createSocketRateLimiter(5_000,   30, 5 * 60_000); //  30 updates/5s/socket
+  const qpTeacherLimiter    = createSocketRateLimiter(60_000,  60, 5 * 60_000); //  60 teacher actions/min
+
+  const qpIo = io.of(QUICK_PLAY_NS);
+
+  // Namespace-level auth middleware — unlike `/`, this one is permissive:
+  // it only rate-limits the handshake so one box can't flood the server
+  // with connection churn.
+  qpIo.use((socket, next) => {
+    const clientIp = getSocketIp(socket);
+    if (!qpJoinLimiter.checkLimit(clientIp)) {
+      return next(new Error("rate_limited"));
+    }
+    next();
+  });
+
+  // ─── Broadcast helpers ──────────────────────────────────────────────
+
+  function qpScheduleBroadcast(sessionCode: string) {
+    qpPendingBroadcasts.add(sessionCode);
+    if (qpBroadcastTimer) return;
+    qpBroadcastTimer = setTimeout(() => {
+      for (const code of qpPendingBroadcasts) {
+        const s = qpSessions.get(code);
+        if (s) {
+          qpIo.to(code).emit(QP_SERVER_EVENTS.LEADERBOARD, {
+            sessionCode: code,
+            students: Array.from(s.students.values()),
+          });
+        }
+      }
+      qpPendingBroadcasts.clear();
+      qpBroadcastTimer = null;
+    }, QP_BROADCAST_INTERVAL_MS);
+  }
+
+  function qpEmitError(
+    socket: import("socket.io").Socket,
+    event: string,
+    code: QpErrorCode,
+    message: string,
+  ) {
+    if (isDev) console.warn(`[QuickPlay] ${event} rejected: ${code} — ${message}`);
+    socket.emit(QP_SERVER_EVENTS.ERROR, { event, code, message });
+  }
+
+  async function qpVerifyTeacherOwnsSession(
+    token: string,
+    sessionCode: string,
+  ): Promise<{ ok: true; uid: string } | { ok: false; reason: QpErrorCode }> {
+    if (!isValidToken(token)) return { ok: false, reason: "unauthorized" };
+    const uid = await verifyToken(token);
+    if (!uid) return { ok: false, reason: "unauthorized" };
+    if (!supabaseAdmin) return { ok: false, reason: "internal_error" };
+    const { data, error } = await supabaseAdmin
+      .from("quick_play_sessions")
+      .select("teacher_uid, is_active")
+      .eq("session_code", sessionCode)
+      .maybeSingle();
+    if (error || !data) return { ok: false, reason: "session_not_found" };
+    if (data.teacher_uid !== uid) return { ok: false, reason: "unauthorized" };
+    return { ok: true, uid };
+  }
+
+  async function qpSessionIsActive(sessionCode: string): Promise<boolean> {
+    if (!supabaseAdmin) return false;
+    const { data, error } = await supabaseAdmin
+      .from("quick_play_sessions")
+      .select("is_active")
+      .eq("session_code", sessionCode)
+      .maybeSingle();
+    return !error && !!data && data.is_active === true;
+  }
+
+  function qpGetOrCreateSession(sessionCode: string): QpSessionState {
+    let s = qpSessions.get(sessionCode);
+    if (!s) {
+      s = {
+        sessionCode,
+        students: new Map(),
+        socketToClient: new Map(),
+        teacherSockets: new Set(),
+        lastTeacherSeenAt: Date.now(),
+      };
+      qpSessions.set(sessionCode, s);
+    }
+    return s;
+  }
+
+  // ─── Connection handler ─────────────────────────────────────────────
+
+  qpIo.on("connection", (socket) => {
+    if (isDev) console.log(`[QuickPlay] connected socket=${socket.id} ip=${getSocketIp(socket)}`);
+
+    // Student join — validates payload and session existence, then
+    // inserts into the in-memory leaderboard and broadcasts.
+    socket.on(QP_EVENTS.STUDENT_JOIN, async (payload: QpStudentJoinPayload) => {
+      if (!payload || typeof payload !== "object") {
+        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "missing payload");
+      }
+      const sessionCode = payload.sessionCode;
+      const clientId = payload.clientId;
+      const nickname = typeof payload.nickname === "string" ? payload.nickname.trim().slice(0, QP_MAX_NICKNAME) : "";
+      const avatar = typeof payload.avatar === "string" && payload.avatar.length > 0 && payload.avatar.length <= 8
+        ? payload.avatar : "🦊";
+
+      if (!isValidSessionCode(sessionCode)) return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad session code");
+      if (!isValidClientId(clientId))      return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad clientId");
+      if (!isValidNickname(nickname))      return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad nickname");
+
+      // Session must exist and be active in the DB. Cheap single-row read.
+      if (!(await qpSessionIsActive(sessionCode))) {
+        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_inactive", "session is not active");
+      }
+
+      const state = qpGetOrCreateSession(sessionCode);
+
+      // If another live clientId has the same nickname, reject. Lets us
+      // keep nicknames unique per session without polluting the progress
+      // table like the old flow did.
+      for (const entry of state.students.values()) {
+        if (entry.clientId !== clientId && entry.nickname.toLowerCase() === nickname.toLowerCase()) {
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "nickname_taken", "that nickname is already in this session");
+        }
+      }
+
+      if (!state.students.has(clientId) && state.students.size >= QP_MAX_STUDENTS_PER_SESSION) {
+        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_full", "this session is full");
+      }
+
+      const now = Date.now();
+      const prev = state.students.get(clientId);
+      // Re-joining (refresh / reconnect) keeps score; truly new joiner starts at 0.
+      state.students.set(clientId, {
+        clientId,
+        nickname,
+        avatar,
+        score: prev?.score ?? 0,
+        lastSeen: now,
+      });
+      state.socketToClient.set(socket.id, clientId);
+      socket.join(sessionCode);
+
+      socket.emit(QP_SERVER_EVENTS.JOINED, {
+        clientId,
+        leaderboard: Array.from(state.students.values()),
+      });
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    // Score update — only accepted from the socket that owns the
+    // clientId, score must be monotonically non-decreasing, and deltas
+    // are bounded so a pasted value can't blow the leaderboard.
+    socket.on(QP_EVENTS.SCORE_UPDATE, (payload: QpScoreUpdatePayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, score } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
+      if (typeof score !== "number" || !isFinite(score) || score < 0 || score > QP_MAX_SESSION_SCORE) return;
+
+      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const owned = state.socketToClient.get(socket.id);
+      if (owned !== clientId) return;
+      const entry = state.students.get(clientId);
+      if (!entry) return;
+      if (score < entry.score) return;
+      if (score > entry.score + QP_MAX_SCORE_DELTA) return;
+
+      entry.score = score;
+      entry.lastSeen = Date.now();
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    // Student explicit leave — same effect as disconnecting, but
+    // propagates immediately rather than waiting for the ping timeout.
+    socket.on(QP_EVENTS.STUDENT_LEAVE, (payload: QpStudentLeavePayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const owned = state.socketToClient.get(socket.id);
+      if (owned !== clientId) return;
+      state.students.delete(clientId);
+      state.socketToClient.delete(socket.id);
+      socket.leave(sessionCode);
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    // Teacher observe — grants receipt of leaderboard broadcasts + kick
+    // authority. Token is verified against the session's teacher_uid.
+    socket.on(QP_EVENTS.TEACHER_OBSERVE, async (payload: QpTeacherObservePayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token } = payload;
+      if (!isValidSessionCode(sessionCode)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_OBSERVE, "invalid_payload", "bad session code");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_OBSERVE, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_OBSERVE, verify.reason, "access denied");
+
+      const state = qpGetOrCreateSession(sessionCode);
+      state.teacherSockets.add(socket.id);
+      state.lastTeacherSeenAt = Date.now();
+      socket.join(sessionCode);
+      socket.emit(QP_SERVER_EVENTS.LEADERBOARD, {
+        sessionCode,
+        students: Array.from(state.students.values()),
+      });
+    });
+
+    socket.on(QP_EVENTS.TEACHER_KICK, async (payload: QpTeacherKickPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, token } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_KICK, "invalid_payload", "bad payload");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_KICK, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_KICK, verify.reason, "access denied");
+
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const removed = state.students.delete(clientId);
+      if (!removed) return;
+      // Notify the kicked student's socket directly (find by reverse lookup).
+      for (const [sockId, cId] of state.socketToClient.entries()) {
+        if (cId === clientId) {
+          state.socketToClient.delete(sockId);
+          const targetSocket = qpIo.sockets.get(sockId);
+          targetSocket?.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
+          targetSocket?.leave(sessionCode);
+        }
+      }
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    socket.on(QP_EVENTS.TEACHER_END, async (payload: QpTeacherEndPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token } = payload;
+      if (!isValidSessionCode(sessionCode)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_END, "invalid_payload", "bad session code");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_END, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_END, verify.reason, "access denied");
+
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode });
+      // Tear down in-memory state immediately; teacher's `is_active=false`
+      // DB update is their own responsibility (client already does this).
+      qpSessions.delete(sessionCode);
+    });
+
+    socket.on("disconnect", () => {
+      // Find which session this socket belonged to and remove it. Rooms
+      // are cleaned by socket.io automatically.
+      for (const state of qpSessions.values()) {
+        // Student disconnect
+        const clientId = state.socketToClient.get(socket.id);
+        if (clientId) {
+          state.students.delete(clientId);
+          state.socketToClient.delete(socket.id);
+          qpScheduleBroadcast(state.sessionCode);
+        }
+        // Teacher disconnect — don't drop the session; just refresh idle timer.
+        if (state.teacherSockets.has(socket.id)) {
+          state.teacherSockets.delete(socket.id);
+          state.lastTeacherSeenAt = Date.now();
+        }
+      }
+    });
+  });
+
+  // ─── Idle sweep ─────────────────────────────────────────────────────
+  // Drop sessions whose teacher hasn't been connected for a long time.
+  // Prevents orphan in-memory state when a teacher closes the laptop
+  // without ending the session.
+  const qpSweepInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [code, state] of qpSessions.entries()) {
+      const noTeacher = state.teacherSockets.size === 0;
+      const teacherGone = now - state.lastTeacherSeenAt > QP_IDLE_SWEEP_MS;
+      if (noTeacher && teacherGone) {
+        if (isDev) console.log(`[QuickPlay] sweeping idle session ${code} (students=${state.students.size})`);
+        qpIo.to(code).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode: code });
+        qpSessions.delete(code);
+      }
+    }
+  }, 60_000);
+
+  // Clean shutdown hook: if the process is killed, release intervals so
+  // tests / dev restarts don't leak timers.
+  process.on("SIGTERM", () => {
+    clearInterval(qpSweepInterval);
+    qpJoinLimiter.shutdown();
+    qpScoreLimiter.shutdown();
+    qpTeacherLimiter.shutdown();
   });
 
   // Health check endpoint for monitoring — minimal info to avoid leaking server state

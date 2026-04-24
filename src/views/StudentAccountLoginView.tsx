@@ -1,38 +1,19 @@
 import { type ReactNode, useRef, useEffect } from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Check } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
-import { AvatarPicker } from "../components/AvatarPicker";
 import type { View } from "../core/views";
-
-interface ExistingStudent {
-  id: string;
-  displayName: string;
-  xp: number;
-  status: string;
-  avatar?: string;
-}
 
 interface StudentAccountLoginViewProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
   error: string | null;
   setError: (err: string | null) => void;
 
-  // Normal student login state
+  // Class code the student is joining (or returning to).
   studentLoginClassCode: string;
   setStudentLoginClassCode: (v: string) => void;
-  studentLoginName: string;
-  setStudentLoginName: (v: string) => void;
-  existingStudents: ExistingStudent[];
-  setExistingStudents: (students: ExistingStudent[]) => void;
-  showNewStudentForm: boolean;
-  setShowNewStudentForm: (v: boolean) => void;
-
-  // Avatar state (shared with signup API calls in App.tsx)
-  studentAvatar: string;
-  setStudentAvatar: (avatar: string) => void;
 
   // OAuth flow state
   isOAuthCallback: boolean;
@@ -48,9 +29,6 @@ interface StudentAccountLoginViewProps {
   handleOAuthTeacherDetected: (email: string) => Promise<void>;
   handleOAuthStudentDetected: (email: string) => Promise<void>;
   handleOAuthNewUser: (email: string, authUid: string) => void;
-  handleLoginAsStudent: (studentId: string) => Promise<void>;
-  handleNewStudentSignup: () => Promise<void>;
-  loadStudentsInClass: (classCode: string) => Promise<void>;
 
   // Global cookie banner passthrough
   cookieBannerOverlay: ReactNode;
@@ -83,14 +61,6 @@ export default function StudentAccountLoginView({
   setError,
   studentLoginClassCode,
   setStudentLoginClassCode,
-  studentLoginName,
-  setStudentLoginName,
-  existingStudents,
-  setExistingStudents,
-  showNewStudentForm,
-  setShowNewStudentForm,
-  studentAvatar,
-  setStudentAvatar,
   isOAuthCallback,
   setIsOAuthCallback,
   showOAuthClassCode,
@@ -102,9 +72,6 @@ export default function StudentAccountLoginView({
   handleOAuthTeacherDetected,
   handleOAuthStudentDetected,
   handleOAuthNewUser,
-  handleLoginAsStudent,
-  handleNewStudentSignup,
-  loadStudentsInClass,
   cookieBannerOverlay,
 }: StudentAccountLoginViewProps) {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
@@ -113,10 +80,36 @@ export default function StudentAccountLoginView({
   // On mobile this cues the soft keyboard; on desktop, first keystroke
   // lands in the right place without the student hunting for a field.
   useEffect(() => {
-    if (!isOAuthCallback && !showOAuthClassCode && !showNewStudentForm) {
+    if (!isOAuthCallback && !showOAuthClassCode) {
       codeInputRef.current?.focus();
     }
-  }, [isOAuthCallback, showOAuthClassCode, showNewStudentForm]);
+  }, [isOAuthCallback, showOAuthClassCode]);
+
+  // QR-code / teacher-shared-link pre-fill.
+  //
+  // The classroom poster's QR encodes a URL like:
+  //   https://www.vocaband.com/?class=ABC12345&ref=teacher-ABC12345
+  // Without this effect, a student scanning the QR landed on the login
+  // form with an empty class-code field and had to type the 8 chars
+  // manually — a friction point that defeats the purpose of the QR.
+  //
+  // On mount, read `?class=` from the current URL. If present, pre-fill
+  // the code input so the student's only remaining task is the Google
+  // sign-in.
+  useEffect(() => {
+    if (studentLoginClassCode) return; // Already filled — don't clobber.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('class');
+      if (!raw) return;
+      const normalized = normalizeClassCode(raw).slice(0, 20);
+      if (normalized.length >= 3) {
+        setStudentLoginClassCode(normalized);
+      }
+    } catch { /* URLSearchParams unavailable — noop */ }
+    // Only runs once on mount; subsequent code typing is user-driven.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // QR-code / teacher-shared-link pre-fill.
   //
@@ -149,9 +142,6 @@ export default function StudentAccountLoginView({
   const handleCodeChange = (raw: string) => {
     const normalized = normalizeClassCode(raw).slice(0, 20);
     setStudentLoginClassCode(normalized);
-    if (normalized.length >= 3) {
-      loadStudentsInClass(normalized);
-    }
   };
 
   // Character-box UI: eight slots that the student fills as they type.
@@ -162,115 +152,84 @@ export default function StudentAccountLoginView({
     const chars = studentLoginClassCode.split('').slice(0, CODE_LENGTH);
     const caret = Math.min(chars.length, CODE_LENGTH - 1);
     return (
-      <div
-        className="flex gap-1.5 sm:gap-2 justify-center"
-        onClick={() => codeInputRef.current?.focus()}
-        role="presentation"
-      >
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2">
         {Array.from({ length: CODE_LENGTH }).map((_, i) => {
-          const char = chars[i];
-          const isFilled = !!char;
-          const isActive = i === caret && !isFilled;
+          const ch = chars[i] ?? '';
+          const isCaret = i === caret && ch === '';
           return (
-            <div
+            <button
               key={i}
-              className={`w-10 h-12 sm:w-12 sm:h-14 rounded-xl flex items-center justify-center font-black text-xl sm:text-2xl transition-all select-none ${
-                isFilled
-                  ? 'bg-white text-indigo-700 shadow-lg shadow-indigo-500/40 scale-105'
-                  : isActive
-                    ? 'bg-white/10 ring-2 ring-white/80 text-white/70'
-                    : 'bg-white/10 text-white/30'
-              }`}
+              type="button"
+              onClick={() => codeInputRef.current?.focus()}
+              className={[
+                'w-9 h-11 sm:w-11 sm:h-14 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black transition-all',
+                ch
+                  ? 'bg-white text-stone-900 shadow-lg shadow-indigo-500/30'
+                  : 'bg-white/20 backdrop-blur-sm text-white/40',
+                isCaret ? 'ring-2 ring-white/80' : '',
+              ].join(' ')}
+              tabIndex={-1}
+              aria-hidden
             >
-              {char ?? ''}
-            </div>
+              {ch}
+            </button>
           );
         })}
       </div>
     );
   };
 
+  const hasEnoughCode = studentLoginClassCode.trim().length >= 3;
+
   return (
     <>
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-violet-800 to-fuchsia-700">
-        {/* Decorative background orbs matching the dashboard + landing
-            aesthetic. Absolute-positioned with fixed transforms so they
-            don't reflow as content changes. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl" />
-          <div className="absolute -bottom-40 -left-20 w-[28rem] h-[28rem] rounded-full bg-indigo-400/20 blur-3xl" />
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[24rem] h-[24rem] rounded-full bg-violet-500/10 blur-3xl" />
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-violet-900 to-fuchsia-900 relative overflow-hidden">
+        {/* Soft decorative glow */}
+        <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" aria-hidden />
 
-        {/* OAuth callback — clean, focused, no hero decoration. Keep the
-            same gradient surface so it doesn't feel like a different app. */}
+        {/* OAuth callback — shown when Google redirected us back while the
+            login view was still mounted. */}
         {isOAuthCallback && (
-          <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8"
-            >
-              <OAuthCallback
-                onTeacherDetected={handleOAuthTeacherDetected}
-                onStudentDetected={handleOAuthStudentDetected}
-                onNewUser={handleOAuthNewUser}
-              />
-            </motion.div>
-          </div>
+          <OAuthCallback
+            onTeacherDetected={handleOAuthTeacherDetected}
+            onStudentDetected={handleOAuthStudentDetected}
+            onNewUser={handleOAuthNewUser}
+          />
         )}
 
-        {/* OAuth class-code step — shown after Google sign-in when the
-            student hasn't picked a class yet. */}
+        {/* OAuth new-user class-code screen — shown when Google succeeded
+            but there's no student profile yet for this email. */}
         {showOAuthClassCode && oauthEmail && oauthAuthUid && (
           <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md"
-            >
-              <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
-                <button
-                  onClick={() => {
-                    setShowOAuthClassCode(false);
-                    setOauthEmail(null);
-                    setOauthAuthUid(null);
-                  }}
-                  className="text-sm text-indigo-600 hover:underline flex items-center gap-1 mb-4"
-                  type="button"
-                >
-                  <ArrowLeft size={16} />
-                  Back
-                </button>
-                <OAuthClassCode
-                  email={oauthEmail}
-                  authUid={oauthAuthUid}
-                  onSuccess={async () => {
-                    setShowOAuthClassCode(false);
-                    setOauthEmail(null);
-                    setOauthAuthUid(null);
-                    await handleOAuthStudentDetected(oauthEmail!);
-                  }}
-                  onError={setError}
-                />
-              </div>
-            </motion.div>
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl w-full max-w-md">
+              <OAuthClassCode
+                email={oauthEmail}
+                authUid={oauthAuthUid}
+                onSuccess={() => {
+                  setShowOAuthClassCode(false);
+                  setOauthEmail(null);
+                  setOauthAuthUid(null);
+                }}
+                onError={(msg) => {
+                  setError(msg);
+                  // Stay on the class-code screen so the student can fix + retry.
+                }}
+              />
+            </div>
           </div>
         )}
 
-        {/* Primary login screen — the redesigned surface */}
+        {/* Primary login screen — class code + Google. Google is the only
+            login path: one path students can always trust, works on every
+            device, no per-browser session state to lose. */}
         {!isOAuthCallback && !showOAuthClassCode && (
           <div className="relative z-10 min-h-screen flex flex-col">
-            {/* Top nav — just a back button and a quiet role label. Logo
-                lives in the hero below, big and centred. */}
             <header className="flex items-center justify-between px-4 sm:px-6 py-4">
               <button
                 onClick={() => {
                   setView("public-landing");
                   setStudentLoginClassCode("");
-                  setStudentLoginName("");
-                  setExistingStudents([]);
-                  setShowNewStudentForm(false);
                 }}
                 type="button"
                 className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
@@ -290,299 +249,140 @@ export default function StudentAccountLoginView({
                 transition={{ type: 'spring', stiffness: 120, damping: 18 }}
                 className="w-full max-w-xl"
               >
-                {/* ─── Hero: big V logo + tagline ───────────────────── */}
-                {!showNewStudentForm && (
-                  <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-10">
-                    <motion.img
-                      src="/icon.svg"
-                      alt="Vocaband"
-                      className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
-                      initial={{ rotate: -15, scale: 0.7 }}
-                      animate={{ rotate: [0, -3, 3, 0], scale: 1 }}
-                      transition={{
-                        rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-                        scale:  { type: 'spring', stiffness: 180, damping: 12 },
-                      }}
-                    />
-                    <div>
-                      <h1 className="text-3xl sm:text-5xl font-black text-white leading-[0.95] tracking-tight">
-                        Join your<br />class.
-                      </h1>
-                      <p className="mt-2 text-base sm:text-lg font-bold text-white/80">
-                        Play to learn English.
-                      </p>
-                    </div>
+                {/* Hero */}
+                <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-10">
+                  <motion.img
+                    src="/icon.svg"
+                    alt="Vocaband"
+                    className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
+                    initial={{ rotate: -15, scale: 0.7 }}
+                    animate={{ rotate: [0, -3, 3, 0], scale: 1 }}
+                    transition={{
+                      rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" },
+                      scale:  { type: 'spring', stiffness: 180, damping: 12 },
+                    }}
+                  />
+                  <div>
+                    <h1 className="text-3xl sm:text-5xl font-black text-white leading-[0.95] tracking-tight">
+                      Join your<br />class.
+                    </h1>
+                    <p className="mt-2 text-base sm:text-lg font-bold text-white/80">
+                      Play to learn English.
+                    </p>
                   </div>
-                )}
+                </div>
 
-                {/* ─── Primary card ─────────────────────────────────── */}
                 <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8">
-                  {!showNewStudentForm ? (
-                    <>
-                      {/* Class-code entry: character boxes backed by one
-                          hidden input that handles the actual typing + paste */}
-                      <div className="mb-5">
-                        <label
-                          htmlFor="student-class-code-input"
-                          className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 text-center mb-3"
-                        >
-                          Class code from your teacher
-                        </label>
+                  {/* Class-code entry */}
+                  <div className="mb-5">
+                    <label
+                      htmlFor="student-class-code-input"
+                      className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 text-center mb-3"
+                    >
+                      Class code from your teacher
+                    </label>
 
-                        <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-2xl p-4 shadow-inner">
-                          {renderCodeBoxes()}
-                        </div>
-                        <input
-                          ref={codeInputRef}
-                          id="student-class-code-input"
-                          name="classCode"
-                          type="text"
-                          autoComplete="off"
-                          autoCapitalize="characters"
-                          inputMode="text"
-                          spellCheck={false}
-                          value={studentLoginClassCode}
-                          onChange={(e) => handleCodeChange(e.target.value)}
-                          onPaste={(e) => {
-                            // Intercept paste so teacher-shared URLs like
-                            //   https://vocaband.com/?class=ABC12345
-                            // get reduced to just the code automatically.
-                            const pasted = e.clipboardData.getData('text');
-                            if (pasted) {
-                              e.preventDefault();
-                              handleCodeChange(pasted);
-                            }
-                          }}
-                          maxLength={20}
-                          aria-label="Class code"
-                          aria-describedby={error ? "student-login-error" : "class-code-hint"}
-                          className="sr-only"
-                        />
-                        <p id="class-code-hint" className="text-xs text-stone-500 text-center mt-3">
-                          Got a link from your teacher? Paste it — we'll pull out the code.
-                        </p>
+                    <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-2xl p-4 shadow-inner">
+                      {renderCodeBoxes()}
+                    </div>
+                    <input
+                      ref={codeInputRef}
+                      id="student-class-code-input"
+                      name="classCode"
+                      type="text"
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      inputMode="text"
+                      spellCheck={false}
+                      value={studentLoginClassCode}
+                      onChange={(e) => handleCodeChange(e.target.value)}
+                      onPaste={(e) => {
+                        // Intercept paste so teacher-shared URLs like
+                        //   https://vocaband.com/?class=ABC12345
+                        // get reduced to just the code automatically.
+                        const pasted = e.clipboardData.getData('text');
+                        if (pasted) {
+                          e.preventDefault();
+                          handleCodeChange(pasted);
+                        }
+                      }}
+                      maxLength={20}
+                      aria-label="Class code"
+                      aria-describedby={error ? "student-login-error" : "class-code-hint"}
+                      className="sr-only"
+                    />
+                    <p id="class-code-hint" className="text-xs text-stone-500 text-center mt-3">
+                      Got a link from your teacher? Paste it — we'll pull out the code.
+                    </p>
 
-                        {error && (
-                          <motion.div
-                            id="student-login-error"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
-                            role="alert"
-                          >
-                            <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                            <span>{error}</span>
-                          </motion.div>
-                        )}
-                      </div>
-
-                      {/* Existing students in this class — the PRIMARY flow.
-                          Most students are returning to a class they've joined
-                          before; tapping their name is the fastest path in. */}
-                      {studentLoginClassCode && existingStudents.length > 0 && (
-                        <div className="mb-5">
-                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2.5">
-                            Is that you?
-                          </p>
-                          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                            {existingStudents.map((student) => (
-                              <button
-                                key={student.id}
-                                onClick={() => handleLoginAsStudent(student.id)}
-                                type="button"
-                                className="w-full px-4 py-3 bg-stone-50 hover:bg-indigo-50 rounded-xl text-left font-bold transition-all flex items-center justify-between group border-2 border-transparent hover:border-indigo-300"
-                              >
-                                <span className="flex items-center gap-3">
-                                  <span className="text-2xl">{student.avatar || '🦊'}</span>
-                                  <span className="text-base">{student.displayName}</span>
-                                </span>
-                                <span className="text-xs font-bold text-stone-500 group-hover:text-indigo-600">
-                                  {student.xp} XP
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                          {/* Intent-based copy: "I don't see my name" reads
-                              naturally for both brand-new students AND returning
-                              students whose teacher just created the class.
-                              The old "I'm new — create my account" required the
-                              student to mentally classify themselves first. */}
-                          <button
-                            type="button"
-                            onClick={() => setShowNewStudentForm(true)}
-                            className="w-full mt-3 py-3 text-sm font-bold text-indigo-600 hover:text-indigo-800 border-2 border-dashed border-indigo-300 hover:border-indigo-500 rounded-xl transition-colors flex items-center justify-center gap-2"
-                          >
-                            <span className="text-base">👋</span>
-                            I don't see my name
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Class exists, no students yet — direct to signup */}
-                      {studentLoginClassCode && studentLoginClassCode.length >= 3 && existingStudents.length === 0 && (
-                        <div className="mb-5">
-                          <div className="p-4 bg-stone-50 rounded-xl text-center mb-3">
-                            <p className="text-sm font-bold text-stone-700">
-                              Be the first in this class! 🎉
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowNewStudentForm(true)}
-                            className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white rounded-xl font-black shadow-lg hover:shadow-xl transition-shadow"
-                          >
-                            Create my account →
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Google OAuth — demoted to a clearly-secondary option
-                          with an intent label that tells students WHY they'd
-                          pick it. Most classroom students stick with the name
-                          list above; Google is only useful for cross-device
-                          progress sync (kid uses the school Chromebook at
-                          school, their parent's iPad at home). */}
-                      <div className="relative flex items-center my-5">
-                        <div className="flex-1 h-px bg-stone-200" />
-                        <span className="px-3 text-[11px] font-black uppercase tracking-[0.2em] text-stone-400">
-                          or
-                        </span>
-                        <div className="flex-1 h-px bg-stone-200" />
-                      </div>
-
-                      <p className="text-xs font-bold text-stone-500 text-center mb-2.5">
-                        Coming back from another device?
-                      </p>
-                      <OAuthButton
-                        onSuccess={(_email, _isNewUser) => {
-                          setIsOAuthCallback(true);
-                        }}
-                        onError={(errorMessage) => {
-                          setError(errorMessage);
-                        }}
-                        beforeSignIn={() => {
-                          // Persist class code so post-OAuth callback can
-                          // detect class-switch intent vs re-signin.
-                          const trimmed = studentLoginClassCode.trim().toUpperCase();
-                          try {
-                            if (trimmed) {
-                              sessionStorage.setItem('oauth_intended_class_code', trimmed);
-                              localStorage.setItem('oauth_intended_class_code', trimmed);
-                            } else {
-                              sessionStorage.removeItem('oauth_intended_class_code');
-                              localStorage.removeItem('oauth_intended_class_code');
-                            }
-                          } catch { /* storage unavailable */ }
-                        }}
-                      />
-                    </>
-                  ) : (
-                    // ─── New-student signup form ─────────────────────
-                    <>
-                      <div className="flex items-center justify-between mb-4 p-3 bg-indigo-50 rounded-xl">
-                        <p className="text-sm font-bold text-stone-700">
-                          Class: <span className="text-indigo-700 font-black">{studentLoginClassCode}</span>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNewStudentForm(false);
-                            setStudentLoginClassCode("");
-                          }}
-                          className="text-xs text-indigo-600 hover:underline font-bold"
-                        >
-                          Change
-                        </button>
-                      </div>
-
-                      <div className="mb-4">
-                        <label
-                          htmlFor="new-student-name-input"
-                          className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2"
-                        >
-                          Your full name
-                        </label>
-                        <input
-                          id="new-student-name-input"
-                          name="displayName"
-                          type="text"
-                          autoComplete="name"
-                          value={studentLoginName}
-                          onChange={(e) => setStudentLoginName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleNewStudentSignup(); }}
-                          placeholder="Sarah Johnson"
-                          maxLength={30}
-                          aria-describedby={error ? "new-student-error" : undefined}
-                          className="w-full px-5 py-4 text-lg font-bold bg-stone-50 rounded-xl border-2 border-stone-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all placeholder:text-stone-400"
-                        />
-                      </div>
-
-                      <div className="mb-4">
-                        <AvatarPicker
-                          value={studentAvatar}
-                          onChange={setStudentAvatar}
-                          label="Choose your avatar"
-                        />
-                      </div>
-
-                      {error && (
-                        <motion.div
-                          id="new-student-error"
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mb-4 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
-                          role="alert"
-                        >
-                          <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                          <span>{error}</span>
-                        </motion.div>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={handleNewStudentSignup}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white py-4 rounded-xl text-lg font-black shadow-xl hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    {error && (
+                      <motion.div
+                        id="student-login-error"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                        role="alert"
                       >
-                        Create account
-                        <Check size={22} />
-                      </button>
+                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                        <span>{error}</span>
+                      </motion.div>
+                    )}
+                  </div>
 
-                      <div className="mt-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-                        <p className="text-xs text-amber-900 text-center leading-relaxed">
-                          ⏳ <strong>Teacher approval needed.</strong> Ask your teacher to approve you — once they do, you're in.
-                        </p>
-                      </div>
+                  {/* Primary CTA — Google. The only login path.
+                      - Returning students: Google identifies them and
+                        routes them straight to their dashboard.
+                      - First-timers: Google identifies them, then we
+                        show the OAuthClassCode screen to bind them
+                        to the class code they just typed. */}
+                  <OAuthButton
+                    onSuccess={() => {
+                      setIsOAuthCallback(true);
+                    }}
+                    onError={(errorMessage) => {
+                      setError(errorMessage);
+                    }}
+                    beforeSignIn={() => {
+                      // Persist class code so OAuthClassCode can pre-fill
+                      // for first-timers + App can detect class-switch
+                      // intent for returning students.
+                      const trimmed = studentLoginClassCode.trim().toUpperCase();
+                      try {
+                        if (trimmed) {
+                          sessionStorage.setItem('oauth_intended_class_code', trimmed);
+                          localStorage.setItem('oauth_intended_class_code', trimmed);
+                        } else {
+                          sessionStorage.removeItem('oauth_intended_class_code');
+                          localStorage.removeItem('oauth_intended_class_code');
+                        }
+                      } catch { /* storage unavailable */ }
+                    }}
+                  />
 
-                      <button
-                        type="button"
-                        onClick={() => setShowNewStudentForm(false)}
-                        className="w-full mt-3 py-2 text-sm font-bold text-stone-500 hover:text-indigo-600 transition-colors"
-                      >
-                        ← Back
-                      </button>
-                    </>
-                  )}
+                  <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
+                    {hasEnoughCode
+                      ? "Sign in with the same Google account every time to keep your XP and streak."
+                      : "First time? Type your class code above, then sign in with Google. Your teacher approves new students from the dashboard."}
+                  </p>
                 </div>
 
                 {/* Feature chips — subtle reminder of what students get */}
-                {!showNewStudentForm && (
-                  <div className="mt-6 flex flex-wrap justify-center gap-2">
-                    {[
-                      { emoji: '🏆', text: 'Earn XP' },
-                      { emoji: '🎯', text: 'Beat your friends' },
-                      { emoji: '🎨', text: 'Unlock avatars' },
-                      { emoji: '⚡', text: 'Live challenges' },
-                    ].map(f => (
-                      <span
-                        key={f.text}
-                        className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"
-                      >
-                        <span className="mr-1">{f.emoji}</span>
-                        {f.text}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {[
+                    { emoji: '🏆', text: 'Earn XP' },
+                    { emoji: '🎯', text: 'Beat your friends' },
+                    { emoji: '🎨', text: 'Unlock avatars' },
+                    { emoji: '⚡', text: 'Live challenges' },
+                  ].map(f => (
+                    <span
+                      key={f.text}
+                      className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"
+                    >
+                      <span className="mr-1">{f.emoji}</span>
+                      {f.text}
+                    </span>
+                  ))}
+                </div>
               </motion.div>
             </main>
 

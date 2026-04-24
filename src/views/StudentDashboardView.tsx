@@ -68,17 +68,13 @@ interface StudentDashboardViewProps {
     streakFreezes: number;
     luckyCharms: number;
   };
-  /**
-   * Structure progression state (Phase 1 of the "build something
-   * meaningful" system).  When `structure` is provided AND the
-   * VITE_STRUCTURE_UX feature flag is enabled, the dashboard renders
-   * the StructureHero + TodayStrip + StudentAssignmentsList trio
-   * INSTEAD of the legacy 14-widget pile.  When flag is off, the
-   * prop is ignored and the old layout renders unchanged.
-   */
-  structure?: StructureState;
-  /** Keys of parts newly unlocked this render — for the bounce pop. */
-  celebrateStructureKeys?: string[];
+  /** Inline display-name change from the greeting card. Returns the
+   *  server's authoritative name on success, or an error code + msg. */
+  onRenameDisplayName?: (newName: string) =>
+    Promise<
+      | { ok: true; displayName: string }
+      | { ok: false; code: string; message: string }
+    >;
 }
 
 // Feature flag — set VITE_STRUCTURE_UX=true to enable the Phase 1
@@ -95,7 +91,7 @@ export default function StudentDashboardView({
   setView, setShopTab,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
   retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
-  structure, celebrateStructureKeys,
+  onRenameDisplayName,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -306,6 +302,7 @@ export default function StudentDashboardView({
           copiedCode={copiedCode}
           setCopiedCode={setCopiedCode}
           onShopClick={() => { setShopTab("hub"); setView("shop"); }}
+          onRenameDisplayName={onRenameDisplayName}
         />
         <StudentStatsRow
           xp={xp}
