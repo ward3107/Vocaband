@@ -806,12 +806,23 @@ async function startServer() {
       const removed = state.students.delete(clientId);
       if (!removed) return;
       // Notify the kicked student's socket directly (find by reverse lookup).
+      // `leave()` alone isn't enough — the student's socket is still
+      // connected and can re-emit STUDENT_JOIN with the same clientId
+      // and land right back on the leaderboard.  Force-disconnect so the
+      // kick actually sticks, and rely on the client's KICKED listener
+      // to flip the kicked screen before the socket tears down.
       for (const [sockId, cId] of state.socketToClient.entries()) {
         if (cId === clientId) {
           state.socketToClient.delete(sockId);
           const targetSocket = qpIo.sockets.get(sockId);
           targetSocket?.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
           targetSocket?.leave(sessionCode);
+          // Give the KICKED packet a moment to flush before severing
+          // the connection.  Without the delay, disconnect() races the
+          // emit and the student never sees the kicked screen.
+          if (targetSocket) {
+            setTimeout(() => { try { targetSocket.disconnect(true); } catch { /* already gone */ } }, 200);
+          }
         }
       }
       qpScheduleBroadcast(sessionCode);
@@ -830,6 +841,23 @@ async function startServer() {
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_END, verify.reason, "access denied");
 
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode });
+      // Force every student socket in the room to disconnect after the
+      // SESSION_ENDED packet flushes.  Without this, students can keep
+      // emitting SCORE_UPDATE against the (now-deleted) session — the
+      // server no-ops them, but the game UI on their end has no reason
+      // to stop either, so they keep playing until the tab is closed.
+      // The socket disconnect bubbles into the client's onDisconnect →
+      // sessionEndedRef path so the UI transition is unambiguous.
+      const endingSessionState = qpSessions.get(sessionCode);
+      if (endingSessionState) {
+        const sockIds = Array.from(endingSessionState.socketToClient.keys());
+        setTimeout(() => {
+          for (const sockId of sockIds) {
+            const sock = qpIo.sockets.get(sockId);
+            try { sock?.disconnect(true); } catch { /* already gone */ }
+          }
+        }, 250);
+      }
       // Tear down in-memory state immediately; teacher's `is_active=false`
       // DB update is their own responsibility (client already does this).
       qpSessions.delete(sessionCode);
