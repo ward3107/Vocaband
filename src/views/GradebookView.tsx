@@ -472,20 +472,33 @@ export default function GradebookView({
       )}
 
       <main className={`${embedded ? 'pt-4' : 'pt-36 sm:pt-32'} px-4 sm:px-6 max-w-5xl mx-auto`}>
-        {/* Class + window selectors */}
+        {/* Class + window selectors — the class picker is the primary
+            control on this page (everything else is scoped to it), so
+            it gets a branded gradient treatment that catches the eye
+            rather than reading as a neutral utility pill. */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
-          <label className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm border border-stone-100">
-            <GraduationCap size={16} className="text-stone-500" />
-            <select
-              value={selectedClassCode}
-              onChange={e => setSelectedClassCode(e.target.value)}
-              aria-label="Select class"
-              className="bg-transparent text-sm font-bold text-stone-800 focus:outline-none"
-            >
-              {classes.map(c => (
-                <option key={c.code} value={c.code}>{c.name} · {c.code}</option>
-              ))}
-            </select>
+          <label className="group relative inline-flex items-center gap-2.5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-2xl pl-3 pr-2 py-2.5 shadow-lg shadow-indigo-500/20 ring-1 ring-white/10 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+              <GraduationCap size={16} className="text-white" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 leading-none">Class</span>
+              <select
+                value={selectedClassCode}
+                onChange={e => setSelectedClassCode(e.target.value)}
+                aria-label="Select class"
+                className="bg-transparent text-sm font-black text-white focus:outline-none cursor-pointer pr-6 mt-0.5"
+                style={{
+                  // Force the native caret to render white against the
+                  // dark gradient — by default browsers draw it black.
+                  colorScheme: 'dark',
+                }}
+              >
+                {classes.map(c => (
+                  <option key={c.code} value={c.code} className="text-stone-900">{c.name} · {c.code}</option>
+                ))}
+              </select>
+            </div>
           </label>
           <div className="flex items-center gap-1 bg-white rounded-xl px-1 py-1 shadow-sm border border-stone-100">
             {[7, 14, 30].map(n => (

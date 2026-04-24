@@ -84,6 +84,19 @@ export default function StudentGreetingCard({
 
   const xpTitle = getXpTitle(xp);
 
+  // Render the equipped cosmetics so shop purchases actually show up
+  // on the legacy dashboard (the Structure UX dashboard already does
+  // this via IdentityHero).  Frame = tailwind ring classes wrapping
+  // the avatar.  Title = prominent chip replacing the XP-derived
+  // title when the student has equipped one.
+  const equippedFrame = user.activeFrame
+    ? NAME_FRAMES.find(f => f.id === user.activeFrame)
+    : null;
+  const equippedTitle = user.activeTitle
+    ? NAME_TITLES.find(t => t.id === user.activeTitle)
+    : null;
+  const frameRingClass = equippedFrame?.border ?? 'ring-4 ring-white/40';
+
   // Roll-up XP counter on mount for a "wow" entrance.
   const [displayedXp, setDisplayedXp] = useState(0);
   useEffect(() => {
@@ -125,7 +138,7 @@ export default function StudentGreetingCard({
           className="relative shrink-0"
         >
           <div className="absolute inset-0 rounded-[28px] bg-white/40 blur-xl animate-pulse" />
-          <div className="relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[28px] flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ring-4 ring-white/40">
+          <div className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[28px] flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
             {user.avatar || '🦊'}
           </div>
           {streak > 0 && (
@@ -204,9 +217,15 @@ export default function StudentGreetingCard({
           )}
           {/* Title + class code inline */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span className="bg-white/20 backdrop-blur-sm text-white font-bold px-2.5 py-0.5 rounded-full border border-white/30 flex items-center gap-1">
-              {xpTitle.emoji} {xpTitle.title}
-            </span>
+            {equippedTitle ? (
+              <span className="bg-white/25 backdrop-blur-sm text-white font-black uppercase tracking-wider px-3 py-0.5 rounded-full border border-white/40 flex items-center gap-1 shadow-sm">
+                🏆 {equippedTitle.display}
+              </span>
+            ) : (
+              <span className="bg-white/20 backdrop-blur-sm text-white font-bold px-2.5 py-0.5 rounded-full border border-white/30 flex items-center gap-1">
+                {xpTitle.emoji} {xpTitle.title}
+              </span>
+            )}
             <button
               onClick={handleCopyCode}
               type="button"

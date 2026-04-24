@@ -229,87 +229,85 @@ export const THEMES = [
 // the UI surfaces the shop entries and the open action will just show
 // a coming-soon toast. No behavioural breakage.
 export const MYSTERY_EGGS = [
-  // 2026 rebalance: eggs now average near break-even on XP — students
-  // open them for the excitement of a rare drop, not guaranteed profit.
-  // Rainbow is the 2-month endgame goal at 2000 XP.
+  // 2026-04 rebalance (v2): maximum payout now >= cost so profit is
+  // possible.  Previously every egg had max payout < cost — mathematically
+  // impossible to profit, so the "gamble" was actually a tax.  Now
+  // students can sometimes profit, sometimes lose a little, plus the
+  // cosmetic rolls at the bigger eggs make them worth it regardless.
   {
     id: 'starter_egg',
     name: 'Starter Egg',
     emoji: '🥚',
-    desc: 'A simple egg. Drops 15-40 XP.',
+    desc: 'A simple egg. Drops 25-80 XP — roughly break-even.',
     cost: 50,
     rarity: 'common' as const,
-    minXp: 15, maxXp: 40,
+    minXp: 25, maxXp: 80,
   },
   {
     id: 'golden_egg',
     name: 'Golden Egg',
     emoji: '🐣',
-    desc: 'Sparkles gold. Drops 50-120 XP + a small chance of a rare avatar.',
+    desc: 'Sparkles gold. Drops 80-220 XP + a chance of a rare avatar.',
     cost: 150,
     rarity: 'rare' as const,
-    minXp: 50, maxXp: 120,
+    minXp: 80, maxXp: 220,
   },
   {
     id: 'dragon_egg',
     name: 'Dragon Egg',
     emoji: '🐉',
-    desc: 'Something mighty inside. Drops 150-280 XP.',
+    desc: 'Something mighty inside. Drops 200-550 XP.',
     cost: 350,
     rarity: 'epic' as const,
-    minXp: 150, maxXp: 280,
+    minXp: 200, maxXp: 550,
   },
   {
     id: 'treasure_chest',
     name: 'Treasure Chest',
     emoji: '🎁',
-    desc: 'Premium loot. Drops 300-500 XP + guaranteed cosmetic.',
+    desc: 'Premium loot. Drops 350-800 XP + guaranteed cosmetic.',
     cost: 600,
     rarity: 'legendary' as const,
-    minXp: 300, maxXp: 500,
+    minXp: 350, maxXp: 800,
   },
   {
     id: 'cosmic_egg',
     name: 'Cosmic Egg',
     emoji: '🌟',
-    desc: 'Made of stardust. Drops 600-900 XP + a premium title.',
+    desc: 'Made of stardust. Drops 600-1400 XP + a premium title.',
     cost: 1000,
     rarity: 'legendary' as const,
-    minXp: 600, maxXp: 900,
+    minXp: 600, maxXp: 1400,
   },
   {
     id: 'rainbow_egg',
     name: 'Rainbow Egg',
     emoji: '🌈',
-    desc: 'The rarest egg. Drops 1200-1800 XP + a random premium avatar.',
+    desc: 'The rarest egg. Drops 1200-2600 XP + a random premium avatar.',
     cost: 2000,
     rarity: 'mythic' as const,
-    minXp: 1200, maxXp: 1800,
+    minXp: 1200, maxXp: 2600,
   },
 ];
 
 // --- SHOP: POWER-UPS & BOOSTERS ---
 // Power-ups consume on use (inventory count) — students stack them.
 // Boosters are one-shot buffs with a duration (handled in App.tsx).
-// 2026 rebalance: power-ups were too cheap (25-50) — one assignment
-// bought 3 of them, making games trivial.  Bumped across the board.
+// 2026-04 rebalance (v2): removed 3 placeholder power-ups (Double
+// Points, Time Freeze, Peek) that took XP but had NO gameplay hook.
+// Only shipping items we actually wire end-to-end.
 export const POWER_UP_DEFS = [
   { id: 'skip', name: 'Skip Word', emoji: '⏭️', desc: 'Skip the current word without penalty', cost: 50 },
   { id: 'fifty_fifty', name: '50/50', emoji: '✂️', desc: 'Remove 2 wrong answers', cost: 60 },
   { id: 'reveal_letter', name: 'Reveal Letter', emoji: '💡', desc: 'Reveal the first letter in spelling mode', cost: 40 },
-  { id: 'double_points', name: 'Double Points', emoji: '2️⃣', desc: 'Next correct answer = 2× XP', cost: 80 },
-  { id: 'time_freeze', name: 'Time Freeze', emoji: '⏰', desc: 'Add 10 seconds on timed modes', cost: 60 },
-  { id: 'peek', name: 'Peek', emoji: '👁️', desc: 'Reveal the correct answer for 1 second', cost: 70 },
 ];
 
-// 2026 rebalance: streak_freeze dropped (it's defensive), xp_booster
-// bumped (it's very strong at 2×), weekend_warrior bumped (full weekend).
+// 2026-04 rebalance (v2): removed Focus Mode (no UI effect wired) and
+// Lucky Spin Token (no spin wheel exists).  Both were XP black holes.
 export const BOOSTERS_DEFS = [
   { id: 'streak_freeze', name: 'Streak Freeze', emoji: '🧊', desc: 'Protect your streak for 1 missed day', cost: 150 },
-  { id: 'lucky_spin', name: 'Lucky Spin Token', emoji: '🎰', desc: 'Spin the wheel for random rewards', cost: 150 },
   { id: 'xp_booster', name: '2× XP Booster', emoji: '🚀', desc: 'Double XP for 24 hours', cost: 400 },
   { id: 'lucky_charm', name: 'Lucky Charm', emoji: '🍀', desc: 'Your first wrong answer in the next game is forgiven', cost: 180 },
-  { id: 'focus_mode', name: 'Focus Mode', emoji: '🎯', desc: 'Distraction-free theme for 1 hour', cost: 120 },
   { id: 'weekend_warrior', name: 'Weekend Warrior', emoji: '📅', desc: '2× XP for an entire weekend', cost: 500 },
 ];
 
@@ -424,3 +422,116 @@ export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
 };
 
 export type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder";
+
+// ═════════════════════════════════════════════════════════════════════════
+// STRUCTURE PROGRESSION — "build something meaningful" system
+// ═════════════════════════════════════════════════════════════════════════
+//
+// Students earn pieces of a persistent creation through SPECIFIC LEARNING
+// ACHIEVEMENTS — not raw XP.  Phase 1 supports 10 pieces per metaphor and
+// 3 unlock events.  Phase 2 expands to 7 events + server-backed state.
+
+export type StructureKind = 'garden' | 'city' | 'rocket' | 'castle';
+
+/** Unlock events that grow a student's structure.  Phase 1 ships three; */
+/** phase 2 adds streak_30, class_pulse_on_track_week, teacher_badge, */
+/** mistake_mastered.  Each part points at one of these. */
+export type UnlockEvent = 'mastered_5_words' | 'perfect_assignment' | 'streak_7';
+
+export interface StructurePart {
+  /** Stable id used as storage key AND to look up the metaphor SVG slot. */
+  key: string;
+  /** Human label shown in the origin sheet. */
+  label: string;
+  /** Emoji shown on the origin sheet + optionally overlaid on the SVG. */
+  emoji: string;
+  /** What the student did to earn it — used in the origin sheet. */
+  origin: string;
+  /** Which event qualifies the student for this piece. */
+  unlockEvent: UnlockEvent;
+  /** The Nth unlock for this unlockEvent (1 = first time it fires). */
+  unlockOrdinal: number;
+}
+
+/**
+ * Each metaphor has 10 slots across three unlock events:
+ *   * 5× mastered_5_words   (foundation pieces — come most often)
+ *   * 3× perfect_assignment (landmarks — rarer)
+ *   * 2× streak_7           (commitment pieces — track streaks)
+ *
+ * Phase 1 ships the labels + origin copy only; the metaphor SVG
+ * components map their slots to these keys by slot index (0–9, in the
+ * order below).  Swapping a metaphor's art never touches this array.
+ */
+export const STRUCTURE_PARTS: Record<StructureKind, StructurePart[]> = {
+  garden: [
+    { key: 'g_seedling_1', label: 'Sprout',       emoji: '🌱', origin: 'You played 2 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'g_flower_1',   label: 'First Bloom',  emoji: '🌸', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'g_seedling_2', label: 'Second Sprout',emoji: '🌿', origin: 'You played 4 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'g_tree_1',     label: 'Young Tree',   emoji: '🌳', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'g_seedling_3', label: 'Third Sprout', emoji: '🌿', origin: 'You played 6 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'g_flower_2',   label: 'Rose Garden',  emoji: '🌹', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'g_seedling_4', label: 'Fourth Sprout',emoji: '🌱', origin: 'You played 8 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'g_tree_2',     label: 'Oak Tree',     emoji: '🌳', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'g_seedling_5', label: 'Fifth Sprout', emoji: '🌻', origin: 'You played 10 great games.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'g_flower_3',   label: 'Crown Bloom',  emoji: '🌺', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+  city: [
+    { key: 'c_house_1',    label: 'First House',  emoji: '🏠', origin: 'You played 2 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'c_landmark_1', label: 'Library',      emoji: '📚', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'c_house_2',    label: 'Corner Shop',  emoji: '🏪', origin: 'You played 4 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'c_streak_1',   label: 'Street Lights',emoji: '💡', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'c_house_3',    label: 'Town Hall',    emoji: '🏛️', origin: 'You played 6 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'c_landmark_2', label: 'Clock Tower',  emoji: '🕰️', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'c_house_4',    label: 'Cafe',         emoji: '☕', origin: 'You played 8 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'c_streak_2',   label: 'Fountain',     emoji: '⛲', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'c_house_5',    label: 'School',       emoji: '🏫', origin: 'You played 10 great games.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'c_landmark_3', label: 'Tower',        emoji: '🗼', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+  rocket: [
+    { key: 'r_body_1',     label: 'Fuel Tank',    emoji: '🛢️', origin: 'You played 2 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'r_nose',       label: 'Nose Cone',    emoji: '🔺', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'r_body_2',     label: 'Body Segment', emoji: '🟧', origin: 'You played 4 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'r_streak_1',   label: 'Booster Flame',emoji: '🔥', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'r_fin_1',      label: 'Left Fin',     emoji: '◀️', origin: 'You played 6 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'r_engine',     label: 'Main Engine',  emoji: '⚙️', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'r_fin_2',      label: 'Right Fin',    emoji: '▶️', origin: 'You played 8 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'r_streak_2',   label: 'Booster Trail',emoji: '✨', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'r_cockpit',    label: 'Cockpit',      emoji: '🪟', origin: 'You played 10 great games.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'r_flag',       label: 'Name Flag',    emoji: '🏁', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+  castle: [
+    { key: 'k_wall_1',     label: 'First Wall',   emoji: '🧱', origin: 'You played 2 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 1 },
+    { key: 'k_tower_1',    label: 'Watch Tower',  emoji: '🗼', origin: 'You scored a perfect 100 on an assignment.', unlockEvent: 'perfect_assignment', unlockOrdinal: 1 },
+    { key: 'k_wall_2',     label: 'West Wall',    emoji: '🧱', origin: 'You played 4 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 2 },
+    { key: 'k_streak_1',   label: 'Royal Flag',   emoji: '🚩', origin: 'You kept a 7-day streak.',                  unlockEvent: 'streak_7',           unlockOrdinal: 1 },
+    { key: 'k_wall_3',     label: 'East Wall',    emoji: '🧱', origin: 'You played 6 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 3 },
+    { key: 'k_tower_2',    label: 'Keep',         emoji: '🏰', origin: 'You perfected a second assignment.',        unlockEvent: 'perfect_assignment', unlockOrdinal: 2 },
+    { key: 'k_wall_4',     label: 'Gatehouse',    emoji: '🚪', origin: 'You played 8 great games.',                 unlockEvent: 'mastered_5_words',   unlockOrdinal: 4 },
+    { key: 'k_streak_2',   label: 'Torches',      emoji: '🔥', origin: 'You kept another 7-day streak.',            unlockEvent: 'streak_7',           unlockOrdinal: 2 },
+    { key: 'k_wall_5',     label: 'Moat Bridge',  emoji: '🌉', origin: 'You played 10 great games.',                unlockEvent: 'mastered_5_words',   unlockOrdinal: 5 },
+    { key: 'k_tower_3',    label: 'Throne Room',  emoji: '👑', origin: 'You perfected a third assignment.',         unlockEvent: 'perfect_assignment', unlockOrdinal: 3 },
+  ],
+};
+
+export interface StructureKindMeta {
+  kind: StructureKind;
+  label: string;
+  emoji: string;
+  tagline: string;
+}
+
+export const STRUCTURE_KINDS: StructureKindMeta[] = [
+  { kind: 'garden', label: 'Garden',   emoji: '🌱', tagline: 'Grow plants, flowers, and trees.' },
+  { kind: 'city',   label: 'City',     emoji: '🏙️', tagline: 'Build houses, shops, and landmarks.' },
+  { kind: 'rocket', label: 'Rocket',   emoji: '🚀', tagline: 'Assemble a rocket, piece by piece.' },
+  { kind: 'castle', label: 'Castle',   emoji: '🏰', tagline: 'Raise walls, towers, and a throne room.' },
+];
+
+/** High-quality games (score ≥ 80) needed per `mastered_5_words`       */
+/** unlock.  Phase 1 ships at 2 so the first foundation piece appears    */
+/** after a couple of good plays — much snappier than waiting for 5.     */
+/** Bumped later to a more demanding cadence (5 → 10) when the word-    */
+/** mastery ledger comes online in Phase 2 and we can use real word     */
+/** mastery instead of game count as the trigger.                        */
+export const STRUCTURE_WORDS_PER_EVENT = 2;

@@ -12,6 +12,7 @@ import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, 
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
+import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
 import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
@@ -188,6 +189,17 @@ export default function App() {
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
+
+  // Structure progression (Phase 1 of "build something meaningful").
+  // Tracks a per-user persisted creation (garden/city/rocket/castle)
+  // that grows as the student learns.  Gated behind the
+  // VITE_STRUCTURE_UX feature flag at the dashboard render level —
+  // this hook runs either way so the localStorage state is always
+  // consistent if the flag flips mid-session.
+  const structure = useStructure(user?.uid);
+  // Keys of parts that were just unlocked — used to bounce-animate
+  // them on the next render, then cleared after a short delay.
+  const [celebrateStructureKeys, setCelebrateStructureKeys] = useState<string[]>([]);
 
   // Active boosters (xp_booster, weekend_warrior, streak_freeze,
   // lucky_charm, focus_mode).  Scoped per-user via uid; persists in

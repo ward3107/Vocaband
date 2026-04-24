@@ -1,7 +1,16 @@
 import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
+import { runSafariDiagnostics } from './utils/safariDiagnostics';
 import './index.css';
+
+// Surface a top banner if a critical browser API is missing (Safari
+// Private Browsing, third-party cookies disabled, WebSocket blocked).
+// Teachers reported "the game doesn't work on Safari" with no DevTools
+// access on iPad/iPhone — this gives them a readable cause instead of a
+// blank screen. Must run before React mounts so it's visible even if
+// the app crashes on boot.
+runSafariDiagnostics();
 
 // Service Worker registrar + kill switch.
 //
