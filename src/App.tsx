@@ -77,6 +77,7 @@ import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
+import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
@@ -1692,67 +1693,18 @@ export default function App() {
     preloadMany(ids);
   }, [user?.isGuest, quickPlayActiveSession?.id, preloadMany]);
 
-  // Auto-refresh student assignments every 30s while on the dashboard
-  // so new assignments from the teacher appear without re-login
-  useEffect(() => {
-    if (user?.role !== "student" || view !== "student-dashboard" || !user.classCode) return;
-    const code = user.classCode;
-    // Cache class ID to avoid querying classes table every 30s
-    let cachedClassId: string | null = null;
-    const refresh = async () => {
-      // Double-check user still exists and is still logged in (prevents DB calls after logout)
-      if (!user || !user.classCode) return;
+  // Background auto-refresh on dashboards: student assignments (30 s),
+  // teacher pending-student approvals (10 s), teacher class scores
+  // (20 s on Classroom / Analytics / Gradebook).  All three cheap
+  // indexed polls + visibility refetches — Supabase Realtime has
+  // proven unreliable for these lists in practice.
+  useDashboardPolling({
+    user, view, classes, allScores,
+    setStudentAssignments,
+    loadPendingStudents,
+    fetchScores,
+  });
 
-      if (!cachedClassId) {
-        const { data: classRows } = await supabase.from('classes').select('id').eq('code', code).limit(1);
-        if (!classRows || classRows.length === 0) return;
-        cachedClassId = classRows[0].id;
-      }
-      const { data } = await supabase.rpc('get_assignments_for_class', { p_class_id: cachedClassId });
-      setStudentAssignments((data ?? []).map(mapAssignment));
-    };
-    // Fetch immediately on mount (so new assignments appear as soon as the
-    // student navigates to the dashboard), then refresh every 30 seconds.
-    refresh();
-    const id = setInterval(refresh, 30000);
-    return () => clearInterval(id);
-  }, [user?.role, user?.classCode, view, user]);
-
-  // Load pending students for teachers
-  useEffect(() => {
-    // Trigger pending-students fetch on any of: fresh teacher dashboard
-    // mount, dashboard re-entry, OR the async classes list finally
-    // arriving (common race — loadPendingStudents early-returns when
-    // classes.length === 0, so without this dep the teacher sees a
-    // permanent empty state if they land on the dashboard before the
-    // classes fetch resolves).
-    //
-    // Also polls every 10s + refetches on tab refocus. Without these,
-    // a teacher sitting on the dashboard sees no new pending students
-    // until they navigate away and back (or relogin) — because the
-    // Supabase Realtime channel we'd normally lean on to push the
-    // notification has been unreliable in practice. Polling is cheap
-    // (single indexed query) and means the approval tray always reflects
-    // reality within ~10 seconds regardless of realtime health.
-    if (!(user?.role === "teacher" && view === "teacher-dashboard" && classes.length > 0)) {
-      return;
-    }
-    loadPendingStudents();
-
-    const pollId = setInterval(() => {
-      if (!document.hidden) loadPendingStudents();
-    }, 10_000);
-
-    const handleVisibility = () => {
-      if (!document.hidden) loadPendingStudents();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(pollId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [user?.role, view, classes.length]);
 
   // --- SMART PASTE FUNCTIONS ---
 
@@ -1765,38 +1717,6 @@ export default function App() {
   // Hook encapsulates the includes-guard + celebrate + DB upsert.
   const awardBadge = useAwardBadge({ user, badges, setBadges, setSaveError });
 
-  // Re-run fetchScores when classes transitions from 0 → non-zero while the
-  // teacher is viewing Analytics or Gradebook. Without this, clicking the
-  // Analytics card before the async classes fetch completes locks in an
-  // empty state: fetchScores sees classes=[] and returns early, and nothing
-  // else re-triggers it. Guarded by allScores.length === 0 so this fires
-  // at most once per session.
-  useEffect(() => {
-    if (user?.role !== "teacher") return;
-    if (classes.length === 0) return;
-    if (view !== "classroom" && view !== "analytics" && view !== "gradebook") return;
-    // Initial fetch — only if we haven't already loaded this session.
-    // Without this guard, every view-switch inside Classroom would
-    // re-hit the DB.
-    if (allScores.length === 0) fetchScores();
-    // Live refresh — students complete assignments at any moment while
-    // the teacher is on Classroom/Analytics/Gradebook.  Before this,
-    // the teacher had to leave and re-enter the view to see a new
-    // score land (or full refresh the page).  Poll every 20 seconds
-    // and re-fetch when the tab becomes visible.  Cheap single query.
-    const pollId = setInterval(() => {
-      if (!document.hidden) fetchScores();
-    }, 20_000);
-    const handleVisibility = () => {
-      if (!document.hidden) fetchScores();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      clearInterval(pollId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classes.length, view, user?.role]);
 
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
