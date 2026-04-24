@@ -1,24 +1,22 @@
 /**
  * useStudentLogin — student-account login flow extracted from App.tsx.
  *
- * Three handlers:
- *   - `handleLoginAsStudent(studentId)` — called when a student taps
- *     their name in the "Is that you?" picker. Loads the full profile
+ * Two handlers:
+ *   - `handleLoginAsStudent(studentId)` — loads a student's full profile
  *     via SECURITY DEFINER RPC (or direct-query fallback) and hands it
- *     to processStudentProfile.
- *   - `handleNewStudentSignup()` — first-time signup: signs in
- *     anonymously to satisfy auth.uid() for the get_or_create RPC,
- *     creates / fetches the student_profiles row, routes to the
- *     pending-approval screen if the teacher hasn't approved yet, or
- *     calls handleLoginAsStudent if already approved.
+ *     to processStudentProfile. Called from two places today:
+ *       1. PendingApprovalScreen, once the teacher has approved and the
+ *          student's session is still the original signup session.
+ *       2. The OAuth approved-student path (handleOAuthStudentDetected).
  *   - `processStudentProfile(profile)` — shared finishing path that
  *     enforces the SECURITY check (live session.uid must match the
  *     profile's auth_uid — see commit history for the impersonation
  *     hole this fixed), creates / updates the users table row, loads
  *     the student's class + assignments, and routes to the dashboard.
  *
- * Mechanical extraction. Behaviour, security checks, error handling,
- * and the manualLoginInProgress guard all preserved.
+ * The legacy `handleNewStudentSignup` (class-code + typed name + anon
+ * sign-in) was removed when we moved student login to OAuth-only.
+ * Brand-new students now go through `OAuthClassCode` post-redirect.
  */
 import { useCallback } from "react";
 import {
@@ -34,25 +32,7 @@ import {
 import { trackAutoError } from "../errorTracking";
 import type { View } from "../core/views";
 
-interface ExistingStudent {
-  id: string;
-  displayName: string;
-  xp: number;
-  status: string;
-  avatar?: string;
-}
-
 export interface UseStudentLoginParams {
-  // ─── Form state ────────────────────────────────────────────────────
-  studentLoginName: string;
-  studentLoginClassCode: string;
-  studentAvatar: string;
-  setStudentLoginName: (v: string) => void;
-  setStudentLoginClassCode: (v: string) => void;
-  setStudentAvatar: (v: string) => void;
-  setExistingStudents: React.Dispatch<React.SetStateAction<ExistingStudent[]>>;
-  setShowNewStudentForm: (v: boolean) => void;
-
   // ─── Output state ──────────────────────────────────────────────────
   setUser: (u: AppUser | null) => void;
   setError: (msg: string | null) => void;
@@ -65,10 +45,6 @@ export interface UseStudentLoginParams {
   setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
 
   // ─── Cross-hook collaborators ──────────────────────────────────────
-  /** App.tsx ref that gates onAuthStateChange while the manual login
-   *  flow runs (signInAnonymously fires SIGNED_IN; without this guard
-   *  restoreSession would interfere). */
-  manualLoginInProgressRef: React.MutableRefObject<boolean>;
   /** App.tsx helper: route to pending-approval screen + persist info. */
   showPendingApproval: (info: { name: string; classCode: string; profileId?: string }) => void;
   /** From useTeacherData: hydrate the student's class assignments. */
@@ -77,7 +53,6 @@ export interface UseStudentLoginParams {
     code: string,
     studentUid: string,
   ) => Promise<void>;
-  setPendingApprovalInfo: (info: { name: string; classCode: string; profileId?: string } | null) => void;
 }
 
 interface StudentProfileShape {
@@ -94,16 +69,11 @@ interface StudentProfileShape {
 
 export function useStudentLogin(params: UseStudentLoginParams) {
   const {
-    studentLoginName, studentLoginClassCode, studentAvatar,
-    setStudentLoginName, setStudentLoginClassCode, setStudentAvatar,
-    setExistingStudents, setShowNewStudentForm,
     setUser, setError, setLoading, setView,
     setBadges, setXp, setStreak,
     setStudentAssignments, setStudentProgress,
-    manualLoginInProgressRef,
     showPendingApproval,
     loadAssignmentsForClass,
-    setPendingApprovalInfo,
   } = params;
 
   // ─── Shared finishing path ──────────────────────────────────────────
@@ -146,9 +116,8 @@ export function useStudentLogin(params: UseStudentLoginParams) {
     //
     // Current behaviour: if the session is missing or doesn't match,
     // refuse the login and point the student at OAuth / teacher help.
-    // Re-authentication for anonymous students who lost their session
-    // is an open problem — the only safe paths today are Google
-    // sign-in or a teacher-mediated reset.
+    // OAuth-only login (the current flow) ensures session.user.id always
+    // equals the profile's auth_uid for non-attacker callers.
     const { data: { session: liveSession } } = await supabase.auth.getSession();
     const liveAuthUid = liveSession?.user?.id ?? null;
     if (!liveAuthUid || liveAuthUid !== profile.auth_uid) {
@@ -260,7 +229,8 @@ export function useStudentLogin(params: UseStudentLoginParams) {
     setView, setStudentAssignments, setStudentProgress, loadAssignmentsForClass,
   ]);
 
-  // ─── Login by tapping a name in the picker ─────────────────────────
+  // ─── Login by profile id (used by PendingApprovalScreen post-approval
+  //     and by handleOAuthStudentDetected). ─────────────────────────
   const handleLoginAsStudent = useCallback(async (studentId: string) => {
     // Look up the student's full profile including auth_uid
     try {
@@ -307,88 +277,8 @@ export function useStudentLogin(params: UseStudentLoginParams) {
     }
   }, [processStudentProfile, setError]);
 
-  // ─── New-student signup ────────────────────────────────────────────
-  const handleNewStudentSignup = useCallback(async () => {
-    const trimmedName = studentLoginName.trim().slice(0, 30);
-    const trimmedCode = studentLoginClassCode.trim().toUpperCase();
-
-    if (!trimmedName || !trimmedCode) {
-      setError("Please enter both class code and your name.");
-      return;
-    }
-
-    // Guard: prevent onAuthStateChange → restoreSession from interfering
-    // while this function owns the login flow.  signInAnonymously() fires
-    // SIGNED_IN, and without this guard restoreSession would run (can't
-    // find the user row yet) and redirect to landing.
-    manualLoginInProgressRef.current = true;
-
-    try {
-      // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
-      const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
-      if (signInError || !signInData.session) {
-        setError("Could not create account. Please try again.");
-        console.error('Sign-in error:', signInError);
-        return;
-      }
-
-      // Step 2: Use the RPC function which has SECURITY DEFINER to bypass RLS
-      const { data: result, error: rpcError } = await supabase
-        .rpc('get_or_create_student_profile', {
-          p_class_code: trimmedCode,
-          p_display_name: trimmedName,
-          p_avatar: studentAvatar,
-        });
-
-      if (rpcError) throw rpcError;
-
-      if (!result || result.length === 0) {
-        throw new Error('Failed to create student profile');
-      }
-
-      const profile = result[0].profile;
-
-      if (profile.status === 'approved') {
-        // Already approved, just log them in
-        handleLoginAsStudent(profile.id);
-        return;
-      } else if (profile.status === 'pending_approval') {
-        // Navigate to a dedicated waiting screen instead of just a toast.
-        // The student needs to understand what's happening and what to do next.
-        const info = {
-          name: trimmedName,
-          classCode: trimmedCode,
-          profileId: profile.id,
-        };
-        setPendingApprovalInfo(info);
-        setView("student-pending-approval");
-
-        // Persist so the pending screen survives page refresh
-        try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
-
-        // Clear form
-        setStudentLoginName("");
-        setStudentLoginClassCode("");
-        setStudentAvatar("🦊");
-        setExistingStudents([]);
-        setShowNewStudentForm(false);
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      setError("Could not create account. Please try again.");
-    } finally {
-      manualLoginInProgressRef.current = false;
-    }
-  }, [
-    studentLoginName, studentLoginClassCode, studentAvatar,
-    setError, setView, setStudentLoginName, setStudentLoginClassCode,
-    setStudentAvatar, setExistingStudents, setShowNewStudentForm,
-    setPendingApprovalInfo, handleLoginAsStudent, manualLoginInProgressRef,
-  ]);
-
   return {
     handleLoginAsStudent,
-    handleNewStudentSignup,
     processStudentProfile,
   };
 }
