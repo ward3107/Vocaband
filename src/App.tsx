@@ -67,6 +67,7 @@ import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
 import { useTeacherActions } from "./hooks/useTeacherActions";
 import { useGameModeActions } from "./hooks/useGameModeActions";
 import { useGameFinish } from "./hooks/useGameFinish";
+import { useTranslate } from "./hooks/useTranslate";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -993,76 +994,10 @@ export default function App() {
     };
   };
 
-  // --- AI TRANSLATION FOR QUICK PLAY ---
-  // Cache for translated words to avoid redundant API calls
-  const translationCache = useRef<Map<string, {hebrew: string, arabic: string, match: number}>>(new Map());
-
-  // Batch-translate English → Hebrew + Arabic via /api/translate (Gemini).
-  // Handles one-or-many words in a single HTTP call so paste of 30 custom
-  // words doesn't fire 30 parallel requests. Results are cached by lowercased
-  // English so subsequent requests (per-word retries, auto-translate button)
-  // don't re-hit the API.
-  const translateWordsBatch = async (
-    englishWords: string[]
-  ): Promise<Map<string, { hebrew: string; arabic: string; match: number }>> => {
-    const out = new Map<string, { hebrew: string; arabic: string; match: number }>();
-    const uncached: string[] = [];
-
-    for (const w of englishWords) {
-      const key = w.toLowerCase().trim();
-      if (!key) continue;
-      const cached = translationCache.current.get(key);
-      if (cached) {
-        out.set(key, cached);
-      } else {
-        uncached.push(w.trim());
-      }
-    }
-
-    if (uncached.length === 0) return out;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return out;
-
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ words: uncached }),
-      });
-
-      if (!res.ok) {
-        console.warn('[translate] /api/translate failed:', res.status);
-        return out;
-      }
-
-      const { hebrew, arabic } = await res.json() as { hebrew?: string[]; arabic?: string[] };
-      uncached.forEach((word, i) => {
-        const he = hebrew?.[i]?.trim() || '';
-        const ar = arabic?.[i]?.trim() || '';
-        if (!he && !ar) return;
-        const entry = { hebrew: he, arabic: ar, match: he && ar ? 1 : 0.5 };
-        const key = word.toLowerCase();
-        translationCache.current.set(key, entry);
-        out.set(key, entry);
-      });
-    } catch (error) {
-      trackAutoError(error, 'Translation service error');
-    }
-
-    return out;
-  };
-
-  // Single-word translator kept for API compatibility with existing callers
-  // (manual "Auto-translate" button, Quick Play). Thin wrapper over the batch.
-  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
-    const result = await translateWordsBatch([englishWord]);
-    return result.get(englishWord.toLowerCase().trim()) || null;
-  };
+  // Translation helpers — server-proxied EN → HE/AR with an in-session
+  // cache. Two callable shapes: batch (paste/OCR/imports) and single-
+  // word (Auto-translate button). Hook owns the cache + fetch plumbing.
+  const { translateWord, translateWordsBatch } = useTranslate();
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
