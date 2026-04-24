@@ -20,7 +20,7 @@ import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
 import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
-import { shuffle, chunkArray, addUnique, removeKey } from './utils';
+import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
@@ -76,6 +76,7 @@ import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
+import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
@@ -94,13 +95,7 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
 
-// Unbiased secure random integer in [0, max). Uses rejection sampling to avoid modulo bias.
-function secureRandomInt(max: number): number {
-  if (max <= 1) return 0;
-  const arr = new Uint32Array(1);
-  crypto.getRandomValues(arr);
-  return arr[0] % max;
-}
+// secureRandomInt moved to `src/utils.ts` for reuse.
 
 export default function App() {
   // Initialize game debugger
@@ -1929,71 +1924,16 @@ export default function App() {
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
   const currentWord = gameWords[currentIndex];
-  // Debug: verify word count in game
-  if (view === "game" && activeAssignment) {
-  }
 
-  // Debug: log state when in game view
-  if (view === "game") {
-  }
-
-  const options = useMemo(() => {
-    if (!currentWord) return [];
-    const correct = currentWord;
-
-    // Use ONLY the assigned gameWords for distractors - students should only see what the teacher assigned
-    let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
-
-    // If fewer than 3 distractors available (teacher assigned <4 words),
-    // cycle through the assigned words instead of borrowing from ALL_WORDS.
-    // Edge case: if the teacher assigned exactly 1 word, possibleDistractors
-    // is empty — the cycle loop would never terminate and freezes the page.
-    // Fall back to ALL_WORDS in that case so we have real distractors to show.
-    if (possibleDistractors.length === 0) {
-      possibleDistractors = ALL_WORDS.filter(w => w.id !== correct.id);
-    }
-    if (possibleDistractors.length < 3) {
-      // Shuffle available distractors first
-      const shuffledDistractors = shuffle(possibleDistractors);
-      // Repeat until we have at least 3
-      while (shuffledDistractors.length < 3) {
-        shuffledDistractors.push(...shuffle(possibleDistractors));
-      }
-      possibleDistractors = shuffledDistractors;
-    }
-
-    const shuffledOthers = possibleDistractors.slice(0, 3);
-    return shuffle([...shuffledOthers, correct]);
-  }, [currentWord, gameWords]);
-
-  // Synchronously derive tfOption so it is never null on the first render
-  // of a True/False round (see note next to the isFlipped declaration).
-  const tfOption = useMemo<Word | null>(() => {
-    if (!currentWord) return null;
-    // 50% correct translation, 50% distractor
-    if (secureRandomInt(2) === 0) return currentWord;
-    let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
-    if (possibleDistractors.length === 0) {
-      const allPossibleWords = [...ALL_WORDS, ...gameWords];
-      possibleDistractors = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values()).filter(w => w.id !== currentWord.id);
-    }
-    return possibleDistractors[secureRandomInt(possibleDistractors.length)] ?? currentWord;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, currentWord, gameWords]);
+  // Per-round derived data: 4-way options, T/F option, scrambled letters.
+  const { options, tfOption, scrambledWord } = useGameRoundOptions({
+    currentWord, gameWords, currentIndex,
+  });
 
   useEffect(() => {
     if (currentWord) setIsFlipped(false);
   }, [currentIndex, currentWord]);
 
-  const scrambledWord = useMemo(() => {
-    if (!currentWord) return "";
-    let scrambled = shuffle(currentWord.english.split('')).join('');
-    // Ensure it's actually scrambled if length > 1
-    while (scrambled === currentWord.english && currentWord.english.length > 1) {
-      scrambled = shuffle(currentWord.english.split('')).join('');
-    }
-    return scrambled;
-  }, [currentWord]);
 
   // Voice selection + caching + voiceschanged listener are bundled in
   // a hook so this component doesn't hold browser-API plumbing.

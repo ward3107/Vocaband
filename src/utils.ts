@@ -27,3 +27,12 @@ export function removeKey<T extends Record<string, unknown>>(obj: T, key: keyof 
 export function addUnique<T>(array: T[], item: T): T[] {
   return array.includes(item) ? array : [...array, item];
 }
+
+/** Unbiased secure random integer in [0, max).  Uses crypto.getRandomValues
+ *  when available; returns 0 for max <= 1. */
+export function secureRandomInt(max: number): number {
+  if (max <= 1) return 0;
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return arr[0] % max;
+}
