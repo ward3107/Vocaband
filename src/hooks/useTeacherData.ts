@@ -61,13 +61,17 @@ export interface UseTeacherDataParams {
   setPendingStudents: React.Dispatch<React.SetStateAction<PendingStudent[]>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  /** Opens the reject-confirmation modal in App.tsx. handleRejectStudent
+   *  flows through here so the destructive action requires explicit
+   *  confirmation before confirmRejectStudent flips the status. */
+  setRejectStudentModal: (v: { id: string; displayName: string } | null) => void;
 }
 
 export function useTeacherData(params: UseTeacherDataParams) {
   const {
     classes, setClasses, setExistingStudents,
     setStudentAssignments, setStudentProgress, setPendingStudents,
-    setError, showToast,
+    setError, showToast, setRejectStudentModal,
   } = params;
 
   const fetchTeacherData = useCallback(async (uid: string): Promise<ClassData[]> => {
@@ -225,10 +229,60 @@ export function useTeacherData(params: UseTeacherDataParams) {
     }
   }, [classes, setPendingStudents, showToast]);
 
+  // ─── Approval queue actions ─────────────────────────────────────────
+  // Approve: SECURITY DEFINER RPC creates the auth.users row + flips
+  // status to 'approved' atomically.
+  const handleApproveStudent = useCallback(async (studentId: string, displayName: string) => {
+    try {
+      const { error } = await supabase.rpc('approve_student', {
+        p_profile_id: studentId,
+      });
+
+      if (error) {
+        console.error('RPC error:', error);
+        throw error;
+      }
+
+      // Refresh the list
+      await loadPendingStudents();
+
+      showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
+    } catch (error) {
+      console.error('Error approving student:', error);
+      showToast("Could not approve student. Please try again.", "error");
+    }
+  }, [loadPendingStudents, showToast]);
+
+  // Reject: opens a confirmation modal first; the actual flip happens
+  // in confirmRejectStudent below.
+  const handleRejectStudent = useCallback(async (studentId: string, displayName: string) => {
+    setRejectStudentModal({ id: studentId, displayName });
+  }, [setRejectStudentModal]);
+
+  const confirmRejectStudent = useCallback(async (studentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('student_profiles')
+        .update({ status: 'rejected' })
+        .eq('id', studentId);
+
+      if (error) throw error;
+
+      // Refresh the list
+      await loadPendingStudents();
+    } catch (error) {
+      console.error('Error rejecting student:', error);
+      showToast("Could not reject student. Please try again.", "error");
+    }
+  }, [loadPendingStudents, showToast]);
+
   return {
     fetchTeacherData,
     loadStudentsInClass,
     loadAssignmentsForClass,
     loadPendingStudents,
+    handleApproveStudent,
+    handleRejectStudent,
+    confirmRejectStudent,
   };
 }

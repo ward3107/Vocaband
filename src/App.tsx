@@ -892,20 +892,24 @@ export default function App() {
     lastFetchRef,
   });
 
-  // Read-only data fetchers (classes / students-in-class / assignments-
-  // for-class / pending-approvals queue) extracted into their own hook.
-  // Same shapes and behaviours as the inline closures they replace.
+  // Read-only data fetchers + approval-queue actions extracted into a
+  // dedicated hook. Same shapes and behaviours as the inline closures
+  // they replace.
   const {
     fetchTeacherData,
     loadStudentsInClass,
     loadAssignmentsForClass,
     loadPendingStudents,
+    handleApproveStudent,
+    handleRejectStudent,
+    confirmRejectStudent,
   } = useTeacherData({
     classes, setClasses,
     setExistingStudents,
     setStudentAssignments, setStudentProgress,
     setPendingStudents,
     setError, showToast,
+    setRejectStudentModal,
   });
 
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
@@ -2687,53 +2691,6 @@ export default function App() {
     setNeedsConsent(false);
     setConsentChecked(false);
   };
-
-  // Teacher Approval System
-  const handleApproveStudent = async (studentId: string, displayName: string) => {
-    try {
-      // Call the approve_student function
-      const { error } = await supabase.rpc('approve_student', {
-        p_profile_id: studentId
-      });
-
-
-      if (error) {
-        console.error('RPC error:', error);
-        throw error;
-      }
-
-      // Refresh the list
-      await loadPendingStudents();
-
-      // Show success
-      showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
-    } catch (error) {
-      console.error('Error approving student:', error);
-      showToast("Could not approve student. Please try again.", "error");
-    }
-  };
-
-  const handleRejectStudent = async (studentId: string, displayName: string) => {
-    setRejectStudentModal({ id: studentId, displayName });
-  };
-
-  const confirmRejectStudent = async (studentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('student_profiles')
-        .update({ status: 'rejected' })
-        .eq('id', studentId);
-
-      if (error) throw error;
-
-      // Refresh the list
-      await loadPendingStudents();
-    } catch (error) {
-      console.error('Error rejecting student:', error);
-      showToast("Could not reject student. Please try again.", "error");
-    }
-  };
-
 
   const awardBadge = async (badge: string) => {
     if (!user || badges.includes(badge)) return;
