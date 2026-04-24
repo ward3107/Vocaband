@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Zap, Check, Copy, Flame, ShoppingBag } from "lucide-react";
+import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon } from "lucide-react";
 import { getXpTitle } from "../../constants/game";
 import type { AppUser } from "../../core/supabase";
 
@@ -15,6 +15,15 @@ interface StudentGreetingCardProps {
    * (Previously lived in StudentTopBar; moved here so the student's
    * name + avatar + XP + Shop all live in one coloured rectangle.) */
   onShopClick: () => void;
+  /** Optional rename handler. When provided, a pencil icon appears
+   *  next to the student's name and lets them change it in-place.
+   *  Resolves with the server's authoritative name (client already
+   *  mirrors it into AppUser.displayName) or an error code + message. */
+  onRenameDisplayName?: (newName: string) =>
+    Promise<
+      | { ok: true; displayName: string }
+      | { ok: false; code: string; message: string }
+    >;
 }
 
 /**
@@ -25,7 +34,48 @@ interface StudentGreetingCardProps {
  */
 export default function StudentGreetingCard({
   user, xp, streak, copiedCode, setCopiedCode, onShopClick,
+  onRenameDisplayName,
 }: StudentGreetingCardProps) {
+  // ─── Inline rename state ───────────────────────────────────────────
+  // Kept local to this card so the rename UX doesn't leak into the
+  // orchestrator. Tap the pencil → swap name for an input; save
+  // commits via onRenameDisplayName; cancel restores.
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState(user.displayName);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renameSaving, setRenameSaving] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isRenaming) {
+      setNameDraft(user.displayName);
+      setRenameError(null);
+      // Auto-focus + select so the student can replace in one gesture
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select();
+      }, 0);
+    }
+  }, [isRenaming, user.displayName]);
+
+  const submitRename = async () => {
+    if (!onRenameDisplayName || renameSaving) return;
+    const trimmed = nameDraft.replace(/\s+/g, ' ').trim();
+    if (!trimmed || trimmed === user.displayName) {
+      setIsRenaming(false);
+      return;
+    }
+    setRenameSaving(true);
+    const result = await onRenameDisplayName(trimmed);
+    setRenameSaving(false);
+    if (result.ok) {
+      setIsRenaming(false);
+      setRenameError(null);
+    } else {
+      setRenameError(result.message);
+    }
+  };
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(user.classCode || "");
     setCopiedCode(user.classCode || "");
@@ -90,9 +140,68 @@ export default function StudentGreetingCard({
           <p className="text-xs sm:text-sm font-bold text-white/80 tracking-wide">
             {greeting},
           </p>
-          <h1 className="text-2xl sm:text-3xl font-black text-white truncate leading-tight">
-            {user.displayName} <span className="inline-block">👋</span>
-          </h1>
+          {isRenaming ? (
+            <div className="mt-1">
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={nameInputRef}
+                  value={nameDraft}
+                  onChange={e => setNameDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); void submitRename(); }
+                    if (e.key === 'Escape') { e.preventDefault(); setIsRenaming(false); }
+                  }}
+                  maxLength={30}
+                  disabled={renameSaving}
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white text-stone-900 text-xl sm:text-2xl font-black placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-white/70"
+                  placeholder="Your name"
+                  aria-label="Your display name"
+                />
+                <button
+                  type="button"
+                  onClick={() => void submitRename()}
+                  disabled={renameSaving}
+                  style={{ touchAction: 'manipulation' }}
+                  className="p-2 rounded-xl bg-white text-stone-900 hover:bg-white/90 disabled:opacity-60 shrink-0"
+                  aria-label="Save name"
+                >
+                  <Check size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRenaming(false)}
+                  disabled={renameSaving}
+                  style={{ touchAction: 'manipulation' }}
+                  className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white disabled:opacity-60 shrink-0"
+                  aria-label="Cancel"
+                >
+                  <XIcon size={18} />
+                </button>
+              </div>
+              {renameError && (
+                <p className="mt-1.5 text-xs font-bold text-amber-200 bg-amber-900/40 rounded px-2 py-1 inline-block">
+                  {renameError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <h1 className="text-2xl sm:text-3xl font-black text-white truncate leading-tight flex items-center gap-2">
+              <span className="truncate">{user.displayName}</span>
+              <span className="inline-block">👋</span>
+              {onRenameDisplayName && (
+                <button
+                  type="button"
+                  onClick={() => setIsRenaming(true)}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                  className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white/90 transition-colors shrink-0"
+                  aria-label="Change display name"
+                  title="Change display name"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+            </h1>
+          )}
           {/* Title + class code inline */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
             <span className="bg-white/20 backdrop-blur-sm text-white font-bold px-2.5 py-0.5 rounded-full border border-white/30 flex items-center gap-1">

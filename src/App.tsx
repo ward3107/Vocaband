@@ -168,9 +168,6 @@ export default function App() {
   const restoreRetried = useRef(false);
   const [, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
-  const [studentLoginName, setStudentLoginName] = useState("");
-  const [existingStudents, setExistingStudents] = useState<Array<{ id: string, displayName: string, xp: number, status: string, avatar?: string }>>([]);
-  const [showNewStudentForm, setShowNewStudentForm] = useState(false);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [pendingApprovalInfo, setPendingApprovalInfo] = useState<{ name: string; classCode: string; profileId?: string } | null>(null);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
@@ -197,7 +194,6 @@ export default function App() {
   // localStorage so boosters survive page refresh.
   const boosters = useBoosters(user?.uid);
 
-  const [studentAvatar, setStudentAvatar] = useState("🦊");
   const [needsConsent, setNeedsConsent] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -879,7 +875,6 @@ export default function App() {
   // they replace.
   const {
     fetchTeacherData,
-    loadStudentsInClass,
     loadAssignmentsForClass,
     loadPendingStudents,
     handleApproveStudent,
@@ -887,7 +882,6 @@ export default function App() {
     confirmRejectStudent,
   } = useTeacherData({
     classes, setClasses,
-    setExistingStudents,
     setStudentAssignments, setStudentProgress,
     setPendingStudents,
     setError, showToast,
@@ -1279,25 +1273,20 @@ export default function App() {
     setView("student-pending-approval");
     try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
   };
-  // Student-account login flow (login by tapping a name + first-time
-  // signup + the shared processStudentProfile finishing path with the
-  // SECURITY check that blocks impersonation). Hook owns the auth
-  // plumbing; App.tsx just plumbs state in and gets the handlers out.
+  // Student-account login flow — the approved-student finishing path
+  // (processStudentProfile with its SECURITY check against impersonation)
+  // and the profile-id login wrapper used by PendingApprovalScreen and
+  // the OAuth approved-student branch.
   const {
     handleLoginAsStudent,
-    handleNewStudentSignup,
     processStudentProfile,
+    renameStudentDisplayName,
   } = useStudentLogin({
-    studentLoginName, studentLoginClassCode, studentAvatar,
-    setStudentLoginName, setStudentLoginClassCode, setStudentAvatar,
-    setExistingStudents, setShowNewStudentForm,
-    setUser, setError, setLoading, setView,
+    user, setUser, setError, setLoading, setView,
     setBadges, setXp, setStreak,
     setStudentAssignments, setStudentProgress,
-    manualLoginInProgressRef: manualLoginInProgress,
     showPendingApproval,
     loadAssignmentsForClass,
-    setPendingApprovalInfo,
   });
 
 
@@ -2844,14 +2833,6 @@ export default function App() {
           setError={setError}
           studentLoginClassCode={studentLoginClassCode}
           setStudentLoginClassCode={setStudentLoginClassCode}
-          studentLoginName={studentLoginName}
-          setStudentLoginName={setStudentLoginName}
-          existingStudents={existingStudents}
-          setExistingStudents={setExistingStudents}
-          showNewStudentForm={showNewStudentForm}
-          setShowNewStudentForm={setShowNewStudentForm}
-          studentAvatar={studentAvatar}
-          setStudentAvatar={setStudentAvatar}
           isOAuthCallback={isOAuthCallback}
           setIsOAuthCallback={setIsOAuthCallback}
           showOAuthClassCode={showOAuthClassCode}
@@ -2863,9 +2844,6 @@ export default function App() {
           handleOAuthTeacherDetected={handleOAuthTeacherDetected}
           handleOAuthStudentDetected={handleOAuthStudentDetected}
           handleOAuthNewUser={handleOAuthNewUser}
-          handleLoginAsStudent={handleLoginAsStudent}
-          handleNewStudentSignup={handleNewStudentSignup}
-          loadStudentsInClass={loadStudentsInClass}
           cookieBannerOverlay={cookieBannerOverlay}
         />
       </LazyWrapper>
@@ -3094,6 +3072,7 @@ export default function App() {
               setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${value}`] } : prev);
             }
           }}
+          onRenameDisplayName={renameStudentDisplayName}
         />
       </LazyWrapper>
     );

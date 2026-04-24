@@ -9,17 +9,16 @@
  *     so callers can chain (e.g. App.tsx awaits the result and then
  *     immediately refreshes assignments using the fresh class IDs,
  *     avoiding the stale-state race).
- *   - `loadStudentsInClass(classCode)` — populate the student-login
- *     "Is that you?" picker with the approved students for a class.
- *     Tries the SECURITY DEFINER RPC first, falls back to a direct
- *     query if the RPC is missing.
  *   - `loadAssignmentsForClass(classData, code, studentUid)` — student
  *     dashboard's first-load: their class's assignments + their own
  *     progress rows.
  *   - `loadPendingStudents()` — teacher approvals queue (pending
  *     student_profiles rows scoped to the teacher's own classes).
  *
- * All four were inline closures in App.tsx; behaviour unchanged.
+ * All three were inline closures in App.tsx; behaviour unchanged.
+ *
+ * The old `loadStudentsInClass` was removed when student login moved
+ * to OAuth-only — the "Is that you?" name picker it fed is gone.
  */
 import { useCallback } from "react";
 import {
@@ -36,14 +35,6 @@ import {
 } from "../core/supabase";
 import { trackAutoError } from "../errorTracking";
 
-interface ExistingStudent {
-  id: string;
-  displayName: string;
-  xp: number;
-  status: string;
-  avatar?: string;
-}
-
 interface PendingStudent {
   id: string;
   displayName: string;
@@ -55,7 +46,6 @@ interface PendingStudent {
 export interface UseTeacherDataParams {
   classes: ClassData[];
   setClasses: React.Dispatch<React.SetStateAction<ClassData[]>>;
-  setExistingStudents: React.Dispatch<React.SetStateAction<ExistingStudent[]>>;
   setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
   setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
   setPendingStudents: React.Dispatch<React.SetStateAction<PendingStudent[]>>;
@@ -69,7 +59,7 @@ export interface UseTeacherDataParams {
 
 export function useTeacherData(params: UseTeacherDataParams) {
   const {
-    classes, setClasses, setExistingStudents,
+    classes, setClasses,
     setStudentAssignments, setStudentProgress, setPendingStudents,
     setError, showToast, setRejectStudentModal,
   } = params;
@@ -84,62 +74,6 @@ export function useTeacherData(params: UseTeacherDataParams) {
     }
     return [];
   }, [setClasses]);
-
-  const loadStudentsInClass = useCallback(async (classCode: string) => {
-    const trimmedCode = classCode.trim().toUpperCase();
-    if (!trimmedCode) return;
-
-    try {
-      // Use the new RPC function that bypasses RLS
-      const { data, error } = await supabase
-        .rpc('list_students_in_class', { p_class_code: trimmedCode });
-
-      if (error) {
-        console.error('RPC error:', error);
-        // Fallback to direct query if RPC doesn't exist yet
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('student_profiles')
-          .select('id, display_name, xp, status, avatar')
-          .eq('class_code', trimmedCode)
-          .eq('status', 'approved')
-          .order('display_name', { ascending: true });
-
-        if (fallbackError) {
-          if (fallbackError.code === '42P01') {
-            setExistingStudents([]);
-            return;
-          }
-          throw fallbackError;
-        }
-
-        const mappedStudents = (fallbackData || []).map(s => ({
-          id: s.id,
-          displayName: s.display_name,
-          xp: s.xp || 0,
-          status: s.status,
-          avatar: s.avatar || '🦊',
-        }));
-
-        setExistingStudents(mappedStudents);
-        return;
-      }
-
-      // Map RPC results
-      const mappedStudents = (data || []).map((s: { id: string; display_name: string; xp: number; status: string; avatar: string | null }) => ({
-        id: s.id,
-        displayName: s.display_name,
-        xp: s.xp || 0,
-        status: s.status,
-        avatar: s.avatar || '🦊',
-      }));
-
-      setExistingStudents(mappedStudents);
-    } catch (error) {
-      console.error('Error loading students:', error);
-      setError("Could not load students. Please check the class code.");
-      setExistingStudents([]);
-    }
-  }, [setExistingStudents, setError]);
 
   const loadAssignmentsForClass = useCallback(async (
     classData: { id: string },
@@ -278,7 +212,6 @@ export function useTeacherData(params: UseTeacherDataParams) {
 
   return {
     fetchTeacherData,
-    loadStudentsInClass,
     loadAssignmentsForClass,
     loadPendingStudents,
     handleApproveStudent,
