@@ -74,6 +74,8 @@ import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
 import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPlayRealtime";
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
+import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
+import { useViewGuards } from "./hooks/useViewGuards";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
@@ -1718,62 +1720,20 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, []);
 
-  // --- BACK BUTTON (History API) ---
-  //
-  // Goal: mobile back button navigates between in-app pages, but NEVER
-  // logs out and NEVER exits the app.  The user's dashboard (teacher or
-  // student) is the "floor" — pressing back at the dashboard is a no-op.
-  //
-  // How it works:
-  //   1. Every view change pushes a history entry (so back walks backward).
-  //   2. Login transitions REPLACE the landing entry (so back can't reach
-  //      the login screen while logged in).
-  //   3. On popstate, we check: is the destination view "safe"?  If not
-  //      (it's a login/auth view, or there's no state at all), we block
-  //      it and re-push the current view to keep the history stack alive.
-  //   4. Two extra "padding" entries are pushed on login so the browser
-  //      never runs out of history and exits the tab/PWA.
+  // Mobile back-button + History API trap.  Keeps logged-in users
+  // pinned at their dashboard (never escapes to login / external
+  // URL), routes back presses between real in-app views, and
+  // surfaces the exit-confirm modal at the dashboard floor.
+  // Returns a helper to start the actual exit flow from the modal.
+  const { beginExitFlow } = useBackButtonTrap({
+    view,
+    setView,
+    user,
+    showExitConfirmModal,
+    setShowExitConfirmModal,
+    restoreInProgressRef: restoreInProgress,
+  });
 
-  const isPopStateNavRef = useRef(false);
-
-  // When the user taps "Leave" in the exit-confirm modal we want to
-  // actually leave — so popstate should NOT re-trap during that window.
-  const exitIntentRef = useRef(false);
-
-  // Mirror of showExitConfirmModal so the popstate handler (attached once
-  // with empty deps) can see the latest value without a closure re-attach.
-  // Used to detect a "double back press" at the dashboard floor: if the
-  // confirm modal is already open and the user presses back again, we
-  // treat that as confirmation and log out — matching the mobile idiom
-  // where repeated back presses mean "I really want to exit."
-  const exitModalOpenRef = useRef(false);
-
-  // Views that a logged-in user should never land on via back button.
-  // If popstate would navigate to one of these, we block it.
-  const AUTH_VIEWS = new Set([
-    'landing', 'public-landing', 'student-account-login',
-    'student-pending-approval', 'oauth-class-code', 'oauth-callback',
-  ]);
-
-  // The "home" view for each role — back button cannot go past this.
-  const getHomeView = () =>
-    userRef.current?.role === 'teacher' ? 'teacher-dashboard' : 'student-dashboard';
-
-  // Number of padding entries pushed beneath the dashboard.  On mobile
-  // browsers (especially Android Chrome) the edge-swipe gesture can pop
-  // faster than popstate can re-trap, so a single padding entry is not
-  // enough: the user escapes into external URLs (Google OAuth, Supabase
-  // callback) or into stale pre-login entries (student-account-login)
-  // that were pushed before the OAuth redirect.  Ten pads + aggressive
-  // re-trapping on every popstate keeps the user pinned at the dashboard.
-  const PAD_COUNT = 10;
-
-  // Keep a ref to `view` so the popstate handler (attached once on
-  // mount) always sees the latest value without a closure re-attach.
-  const viewRef = useRef(view);
-  useEffect(() => { viewRef.current = view; }, [view]);
-
-  useEffect(() => { exitModalOpenRef.current = showExitConfirmModal; }, [showExitConfirmModal]);
 
   // Broadcast the current view so the global AccessibilityWidget knows
   // whether to render its floating trigger. Per the product owner the
@@ -1783,175 +1743,15 @@ export default function App() {
     window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
   }, [view]);
 
-  // Push a full dashboard trap: refill the pad buffer, then push the
-  // dashboard on top.  Called on login transitions and whenever a pad
-  // entry is popped so the buffer is always replenished.
-  const pushDashboardTrap = () => {
-    const v = viewRef.current;
-    window.history.replaceState({ view: v, _pad: true }, '');
-    for (let i = 1; i < PAD_COUNT; i++) {
-      window.history.pushState({ view: v, _pad: true }, '');
-    }
-    window.history.pushState({ view: v }, '');
-  };
 
-  // On first mount, seed the history stack with the real current view
-  // (usually 'public-landing').  We purposely do NOT pushState here —
-  // the view-change effect below runs on first render and handles any
-  // pushState needed for non-trivial initial views.
-  useEffect(() => {
-    window.history.replaceState({ view }, '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // View-state guards: redirect the user out of orphaned / broken
+  // views (landing with auth resolved, game without assignment,
+  // quick-play-student without an active session).
+  useViewGuards({
+    view, setView, user, loading,
+    activeAssignment, quickPlayActiveSession,
+  });
 
-  // Whenever the app navigates to a new view, push a history entry.
-  useEffect(() => {
-    if (isPopStateNavRef.current) {
-      isPopStateNavRef.current = false;
-      return;
-    }
-    const isDashboard = view === 'teacher-dashboard' || view === 'student-dashboard';
-    const currentStateView = window.history.state?.view ?? '';
-    const comingFromAuth = AUTH_VIEWS.has(currentStateView);
-
-    // Login transition: replace the landing/auth entry with a pad buffer,
-    // then push the dashboard on top.
-    if (userRef.current && isDashboard && comingFromAuth) {
-      pushDashboardTrap();
-      return;
-    }
-
-    // Normal in-app navigation — single pushState so the back button
-    // walks naturally between pages (dashboard ← wizard, etc.).
-    window.history.pushState({ view }, '');
-  }, [view]);
-
-  // Handle the physical back button / swipe gesture.  Attached once
-  // on mount (empty deps) — we read the latest view/user via refs
-  // to avoid stale closures during rapid back presses.
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      const state = e.state as { view?: string; _pad?: boolean } | null;
-      const prevView = state?.view;
-      const isPad = state?._pad === true;
-      const currentUser = userRef.current;
-      const currentView = viewRef.current;
-
-      // Guard 0: the user tapped "Leave" — let the browser actually
-      // navigate out.  Do not re-trap.
-      if (exitIntentRef.current) {
-        return;
-      }
-
-      // Guard 1: auth is still being restored.  Treat as "user present"
-      // and re-push so the back button doesn't accidentally escape
-      // during the ~500ms restore window after a fresh mount.
-      if (restoreInProgress.current) {
-        window.history.pushState({ view: currentView }, '');
-        return;
-      }
-
-      const home = currentUser ? getHomeView() : null;
-      const atDashboardFloor = !!currentUser && currentView === home;
-
-      // CASE A: at dashboard floor, ANY back press re-traps and shows
-      //         the exit confirmation.  We never navigate away from
-      //         the dashboard via popstate — it's an absolute floor.
-      //         This also handles the case where rapid back presses
-      //         pop past the pad buffer into pre-login entries like
-      //         {view:'student-account-login'} or external URLs.
-      //
-      //         Double-back = logout: if the confirm modal is already
-      //         visible and the user presses back AGAIN, treat it as
-      //         "yes, really leave." This matches the mobile idiom where
-      //         repeated back presses mean the user wants to exit, and
-      //         saves them from having to aim for the small Leave button.
-      if (atDashboardFloor) {
-        if (exitModalOpenRef.current) {
-          setShowExitConfirmModal(false);
-          exitIntentRef.current = true;
-          supabase.auth.signOut().catch(() => {});
-          try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
-          setTimeout(() => { exitIntentRef.current = false; }, 500);
-          return;
-        }
-        pushDashboardTrap();
-        setShowExitConfirmModal(true);
-        return;
-      }
-
-      // CASE B: logged-in user NOT at dashboard, but back would go to
-      //         a login/auth view — block it (re-push current view).
-      if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
-        window.history.pushState({ view: currentView }, '');
-        return;
-      }
-
-      // CASE C: normal in-app back navigation between real views
-      //         (e.g., create-assignment → teacher-dashboard).
-      if (prevView && !isPad) {
-        isPopStateNavRef.current = true;
-        setView(prevView as typeof view);
-        return;
-      }
-
-      // CASE D: defensive block (no state, or pad below a non-dashboard
-      //         view — shouldn't happen, but re-push to stay safe).
-      window.history.pushState({ view: currentView }, '');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Redirect orphaned "landing" view — logged-out users go to student login,
-  // logged-in users go to their dashboard (teacher or student).
-  useEffect(() => {
-    if (view !== "landing" || loading) return;
-    if (!user) {
-      setView("student-account-login");
-    } else if (user.role === "teacher") {
-      setView("teacher-dashboard");
-    } else {
-      setView("student-dashboard");
-    }
-  }, [view, user, loading]);
-
-  // Guard: game view needs an active assignment. When popstate restores
-  // view='game' but the assignment was cleared (e.g. after the student
-  // finished or backed out), the render path would return white. Send
-  // them back to the right dashboard instead of showing a blank screen.
-  useEffect(() => {
-    if (view !== "game" || activeAssignment) return;
-    if (user?.isGuest) {
-      setView("quick-play-student");
-    } else if (user?.role === "student") {
-      setView("student-dashboard");
-    } else if (user?.role === "teacher") {
-      setView("teacher-dashboard");
-    } else {
-      setView("public-landing");
-    }
-  }, [view, activeAssignment, user]);
-
-  // Guard: quick-play-student view without an active session = the
-  // infinite "Loading Quick Play session..." spinner. This happens when
-  // the back button restores the view but the session was cleared. If
-  // the URL still has ?session=CODE, send them back to the landing URL
-  // (cleaner than a stuck spinner — they can re-scan the QR). Otherwise
-  // go to public-landing.
-  useEffect(() => {
-    if (view !== "quick-play-student" || quickPlayActiveSession || loading) return;
-    const code = new URLSearchParams(window.location.search).get('session');
-    if (!code) {
-      setView("public-landing");
-      return;
-    }
-    // URL still has ?session= but our state doesn't — stale history entry.
-    // Clear the param and send home; the user can re-scan to rejoin.
-    window.history.replaceState({}, '', window.location.pathname);
-    setView("public-landing");
-  }, [view, quickPlayActiveSession, loading]);
 
   // Warn before leaving while a score save is in flight.  Extracted
   // into a hook so the "don't let the user leave while unsaved state
@@ -2574,17 +2374,11 @@ export default function App() {
   // dashboard floor.  Tapping "Leave" exits the app by popping past the
   // pad buffer; "Stay" dismisses the modal and keeps the user in place.
   const handleExitConfirmLeave = () => {
-    setShowExitConfirmModal(false);
-    // Signal that the next popstate should NOT re-trap.
-    // Then sign out and reset history so the logged-out
-    // public-landing renders cleanly.  The user can then
-    // press back once more to exit the tab naturally.
-    exitIntentRef.current = true;
+    // beginExitFlow closes the modal, suppresses popstate re-trap for
+    // ~500 ms, and resets history to public-landing.  Signing out is
+    // our concern — the hook stays agnostic of the auth client.
+    beginExitFlow();
     supabase.auth.signOut().catch(() => {});
-    try { window.history.replaceState({ view: 'public-landing' }, ''); } catch { /* noop */ }
-    // Give SIGNED_OUT a tick to fire, then release the
-    // exit-intent guard so normal navigation resumes.
-    setTimeout(() => { exitIntentRef.current = false; }, 500);
   };
   const exitConfirmModal = (
     <ExitConfirmModal
