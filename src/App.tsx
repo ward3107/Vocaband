@@ -51,7 +51,6 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { celebrate } from "./utils/celebrate";
-import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
 import { getGameDebugger } from "./utils/gameDebug";
@@ -71,6 +70,13 @@ import { useTranslate } from "./hooks/useTranslate";
 import { useSaveQueue } from "./hooks/useSaveQueue";
 import { useTeacherData } from "./hooks/useTeacherData";
 import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
+import { useStudentLogin } from "./hooks/useStudentLogin";
+import { useOAuthFlow } from "./hooks/useOAuthFlow";
+import { useClassSwitch } from "./hooks/useClassSwitch";
+import { useConsent } from "./hooks/useConsent";
+import { useOcrUpload } from "./hooks/useOcrUpload";
+import { useCookieConsent } from "./hooks/useCookieConsent";
+import { useAwardBadge } from "./hooks/useAwardBadge";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -133,36 +139,14 @@ export default function App() {
     setView(previousViewRef.current as any);
   };
 
-  // Cookie consent state
-  const [showCookieBanner, setShowCookieBanner] = useState(() => {
-    try {
-      const hasConsented = localStorage.getItem("vocaband_cookie_consent");
-      return !hasConsented;
-    } catch (e) {
-      return true;
-    }
-  });
-
-  const handleCookieAccept = (eventOrPreferences?: CookiePreferences | React.MouseEvent) => {
-    // Ignore React events - they were accidentally passed before the fix
-    const preferences = eventOrPreferences && typeof eventOrPreferences === 'object' && 'nativeEvent' in eventOrPreferences
-      ? undefined
-      : eventOrPreferences as CookiePreferences | undefined;
-
-    try {
-      const consentData = preferences
-        ? JSON.stringify(preferences)
-        : JSON.stringify({ essential: true, analytics: true, functional: true });
-      localStorage.setItem("vocaband_cookie_consent", consentData);
-    } catch (e) {
-      console.error('[Cookie Banner] Failed to save consent:', e);
-    }
-    setShowCookieBanner(false);
-  };
-
-  const handleCookieCustomize = (preferences: CookiePreferences) => {
-    handleCookieAccept(preferences);
-  };
+  // Cookie consent banner — state + accept/customize handlers live
+  // in a dedicated hook so the banner's persistence + quirky React-
+  // event guard aren't in the orchestrator.
+  const {
+    showCookieBanner,
+    handleCookieAccept,
+    handleCookieCustomize,
+  } = useCookieConsent();
 
   const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility") => {
     const viewMap = {
@@ -223,6 +207,11 @@ export default function App() {
   const [oauthEmail, setOauthEmail] = useState<string | null>(null);
   const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
   const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
+  // Sticky banner: when a student typed a class code that doesn't exist,
+  // surface a persistent banner on the dashboard so they can't miss it
+  // (toasts get dismissed/ignored). Funnel point for both the OAuth
+  // path and the session-restore path.
+  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
 
   // --- CLASS SWITCH STATE ---
   // Set when an already-approved student logs in with a class code that
@@ -885,20 +874,24 @@ export default function App() {
     lastFetchRef,
   });
 
-  // Read-only data fetchers (classes / students-in-class / assignments-
-  // for-class / pending-approvals queue) extracted into their own hook.
-  // Same shapes and behaviours as the inline closures they replace.
+  // Read-only data fetchers + approval-queue actions extracted into a
+  // dedicated hook. Same shapes and behaviours as the inline closures
+  // they replace.
   const {
     fetchTeacherData,
     loadStudentsInClass,
     loadAssignmentsForClass,
     loadPendingStudents,
+    handleApproveStudent,
+    handleRejectStudent,
+    confirmRejectStudent,
   } = useTeacherData({
     classes, setClasses,
     setExistingStudents,
     setStudentAssignments, setStudentProgress,
     setPendingStudents,
     setError, showToast,
+    setRejectStudentModal,
   });
 
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
@@ -1286,6 +1279,27 @@ export default function App() {
     setView("student-pending-approval");
     try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
   };
+  // Student-account login flow (login by tapping a name + first-time
+  // signup + the shared processStudentProfile finishing path with the
+  // SECURITY check that blocks impersonation). Hook owns the auth
+  // plumbing; App.tsx just plumbs state in and gets the handlers out.
+  const {
+    handleLoginAsStudent,
+    handleNewStudentSignup,
+    processStudentProfile,
+  } = useStudentLogin({
+    studentLoginName, studentLoginClassCode, studentAvatar,
+    setStudentLoginName, setStudentLoginClassCode, setStudentAvatar,
+    setExistingStudents, setShowNewStudentForm,
+    setUser, setError, setLoading, setView,
+    setBadges, setXp, setStreak,
+    setStudentAssignments, setStudentProgress,
+    manualLoginInProgressRef: manualLoginInProgress,
+    showPendingApproval,
+    loadAssignmentsForClass,
+    setPendingApprovalInfo,
+  });
+
 
   // Intended-class-code storage helpers (component-scoped so both the
   // auth-effect's restoreSession and the component-level OAuth handler
@@ -1308,12 +1322,51 @@ export default function App() {
     try { localStorage.removeItem('oauth_intended_class_code'); } catch {}
   };
 
-  // Sticky banner state: when a student typed a class code that doesn't
-  // exist, we surface a persistent banner on the dashboard so they can't
-  // miss the problem (toasts get dismissed/ignored).  Setting it here
-  // from either the OAuth-return path or the session-restore path both
-  // funnel into the same UI state.
-  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
+  // Google-OAuth post-callback handlers — extracted to a hook so the
+  // class-switch detection logic and the upsert-then-hydrate sequence
+  // aren't crowding App.tsx. Same behaviour as before.
+  const {
+    handleOAuthTeacherDetected,
+    handleOAuthStudentDetected,
+    handleOAuthNewUser,
+  } = useOAuthFlow({
+    setUser, setError, setLoading, setView, setIsOAuthCallback,
+    setBadges, setXp, setStreak,
+    setStudentAssignments, setStudentProgress,
+    setClassNotFoundIntent, setPendingClassSwitch,
+    setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
+    showPendingApproval, readIntendedClassCode, clearIntendedClassCode,
+  });
+
+  // Class-switch modal confirm/cancel handlers — extracted to a hook
+  // since both branches hydrate the dashboard after the choice.
+  const { handleConfirmClassSwitch, handleCancelClassSwitch } = useClassSwitch({
+    pendingClassSwitch, setPendingClassSwitch,
+    setUser, setView, setLoading,
+    setStudentAssignments, setStudentProgress,
+    showToast,
+  });
+
+  // Privacy-policy consent flow — checkConsent gates the banner,
+  // recordConsent persists the acceptance to both localStorage (fast
+  // path) and consent_log (audit trail).
+  const { checkConsent, recordConsent } = useConsent({
+    user, setNeedsConsent, setConsentChecked,
+  });
+
+  // OCR pipeline — photo → /api/ocr → translate → custom-word tab
+  // with dictionary cross-check. Preserves App.tsx's progress UI,
+  // Neural2 audio generation, and hallucination-guard behaviour.
+  const { handleOcrUpload, processOcrFile } = useOcrUpload({
+    classes, setSelectedClass,
+    setCustomWords, setSelectedWords,
+    // App narrows these with union types; hook takes the wider string.
+    // Same bivariance cast we used for useTeacherActions.
+    setSelectedLevel: setSelectedLevel as (v: string) => void,
+    setView: setView as (v: string) => void,
+    setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
+    showToast, translateWordsBatch,
+  });
 
   // --- AUTH LOGIC ---
   useEffect(() => {
@@ -2414,191 +2467,6 @@ export default function App() {
     };
   }, [user?.role, view, classes.length]);
 
-  const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
-
-  /**
-   * handleOcrUpload
-   * Takes an image file (e.g., a photo of a word list), sends it to the
-   * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
-   */
-  // OCR upload — send photo directly to the Worker (no crop modal).
-  // The crop modal's canvas export was corrupting images on mobile.
-  // The Cloudflare Worker OCR works perfectly with raw photos.
-  const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawFile = e.target.files?.[0];
-    if (!rawFile) return;
-    processOcrFile(rawFile, e);
-  };
-
-  // Step 2: User confirms from the preview → run OCR
-  const processOcrFile = async (fileToProcess: File, originalEvent?: React.ChangeEvent<HTMLInputElement> | null) => {
-    setOcrPendingFile(null);
-    setIsOcrProcessing(true);
-    setOcrProgress(5);
-    setOcrStatus("Compressing image...");
-
-    try {
-      const file = await compressImageForUpload(fileToProcess);
-      const fileSizeKB = Math.round(file.size / 1024);
-      setOcrProgress(10);
-      setOcrStatus(`Uploading image... (${fileSizeKB} KB)`);
-
-      // Get auth token for teacher authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { showToast("Please sign in again.", "error"); return; }
-
-      // OCR runs directly in the Cloudflare Worker (same-origin, no Render,
-      // no CORS, no cold starts). The Worker calls Claude Vision API.
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s
-
-      // Simulate smooth progress during the API call (10% → 85%)
-      let simProgress = 15;
-      setOcrProgress(15);
-      const progressInterval = setInterval(() => {
-        simProgress += (85 - simProgress) * 0.08;
-        setOcrProgress(Math.round(simProgress));
-      }, 400);
-
-      // Update status while waiting
-      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 2000);
-      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 6000);
-
-      let response: Response;
-      try {
-        response = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData,
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-        clearTimeout(statusTimer1);
-        clearTimeout(statusTimer2);
-        clearInterval(progressInterval);
-      }
-
-      setOcrProgress(88);
-      setOcrStatus("Processing results...");
-
-      if (!response.ok) {
-        let errorMessage = `OCR failed (${response.status})`;
-        try {
-          const errorData = await response.json();
-          // Prefer the detailed 'message' field (which has the actual
-          // Gemini error reason) over the generic 'error' field.
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch { /* response wasn't JSON */ }
-        throw new Error(errorMessage);
-      }
-
-      let ocrData: any;
-      try {
-        ocrData = await response.json();
-      } catch {
-        throw new Error('Server returned an invalid response. Please try again.');
-      }
-      setOcrProgress(95);
-
-      // Extract words from the OCR service response
-      // The service already returns English-only words (filtered by regex on server)
-      const extractedWords = ocrData.words || [];
-      const rawText = ocrData.raw_text || '';
-
-      // Dictionary cross-check to catch Gemini hallucinations. Any OCR result
-      // that matches a curriculum word (ALL_WORDS, ~9k entries) is treated as
-      // high confidence; anything else could be a ghost word the model made
-      // up, or a legitimate non-curriculum word (proper noun, slang). We keep
-      // BOTH in the custom words list so teachers don't lose real words, but
-      // only auto-select the known ones. Unknown words show up unchecked so
-      // the teacher can dismiss obvious nonsense with a glance instead of it
-      // silently joining the assignment.
-      const normalizeWord = (w: string) => w.toLowerCase().trim();
-      const knownEnglishSet = new Set(ALL_WORDS.map(w => normalizeWord(w.english)));
-      const isKnownWord = (w: string) => knownEnglishSet.has(normalizeWord(w));
-
-
-      // Auto-translate OCR words to Hebrew + Arabic via Gemini so teachers
-      // don't have to fill them in manually. Done BEFORE creating the Word
-      // objects so the translations land on first render. Failure is silent
-      // — teachers see a "Translate" button per word as the fallback.
-      setOcrStatus("Translating to Hebrew + Arabic…");
-      const translations = await translateWordsBatch(extractedWords);
-
-      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => {
-        const t = translations.get(word.toLowerCase().trim());
-        return {
-          id: Date.now() + index,
-          english: word,
-          hebrew: t?.hebrew || '',
-          arabic: t?.arabic || '',
-          level: 'Custom',
-          recProd: 'Prod',
-        };
-      });
-
-      if (customWordsFromOCR.length > 0) {
-      }
-
-      if (customWordsFromOCR.length === 0) {
-        showToast(
-          rawText
-            ? `No English words found. AI saw: "${rawText.substring(0, 120)}${rawText.length > 120 ? '...' : ''}"`
-            : "No words found — the image may be unclear. Try a closer photo with better lighting.",
-          "error"
-        );
-      } else {
-        // Add all detected words to the Custom tab, but only auto-select the
-        // ones that match our curriculum dictionary. Unknown words (possible
-        // hallucinations) appear unchecked for the teacher to review.
-        setCustomWords(customWordsFromOCR);
-        setSelectedLevel("Custom");
-        const knownCustomIds = customWordsFromOCR
-          .filter(w => isKnownWord(w.english))
-          .map(w => w.id);
-        const autoSelectIds = knownCustomIds.length > 0
-          ? knownCustomIds
-          : customWordsFromOCR.map(w => w.id);
-        setSelectedWords(autoSelectIds);
-
-        // Fire off Neural2 audio generation so students hear real pronunciations.
-        void requestCustomWordAudio(customWordsFromOCR);
-
-        // Navigate to create-assignment view so user can see the matched words
-        if (classes.length > 0) {
-          setSelectedClass(classes[0]);
-          setView("create-assignment");
-        }
-
-        const unknownCount = customWordsFromOCR.length - knownCustomIds.length;
-        const successMsg = knownCustomIds.length > 0 && unknownCount > 0
-          ? `Found ${customWordsFromOCR.length} words — ${knownCustomIds.length} curriculum matches auto-selected, ${unknownCount} need review.`
-          : `Found ${customWordsFromOCR.length} words from the image!`;
-        showToast(successMsg, "success");
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        showToast("OCR timed out — the image may be too complex. Try a clearer photo or a smaller area.", "error");
-      } else {
-        trackAutoError(err, 'OCR processing failed');
-        const errorMessage = err instanceof Error ? err.message : 'Error processing image';
-        console.error('OCR error:', errorMessage);
-        showToast(`${errorMessage}. Please try again.`, "error");
-      }
-    } finally {
-      setIsOcrProcessing(false);
-      setOcrProgress(0);
-      setOcrStatus("");
-      // Reset the file input so the same file can be uploaded again if needed
-      if (originalEvent?.target) originalEvent.target.value = '';
-    }
-  };
-
   // --- SMART PASTE FUNCTIONS ---
 
   // Quick-play preview handlers (handleQuickPlayPreviewConfirm +
@@ -2606,549 +2474,9 @@ export default function App() {
   // wired to any UI. Removed along with their backing state
   // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
   // dead code TypeScript had been flagging with TS6133.
-  const checkConsent = (userData: AppUser) => {
-    const accepted = localStorage.getItem('vocaband_consent_version');
-    if (accepted === PRIVACY_POLICY_VERSION) return;
-
-    // localStorage missing — check DB before showing the banner
-    if (userData.uid) {
-      supabase
-        .from('consent_log')
-        .select('policy_version')
-        .eq('uid', userData.uid)
-        .eq('action', 'accept')
-        .eq('policy_version', PRIVACY_POLICY_VERSION)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            // Valid consent found in DB — restore localStorage and skip banner
-            try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
-          } else {
-            setNeedsConsent(true);
-          }
-        });
-    } else {
-      setNeedsConsent(true);
-    }
-  };
-
-  const recordConsent = async () => {
-    localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION);
-    // Also persist to the consent_log DB table for compliance/audit trail
-    if (user?.uid) {
-      try {
-        await supabase.from('consent_log').insert({
-          uid: user.uid,
-          policy_version: PRIVACY_POLICY_VERSION,
-          terms_version: PRIVACY_POLICY_VERSION,
-          action: 'accept',
-        });
-      } catch (error) {
-        trackError('Could not persist consent to database', 'database', 'low', { uid: user?.uid });
-      }
-    }
-    setNeedsConsent(false);
-    setConsentChecked(false);
-  };
-
-  // Student Account Login System
-  const handleLoginAsStudent = async (studentId: string) => {
-    // Look up the student's full profile including auth_uid
-    try {
-      // Use RPC to bypass RLS for login
-      const { data: rpcResult, error: rpcError } = await supabase
-        .rpc('get_student_profile_for_login', {
-          p_student_id: studentId
-        });
-
-
-      // Handle RPC error (function might not exist yet)
-      if (rpcError) {
-        const { data: profile, error } = await supabase
-          .from('student_profiles')
-          .select('*')
-          .eq('id', studentId)
-          .single();
-
-
-        if (error) {
-          setError("Could not load student profile. Please try again.");
-          return;
-        }
-
-        if (!profile) {
-          setError("Student profile not found. Please ask your teacher to approve your account.");
-          return;
-        }
-
-        // Process profile from fallback
-        await processStudentProfile(profile);
-        return;
-      }
-
-      // Get first result from RPC
-      const profile = rpcResult && rpcResult.length > 0 ? rpcResult[0] : null;
-
-      if (!profile) {
-        setError("Student profile not found. Please ask your teacher to approve your account.");
-        return;
-      }
-
-      // Process profile from RPC
-      await processStudentProfile(profile);
-    } catch (error) {
-      console.error('Error logging in as student:', error);
-      setError("Could not log in. Please try again.");
-    }
-  };
-
-  // Helper function to process student profile and log them in
-  const processStudentProfile = async (profile: any) => {
-
-    // Check approval status — show the waiting screen instead of a generic error
-    if (profile.status === 'pending_approval') {
-      showPendingApproval({
-        name: profile.display_name || '',
-        classCode: profile.class_code || '',
-        profileId: profile.id,
-      });
-      setLoading(false);
-      return;
-    }
-    if (profile.status === 'rejected') {
-      setError("Your account was not approved. Please contact your teacher.");
-      return;
-    }
-
-    if (!profile.auth_uid) {
-      setError("Student account not fully set up. Please ask your teacher to approve your account.");
-      return;
-    }
-
-    // SECURITY: The caller's live Supabase session must belong to THIS
-    // student's auth_uid. Without this check, anyone who knows a class
-    // code could tap a name in the "Is that you?" list and the app
-    // would happily create a new users row with that student's
-    // display_name/xp/badges — letting them see the victim's dashboard
-    // and appear under their name in the class leaderboard.
-    //
-    // Previous revisions:
-    //   * Auto-created a fresh anonymous session on mismatch (shipped
-    //     2026-04 and caused the impersonation hole reported on
-    //     2026-04-21). REVERTED — never silently create a session
-    //     tied to someone else's profile.
-    //   * Showed "Just tap your name below to sign back in 👋" with no
-    //     recovery path. UX was confusing but at least blocked
-    //     impersonation.
-    //
-    // Current behaviour: if the session is missing or doesn't match,
-    // refuse the login and point the student at OAuth / teacher help.
-    // Re-authentication for anonymous students who lost their session
-    // is an open problem — the only safe paths today are Google
-    // sign-in or a teacher-mediated reset.
-    const { data: { session: liveSession } } = await supabase.auth.getSession();
-    const liveAuthUid = liveSession?.user?.id ?? null;
-    if (!liveAuthUid || liveAuthUid !== profile.auth_uid) {
-      console.warn('[processStudentProfile] blocked login — session/profile auth_uid mismatch', {
-        profileAuthUid: profile.auth_uid,
-        sessionAuthUid: liveAuthUid,
-      });
-      setError(
-        "Can't sign you in as this student on this device. " +
-        "Try Google sign-in, or ask your teacher to reset your account."
-      );
-      return;
-    }
-    const studentUid = liveAuthUid;
-
-    // Create user data with the profile's auth_uid
-    const userData: AppUser = {
-      uid: studentUid, // Use profile auth_uid directly
-      displayName: profile.display_name,
-      email: profile.email,
-      role: 'student',
-      classCode: profile.class_code,
-      avatar: profile.avatar || '🦊',
-      badges: profile.badges || [],
-      xp: profile.xp || 0,
-      isGuest: false
-    };
-
-
-    setUser(userData);
-
-    // Ensure user record exists in users table (for XP/streak tracking)
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select(USER_COLUMNS)
-      .eq('uid', studentUid)
-      .maybeSingle();
-
-    if (checkError) {
-      trackAutoError(checkError, 'Student user record check failed during signup');
-    } else if (!existingUser) {
-      // Create user record if it doesn't exist
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          uid: studentUid,
-          email: profile.email,
-          display_name: profile.display_name,
-          role: 'student',
-          class_code: profile.class_code,
-          avatar: profile.avatar || '🦊',
-          badges: profile.badges || [],
-          xp: profile.xp || 0,
-          streak: 0,
-        });
-
-      if (insertError) {
-        trackAutoError(insertError, 'Failed to create student user record during signup');
-      } else {
-      }
-    } else {
-      // Update existing user record with latest profile data
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          avatar: profile.avatar || '🦊',
-          badges: profile.badges || [],
-          xp: profile.xp || existingUser.xp
-        })
-        .eq('uid', studentUid);
-
-      if (updateError) {
-        trackAutoError(updateError, 'Failed to update student user record during login');
-      }
-    }
-
-    // Fetch class data and assignments using RPC to bypass RLS
-    const code = profile.class_code;
-
-    // Use RPC to get class data (bypasses RLS)
-    const { data: classResult, error: classError } = await supabase
-      .rpc('get_class_by_code', {
-        p_class_code: code
-      });
-
-
-    if (classError) {
-      console.error('Class RPC error:', classError);
-      // Fallback: try direct query (might fail due to RLS, but worth trying)
-      const { data: fallbackClassRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', code);
-
-      if (fallbackClassRows && fallbackClassRows.length > 0) {
-        await loadAssignmentsForClass(mapClass(fallbackClassRows[0]), code, profile.auth_uid);
-      } else {
-        setStudentAssignments([]);
-        setStudentProgress([]);
-      }
-    } else if (classResult && classResult.length > 0) {
-      const classData = mapClass(classResult[0]);
-      await loadAssignmentsForClass(classData, code, profile.auth_uid);
-    } else {
-      console.warn('No class found for code:', code);
-      setStudentAssignments([]);
-      setStudentProgress([]);
-    }
-
-    setBadges(profile.badges || []);
-    setXp(profile.xp || 0);
-    setStreak(0); // Will fetch from DB later
-    setView("student-dashboard");
-  };
-
-  // Helper to load assignments for a class
-  const handleNewStudentSignup = async () => {
-    const trimmedName = studentLoginName.trim().slice(0, 30);
-    const trimmedCode = studentLoginClassCode.trim().toUpperCase();
-
-    if (!trimmedName || !trimmedCode) {
-      setError("Please enter both class code and your name.");
-      return;
-    }
-
-    // Guard: prevent onAuthStateChange → restoreSession from interfering
-    // while this function owns the login flow.  signInAnonymously() fires
-    // SIGNED_IN, and without this guard restoreSession would run (can't
-    // find the user row yet) and redirect to landing.
-    manualLoginInProgress.current = true;
-
-    try {
-      // Step 1: Sign in anonymously to ensure auth.uid() is set for the RPC
-      const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
-      if (signInError || !signInData.session) {
-        setError("Could not create account. Please try again.");
-        console.error('Sign-in error:', signInError);
-        return;
-      }
-
-      // Step 2: Use the RPC function which has SECURITY DEFINER to bypass RLS
-      const { data: result, error: rpcError } = await supabase
-        .rpc('get_or_create_student_profile', {
-          p_class_code: trimmedCode,
-          p_display_name: trimmedName,
-          p_avatar: studentAvatar
-        });
-
-
-      if (rpcError) throw rpcError;
-
-      if (!result || result.length === 0) {
-        throw new Error('Failed to create student profile');
-      }
-
-      const profile = result[0].profile;
-
-      if (profile.status === 'approved') {
-        // Already approved, just log them in
-        handleLoginAsStudent(profile.id);
-        return;
-      } else if (profile.status === 'pending_approval') {
-        // Navigate to a dedicated waiting screen instead of just a toast.
-        // The student needs to understand what's happening and what to do next.
-        const info = {
-          name: trimmedName,
-          classCode: trimmedCode,
-          profileId: profile.id,
-        };
-        setPendingApprovalInfo(info);
-        setView("student-pending-approval");
-
-        // Persist so the pending screen survives page refresh
-        try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
-
-        // Clear form
-        setStudentLoginName("");
-        setStudentLoginClassCode("");
-        setStudentAvatar("🦊");
-        setExistingStudents([]);
-        setShowNewStudentForm(false);
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      setError("Could not create account. Please try again.");
-    } finally {
-      manualLoginInProgress.current = false;
-    }
-  };
-
-  // --- OAUTH HANDLERS ---
-  const handleOAuthTeacherDetected = async (_email: string) => {
-    try {
-      // The onAuthStateChange → restoreSession path already handles teacher
-      // login (including auto-creating the users row for allowed Google
-      // sign-ins).  Just close the OAuth UI and let it finish.
-      setIsOAuthCallback(false);
-      setLoading(true);
-      // If restoreSession already ran and set the view, we're done.
-      // If not, the next onAuthStateChange event will trigger it.
-    } catch (error) {
-      console.error('Teacher detection error:', error);
-      setError('Could not load teacher profile.');
-    }
-  };
-
-  const handleOAuthStudentDetected = async (email: string) => {
-    try {
-      // Load student profile from student_profiles table
-      const { data: studentData, error } = await supabase
-        .from('student_profiles')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (error || !studentData) {
-        setError('Student profile not found. Please sign up again.');
-        return;
-      }
-
-      if (studentData.status !== 'active' && studentData.status !== 'approved') {
-        showPendingApproval({
-          name: studentData.display_name || '',
-          classCode: studentData.class_code || '',
-          profileId: studentData.id,
-        });
-        return;
-      }
-
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      if (!supabaseUser) {
-        setError('Just tap your name below to sign back in 👋');
-        return;
-      }
-
-      // Class-switch detection: same logic as the restoreSession path.
-      // If the student entered a class code that differs from their
-      // current one and it's a real class, show the switch modal instead
-      // of logging them into their existing class.
-      const intendedCode = readIntendedClassCode();
-      const intendedNorm = intendedCode?.trim().toUpperCase() || null;
-      const currentNorm = studentData.class_code?.trim().toUpperCase() || '';
-      if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
-        // Same RLS workaround as above — use the SECURITY DEFINER RPC so
-        // non-member students can still verify the target class exists.
-        const { data: intendedClassRows, error: lookupErr } = await supabase
-          .rpc('class_lookup_by_code', { p_code: intendedNorm });
-        if (lookupErr) {
-          // Surface the real reason instead of the generic "not found"
-          // banner. Common causes: migration 20260428 requires auth but
-          // auth.uid() was null mid-OAuth; rate limit hit; migration
-          // 20260426 never applied so the RPC doesn't exist server-side.
-          console.error('[OAuth class switch] RPC failed:', lookupErr);
-          setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
-          clearIntendedClassCode();
-        } else if (intendedClassRows && intendedClassRows.length > 0) {
-          const { data: currentClassRows } = await supabase
-            .from('classes').select('code, name').eq('code', studentData.class_code);
-          setIsOAuthCallback(false);
-          // Populate in-memory user so dashboard can render as the modal's
-          // backdrop rather than flashing landing/loader.
-          const switchUser: AppUser = {
-            uid: supabaseUser.id,
-            email: studentData.email,
-            displayName: studentData.display_name || email.split('@')[0],
-            role: 'student',
-            classCode: studentData.class_code,
-            xp: studentData.xp || 0,
-            avatar: studentData.avatar,
-            createdAt: studentData.created_at,
-          };
-          setUser(switchUser);
-          setPendingClassSwitch({
-            fromCode: studentData.class_code,
-            fromClassName: currentClassRows?.[0]?.name ?? null,
-            toCode: intendedNorm,
-            toClassName: intendedClassRows[0].name ?? null,
-            supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
-          });
-          setView("student-dashboard");
-          clearIntendedClassCode();
-          return;
-        } else if (!lookupErr) {
-          // RPC succeeded with zero rows — the class genuinely doesn't
-          // exist. Show the standard not-found banner. (Error branch
-          // already set its own more informative banner above.)
-          setClassNotFoundIntent(intendedNorm);
-          clearIntendedClassCode();
-        }
-      } else if (intendedCode) {
-        clearIntendedClassCode();
-      }
-
-      // Ensure a users table row exists for this OAuth student (restoreSession needs it)
-      const studentUser: AppUser = {
-        uid: supabaseUser.id,
-        email: studentData.email,
-        displayName: studentData.display_name || email.split('@')[0],
-        role: 'student',
-        classCode: studentData.class_code,
-        xp: studentData.xp || 0,
-        avatar: studentData.avatar,
-        createdAt: studentData.created_at,
-      };
-      await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-
-      setUser(studentUser);
-      setIsOAuthCallback(false);
-
-      // Load class assignments and progress
-      if (studentData.class_code) {
-        const { data: classRows } = await supabase
-          .from('classes').select(CLASS_COLUMNS).eq('code', studentData.class_code);
-        if (classRows && classRows.length > 0) {
-          const classData = mapClass(classRows[0]);
-          const [assignResult, progressResult] = await Promise.all([
-            supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-            supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
-          ]);
-          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-          setStudentProgress((progressResult.data ?? []).map(mapProgress));
-        }
-      }
-
-      setBadges(studentUser.badges || []);
-      setXp(studentUser.xp ?? 0);
-      setStreak(studentUser.streak ?? 0);
-      setView("student-dashboard");
-      setLoading(false);
-    } catch (error) {
-      console.error('Student detection error:', error);
-      setError('Could not load student profile.');
-    }
-  };
-
-  const handleOAuthNewUser = (email: string, authUid: string) => {
-    setOauthEmail(email);
-    setOauthAuthUid(authUid);
-    setShowOAuthClassCode(true);
-    setIsOAuthCallback(false);
-    setLoading(false);
-  };
-
-  // Teacher Approval System
-  const handleApproveStudent = async (studentId: string, displayName: string) => {
-    try {
-      // Call the approve_student function
-      const { error } = await supabase.rpc('approve_student', {
-        p_profile_id: studentId
-      });
-
-
-      if (error) {
-        console.error('RPC error:', error);
-        throw error;
-      }
-
-      // Refresh the list
-      await loadPendingStudents();
-
-      // Show success
-      showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
-    } catch (error) {
-      console.error('Error approving student:', error);
-      showToast("Could not approve student. Please try again.", "error");
-    }
-  };
-
-  const handleRejectStudent = async (studentId: string, displayName: string) => {
-    setRejectStudentModal({ id: studentId, displayName });
-  };
-
-  const confirmRejectStudent = async (studentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('student_profiles')
-        .update({ status: 'rejected' })
-        .eq('id', studentId);
-
-      if (error) throw error;
-
-      // Refresh the list
-      await loadPendingStudents();
-    } catch (error) {
-      console.error('Error rejecting student:', error);
-      showToast("Could not reject student. Please try again.", "error");
-    }
-  };
-
-
-  const awardBadge = async (badge: string) => {
-    if (!user || badges.includes(badge)) return;
-
-    const newBadges = [...badges, badge];
-    setBadges(newBadges);
-    celebrate('big');
-
-    try {
-      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error saving badge:", error);
-      setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
-    }
-  };
+  // Idempotent badge grant — used by the save-score milestone checks.
+  // Hook encapsulates the includes-guard + celebrate + DB upsert.
+  const awardBadge = useAwardBadge({ user, badges, setBadges, setSaveError });
 
   // Re-run fetchScores when classes transitions from 0 → non-zero while the
   // teacher is viewing Analytics or Gradebook. Without this, clicking the
@@ -3667,69 +2995,6 @@ export default function App() {
   // differs from their current class_code.  Approve = update profile +
   // users row to the new class and land on the new dashboard (no teacher
   // re-approval per Approach 1).  Cancel = keep the current class.
-  const handleConfirmClassSwitch = async () => {
-    if (!pendingClassSwitch) return;
-    const { toCode, supabaseUser } = pendingClassSwitch;
-    try {
-      // Use the SECURITY DEFINER RPC instead of direct UPDATEs. The
-      // users_update RLS policy (migration 20260340) freezes class_code for
-      // non-admins to prevent casual class hopping via .update(). A direct
-      // .update({class_code: newCode}) therefore 403s here. The RPC
-      // validates target class exists + updates both users + student_profiles
-      // atomically for the caller only. Added in migration 20260506.
-      const { error: rpcErr } = await supabase.rpc('switch_student_class', {
-        p_new_code: toCode,
-      });
-      if (rpcErr) throw rpcErr;
-
-      // Load the new class's data and navigate to its dashboard.
-      const { data: classRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', toCode);
-      if (classRows && classRows.length > 0) {
-        const classData = mapClass(classRows[0]);
-        const [assignResult, progressResult] = await Promise.all([
-          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', toCode).eq('student_uid', supabaseUser.id),
-        ]);
-        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        setStudentProgress((progressResult.data ?? []).map(mapProgress));
-      }
-
-      // Update in-memory user.classCode so the dashboard header shows the new code.
-      setUser(prev => prev ? { ...prev, classCode: toCode } : prev);
-      setPendingClassSwitch(null);
-      setView("student-dashboard");
-      setLoading(false);
-    } catch (err) {
-      console.error('Class switch failed:', err);
-      showToast('Could not switch class. Please try again.', 'error');
-      setPendingClassSwitch(null);
-    }
-  };
-
-  const handleCancelClassSwitch = async () => {
-    if (!pendingClassSwitch) return;
-    const { fromCode, supabaseUser } = pendingClassSwitch;
-    // User chose to stay in their current class — load that class's data
-    // as if the intended-code was never there.
-    try {
-      const { data: classRows } = await supabase
-        .from('classes').select(CLASS_COLUMNS).eq('code', fromCode);
-      if (classRows && classRows.length > 0) {
-        const classData = mapClass(classRows[0]);
-        const [assignResult, progressResult] = await Promise.all([
-          supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-          supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', fromCode).eq('student_uid', supabaseUser.id),
-        ]);
-        setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-        setStudentProgress((progressResult.data ?? []).map(mapProgress));
-      }
-    } catch { /* non-fatal — dashboard still renders */ }
-    setPendingClassSwitch(null);
-    setView("student-dashboard");
-    setLoading(false);
-  };
-
   // Sticky banner the student sees on the dashboard when they typed a
   // class code that doesn't exist.  Rendered-variable pattern mirrors
   // the other modals (consentModal / exitConfirmModal / classSwitchModal)
