@@ -420,20 +420,55 @@ interface EditTranslationModalProps {
   word: WordWithStatus | null;
   translationLang: TranslationLang;
   onSave: (wordId: number, hebrew: string, arabic: string) => void;
+  /** Optional AI translator.  When supplied, the modal exposes an
+   *  "✨ Auto-translate" button that fills the Hebrew + Arabic inputs
+   *  from Gemini.  If the word is a Set 1/2/3 row (positive id), the
+   *  result is persisted via `word_corrections` by the parent so the
+   *  same word already shows up translated in future assignments. */
+  onTranslate?: (englishWord: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
 }
 
 const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
-  isOpen, onClose, word, translationLang, onSave
+  isOpen, onClose, word, translationLang, onSave, onTranslate
 }) => {
   const [hebrew, setHebrew] = useState('');
   const [arabic, setArabic] = useState('');
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (word) {
       setHebrew(word.hebrew || '');
       setArabic(word.arabic || '');
+      setTranslateError(null);
     }
   }, [word]);
+
+  const handleAutoTranslate = async () => {
+    if (!onTranslate || !word) return;
+    setTranslating(true);
+    setTranslateError(null);
+    try {
+      const result = await onTranslate(word.english);
+      if (!result) {
+        setTranslateError('Translation service unavailable — try typing manually.');
+        return;
+      }
+      // Only overwrite fields that are visible (respect the language
+      // preference) AND that aren't already filled — teachers who
+      // typed something intentional shouldn't have it clobbered.
+      if ((translationLang === 'both' || translationLang === 'hebrew') && !hebrew && result.hebrew) {
+        setHebrew(result.hebrew);
+      }
+      if ((translationLang === 'both' || translationLang === 'arabic') && !arabic && result.arabic) {
+        setArabic(result.arabic);
+      }
+    } catch {
+      setTranslateError('Translation failed — check your connection and try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   if (!isOpen || !word) return null;
 
@@ -470,6 +505,41 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               {word.english}
             </div>
           </div>
+
+          {/* AI Auto-translate — calls Gemini and fills whichever of the
+              two input fields are still empty.  Rendered only when the
+              parent passed an `onTranslate` handler. */}
+          {onTranslate && (
+            <div>
+              <button
+                type="button"
+                onClick={handleAutoTranslate}
+                disabled={translating}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {translating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Translating…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Auto-translate with AI
+                  </>
+                )}
+              </button>
+              {translateError && (
+                <p className="mt-2 text-xs text-rose-600 font-semibold text-center">{translateError}</p>
+              )}
+              {word.id > 0 && (
+                <p className="mt-1 text-[11px] text-stone-500 text-center">
+                  Saved to your account — this word stays translated in future assignments.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Hebrew translation */}
           {(translationLang === 'both' || translationLang === 'hebrew') && (
@@ -1733,6 +1803,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         word={editingWord}
         translationLang={translationLang}
         onSave={handleSaveTranslation}
+        onTranslate={onTranslateWord}
       />
 
       {/* OCR Modal */}
