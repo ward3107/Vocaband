@@ -65,6 +65,7 @@ import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } 
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -85,34 +86,6 @@ function secureRandomInt(max: number): number {
   crypto.getRandomValues(arr);
   return arr[0] % max;
 }
-
-// Fire-and-forget request to have the server generate + upload MP3s for
-// custom words (OCR, paste, quick-play). Students will then hear a natural
-// Neural2 voice instead of the robotic browser SpeechSynthesis fallback.
-// Never await this — it can take 5–10s for a big list and we don't want the
-// teacher UI to block on it.
-async function requestCustomWordAudio(words: { id: number; english: string }[]): Promise<void> {
-  if (words.length === 0) return;
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return;
-    await fetch('/api/tts/custom-words', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        words: words.map(w => ({ id: w.id, english: w.english })),
-      }),
-    });
-  } catch (err) {
-    // Non-critical: if this fails, students just hear browser TTS.
-    console.warn('[TTS] Custom-word audio request failed:', err);
-  }
-}
-
 
 export default function App() {
   // Initialize game debugger
