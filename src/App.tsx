@@ -74,6 +74,7 @@ import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
+import { useConsent } from "./hooks/useConsent";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1364,6 +1365,13 @@ export default function App() {
     setUser, setView, setLoading,
     setStudentAssignments, setStudentProgress,
     showToast,
+  });
+
+  // Privacy-policy consent flow — checkConsent gates the banner,
+  // recordConsent persists the acceptance to both localStorage (fast
+  // path) and consent_log (audit trail).
+  const { checkConsent, recordConsent } = useConsent({
+    user, setNeedsConsent, setConsentChecked,
   });
 
   // --- AUTH LOGIC ---
@@ -2657,51 +2665,6 @@ export default function App() {
   // wired to any UI. Removed along with their backing state
   // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
   // dead code TypeScript had been flagging with TS6133.
-  const checkConsent = (userData: AppUser) => {
-    const accepted = localStorage.getItem('vocaband_consent_version');
-    if (accepted === PRIVACY_POLICY_VERSION) return;
-
-    // localStorage missing — check DB before showing the banner
-    if (userData.uid) {
-      supabase
-        .from('consent_log')
-        .select('policy_version')
-        .eq('uid', userData.uid)
-        .eq('action', 'accept')
-        .eq('policy_version', PRIVACY_POLICY_VERSION)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            // Valid consent found in DB — restore localStorage and skip banner
-            try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
-          } else {
-            setNeedsConsent(true);
-          }
-        });
-    } else {
-      setNeedsConsent(true);
-    }
-  };
-
-  const recordConsent = async () => {
-    localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION);
-    // Also persist to the consent_log DB table for compliance/audit trail
-    if (user?.uid) {
-      try {
-        await supabase.from('consent_log').insert({
-          uid: user.uid,
-          policy_version: PRIVACY_POLICY_VERSION,
-          terms_version: PRIVACY_POLICY_VERSION,
-          action: 'accept',
-        });
-      } catch (error) {
-        trackError('Could not persist consent to database', 'database', 'low', { uid: user?.uid });
-      }
-    }
-    setNeedsConsent(false);
-    setConsentChecked(false);
-  };
-
   const awardBadge = async (badge: string) => {
     if (!user || badges.includes(badge)) return;
 
