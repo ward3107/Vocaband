@@ -51,7 +51,6 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { celebrate } from "./utils/celebrate";
-import { trackError, trackAutoError } from "./errorTracking";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
 import { getGameDebugger } from "./utils/gameDebug";
@@ -75,6 +74,7 @@ import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
 import { useConsent } from "./hooks/useConsent";
+import { useOcrUpload } from "./hooks/useOcrUpload";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1374,6 +1374,20 @@ export default function App() {
     user, setNeedsConsent, setConsentChecked,
   });
 
+  // OCR pipeline — photo → /api/ocr → translate → custom-word tab
+  // with dictionary cross-check. Preserves App.tsx's progress UI,
+  // Neural2 audio generation, and hallucination-guard behaviour.
+  const { handleOcrUpload, processOcrFile } = useOcrUpload({
+    classes, setSelectedClass,
+    setCustomWords, setSelectedWords,
+    // App narrows these with union types; hook takes the wider string.
+    // Same bivariance cast we used for useTeacherActions.
+    setSelectedLevel: setSelectedLevel as (v: string) => void,
+    setView: setView as (v: string) => void,
+    setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
+    showToast, translateWordsBatch,
+  });
+
   // --- AUTH LOGIC ---
   useEffect(() => {
     // If Supabase isn't configured, skip auth entirely and show the landing page.
@@ -2472,191 +2486,6 @@ export default function App() {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [user?.role, view, classes.length]);
-
-  const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
-
-  /**
-   * handleOcrUpload
-   * Takes an image file (e.g., a photo of a word list), sends it to the
-   * server-side Tesseract.js OCR endpoint, and extracts English vocabulary words.
-   */
-  // OCR upload — send photo directly to the Worker (no crop modal).
-  // The crop modal's canvas export was corrupting images on mobile.
-  // The Cloudflare Worker OCR works perfectly with raw photos.
-  const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawFile = e.target.files?.[0];
-    if (!rawFile) return;
-    processOcrFile(rawFile, e);
-  };
-
-  // Step 2: User confirms from the preview → run OCR
-  const processOcrFile = async (fileToProcess: File, originalEvent?: React.ChangeEvent<HTMLInputElement> | null) => {
-    setOcrPendingFile(null);
-    setIsOcrProcessing(true);
-    setOcrProgress(5);
-    setOcrStatus("Compressing image...");
-
-    try {
-      const file = await compressImageForUpload(fileToProcess);
-      const fileSizeKB = Math.round(file.size / 1024);
-      setOcrProgress(10);
-      setOcrStatus(`Uploading image... (${fileSizeKB} KB)`);
-
-      // Get auth token for teacher authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { showToast("Please sign in again.", "error"); return; }
-
-      // OCR runs directly in the Cloudflare Worker (same-origin, no Render,
-      // no CORS, no cold starts). The Worker calls Claude Vision API.
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s
-
-      // Simulate smooth progress during the API call (10% → 85%)
-      let simProgress = 15;
-      setOcrProgress(15);
-      const progressInterval = setInterval(() => {
-        simProgress += (85 - simProgress) * 0.08;
-        setOcrProgress(Math.round(simProgress));
-      }, 400);
-
-      // Update status while waiting
-      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 2000);
-      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 6000);
-
-      let response: Response;
-      try {
-        response = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData,
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-        clearTimeout(statusTimer1);
-        clearTimeout(statusTimer2);
-        clearInterval(progressInterval);
-      }
-
-      setOcrProgress(88);
-      setOcrStatus("Processing results...");
-
-      if (!response.ok) {
-        let errorMessage = `OCR failed (${response.status})`;
-        try {
-          const errorData = await response.json();
-          // Prefer the detailed 'message' field (which has the actual
-          // Gemini error reason) over the generic 'error' field.
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch { /* response wasn't JSON */ }
-        throw new Error(errorMessage);
-      }
-
-      let ocrData: any;
-      try {
-        ocrData = await response.json();
-      } catch {
-        throw new Error('Server returned an invalid response. Please try again.');
-      }
-      setOcrProgress(95);
-
-      // Extract words from the OCR service response
-      // The service already returns English-only words (filtered by regex on server)
-      const extractedWords = ocrData.words || [];
-      const rawText = ocrData.raw_text || '';
-
-      // Dictionary cross-check to catch Gemini hallucinations. Any OCR result
-      // that matches a curriculum word (ALL_WORDS, ~9k entries) is treated as
-      // high confidence; anything else could be a ghost word the model made
-      // up, or a legitimate non-curriculum word (proper noun, slang). We keep
-      // BOTH in the custom words list so teachers don't lose real words, but
-      // only auto-select the known ones. Unknown words show up unchecked so
-      // the teacher can dismiss obvious nonsense with a glance instead of it
-      // silently joining the assignment.
-      const normalizeWord = (w: string) => w.toLowerCase().trim();
-      const knownEnglishSet = new Set(ALL_WORDS.map(w => normalizeWord(w.english)));
-      const isKnownWord = (w: string) => knownEnglishSet.has(normalizeWord(w));
-
-
-      // Auto-translate OCR words to Hebrew + Arabic via Gemini so teachers
-      // don't have to fill them in manually. Done BEFORE creating the Word
-      // objects so the translations land on first render. Failure is silent
-      // — teachers see a "Translate" button per word as the fallback.
-      setOcrStatus("Translating to Hebrew + Arabic…");
-      const translations = await translateWordsBatch(extractedWords);
-
-      const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => {
-        const t = translations.get(word.toLowerCase().trim());
-        return {
-          id: Date.now() + index,
-          english: word,
-          hebrew: t?.hebrew || '',
-          arabic: t?.arabic || '',
-          level: 'Custom',
-          recProd: 'Prod',
-        };
-      });
-
-      if (customWordsFromOCR.length > 0) {
-      }
-
-      if (customWordsFromOCR.length === 0) {
-        showToast(
-          rawText
-            ? `No English words found. AI saw: "${rawText.substring(0, 120)}${rawText.length > 120 ? '...' : ''}"`
-            : "No words found — the image may be unclear. Try a closer photo with better lighting.",
-          "error"
-        );
-      } else {
-        // Add all detected words to the Custom tab, but only auto-select the
-        // ones that match our curriculum dictionary. Unknown words (possible
-        // hallucinations) appear unchecked for the teacher to review.
-        setCustomWords(customWordsFromOCR);
-        setSelectedLevel("Custom");
-        const knownCustomIds = customWordsFromOCR
-          .filter(w => isKnownWord(w.english))
-          .map(w => w.id);
-        const autoSelectIds = knownCustomIds.length > 0
-          ? knownCustomIds
-          : customWordsFromOCR.map(w => w.id);
-        setSelectedWords(autoSelectIds);
-
-        // Fire off Neural2 audio generation so students hear real pronunciations.
-        void requestCustomWordAudio(customWordsFromOCR);
-
-        // Navigate to create-assignment view so user can see the matched words
-        if (classes.length > 0) {
-          setSelectedClass(classes[0]);
-          setView("create-assignment");
-        }
-
-        const unknownCount = customWordsFromOCR.length - knownCustomIds.length;
-        const successMsg = knownCustomIds.length > 0 && unknownCount > 0
-          ? `Found ${customWordsFromOCR.length} words — ${knownCustomIds.length} curriculum matches auto-selected, ${unknownCount} need review.`
-          : `Found ${customWordsFromOCR.length} words from the image!`;
-        showToast(successMsg, "success");
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        showToast("OCR timed out — the image may be too complex. Try a clearer photo or a smaller area.", "error");
-      } else {
-        trackAutoError(err, 'OCR processing failed');
-        const errorMessage = err instanceof Error ? err.message : 'Error processing image';
-        console.error('OCR error:', errorMessage);
-        showToast(`${errorMessage}. Please try again.`, "error");
-      }
-    } finally {
-      setIsOcrProcessing(false);
-      setOcrProgress(0);
-      setOcrStatus("");
-      // Reset the file input so the same file can be uploaded again if needed
-      if (originalEvent?.target) originalEvent.target.value = '';
-    }
-  };
 
   // --- SMART PASTE FUNCTIONS ---
 
