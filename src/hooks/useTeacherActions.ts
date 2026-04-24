@@ -6,6 +6,7 @@ import {
   mapProgress,
   handleDbError,
   OperationType,
+  ASSIGNMENT_COLUMNS,
   type AppUser,
   type ClassData,
   type AssignmentData,
@@ -16,6 +17,7 @@ import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
+import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_IMPORT_WORDS = 500;
@@ -60,9 +62,11 @@ export interface UseTeacherActionsParams {
   setTagInput: (v: string) => void;
   setIsOcrProcessing: (v: boolean) => void;
   setOcrProgress: (v: string | number) => void;
-  gSheetsUrl: string;
-  setGSheetsUrl: (v: string) => void;
-  setGSheetsLoading: (v: boolean) => void;
+  // Google Sheets import is a separate experimental feature; when a
+  // caller doesn't wire it, handleGSheetsImport is effectively a no-op.
+  gSheetsUrl?: string;
+  setGSheetsUrl?: (v: string) => void;
+  setGSheetsLoading?: (v: boolean) => void;
   setWordSearchQuery: (v: string) => void;
   setSelectedCore: (v: any) => void;
   setSelectedRecProd: (v: string) => void;
@@ -378,6 +382,10 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     }));
     setCustomWords(prev => [...prev, ...newCustomWords]);
     setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
+    // Fire off Neural2 audio generation so students hear a real voice
+    // for these words instead of browser TTS. Never await — it can
+    // take 5-10s and we don't want the teacher flow to block.
+    void requestCustomWordAudio(newCustomWords);
     // Switch to Custom tab so users can see the added words
     setSelectedLevel("Custom");
     // Clear search and filters so all words are visible
@@ -425,6 +433,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   };
 
   const handleGSheetsImport = async () => {
+    // Callers without the gSheets state wired in effectively disable
+    // this flow — silent bail-out keeps the rest of the hook usable.
+    if (!gSheetsUrl || !setGSheetsUrl || !setGSheetsLoading) return;
     if (!gSheetsUrl.trim()) return;
     try {
       const parsed = new URL(gSheetsUrl.trim());
@@ -462,11 +473,20 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     }
   };
 
-  const handleSaveAssignment = async () => {
+  const handleSaveAssignment = async (
+    wordsOverride?: number[],
+    modesOverride?: string[],
+  ) => {
+    // Use override values if provided (e.g. from SetupWizard completion)
+    // so the wizard's latest in-memory picks take effect even if they
+    // haven't flushed to state yet. Otherwise fall back to state.
+    const wordsToCheck = wordsOverride ?? selectedWords;
+    const modesToCheck = modesOverride ?? assignmentModes;
+
     // For editing, allow custom-only assignments
     const hasWords = editingAssignment
-      ? selectedWords.length > 0 || customWords.length > 0
-      : selectedWords.length > 0;
+      ? wordsToCheck.length > 0 || customWords.length > 0
+      : wordsToCheck.length > 0;
 
     if (!selectedClass || !hasWords || !assignmentTitle) {
       showToast("Please enter a title and select words.", "error");
@@ -476,28 +496,29 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     // Check if there's at least one database word (not custom/session-only)
     // For creating new assignments, require at least one database word
     // For editing, allow custom-only assignments
-    const hasDbWords = selectedWords.some(id => id > 0);
+    const hasDbWords = wordsToCheck.some(id => id > 0);
     if (!hasDbWords && !editingAssignment) {
       showToast("Please select at least one word from the vocabulary database.", "error");
       return;
     }
     // For editing, if no database words, ensure we have at least one custom word
-    if (!hasDbWords && editingAssignment && customWords.length === 0 && selectedWords.length === 0) {
+    if (!hasDbWords && editingAssignment && customWords.length === 0 && wordsToCheck.length === 0) {
       showToast("Please select at least one word (database or custom).", "error");
       return;
     }
 
     const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToSave = uniqueWords.filter(w => new Set(selectedWords).has(w.id));
+    const wordsToCheckSet = new Set(wordsToCheck);
+    const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
 
     const assignmentData = {
       classId: selectedClass.id,
-      wordIds: selectedWords.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
+      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
       words: wordsToSave,
       title: assignmentTitle,
       deadline: assignmentDeadline || null,
-      allowedModes: assignmentModes,
+      allowedModes: modesToCheck,
       sentences: assignmentSentences.filter(s => s.trim()),
       sentenceDifficulty,
     };
@@ -560,8 +581,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
         if (error) throw error;
         showToast("Assignment created successfully!", "success");
 
-        // Refresh assignments list
-        fetchTeacherAssignments();
+        // Refresh assignments list — await so the teacher-dashboard
+        // redirect below doesn't land on a stale list.
+        await fetchTeacherAssignments();
 
         // Only redirect and reset form when creating (not when editing)
         setView("teacher-dashboard");
@@ -711,13 +733,23 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     if (!user || user.role !== "teacher") return;
     const now = Date.now();
     if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-    lastFetchRef.current.scores = now;
 
+    // Don't mark the fetch as done if classes haven't loaded yet.
+    // Teacher dashboard load order is: setUser() → classes arrive async →
+    // Analytics view reads from allScores. If fetchScores fired before
+    // classes were populated, the old code still set lastFetchRef.current
+    // and returned with setAllScores([]), locking in an empty array for
+    // the next 10 seconds. When classes finally loaded, the retry was
+    // throttled away — so Analytics and Gradebook saw "no data" even
+    // though the DB had 100+ rows. Move the timestamp update below the
+    // classes-length guard so it only marks SUCCESSFUL fetches.
     if (classes.length === 0) {
       setAllScores([]);
       setClassStudents([]);
       return;
     }
+
+    lastFetchRef.current.scores = now;
 
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);
@@ -750,7 +782,13 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     // Use optional chaining on user state, but don't early return - the caller ensures valid context
     setTeacherAssignmentsLoading(true);
     const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data } = await supabase.from('assignments').select('*').in('class_id', classIds).order('created_at', { ascending: false });
+    // Use ASSIGNMENT_COLUMNS (instead of '*') so the mapper and the
+    // query stay in sync and we don't haul columns the UI never reads.
+    const { data } = await supabase
+      .from('assignments')
+      .select(ASSIGNMENT_COLUMNS)
+      .in('class_id', classIds)
+      .order('created_at', { ascending: false });
     setTeacherAssignments((data ?? []).map(mapAssignment));
     setTeacherAssignmentsLoading(false);
   };

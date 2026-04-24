@@ -61,10 +61,15 @@ import {
   STREAK_CELEBRATION_MILESTONES,
   type GameMode,
 } from "./constants/game";
-import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } from "./hooks/useAssignmentPlays";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+import { useTeacherActions } from "./hooks/useTeacherActions";
+import { useGameModeActions } from "./hooks/useGameModeActions";
+import { useGameFinish } from "./hooks/useGameFinish";
+import { useTranslate } from "./hooks/useTranslate";
+import { useSaveQueue } from "./hooks/useSaveQueue";
+import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -85,34 +90,6 @@ function secureRandomInt(max: number): number {
   crypto.getRandomValues(arr);
   return arr[0] % max;
 }
-
-// Fire-and-forget request to have the server generate + upload MP3s for
-// custom words (OCR, paste, quick-play). Students will then hear a natural
-// Neural2 voice instead of the robotic browser SpeechSynthesis fallback.
-// Never await this — it can take 5–10s for a big list and we don't want the
-// teacher UI to block on it.
-async function requestCustomWordAudio(words: { id: number; english: string }[]): Promise<void> {
-  if (words.length === 0) return;
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return;
-    await fetch('/api/tts/custom-words', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        words: words.map(w => ({ id: w.id, english: w.english })),
-      }),
-    });
-  } catch (err) {
-    // Non-critical: if this fails, students just hear browser TTS.
-    console.warn('[TTS] Custom-word audio request failed:', err);
-  }
-}
-
 
 export default function App() {
   // Initialize game debugger
@@ -1018,76 +995,10 @@ export default function App() {
     };
   };
 
-  // --- AI TRANSLATION FOR QUICK PLAY ---
-  // Cache for translated words to avoid redundant API calls
-  const translationCache = useRef<Map<string, {hebrew: string, arabic: string, match: number}>>(new Map());
-
-  // Batch-translate English → Hebrew + Arabic via /api/translate (Gemini).
-  // Handles one-or-many words in a single HTTP call so paste of 30 custom
-  // words doesn't fire 30 parallel requests. Results are cached by lowercased
-  // English so subsequent requests (per-word retries, auto-translate button)
-  // don't re-hit the API.
-  const translateWordsBatch = async (
-    englishWords: string[]
-  ): Promise<Map<string, { hebrew: string; arabic: string; match: number }>> => {
-    const out = new Map<string, { hebrew: string; arabic: string; match: number }>();
-    const uncached: string[] = [];
-
-    for (const w of englishWords) {
-      const key = w.toLowerCase().trim();
-      if (!key) continue;
-      const cached = translationCache.current.get(key);
-      if (cached) {
-        out.set(key, cached);
-      } else {
-        uncached.push(w.trim());
-      }
-    }
-
-    if (uncached.length === 0) return out;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return out;
-
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ words: uncached }),
-      });
-
-      if (!res.ok) {
-        console.warn('[translate] /api/translate failed:', res.status);
-        return out;
-      }
-
-      const { hebrew, arabic } = await res.json() as { hebrew?: string[]; arabic?: string[] };
-      uncached.forEach((word, i) => {
-        const he = hebrew?.[i]?.trim() || '';
-        const ar = arabic?.[i]?.trim() || '';
-        if (!he && !ar) return;
-        const entry = { hebrew: he, arabic: ar, match: he && ar ? 1 : 0.5 };
-        const key = word.toLowerCase();
-        translationCache.current.set(key, entry);
-        out.set(key, entry);
-      });
-    } catch (error) {
-      trackAutoError(error, 'Translation service error');
-    }
-
-    return out;
-  };
-
-  // Single-word translator kept for API compatibility with existing callers
-  // (manual "Auto-translate" button, Quick Play). Thin wrapper over the batch.
-  const translateWord = async (englishWord: string): Promise<{hebrew: string, arabic: string, match: number} | null> => {
-    const result = await translateWordsBatch([englishWord]);
-    return result.get(englishWord.toLowerCase().trim()) || null;
-  };
+  // Translation helpers — server-proxied EN → HE/AR with an in-session
+  // cache. Two callable shapes: batch (paste/OCR/imports) and single-
+  // word (Auto-translate button). Hook owns the cache + fetch plumbing.
+  const { translateWord, translateWordsBatch } = useTranslate();
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -1155,52 +1066,79 @@ export default function App() {
   // Track when data was last fetched to avoid redundant Supabase calls
   const lastFetchRef = useRef<Record<string, number>>({});
 
+  // Teacher-side handlers extracted into a single hook so the file
+  // doesn't have to maintain duplicate copies of class / assignment /
+  // word-import logic. The hook owns the implementations; this file
+  // just plumbs the state in and destructures the methods out.
+  // handleOcrUpload stays inline below — its hook version is a much
+  // simpler implementation and we'd lose the OCR status UI, custom-
+  // word audio generation, and vocabulary cross-check by swapping it.
+  const {
+    handleCreateClass,
+    handlePasteSubmit,
+    handleAddUnmatchedAsCustom,
+    handleSkipUnmatched,
+    handleTagInputKeyDown,
+    handleDocxUpload,
+    handleSaveAssignment,
+    handleDeleteClass,
+    fetchScores,
+    fetchTeacherAssignments,
+  } = useTeacherActions({
+    user, classes, setClasses,
+    newClassName, setNewClassName,
+    setCreatedClassCode, setCreatedClassName, setShowCreateClassModal,
+    selectedClass, setSelectedClass,
+    editingAssignment, setEditingAssignment,
+    selectedWords, setSelectedWords,
+    customWords, setCustomWords,
+    selectedLevel,
+    // App.tsx narrows level to a 3-value union; hook signature is the wider
+    // string. Casts here keep the bivariance edge cases out of the hook.
+    setSelectedLevel: setSelectedLevel as (v: string) => void,
+    assignmentTitle, setAssignmentTitle,
+    assignmentDeadline, setAssignmentDeadline,
+    assignmentModes, setAssignmentModes,
+    assignmentSentences, setAssignmentSentences,
+    sentenceDifficulty, setSentenceDifficulty,
+    setAssignmentStep,
+    pastedText, setPastedText,
+    setPasteMatchedCount, pasteUnmatched, setPasteUnmatched, setShowPasteDialog,
+    tagInput, setTagInput,
+    setIsOcrProcessing,
+    setOcrProgress: setOcrProgress as (v: string | number) => void,
+    setWordSearchQuery,
+    setSelectedCore,
+    setSelectedRecProd: setSelectedRecProd as (v: string) => void,
+    setSelectedPos,
+    teacherAssignments, setTeacherAssignments, setTeacherAssignmentsLoading,
+    pendingStudents, setPendingStudents,
+    allScores, setAllScores,
+    setClassStudents,
+    // Global leaderboard isn't wired into App.tsx (unused state); hook's
+    // fetchGlobalLeaderboard isn't called from here, so a no-op is safe.
+    setGlobalLeaderboard: () => {},
+    setActiveAssignment, setAssignmentWords, setShowModeSelection,
+    setConfirmDialog, showToast,
+    setView: (v: string) => setView(v as View),
+    lastFetchRef,
+  });
+
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
-  const saveQueueRef = useRef<Array<() => Promise<void>>>([]);
-  const saveQueueTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isProcessingQueueRef = useRef(false);
-
-  // Process save queue in batches (reduces DB round-trips)
-  const processSaveQueue = async () => {
-    if (isProcessingQueueRef.current || saveQueueRef.current.length === 0) return;
-    isProcessingQueueRef.current = true;
-
-    const queue = saveQueueRef.current.splice(0, 10); // Process up to 10 saves at once
-
-    try {
-      await Promise.all(queue.map(fn => fn().catch(err => console.error('[Save Queue] Item failed:', err))));
-    } finally {
-      isProcessingQueueRef.current = false;
-
-      // Process more if queue was refilled
-      if (saveQueueRef.current.length > 0) {
-        saveQueueTimerRef.current = setTimeout(processSaveQueue, 100);
-      }
-    }
-  };
-
-  const queueSaveOperation = (operation: () => Promise<void>) => {
-    saveQueueRef.current.push(operation);
-
-    // Trigger processing after short delay (allows batching)
-    if (!saveQueueTimerRef.current) {
-      saveQueueTimerRef.current = setTimeout(() => {
-        processSaveQueue();
-        saveQueueTimerRef.current = undefined;
-      }, 300); // 300ms delay to accumulate multiple saves
-    }
-  };
+  // queueSaveOperation pushes a closure; the hook batches up to 10 of
+  // them per flush after a 300ms debounce. clearQueue is called from
+  // cleanupSessionData on logout to drop in-flight writes.
+  const {
+    queueSaveOperation,
+    clearQueue: clearSaveQueue,
+    processSaveQueue,
+    hasPending: saveQueueHasPending,
+  } = useSaveQueue();
 
   // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
   const cleanupSessionData = () => {
-    // Clear save queue to prevent any further DB operations
-    saveQueueRef.current = [];
-    // Clear any pending save timer
-    if (saveQueueTimerRef.current) {
-      clearTimeout(saveQueueTimerRef.current);
-      saveQueueTimerRef.current = undefined;
-    }
-    // Clear feedback timeout
+    clearSaveQueue();
+    // Clear feedback timeout (lives outside the save queue's domain).
     if (feedbackTimeoutRef.current) {
       clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = undefined;
@@ -1276,19 +1214,12 @@ export default function App() {
     }
   }, [currentIndex, view, gameMode, showModeSelection, showModeIntro, isFinished, feedback]);
 
-  // Cleanup timeout on unmount
+  // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
+  // owned by useSaveQueue itself.
   useEffect(() => {
     return () => {
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
-      }
-      // Flush save queue on unmount to ensure no data is lost
-      if (saveQueueTimerRef.current) {
-        clearTimeout(saveQueueTimerRef.current);
-      }
-      if (saveQueueRef.current.length > 0) {
-        Promise.all(saveQueueRef.current.map(fn => fn().catch(console.error))).catch(console.error);
-        saveQueueRef.current = [];
       }
     };
   }, []);
@@ -1298,13 +1229,13 @@ export default function App() {
   useEffect(() => {
     const flushInterval = setInterval(() => {
       // Only flush if user exists, not actively saving, and queue has items
-      if (user && !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
+      if (user && !isSaving && saveQueueHasPending()) {
         processSaveQueue();
       }
     }, 5000); // Every 5 seconds
 
     return () => clearInterval(flushInterval);
-  }, [isSaving, user]); // Added user as dependency
+  }, [isSaving, user, saveQueueHasPending, processSaveQueue]);
 
   // Quick Play v2 socket — only active when the flag is on AND a
   // session is live. When a student's score changes during gameplay
@@ -2716,42 +2647,6 @@ export default function App() {
     return [];
   };
 
-  const handleCreateClass = async () => {
-    if (!newClassName || !user) return;
-
-    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
-    const randomValues = crypto.getRandomValues(new Uint32Array(8));
-    const code = Array.from(randomValues)
-      .map(x => {
-        // Rejection sampling to avoid modulo bias
-        const limit = Math.floor(0x100000000 / alphabet.length) * alphabet.length;
-        let val = x;
-        while (val >= limit) {
-          val = crypto.getRandomValues(new Uint32Array(1))[0];
-        }
-        return alphabet[val % alphabet.length];
-      })
-      .join("");
-    const newClass = {
-      name: newClassName,
-      teacherUid: user.uid,
-      code: code
-    };
-
-    try {
-      const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
-      if (error) throw error;
-      setClasses([...classes, mapClass(docRow)]);
-      setCreatedClassName(newClass.name);
-      setShowCreateClassModal(false);
-      setNewClassName("");
-      setCreatedClassCode(code);
-    } catch (error) {
-      console.error("Error creating class:", error);
-      showToast("Failed to create class.", "error");
-    }
-  };
-
   const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
 
   /**
@@ -2939,329 +2834,11 @@ export default function App() {
 
   // --- SMART PASTE FUNCTIONS ---
 
-  // Extract words from pasted text - handles commas, newlines, semicolons, pipes, tabs
-  const extractWordsFromPaste = (text: string): string[] => {
-    // Strip zero-width characters from PDFs/Word documents
-    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-
-    // Split by common delimiters (added tab support for Excel/Google Sheets)
-    const words = cleaned
-      .split(/[,\n;\t\|]+/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length >= 2 && w.length <= 100); // Filter invalid
-
-    const unique = [...new Set(words)];
-
-    // Soft limit for very large pastes
-    if (unique.length > 500) {
-      console.warn(`Large paste: ${unique.length} words (processing first 500)`);
-    }
-
-    return unique.slice(0, 500);
-  };
-
-  // Find matching Set 2 words (EXACT OR PARTIAL MATCH)
-  // Combines duplicates and merges translations (Hebrew+Hebrew, Arabic+Arabic)
-  // Also combines words with/without "(n)" suffix
-  const findMatchesInSet2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
-    const allMatches: Word[] = [];
-    const unmatched: string[] = [];
-
-    // Find ALL matches for each input word
-    for (const word of words) {
-      const matches = SET_2_WORDS.filter(w =>
-        w.english.toLowerCase() === word ||
-        w.english.toLowerCase().startsWith(word) ||
-        w.english.toLowerCase().endsWith(word)
-      );
-      if (matches.length > 0) {
-        allMatches.push(...matches);
-      } else {
-        unmatched.push(word);
-      }
-    }
-
-    // Group matches by base English word (remove "(n)" suffix for grouping)
-    const groupedMatches = new Map<string, Word[]>();
-    for (const match of allMatches) {
-      const baseWord = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
-      if (!groupedMatches.has(baseWord)) {
-        groupedMatches.set(baseWord, []);
-      }
-      groupedMatches.get(baseWord)!.push(match);
-    }
-
-    // Combine each group into a single word with merged translations
-    const matched: Word[] = [];
-    for (const [, group] of groupedMatches) {
-      // Merge Hebrew translations (combine non-empty ones, unique)
-      const hebrewParts = group
-        .map(w => w.hebrew.trim())
-        .filter(h => h.length > 0);
-      const uniqueHebrew = [...new Set(hebrewParts)];
-      const combinedHebrew = uniqueHebrew.join(' | ');
-
-      // Merge Arabic translations (combine non-empty ones, unique)
-      const arabicParts = group
-        .map(w => w.arabic.trim())
-        .filter(a => a.length > 0);
-      const uniqueArabic = [...new Set(arabicParts)];
-      const combinedArabic = uniqueArabic.join(' | ');
-
-      // Use the base word (without "(n)") as the English word
-      const combinedWord: Word = {
-        ...group[0],
-        english: group[0].english.replace(/\(n\)$/, '').trim(),
-        hebrew: combinedHebrew,
-        arabic: combinedArabic
-      };
-      matched.push(combinedWord);
-    }
-
-    return { matched, unmatched };
-  };
-
-  // Handle paste submission
-  const handlePasteSubmit = () => {
-    const words = extractWordsFromPaste(pastedText);
-    if (words.length === 0) return;
-
-    const { matched, unmatched } = findMatchesInSet2(words);
-
-    setPasteMatchedCount(matched.length);
-    setPasteUnmatched(unmatched);
-    setShowPasteDialog(true);
-
-    // Auto-add matched words
-    const newSelected = [...selectedWords];
-    matched.forEach(w => {
-      if (!newSelected.includes(w.id)) {
-        newSelected.push(w.id);
-      }
-    });
-    setSelectedWords(newSelected);
-    setPastedText("");
-  };
-
-  // Add unmatched as custom words
-  const handleAddUnmatchedAsCustom = () => {
-    const newCustomWords = pasteUnmatched.map((word, idx) => ({
-      id: Date.now() + idx,
-      english: word,
-      hebrew: "",
-      arabic: "",
-      level: "Custom" as const
-    }));
-    setCustomWords(prev => [...prev, ...newCustomWords]);
-    setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
-    // Fire off Neural2 audio generation for the new custom words.
-    void requestCustomWordAudio(newCustomWords);
-    // Switch to Custom tab so users can see the added words
-    setSelectedLevel("Custom");
-    // Clear search and filters so all words are visible
-    setWordSearchQuery("");
-    setSelectedCore("");
-    setSelectedPos("");
-    setSelectedRecProd("");
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
-  // Skip unmatched words
-  const handleSkipUnmatched = () => {
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
   // Quick-play preview handlers (handleQuickPlayPreviewConfirm +
   // handleQuickPlayPreviewCancel) previously lived here but were never
   // wired to any UI. Removed along with their backing state
   // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
   // dead code TypeScript had been flagging with TS6133.
-
-  // Tag-style single word entry
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter" || !tagInput.trim()) return;
-    e.preventDefault();
-    const word: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
-    setCustomWords(prev => [...prev, word]);
-    setSelectedWords(prev => [...prev, word.id]);
-    setSelectedLevel("Custom");
-    setTagInput("");
-  };
-
-  // Word (.docx) upload — extract text then use smart paste logic
-  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      // Lazy load mammoth
-      const mammothModule = await loadMammoth();
-      const mammoth = mammothModule.default || mammothModule;
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      setPastedText(result.value);
-      showToast("Word document text extracted — click Import Words to continue.", "info");
-    } catch {
-      showToast("Could not read Word document.", "error");
-    }
-    e.target.value = "";
-  };
-
-  const handleSaveAssignment = async (wordsOverride?: number[], modesOverride?: string[]) => {
-    // Use override values if provided (from SetupWizard completion), otherwise use state
-    const wordsToCheck = wordsOverride ?? selectedWords;
-    const modesToCheck = modesOverride ?? assignmentModes;
-
-    // For editing, allow custom-only assignments
-    const hasWords = editingAssignment
-      ? wordsToCheck.length > 0 || customWords.length > 0
-      : wordsToCheck.length > 0;
-
-    if (!selectedClass || !hasWords || !assignmentTitle) {
-      showToast("Please enter a title and select words.", "error");
-      return;
-    }
-
-    // Check if there's at least one database word (not custom/session-only)
-    const hasDbWords = wordsToCheck.some(id => id > 0);
-
-    if (!hasDbWords && !editingAssignment) {
-      console.warn('[handleSaveAssignment] BLOCKED - No DB words for new assignment');
-      showToast("Please select at least one word from the vocabulary database.", "error");
-      return;
-    }
-    // For editing, if no database words, ensure we have at least one custom word
-    if (!hasDbWords && editingAssignment && customWords.length === 0 && wordsToCheck.length === 0) {
-      console.warn('[handleSaveAssignment] BLOCKED - No words at all for edit');
-      showToast("Please select at least one word (database or custom).", "error");
-      return;
-    }
-
-    const allPossibleWords = [...ALL_WORDS, ...customWords];
-    const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    // Use wordsToCheck for filtering, but we need to create a Set from it
-    const wordsToCheckSet = new Set(wordsToCheck);
-    const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
-
-    const assignmentData = {
-      classId: selectedClass.id,
-      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
-      words: wordsToSave,
-      title: assignmentTitle,
-      deadline: assignmentDeadline || null,
-      allowedModes: modesToCheck,
-      sentences: assignmentSentences.filter(s => s.trim()),
-      sentenceDifficulty,
-    };
-
-    try {
-      if (editingAssignment) {
-        // UPDATE existing assignment
-        const updatePayload: Record<string, unknown> = {
-          class_id: assignmentData.classId,
-          word_ids: assignmentData.wordIds,
-          words: assignmentData.words,
-          title: assignmentData.title,
-          deadline: assignmentData.deadline,
-          allowed_modes: assignmentData.allowedModes,
-          sentence_difficulty: assignmentData.sentenceDifficulty,
-        };
-        if (assignmentData.sentences.length > 0) {
-          updatePayload.sentences = assignmentData.sentences;
-        }
-
-        const { error } = await supabase
-          .from('assignments')
-          .update(updatePayload)
-          .eq('id', editingAssignment.id);
-
-        if (error) {
-          console.error('[handleSaveAssignment] UPDATE failed', error);
-          throw error;
-        }
-        showToast("Assignment updated successfully!", "success");
-
-        // Update the assignment in the list
-        setTeacherAssignments(prev =>
-          prev.map(a => a.id === editingAssignment.id
-            ? { ...a, ...assignmentData }
-            : a
-          )
-        );
-        // Also update editingAssignment so the wizard shows the new data
-        setEditingAssignment(prev => prev ? { ...prev, ...assignmentData } : null);
-      } else {
-        // CREATE new assignment
-        const newAssignment = {
-          ...assignmentData,
-          createdAt: new Date().toISOString(),
-        };
-
-        const insertPayload: Record<string, unknown> = {
-          class_id: newAssignment.classId,
-          word_ids: newAssignment.wordIds,
-          words: newAssignment.words,
-          title: newAssignment.title,
-          deadline: newAssignment.deadline,
-          created_at: newAssignment.createdAt,
-          allowed_modes: newAssignment.allowedModes,
-          sentence_difficulty: newAssignment.sentenceDifficulty,
-        };
-        if (newAssignment.sentences.length > 0) {
-          insertPayload.sentences = newAssignment.sentences;
-        }
-
-        const { error } = await supabase.from('assignments').insert(insertPayload);
-        if (error) {
-          console.error('[handleSaveAssignment] INSERT failed', error);
-          throw error;
-        }
-        showToast("Assignment created successfully!", "success");
-
-        // Refresh assignments list
-        await fetchTeacherAssignments();
-
-        // Only redirect and reset form when creating (not when editing)
-        setView("teacher-dashboard");
-        setSelectedWords([]);
-        setAssignmentTitle("");
-        setAssignmentDeadline("");
-        setAssignmentModes([]); // No default selection - teacher must choose
-        setAssignmentStep(1);
-        setAssignmentSentences([]);
-        setSentenceDifficulty(2);
-      }
-    } catch (error) {
-      console.error('[handleSaveAssignment] CATCH - Error occurred:', error);
-      handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
-    }
-  };
-
-  // Preview the assignment with selected words and modes (for teachers)
-  const handleDeleteClass = async (classId: string) => {
-    setConfirmDialog({
-      show: true,
-      message: "Are you sure you want to delete this class? This will also remove access for all students in this class.",
-      onConfirm: async () => {
-        try {
-          const { error } = await supabase.from('classes').delete().eq('id', classId);
-          if (error) throw error;
-          setClasses(prev => prev.filter(c => c.id !== classId));
-          showToast("Class deleted successfully.", "success");
-        } catch (error) {
-          handleDbError(error, OperationType.DELETE, `classes/${classId}`);
-        }
-        setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-      }
-    });
-  };
-
-  // Check if user needs to accept the current privacy policy version.
-  // Fast path: localStorage. Fallback: DB consent_log (handles cleared storage).
   const checkConsent = (userData: AppUser) => {
     const accepted = localStorage.getItem('vocaband_consent_version');
     if (accepted === PRIVACY_POLICY_VERSION) return;
@@ -3954,54 +3531,6 @@ export default function App() {
       setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
     }
   };
-  const fetchScores = async () => {
-    if (!user || user.role !== "teacher") return;
-    const now = Date.now();
-    if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-
-    // Don't mark the fetch as done if classes haven't loaded yet.
-    // Teacher dashboard load order is: setUser() → classes arrive async →
-    // Analytics view reads from allScores. If fetchScores fired before
-    // classes were populated, the old code still set lastFetchRef.current
-    // and returned with setAllScores([]), locking in an empty array for
-    // the next 10 seconds. When classes finally loaded, the retry was
-    // throttled away — so Analytics and Gradebook saw "no data" even
-    // though the DB had 100+ rows. Move the timestamp update below the
-    // classes-length guard so it only marks SUCCESSFUL fetches.
-    if (classes.length === 0) {
-      setAllScores([]);
-      setClassStudents([]);
-      return;
-    }
-
-    lastFetchRef.current.scores = now;
-
-    const codes = classes.map(c => c.code);
-    const chunks = chunkArray(codes, 30);
-    const allRows: ProgressData[] = [];
-
-    for (const chunk of chunks) {
-      const { data } = await supabase
-        .from('progress').select('id, student_name, student_uid, assignment_id, class_code, score, mode, completed_at, mistakes, avatar')
-        .in('class_code', chunk)
-        .order('completed_at', { ascending: false })
-        .limit(1000);
-      if (data) allRows.push(...data.map(mapProgress));
-    }
-
-    setAllScores(allRows);
-
-    // Derive students from the same data — avoids a separate query
-    const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    allRows.forEach(row => {
-      const key = `${row.studentName}-${row.classCode}`;
-      if (!studentMap[key] || new Date(row.completedAt) > new Date(studentMap[key].lastActive)) {
-        studentMap[key] = { name: row.studentName, classCode: row.classCode, lastActive: row.completedAt };
-      }
-    });
-    setClassStudents(Object.values(studentMap));
-    lastFetchRef.current.students = now;
-  };
 
   // Re-run fetchScores when classes transitions from 0 → non-zero while the
   // teacher is viewing Analytics or Gradebook. Without this, clicking the
@@ -4035,15 +3564,6 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes.length, view, user?.role]);
-
-  const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
-    // Use optional chaining on user state, but don't early return - the caller ensures valid context
-    setTeacherAssignmentsLoading(true);
-    const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
-    setTeacherAssignments((data ?? []).map(mapAssignment));
-    setTeacherAssignmentsLoading(false);
-  };
 
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
@@ -4116,29 +3636,10 @@ export default function App() {
 
   // Voice selection + caching + voiceschanged listener are bundled in
   // a hook so this component doesn't hold browser-API plumbing.
-  const { getVoice } = useSpeechVoiceManager();
-
-  const speak = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-
-    // Clean up text for better pronunciation (remove grammatical markers)
-    const cleanText = text
-      .replace(/\s*\([nva]\)\s*/gi, ' ')  // Remove (n), (v), (adj)
-      .replace(/\s*\([^)]*?\)\s*/g, ' ')   // Remove other parenthetical content
-      .replace(/^['"]+|['"]+$/g, '')        // Remove quotes
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Speak the whole phrase smoothly - no word-by-word pauses
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "en-US";
-    utterance.rate = 0.7;  // Slower for clarity (0.7x)
-    utterance.pitch = 1.0;  // Neutral pitch
-    const voice = getVoice();
-    if (voice) utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
-  };
+  // speak() is provided by the voice manager — same wrapper as before
+  // (cancel-then-speak with parenthetical cleanup), just owned by the
+  // hook so this file doesn't carry browser-API plumbing.
+  const { speak } = useSpeechVoiceManager();
 
   useEffect(() => {
     if (view === "game" && !isFinished && currentWord && !showModeSelection && !showModeIntro && gameMode !== "sentence-builder" && gameMode !== "matching") {
@@ -4222,58 +3723,6 @@ export default function App() {
     }
   }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
 
-  const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
-    if (fromAvailable) {
-      setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setBuiltSentence(prev => [...prev, word]);
-    } else {
-      setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setAvailableWords(prev => [...prev, word]);
-    }
-  };
-
-  const handleSentenceCheck = () => {
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    const target = validSentences[sentenceIndex]?.trim().toLowerCase();
-    const built = builtSentence.join(" ").toLowerCase();
-    if (built === target) {
-      setSentenceFeedback("correct");
-      celebrate('small');
-      speak(validSentences[sentenceIndex]);
-      const newScore = score + 20;
-      setScore(newScore);
-      emitScoreUpdate(newScore);
-
-      // Use feedbackTimeoutRef for consistent auto-advance
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        const next = sentenceIndex + 1;
-        if (next >= validSentences.length) {
-          setIsFinished(true);
-          saveScore(newScore);
-        } else {
-          setSentenceIndex(next);
-          setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
-          setBuiltSentence([]);
-          setSentenceFeedback(null);
-          // Speak the next sentence so students know what to build
-          setTimeout(() => speak(validSentences[next]), 400);
-        }
-      }, 1800);
-    } else {
-      setSentenceFeedback("wrong");
-
-      // Use feedbackTimeoutRef for consistent feedback clearing
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        setBuiltSentence([]);
-        setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean)));
-        setSentenceFeedback(null);
-      }, 1200);
-    }
-  };
-
   // Full guest exit cleanup. Called whenever a Quick Play student
   // explicitly leaves the game (Exit button on mode picker, header
   // Back button, finish-screen "Exit Quick Play", session-end overlay).
@@ -4293,667 +3742,66 @@ export default function App() {
     try { await supabase.auth.signOut(); } catch {}
   };
 
-  const handleExitGame = () => {
-    setIsFinished(false);
-    setCurrentIndex(0);
-    setScore(0);
-    setMistakes([]);
-    setWordAttemptBatch([]);
-    setFeedback(null);
-    setSpellingInput("");
-    setMatchedIds([]);
-    setSelectedMatch(null);
-    setIsFlipped(false);
-    setRevealedLetters(0);
-    setSentenceIndex(0);
-    setAvailableWords([]);
-    setBuiltSentence([]);
-    setSentenceFeedback(null);
-    setHiddenOptions([]);
-
-    if (user?.role === "teacher") {
-      setView("teacher-dashboard");
-    } else if (user?.role === "student") {
-      if (showModeSelection) {
-        setView("student-dashboard");
-      } else {
-        setShowModeSelection(true);
-        setFeedback(null); // Clear feedback when showing mode selection
-      }
-    } else if (user?.isGuest) {
-      if (showModeSelection) {
-        // Already on mode selection — second Exit tap leaves Quick Play
-        // entirely. cleanupQuickPlayGuest deletes the student's progress
-        // rows (so they disappear from the teacher's podium) and signs
-        // out the anon Supabase session (so re-entering from the same
-        // phone gets a fresh state instead of restoring the old one
-        // and failing the "name already taken" guard).
-        cleanupSessionData();
-        cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
-        setQuickPlayActiveSession(null);
-        setQuickPlayStudentName("");
-        setUser(null);
-        setView("public-landing");
-      } else {
-        setShowModeSelection(true);
-        setFeedback(null); // Clear feedback when showing mode selection
-      }
-    } else {
-      setUser(null);
-      setView("public-landing");
-    }
-  };
-
-  const saveScore = async (scoreOverride?: number) => {
-    const finalScore = scoreOverride !== undefined ? scoreOverride : score;
-    if (!user) return;
-    setIsSaving(true);
-    setSaveError(null);
-
-    // Quick Play (guest) mode - save progress with session UUID as identifier
-    if (user.isGuest && quickPlayActiveSession) {
-      // v2 path: score lives on the /quick-play socket's in-memory
-      // leaderboard, not in the progress table. Emit a final
-      // SCORE_UPDATE so the teacher sees the end-of-game total,
-      // update the completed-modes set, and skip the Supabase insert.
-      if (QUICKPLAY_V2) {
-        quickPlaySocket.updateScore(Math.max(0, finalScore));
-        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-        setIsSaving(false);
-        return;
-      }
-      try {
-        // Use the actual Supabase auth UID (not the guest app UID) so RLS allows the insert
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        const authUid = authSession?.user?.id || user.uid;
-        const progress: Omit<ProgressData, "id"> = {
-          studentName: user.displayName,
-          studentUid: authUid,
-          assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
-          classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.max(0, finalScore),
-          mode: gameMode,
-          completedAt: new Date().toISOString(),
-          mistakes: mistakes,
-          avatar: user.avatar || "\uD83E\uDD8A"
-        };
-
-        // Optimistic save-and-queue.  Previously we awaited the INSERT
-        // and showed a red 'Couldn't save your score' toast on failure;
-        // on flaky classroom Wi-Fi that fired often and shook students'
-        // trust in the game.  Now we drop the row into a local retry
-        // queue and let the background flusher (installQuickPlayQueue-
-        // Flusher, wired on app mount) push it to Supabase whenever the
-        // network is cooperating.  Student sees the mode credited
-        // instantly; no error toast ever fires for them.  If the send
-        // really can't complete after 20 retries we give up silently —
-        // the alternative would be nagging about something they can't
-        // act on.
-        enqueueQuickPlaySave({
-          student_name: progress.studentName,
-          student_uid: progress.studentUid || authUid,
-          assignment_id: progress.assignmentId,
-          class_code: progress.classCode,
-          score: progress.score,
-          mode: progress.mode,
-          completed_at: progress.completedAt,
-          mistakes: Array.isArray(mistakes) ? mistakes : [],
-          avatar: progress.avatar || '🦊',
-        });
-        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-
-        setIsSaving(false);
-        return;
-      } catch (err) {
-        // Only reachable if localStorage itself is broken (private
-        // browsing, quota exhausted).  Don't surface — the UI has
-        // already credited the mode; a toast here would just confuse.
-        console.error('[Quick Play] enqueue failed:', err);
-        setIsSaving(false);
-        return;
-      }
-    }
-
-    // Regular assignment mode
-    if (!activeAssignment) return;
-
-    // Anti-farm round cap — new semantics: 1 round = all allowed modes
-    // once; after MAX_ASSIGNMENT_ROUNDS (3) full rounds the assignment
-    // locks.  Total allowed plays = 3 × allowedModes.length.  Tracked
-    // client-side in localStorage per (uid, assignmentId) — see
-    // src/hooks/useAssignmentPlays.ts.  UI lock on the dashboard is the
-    // primary gate; this is belt-and-suspenders.
-    const allowedModesCount = (activeAssignment.allowedModes ?? []).filter(m => m !== 'flashcards').length || 1;
-    // Uses max(DB play_count sum, localStorage cache) so the cap is
-    // honoured across devices but still responds instantly to a fresh
-    // local play before the server round-trips.
-    const playsForThis = resolveAssignmentPlays(user?.uid, activeAssignment.id, studentProgress);
-    const replayLocked = isAssignmentLocked(playsForThis, allowedModesCount);
-
-    // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = gameWords.length * 10;
-    let cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
-
-    // Lucky Charm: forgive the student's first wrong answer (= +10
-    // points up to maxPossible) by consuming one shield from inventory.
-    // Only worth burning if the student actually got something wrong.
-    if (cappedScore < maxPossible && boosters.consumeLuckyCharm()) {
-      const bumped = Math.min(maxPossible, cappedScore + 10);
-      showToast(`🍀 Lucky Charm used! Score ${cappedScore} → ${bumped}`, 'success');
-      cappedScore = bumped;
-    }
-
-    // Apply active booster multipliers — xp_booster (2×) +
-    // weekend_warrior (2× on Sat/Sun) stack multiplicatively.  Only
-    // applies to the actual XP grant, not to the score record itself.
-    const boosterMult = boosters.xpMultiplier();
-
-    // If locked, still record the play for stats but grant zero XP.
-    const baseEarned = replayLocked ? 0 : cappedScore;
-    const xpEarned = Math.round(baseEarned * boosterMult);
-    if (replayLocked) {
-      showToast(`Assignment locked — you've completed all ${MAX_ASSIGNMENT_ROUNDS} rounds. Try another assignment.`, 'info');
-    } else if (boosterMult > 1) {
-      showToast(`${boosterMult}× XP active! ${cappedScore} → ${xpEarned} XP`, 'success');
-    }
-    const newXp = xp + xpEarned;
-    // Streak handling — try to consume a Streak Freeze before resetting.
-    // Lets students keep their streak after a single bad day if they've
-    // bought the shield from the shop.
-    let newStreak: number;
-    if (cappedScore >= 80) {
-      newStreak = streak + 1;
-    } else if (boosters.tryConsumeStreakFreeze()) {
-      newStreak = streak; // freeze consumed — preserve streak
-      showToast('🧊 Streak Freeze used — your streak is safe!', 'success');
-    } else {
-      newStreak = 0;
-    }
-    setXp(newXp);
-    setStreak(newStreak);
-
-    // Advance the retention weekly-challenge counter — any completed
-    // game counts toward the student's weekly-play target.
-    retention.recordPlay();
-
-    // Record this completed game against the assignment's round cap.
-    // Increments even when locked (so the total stays honest for
-    // display) but zero XP was granted above if locked.
-    if (user?.uid) {
-      incrementAssignmentPlays(user.uid, activeAssignment.id);
-    }
-
-    // OPTIMIZED: Queue badge checks instead of immediate execution
-    // Badges are cached server-side, so client checks are fast
-    if (cappedScore === 100 && !badges.includes("🎯 Perfect Score")) queueSaveOperation(() => awardBadge("🎯 Perfect Score"));
-    if (newStreak >= 5 && !badges.includes("🔥 Streak Master")) queueSaveOperation(() => awardBadge("🔥 Streak Master"));
-    if (newXp >= 500 && !badges.includes("💎 XP Hunter")) queueSaveOperation(() => awardBadge("💎 XP Hunter"));
-
-    // Streak milestone celebrations
-    if (STREAK_CELEBRATION_MILESTONES.includes(newStreak)) {
-      celebrate('big');
-      showToast(`🔥 ${newStreak}-day streak! Amazing dedication!`, "success");
-    }
-
-    // For students using the teacher approval workflow, user.uid is already the profile.auth_uid
-    // For regular students, we try to get the session UID
-    const { data: { session } } = await supabase.auth.getSession();
-    const sessionUid = session?.user?.id;
-
-    // Determine the student UID to use for progress tracking
-    // If we have a session, check for a mapped profile UID (for anonymous sessions)
-    // Otherwise, use user.uid directly (which is profile.auth_uid for approved students)
-    let studentUid: string;
-    if (sessionUid) {
-      const mappedUid = localStorage.getItem(`vocaband_student_${sessionUid}`);
-      studentUid = mappedUid || sessionUid;
-    } else {
-      studentUid = user.uid;
-    }
-
-    const progress: Omit<ProgressData, "id"> = {
-      studentName: user.displayName,
-      studentUid: studentUid,
-      assignmentId: activeAssignment.id,
-      classCode: user.classCode || "",
-      score: cappedScore,
-      mode: gameMode,
-      completedAt: new Date().toISOString(),
-      mistakes: mistakes,
-      avatar: user.avatar || "🦊"
-    };
-
-    // Optimistic save pattern for regular class assignments (mirrors
-    // the Kahoot-style behaviour we shipped for Quick Play).  We write
-    // local state immediately, attempt the RPC, and fall back to the
-    // background retry queue on any error — no red banner, no toast.
-    //
-    // Why no error UI: the student can't act on a network failure
-    // mid-game and they already see their score + XP update.  The
-    // flusher (installQuickPlayQueueFlusher, wired on mount) retries
-    // the save on 'online', tab refocus, and a 30s interval.  If the
-    // save ultimately can't be sent after 20 attempts we give up
-    // silently — the alternative is nagging the student about a state
-    // they can't fix.
-    //
-    // word_attempts batch is preserved: storing RPC args (rather than
-    // a raw progress row) in the queue means the retried save goes
-    // through save_student_progress and still appends word_attempts +
-    // increments play_count the same way the first attempt would.
-    const rpcArgs = {
-      p_student_name: user.displayName,
-      p_student_uid: studentUid,
-      p_assignment_id: activeAssignment.id,
-      p_class_code: user.classCode || "",
-      p_score: cappedScore,
-      p_mode: gameMode,
-      p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
-      p_avatar: user.avatar || "🦊",
-      p_word_attempts: wordAttemptBatch,
-    };
-
-    // Optimistic local-state update — UI reflects the save immediately
-    // so the student never sees "saving..." spinners or error banners.
-    // If the real server-assigned id arrives later we reconcile below;
-    // if the save ends up routed through the queue it still lands
-    // eventually, and the local row will be overwritten on the next
-    // fetch with the server's version.
-    const optimisticProgress: ProgressData = {
-      id: `local-${Date.now()}`,
-      ...progress,
-    };
-    setStudentProgress(prev => {
-      const existingIndex = prev.findIndex(
-        p => p.assignmentId === activeAssignment.id
-          && p.mode === gameMode
-          && p.studentUid === studentUid
-      );
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = optimisticProgress;
-        return updated;
-      }
-      return [...prev, optimisticProgress];
-    });
-    celebrate('big');
-
-    try {
-      const { data: progressId, error: rpcError } = await supabase.rpc('save_student_progress', rpcArgs);
-      if (rpcError) throw rpcError;
-
-      // Reconcile the optimistic row with the server's id.
-      setStudentProgress(prev => prev.map(p =>
-        p.id === optimisticProgress.id ? { ...p, id: progressId } : p
-      ));
-
-      // XP/streak write is batched with other queued saves — cheap,
-      // non-critical to the game loop, survives a failed flush the
-      // next time it runs.
-      queueSaveOperation(async () => {
-        await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
-      });
-
-      // Clear any legacy retry key for this assignment+mode — the new
-      // save queue (enqueueAssignmentSave) uses a different storage
-      // key, so both systems can coexist while old keys drain.
-      const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
-      localStorage.removeItem(retryKey);
-    } catch (error) {
-      // Silent.  Log for dev console but never surface a banner to the
-      // student — the queue will retry in the background.
-      console.error("[assignment save] queued for retry:", error);
-      enqueueAssignmentSave(rpcArgs);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
-
-    gameDebug.logButtonClick({
-      button: 'matching_card',
-      gameMode: 'matching',
-      wordId: item.id,
-      disabled: matchedIds.includes(item.id) || isMatchingProcessing,
-      feedback: null,
-    });
-
-    if (matchedIds.includes(item.id) || isMatchingProcessing) {
-      return;
-    }
-
-    // Only pronounce when clicking English cards — Hebrew/Arabic cards
-    // should not trigger English audio (confusing for students)
-    if (item.type === 'english') {
-      const matchWord = gameWords.find(w => w.id === item.id);
-      setTimeout(() => {
-        speakWord(item.id, matchWord?.english);
-        gameDebug.logPronunciation({ wordId: item.id, word: matchWord?.english || '', method: 'manual', success: true });
-      }, 0);
-    }
-
-    if (!selectedMatch) {
-      setSelectedMatch(item);
-    } else {
-      if (selectedMatch.type !== item.type && selectedMatch.id === item.id) {
-        // Correct match - set processing flag to prevent rapid clicks
-        isProcessingRef.current = true;
-        setIsMatchingProcessing(true);
-        setMatchedIds([...matchedIds, item.id]);
-        // Record the correct match as a word attempt for mastery tracking.
-        setWordAttemptBatch(prev => [...prev, { word_id: item.id, is_correct: true }]);
-        const newScore = score + 15;
-        setScore(newScore);
-
-        emitScoreUpdate(newScore);
-
-        setSelectedMatch(null);
-
-        if (matchedIds.length + 1 === matchingPairs.length / 2) {
-          // All matched - finish game
-          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-          feedbackTimeoutRef.current = setTimeout(() => {
-            setIsFinished(true);
-            saveScore(newScore);
-            isProcessingRef.current = false;
-            setIsMatchingProcessing(false);
-          }, 500);
-        } else {
-          // Allow next match after brief delay
-          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-          feedbackTimeoutRef.current = setTimeout(() => {
-            isProcessingRef.current = false;
-            setIsMatchingProcessing(false);
-          }, 300);
-        }
-      } else {
-        // Wrong match - just change selection
-        setSelectedMatch(item);
-      }
-    }
-  };
-
-  const handleAnswer = (selectedWord: Word) => {
-
-    if (feedback) {
-      return;
-    }
-
-    if (!currentWord) {
-      console.error('[handleAnswer] ERROR - No currentWord!', { selectedWordId: selectedWord.id, gameMode, currentIndex, gameWordsCount: gameWords.length });
-      return;
-    }
-
-
-    if (selectedWord.id === currentWord.id) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 10;
-      setScore(newScore);
-
-      // Clear attempts for this word since they got it right
-      setWordAttempts(prev => {
-        const newState = { ...prev };
-        delete newState[currentWord.id];
-        return newState;
-      });
-
-      // Record the correct attempt for per-word mastery tracking.
-      setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: true }]);
-
-      emitScoreUpdate(newScore);
-
-      // Auto-skip quickly after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setHiddenOptions([]);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      // Track attempts for this word
-      const currentAttempts = (wordAttempts[currentWord.id] || 0) + 1;
-      setWordAttempts(prev => ({ ...prev, [currentWord.id]: currentAttempts }));
-
-      if (currentAttempts >= MAX_ATTEMPTS_PER_WORD) {
-        // Show the right answer after max attempts
-        setFeedback("show-answer");
-        setMistakes(prev => addUnique(prev, currentWord.id));
-        // Final incorrect attempt on this word — record for mastery tracking.
-        setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: false }]);
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          if (currentIndex < gameWords.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            setFeedback(null);
-            setHiddenOptions([]);
-            // Clear attempts for next word
-            setWordAttempts(prev => removeKey(prev, currentWord.id));
-          } else {
-            setIsFinished(true);
-            saveScore();
-          }
-        }, SHOW_ANSWER_DELAY_MS);
-      } else {
-        // Show try again with attempt count
-        setFeedback("wrong");
-        playWrong();
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          setFeedback(null);
-        }, WRONG_FEEDBACK_DELAY_MS);
-      }
-    }
-  };
-
-  const handleTFAnswer = (isTrue: boolean) => {
-
-    gameDebug.logButtonClick({
-      button: isTrue ? 'true_button' : 'false_button',
-      gameMode,
-      wordId: currentWord?.id ?? -1,
-      disabled: !!feedback,
-      feedback,
-    });
-
-    if (feedback) {
-      gameDebug.logButtonClick({
-        button: isTrue ? 'true_button' : 'false_button',
-        gameMode,
-        wordId: currentWord?.id ?? -1,
-        disabled: true,
-        feedback,
-      });
-      return;
-    }
-
-    // Guard against null/undefined tfOption
-    if (!tfOption || !currentWord) {
-      gameDebug.logError({
-        error: 'tfOption or currentWord is null',
-        context: 'handleTFAnswer',
-        details: { tfOption, currentWord },
-      });
-      return;
-    }
-
-    const isActuallyTrue = tfOption?.id === currentWord.id;
-    const isCorrect = isTrue === isActuallyTrue;
-
-    gameDebug.logAnswer({
-      gameMode,
-      wordId: currentWord.id,
-      userAnswer: isTrue,
-      correctAnswer: isActuallyTrue,
-      isCorrect,
-      willAutoSkip: isCorrect,
-    });
-
-    // Record the attempt for per-word mastery tracking.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
-
-    if (isCorrect) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 15;
-      setScore(newScore);
-
-      emitScoreUpdate(newScore);
-
-      // Auto-skip after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      gameDebug.logAutoSkip({
-        triggered: true,
-        delay: AUTO_SKIP_DELAY_MS,
-        reason: 'correct_answer',
-      });
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      setFeedback("wrong");
-      playWrong();
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-
-      gameDebug.logAutoSkip({
-        triggered: false,
-        delay: WRONG_FEEDBACK_DELAY_MS,
-        reason: 'wrong_answer_will_clear_after_delay',
-      });
-
-      // Clear feedback after delay (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        setFeedback(null);
-      }, WRONG_FEEDBACK_DELAY_MS);
-    }
-  };
-
-  const handleFlashcardAnswer = (knewIt: boolean) => {
-
-    gameDebug.logButtonClick({
-      button: knewIt ? 'flashcard_got_it' : 'flashcard_still_learning',
-      gameMode: 'flashcards',
-      wordId: currentWord?.id ?? -1,
-      disabled: false,
-      feedback,
-    });
-
-    // Set processing flag to prevent double-clicks
-    isProcessingRef.current = true;
-
-    // Record the flashcard answer for per-word mastery tracking.
-    // Flashcard "Got it" = correct, "Still learning" = incorrect.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: knewIt }]);
-
-    let currentScore = score;
-    if (knewIt) {
-      currentScore = score + 5;
-      setScore(currentScore);
-      emitScoreUpdate(currentScore);
-    } else {
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-    }
-
-    // Auto-advance to next word with brief delay for visual feedback
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    feedbackTimeoutRef.current = setTimeout(() => {
-      if (currentIndex < gameWords.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        setIsFlipped(false);
-        isProcessingRef.current = false;
-      } else {
-        setIsFinished(true);
-        saveScore(currentScore);
-      }
-    }, 400); // Brief delay for user to see their choice registered
-  };
-
-  const handleSpellingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    gameDebug.logButtonClick({
-      button: 'spelling_submit',
-      gameMode: 'spelling',
-      wordId: currentWord?.id ?? -1,
-      disabled: !!feedback,
-      feedback,
-    });
-
-    if (feedback) {
-      return;
-    }
-
-
-    const isCorrect = isAnswerCorrect(spellingInput, currentWord.english);
-
-    gameDebug.logAnswer({
-      gameMode: 'spelling',
-      wordId: currentWord.id,
-      userAnswer: spellingInput,
-      correctAnswer: currentWord.english,
-      isCorrect,
-      willAutoSkip: isCorrect,
-    });
-
-    // Record the spelling attempt for per-word mastery tracking.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
-
-    if (isCorrect) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 20;
-      setScore(newScore);
-
-      emitScoreUpdate(newScore);
-
-      gameDebug.logAutoSkip({
-        triggered: true,
-        delay: AUTO_SKIP_DELAY_MS,
-        reason: 'correct_spelling',
-      });
-
-      // Use feedbackTimeoutRef for consistent auto-advance
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setSpellingInput("");
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      setFeedback("wrong");
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-      // Use feedbackTimeoutRef for consistent feedback clearing
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
-    }
-  };
+  // Game-finish handlers (saveScore + handleExitGame), extracted into a
+  // dedicated hook. saveScore in particular is large — anti-farm cap,
+  // booster math, streak handling, badge checks, optimistic save with
+  // retry queue — and was crowding App.tsx. Behaviour unchanged.
+  const { saveScore, handleExitGame } = useGameFinish({
+    user,
+    score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
+    quickPlayActiveSession,
+    quickPlayV2: QUICKPLAY_V2,
+    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+    xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
+    setIsSaving, setSaveError, setQuickPlayCompletedModes,
+    retention, boosters,
+    showToast, awardBadge, queueSaveOperation,
+    setView, setUser, setIsFinished, setCurrentIndex, setScore, setMistakes,
+    setWordAttemptBatch, setFeedback, setSpellingInput, setMatchedIds,
+    setSelectedMatch, setIsFlipped, setRevealedLetters, setSentenceIndex,
+    setAvailableWords, setBuiltSentence, setSentenceFeedback, setHiddenOptions,
+    showModeSelection, setShowModeSelection,
+    // App's quickPlayActiveSession is wider than the hook needs; the
+    // hook only sets it to null on exit, so the cast is sound.
+    setQuickPlayActiveSession: setQuickPlayActiveSession as React.Dispatch<React.SetStateAction<{ id: string; sessionCode: string; [k: string]: unknown } | null>>,
+    setQuickPlayStudentName,
+    cleanupSessionData, cleanupQuickPlayGuest,
+  });
+
+  // Game-mode handlers, extracted so App.tsx doesn't carry the full
+  // weight of the per-mode answer logic. Same behavior as the inline
+  // versions; the hook just owns the implementation now.
+  //
+  // Must be called AFTER `saveScore` and `emitScoreUpdate` are defined
+  // (the hook closes over them as callbacks), and BEFORE any JSX that
+  // wires the destructured handlers as props.
+  const {
+    handleSentenceWordTap,
+    handleSentenceCheck,
+    handleMatchClick,
+    handleAnswer,
+    handleTFAnswer,
+    handleFlashcardAnswer,
+    handleSpellingSubmit,
+  } = useGameModeActions({
+    score, setScore, currentIndex, setCurrentIndex, setIsFinished,
+    gameWords, currentWord, gameMode,
+    feedback, setFeedback, mistakes, setMistakes, setHiddenOptions,
+    wordAttempts, setWordAttempts, setWordAttemptBatch,
+    tfOption,
+    spellingInput, setSpellingInput,
+    setIsFlipped,
+    selectedMatch, setSelectedMatch,
+    matchedIds, setMatchedIds,
+    isMatchingProcessing, setIsMatchingProcessing,
+    matchingPairs,
+    activeAssignment, sentenceIndex, setSentenceIndex,
+    availableWords, setAvailableWords, builtSentence, setBuiltSentence,
+    setSentenceFeedback,
+    feedbackTimeoutRef, isProcessingRef,
+    emitScoreUpdate, saveScore,
+    speak, speakWord, playWrong,
+  });
 
   // Global cookie banner — renders on top of ANY view until accepted
   // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
