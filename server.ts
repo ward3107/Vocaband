@@ -973,11 +973,21 @@ async function startServer() {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey.trim());
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // gemini-2.5-flash-lite: cheapest tier in the 2.5 family
+      // (~half the cost of `gemini-2.5-flash` per token, similar
+      // quality for mechanical tasks like translation).  Chosen so the
+      // "translate these 40 words" button stays cheap at classroom
+      // scale.  Upgrade here if we ever need nuance the lite tier
+      // can't deliver — translation is a well-solved task and lite
+      // handles idioms + multi-word phrases fine.
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
       // Structured prompt so we can parse deterministically.
-      const prompt = `Translate these English words to Hebrew AND Arabic. Return ONLY a JSON array with this exact shape — no prose, no markdown fences:
-[{"english":"word","hebrew":"פירוש","arabic":"ترجمة"},...]
+      // Now also produces Russian alongside Hebrew + Arabic.  Arabic
+      // stays in the response even when the UI isn't showing it yet —
+      // adding it later is a client-only flip.
+      const prompt = `Translate these English words into Hebrew, Arabic, AND Russian. Return ONLY a JSON array with this exact shape — no prose, no markdown fences:
+[{"english":"word","hebrew":"פירוש","arabic":"ترجمة","russian":"перевод"},...]
 
 Rules:
 - Output order MUST match input order.
@@ -993,7 +1003,7 @@ ${JSON.stringify(validWords)}`;
       const raw = result.response.text().trim();
       const cleaned = raw.replace(/```json?\s*|\s*```/g, "").trim();
 
-      let parsed: Array<{ english: string; hebrew: string; arabic: string }>;
+      let parsed: Array<{ english: string; hebrew: string; arabic: string; russian?: string }>;
       try {
         parsed = JSON.parse(cleaned);
         if (!Array.isArray(parsed)) throw new Error("not an array");
@@ -1007,13 +1017,15 @@ ${JSON.stringify(validWords)}`;
       // positional — frontend can show an auto-translate button for gaps.
       const hebrew: string[] = [];
       const arabic: string[] = [];
+      const russian: string[] = [];
       for (let i = 0; i < validWords.length; i++) {
         const item = parsed[i];
         hebrew.push(item?.hebrew?.trim() || "");
         arabic.push(item?.arabic?.trim() || "");
+        russian.push(item?.russian?.trim() || "");
       }
 
-      res.json({ hebrew, arabic });
+      res.json({ hebrew, arabic, russian });
     } catch (error: any) {
       console.error("[translate] Gemini error:", error?.message || error);
       res.status(500).json({ error: "Translation failed", message: (error?.message || "").substring(0, 200) });

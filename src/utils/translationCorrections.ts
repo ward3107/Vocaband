@@ -10,6 +10,10 @@ export interface TranslationCorrection {
   english: string;
   hebrew?: string;
   arabic?: string;
+  /** Russian translation.  Stored in `word_corrections.russian` (column
+   *  added 2026-04-24).  Optional so records written before that
+   *  migration still round-trip cleanly. */
+  russian?: string;
 }
 
 export interface WordWithCorrections {
@@ -17,6 +21,7 @@ export interface WordWithCorrections {
   english: string;
   hebrew: string;
   arabic: string;
+  russian: string;
   isCorrected: boolean;
 }
 
@@ -42,6 +47,7 @@ export async function saveCorrection(correction: TranslationCorrection): Promise
       .update({
         hebrew: correction.hebrew,
         arabic: correction.arabic,
+        russian: correction.russian,
         updated_at: new Date().toISOString(),
       })
       .eq('id', existing.id);
@@ -54,6 +60,7 @@ export async function saveCorrection(correction: TranslationCorrection): Promise
         english: correction.english,
         hebrew: correction.hebrew,
         arabic: correction.arabic,
+        russian: correction.russian,
         corrected_by: user.id,
       });
   }
@@ -80,6 +87,7 @@ export async function getMyCorrections(): Promise<Map<number, TranslationCorrect
       english: correction.english,
       hebrew: correction.hebrew || undefined,
       arabic: correction.arabic || undefined,
+      russian: correction.russian || undefined,
     });
   }
   return corrections;
@@ -89,7 +97,7 @@ export async function getMyCorrections(): Promise<Map<number, TranslationCorrect
  * Apply corrections to a word
  */
 export function applyCorrections(
-  word: { id: number; english: string; hebrew: string; arabic: string },
+  word: { id: number; english: string; hebrew: string; arabic: string; russian?: string },
   corrections: Map<number, TranslationCorrection>
 ): WordWithCorrections {
   const correction = corrections.get(word.id);
@@ -98,6 +106,7 @@ export function applyCorrections(
     english: word.english,
     hebrew: correction?.hebrew || word.hebrew,
     arabic: correction?.arabic || word.arabic,
+    russian: correction?.russian || word.russian || '',
     isCorrected: !!correction,
   };
 }
@@ -128,6 +137,7 @@ export async function loadCorrectionsForWords(
       english: correction.english,
       hebrew: correction.hebrew || undefined,
       arabic: correction.arabic || undefined,
+      russian: correction.russian || undefined,
     });
   }
   return corrections;

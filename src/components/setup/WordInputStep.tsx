@@ -154,7 +154,7 @@ export interface WordInputStepProps {
   // Spaced repetition props
   classId?: string; // For loading worst-performing words
   showSuggestedWords?: boolean; // Enable "Needs Practice" section
-  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
+  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
   onOcrUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isOcrProcessing?: boolean;
   ocrProgress?: number;

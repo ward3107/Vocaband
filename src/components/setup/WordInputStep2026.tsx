@@ -88,6 +88,11 @@ export interface WordWithStatus {
   english: string;
   hebrew: string;
   arabic: string;
+  /** Russian translation — optional, same convention as the underlying
+   *  Word type.  Only populated for custom words the teacher entered
+   *  with a Russian gloss, or rows that have a matching
+   *  word_corrections.russian stored under this teacher's uid. */
+  russian?: string;
   hasTranslation: boolean;
   isPhrase?: boolean;
 }
@@ -98,7 +103,7 @@ export interface WordInputStep2026Props {
   onSelectedWordsChange: (words: Word[]) => void;
   onNext: () => void;
   onBack: () => void;
-  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
+  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
   onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
@@ -419,13 +424,13 @@ interface EditTranslationModalProps {
   onClose: () => void;
   word: WordWithStatus | null;
   translationLang: TranslationLang;
-  onSave: (wordId: number, hebrew: string, arabic: string) => void;
+  onSave: (wordId: number, hebrew: string, arabic: string, russian: string) => void;
   /** Optional AI translator.  When supplied, the modal exposes an
-   *  "✨ Auto-translate" button that fills the Hebrew + Arabic inputs
-   *  from Gemini.  If the word is a Set 1/2/3 row (positive id), the
-   *  result is persisted via `word_corrections` by the parent so the
-   *  same word already shows up translated in future assignments. */
-  onTranslate?: (englishWord: string) => Promise<{ hebrew: string; arabic: string; match: number } | null>;
+   *  "✨ Auto-translate" button that fills the Hebrew + Arabic + Russian
+   *  inputs from Gemini.  If the word is a Set 1/2/3 row (positive id),
+   *  the result is persisted via `word_corrections` by the parent so
+   *  the same word already shows up translated in future assignments. */
+  onTranslate?: (englishWord: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
 }
 
 const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
@@ -433,6 +438,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
 }) => {
   const [hebrew, setHebrew] = useState('');
   const [arabic, setArabic] = useState('');
+  const [russian, setRussian] = useState('');
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
 
@@ -440,6 +446,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
     if (word) {
       setHebrew(word.hebrew || '');
       setArabic(word.arabic || '');
+      setRussian(word.russian || '');
       setTranslateError(null);
     }
   }, [word]);
@@ -454,14 +461,18 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
         setTranslateError('Translation service unavailable — try typing manually.');
         return;
       }
-      // Only overwrite fields that are visible (respect the language
-      // preference) AND that aren't already filled — teachers who
-      // typed something intentional shouldn't have it clobbered.
+      // Only overwrite fields that aren't already filled — teachers who
+      // typed something intentional shouldn't have it clobbered.  We
+      // always fill Russian if the API returned it, because the Russian
+      // input is always shown (no per-language gating for RU).
       if ((translationLang === 'both' || translationLang === 'hebrew') && !hebrew && result.hebrew) {
         setHebrew(result.hebrew);
       }
       if ((translationLang === 'both' || translationLang === 'arabic') && !arabic && result.arabic) {
         setArabic(result.arabic);
+      }
+      if (!russian && result.russian) {
+        setRussian(result.russian);
       }
     } catch {
       setTranslateError('Translation failed — check your connection and try again.');
@@ -581,6 +592,27 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
             </div>
           )}
 
+          {/* Russian translation — always shown (not gated by
+              translationLang) since Russian-speaking students are a
+              separate audience from the Hebrew/Arabic split.  A blank
+              value is fine; no classroom requires it. */}
+          <div>
+            <label htmlFor="custom-word-russian" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <span>🇷🇺</span> Russian
+            </label>
+            <input
+              type="text"
+              id="custom-word-russian"
+              name="russian"
+              autoComplete="off"
+              value={russian}
+              onChange={(e) => setRussian(e.target.value)}
+              placeholder="Enter Russian translation"
+              className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              dir="ltr"
+            />
+          </div>
+
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
@@ -593,7 +625,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
             </button>
             <button
               onClick={() => {
-                onSave(word.id, hebrew, arabic);
+                onSave(word.id, hebrew, arabic, russian);
                 onClose();
               }}
               type="button"
@@ -1608,11 +1640,16 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     setEditModalOpen(true);
   }, []);
 
-  const handleSaveTranslation = useCallback((wordId: number, hebrew: string, arabic: string) => {
-    // Update the selected words with new translations
+  const handleSaveTranslation = useCallback((wordId: number, hebrew: string, arabic: string, russian: string) => {
+    // Update the selected words with new translations.  `hebrew` and
+    // `arabic` fall back to '' (not undefined) because the Word type
+    // requires them as strings — an empty field should render as "no
+    // translation yet", not crash the downstream components that index
+    // into word.hebrew / word.arabic without a guard.  Russian is an
+    // optional field on Word, so undefined is fine there.
     const updatedWords = selectedWords.map(w =>
       w.id === wordId
-        ? { ...w, hebrew: hebrew || undefined, arabic: arabic || undefined }
+        ? { ...w, hebrew: hebrew ?? '', arabic: arabic ?? '', russian: russian || undefined }
         : w
     );
     onSelectedWordsChange(updatedWords);

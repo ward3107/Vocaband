@@ -6,6 +6,10 @@ export interface Word {
   english: string
   hebrew: string
   arabic: string
+  /** Russian translation.  Optional because the static vocabulary tuple
+   *  format doesn't carry Russian — only custom words and rows with a
+   *  teacher correction (via word_corrections) get it populated. */
+  russian?: string
   level: "Set 1" | "Set 2" | "Set 3" | "Custom"
   imageUrl?: string
   sentence?: string

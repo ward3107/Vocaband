@@ -355,18 +355,20 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         // the result to `word_corrections` for real Set-1/2/3 words so
         // the next assignment that picks this word lands with the
         // translation already filled in — teachers no longer have to
-        // re-translate the same word twice.
+        // re-translate the same word twice.  Russian is included in
+        // the correction row when /api/translate returns one.
         const result = await geminiTranslate(word);
         if (!result) return null;
         const lower = word.toLowerCase().trim();
         const match = allWords.find(w => w.english.toLowerCase().trim() === lower);
-        if (match && match.id > 0 && (result.hebrew || result.arabic)) {
+        if (match && match.id > 0 && (result.hebrew || result.arabic || result.russian)) {
           try {
             await saveCorrection({
               wordId: match.id,
               english: match.english,
               hebrew: result.hebrew || match.hebrew || undefined,
               arabic: result.arabic || match.arabic || undefined,
+              russian: result.russian || match.russian || undefined,
             });
           } catch {
             /* non-fatal — translation still flows into the form. */
