@@ -73,6 +73,16 @@ export default defineConfig(() => {
             /^\/poster(\.html)?(\?|$)/,
             /^\/terms(\.html)?(\?|$)/,
             /^\/privacy(\.html)?(\?|$)/,
+            // Quick Play join URL. Same "redirected response" bug as
+            // poster/privacy/terms — the SW cached a navigation that
+            // went through the Cloudflare apex→www redirect, then
+            // tried to serve that cached redirect response back to a
+            // navigation whose redirect mode is "manual". Browser
+            // rejects it with "a redirected response was used for a
+            // request whose redirect mode is not 'follow'" and the
+            // entire page fails to load. Denylisting + NetworkOnly
+            // (below) keeps the SW out of this path entirely.
+            /^\/quick-play(\?|$)/,
           ],
           runtimeCaching: [
             {
@@ -88,7 +98,11 @@ export default defineConfig(() => {
               // a broken page until they hard-refresh.  NetworkOnly +
               // don't-cache sidesteps the whole class of bugs, for
               // both the .html and no-extension URL forms.
-              urlPattern: /\/(poster|privacy|terms)(\.html)?(\?|$)/,
+              // Include /quick-play here too — see the matching comment
+              // in navigateFallbackDenylist above. NetworkOnly means the
+              // SW never touches the response, so there's no cached
+              // redirect for it to re-serve and choke on.
+              urlPattern: /\/(poster|privacy|terms|quick-play)(\.html)?(\?|$)/,
               handler: 'NetworkOnly',
             },
             {
