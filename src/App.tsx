@@ -68,6 +68,7 @@ import { useTeacherActions } from "./hooks/useTeacherActions";
 import { useGameModeActions } from "./hooks/useGameModeActions";
 import { useGameFinish } from "./hooks/useGameFinish";
 import { useTranslate } from "./hooks/useTranslate";
+import { useSaveQueue } from "./hooks/useSaveQueue";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1124,51 +1125,20 @@ export default function App() {
   });
 
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
-  const saveQueueRef = useRef<Array<() => Promise<void>>>([]);
-  const saveQueueTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isProcessingQueueRef = useRef(false);
-
-  // Process save queue in batches (reduces DB round-trips)
-  const processSaveQueue = async () => {
-    if (isProcessingQueueRef.current || saveQueueRef.current.length === 0) return;
-    isProcessingQueueRef.current = true;
-
-    const queue = saveQueueRef.current.splice(0, 10); // Process up to 10 saves at once
-
-    try {
-      await Promise.all(queue.map(fn => fn().catch(err => console.error('[Save Queue] Item failed:', err))));
-    } finally {
-      isProcessingQueueRef.current = false;
-
-      // Process more if queue was refilled
-      if (saveQueueRef.current.length > 0) {
-        saveQueueTimerRef.current = setTimeout(processSaveQueue, 100);
-      }
-    }
-  };
-
-  const queueSaveOperation = (operation: () => Promise<void>) => {
-    saveQueueRef.current.push(operation);
-
-    // Trigger processing after short delay (allows batching)
-    if (!saveQueueTimerRef.current) {
-      saveQueueTimerRef.current = setTimeout(() => {
-        processSaveQueue();
-        saveQueueTimerRef.current = undefined;
-      }, 300); // 300ms delay to accumulate multiple saves
-    }
-  };
+  // queueSaveOperation pushes a closure; the hook batches up to 10 of
+  // them per flush after a 300ms debounce. clearQueue is called from
+  // cleanupSessionData on logout to drop in-flight writes.
+  const {
+    queueSaveOperation,
+    clearQueue: clearSaveQueue,
+    processSaveQueue,
+    hasPending: saveQueueHasPending,
+  } = useSaveQueue();
 
   // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
   const cleanupSessionData = () => {
-    // Clear save queue to prevent any further DB operations
-    saveQueueRef.current = [];
-    // Clear any pending save timer
-    if (saveQueueTimerRef.current) {
-      clearTimeout(saveQueueTimerRef.current);
-      saveQueueTimerRef.current = undefined;
-    }
-    // Clear feedback timeout
+    clearSaveQueue();
+    // Clear feedback timeout (lives outside the save queue's domain).
     if (feedbackTimeoutRef.current) {
       clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = undefined;
@@ -1244,19 +1214,12 @@ export default function App() {
     }
   }, [currentIndex, view, gameMode, showModeSelection, showModeIntro, isFinished, feedback]);
 
-  // Cleanup timeout on unmount
+  // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
+  // owned by useSaveQueue itself.
   useEffect(() => {
     return () => {
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
-      }
-      // Flush save queue on unmount to ensure no data is lost
-      if (saveQueueTimerRef.current) {
-        clearTimeout(saveQueueTimerRef.current);
-      }
-      if (saveQueueRef.current.length > 0) {
-        Promise.all(saveQueueRef.current.map(fn => fn().catch(console.error))).catch(console.error);
-        saveQueueRef.current = [];
       }
     };
   }, []);
@@ -1266,13 +1229,13 @@ export default function App() {
   useEffect(() => {
     const flushInterval = setInterval(() => {
       // Only flush if user exists, not actively saving, and queue has items
-      if (user && !isSaving && saveQueueRef.current.length > 0 && !isProcessingQueueRef.current) {
+      if (user && !isSaving && saveQueueHasPending()) {
         processSaveQueue();
       }
     }, 5000); // Every 5 seconds
 
     return () => clearInterval(flushInterval);
-  }, [isSaving, user]); // Added user as dependency
+  }, [isSaving, user, saveQueueHasPending, processSaveQueue]);
 
   // Quick Play v2 socket — only active when the flag is on AND a
   // session is live. When a student's score changes during gameplay
