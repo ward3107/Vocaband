@@ -69,6 +69,7 @@ import { useGameModeActions } from "./hooks/useGameModeActions";
 import { useGameFinish } from "./hooks/useGameFinish";
 import { useTranslate } from "./hooks/useTranslate";
 import { useSaveQueue } from "./hooks/useSaveQueue";
+import { useTeacherData } from "./hooks/useTeacherData";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1122,6 +1123,22 @@ export default function App() {
     setConfirmDialog, showToast,
     setView: (v: string) => setView(v as View),
     lastFetchRef,
+  });
+
+  // Read-only data fetchers (classes / students-in-class / assignments-
+  // for-class / pending-approvals queue) extracted into their own hook.
+  // Same shapes and behaviours as the inline closures they replace.
+  const {
+    fetchTeacherData,
+    loadStudentsInClass,
+    loadAssignmentsForClass,
+    loadPendingStudents,
+  } = useTeacherData({
+    classes, setClasses,
+    setExistingStudents,
+    setStudentAssignments, setStudentProgress,
+    setPendingStudents,
+    setError, showToast,
   });
 
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
@@ -2637,16 +2654,6 @@ export default function App() {
     };
   }, [user?.role, view, classes.length]);
 
-  const fetchTeacherData = async (uid: string) => {
-    const { data, error } = await supabase.from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
-    if (!error && data) {
-      const mappedClasses = data.map(mapClass);
-      setClasses(mappedClasses);
-      return mappedClasses;
-    }
-    return [];
-  };
-
   const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
 
   /**
@@ -2885,67 +2892,6 @@ export default function App() {
   };
 
   // Student Account Login System
-  const loadStudentsInClass = async (classCode: string) => {
-    const trimmedCode = classCode.trim().toUpperCase();
-    if (!trimmedCode) return;
-
-
-    try {
-      // Use the new RPC function that bypasses RLS
-      const { data, error } = await supabase
-        .rpc('list_students_in_class', {
-          p_class_code: trimmedCode
-        });
-
-
-      if (error) {
-        console.error('RPC error:', error);
-        // Fallback to direct query if RPC doesn't exist yet
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('student_profiles')
-          .select('id, display_name, xp, status, avatar')
-          .eq('class_code', trimmedCode)
-          .eq('status', 'approved')
-          .order('display_name', { ascending: true });
-
-
-        if (fallbackError) {
-          if (fallbackError.code === '42P01') {
-            setExistingStudents([]);
-            return;
-          }
-          throw fallbackError;
-        }
-
-        const mappedStudents = (fallbackData || []).map(s => ({
-          id: s.id,
-          displayName: s.display_name,
-          xp: s.xp || 0,
-          status: s.status,
-          avatar: s.avatar || '🦊'
-        }));
-
-        setExistingStudents(mappedStudents);
-        return;
-      }
-
-      // Map RPC results
-      const mappedStudents = (data || []).map((s: any) => ({
-        id: s.id,
-        displayName: s.display_name,
-        xp: s.xp || 0,
-        status: s.status,
-        avatar: s.avatar || '🦊'
-      }));
-
-      setExistingStudents(mappedStudents);
-    } catch (error) {
-      console.error('Error loading students:', error);
-      setError("Could not load students. Please check the class code.");
-      setExistingStudents([]);
-    }
-  };
-
   const handleLoginAsStudent = async (studentId: string) => {
     // Look up the student's full profile including auth_uid
     try {
@@ -3154,45 +3100,6 @@ export default function App() {
   };
 
   // Helper to load assignments for a class
-  const loadAssignmentsForClass = async (classData: any, code: string, studentUid: string) => {
-
-    // Use RPC to bypass RLS for assignments
-    const { data: assignResult, error: assignError } = await supabase
-      .rpc('get_assignments_for_class', {
-        p_class_id: classData.id
-      });
-
-    if (assignError) {
-      // Surface the real PostgREST error body — the plain 400 line in
-      // the network tab says nothing; the body has the actual cause
-      // (function overload missing, column renamed, auth gate, etc.).
-      console.error('[get_assignments_for_class] RPC failed:', {
-        code: assignError.code,
-        message: assignError.message,
-        details: assignError.details,
-        hint: assignError.hint,
-        classId: classData.id,
-      });
-    }
-
-    // Progress still uses direct query (should work for student's own progress)
-    const { data: progressResult } = await supabase
-      .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
-
-
-    if (assignError) {
-      console.error('Assignments RPC error:', assignError);
-      // Fallback to direct query
-      const { data: fallbackData } = await supabase
-        .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
-      setStudentAssignments((fallbackData ?? []).map(mapAssignment));
-    } else {
-      setStudentAssignments((assignResult ?? []).map(mapAssignment));
-    }
-
-    setStudentProgress((progressResult ?? []).map(mapProgress));
-  };
-
   const handleNewStudentSignup = async () => {
     const trimmedName = studentLoginName.trim().slice(0, 30);
     const trimmedCode = studentLoginClassCode.trim().toUpperCase();
@@ -3421,55 +3328,6 @@ export default function App() {
   };
 
   // Teacher Approval System
-  const loadPendingStudents = async () => {
-    // Guard: the query below must be scoped by the teacher's class codes,
-    // both as a belt-and-suspenders against RLS misconfig and so we can
-    // render the class name next to each pending student. If classes
-    // haven't loaded yet (common race on fresh teacher dashboard mount),
-    // clear the list and bail — the effect below will re-invoke us once
-    // classes populates.
-    if (classes.length === 0) {
-      setPendingStudents([]);
-      return;
-    }
-    try {
-      const classCodes = classes.map(c => c.code);
-      const { data, error } = await supabase
-        .from('student_profiles')
-        .select(`
-          id,
-          display_name,
-          class_code,
-          joined_at
-        `)
-        .eq('status', 'pending_approval')
-        .in('class_code', classCodes)
-        .order('joined_at', { ascending: false });
-
-      if (error) throw error;
-
-      setPendingStudents((data || []).map(s => {
-        // Find class name from local classes state
-        const classObj = classes.find(c => c.code === s.class_code);
-        return {
-          id: s.id,
-          displayName: s.display_name,
-          classCode: s.class_code,
-          className: classObj?.name || s.class_code,
-          joinedAt: s.joined_at
-        };
-      }));
-    } catch (error) {
-      // Surface instead of swallow — teachers reported seeing "All caught
-      // up!" even when students were waiting. If RLS blocks the query or
-      // the network dies, the teacher needs to know there's a problem
-      // rather than silently seeing an empty list.
-      trackAutoError(error, 'Failed to load pending students list');
-      const message = error instanceof Error ? error.message : 'unknown error';
-      showToast(`Couldn't load pending students: ${message}`, 'error');
-    }
-  };
-
   const handleApproveStudent = async (studentId: string, displayName: string) => {
     try {
       // Call the approve_student function
