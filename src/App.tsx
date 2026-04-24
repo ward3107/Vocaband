@@ -72,6 +72,7 @@ import { useSaveQueue } from "./hooks/useSaveQueue";
 import { useTeacherData } from "./hooks/useTeacherData";
 import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
 import { useStudentLogin } from "./hooks/useStudentLogin";
+import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -224,6 +225,11 @@ export default function App() {
   const [oauthEmail, setOauthEmail] = useState<string | null>(null);
   const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
   const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
+  // Sticky banner: when a student typed a class code that doesn't exist,
+  // surface a persistent banner on the dashboard so they can't miss it
+  // (toasts get dismissed/ignored). Funnel point for both the OAuth
+  // path and the session-restore path.
+  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
 
   // --- CLASS SWITCH STATE ---
   // Set when an already-approved student logs in with a class code that
@@ -1330,12 +1336,21 @@ export default function App() {
     try { localStorage.removeItem('oauth_intended_class_code'); } catch {}
   };
 
-  // Sticky banner state: when a student typed a class code that doesn't
-  // exist, we surface a persistent banner on the dashboard so they can't
-  // miss the problem (toasts get dismissed/ignored).  Setting it here
-  // from either the OAuth-return path or the session-restore path both
-  // funnel into the same UI state.
-  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
+  // Google-OAuth post-callback handlers — extracted to a hook so the
+  // class-switch detection logic and the upsert-then-hydrate sequence
+  // aren't crowding App.tsx. Same behaviour as before.
+  const {
+    handleOAuthTeacherDetected,
+    handleOAuthStudentDetected,
+    handleOAuthNewUser,
+  } = useOAuthFlow({
+    setUser, setError, setLoading, setView, setIsOAuthCallback,
+    setBadges, setXp, setStreak,
+    setStudentAssignments, setStudentProgress,
+    setClassNotFoundIntent, setPendingClassSwitch,
+    setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
+    showPendingApproval, readIntendedClassCode, clearIntendedClassCode,
+  });
 
   // --- AUTH LOGIC ---
   useEffect(() => {
@@ -2671,159 +2686,6 @@ export default function App() {
     }
     setNeedsConsent(false);
     setConsentChecked(false);
-  };
-
-  // --- OAUTH HANDLERS ---
-  const handleOAuthTeacherDetected = async (_email: string) => {
-    try {
-      // The onAuthStateChange → restoreSession path already handles teacher
-      // login (including auto-creating the users row for allowed Google
-      // sign-ins).  Just close the OAuth UI and let it finish.
-      setIsOAuthCallback(false);
-      setLoading(true);
-      // If restoreSession already ran and set the view, we're done.
-      // If not, the next onAuthStateChange event will trigger it.
-    } catch (error) {
-      console.error('Teacher detection error:', error);
-      setError('Could not load teacher profile.');
-    }
-  };
-
-  const handleOAuthStudentDetected = async (email: string) => {
-    try {
-      // Load student profile from student_profiles table
-      const { data: studentData, error } = await supabase
-        .from('student_profiles')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (error || !studentData) {
-        setError('Student profile not found. Please sign up again.');
-        return;
-      }
-
-      if (studentData.status !== 'active' && studentData.status !== 'approved') {
-        showPendingApproval({
-          name: studentData.display_name || '',
-          classCode: studentData.class_code || '',
-          profileId: studentData.id,
-        });
-        return;
-      }
-
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      if (!supabaseUser) {
-        setError('Just tap your name below to sign back in 👋');
-        return;
-      }
-
-      // Class-switch detection: same logic as the restoreSession path.
-      // If the student entered a class code that differs from their
-      // current one and it's a real class, show the switch modal instead
-      // of logging them into their existing class.
-      const intendedCode = readIntendedClassCode();
-      const intendedNorm = intendedCode?.trim().toUpperCase() || null;
-      const currentNorm = studentData.class_code?.trim().toUpperCase() || '';
-      if (intendedNorm && currentNorm && intendedNorm !== currentNorm) {
-        // Same RLS workaround as above — use the SECURITY DEFINER RPC so
-        // non-member students can still verify the target class exists.
-        const { data: intendedClassRows, error: lookupErr } = await supabase
-          .rpc('class_lookup_by_code', { p_code: intendedNorm });
-        if (lookupErr) {
-          // Surface the real reason instead of the generic "not found"
-          // banner. Common causes: migration 20260428 requires auth but
-          // auth.uid() was null mid-OAuth; rate limit hit; migration
-          // 20260426 never applied so the RPC doesn't exist server-side.
-          console.error('[OAuth class switch] RPC failed:', lookupErr);
-          setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
-          clearIntendedClassCode();
-        } else if (intendedClassRows && intendedClassRows.length > 0) {
-          const { data: currentClassRows } = await supabase
-            .from('classes').select('code, name').eq('code', studentData.class_code);
-          setIsOAuthCallback(false);
-          // Populate in-memory user so dashboard can render as the modal's
-          // backdrop rather than flashing landing/loader.
-          const switchUser: AppUser = {
-            uid: supabaseUser.id,
-            email: studentData.email,
-            displayName: studentData.display_name || email.split('@')[0],
-            role: 'student',
-            classCode: studentData.class_code,
-            xp: studentData.xp || 0,
-            avatar: studentData.avatar,
-            createdAt: studentData.created_at,
-          };
-          setUser(switchUser);
-          setPendingClassSwitch({
-            fromCode: studentData.class_code,
-            fromClassName: currentClassRows?.[0]?.name ?? null,
-            toCode: intendedNorm,
-            toClassName: intendedClassRows[0].name ?? null,
-            supabaseUser: { id: supabaseUser.id, email: supabaseUser.email },
-          });
-          setView("student-dashboard");
-          clearIntendedClassCode();
-          return;
-        } else if (!lookupErr) {
-          // RPC succeeded with zero rows — the class genuinely doesn't
-          // exist. Show the standard not-found banner. (Error branch
-          // already set its own more informative banner above.)
-          setClassNotFoundIntent(intendedNorm);
-          clearIntendedClassCode();
-        }
-      } else if (intendedCode) {
-        clearIntendedClassCode();
-      }
-
-      // Ensure a users table row exists for this OAuth student (restoreSession needs it)
-      const studentUser: AppUser = {
-        uid: supabaseUser.id,
-        email: studentData.email,
-        displayName: studentData.display_name || email.split('@')[0],
-        role: 'student',
-        classCode: studentData.class_code,
-        xp: studentData.xp || 0,
-        avatar: studentData.avatar,
-        createdAt: studentData.created_at,
-      };
-      await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-
-      setUser(studentUser);
-      setIsOAuthCallback(false);
-
-      // Load class assignments and progress
-      if (studentData.class_code) {
-        const { data: classRows } = await supabase
-          .from('classes').select(CLASS_COLUMNS).eq('code', studentData.class_code);
-        if (classRows && classRows.length > 0) {
-          const classData = mapClass(classRows[0]);
-          const [assignResult, progressResult] = await Promise.all([
-            supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-            supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', studentData.class_code).eq('student_uid', supabaseUser.id),
-          ]);
-          setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-          setStudentProgress((progressResult.data ?? []).map(mapProgress));
-        }
-      }
-
-      setBadges(studentUser.badges || []);
-      setXp(studentUser.xp ?? 0);
-      setStreak(studentUser.streak ?? 0);
-      setView("student-dashboard");
-      setLoading(false);
-    } catch (error) {
-      console.error('Student detection error:', error);
-      setError('Could not load student profile.');
-    }
-  };
-
-  const handleOAuthNewUser = (email: string, authUid: string) => {
-    setOauthEmail(email);
-    setOauthAuthUid(authUid);
-    setShowOAuthClassCode(true);
-    setIsOAuthCallback(false);
-    setLoading(false);
   };
 
   // Teacher Approval System
