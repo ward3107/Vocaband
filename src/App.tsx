@@ -66,6 +66,7 @@ import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
 import { useTeacherActions } from "./hooks/useTeacherActions";
+import { useGameModeActions } from "./hooks/useGameModeActions";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -3843,58 +3844,6 @@ export default function App() {
     }
   }, [view, showModeSelection, showModeIntro, gameMode, activeAssignment]);
 
-  const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
-    if (fromAvailable) {
-      setAvailableWords(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setBuiltSentence(prev => [...prev, word]);
-    } else {
-      setBuiltSentence(prev => { const idx = prev.indexOf(word); return [...prev.slice(0, idx), ...prev.slice(idx + 1)]; });
-      setAvailableWords(prev => [...prev, word]);
-    }
-  };
-
-  const handleSentenceCheck = () => {
-    const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
-    const validSentences = sentences.filter(s => s.trim().length > 0);
-    const target = validSentences[sentenceIndex]?.trim().toLowerCase();
-    const built = builtSentence.join(" ").toLowerCase();
-    if (built === target) {
-      setSentenceFeedback("correct");
-      celebrate('small');
-      speak(validSentences[sentenceIndex]);
-      const newScore = score + 20;
-      setScore(newScore);
-      emitScoreUpdate(newScore);
-
-      // Use feedbackTimeoutRef for consistent auto-advance
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        const next = sentenceIndex + 1;
-        if (next >= validSentences.length) {
-          setIsFinished(true);
-          saveScore(newScore);
-        } else {
-          setSentenceIndex(next);
-          setAvailableWords(shuffle(validSentences[next].split(" ").filter(Boolean)));
-          setBuiltSentence([]);
-          setSentenceFeedback(null);
-          // Speak the next sentence so students know what to build
-          setTimeout(() => speak(validSentences[next]), 400);
-        }
-      }, 1800);
-    } else {
-      setSentenceFeedback("wrong");
-
-      // Use feedbackTimeoutRef for consistent feedback clearing
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        setBuiltSentence([]);
-        setAvailableWords(shuffle(validSentences[sentenceIndex].split(" ").filter(Boolean)));
-        setSentenceFeedback(null);
-      }, 1200);
-    }
-  };
-
   // Full guest exit cleanup. Called whenever a Quick Play student
   // explicitly leaves the game (Exit button on mode picker, header
   // Back button, finish-screen "Exit Quick Play", session-end overlay).
@@ -4229,352 +4178,40 @@ export default function App() {
     }
   };
 
-  const handleMatchClick = (item: {id: number, type: 'english' | 'arabic'}) => {
-
-    gameDebug.logButtonClick({
-      button: 'matching_card',
-      gameMode: 'matching',
-      wordId: item.id,
-      disabled: matchedIds.includes(item.id) || isMatchingProcessing,
-      feedback: null,
-    });
-
-    if (matchedIds.includes(item.id) || isMatchingProcessing) {
-      return;
-    }
-
-    // Only pronounce when clicking English cards — Hebrew/Arabic cards
-    // should not trigger English audio (confusing for students)
-    if (item.type === 'english') {
-      const matchWord = gameWords.find(w => w.id === item.id);
-      setTimeout(() => {
-        speakWord(item.id, matchWord?.english);
-        gameDebug.logPronunciation({ wordId: item.id, word: matchWord?.english || '', method: 'manual', success: true });
-      }, 0);
-    }
-
-    if (!selectedMatch) {
-      setSelectedMatch(item);
-    } else {
-      if (selectedMatch.type !== item.type && selectedMatch.id === item.id) {
-        // Correct match - set processing flag to prevent rapid clicks
-        isProcessingRef.current = true;
-        setIsMatchingProcessing(true);
-        setMatchedIds([...matchedIds, item.id]);
-        // Record the correct match as a word attempt for mastery tracking.
-        setWordAttemptBatch(prev => [...prev, { word_id: item.id, is_correct: true }]);
-        const newScore = score + 15;
-        setScore(newScore);
-
-        emitScoreUpdate(newScore);
-
-        setSelectedMatch(null);
-
-        if (matchedIds.length + 1 === matchingPairs.length / 2) {
-          // All matched - finish game
-          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-          feedbackTimeoutRef.current = setTimeout(() => {
-            setIsFinished(true);
-            saveScore(newScore);
-            isProcessingRef.current = false;
-            setIsMatchingProcessing(false);
-          }, 500);
-        } else {
-          // Allow next match after brief delay
-          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-          feedbackTimeoutRef.current = setTimeout(() => {
-            isProcessingRef.current = false;
-            setIsMatchingProcessing(false);
-          }, 300);
-        }
-      } else {
-        // Wrong match - just change selection
-        setSelectedMatch(item);
-      }
-    }
-  };
-
-  const handleAnswer = (selectedWord: Word) => {
-
-    if (feedback) {
-      return;
-    }
-
-    if (!currentWord) {
-      console.error('[handleAnswer] ERROR - No currentWord!', { selectedWordId: selectedWord.id, gameMode, currentIndex, gameWordsCount: gameWords.length });
-      return;
-    }
-
-
-    if (selectedWord.id === currentWord.id) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 10;
-      setScore(newScore);
-
-      // Clear attempts for this word since they got it right
-      setWordAttempts(prev => {
-        const newState = { ...prev };
-        delete newState[currentWord.id];
-        return newState;
-      });
-
-      // Record the correct attempt for per-word mastery tracking.
-      setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: true }]);
-
-      emitScoreUpdate(newScore);
-
-      // Auto-skip quickly after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setHiddenOptions([]);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      // Track attempts for this word
-      const currentAttempts = (wordAttempts[currentWord.id] || 0) + 1;
-      setWordAttempts(prev => ({ ...prev, [currentWord.id]: currentAttempts }));
-
-      if (currentAttempts >= MAX_ATTEMPTS_PER_WORD) {
-        // Show the right answer after max attempts
-        setFeedback("show-answer");
-        setMistakes(prev => addUnique(prev, currentWord.id));
-        // Final incorrect attempt on this word — record for mastery tracking.
-        setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: false }]);
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          if (currentIndex < gameWords.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            setFeedback(null);
-            setHiddenOptions([]);
-            // Clear attempts for next word
-            setWordAttempts(prev => removeKey(prev, currentWord.id));
-          } else {
-            setIsFinished(true);
-            saveScore();
-          }
-        }, SHOW_ANSWER_DELAY_MS);
-      } else {
-        // Show try again with attempt count
-        setFeedback("wrong");
-        playWrong();
-
-        // Clear any pending timeout first
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          setFeedback(null);
-        }, WRONG_FEEDBACK_DELAY_MS);
-      }
-    }
-  };
-
-  const handleTFAnswer = (isTrue: boolean) => {
-
-    gameDebug.logButtonClick({
-      button: isTrue ? 'true_button' : 'false_button',
-      gameMode,
-      wordId: currentWord?.id ?? -1,
-      disabled: !!feedback,
-      feedback,
-    });
-
-    if (feedback) {
-      gameDebug.logButtonClick({
-        button: isTrue ? 'true_button' : 'false_button',
-        gameMode,
-        wordId: currentWord?.id ?? -1,
-        disabled: true,
-        feedback,
-      });
-      return;
-    }
-
-    // Guard against null/undefined tfOption
-    if (!tfOption || !currentWord) {
-      gameDebug.logError({
-        error: 'tfOption or currentWord is null',
-        context: 'handleTFAnswer',
-        details: { tfOption, currentWord },
-      });
-      return;
-    }
-
-    const isActuallyTrue = tfOption?.id === currentWord.id;
-    const isCorrect = isTrue === isActuallyTrue;
-
-    gameDebug.logAnswer({
-      gameMode,
-      wordId: currentWord.id,
-      userAnswer: isTrue,
-      correctAnswer: isActuallyTrue,
-      isCorrect,
-      willAutoSkip: isCorrect,
-    });
-
-    // Record the attempt for per-word mastery tracking.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
-
-    if (isCorrect) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 15;
-      setScore(newScore);
-
-      emitScoreUpdate(newScore);
-
-      // Auto-skip after correct answer (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      gameDebug.logAutoSkip({
-        triggered: true,
-        delay: AUTO_SKIP_DELAY_MS,
-        reason: 'correct_answer',
-      });
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      setFeedback("wrong");
-      playWrong();
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-
-      gameDebug.logAutoSkip({
-        triggered: false,
-        delay: WRONG_FEEDBACK_DELAY_MS,
-        reason: 'wrong_answer_will_clear_after_delay',
-      });
-
-      // Clear feedback after delay (clear any pending timeout first)
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        setFeedback(null);
-      }, WRONG_FEEDBACK_DELAY_MS);
-    }
-  };
-
-  const handleFlashcardAnswer = (knewIt: boolean) => {
-
-    gameDebug.logButtonClick({
-      button: knewIt ? 'flashcard_got_it' : 'flashcard_still_learning',
-      gameMode: 'flashcards',
-      wordId: currentWord?.id ?? -1,
-      disabled: false,
-      feedback,
-    });
-
-    // Set processing flag to prevent double-clicks
-    isProcessingRef.current = true;
-
-    // Record the flashcard answer for per-word mastery tracking.
-    // Flashcard "Got it" = correct, "Still learning" = incorrect.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: knewIt }]);
-
-    let currentScore = score;
-    if (knewIt) {
-      currentScore = score + 5;
-      setScore(currentScore);
-      emitScoreUpdate(currentScore);
-    } else {
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-    }
-
-    // Auto-advance to next word with brief delay for visual feedback
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    feedbackTimeoutRef.current = setTimeout(() => {
-      if (currentIndex < gameWords.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        setIsFlipped(false);
-        isProcessingRef.current = false;
-      } else {
-        setIsFinished(true);
-        saveScore(currentScore);
-      }
-    }, 400); // Brief delay for user to see their choice registered
-  };
-
-  const handleSpellingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    gameDebug.logButtonClick({
-      button: 'spelling_submit',
-      gameMode: 'spelling',
-      wordId: currentWord?.id ?? -1,
-      disabled: !!feedback,
-      feedback,
-    });
-
-    if (feedback) {
-      return;
-    }
-
-
-    const isCorrect = isAnswerCorrect(spellingInput, currentWord.english);
-
-    gameDebug.logAnswer({
-      gameMode: 'spelling',
-      wordId: currentWord.id,
-      userAnswer: spellingInput,
-      correctAnswer: currentWord.english,
-      isCorrect,
-      willAutoSkip: isCorrect,
-    });
-
-    // Record the spelling attempt for per-word mastery tracking.
-    setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: isCorrect }]);
-
-    if (isCorrect) {
-      setFeedback("correct");
-      celebrate('small');
-      const newScore = score + 20;
-      setScore(newScore);
-
-      emitScoreUpdate(newScore);
-
-      gameDebug.logAutoSkip({
-        triggered: true,
-        delay: AUTO_SKIP_DELAY_MS,
-        reason: 'correct_spelling',
-      });
-
-      // Use feedbackTimeoutRef for consistent auto-advance
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (currentIndex < gameWords.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setFeedback(null);
-          setSpellingInput("");
-        } else {
-          setIsFinished(true);
-          saveScore(newScore);
-        }
-      }, AUTO_SKIP_DELAY_MS);
-    } else {
-      setFeedback("wrong");
-      if (!mistakes.includes(currentWord.id)) {
-        setMistakes([...mistakes, currentWord.id]);
-      }
-      // Use feedbackTimeoutRef for consistent feedback clearing
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
-    }
-  };
+  // Game-mode handlers, extracted so App.tsx doesn't carry the full
+  // weight of the per-mode answer logic. Same behavior as the inline
+  // versions; the hook just owns the implementation now.
+  //
+  // Must be called AFTER `saveScore` and `emitScoreUpdate` are defined
+  // (the hook closes over them as callbacks), and BEFORE any JSX that
+  // wires the destructured handlers as props.
+  const {
+    handleSentenceWordTap,
+    handleSentenceCheck,
+    handleMatchClick,
+    handleAnswer,
+    handleTFAnswer,
+    handleFlashcardAnswer,
+    handleSpellingSubmit,
+  } = useGameModeActions({
+    score, setScore, currentIndex, setCurrentIndex, setIsFinished,
+    gameWords, currentWord, gameMode,
+    feedback, setFeedback, mistakes, setMistakes, setHiddenOptions,
+    wordAttempts, setWordAttempts, setWordAttemptBatch,
+    tfOption,
+    spellingInput, setSpellingInput,
+    setIsFlipped,
+    selectedMatch, setSelectedMatch,
+    matchedIds, setMatchedIds,
+    isMatchingProcessing, setIsMatchingProcessing,
+    matchingPairs,
+    activeAssignment, sentenceIndex, setSentenceIndex,
+    availableWords, setAvailableWords, builtSentence, setBuiltSentence,
+    setSentenceFeedback,
+    feedbackTimeoutRef, isProcessingRef,
+    emitScoreUpdate, saveScore,
+    speak, speakWord, playWrong,
+  });
 
   // Global cookie banner — renders on top of ANY view until accepted
   // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
