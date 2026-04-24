@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Loader2, QrCode } from "lucide-react";
 import { QUICK_PLAY_AVATARS } from "../constants/avatars";
 import { shuffle } from "../utils";
@@ -5,6 +6,19 @@ import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
+import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
+
+// ─── Feature flag ──────────────────────────────────────────────────────
+// When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
+// no signInAnonymously(), no progress-table insert/delete. Students
+// connect to the `/quick-play` socket.io namespace with a local UUID
+// + the session code + their nickname. When the flag is off (default),
+// the legacy path runs unchanged.
+//
+// Both views (this one + QuickPlayMonitor) must be on the same side of
+// the flag in a given deployment, since the student leaderboard lives
+// in two different places per flag state.
+const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
 interface QuickPlaySession {
   id: string;
@@ -63,6 +77,31 @@ export default function QuickPlayStudentView({
   showToast,
   userIsActiveGuest,
 }: QuickPlayStudentViewProps) {
+  // Socket hook for v2 flow. Safe to call unconditionally — when V2
+  // flag is off or there's no active session, the hook stays idle and
+  // does not open a connection.
+  const quickPlaySocket = useQuickPlaySocket({
+    sessionCode: quickPlayActiveSession?.sessionCode ?? null,
+    enabled: QUICKPLAY_V2,
+  });
+
+  // Surface server-side join errors as toasts so the student isn't
+  // stuck staring at the join screen. "nickname_taken" has its own
+  // friendly copy to match the legacy behavior.
+  useEffect(() => {
+    if (!QUICKPLAY_V2 || !quickPlaySocket.lastError) return;
+    const { code, message } = quickPlaySocket.lastError;
+    if (code === "nickname_taken") {
+      showToast("This name is already taken. Please choose a different one.", "error");
+    } else if (code === "session_inactive" || code === "session_not_found") {
+      showToast("This Quick Play session is no longer active.", "error");
+    } else if (code === "rate_limited") {
+      showToast("Too many people joining at once — wait a moment and try again.", "error");
+    } else {
+      showToast(message || "Couldn't join the session. Please try again.", "error");
+    }
+  }, [quickPlaySocket.lastError, showToast]);
+
   return (
     <div className="min-h-screen flex flex-col bg-surface">
       <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 z-50">
@@ -237,38 +276,45 @@ export default function QuickPlayStudentView({
                       return;
                     }
 
-                    // Check for duplicate name in this session
-                    const { data: { session: currentAuth } } = await supabase.auth.getSession();
-                    const currentAuthUid = currentAuth?.user?.id;
+                    if (!QUICKPLAY_V2) {
+                      // ─── Legacy path ────────────────────────────────
+                      // Check for duplicate name in this session via
+                      // progress-table snooping, clean up stale rows.
+                      const { data: { session: currentAuth } } = await supabase.auth.getSession();
+                      const currentAuthUid = currentAuth?.user?.id;
 
-                    // Clean up any stale progress for this student:
-                    // 1. By uid (same device refresh)
-                    // 2. By name (re-joining with same name from any device)
-                    if (currentAuthUid) {
-                      await supabase
-                        .from('progress')
-                        .delete()
-                        .eq('assignment_id', quickPlayActiveSession.id)
-                        .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
-                    } else {
-                      // No auth uid — clean up by name only
-                      await supabase
-                        .from('progress')
-                        .delete()
-                        .eq('assignment_id', quickPlayActiveSession.id)
-                        .eq('student_name', trimmedName);
-                    }
+                      // Clean up any stale progress for this student:
+                      // 1. By uid (same device refresh)
+                      // 2. By name (re-joining with same name from any device)
+                      if (currentAuthUid) {
+                        await supabase
+                          .from('progress')
+                          .delete()
+                          .eq('assignment_id', quickPlayActiveSession.id)
+                          .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
+                      } else {
+                        // No auth uid — clean up by name only
+                        await supabase
+                          .from('progress')
+                          .delete()
+                          .eq('assignment_id', quickPlayActiveSession.id)
+                          .eq('student_name', trimmedName);
+                      }
 
-                    const { data: existingProgress } = await supabase
-                      .from('progress')
-                      .select('id')
-                      .eq('assignment_id', quickPlayActiveSession.id)
-                      .eq('student_name', trimmedName)
-                      .limit(1);
-                    if (existingProgress && existingProgress.length > 0) {
-                      showToast("This name is already taken. Please choose a different one.", "error");
-                      return;
+                      const { data: existingProgress } = await supabase
+                        .from('progress')
+                        .select('id')
+                        .eq('assignment_id', quickPlayActiveSession.id)
+                        .eq('student_name', trimmedName)
+                        .limit(1);
+                      if (existingProgress && existingProgress.length > 0) {
+                        showToast("This name is already taken. Please choose a different one.", "error");
+                        return;
+                      }
                     }
+                    // v2 path: name-uniqueness check happens server-side
+                    // when we emit STUDENT_JOIN. The hook's useEffect
+                    // above surfaces "nickname_taken" as a toast.
 
                     setTimeout(async () => {
                       setQuickPlayStudentName(trimmedName);
@@ -313,43 +359,54 @@ export default function QuickPlayStudentView({
                         }));
                       } catch {}
 
-                      // Record that student joined — so teacher sees them in live stats immediately.
-                      // Run with retries + surface failures via showToast: errors previously
-                      // only hit the console (invisible to the student) and on the teacher
-                      // side showed up as an empty monitor with no hint why.
-                      (async () => {
-                        let authUid: string | null = null;
-                        for (let attempt = 0; attempt < 3; attempt++) {
-                          const { data: { session } } = await supabase.auth.getSession();
-                          if (session?.user?.id) {
-                            authUid = session.user.id;
-                            break;
+                      if (QUICKPLAY_V2) {
+                        // v2 path: emit STUDENT_JOIN on the /quick-play
+                        // socket. Server broadcasts the leaderboard back
+                        // to the teacher's monitor. No Supabase writes,
+                        // no anonymous auth users, no progress-table
+                        // insert. If the server rejects (nickname taken,
+                        // session inactive), the hook's lastError → toast.
+                        quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
+                      } else {
+                        // ─── Legacy path ────────────────────────────
+                        // Record that student joined — so teacher sees them in live stats immediately.
+                        // Run with retries + surface failures via showToast: errors previously
+                        // only hit the console (invisible to the student) and on the teacher
+                        // side showed up as an empty monitor with no hint why.
+                        (async () => {
+                          let authUid: string | null = null;
+                          for (let attempt = 0; attempt < 3; attempt++) {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (session?.user?.id) {
+                              authUid = session.user.id;
+                              break;
+                            }
+                            // Session not ready yet — sign in anonymously, wait, retry.
+                            await supabase.auth.signInAnonymously().catch(() => {});
+                            await new Promise(r => setTimeout(r, 300));
                           }
-                          // Session not ready yet — sign in anonymously, wait, retry.
-                          await supabase.auth.signInAnonymously().catch(() => {});
-                          await new Promise(r => setTimeout(r, 300));
-                        }
-                        if (!authUid) {
-                          console.error('[Quick Play] No auth session after retries — cannot record join');
-                          showToast('Could not connect to the session. Please refresh and try again.', 'error');
-                          return;
-                        }
-                        const { error } = await supabase.from('progress').insert({
-                          student_name: trimmedName,
-                          student_uid: authUid,
-                          assignment_id: quickPlayActiveSession.id,
-                          class_code: "QUICK_PLAY",
-                          score: 0,
-                          mode: "joined",
-                          completed_at: new Date().toISOString(),
-                          mistakes: [],
-                          avatar: guestUser.avatar || "🦊",
-                        });
-                        if (error) {
-                          console.error('[Quick Play] Failed to record join:', error);
-                          showToast(`Couldn't join the leaderboard: ${error.message}`, 'error');
-                        }
-                      })();
+                          if (!authUid) {
+                            console.error('[Quick Play] No auth session after retries — cannot record join');
+                            showToast('Could not connect to the session. Please refresh and try again.', 'error');
+                            return;
+                          }
+                          const { error } = await supabase.from('progress').insert({
+                            student_name: trimmedName,
+                            student_uid: authUid,
+                            assignment_id: quickPlayActiveSession.id,
+                            class_code: "QUICK_PLAY",
+                            score: 0,
+                            mode: "joined",
+                            completed_at: new Date().toISOString(),
+                            mistakes: [],
+                            avatar: guestUser.avatar || "🦊",
+                          });
+                          if (error) {
+                            console.error('[Quick Play] Failed to record join:', error);
+                            showToast(`Couldn't join the leaderboard: ${error.message}`, 'error');
+                          }
+                        })();
+                      }
                     }, 100);
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
