@@ -75,6 +75,7 @@ import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
 import { useConsent } from "./hooks/useConsent";
 import { useOcrUpload } from "./hooks/useOcrUpload";
+import { useCookieConsent } from "./hooks/useCookieConsent";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -137,36 +138,14 @@ export default function App() {
     setView(previousViewRef.current as any);
   };
 
-  // Cookie consent state
-  const [showCookieBanner, setShowCookieBanner] = useState(() => {
-    try {
-      const hasConsented = localStorage.getItem("vocaband_cookie_consent");
-      return !hasConsented;
-    } catch (e) {
-      return true;
-    }
-  });
-
-  const handleCookieAccept = (eventOrPreferences?: CookiePreferences | React.MouseEvent) => {
-    // Ignore React events - they were accidentally passed before the fix
-    const preferences = eventOrPreferences && typeof eventOrPreferences === 'object' && 'nativeEvent' in eventOrPreferences
-      ? undefined
-      : eventOrPreferences as CookiePreferences | undefined;
-
-    try {
-      const consentData = preferences
-        ? JSON.stringify(preferences)
-        : JSON.stringify({ essential: true, analytics: true, functional: true });
-      localStorage.setItem("vocaband_cookie_consent", consentData);
-    } catch (e) {
-      console.error('[Cookie Banner] Failed to save consent:', e);
-    }
-    setShowCookieBanner(false);
-  };
-
-  const handleCookieCustomize = (preferences: CookiePreferences) => {
-    handleCookieAccept(preferences);
-  };
+  // Cookie consent banner — state + accept/customize handlers live
+  // in a dedicated hook so the banner's persistence + quirky React-
+  // event guard aren't in the orchestrator.
+  const {
+    showCookieBanner,
+    handleCookieAccept,
+    handleCookieCustomize,
+  } = useCookieConsent();
 
   const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility") => {
     const viewMap = {
