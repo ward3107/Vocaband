@@ -4,7 +4,7 @@
 
 import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import { isChunkLoadError, attemptChunkReload } from '../utils/chunkReload';
+import { isChunkLoadError, attemptChunkReload, forceFullRecovery } from '../utils/chunkReload';
 
 interface SuspenseWrapperProps {
   children: React.ReactNode;
@@ -86,6 +86,7 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
   isReloading?: boolean;
+  wasChunkError?: boolean;
 }
 
 export class LazyErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -95,7 +96,8 @@ export class LazyErrorBoundary extends React.Component<ErrorBoundaryProps, Error
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error, isReloading: isChunkLoadError(error) };
+    const chunky = isChunkLoadError(error);
+    return { hasError: true, error, isReloading: chunky, wasChunkError: chunky };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -105,6 +107,17 @@ export class LazyErrorBoundary extends React.Component<ErrorBoundaryProps, Error
       if (!reloading) this.setState({ isReloading: false });
     }
   }
+
+  // Retry must do a hard recovery for chunk errors — just clearing
+  // hasError would re-run the same failed dynamic import with the same
+  // stale cached HTML.  Non-chunk errors keep the soft reset.
+  private handleRetry = () => {
+    if (this.state.wasChunkError) {
+      forceFullRecovery();
+    } else {
+      this.setState({ hasError: false, wasChunkError: false });
+    }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -120,7 +133,7 @@ export class LazyErrorBoundary extends React.Component<ErrorBoundaryProps, Error
           <div className="text-center">
             <p className="text-red-500 font-medium mb-4">Failed to load component</p>
             <button
-              onClick={() => this.setState({ hasError: false })}
+              onClick={this.handleRetry}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90"
             >
               Retry

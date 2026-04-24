@@ -1,5 +1,5 @@
 import React, { ErrorInfo, ReactNode } from "react";
-import { isChunkLoadError, attemptChunkReload } from "./utils/chunkReload";
+import { isChunkLoadError, attemptChunkReload, forceFullRecovery } from "./utils/chunkReload";
 
 interface Props {
   children: ReactNode;
@@ -102,7 +102,7 @@ class ErrorBoundary extends React.Component<Props, State> {
             <h1 className="text-2xl font-black text-stone-900 mb-2">{errorMessage}</h1>
             <p className="text-stone-500 mb-6">{details || "Please refresh the page and try again."}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => forceFullRecovery()}
               className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all"
             >
               Refresh Page

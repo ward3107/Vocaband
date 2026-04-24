@@ -44,15 +44,41 @@ export function attemptChunkReload(): boolean {
     /* sessionStorage unavailable — just reload */
   }
 
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistrations()
-      .then(regs => Promise.all(regs.map(r => r.unregister())))
-      .catch(() => {})
-      .finally(reloadWithCacheBust);
-  } else {
-    reloadWithCacheBust();
-  }
+  clearSwAndCaches().finally(reloadWithCacheBust);
   return true;
+}
+
+/**
+ * Same teardown as `attemptChunkReload`, but bypasses the 60 s guard so an
+ * explicit user tap on "Retry" / "Refresh Page" always re-does the recovery
+ * work.  Without this the button landed back on the same cached SW+HTML and
+ * the user looped on the error screen; the only escape was the
+ * `/?unregisterSW=1` kill switch.  This is the in-app equivalent.
+ */
+export function forceFullRecovery(): void {
+  try { sessionStorage.removeItem(RELOAD_GUARD_KEY); } catch { /* ignore */ }
+  clearSwAndCaches().finally(reloadWithCacheBust);
+}
+
+// Tear down every SW registration + every cached response in the Cache API.
+// Clearing caches isn't strictly necessary once the SW is gone (only a SW
+// can serve from them), but any newly-installed SW would otherwise adopt
+// the same stale entries on its first fetch.  Always returns a resolved
+// promise — best-effort, never throws.
+function clearSwAndCaches(): Promise<void> {
+  const swDone: Promise<unknown> =
+    "serviceWorker" in navigator
+      ? navigator.serviceWorker.getRegistrations()
+          .then(regs => Promise.all(regs.map(r => r.unregister())))
+          .catch(() => {})
+      : Promise.resolve();
+  const cachesDone: Promise<unknown> =
+    typeof caches !== "undefined"
+      ? caches.keys()
+          .then(names => Promise.all(names.map(n => caches.delete(n))))
+          .catch(() => {})
+      : Promise.resolve();
+  return Promise.all([swDone, cachesDone]).then(() => undefined);
 }
 
 // Append a cache-buster so Cloudflare's edge and the browser memory cache
