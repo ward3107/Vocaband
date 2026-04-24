@@ -62,9 +62,11 @@ export interface UseTeacherActionsParams {
   setTagInput: (v: string) => void;
   setIsOcrProcessing: (v: boolean) => void;
   setOcrProgress: (v: string | number) => void;
-  gSheetsUrl: string;
-  setGSheetsUrl: (v: string) => void;
-  setGSheetsLoading: (v: boolean) => void;
+  // Google Sheets import is a separate experimental feature; when a
+  // caller doesn't wire it, handleGSheetsImport is effectively a no-op.
+  gSheetsUrl?: string;
+  setGSheetsUrl?: (v: string) => void;
+  setGSheetsLoading?: (v: boolean) => void;
   setWordSearchQuery: (v: string) => void;
   setSelectedCore: (v: any) => void;
   setSelectedRecProd: (v: string) => void;
@@ -431,6 +433,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   };
 
   const handleGSheetsImport = async () => {
+    // Callers without the gSheets state wired in effectively disable
+    // this flow — silent bail-out keeps the rest of the hook usable.
+    if (!gSheetsUrl || !setGSheetsUrl || !setGSheetsLoading) return;
     if (!gSheetsUrl.trim()) return;
     try {
       const parsed = new URL(gSheetsUrl.trim());
@@ -728,13 +733,23 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     if (!user || user.role !== "teacher") return;
     const now = Date.now();
     if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-    lastFetchRef.current.scores = now;
 
+    // Don't mark the fetch as done if classes haven't loaded yet.
+    // Teacher dashboard load order is: setUser() → classes arrive async →
+    // Analytics view reads from allScores. If fetchScores fired before
+    // classes were populated, the old code still set lastFetchRef.current
+    // and returned with setAllScores([]), locking in an empty array for
+    // the next 10 seconds. When classes finally loaded, the retry was
+    // throttled away — so Analytics and Gradebook saw "no data" even
+    // though the DB had 100+ rows. Move the timestamp update below the
+    // classes-length guard so it only marks SUCCESSFUL fetches.
     if (classes.length === 0) {
       setAllScores([]);
       setClassStudents([]);
       return;
     }
+
+    lastFetchRef.current.scores = now;
 
     const codes = classes.map(c => c.code);
     const chunks = chunkArray(codes, 30);

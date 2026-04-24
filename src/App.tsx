@@ -65,6 +65,7 @@ import { incrementAssignmentPlays, isAssignmentLocked, resolveAssignmentPlays } 
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+import { useTeacherActions } from "./hooks/useTeacherActions";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1127,6 +1128,64 @@ export default function App() {
   // --- QUERY DEDUPLICATION ---
   // Track when data was last fetched to avoid redundant Supabase calls
   const lastFetchRef = useRef<Record<string, number>>({});
+
+  // Teacher-side handlers extracted into a single hook so the file
+  // doesn't have to maintain duplicate copies of class / assignment /
+  // word-import logic. The hook owns the implementations; this file
+  // just plumbs the state in and destructures the methods out.
+  // handleOcrUpload stays inline below — its hook version is a much
+  // simpler implementation and we'd lose the OCR status UI, custom-
+  // word audio generation, and vocabulary cross-check by swapping it.
+  const {
+    handleCreateClass,
+    handlePasteSubmit,
+    handleAddUnmatchedAsCustom,
+    handleSkipUnmatched,
+    handleTagInputKeyDown,
+    handleDocxUpload,
+    handleSaveAssignment,
+    handleDeleteClass,
+    fetchScores,
+    fetchTeacherAssignments,
+  } = useTeacherActions({
+    user, classes, setClasses,
+    newClassName, setNewClassName,
+    setCreatedClassCode, setCreatedClassName, setShowCreateClassModal,
+    selectedClass, setSelectedClass,
+    editingAssignment, setEditingAssignment,
+    selectedWords, setSelectedWords,
+    customWords, setCustomWords,
+    selectedLevel,
+    // App.tsx narrows level to a 3-value union; hook signature is the wider
+    // string. Casts here keep the bivariance edge cases out of the hook.
+    setSelectedLevel: setSelectedLevel as (v: string) => void,
+    assignmentTitle, setAssignmentTitle,
+    assignmentDeadline, setAssignmentDeadline,
+    assignmentModes, setAssignmentModes,
+    assignmentSentences, setAssignmentSentences,
+    sentenceDifficulty, setSentenceDifficulty,
+    setAssignmentStep,
+    pastedText, setPastedText,
+    setPasteMatchedCount, pasteUnmatched, setPasteUnmatched, setShowPasteDialog,
+    tagInput, setTagInput,
+    setIsOcrProcessing,
+    setOcrProgress: setOcrProgress as (v: string | number) => void,
+    setWordSearchQuery,
+    setSelectedCore,
+    setSelectedRecProd: setSelectedRecProd as (v: string) => void,
+    setSelectedPos,
+    teacherAssignments, setTeacherAssignments, setTeacherAssignmentsLoading,
+    pendingStudents, setPendingStudents,
+    allScores, setAllScores,
+    setClassStudents,
+    // Global leaderboard isn't wired into App.tsx (unused state); hook's
+    // fetchGlobalLeaderboard isn't called from here, so a no-op is safe.
+    setGlobalLeaderboard: () => {},
+    setActiveAssignment, setAssignmentWords, setShowModeSelection,
+    setConfirmDialog, showToast,
+    setView: (v: string) => setView(v as View),
+    lastFetchRef,
+  });
 
   // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
   const saveQueueRef = useRef<Array<() => Promise<void>>>([]);
@@ -2689,42 +2748,6 @@ export default function App() {
     return [];
   };
 
-  const handleCreateClass = async () => {
-    if (!newClassName || !user) return;
-
-    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
-    const randomValues = crypto.getRandomValues(new Uint32Array(8));
-    const code = Array.from(randomValues)
-      .map(x => {
-        // Rejection sampling to avoid modulo bias
-        const limit = Math.floor(0x100000000 / alphabet.length) * alphabet.length;
-        let val = x;
-        while (val >= limit) {
-          val = crypto.getRandomValues(new Uint32Array(1))[0];
-        }
-        return alphabet[val % alphabet.length];
-      })
-      .join("");
-    const newClass = {
-      name: newClassName,
-      teacherUid: user.uid,
-      code: code
-    };
-
-    try {
-      const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
-      if (error) throw error;
-      setClasses([...classes, mapClass(docRow)]);
-      setCreatedClassName(newClass.name);
-      setShowCreateClassModal(false);
-      setNewClassName("");
-      setCreatedClassCode(code);
-    } catch (error) {
-      console.error("Error creating class:", error);
-      showToast("Failed to create class.", "error");
-    }
-  };
-
   const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB (client compresses before upload)
 
   /**
@@ -2912,329 +2935,11 @@ export default function App() {
 
   // --- SMART PASTE FUNCTIONS ---
 
-  // Extract words from pasted text - handles commas, newlines, semicolons, pipes, tabs
-  const extractWordsFromPaste = (text: string): string[] => {
-    // Strip zero-width characters from PDFs/Word documents
-    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-
-    // Split by common delimiters (added tab support for Excel/Google Sheets)
-    const words = cleaned
-      .split(/[,\n;\t\|]+/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length >= 2 && w.length <= 100); // Filter invalid
-
-    const unique = [...new Set(words)];
-
-    // Soft limit for very large pastes
-    if (unique.length > 500) {
-      console.warn(`Large paste: ${unique.length} words (processing first 500)`);
-    }
-
-    return unique.slice(0, 500);
-  };
-
-  // Find matching Set 2 words (EXACT OR PARTIAL MATCH)
-  // Combines duplicates and merges translations (Hebrew+Hebrew, Arabic+Arabic)
-  // Also combines words with/without "(n)" suffix
-  const findMatchesInSet2 = (words: string[]): { matched: Word[], unmatched: string[] } => {
-    const allMatches: Word[] = [];
-    const unmatched: string[] = [];
-
-    // Find ALL matches for each input word
-    for (const word of words) {
-      const matches = SET_2_WORDS.filter(w =>
-        w.english.toLowerCase() === word ||
-        w.english.toLowerCase().startsWith(word) ||
-        w.english.toLowerCase().endsWith(word)
-      );
-      if (matches.length > 0) {
-        allMatches.push(...matches);
-      } else {
-        unmatched.push(word);
-      }
-    }
-
-    // Group matches by base English word (remove "(n)" suffix for grouping)
-    const groupedMatches = new Map<string, Word[]>();
-    for (const match of allMatches) {
-      const baseWord = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
-      if (!groupedMatches.has(baseWord)) {
-        groupedMatches.set(baseWord, []);
-      }
-      groupedMatches.get(baseWord)!.push(match);
-    }
-
-    // Combine each group into a single word with merged translations
-    const matched: Word[] = [];
-    for (const [, group] of groupedMatches) {
-      // Merge Hebrew translations (combine non-empty ones, unique)
-      const hebrewParts = group
-        .map(w => w.hebrew.trim())
-        .filter(h => h.length > 0);
-      const uniqueHebrew = [...new Set(hebrewParts)];
-      const combinedHebrew = uniqueHebrew.join(' | ');
-
-      // Merge Arabic translations (combine non-empty ones, unique)
-      const arabicParts = group
-        .map(w => w.arabic.trim())
-        .filter(a => a.length > 0);
-      const uniqueArabic = [...new Set(arabicParts)];
-      const combinedArabic = uniqueArabic.join(' | ');
-
-      // Use the base word (without "(n)") as the English word
-      const combinedWord: Word = {
-        ...group[0],
-        english: group[0].english.replace(/\(n\)$/, '').trim(),
-        hebrew: combinedHebrew,
-        arabic: combinedArabic
-      };
-      matched.push(combinedWord);
-    }
-
-    return { matched, unmatched };
-  };
-
-  // Handle paste submission
-  const handlePasteSubmit = () => {
-    const words = extractWordsFromPaste(pastedText);
-    if (words.length === 0) return;
-
-    const { matched, unmatched } = findMatchesInSet2(words);
-
-    setPasteMatchedCount(matched.length);
-    setPasteUnmatched(unmatched);
-    setShowPasteDialog(true);
-
-    // Auto-add matched words
-    const newSelected = [...selectedWords];
-    matched.forEach(w => {
-      if (!newSelected.includes(w.id)) {
-        newSelected.push(w.id);
-      }
-    });
-    setSelectedWords(newSelected);
-    setPastedText("");
-  };
-
-  // Add unmatched as custom words
-  const handleAddUnmatchedAsCustom = () => {
-    const newCustomWords = pasteUnmatched.map((word, idx) => ({
-      id: Date.now() + idx,
-      english: word,
-      hebrew: "",
-      arabic: "",
-      level: "Custom" as const
-    }));
-    setCustomWords(prev => [...prev, ...newCustomWords]);
-    setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
-    // Fire off Neural2 audio generation for the new custom words.
-    void requestCustomWordAudio(newCustomWords);
-    // Switch to Custom tab so users can see the added words
-    setSelectedLevel("Custom");
-    // Clear search and filters so all words are visible
-    setWordSearchQuery("");
-    setSelectedCore("");
-    setSelectedPos("");
-    setSelectedRecProd("");
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
-  // Skip unmatched words
-  const handleSkipUnmatched = () => {
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
   // Quick-play preview handlers (handleQuickPlayPreviewConfirm +
   // handleQuickPlayPreviewCancel) previously lived here but were never
   // wired to any UI. Removed along with their backing state
   // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
   // dead code TypeScript had been flagging with TS6133.
-
-  // Tag-style single word entry
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter" || !tagInput.trim()) return;
-    e.preventDefault();
-    const word: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
-    setCustomWords(prev => [...prev, word]);
-    setSelectedWords(prev => [...prev, word.id]);
-    setSelectedLevel("Custom");
-    setTagInput("");
-  };
-
-  // Word (.docx) upload — extract text then use smart paste logic
-  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      // Lazy load mammoth
-      const mammothModule = await loadMammoth();
-      const mammoth = mammothModule.default || mammothModule;
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      setPastedText(result.value);
-      showToast("Word document text extracted — click Import Words to continue.", "info");
-    } catch {
-      showToast("Could not read Word document.", "error");
-    }
-    e.target.value = "";
-  };
-
-  const handleSaveAssignment = async (wordsOverride?: number[], modesOverride?: string[]) => {
-    // Use override values if provided (from SetupWizard completion), otherwise use state
-    const wordsToCheck = wordsOverride ?? selectedWords;
-    const modesToCheck = modesOverride ?? assignmentModes;
-
-    // For editing, allow custom-only assignments
-    const hasWords = editingAssignment
-      ? wordsToCheck.length > 0 || customWords.length > 0
-      : wordsToCheck.length > 0;
-
-    if (!selectedClass || !hasWords || !assignmentTitle) {
-      showToast("Please enter a title and select words.", "error");
-      return;
-    }
-
-    // Check if there's at least one database word (not custom/session-only)
-    const hasDbWords = wordsToCheck.some(id => id > 0);
-
-    if (!hasDbWords && !editingAssignment) {
-      console.warn('[handleSaveAssignment] BLOCKED - No DB words for new assignment');
-      showToast("Please select at least one word from the vocabulary database.", "error");
-      return;
-    }
-    // For editing, if no database words, ensure we have at least one custom word
-    if (!hasDbWords && editingAssignment && customWords.length === 0 && wordsToCheck.length === 0) {
-      console.warn('[handleSaveAssignment] BLOCKED - No words at all for edit');
-      showToast("Please select at least one word (database or custom).", "error");
-      return;
-    }
-
-    const allPossibleWords = [...ALL_WORDS, ...customWords];
-    const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    // Use wordsToCheck for filtering, but we need to create a Set from it
-    const wordsToCheckSet = new Set(wordsToCheck);
-    const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
-
-    const assignmentData = {
-      classId: selectedClass.id,
-      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
-      words: wordsToSave,
-      title: assignmentTitle,
-      deadline: assignmentDeadline || null,
-      allowedModes: modesToCheck,
-      sentences: assignmentSentences.filter(s => s.trim()),
-      sentenceDifficulty,
-    };
-
-    try {
-      if (editingAssignment) {
-        // UPDATE existing assignment
-        const updatePayload: Record<string, unknown> = {
-          class_id: assignmentData.classId,
-          word_ids: assignmentData.wordIds,
-          words: assignmentData.words,
-          title: assignmentData.title,
-          deadline: assignmentData.deadline,
-          allowed_modes: assignmentData.allowedModes,
-          sentence_difficulty: assignmentData.sentenceDifficulty,
-        };
-        if (assignmentData.sentences.length > 0) {
-          updatePayload.sentences = assignmentData.sentences;
-        }
-
-        const { error } = await supabase
-          .from('assignments')
-          .update(updatePayload)
-          .eq('id', editingAssignment.id);
-
-        if (error) {
-          console.error('[handleSaveAssignment] UPDATE failed', error);
-          throw error;
-        }
-        showToast("Assignment updated successfully!", "success");
-
-        // Update the assignment in the list
-        setTeacherAssignments(prev =>
-          prev.map(a => a.id === editingAssignment.id
-            ? { ...a, ...assignmentData }
-            : a
-          )
-        );
-        // Also update editingAssignment so the wizard shows the new data
-        setEditingAssignment(prev => prev ? { ...prev, ...assignmentData } : null);
-      } else {
-        // CREATE new assignment
-        const newAssignment = {
-          ...assignmentData,
-          createdAt: new Date().toISOString(),
-        };
-
-        const insertPayload: Record<string, unknown> = {
-          class_id: newAssignment.classId,
-          word_ids: newAssignment.wordIds,
-          words: newAssignment.words,
-          title: newAssignment.title,
-          deadline: newAssignment.deadline,
-          created_at: newAssignment.createdAt,
-          allowed_modes: newAssignment.allowedModes,
-          sentence_difficulty: newAssignment.sentenceDifficulty,
-        };
-        if (newAssignment.sentences.length > 0) {
-          insertPayload.sentences = newAssignment.sentences;
-        }
-
-        const { error } = await supabase.from('assignments').insert(insertPayload);
-        if (error) {
-          console.error('[handleSaveAssignment] INSERT failed', error);
-          throw error;
-        }
-        showToast("Assignment created successfully!", "success");
-
-        // Refresh assignments list
-        await fetchTeacherAssignments();
-
-        // Only redirect and reset form when creating (not when editing)
-        setView("teacher-dashboard");
-        setSelectedWords([]);
-        setAssignmentTitle("");
-        setAssignmentDeadline("");
-        setAssignmentModes([]); // No default selection - teacher must choose
-        setAssignmentStep(1);
-        setAssignmentSentences([]);
-        setSentenceDifficulty(2);
-      }
-    } catch (error) {
-      console.error('[handleSaveAssignment] CATCH - Error occurred:', error);
-      handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
-    }
-  };
-
-  // Preview the assignment with selected words and modes (for teachers)
-  const handleDeleteClass = async (classId: string) => {
-    setConfirmDialog({
-      show: true,
-      message: "Are you sure you want to delete this class? This will also remove access for all students in this class.",
-      onConfirm: async () => {
-        try {
-          const { error } = await supabase.from('classes').delete().eq('id', classId);
-          if (error) throw error;
-          setClasses(prev => prev.filter(c => c.id !== classId));
-          showToast("Class deleted successfully.", "success");
-        } catch (error) {
-          handleDbError(error, OperationType.DELETE, `classes/${classId}`);
-        }
-        setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-      }
-    });
-  };
-
-  // Check if user needs to accept the current privacy policy version.
-  // Fast path: localStorage. Fallback: DB consent_log (handles cleared storage).
   const checkConsent = (userData: AppUser) => {
     const accepted = localStorage.getItem('vocaband_consent_version');
     if (accepted === PRIVACY_POLICY_VERSION) return;
@@ -3927,54 +3632,6 @@ export default function App() {
       setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
     }
   };
-  const fetchScores = async () => {
-    if (!user || user.role !== "teacher") return;
-    const now = Date.now();
-    if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
-
-    // Don't mark the fetch as done if classes haven't loaded yet.
-    // Teacher dashboard load order is: setUser() → classes arrive async →
-    // Analytics view reads from allScores. If fetchScores fired before
-    // classes were populated, the old code still set lastFetchRef.current
-    // and returned with setAllScores([]), locking in an empty array for
-    // the next 10 seconds. When classes finally loaded, the retry was
-    // throttled away — so Analytics and Gradebook saw "no data" even
-    // though the DB had 100+ rows. Move the timestamp update below the
-    // classes-length guard so it only marks SUCCESSFUL fetches.
-    if (classes.length === 0) {
-      setAllScores([]);
-      setClassStudents([]);
-      return;
-    }
-
-    lastFetchRef.current.scores = now;
-
-    const codes = classes.map(c => c.code);
-    const chunks = chunkArray(codes, 30);
-    const allRows: ProgressData[] = [];
-
-    for (const chunk of chunks) {
-      const { data } = await supabase
-        .from('progress').select('id, student_name, student_uid, assignment_id, class_code, score, mode, completed_at, mistakes, avatar')
-        .in('class_code', chunk)
-        .order('completed_at', { ascending: false })
-        .limit(1000);
-      if (data) allRows.push(...data.map(mapProgress));
-    }
-
-    setAllScores(allRows);
-
-    // Derive students from the same data — avoids a separate query
-    const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
-    allRows.forEach(row => {
-      const key = `${row.studentName}-${row.classCode}`;
-      if (!studentMap[key] || new Date(row.completedAt) > new Date(studentMap[key].lastActive)) {
-        studentMap[key] = { name: row.studentName, classCode: row.classCode, lastActive: row.completedAt };
-      }
-    });
-    setClassStudents(Object.values(studentMap));
-    lastFetchRef.current.students = now;
-  };
 
   // Re-run fetchScores when classes transitions from 0 → non-zero while the
   // teacher is viewing Analytics or Gradebook. Without this, clicking the
@@ -4008,15 +3665,6 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes.length, view, user?.role]);
-
-  const fetchTeacherAssignments = async (classIdsOverride?: string[]) => {
-    // Use optional chaining on user state, but don't early return - the caller ensures valid context
-    setTeacherAssignmentsLoading(true);
-    const classIds = classIdsOverride || classes.map(c => c.id);
-    const { data } = await supabase.from('assignments').select(ASSIGNMENT_COLUMNS).in('class_id', classIds).order('created_at', { ascending: false });
-    setTeacherAssignments((data ?? []).map(mapAssignment));
-    setTeacherAssignmentsLoading(false);
-  };
 
   // --- GAME LOGIC ---
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
