@@ -76,6 +76,7 @@ import { useClassSwitch } from "./hooks/useClassSwitch";
 import { useConsent } from "./hooks/useConsent";
 import { useOcrUpload } from "./hooks/useOcrUpload";
 import { useCookieConsent } from "./hooks/useCookieConsent";
+import { useAwardBadge } from "./hooks/useAwardBadge";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -2473,21 +2474,9 @@ export default function App() {
   // wired to any UI. Removed along with their backing state
   // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
   // dead code TypeScript had been flagging with TS6133.
-  const awardBadge = async (badge: string) => {
-    if (!user || badges.includes(badge)) return;
-
-    const newBadges = [...badges, badge];
-    setBadges(newBadges);
-    celebrate('big');
-
-    try {
-      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error saving badge:", error);
-      setSaveError("Badge couldn't be saved right now, but don't worry — it will sync next time.");
-    }
-  };
+  // Idempotent badge grant — used by the save-score milestone checks.
+  // Hook encapsulates the includes-guard + celebrate + DB upsert.
+  const awardBadge = useAwardBadge({ user, badges, setBadges, setSaveError });
 
   // Re-run fetchScores when classes transitions from 0 → non-zero while the
   // teacher is viewing Analytics or Gradebook. Without this, clicking the
