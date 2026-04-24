@@ -87,6 +87,7 @@ import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
+import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
@@ -629,19 +630,6 @@ export default function App() {
       }
     };
   }, []);
-
-  // Periodic flush: Process save queue every 5 seconds when idle (not during active gameplay)
-  // This ensures queued data is eventually saved without overwhelming the DB
-  useEffect(() => {
-    const flushInterval = setInterval(() => {
-      // Only flush if user exists, not actively saving, and queue has items
-      if (user && !isSaving && saveQueueHasPending()) {
-        processSaveQueue();
-      }
-    }, 5000); // Every 5 seconds
-
-    return () => clearInterval(flushInterval);
-  }, [isSaving, user, saveQueueHasPending, processSaveQueue]);
 
   // Quick Play v2 socket — only active when the flag is on AND a
   // session is live. When a student's score changes during gameplay
@@ -1523,46 +1511,20 @@ export default function App() {
   // the comment was the handler.
   useBeforeUnloadWhileSaving(isSaving);
 
-  // Retry any progress writes that failed during a previous session
-  useEffect(() => {
-    const retryPending = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return; // No session — skip retries
 
-      const currentUid = session.user.id;
-      const keys = Object.keys(localStorage).filter(k => k.startsWith("vocaband_retry_"));
-      for (const key of keys) {
-        try {
-          const progress = JSON.parse(localStorage.getItem(key)!);
-          // Only retry records that belong to the current authenticated user
-          if (progress.student_uid !== currentUid) {
-            localStorage.removeItem(key); // Discard stale/foreign entries
-            continue;
-          }
-          const { error } = await supabase.from('progress').insert(progress);
-          if (!error) localStorage.removeItem(key);
-        } catch {
-          // Still offline — will retry on next load
-        }
-      }
-    };
-    retryPending();
-  }, []);
-
-  // Quick Play score queue flusher.  Runs once for the app lifetime —
-  // listens to window 'online' + document 'visibilitychange' + a 30s
-  // poll and flushes any pending Quick Play score rows that failed
-  // their first send.  See src/core/saveQueue.ts for details.
-  useEffect(() => {
-    const uninstall = installQuickPlayQueueFlusher();
-    return uninstall;
-  }, []);
 
   // Teacher-side toasts: diff `pendingStudents` and `allScores` (both
   // refreshed by the polling effects) and fire a single toast when
   // something new lands.  Seeded-ref pattern inside the hook prevents
   // "everyone who existed before you logged in just joined" spam.
   useTeacherNotifications({ user, view, pendingStudents, allScores, showToast });
+
+  // Save-queue resilience: periodic flush, retry of progress
+  // writes left over from prior offline sessions, and the Quick
+  // Play queue flusher install (online/visibility/30s poll).
+  useSaveQueueResilience({
+    user, isSaving, saveQueueHasPending, processSaveQueue,
+  });
 
 
   // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
