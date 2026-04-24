@@ -35,6 +35,16 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
 
 export const ALL_GAME_MODE_IDS = Object.values(GAME_MODE_LEVELS).flat().map(m => m.id);
 
+// Default mode selection for a brand-new assignment — every mode turned
+// on EXCEPT Sentence Builder.  Teachers asked for this explicitly: the
+// previous default of just `['flashcards']` meant they had to hand-tick
+// every other mode before saving, and many shipped assignments with
+// only flashcards enabled by accident.  Sentence Builder stays opt-in
+// because it's the one mode that requires extra configuration (sentence
+// difficulty + sentence bank) so we don't want to land the teacher in
+// that UI state unless they've asked for it.
+export const DEFAULT_ASSIGNMENT_MODE_IDS = ALL_GAME_MODE_IDS.filter(id => id !== 'sentence-builder');
+
 // ── Difficulty tiers ─────────────────────────────────────────────────────────
 // Three-tier difficulty used across every mode picker (assignment, quick
 // play, demo) so students + teachers know at a glance how hard a mode is

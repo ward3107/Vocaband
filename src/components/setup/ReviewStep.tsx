@@ -280,7 +280,17 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       </div>
       </div>
 
-      <div className="flex gap-3">
+      {/* Mobile spacer so the summary doesn't hide behind the sticky
+          action bar below.  Desktop keeps the inline layout because the
+          Review step is short enough to fit in a laptop viewport. */}
+      <div className="sm:hidden h-24" />
+
+      {/* Primary action row — sticky at the bottom on phones so teachers
+          always see the "Assign to Class" / "Generate QR Code" button
+          without scrolling.  On sm+ screens it sits inline where it
+          used to.  The gradient-to-transparent fade under it keeps the
+          summary text from butting up against the solid button bar. */}
+      <div className="flex gap-3 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:pt-0 sm:pb-0">
         <button
           onClick={onBack}
           className="flex-1 py-4 bg-stone-200 text-stone-900 rounded-2xl font-bold hover:bg-stone-200-high border-2 border-stone-300/20 transition-all"
