@@ -61,9 +61,15 @@ const RING_TONE: Record<StatTone, string> = {
   stone:   "border-stone-100 hover:border-stone-200",
 };
 
+// Score → tone scale.
+// 80+ green, 50-79 amber, < 50 rose.  Earlier scale flipped to rose at
+// 70 which lit up "58%" like a fire alarm — teachers in the pilot
+// reported the colour felt out of proportion to the actual signal
+// (mid-50s is room-for-improvement, not crisis).  Amber covers a
+// wider middle band so "needs attention" reads as exactly that.
 function toneFromScore(s: number): StatTone {
   if (s >= 80) return "emerald";
-  if (s >= 70) return "amber";
+  if (s >= 50) return "amber";
   return "rose";
 }
 
@@ -95,17 +101,18 @@ export default function StatChip({
 
   const body = (
     <>
-      {/* Compacted 2026-04-24: title size 3xl → 2xl, tighter margins.
-          Teachers projecting their monitor to the classroom wanted more
-          data on-screen at once — the huge numbers were elegant but
-          wasteful. */}
-      <div className={`text-2xl font-black leading-none ${TEXT_TONE[resolvedTone]} flex items-center gap-1.5`}>
-        {icon && <span className="text-lg" aria-hidden>{icon}</span>}
-        {value}
-      </div>
-
-      <div className="flex items-center gap-1 mt-1.5">
-        <span className="text-[10px] font-black uppercase tracking-wider text-stone-600">
+      {/* Density redesign 2026-04-25: drop the verbose caption, fold the
+          label below the number, and shave padding so 4 chips fit in
+          one row at 1024 px without the empty-space sprawl teachers
+          reported (cards looked like big white blobs with a tiny number
+          in them).  Tooltip carries the "what this means" detail so
+          we lose nothing functional. */}
+      <div className="flex items-baseline gap-2 leading-none">
+        <span className={`text-xl font-black ${TEXT_TONE[resolvedTone]} flex items-center gap-1`}>
+          {icon && <span className="text-sm" aria-hidden>{icon}</span>}
+          {value}
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-wider text-stone-600 truncate">
           {label}
         </span>
         {tooltip && (
@@ -119,16 +126,16 @@ export default function StatChip({
             onMouseLeave={() => setTipOpen(false)}
             aria-label={`What "${label}" means`}
             aria-expanded={tipOpen}
-            className="w-4 h-4 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
+            className="w-3.5 h-3.5 shrink-0 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
-            <Info size={10} />
+            <Info size={9} />
           </button>
         )}
       </div>
 
       {caption && (
-        <div className="text-[10px] text-stone-400 mt-0.5 leading-tight">{caption}</div>
+        <div className="text-[10px] text-stone-400 mt-1 leading-tight truncate">{caption}</div>
       )}
 
       {tooltip && tipOpen && (
@@ -154,7 +161,7 @@ export default function StatChip({
         <button
           type="button"
           onClick={onClick}
-          className={`relative w-full text-left bg-white rounded-xl p-3 border transition-colors ${RING_TONE[resolvedTone]}`}
+          className={`relative w-full text-left bg-white rounded-xl px-3 py-2 border transition-colors ${RING_TONE[resolvedTone]}`}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
         >
           {body}
@@ -165,7 +172,7 @@ export default function StatChip({
   return (
     <div
       ref={ref}
-      className={`relative bg-white rounded-xl p-3 border ${RING_TONE[resolvedTone]}`}
+      className={`relative bg-white rounded-xl px-3 py-2 border ${RING_TONE[resolvedTone]}`}
     >
       {body}
     </div>

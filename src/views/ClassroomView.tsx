@@ -238,39 +238,30 @@ export default function ClassroomView(props: ClassroomViewProps) {
           }>
             {v2Tab === "today" && (
               <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-5">
-                {/* StatChip row — the plan's "big labeled numbers +
-                    plain-English explainers" pattern. Each tile has an
-                    "i" tooltip so teachers never see a number without
-                    knowing what it means. */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Stats row — three chips, dense.  ENROLLED was a fourth
+                    chip but it was the same number as the "active /
+                    enrolled" caption on the first chip, so teachers
+                    saw the roster size twice in a row.  Folded into
+                    the active-students caption instead. */}
+                <div className="grid grid-cols-3 gap-2">
                   <StatChip
-                    value={todayStats.activeStudents}
-                    label="active students"
-                    caption={`this week · ${todayStats.rosterSize || "?"} enrolled`}
+                    value={`${todayStats.activeStudents}/${todayStats.rosterSize || "—"}`}
+                    label="active"
                     tone="indigo"
-                    tooltip="Students who completed at least one game in the last 7 days. Counts unique students, not total plays."
+                    tooltip="Active = students who completed at least one game this week. The /N is the class roster total."
                   />
                   <StatChip
                     value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
                     label="avg score"
-                    caption="across every play this week"
                     score={todayStats.avgScore ?? undefined}
                     tone={todayStats.avgScore == null ? "stone" : undefined}
-                    tooltip="The mean score across every completed game in the last 7 days. Green ≥80, amber 70–79, rose under 70."
+                    tooltip="Mean score across every completed game in the last 7 days. Green ≥80, amber 50–79, rose under 50."
                   />
                   <StatChip
                     value={todayStats.playsThisWeek}
-                    label="plays this week"
-                    caption="total completed games"
+                    label="plays"
                     tone="violet"
-                    tooltip="Every time a student finishes a game mode counts as one play. One student can contribute multiple plays a day."
-                  />
-                  <StatChip
-                    value={todayStats.rosterSize || "—"}
-                    label="enrolled"
-                    caption="students on the roster"
-                    tone="stone"
-                    tooltip="Everyone who has joined this class with the class code, regardless of whether they've played yet."
+                    tooltip="Every time a student finishes a game mode counts as one play. Last 7 days."
                   />
                 </div>
 
