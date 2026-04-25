@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
-import { WizardMode, AssignmentData, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS } from './types';
+import { WizardMode, AssignmentData, DEFAULT_ASSIGNMENT_MODE_IDS } from './types';
 import { WordInputStep } from './WordInputStep';
 import { WordInputStep2026 } from './WordInputStep2026';
 import { ConfigureStep } from './ConfigureStep';
@@ -177,8 +177,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
 
   // ── Core Shared State ───────────────────────────────────────────────────────
   const [selectedWords, setSelectedWords] = useState<Word[]>([]);
+  // Both flows default to "everything except Sentence Builder" — the
+  // assignment flow already does this; aligning Quick Play closes the
+  // teacher feedback "the default in the online game should match what
+  // I see on regular assignments".  Sentence Builder stays opt-in for
+  // the same reason as on assignments: enabling it requires extra
+  // setup (sentence difficulty + bank), and teachers don't want to
+  // land in that UI by accident every time.
   const [selectedModes, setSelectedModes] = useState<string[]>(
-    mode === 'quick-play' ? ALL_GAME_MODE_IDS : DEFAULT_ASSIGNMENT_MODE_IDS
+    [...DEFAULT_ASSIGNMENT_MODE_IDS]
   );
 
   // ── Pre-populate from editing assignment ─────────────────────────────────────
