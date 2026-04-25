@@ -77,6 +77,14 @@ export interface QpStudentJoinPayload {
   /** Emoji chosen on the join screen. Falls back to the fox on the
    *  server if omitted. */
   avatar?: string;
+  /** Supabase auth user id (anon or real).  Optional — older clients
+   *  skip this — but when present the server stamps it onto the
+   *  in-memory leaderboard row so TEACHER_END can persist a real
+   *  progress row at session end (without it the leaderboard data
+   *  vanishes when the in-memory state is torn down, which is what
+   *  V2 teachers reported as "I ended the session and nothing landed
+   *  in the database"). */
+  authUid?: string;
 }
 
 export interface QpScoreUpdatePayload {
@@ -122,6 +130,10 @@ export interface QpStudentEntry {
    *  teacher UI to grey-out idle students without waiting for a
    *  disconnect event. */
   lastSeen: number;
+  /** Supabase auth user id when known.  Server-private — never
+   *  broadcast back to other clients (the LEADERBOARD payload omits
+   *  it).  Used only for the persist-on-end progress writes. */
+  authUid?: string;
 }
 
 export interface QpJoinedPayload {
