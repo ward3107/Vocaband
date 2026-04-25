@@ -2021,6 +2021,8 @@ export default function App() {
             }
           }}
           onRenameDisplayName={renameStudentDisplayName}
+          structure={structure}
+          celebrateStructureKeys={celebrateStructureKeys}
         />
       </LazyWrapper>
     );
