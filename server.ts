@@ -707,6 +707,12 @@ async function startServer() {
 
       const now = Date.now();
       const prev = state.students.get(clientId);
+      // Capture the optional authUid the client may have included so
+      // TEACHER_END can persist a real progress row.  Held privately —
+      // never echoed back to peers (LEADERBOARD payload type omits it).
+      const incomingAuthUid = typeof payload.authUid === "string" && /^[0-9a-f-]{36}$/i.test(payload.authUid)
+        ? payload.authUid
+        : undefined;
       // Re-joining (refresh / reconnect) keeps score; truly new joiner starts at 0.
       state.students.set(clientId, {
         clientId,
@@ -714,6 +720,7 @@ async function startServer() {
         avatar,
         score: prev?.score ?? 0,
         lastSeen: now,
+        authUid: incomingAuthUid ?? prev?.authUid,
       });
       state.socketToClient.set(socket.id, clientId);
       socket.join(sessionCode);
@@ -840,6 +847,62 @@ async function startServer() {
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_END, verify.reason, "access denied");
 
+      // Persist the final leaderboard to public.progress BEFORE
+      // tearing down the in-memory state.  Under V2 the leaderboard
+      // lives only in server memory while the game runs; without
+      // this write the teacher's gradebook + analytics show no rows
+      // for the just-played session ("I ended it and nothing landed
+      // in the database" was the literal report).  Skip students
+      // whose client never sent an authUid (older client builds, or
+      // truly unauthenticated browsers — a real auth.users row is
+      // required by the progress trigger from migration 20260430).
+      const endingSessionState = qpSessions.get(sessionCode);
+      if (endingSessionState && supabaseAdmin) {
+        // Resolve the session UUID once — it's the assignment_id for
+        // every progress row.  If the lookup fails we still tear down,
+        // we just skip persistence rather than block the teacher.
+        try {
+          const { data: sessRow } = await supabaseAdmin
+            .from("quick_play_sessions")
+            .select("id")
+            .eq("session_code", sessionCode)
+            .maybeSingle();
+          const assignmentId = sessRow?.id as string | undefined;
+          if (assignmentId) {
+            const persistableStudents = Array.from(endingSessionState.students.values())
+              .filter(s => s.authUid && s.score > 0);
+            if (persistableStudents.length > 0) {
+              // One RPC call per student.  save_student_progress is
+              // upsert-on-conflict (atomic via uq_progress_assignment_
+              // student_mode_class) so a re-run with the same tuple
+              // updates instead of duplicating.  We use mode='quickplay'
+              // as the bucket so post-session analytics doesn't merge
+              // QP and assignment plays.
+              await Promise.all(persistableStudents.map(async (s) => {
+                try {
+                  const { error } = await supabaseAdmin!.rpc("save_student_progress", {
+                    p_student_name: s.nickname,
+                    p_student_uid: s.authUid!,
+                    p_assignment_id: assignmentId,
+                    p_class_code: "QUICK_PLAY",
+                    p_score: Math.round(s.score),
+                    p_mode: "quickplay",
+                    p_mistakes: [] as number[],
+                    p_avatar: s.avatar,
+                    p_word_attempts: null,
+                  });
+                  if (error) console.warn("[QP TEACHER_END persist] failed for", s.clientId, error.message);
+                } catch (err) {
+                  console.warn("[QP TEACHER_END persist] threw for", s.clientId, err);
+                }
+              }));
+            }
+          }
+        } catch (err) {
+          console.warn("[QP TEACHER_END persist] session lookup failed", err);
+        }
+      }
+
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode });
       // Force every student socket in the room to disconnect after the
       // SESSION_ENDED packet flushes.  Without this, students can keep
@@ -848,7 +911,6 @@ async function startServer() {
       // to stop either, so they keep playing until the tab is closed.
       // The socket disconnect bubbles into the client's onDisconnect →
       // sessionEndedRef path so the UI transition is unambiguous.
-      const endingSessionState = qpSessions.get(sessionCode);
       if (endingSessionState) {
         const sockIds = Array.from(endingSessionState.socketToClient.keys());
         setTimeout(() => {
@@ -858,8 +920,9 @@ async function startServer() {
           }
         }, 250);
       }
-      // Tear down in-memory state immediately; teacher's `is_active=false`
-      // DB update is their own responsibility (client already does this).
+      // Tear down in-memory state.  Teacher's `is_active=false` DB
+      // update is their own responsibility (client already does this
+      // via end_quick_play_session RPC).
       qpSessions.delete(sessionCode);
     });
 

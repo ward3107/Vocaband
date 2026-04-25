@@ -187,15 +187,25 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       if (cancelled) return;
       socketRef.current = socket;
 
-      const onConnect = () => {
+      const onConnect = async () => {
         setStatus("connected");
         // If we had a pending student join when the socket dropped, replay it.
         if (lastJoinRef.current && sessionCode) {
+          // Refetch the auth uid each reconnect — anon sessions can
+          // get refreshed during the gap.  Falls through silently if
+          // it can't (older clients / private mode).
+          let authUid: string | undefined;
+          try {
+            const { supabase: sb } = await import("../core/supabase");
+            const { data: { session: s } } = await sb.auth.getSession();
+            authUid = s?.user?.id;
+          } catch { /* best-effort */ }
           socket.emit(QP_EVENTS.STUDENT_JOIN, {
             sessionCode,
             clientId,
             nickname: lastJoinRef.current.nickname,
             avatar: lastJoinRef.current.avatar,
+            authUid,
           });
         }
       };
@@ -248,11 +258,19 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
   // ─── Imperative actions ────────────────────────────────────────────
 
-  const joinAsStudent = useCallback((nickname: string, avatar: string = "🦊") => {
+  const joinAsStudent = useCallback(async (nickname: string, avatar: string = "🦊") => {
     if (!sessionCode || !socketRef.current) return;
     lastJoinRef.current = { nickname, avatar };
+    // Include the Supabase auth uid so the server can persist a real
+    // progress row on TEACHER_END.  Optional — older server builds
+    // simply ignore the field and the leaderboard still works in
+    // memory; newer ones use it to write the post-session gradebook
+    // entry that V2 was previously dropping on the floor.
+    const { supabase } = await import("../core/supabase");
+    const { data: { session } } = await supabase.auth.getSession();
+    const authUid = session?.user?.id;
     socketRef.current.emit(QP_EVENTS.STUDENT_JOIN, {
-      sessionCode, clientId, nickname, avatar,
+      sessionCode, clientId, nickname, avatar, authUid,
     });
   }, [sessionCode, clientId]);
 
