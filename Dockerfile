@@ -20,8 +20,12 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Layer the dep install so a code-only change doesn't bust the cache.
+# `--legacy-peer-deps` works around a peer-dep conflict between
+# @eslint/js@10 (peerOptional eslint^10) and the project's eslint@9.
+# We don't run lint inside the image, but devDeps still install because
+# `tsx` (the runtime) lives there.
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 
