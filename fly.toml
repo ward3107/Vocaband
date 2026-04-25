@@ -1,4 +1,4 @@
-# Fly.io app config for the Vocaband API server.
+# fly.toml app configuration file generated for vocaband on 2026-04-25T17:59:35Z
 #
 # What runs here:
 #   * Express on /api/*   (translate, OCR, AI sentences, health)
