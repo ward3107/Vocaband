@@ -411,7 +411,13 @@ export function useGameFinish(params: UseGameFinishParams) {
       p_class_code: user.classCode || "",
       p_score: cappedScore,
       p_mode: gameMode,
-      p_mistakes: Array.isArray(mistakes) ? mistakes.length : (mistakes || 0),
+      // Pass the FULL array of missed word ids (not a count).  The RPC
+      // stores this directly into progress.mistakes, which Analytics +
+      // ClassPatterns + StudentStatsRow + TodayActionList all iterate
+      // as `forEach(wordId => …)`.  Earlier shape was the count, which
+      // got wrapped in ARRAY[…] server-side and silently corrupted the
+      // "most-missed words" report — see migration 20260515.
+      p_mistakes: Array.isArray(mistakes) ? mistakes : [],
       p_avatar: user.avatar || "🦊",
       p_word_attempts: wordAttemptBatch,
     };

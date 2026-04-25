@@ -118,7 +118,17 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
             }
           } catch { /* private mode / disabled storage — fall through */ }
         }
-        if (!QUICKPLAY_V2 && (!cachedSession || stale)) {
+        // Sign in anonymously when there's no usable cached session,
+        // regardless of the V2 flag.  Reasoning: the QP session row
+        // SELECT depends on RLS allowing the role making the call.
+        // If the anon-read policy on `quick_play_sessions` ever drifts
+        // (a future security migration tightening it to `authenticated`
+        // only — the exact regression that made students hit "session
+        // inactive" → bounce to landing on 2026-04-25), an anon auth
+        // session keeps the read working without a schema fix.  The
+        // 30-day cleanup cron (migration 20260429) garbage-collects the
+        // resulting anon auth.users rows so this doesn't accumulate.
+        if (!cachedSession || stale) {
           await supabase.auth.signInAnonymously().catch(() => {});
         }
 

@@ -647,13 +647,25 @@ export default function App() {
   // object would churn the effect every render.
   const qpOnKicked = quickPlaySocket.onKicked;
   const qpOnSessionEnded = quickPlaySocket.onSessionEnded;
+  const userIsGuestRef = useRef(user?.isGuest ?? false);
+  useEffect(() => { userIsGuestRef.current = user?.isGuest ?? false; }, [user?.isGuest]);
   useEffect(() => {
     if (!QUICKPLAY_V2) return;
+    // KICKED + SESSION_ENDED are broadcast to EVERY socket in the room
+    // — including the teacher who triggered them.  Only flip the
+    // student-facing screens when the local viewer is actually a guest
+    // (Quick Play student); ignore otherwise so the teacher who pressed
+    // "End session" lands cleanly back on their own dashboard via the
+    // monitor view's onEndSession handler instead of the student
+    // QuickPlaySessionEndScreen, whose "Go home" button does
+    // setUser(null) + setView('public-landing') — wrong for a teacher.
     const offKicked = qpOnKicked(() => {
+      if (!userIsGuestRef.current) return;
       setQuickPlayKicked(true);
       setActiveAssignment(null);
     });
     const offEnded = qpOnSessionEnded(() => {
+      if (!userIsGuestRef.current) return;
       setQuickPlaySessionEnded(true);
       setActiveAssignment(null);
     });
