@@ -1,8 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon } from "lucide-react";
+import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from "lucide-react";
 import { getXpTitle, NAME_FRAMES, NAME_TITLES } from "../../constants/game";
 import type { AppUser } from "../../core/supabase";
+
+// Per-title hero gradient.  Equipping a title now recolours the WHOLE
+// greeting card so it actually reads as "I'm wearing this."  Mirrors
+// the gradient map in IdentityHero (the new dashboard) — both
+// dashboards now treat title equip as a status statement, not a chip.
+// Falls back to the original indigo→violet→fuchsia when no title is
+// equipped (or the title id isn't mapped).
+const TITLE_GRADIENTS: Record<string, string> = {
+  default:        'from-indigo-600 via-violet-600 to-fuchsia-600',
+  champion:       'from-amber-300 via-yellow-500 to-orange-500',
+  genius:         'from-violet-500 via-fuchsia-500 to-pink-500',
+  word_wizard:    'from-indigo-500 via-violet-500 to-fuchsia-500',
+  vocab_king:     'from-amber-400 via-orange-500 to-red-600',
+  vocab_queen:    'from-fuchsia-500 via-pink-500 to-rose-500',
+  speed_demon:    'from-red-500 via-orange-500 to-yellow-500',
+  legend:         'from-yellow-400 via-amber-500 to-orange-600',
+  brain:          'from-cyan-400 via-sky-500 to-blue-600',
+  main_character: 'from-pink-500 via-fuchsia-500 to-violet-600',
+  goated:         'from-emerald-500 via-yellow-500 to-orange-500',
+  aura_farmer:    'from-purple-500 via-violet-500 to-indigo-600',
+  final_boss:     'from-rose-600 via-red-700 to-stone-900',
+  rizzler:        'from-cyan-400 via-pink-500 to-violet-600',
+  chosen_one:     'from-yellow-300 via-amber-400 to-rose-500',
+  speedrunner:    'from-lime-400 via-emerald-500 to-cyan-500',
+  cracked:        'from-cyan-400 via-blue-500 to-purple-600',
+};
 
 interface StudentGreetingCardProps {
   user: AppUser;
@@ -117,16 +143,42 @@ export default function StudentGreetingCard({
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
+  // Title gradient WINS over the default indigo→violet→fuchsia.
+  // Picking a title is a "I earned this" moment, so the whole card
+  // recolours.  Without an equipped title, fall back to the original
+  // background.
+  const titleGradient = equippedTitle
+    ? (TITLE_GRADIENTS[equippedTitle.id] ?? TITLE_GRADIENTS.default)
+    : TITLE_GRADIENTS.default;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-[28px] sm:rounded-[32px] mb-6 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 sm:p-7 shadow-xl shadow-violet-500/20"
+      className={`relative overflow-hidden rounded-[28px] sm:rounded-[32px] mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
     >
       {/* Soft glow blobs in the background — pure decoration */}
       <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-pink-400/30 rounded-full blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 bg-cyan-400/25 rounded-full blur-3xl" />
+
+      {/* TITLE BANNER — fabulous trophy ribbon centred above everything
+          else when a title is equipped.  Mirrors IdentityHero's banner
+          so both dashboards (legacy + structure-UX) now treat equip as
+          a major status statement rather than a small chip below the
+          name.  Two crowns flank the title in big bold tracking-wide
+          letters; pure white pill so it pops on every gradient. */}
+      {equippedTitle && (
+        <div className="relative mb-4 flex justify-center">
+          <div className="inline-flex items-center gap-2 sm:gap-3 bg-white/95 text-stone-900 rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-2xl ring-2 ring-white/40">
+            <Crown size={18} className="text-amber-500 fill-amber-300 drop-shadow" aria-hidden />
+            <span className="text-base sm:text-xl font-black tracking-wide leading-none">
+              {equippedTitle.display}
+            </span>
+            <Crown size={18} className="text-amber-500 fill-amber-300 drop-shadow scale-x-[-1]" aria-hidden />
+          </div>
+        </div>
+      )}
 
       <div className="relative flex items-center gap-4 sm:gap-5">
         {/* Animated avatar — much bigger now (24x24 mobile, 32x32 desktop)
@@ -215,13 +267,11 @@ export default function StudentGreetingCard({
               )}
             </h1>
           )}
-          {/* Title + class code inline */}
+          {/* XP-derived level chip + class code inline.  Only shown when
+              NO title is equipped — when one IS, the big banner above
+              already says it loud.  Shows nothing redundant either way. */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            {equippedTitle ? (
-              <span className="bg-white/25 backdrop-blur-sm text-white font-black uppercase tracking-wider px-3 py-0.5 rounded-full border border-white/40 flex items-center gap-1 shadow-sm">
-                🏆 {equippedTitle.display}
-              </span>
-            ) : (
+            {!equippedTitle && (
               <span className="bg-white/20 backdrop-blur-sm text-white font-bold px-2.5 py-0.5 rounded-full border border-white/30 flex items-center gap-1">
                 {xpTitle.emoji} {xpTitle.title}
               </span>
