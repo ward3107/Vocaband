@@ -20,7 +20,7 @@
 # ─── Identity ──────────────────────────────────────────────────────
 # `fly launch` will prompt to use an existing app or create a new one.
 # Pick a name like `vocaband-api`; whatever you pick goes here.
-app = "vocaband-api"
+app = "vocaband"
 
 # Frankfurt — closest free Fly region to Israel; cdg (Paris) and ams
 # (Amsterdam) are also reasonable.  Adding more regions makes
