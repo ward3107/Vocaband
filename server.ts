@@ -572,9 +572,23 @@ async function startServer() {
   const qpPendingBroadcasts = new Set<string>();
   let qpBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Rate limiters — sized for a real classroom, not a server-sanity
-  // test. 25 kids all scanning at 08:05 must all succeed.
-  const qpJoinLimiter       = createSocketRateLimiter(60_000, 120, 5 * 60_000); // 120 joins/min/IP
+  // Rate limiters — sized for a real classroom on a school's NAT'd
+  // Wi-Fi where ALL students hit the server from one external IP.
+  //
+  // Old qpJoinLimiter sat at 120 handshakes/min/IP, which the
+  // 2026-04-25 audit caught as the silent reason "30 students
+  // joined but only some show up on the dashboard": the school
+  // shares one IP across multiple classrooms, students refresh /
+  // reconnect on flaky Wi-Fi, and the bucket fills inside a minute.
+  // Subsequent socket handshakes get rejected with `rate_limited` —
+  // the student's tab silently never connects, and the teacher's
+  // leaderboard stays at the count from before the cap.
+  //
+  // 600/min/IP comfortably handles two ~40-student classes joining
+  // at the bell + a stream of reconnects, while still blocking an
+  // actual handshake-flood attack (which would have to sustain
+  // ~10/sec to hit even the new ceiling).
+  const qpJoinLimiter       = createSocketRateLimiter(60_000, 600, 5 * 60_000); // 600 handshakes/min/IP
   const qpScoreLimiter      = createSocketRateLimiter(5_000,   30, 5 * 60_000); //  30 updates/5s/socket
   const qpTeacherLimiter    = createSocketRateLimiter(60_000,  60, 5 * 60_000); //  60 teacher actions/min
 
