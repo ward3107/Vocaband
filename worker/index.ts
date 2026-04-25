@@ -22,7 +22,12 @@ interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
 }
 
-const API_BACKEND = "https://api.vocaband.com";
+// 2026-04-25: migrated from Render (api.vocaband.com) to Fly.io.
+// Render hit its pipeline-minutes spend cap; Fly's auto_stop_machines
+// suspends the VM during off-hours so school-hours-only traffic costs
+// ~$0/month.  The Worker proxy URL change is the only client-side
+// effect — students still see vocaband.com.
+const API_BACKEND = "https://vocaband.fly.dev";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
