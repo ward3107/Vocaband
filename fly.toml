@@ -1,23 +1,68 @@
 # fly.toml app configuration file generated for vocaband on 2026-04-25T17:59:35Z
 #
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+# What runs here:
+#   * Express on /api/*   (translate, OCR, AI sentences, health)
+#   * socket.io on /socket.io/  (Live Challenge + Quick Play)
 #
+# What does NOT run here:
+#   * The SPA (built by Cloudflare Pages → vocaband.com)
+#   * The Worker proxy (Cloudflare Worker → routes /api/* +
+#     /socket.io/* to this Fly service via API_BACKEND constant in
+#     worker/index.ts)
+#
+# Why Fly: auto-stop kicks in after the school day, idle nights /
+# weekends / holidays cost ~$0.  Same socket.io code runs unchanged.
+#
+# Deploy: `fly deploy` (uses Dockerfile + fly.toml in this dir).
+# Logs:   `fly logs`
+# SSH:    `fly ssh console`
 
 app = 'vocaband'
 primary_region = 'fra'
 
 [build]
 
+# ─── HTTP service ─────────────────────────────────────────────────
+# Fly's `http_service` handles HTTPS termination, HTTP/2, and
+# WebSocket upgrades transparently.  socket.io connections survive
+# unchanged through Fly's edge proxy.
 [http_service]
   internal_port = 3000
   force_https = true
+  # Auto-suspend when nobody's connected.  Wakes in <1 s on the next
+  # request.  This is the entire reason for picking Fly over Render
+  # for a school-hours app.
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
   processes = ['app']
 
+  # Per-VM concurrency: a single QP class with 30 students translates
+  # to ~30 active socket.io connections + a few teacher observers.
+  # 200 hard / 100 soft gives plenty of headroom for several
+  # simultaneous classrooms before Fly auto-scales to a second VM.
+  [http_service.concurrency]
+    type = 'connections'
+    hard_limit = 200
+    soft_limit = 100
+
+  # Health check.  server.ts already exposes /api/health.  `grace_period`
+  # gives the Node process time to JIT-compile + open the DB pool on
+  # cold boot before the first probe fires.
+  [[http_service.checks]]
+    grace_period = '30s'
+    interval = '30s'
+    method = 'GET'
+    timeout = '5s'
+    path = '/api/health'
+
+# ─── VM size ──────────────────────────────────────────────────────
+# 512 MB is the sweet spot.  256 MB OOM-killed Node within seconds of
+# boot (tsx JIT + supabase-js + sharp pushes RSS past 256 MB before the
+# server even finishes starting).  512 MB is still cheap on the Hobby
+# plan (~$3/mo if always-on; auto-stop drops it close to $0).
 [[vm]]
-  memory = '1gb'
+  size = 'shared-cpu-1x'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256
