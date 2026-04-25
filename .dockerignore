@@ -1,0 +1,41 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+!.env.production
+
+# Firebase rules (deploy via firebase CLI, not git)
+firestore.rules
+# firebase-applet-config.json is tracked — client config is not a secret
+
+# Dev tool artifacts
+.playwright-mcp/
+.superpowers/
+.wrangler/
+test-results/
+
+# Backup files
+*.backup
+*.backup_*
+*.bak
+*.orig
+test-ocr-flow.js
+venv_ocr/
+__pycache__/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+test-results/
+playwright-report/
+
+tmp/
+
+tmp/
+
+temp-audio/
