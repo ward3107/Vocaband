@@ -602,8 +602,22 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                         ) : isOwned ? (
                           <button
                             onClick={async () => {
+                              const prevTitle = user.activeTitle ?? null;
                               setUser(prev => prev ? { ...prev, activeTitle: title.id } : prev);
-                              await supabase.from('users').update({ active_title: title.id }).eq('uid', user.uid);
+                              const { error } = await supabase
+                                .from('users')
+                                .update({ active_title: title.id })
+                                .eq('uid', user.uid);
+                              if (error) {
+                                // Revert optimistic state so the dashboard
+                                // stays in sync with the DB.  Surfacing
+                                // the message instead of the previous
+                                // silent "equipped!" lie tells the student
+                                // (or us in support) why nothing changed.
+                                setUser(prev => prev ? { ...prev, activeTitle: prevTitle } : prev);
+                                showToast(`Couldn't equip title: ${error.message}`, "error");
+                                return;
+                              }
                               showToast("Title equipped!", "success");
                             }}
                             type="button"
@@ -682,8 +696,19 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                           ) : isOwned ? (
                             <button
                               onClick={async () => {
+                                const prevFrame = user.activeFrame ?? null;
                                 setUser(prev => prev ? { ...prev, activeFrame: frame.id } : prev);
-                                await supabase.from('users').update({ active_frame: frame.id }).eq('uid', user.uid);
+                                const { error } = await supabase
+                                  .from('users')
+                                  .update({ active_frame: frame.id })
+                                  .eq('uid', user.uid);
+                                if (error) {
+                                  // Revert + surface — see Title equip
+                                  // handler above for the same rationale.
+                                  setUser(prev => prev ? { ...prev, activeFrame: prevFrame } : prev);
+                                  showToast(`Couldn't equip frame: ${error.message}`, "error");
+                                  return;
+                                }
                                 showToast("Frame equipped!", "success");
                               }}
                               type="button"
