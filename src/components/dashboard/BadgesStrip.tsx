@@ -6,27 +6,48 @@ interface BadgesStripProps {
   earned: string[];
 }
 
-// Canonical badge catalogue — the student earns these when the backend
-// awards them. This list lets us show locked placeholders alongside the
-// earned ones so students see what they can still collect.
+// Canonical badge catalogue — must mirror the strings actually
+// `awardBadge(...)` is called with elsewhere in the codebase.  The
+// previous catalogue used neat ids (`first_win`, `perfect`, …) but the
+// game-finish path awards emoji-prefixed display strings
+// (`"🎯 Perfect Score"`), so the matcher returned false for every
+// real-life earned badge — students saw "5/10" but every tile was
+// locked.  Realigned to the awarded strings; loose matching below
+// covers any teacher-given custom badges.
 const ALL_BADGES: Array<{ id: string; emoji: string; name: string; desc: string }> = [
-  { id: 'first_win',   emoji: '🎯', name: 'First Win',      desc: 'Complete your first assignment' },
-  { id: 'streak_3',    emoji: '🔥', name: '3-Day Streak',    desc: 'Play 3 days in a row' },
-  { id: 'streak_7',    emoji: '🌟', name: 'Week Warrior',    desc: '7-day streak' },
-  { id: 'streak_30',   emoji: '💎', name: 'Diamond Streak',  desc: '30-day streak' },
-  { id: 'perfect',     emoji: '💯', name: 'Perfect Round',   desc: '100% on any mode' },
-  { id: 'speedster',   emoji: '⚡', name: 'Speedster',       desc: 'Finish a game in record time' },
-  { id: 'scholar',     emoji: '📚', name: 'Scholar',         desc: '50 words mastered' },
-  { id: 'legend',      emoji: '👑', name: 'Legend',          desc: '500 XP earned' },
-  { id: 'night_owl',   emoji: '🦉', name: 'Night Owl',       desc: 'Play after 9 PM' },
-  { id: 'early_bird',  emoji: '🌅', name: 'Early Bird',      desc: 'Play before 8 AM' },
+  { id: '🎯 Perfect Score',  emoji: '🎯', name: 'Perfect Score',  desc: '100% on any mode' },
+  { id: '🔥 Streak Master',  emoji: '🔥', name: 'Streak Master',  desc: '5-day streak' },
+  { id: '💎 XP Hunter',      emoji: '💎', name: 'XP Hunter',      desc: '500 XP earned' },
+  { id: '🏆 XP Champion',    emoji: '🏆', name: 'XP Champion',    desc: '1,000 XP earned' },
+  { id: '🌟 Week Warrior',   emoji: '🌟', name: 'Week Warrior',   desc: '7-day streak' },
+  { id: '📚 Scholar',        emoji: '📚', name: 'Scholar',        desc: '50 words mastered' },
+  { id: '⚡ Speedster',      emoji: '⚡', name: 'Speedster',      desc: 'Quick win' },
+  { id: '👑 Legend',         emoji: '👑', name: 'Legend',         desc: 'Top of the class' },
+  { id: '🦉 Night Owl',      emoji: '🦉', name: 'Night Owl',      desc: 'Play after 9 PM' },
+  { id: '🌅 Early Bird',     emoji: '🌅', name: 'Early Bird',     desc: 'Play before 8 AM' },
 ];
 
+// Strip emoji + diacritics + whitespace for case-insensitive
+// fuzzy compare so "🎯 Perfect Score" matches "Perfect Score" and
+// "perfect score".  Helps teacher-awarded freeform badges line up
+// with the catalogue when the wording is close.
+function normalize(s: string): string {
+  return s
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 export default function BadgesStrip({ earned }: BadgesStripProps) {
-  // Match earned badges by either canonical id OR loose name match
-  // (existing badges might be stored as free text).
-  const isEarned = (b: { id: string; name: string }) =>
-    earned.some(e => e === b.id || e.toLowerCase() === b.name.toLowerCase());
+  const isEarned = (b: { id: string; name: string }) => {
+    const targetId = normalize(b.id);
+    const targetName = normalize(b.name);
+    return earned.some(e => {
+      const ne = normalize(e);
+      return ne === targetId || ne === targetName;
+    });
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 sm:p-5 mb-6">

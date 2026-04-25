@@ -22,7 +22,7 @@
  *   - clientId is persisted in localStorage so a full page refresh
  *     lands the same identity back on the leaderboard.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { loadSocketIO } from "../utils/lazyLoad";
 import {
@@ -39,6 +39,7 @@ import {
 } from "../core/quickPlayProtocol";
 
 const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
+const CLIENT_ID_NICK_STORAGE_KEY = "vocaband_qp_client_id_nickname";
 
 // Generate a UUID that works on every browser we support (some older
 // mobile Safari builds lack crypto.randomUUID).
@@ -53,20 +54,48 @@ function generateUuid(): string {
   });
 }
 
-function getOrCreateClientId(): string {
+function readStoredClientId(): string | null {
   try {
     const existing = localStorage.getItem(CLIENT_ID_STORAGE_KEY);
     if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing)) {
       return existing;
     }
-    const fresh = generateUuid();
-    localStorage.setItem(CLIENT_ID_STORAGE_KEY, fresh);
-    return fresh;
-  } catch {
-    // Private mode / disabled storage — fall back to an in-memory UUID
-    // for the life of the tab.
-    return generateUuid();
-  }
+  } catch { /* private mode etc. */ }
+  return null;
+}
+
+function writeStoredClientId(id: string, nickname: string | null) {
+  try {
+    localStorage.setItem(CLIENT_ID_STORAGE_KEY, id);
+    if (nickname) localStorage.setItem(CLIENT_ID_NICK_STORAGE_KEY, nickname.toLowerCase());
+  } catch { /* fall through — in-memory still works for the tab */ }
+}
+
+function getOrCreateClientId(): string {
+  const existing = readStoredClientId();
+  if (existing) return existing;
+  const fresh = generateUuid();
+  writeStoredClientId(fresh, null);
+  return fresh;
+}
+
+/** Returns the clientId to use for THIS join attempt.  If a previous
+ *  student on the same browser/device cached a clientId tied to a
+ *  different nickname (shared phone, sibling at home, classroom
+ *  Chromebook), generate a fresh UUID so the server-side leaderboard
+ *  entry doesn't get overwritten — the JOIN handler does
+ *  `state.students.set(clientId, …)`, so identical clientIds across
+ *  different students collapse into one row.  Same nickname keeps the
+ *  previous id (refresh / reconnect should not zero the score). */
+function clientIdForJoin(nickname: string): string {
+  let lastNick: string | null = null;
+  try { lastNick = localStorage.getItem(CLIENT_ID_NICK_STORAGE_KEY); } catch { /* ignore */ }
+  const cached = readStoredClientId();
+  const norm = nickname.trim().toLowerCase();
+  if (cached && lastNick === norm) return cached;
+  const fresh = generateUuid();
+  writeStoredClientId(fresh, nickname);
+  return fresh;
 }
 
 export type QuickPlaySocketStatus =
@@ -164,7 +193,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const [lastError, setLastError] = useState<QuickPlaySocketApi["lastError"]>(null);
 
   const socketRef = useRef<Socket | null>(null);
-  const clientId = useMemo(() => getOrCreateClientId(), []);
+  // clientId starts as whatever's cached (or a fresh UUID if nothing is).
+  // It's MUTABLE — `joinAsStudent` may swap it out when a different
+  // student joins on the same device, to avoid clobbering the previous
+  // student's leaderboard entry server-side.
+  const [clientId, setClientId] = useState<string>(() => getOrCreateClientId());
 
   // Callback refs for one-shot events — set via the `on*` helpers.
   const kickedRef = useRef<((p: QpKickedPayload) => void) | null>(null);
@@ -261,6 +294,16 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const joinAsStudent = useCallback(async (nickname: string, avatar: string = "🦊") => {
     if (!sessionCode || !socketRef.current) return;
     lastJoinRef.current = { nickname, avatar };
+    // Pick a clientId scoped to this nickname.  If a different student
+    // (shared phone / Chromebook / family iPad) is joining with a new
+    // name, this returns a FRESH uuid so the server-side
+    // `state.students.set(clientId, …)` doesn't overwrite the previous
+    // student's entry — that was the "only one student is visible at a
+    // time" report.  Same nickname returns the cached uuid so refresh
+    // and reconnect keep the existing score.
+    const idForThisJoin = clientIdForJoin(nickname);
+    if (idForThisJoin !== clientId) setClientId(idForThisJoin);
+
     // Include the Supabase auth uid so the server can persist a real
     // progress row on TEACHER_END.  Optional — older server builds
     // simply ignore the field and the leaderboard still works in
@@ -270,7 +313,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     const { data: { session } } = await supabase.auth.getSession();
     const authUid = session?.user?.id;
     socketRef.current.emit(QP_EVENTS.STUDENT_JOIN, {
-      sessionCode, clientId, nickname, avatar, authUid,
+      sessionCode, clientId: idForThisJoin, nickname, avatar, authUid,
     });
   }, [sessionCode, clientId]);
 

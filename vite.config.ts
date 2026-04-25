@@ -106,6 +106,21 @@ export default defineConfig(() => {
               handler: 'NetworkOnly',
             },
             {
+              // Root path with any query string — the Classroom v2
+              // tab routing produces URLs like `/?tab=reports`, and
+              // the same redirect-cache bug bit those: SW captures a
+              // redirected response (apex→www, etc.), then a popstate
+              // navigation later refuses to consume it because the
+              // browser's redirect mode is "manual".  Teacher saw
+              // "This site can't be reached / a redirected response
+              // was used …".  NetworkOnly skips the SW for any
+              // navigation carrying a query string, which has no
+              // sane cacheable shape anyway.
+              urlPattern: ({ request, url }) =>
+                request.mode === 'navigate' && url.search.length > 0,
+              handler: 'NetworkOnly',
+            },
+            {
               // The HTML shell — NEVER trust the cache first.  Short
               // network timeout so offline boot falls back to cache
               // quickly instead of hanging.
