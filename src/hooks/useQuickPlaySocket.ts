@@ -176,7 +176,10 @@ async function getSocket(): Promise<Socket> {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 10_000,
     randomizationFactor: 0.5,
-    transports: ["websocket", "polling"],
+    // polling first so iOS Safari 15 + corporate proxies that fail the
+    // WebSocket upgrade don't get stuck — socket.io upgrades to WS
+    // automatically once polling is established.
+    transports: ["polling", "websocket"],
   }) as Socket;
 
   cachedSocket = socket;
