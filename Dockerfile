@@ -1,45 +1,33 @@
-# syntax = docker/dockerfile:1
+# Vocaband API server — Docker image for Fly.io
+#
+# Single-stage build: keeps tsx (which lives in devDependencies and
+# the start script needs at runtime).  The earlier multi-stage version
+# Fly's Launch wizard generated tried to `npm prune --omit=dev`, which
+# stripped tsx and made the container crash-loop with `tsx: not found`.
+#
+# The frontend is NOT built here — Cloudflare Pages serves the SPA at
+# vocaband.com.  Fly only hosts /api/* + /socket.io/* (Express +
+# socket.io from server.ts).
+#
+# Build: `fly deploy` (Fly's builder runs this automatically)
+# Run:   `npm run start`  (= `NODE_ENV=production tsx server.ts`)
 
-# Adjust NODE_VERSION as desired
-ARG NODE_VERSION=22.21.1
-FROM node:${NODE_VERSION}-slim AS base
+FROM node:20-alpine
 
-LABEL fly_launch_runtime="Node.js"
-
-# Node.js app lives here
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV="production"
+# Layer the dep install so a code-only change doesn't bust the cache.
+# `--legacy-peer-deps` works around a peer-dep conflict between
+# @eslint/js@10 (peerOptional eslint^10) and the project's eslint@9.
+# `--include=dev` forces devDependencies to install regardless of any
+# ambient NODE_ENV=production set by Fly's builder — tsx is in devDeps
+# and the start script needs it at runtime.
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps --include=dev
 
-
-# Throw-away build stage to reduce size of final image
-FROM base AS build
-
-# Install packages needed to build node modules
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
-
-# Install node modules
-COPY .npmrc package-lock.json package.json ./
-RUN npm ci --include=dev
-
-# Copy application code
 COPY . .
 
-# Build application
-RUN npm run build
-
-# Remove development dependencies
-RUN npm prune --omit=dev
-
-
-# Final stage for app image
-FROM base
-
-# Copy built application
-COPY --from=build /app /app
-
-# Start the server by default, this can be overwritten at runtime
+ENV NODE_ENV=production
 EXPOSE 3000
-CMD [ "npm", "run", "start" ]
+
+CMD ["npm", "run", "start"]
