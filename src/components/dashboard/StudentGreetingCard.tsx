@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon } from "lucide-react";
-import { getXpTitle } from "../../constants/game";
+import { getXpTitle, NAME_FRAMES, NAME_TITLES } from "../../constants/game";
 import type { AppUser } from "../../core/supabase";
 
 interface StudentGreetingCardProps {
