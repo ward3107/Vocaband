@@ -254,6 +254,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         }
       };
       const onKicked = (p: QpKickedPayload) => {
+        // Once the server tells this client they've been kicked, drop
+        // the cached lastJoin so socket.io's auto-reconnect doesn't
+        // immediately replay STUDENT_JOIN and put the kicked student
+        // straight back on the leaderboard.  Server now also blocks
+        // re-joins from kicked clientIds (kickedClientIds set on the
+        // session state), but belt-and-suspenders here keeps the UI
+        // tab from oscillating between "kicked" and "rejoined" if the
+        // server-side block ever drifts.
+        lastJoinRef.current = null;
         kickedRef.current?.(p);
       };
       const onSessionEnded = (p: QpSessionEndedPayload) => {

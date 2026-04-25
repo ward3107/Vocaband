@@ -169,7 +169,11 @@ export type QpErrorCode =
   | "session_full"
   | "nickname_taken"
   | "unauthorized"
-  | "internal_error";
+  | "internal_error"
+  // Sticky for the lifetime of an in-memory session: the teacher
+  // kicked this clientId, so reject any subsequent STUDENT_JOIN
+  // even if the client auto-reconnects.
+  | "kicked";
 
 export interface QpErrorPayload {
   event: string;
