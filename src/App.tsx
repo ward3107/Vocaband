@@ -1551,6 +1551,7 @@ export default function App() {
   // proven unreliable for these lists in practice.
   useDashboardPolling({
     user, view, classes, allScores,
+    pendingStudentsCount: pendingStudents.length,
     setStudentAssignments,
     loadPendingStudents,
     fetchScores,
