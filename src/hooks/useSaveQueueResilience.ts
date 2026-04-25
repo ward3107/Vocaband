@@ -72,9 +72,40 @@ export function useSaveQueueResilience(
             continue;
           }
           const { error } = await supabase.from('progress').insert(progress);
-          if (!error) localStorage.removeItem(key);
+          if (!error) {
+            localStorage.removeItem(key);
+            continue;
+          }
+          // The progress table has a UNIQUE constraint on
+          // (assignment_id, student_uid, mode, class_code), so retrying a
+          // row that the main upsert path already wrote returns a
+          // 23505 / "duplicate key" error.  Without this branch the
+          // localStorage entry would never get cleaned up — the same
+          // doomed INSERT would re-fire on every page load forever
+          // (a slow but real DB-spam pattern caught in the 2026-04-25
+          // request-volume audit).  Treat dup-key + foreign-key
+          // violations as "already handled, drop the retry".
+          const sqlState = (error as { code?: string }).code;
+          if (sqlState === '23505' || sqlState === '23503') {
+            localStorage.removeItem(key);
+            continue;
+          }
+          // Any other error → leave the entry in place so a future
+          // load can try again under different circumstances.
         } catch {
-          // Still offline — will retry on next load.
+          // Still offline or row malformed — will retry on next load.
+          // Cap retries at 5 per row so a permanently-broken JSON blob
+          // can't drive infinite retries either.
+          try {
+            const meta = JSON.parse(localStorage.getItem(`${key}__meta`) || '{}');
+            const tries = (meta.tries || 0) + 1;
+            if (tries >= 5) {
+              localStorage.removeItem(key);
+              localStorage.removeItem(`${key}__meta`);
+            } else {
+              localStorage.setItem(`${key}__meta`, JSON.stringify({ tries }));
+            }
+          } catch { /* localStorage full / private mode — give up gracefully */ }
         }
       }
     };

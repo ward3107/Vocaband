@@ -6,7 +6,7 @@ import {
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
-import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
+import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
 import { DateTimePicker } from '../DateTimePicker';
 
 // ── Derive assignment meta from selected modes ───────────────────────────────
@@ -214,10 +214,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
     );
   };
 
-  // Select-all toggle: if all selected, collapse to one; otherwise select all
+  // Select-all toggle: if all selected, collapse to the sensible default
+  // (everything except Sentence Builder, which needs extra config);
+  // otherwise select all.  Matches the new "default-on" assignment UX.
   const handleSelectAllToggle = () => {
     if (selectedModes.length >= ALL_GAME_MODE_IDS.length) {
-      onModesChange(['flashcards']);
+      onModesChange([...DEFAULT_ASSIGNMENT_MODE_IDS]);
     } else {
       onModesChange([...ALL_GAME_MODE_IDS]);
     }
@@ -284,104 +286,34 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {isAssignment ? 'Configure assignment' : 'Configure Quick Play'}
         </h2>
         <p className="text-stone-600">
-          {isAssignment ? 'Add details and choose game modes' : 'Optional: add a title for your records, then choose modes'}
+          {isAssignment ? 'Pick game modes first — we’ll suggest the rest' : 'Pick modes, then add an optional title'}
         </p>
       </div>
 
-      {/* ── Details section (title + instructions) ─────────────────────────── */}
-      {/* Previously this block was gated on isAssignment, but Quick Play
-          teachers also benefit from labelling a session ("Period 3 warm-up")
-          so it shows up in analytics and in the success screen. We keep
-          the fields optional for Quick Play and required for assignments
-          (the canProceed check at the top of the component enforces that). */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-5"
-      >
-        {/* The old Quick template grid lived here. Removed — teachers
-            now pick modes first (further down) and we auto-fill a
-            sensible title + instructions based on that selection via
-            deriveAssignmentMeta. They can still edit either field
-            afterwards; a one-time manual-edit flag stops the auto-fill
-            from overwriting their customization on subsequent mode
-            changes. */}
-        {isAssignment && selectedModes.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-3 text-center text-xs text-stone-500">
-            <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
-            Pick one or more game modes below and we'll suggest a title
-            automatically. You can always edit it.
-          </div>
-        )}
-
-        {/* Title & Instructions — shown for both assignment AND quick-play. */}
-        <div className="grid grid-cols-1 gap-3">
-          {/* Title */}
-          <div>
-            <label htmlFor="assignment-title" className="block text-xs font-bold text-stone-600 mb-1.5">
-              {isAssignment ? 'Assignment title ' : 'Session title '}
-              {isAssignment ? (
-                <span className="text-red-500">*</span>
-              ) : (
-                <span className="text-stone-400 font-normal">(optional)</span>
-              )}
-            </label>
-            <input
-              type="text"
-              id="assignment-title"
-              name="title"
-              autoComplete="off"
-              value={assignmentTitle}
-              onChange={(e) => {
-                titleManuallyEditedRef.current = true;
-                onTitleChange?.(e.target.value);
-              }}
-              placeholder={isAssignment
-                ? 'e.g., Fruits Vocabulary - Unit 5'
-                : 'e.g., Period 3 warm-up'}
-              className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
-            />
-          </div>
-
-          {/* Instructions */}
-          <div>
-            <label htmlFor="assignment-instructions" className="block text-xs font-bold text-stone-600 mb-1.5">
-              {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
-            </label>
-            <textarea
-              id="assignment-instructions"
-              name="instructions"
-              autoComplete="off"
-              value={assignmentInstructions}
-              onChange={(e) => {
-                instructionsManuallyEditedRef.current = true;
-                onInstructionsChange?.(e.target.value);
-              }}
-              placeholder={isAssignment
-                ? 'Add a note for your students...'
-                : 'e.g., Remember to use headphones'}
-              rows={2}
-              className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
-            />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ── Game Modes by Level ───────────────────────────────────────────── */}
+      {/* ── STEP 1 — Game modes ─────────────────────────────────────────────
+          Progressive flow redesign (2026-04-24): mode selection now comes
+          FIRST so teachers see the game catalogue immediately, not a set
+          of empty text fields.  Title + instructions auto-fill from the
+          selection and appear in Step 2 below.  Numeric step badges make
+          the flow obvious without forcing a multi-screen wizard inside
+          the already-wizarded Setup step. */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-4"
       >
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
-            <span>🎮</span> Game modes
-          </label>
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm shadow-md">1</span>
+            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+              <span>🎮</span> Game modes
+            </label>
+          </div>
           <button
             onClick={handleSelectAllToggle}
             className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
-            {selectedModes.length >= ALL_GAME_MODE_IDS.length ? 'Clear all' : 'Select all'}
+            {selectedModes.length >= ALL_GAME_MODE_IDS.length ? 'Reset default' : 'Select all'}
           </button>
         </div>
 
@@ -499,12 +431,123 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <span>Mastery</span>
           </div>
         </div>
+
+        {/* Progress nudge — a subtle "↓ next step" indicator that only
+            appears once the teacher has actually picked a mode.  Helps
+            answer the teacher's complaint that the page didn't guide
+            them downward after the first action. */}
+        {selectedModes.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center pt-2"
+          >
+            <motion.span
+              animate={{ y: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8 }}
+              className="text-stone-400 text-xl leading-none"
+              aria-hidden
+            >
+              ↓
+            </motion.span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">next: name it</span>
+          </motion.div>
+        )}
       </motion.div>
 
-      {/* ── Sentence Difficulty — only when sentence-builder is selected ──── */}
+      {/* ── STEP 2 — Details (title + instructions) ─────────────────────────
+          Revealed once Step 1 has at least one mode picked.  Before the
+          first pick, we show the dashed placeholder card so teachers know
+          the section exists but also know why it's not interactive yet.
+          deriveAssignmentMeta() auto-fills both fields from the chosen
+          modes; teachers can still overwrite, and once they type we stop
+          overwriting their text on subsequent mode-picker changes. */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`space-y-4 ${selectedModes.length === 0 ? 'opacity-60' : ''}`}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-black text-sm shadow-md transition-colors ${
+            selectedModes.length === 0
+              ? 'bg-stone-300 text-stone-500'
+              : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white'
+          }`}>2</span>
+          <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+            <span>✏️</span> {isAssignment ? 'Name and instruct' : 'Label this session'}
+          </label>
+        </div>
+
+        {isAssignment && selectedModes.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-4 text-center text-xs text-stone-500">
+            <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
+            Pick one or more game modes above and we'll suggest a title
+            automatically. You can always edit it.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            {/* Title */}
+            <div>
+              <label htmlFor="assignment-title" className="block text-xs font-bold text-stone-600 mb-1.5">
+                {isAssignment ? 'Assignment title ' : 'Session title '}
+                {isAssignment ? (
+                  <span className="text-red-500">*</span>
+                ) : (
+                  <span className="text-stone-400 font-normal">(optional)</span>
+                )}
+              </label>
+              <input
+                type="text"
+                id="assignment-title"
+                name="title"
+                autoComplete="off"
+                value={assignmentTitle}
+                onChange={(e) => {
+                  titleManuallyEditedRef.current = true;
+                  onTitleChange?.(e.target.value);
+                }}
+                placeholder={isAssignment
+                  ? 'e.g., Fruits Vocabulary - Unit 5'
+                  : 'e.g., Period 3 warm-up'}
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
+              />
+            </div>
+
+            {/* Instructions */}
+            <div>
+              <label htmlFor="assignment-instructions" className="block text-xs font-bold text-stone-600 mb-1.5">
+                {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
+              </label>
+              <textarea
+                id="assignment-instructions"
+                name="instructions"
+                autoComplete="off"
+                value={assignmentInstructions}
+                onChange={(e) => {
+                  instructionsManuallyEditedRef.current = true;
+                  onInstructionsChange?.(e.target.value);
+                }}
+                placeholder={isAssignment
+                  ? 'Add a note for your students...'
+                  : 'e.g., Remember to use headphones'}
+                rows={2}
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
+              />
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── STEP 3 — Sentence Difficulty (only when sentence-builder is on) ── */}
       {selectedModes.includes('sentence-builder') && (
         <div className="space-y-3">
-          <label className="block text-sm font-bold text-stone-900">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white font-black text-sm shadow-md">3</span>
+            <label className="block text-sm font-bold text-stone-900">
+              Sentence Builder Setup
+            </label>
+          </div>
+          <label className="block text-xs font-bold text-stone-600 mt-2">
             Sentence Difficulty Level
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -672,17 +715,22 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </div>
       )}
 
-      {/* ── Schedule (Assignment-only) - compact 2026 design ─────────────────── */}
+      {/* ── STEP — Schedule (Assignment-only) ─────────────────────────────── */}
       {isAssignment && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-3"
         >
-          <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
-            <Calendar size={14} className="text-indigo-500" />
-            Schedule (optional)
-          </label>
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white font-black text-sm shadow-md">
+              {selectedModes.includes('sentence-builder') ? '4' : '3'}
+            </span>
+            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+              <Calendar size={14} className="text-indigo-500" />
+              Schedule (optional)
+            </label>
+          </div>
           <div>
             <label className="block text-xs text-stone-500 mb-1.5">Deadline</label>
             <DateTimePicker
@@ -694,8 +742,15 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </motion.div>
       )}
 
-      {/* ── Navigation ───────────────────────────────────────────────────── */}
-      <div className="flex gap-3 pt-4 pb-6 sm:pb-2">
+      {/* Spacer so the last section doesn't sit under the mobile sticky bar. */}
+      <div className="sm:hidden h-24" />
+
+      {/* ── Navigation ─────────────────────────────────────────────────────
+          Sticky on mobile — a long word list + long mode list + optional
+          sentence panel makes the step tall enough that a non-sticky
+          "Next" falls off the bottom of the phone.  Desktop keeps the
+          inline layout since the full step fits in one viewport. */}
+      <div className="flex gap-3 pt-4 pb-2 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-2">
         <button
           onClick={onBack}
           className="flex-1 py-3 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"

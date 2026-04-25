@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
-import { WizardMode, AssignmentData, ALL_GAME_MODE_IDS } from './types';
+import { WizardMode, AssignmentData, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS } from './types';
 import { WordInputStep } from './WordInputStep';
 import { WordInputStep2026 } from './WordInputStep2026';
 import { ConfigureStep } from './ConfigureStep';
@@ -178,7 +178,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // ── Core Shared State ───────────────────────────────────────────────────────
   const [selectedWords, setSelectedWords] = useState<Word[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>(
-    mode === 'quick-play' ? ALL_GAME_MODE_IDS : ['flashcards']
+    mode === 'quick-play' ? ALL_GAME_MODE_IDS : DEFAULT_ASSIGNMENT_MODE_IDS
   );
 
   // ── Pre-populate from editing assignment ─────────────────────────────────────

@@ -140,11 +140,17 @@ export default defineConfig(() => {
             {
               // Word-audio MP3s served from Supabase Storage.  Cache
               // so a repeat game on weak Wi-Fi has the clip already.
+              // Bumped 500 → 2000 on 2026-04-25 — the dataset has
+              // ~9000 unique words, so a 500-entry LRU evicted half
+              // the cache for any teacher who used multiple
+              // assignments in a session, forcing re-fetches against
+              // Supabase Storage on every replay.  ~30 KB per MP3 ×
+              // 2000 = ~60 MB of cache, well within the SW budget.
               urlPattern: /\/storage\/v1\/object\/public\/sound\//,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-word-audio',
-                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 180 },
+                expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 180 },
               },
             },
             {

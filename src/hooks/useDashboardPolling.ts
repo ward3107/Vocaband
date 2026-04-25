@@ -10,23 +10,36 @@
  * subscriptions without surfacing), so cheap indexed polling is
  * the safety net.
  *
- *   1. Student assignments (30 s) — new assignments from the
+ *   1. Student assignments (60 s) — new assignments from the
  *      teacher appear on the student dashboard without relogin.
  *      Caches the class-id lookup so we don't query the classes
- *      table every 30 s.
+ *      table every cycle.  60 s is plenty given that assignments
+ *      ship a couple times per week, not per minute.
  *
- *   2. Teacher pending-student approvals (10 s) — approval tray
- *      always reflects reality within ~10 s regardless of
- *      realtime health.  Also refires whenever the async classes
- *      list finally resolves, because `loadPendingStudents`
- *      early-returns on `classes.length === 0`.
+ *   2. Teacher pending-student approvals — adaptive interval:
+ *        * 10 s while at least one student is sitting in
+ *          'pending_approval' (so the teacher sees the approval
+ *          land and reacts in under a card-flip)
+ *        * 60 s otherwise (the steady-state when no one is queued).
+ *      Plus a refetch on every tab refocus, so a teacher coming
+ *      back from another tab sees fresh state immediately.
+ *      Previously a flat 10 s poll meant 8 640 requests / teacher
+ *      / day even when nothing was happening.  The adaptive form
+ *      drops that by ~80 % at scale.
  *
- *   3. Teacher class scores (20 s, Classroom/Analytics/Gradebook
+ *   3. Teacher class scores (45 s, Classroom/Analytics/Gradebook
  *      only) — students complete assignments at any moment; the
- *      teacher should see the new score land without a full
- *      refresh.  Initial fetch is guarded by
- *      `allScores.length === 0` so every view-switch inside the
- *      Classroom cluster doesn't re-hit the DB.
+ *      teacher should see new scores land without a full refresh.
+ *      Initial fetch is guarded by `allScores.length === 0` so
+ *      every view-switch inside the Classroom cluster doesn't
+ *      re-hit the DB.  45 s replaces the old 20 s — gradebook
+ *      isn't a stopwatch.
+ *
+ * Intervals were tightened on 2026-04-25 after a Supabase bill
+ * audit showed dashboard polling alone was eating tens of millions
+ * of requests per month.  All three loops still refetch on tab
+ * focus via the visibilitychange listeners, so users coming back
+ * to the tab still see fresh data without waiting for a tick.
  */
 import { useEffect } from 'react';
 import {
@@ -44,6 +57,9 @@ export interface UseDashboardPollingParams {
   view: View;
   classes: ClassData[];
   allScores: ProgressData[];
+  /** Drives the adaptive teacher-approval poll. > 0 → fast loop
+   *  (something to watch); === 0 → slow loop. */
+  pendingStudentsCount: number;
   setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
   /** Fetcher from useTeacherData that hydrates `pendingStudents`. */
   loadPendingStudents: () => void | Promise<void>;
@@ -51,19 +67,25 @@ export interface UseDashboardPollingParams {
   fetchScores: () => void | Promise<void>;
 }
 
+const STUDENT_ASSIGNMENTS_POLL_MS = 60_000;
+const TEACHER_APPROVALS_FAST_POLL_MS = 10_000;  // when 1+ pending
+const TEACHER_APPROVALS_SLOW_POLL_MS = 60_000;  // when none pending
+const TEACHER_SCORES_POLL_MS = 45_000;
+
 export function useDashboardPolling(params: UseDashboardPollingParams): void {
   const {
     user, view, classes, allScores,
+    pendingStudentsCount,
     setStudentAssignments,
     loadPendingStudents,
     fetchScores,
   } = params;
 
-  // ─── 1. Student assignments: 30 s poll on the student dashboard ───
+  // ─── 1. Student assignments: 60 s poll on the student dashboard ───
   useEffect(() => {
     if (user?.role !== 'student' || view !== 'student-dashboard' || !user.classCode) return;
     const code = user.classCode;
-    // Cache the class id so we don't re-query `classes` every 30 s.
+    // Cache the class id so we don't re-query `classes` every cycle.
     let cachedClassId: string | null = null;
     const refresh = async () => {
       // Double-check the user is still logged in (prevents DB calls after logout).
@@ -80,11 +102,11 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
       setStudentAssignments((data ?? []).map(mapAssignment));
     };
     refresh();
-    const id = setInterval(refresh, 30_000);
+    const id = setInterval(refresh, STUDENT_ASSIGNMENTS_POLL_MS);
     return () => clearInterval(id);
   }, [user, view, setStudentAssignments]);
 
-  // ─── 2. Teacher pending-student approvals: 10 s poll + visibility ─
+  // ─── 2. Teacher pending-student approvals: adaptive 10 s / 60 s ───
   useEffect(() => {
     // Trigger on: fresh teacher dashboard mount, dashboard re-entry,
     // OR the async classes list finally arriving (common race —
@@ -96,9 +118,16 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     }
     loadPendingStudents();
 
+    // Adaptive cadence — fast when there are pending approvals (the
+    // teacher is actively waiting for them to clear), slow otherwise.
+    // The interval re-binds when pendingStudentsCount crosses zero so
+    // we never sit at 10 s polling against an empty queue.
+    const intervalMs = pendingStudentsCount > 0
+      ? TEACHER_APPROVALS_FAST_POLL_MS
+      : TEACHER_APPROVALS_SLOW_POLL_MS;
     const pollId = setInterval(() => {
       if (!document.hidden) loadPendingStudents();
-    }, 10_000);
+    }, intervalMs);
 
     const handleVisibility = () => {
       if (!document.hidden) loadPendingStudents();
@@ -109,9 +138,9 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
       clearInterval(pollId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [user?.role, view, classes.length, loadPendingStudents]);
+  }, [user?.role, view, classes.length, loadPendingStudents, pendingStudentsCount]);
 
-  // ─── 3. Teacher class scores: 20 s poll + visibility ──────────────
+  // ─── 3. Teacher class scores: 45 s poll + visibility ──────────────
   useEffect(() => {
     if (user?.role !== 'teacher') return;
     if (classes.length === 0) return;
@@ -122,7 +151,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     if (allScores.length === 0) fetchScores();
     const pollId = setInterval(() => {
       if (!document.hidden) fetchScores();
-    }, 20_000);
+    }, TEACHER_SCORES_POLL_MS);
     const handleVisibility = () => {
       if (!document.hidden) fetchScores();
     };

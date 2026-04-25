@@ -145,10 +145,14 @@ export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxC
     };
 
     // Kick off immediately + set up polling for live surfacing.
+    // Bumped 15 s → 60 s on 2026-04-25 — teachers don't push rewards
+    // every minute, and the visibilitychange listener below refetches
+    // instantly when the student returns to the tab, so a longer
+    // baseline interval is invisible in practice.
     fetchRewards();
     const pollId = setInterval(() => {
       if (!document.hidden) fetchRewards();
-    }, 15_000);
+    }, 60_000);
     const handleVisibility = () => {
       if (!document.hidden) fetchRewards();
     };
