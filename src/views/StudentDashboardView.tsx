@@ -75,6 +75,20 @@ interface StudentDashboardViewProps {
       | { ok: true; displayName: string }
       | { ok: false; code: string; message: string }
     >;
+  /** Structure-progression state from `useStructure(user.uid)`.  Optional
+   *  so the legacy dashboard branch (the one production ships when
+   *  VITE_STRUCTURE_UX is unset) doesn't need a stub.  Without this prop
+   *  declaration the bundle was free-referencing a `structure` identifier
+   *  inside the gated block — a ReferenceError waited dormant until any
+   *  build flipped the flag (or any minifier/compiler choice ran the
+   *  branch eagerly).  Threading it through the props makes the
+   *  dependency explicit.  See `useStructure.ts`. */
+  structure?: StructureState;
+  /** Slot keys that just unlocked — pulsed on the structure detail
+   *  modal so the student sees what they earned.  Same dormant-bug
+   *  story as `structure` above; declaring the prop here closes the
+   *  free-reference. */
+  celebrateStructureKeys?: string[];
 }
 
 // Feature flag — set VITE_STRUCTURE_UX=true to enable the Phase 1
@@ -92,6 +106,8 @@ export default function StudentDashboardView({
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
   retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
   onRenameDisplayName,
+  structure,
+  celebrateStructureKeys = [],
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 

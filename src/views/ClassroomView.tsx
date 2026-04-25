@@ -190,8 +190,15 @@ export default function ClassroomView(props: ClassroomViewProps) {
         />
 
         {/* Desktop/tablet top nav — hidden on mobile where the bottom nav
-            takes over for thumb-reach. */}
-        <div className="hidden sm:block sticky top-[72px] sm:top-[80px] z-30 bg-background/90 backdrop-blur-md border-b border-stone-100 mt-24 sm:mt-32">
+            takes over for thumb-reach.
+            mt-32 sm:mt-40 = clear the TopAppBar's full height on every
+            viewport (the previous mt-24/sm:mt-32 was a hair short and
+            the top of the active-tab pill peeked above the AppBar's
+            bottom edge — teacher screenshot showed that as a "cutoff").
+            top-32 sm:top-40 keeps the same clearance applied to the
+            sticky position so scrolled-content doesn't slide back
+            under the AppBar either. */}
+        <div className="hidden sm:block sticky top-32 sm:top-40 z-30 bg-background/90 backdrop-blur-md border-b border-stone-100 mt-32 sm:mt-40">
           <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
             {V2_TABS.map(t => {
               const active = v2Tab === t.id;
@@ -216,9 +223,9 @@ export default function ClassroomView(props: ClassroomViewProps) {
           </div>
         </div>
 
-        {/* Mobile spacer so content clears the TopAppBar. The top nav on
-            desktop already adds that spacing via its own mt-24/mt-32. */}
-        <div className="sm:hidden h-24" />
+        {/* Mobile spacer so content clears the TopAppBar.  Bumped to
+            h-32 to match the desktop top-nav offset. */}
+        <div className="sm:hidden h-32" />
 
         <motion.div
           key={v2Tab}
