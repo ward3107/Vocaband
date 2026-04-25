@@ -145,7 +145,11 @@ export interface QueuedAssignmentSave {
     p_class_code: string;
     p_score: number;
     p_mode: string;
-    p_mistakes: number;
+    // Array of missed word ids (matches the int[] argument the RPC
+    // accepts after migration 20260515).  Older queue rows from before
+    // that migration carried a single integer; the flusher tolerates
+    // both shapes, but new entries are always written as int[].
+    p_mistakes: number[] | number;
     p_avatar: string;
     p_word_attempts: Array<{ word_id: number; is_correct: boolean }> | null;
   };
@@ -193,7 +197,18 @@ export async function flushAssignmentQueue(): Promise<void> {
         continue;
       }
       try {
-        const { error } = await supabase.rpc('save_student_progress', item.args);
+        // Coerce legacy queue rows (where `p_mistakes` was the COUNT,
+        // a single integer) into the new int[] shape the post-2026-05-15
+        // RPC expects.  Without this, every retry of a queue row written
+        // by an older client would 22023 ("argument of … must be array")
+        // and leak into the localStorage backlog forever.
+        const args = {
+          ...item.args,
+          p_mistakes: Array.isArray(item.args.p_mistakes)
+            ? item.args.p_mistakes
+            : (typeof item.args.p_mistakes === 'number' ? [] : []),
+        };
+        const { error } = await supabase.rpc('save_student_progress', args);
         if (error) {
           remaining.push({ ...item, attempts: item.attempts + 1 });
         }
