@@ -1,0 +1,95 @@
+name: Regenerate motivational audio
+
+# One-click regen + upload of the 99 motivational MP3s into the
+# Supabase `motivational/` storage bucket.  Triggered manually from
+# Actions → "Regenerate motivational audio" → "Run workflow".  Lives
+# behind workflow_dispatch only — never runs on push, because each
+# invocation:
+#   1. Calls Google Cloud TTS to synthesise ~99 audio clips (~10 min)
+#   2. Uploads them to Supabase storage (overwriting any existing
+#      blobs with the same key)
+# That's expensive enough on both sides that we want it explicit.
+#
+# Required GitHub secrets:
+#   SUPABASE_SERVICE_ROLE_KEY  — the service_role key from
+#                                Supabase Dashboard → Settings → API.
+#                                NOT the anon key.  Bypasses RLS so
+#                                the upload can write to the
+#                                `motivational/` bucket.
+#   GOOGLE_AI_API_KEY          — the Google API key with Cloud TTS
+#                                enabled (same one that lives on
+#                                Render as GOOGLE_AI_API_KEY).
+#
+# The Supabase URL is hardcoded to https://auth.vocaband.com — flip
+# it here if the project ever moves.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regen-motivational-audio
+  cancel-in-progress: false
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate secrets are configured
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY secret is missing — add it in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "$GOOGLE_AI_API_KEY" ]; then
+            echo "::error::GOOGLE_AI_API_KEY secret is missing — add it in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Both secrets present."
+
+      - name: Generate MP3s with Google Cloud TTS
+        # The script reads .env.local, so seed one from the GH secrets
+        # for the duration of this job.  The file is gitignored and the
+        # runner is ephemeral.
+        env:
+          SUPABASE_URL: https://auth.vocaband.com
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          cat > .env.local <<EOF
+          SUPABASE_URL=$SUPABASE_URL
+          SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+          GOOGLE_AI_API_KEY=$GOOGLE_AI_API_KEY
+          EOF
+          npx tsx scripts/generate-motivational.ts
+
+      - name: Upload MP3s to Supabase storage
+        env:
+          SUPABASE_URL: https://auth.vocaband.com
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          npx tsx scripts/upload-motivational.ts
+
+      - name: Report
+        run: |
+          echo "Done.  Verify in Supabase SQL editor:"
+          echo "  SELECT count(*) FROM storage.objects WHERE bucket_id = 'motivational';"
+          echo "Should return ~99."
