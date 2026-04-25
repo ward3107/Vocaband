@@ -927,14 +927,26 @@ async function startServer() {
     });
 
     socket.on("disconnect", () => {
-      // Find which session this socket belonged to and remove it. Rooms
-      // are cleaned by socket.io automatically.
+      // Find which session this socket belonged to.  Don't drop the
+      // student's leaderboard entry on disconnect — a Wi-Fi blink, a
+      // student locking the phone, or even the teacher refreshing
+      // their tab can briefly drop sockets, and deleting + re-creating
+      // the entry on reconnect resets their score to 0 (the JOIN
+      // handler reads `prev?.score ?? 0`, but `prev` is gone).  The
+      // teacher then sees "students playing but no scores" because
+      // every reconnect is silently zeroing the leaderboard.
+      //
+      // Instead: just update lastSeen so the teacher UI greys out the
+      // disconnected row, and let the idle sweep reap truly stale
+      // entries after QP_IDLE_SWEEP_MS.
       for (const state of qpSessions.values()) {
-        // Student disconnect
         const clientId = state.socketToClient.get(socket.id);
         if (clientId) {
-          state.students.delete(clientId);
           state.socketToClient.delete(socket.id);
+          const entry = state.students.get(clientId);
+          if (entry) {
+            entry.lastSeen = Date.now();
+          }
           qpScheduleBroadcast(state.sessionCode);
         }
         // Teacher disconnect — don't drop the session; just refresh idle timer.
