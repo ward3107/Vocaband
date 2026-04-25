@@ -883,20 +883,29 @@ async function startServer() {
             .maybeSingle();
           const assignmentId = sessRow?.id as string | undefined;
           if (assignmentId) {
+            // Persist EVERY student that scored, regardless of whether
+            // their client managed to attach an authUid.  Anonymous
+            // sign-ins are disabled in some Supabase orgs / blocked by
+            // private browsing, so a strict `s.authUid` filter
+            // silently dropped the entire leaderboard at session-end
+            // (audit 2026-04-25 — teacher saw zero gradebook rows
+            // even though scores climbed live).  The companion
+            // migration 20260517 relaxes the progress trigger so a
+            // synthetic `qp:<clientId>` student_uid is accepted on
+            // QUICK_PLAY rows.
             const persistableStudents = Array.from(endingSessionState.students.values())
-              .filter(s => s.authUid && s.score > 0);
+              .filter(s => s.score > 0);
+            console.warn(`[QP TEACHER_END persist] ${sessionCode}: ${persistableStudents.length} students with score>0 (of ${endingSessionState.students.size} total)`);
             if (persistableStudents.length > 0) {
-              // One RPC call per student.  save_student_progress is
-              // upsert-on-conflict (atomic via uq_progress_assignment_
-              // student_mode_class) so a re-run with the same tuple
-              // updates instead of duplicating.  We use mode='quickplay'
-              // as the bucket so post-session analytics doesn't merge
-              // QP and assignment plays.
               await Promise.all(persistableStudents.map(async (s) => {
+                // Real auth uid wins; otherwise fall back to a
+                // namespaced clientId so the trigger sees a stable,
+                // non-colliding identifier per student per session.
+                const studentUid = s.authUid || `qp:${s.clientId}`;
                 try {
                   const { error } = await supabaseAdmin!.rpc("save_student_progress", {
                     p_student_name: s.nickname,
-                    p_student_uid: s.authUid!,
+                    p_student_uid: studentUid,
                     p_assignment_id: assignmentId,
                     p_class_code: "QUICK_PLAY",
                     p_score: Math.round(s.score),
@@ -905,12 +914,18 @@ async function startServer() {
                     p_avatar: s.avatar,
                     p_word_attempts: null,
                   });
-                  if (error) console.warn("[QP TEACHER_END persist] failed for", s.clientId, error.message);
+                  if (error) {
+                    console.warn("[QP TEACHER_END persist] failed for", s.clientId, error.message);
+                  } else {
+                    console.warn("[QP TEACHER_END persist] saved", s.nickname, s.score);
+                  }
                 } catch (err) {
                   console.warn("[QP TEACHER_END persist] threw for", s.clientId, err);
                 }
               }));
             }
+          } else {
+            console.warn(`[QP TEACHER_END persist] ${sessionCode}: no assignment_id, skipping persist`);
           }
         } catch (err) {
           console.warn("[QP TEACHER_END persist] session lookup failed", err);
