@@ -100,7 +100,29 @@ export default function PendingApprovalScreen({
     document.addEventListener('visibilitychange', handleVisibility);
 
     checkStatus();
-    const pollId = setInterval(checkStatus, 3_000);
+    // Slow poll, capped lifetime.
+    //
+    // Old: setInterval(checkStatus, 3_000) — every 3 seconds.  A
+    // student who sat on this screen for one class period
+    // contributed 1,200 SELECTs to student_profiles.  In the
+    // 2026-04-25 audit the cumulative count from a few stuck tabs
+    // was the dominant DB write source.
+    //
+    // The Realtime subscription above (subscribe() at line 95) is
+    // the primary signal; this poll is only a fallback for when
+    // Realtime drops.  30s is plenty.  The 30-minute cap stops a
+    // tab forgotten on a teacher's desk from polling all night —
+    // students still on the page can hit "Check now" manually.
+    const POLL_MS = 30_000;
+    const MAX_LIFETIME_MS = 30 * 60 * 1000;
+    const startedAt = Date.now();
+    const pollId: ReturnType<typeof setInterval> = setInterval(() => {
+      if (Date.now() - startedAt > MAX_LIFETIME_MS) {
+        clearInterval(pollId);
+        return;
+      }
+      checkStatus();
+    }, POLL_MS);
 
     return () => {
       cancelled = true;
