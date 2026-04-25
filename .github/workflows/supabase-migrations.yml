@@ -30,6 +30,14 @@ on:
   push:
     branches:
       - main
+      # Active feature branch — auto-apply so the operator doesn't have
+      # to remember to fire workflow_dispatch every time a migration
+      # ships.  Trade-off: experimental migrations on this branch hit
+      # the production DB the moment they push.  Acceptable here because
+      # the team is treating this branch as a rolling integration line
+      # while the V2 work stabilises; revert this entry to main-only
+      # once that branch is merged.
+      - claude/add-phrase-pronunciations-i3h0b
     paths:
       - "supabase/migrations/**.sql"
   workflow_dispatch:
