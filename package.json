@@ -59,7 +59,8 @@
   },
   "overrides": {
     "serialize-javascript": "^7.0.4",
-    "@xmldom/xmldom": "^0.8.13"
+    "@xmldom/xmldom": "^0.8.13",
+    "postcss": "^8.5.10"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.31.2",

@@ -133,14 +133,26 @@ jobs:
           done
 
       - name: Push migrations (non-interactive)
-        # `db push` reads SUPABASE_DB_PASSWORD from env. Without
-        # --include-all the CLI compares local files against the remote
-        # schema_migrations table and only applies versions that aren't
-        # there yet — exactly the behaviour we want. --include-all
-        # forced every local file to re-run, which collided with rows
-        # already in schema_migrations (duplicate-key on the bookkeeping
-        # insert) even though the SQL itself was idempotent.
+        # `db push` reads SUPABASE_DB_PASSWORD from env.
+        #
+        # --include-all is required because we have local migration
+        # files whose timestamps fall BEFORE the last migration row
+        # already in remote.schema_migrations (a state CI gets into
+        # whenever the dashboard or a manual SQL run applied a newer
+        # migration before older ones got pushed via the CLI).  Without
+        # the flag, `db push` exits 1 with:
+        #   "Found local migration files to be inserted before the
+        #    last migration on remote database.  Rerun the command
+        #    with --include-all flag to apply these migrations."
+        # which is exactly what the failing 2026-04-25 run hit.
+        #
+        # The "Mark already-applied migrations as applied" step right
+        # above this one inserts the bookkeeping rows for the
+        # 20260406–20260427 range, so --include-all sees those as
+        # already-done and skips them — no more duplicate-key
+        # collisions on the schema_migrations insert.
+        #
         # Piping `yes` answers the "do you want to push these
         # migrations?" confirmation without depending on a flag name
         # that varies between CLI versions.
-        run: yes | supabase db push
+        run: yes | supabase db push --include-all
