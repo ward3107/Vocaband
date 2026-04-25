@@ -1,80 +1,23 @@
-# Fly.io app config for the Vocaband API server.
+# fly.toml app configuration file generated for vocaband on 2026-04-25T17:46:52Z
 #
-# What runs here:
-#   * Express on /api/*   (translate, OCR, AI sentences, health)
-#   * socket.io on /socket.io/  (Live Challenge + Quick Play)
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-# What does NOT run here:
-#   * The SPA (built by Cloudflare Pages → vocaband.com)
-#   * The Worker proxy (Cloudflare Worker → routes /api/* +
-#     /socket.io/* to this Fly service via API_BACKEND constant in
-#     worker/index.ts)
-#
-# Why Fly: auto-stop kicks in after the school day, idle nights /
-# weekends / holidays cost ~$0.  Same socket.io code runs unchanged.
-#
-# Deploy: `fly deploy` (uses Dockerfile + fly.toml in this dir).
-# Logs:   `fly logs`
-# SSH:    `fly ssh console`
 
-# ─── Identity ──────────────────────────────────────────────────────
-# `fly launch` will prompt to use an existing app or create a new one.
-# Pick a name like `vocaband-api`; whatever you pick goes here.
-app = "vocaband"
-
-# Frankfurt — closest free Fly region to Israel; cdg (Paris) and ams
-# (Amsterdam) are also reasonable.  Adding more regions makes
-# state-sharing harder for the in-memory QP leaderboard, so keep it
-# single-region for now.  Single-region means `auto_stop_machines`
-# can fully suspend during off-hours.
-primary_region = "fra"
+app = 'vocaband'
+primary_region = 'fra'
 
 [build]
-  dockerfile = "Dockerfile"
-
-# ─── HTTP service ─────────────────────────────────────────────────
-# Fly's `http_service` handles HTTPS termination, HTTP/2, and
-# WebSocket upgrades transparently.  socket.io connections survive
-# unchanged through Fly's edge proxy.
 
 [http_service]
   internal_port = 3000
   force_https = true
-
-  # Auto-suspend when nobody's connected.  Wakes in <1 s on the next
-  # request.  This is the entire reason for picking Fly over Render
-  # for a school-hours app.
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-
-  # Per-VM concurrency: a single QP class with 30 students translates
-  # to ~30 active socket.io connections + a few teacher observers.
-  # 200 hard / 100 soft gives plenty of headroom for several
-  # simultaneous classrooms before Fly auto-scales to a second VM.
-  [http_service.concurrency]
-    type = "connections"
-    hard_limit = 200
-    soft_limit = 100
-
-# ─── VM size ──────────────────────────────────────────────────────
-# shared-cpu-1x / 256 MB is plenty for the workload.  Jump to 512 MB
-# if memory pressure shows up in `fly logs` (look for OOM kills).
+  processes = ['app']
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
-
-# ─── Health check ─────────────────────────────────────────────────
-# server.ts already exposes /api/health; use it so Fly knows when
-# a deploy is live and when to suspend.
-
-[[services.http_checks]]
-  interval = "30s"
-  timeout  = "5s"
-  grace_period = "10s"
-  method   = "get"
-  path     = "/api/health"
-  protocol = "http"
+  memory_mb = 256

@@ -1,35 +1,45 @@
-# Vocaband API server — Docker image for Fly.io
-#
-# Single-stage build: keeps `tsx` (which lives in devDependencies and
-# the `start` script needs at runtime) instead of a more elaborate
-# build → prune → run dance.  ~200–300 MB image, fine for Fly's free
-# Hobby plan.
-#
-# The frontend is NOT built here — Cloudflare Pages already builds it
-# from the same git repo and serves it at vocaband.com.  Fly only
-# hosts /api/* + /socket.io/* (the Express + socket.io part of
-# server.ts).  The static() fallback in server.ts will 404 if
-# Cloudflare ever proxies a non-API request to Fly, which is
-# acceptable behaviour.
-#
-# Build: `fly deploy` (Fly's builder runs this automatically)
-# Run:   `npm run start`  (= `NODE_ENV=production tsx server.ts`)
+# syntax = docker/dockerfile:1
 
-FROM node:20-alpine
+# Adjust NODE_VERSION as desired
+ARG NODE_VERSION=22.21.1
+FROM node:${NODE_VERSION}-slim AS base
 
+LABEL fly_launch_runtime="Node.js"
+
+# Node.js app lives here
 WORKDIR /app
 
-# Layer the dep install so a code-only change doesn't bust the cache.
-# `--legacy-peer-deps` works around a peer-dep conflict between
-# @eslint/js@10 (peerOptional eslint^10) and the project's eslint@9.
-# We don't run lint inside the image, but devDeps still install because
-# `tsx` (the runtime) lives there.
-COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+# Set production environment
+ENV NODE_ENV="production"
 
+
+# Throw-away build stage to reduce size of final image
+FROM base AS build
+
+# Install packages needed to build node modules
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
+
+# Install node modules
+COPY .npmrc package-lock.json package.json ./
+RUN npm ci --include=dev
+
+# Copy application code
 COPY . .
 
-ENV NODE_ENV=production
-EXPOSE 3000
+# Build application
+RUN npm run build
 
-CMD ["npm", "run", "start"]
+# Remove development dependencies
+RUN npm prune --omit=dev
+
+
+# Final stage for app image
+FROM base
+
+# Copy built application
+COPY --from=build /app /app
+
+# Start the server by default, this can be overwritten at runtime
+EXPOSE 3000
+CMD [ "npm", "run", "start" ]
