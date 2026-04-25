@@ -183,25 +183,90 @@ export function enqueueAssignmentSave(args: QueuedAssignmentSave['args']): strin
   return localId;
 }
 
+// Coerce one queue row's args to the JSONB shape expected by the batch
+// RPC.  Centralised so the batch path and the single-row fallback path
+// produce IDENTICAL payloads (only the wrapping differs).
+function batchElementFromItem(item: QueuedAssignmentSave): Record<string, unknown> {
+  return {
+    student_name: item.args.p_student_name,
+    student_uid: item.args.p_student_uid,
+    assignment_id: item.args.p_assignment_id,
+    class_code: item.args.p_class_code,
+    score: item.args.p_score,
+    mode: item.args.p_mode,
+    // Legacy queue rows (pre-2026-05-15 client) carried a single
+    // integer for p_mistakes.  Coerce non-arrays to [] so the new
+    // RPC's `integer[]` arg doesn't 22023 — same fallback as the
+    // single-row path below.
+    mistakes: Array.isArray(item.args.p_mistakes)
+      ? item.args.p_mistakes
+      : (typeof item.args.p_mistakes === 'number' ? [] : []),
+    avatar: item.args.p_avatar,
+    word_attempts: item.args.p_word_attempts,
+  };
+}
+
 let flushingAssignment = false;
+let batchRpcMissing = false;  // sticky flag once we learn the server doesn't have the batch RPC
+
 export async function flushAssignmentQueue(): Promise<void> {
   if (flushingAssignment) return;
   flushingAssignment = true;
   try {
     let queue = readAssignmentQueue();
     if (queue.length === 0) return;
-    const remaining: QueuedAssignmentSave[] = [];
-    for (const item of queue) {
-      if (item.attempts >= MAX_ATTEMPTS) {
-        remaining.push(item);
-        continue;
-      }
+
+    // Eligible items = under the retry cap.  We don't drop overcap
+    // rows here; they stay in localStorage so a future
+    // forceFullRecovery / manual debug can still see them.
+    const eligible = queue.filter(it => it.attempts < MAX_ATTEMPTS);
+    const overcap  = queue.filter(it => it.attempts >= MAX_ATTEMPTS);
+    if (eligible.length === 0) return;
+
+    // ─── BATCH PATH ─────────────────────────────────────────────────
+    // If the server has `save_student_progress_batch` (migration
+    // 20260518), we can land all eligible rows in ONE RPC round-trip
+    // instead of N sequential calls.  In a 30-student classroom that's
+    // 1 request instead of 30 per finish-burst.  If the RPC returns
+    // a "function does not exist" error (Render hasn't redeployed
+    // since the migration), we mark batchRpcMissing=true and fall
+    // through to the per-row path so older deployments keep working.
+    if (!batchRpcMissing && eligible.length >= 2) {
       try {
-        // Coerce legacy queue rows (where `p_mistakes` was the COUNT,
-        // a single integer) into the new int[] shape the post-2026-05-15
-        // RPC expects.  Without this, every retry of a queue row written
-        // by an older client would 22023 ("argument of … must be array")
-        // and leak into the localStorage backlog forever.
+        const payload = eligible.map(batchElementFromItem);
+        const { error } = await supabase.rpc('save_student_progress_batch', { p_batch: payload });
+        if (!error) {
+          // All eligible rows landed.  Keep only the overcap leftovers.
+          writeAssignmentQueue(overcap);
+          return;
+        }
+        // 42883 = "function … does not exist" — server is on an older
+        // build without the batch RPC.  Latch and fall through to the
+        // sequential single-row path below; future flushes won't try
+        // the batch again until reload.
+        if ((error as { code?: string }).code === '42883') {
+          batchRpcMissing = true;
+        } else {
+          // Other batch error: bump attempts on every eligible row
+          // and exit; we'll retry on the next flush trigger.
+          const bumped = eligible.map(it => ({ ...it, attempts: it.attempts + 1 }));
+          writeAssignmentQueue([...bumped, ...overcap]);
+          return;
+        }
+      } catch {
+        // Network blip — same posture as a non-42883 error.
+        const bumped = eligible.map(it => ({ ...it, attempts: it.attempts + 1 }));
+        writeAssignmentQueue([...bumped, ...overcap]);
+        return;
+      }
+    }
+
+    // ─── SEQUENTIAL FALLBACK ────────────────────────────────────────
+    // Used when the batch RPC isn't available, or when there's only
+    // one item to flush.  Same per-row error handling as before.
+    const remaining: QueuedAssignmentSave[] = [...overcap];
+    for (const item of eligible) {
+      try {
         const args = {
           ...item.args,
           p_mistakes: Array.isArray(item.args.p_mistakes)

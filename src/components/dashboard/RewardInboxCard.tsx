@@ -144,15 +144,41 @@ export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxC
       setLoaded(true);
     };
 
-    // Kick off immediately + set up polling for live surfacing.
-    // Bumped 15 s → 60 s on 2026-04-25 — teachers don't push rewards
-    // every minute, and the visibilitychange listener below refetches
-    // instantly when the student returns to the tab, so a longer
-    // baseline interval is invisible in practice.
+    // Kick off immediately so the inbox isn't empty before the first
+    // Realtime push arrives.
     fetchRewards();
-    const pollId = setInterval(() => {
-      if (!document.hidden) fetchRewards();
-    }, 60_000);
+
+    // Realtime-first.  Subscribes to INSERTs on `teacher_rewards` for
+    // the current student so a freshly-pushed reward fires the same
+    // refetch the old 60 s poll did, but only when something actually
+    // happens.  Falls back to a 5-minute poll when the channel is in
+    // an error state (corporate Wi-Fi blocking WebSockets, etc.) so
+    // we still surface eventually without burning thousands of
+    // requests/day for nothing.
+    let fallbackPollId: ReturnType<typeof setInterval> | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const uid = user?.id;
+      if (!uid || cancelled) return;
+      channel = supabase
+        .channel(`reward-inbox-${uid}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'teacher_rewards', filter: `student_uid=eq.${uid}` },
+          () => { if (!document.hidden) fetchRewards(); },
+        )
+        .subscribe(status => {
+          if (status === 'SUBSCRIBED') {
+            if (fallbackPollId) { clearInterval(fallbackPollId); fallbackPollId = null; }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            if (!fallbackPollId) {
+              fallbackPollId = setInterval(() => { if (!document.hidden) fetchRewards(); }, 5 * 60_000);
+            }
+          }
+        });
+    })();
+
     const handleVisibility = () => {
       if (!document.hidden) fetchRewards();
     };
@@ -160,7 +186,8 @@ export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxC
 
     return () => {
       cancelled = true;
-      clearInterval(pollId);
+      if (channel) supabase.removeChannel(channel);
+      if (fallbackPollId) clearInterval(fallbackPollId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
     // `loaded` intentionally excluded from deps — it's used as a
