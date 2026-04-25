@@ -565,6 +565,15 @@ async function startServer() {
     socketToClient: Map<string, string>;              // socket.id → clientId
     teacherSockets: Set<string>;                      // socket.id of observers
     lastTeacherSeenAt: number;                        // epoch ms
+    // clientIds the teacher has KICKED in this session.  STUDENT_JOIN
+    // checks against this set and refuses to re-add a kicked student
+    // even if their socket auto-reconnects (which socket.io does by
+    // default).  Without this, the kick "didn't stick" — server
+    // disconnected the kicked student's socket, the client
+    // reconnected, replayed STUDENT_JOIN with the same clientId, and
+    // the leaderboard reincarnated them.  Lives only as long as the
+    // in-memory session does (cleared on TEACHER_END / idle sweep).
+    kickedClientIds: Set<string>;
   }
 
   const qpSessions = new Map<string, QpSessionState>();
@@ -672,6 +681,7 @@ async function startServer() {
         socketToClient: new Map(),
         teacherSockets: new Set(),
         lastTeacherSeenAt: Date.now(),
+        kickedClientIds: new Set(),
       };
       qpSessions.set(sessionCode, s);
     }
@@ -705,6 +715,17 @@ async function startServer() {
       }
 
       const state = qpGetOrCreateSession(sessionCode);
+
+      // Reject kicked clientIds — sticky for the lifetime of the in-
+      // memory session.  Without this guard, force-disconnecting the
+      // kicked socket only sticks until socket.io's auto-reconnect
+      // fires and the client replays STUDENT_JOIN with the same
+      // clientId.  Also re-emit KICKED so the client tab flips back
+      // to the kicked screen if it was somehow reset.
+      if (state.kickedClientIds.has(clientId)) {
+        socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
+        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
+      }
 
       // If another live clientId has the same nickname, reject. Lets us
       // keep nicknames unique per session without polluting the progress
@@ -824,8 +845,15 @@ async function startServer() {
 
       const state = qpSessions.get(sessionCode);
       if (!state) return;
+      // Mark as kicked BEFORE we drop the entry, so any race between
+      // our own disconnect and the client's auto-reconnect lands on
+      // the STUDENT_JOIN guard that rejects kicked clientIds.
+      state.kickedClientIds.add(clientId);
       const removed = state.students.delete(clientId);
-      if (!removed) return;
+      if (!removed) {
+        // Already gone (idle sweep, etc.) — but we still kicked, so
+        // keep the kickedClientIds entry to block any future rejoin.
+      }
       // Notify the kicked student's socket directly (find by reverse lookup).
       // `leave()` alone isn't enough — the student's socket is still
       // connected and can re-emit STUDENT_JOIN with the same clientId
