@@ -200,21 +200,27 @@ export const QP_MAX_NICKNAME = 30;
  * Max single-update score delta.  Any `SCORE_UPDATE` that jumps by
  * more than this from the previous value is rejected.
  *
- * Bumped 100 → 5_000 on 2026-04-25 after teachers saw "live leaderboard
- * has the names but every score is stuck at 0."  The client's score
- * emit fires when a mode finishes (after 10 questions worth of XP +
- * streak bonuses) and the value can easily be 500–2000 in one jump.
- * The old cap of 100 silently dropped the FIRST emit — and because
- * scores are monotonic non-decreasing, every subsequent emit was also
- * `score > entry.score + 100` and got dropped too.  Net: scores never
- * advanced past 0 on the teacher's view, even though students were
- * playing normally.
+ * Tuned twice on 2026-04-25:
+ *   * Original 100 dropped every legitimate mode-finish emit, leaving
+ *     the live leaderboard stuck at 0.
+ *   * Bumped to 5_000 to unstick that — but a teacher reporting a
+ *     900→3000 jump (a 2_100 delta) on two answers flagged it as
+ *     too generous.  A genuine paste-bomb would hit thousands too.
  *
- * 5_000 still catches a pasted-9999 abuse attempt while leaving plenty
- * of headroom for real classroom play.  QP_MAX_SESSION_SCORE caps the
- * absolute total at 100k regardless of delta.
+ * Realistic per-emit upper bound:
+ *   * Per-answer score is +10 / +15 / +20 across modes (see
+ *     useGameModeActions).
+ *   * 2× XP booster doubles that to ~40 per question.
+ *   * 10 questions × 40 = 400 max per mode finish under booster.
+ *   * The client emits every ≥ 2 s OR on isFinished, so the worst-case
+ *     single emit is roughly one full mode's accumulated score.
+ *
+ * 1_500 leaves a comfortable 3× headroom over the realistic ceiling
+ * for booster + streak interactions we haven't thought of, while
+ * still rejecting an obvious paste-9999 attempt.  QP_MAX_SESSION_SCORE
+ * (100k absolute total) is the secondary safety net.
  */
-export const QP_MAX_SCORE_DELTA = 5_000;
+export const QP_MAX_SCORE_DELTA = 1_500;
 
 /**
  * Max absolute score in a single session (caps pathological cases).
