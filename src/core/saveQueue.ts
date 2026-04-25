@@ -25,6 +25,29 @@ import { supabase } from './supabase';
 const QUEUE_KEY = 'vocaband_qp_save_queue';
 const ASSIGNMENT_QUEUE_KEY = 'vocaband_assignment_save_queue';
 
+// Generate a unique local id for a queue row.  Not security-sensitive
+// — it's just a label so callers can correlate "the row I enqueued"
+// with "the row that finished flushing" — but CodeQL's
+// `js/insecure-randomness` rule flags any Math.random() in code paths
+// that look security-adjacent (alert #31).  Use crypto.randomUUID
+// where available (every supported browser since 2022) and fall back
+// to crypto.getRandomValues so we never ship a Math.random() call.
+function generateLocalId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const buf = new Uint8Array(4);
+    crypto.getRandomValues(buf);
+    const hex = Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+    return `${Date.now()}-${hex}`;
+  }
+  // Last-resort fallback for ancient runtimes that lack the Web Crypto
+  // API entirely.  Local-id collision here would just confuse a flush
+  // log; never security-relevant.
+  return `${Date.now()}-${Date.now().toString(36)}`;
+}
+
 export interface QueuedQuickPlaySave {
   // Unique id so the flush loop can drop a row once Supabase confirms
   // it landed.  A monotonic timestamp is good enough here — two saves
@@ -78,7 +101,7 @@ function writeQueue(q: QueuedQuickPlaySave[]) {
 // Append a row to the queue and trigger a flush.  Returns the localId
 // so callers can (optionally) track which row they just enqueued.
 export function enqueueQuickPlaySave(row: QueuedQuickPlaySave['row']): string {
-  const localId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const localId = generateLocalId();
   const queue = readQueue();
   queue.push({ localId, row, attempts: 0, queuedAt: Date.now() });
   writeQueue(queue);
@@ -175,7 +198,7 @@ function writeAssignmentQueue(q: QueuedAssignmentSave[]) {
 }
 
 export function enqueueAssignmentSave(args: QueuedAssignmentSave['args']): string {
-  const localId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const localId = generateLocalId();
   const queue = readAssignmentQueue();
   queue.push({ localId, args, attempts: 0, queuedAt: Date.now() });
   writeAssignmentQueue(queue);

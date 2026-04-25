@@ -784,7 +784,20 @@ async function startServer() {
       const entry = state.students.get(clientId);
       if (!entry) return;
       if (score < entry.score) return;
-      if (score > entry.score + QP_MAX_SCORE_DELTA) return;
+      if (score > entry.score + QP_MAX_SCORE_DELTA) {
+        // Surface the rejection so we don't have to guess again next
+        // time scores stop advancing.  The 100 → 5000 → 1500 tuning
+        // history is in QP_MAX_SCORE_DELTA's docstring; if this
+        // message starts firing in real classroom traffic, that's
+        // the signal to either bump the cap or look at why a single
+        // emit jumped that high.
+        console.warn(
+          `[QP score rejected] session=${sessionCode} client=${clientId} ` +
+          `previous=${entry.score} attempted=${score} delta=${score - entry.score} ` +
+          `cap=${QP_MAX_SCORE_DELTA}`,
+        );
+        return;
+      }
 
       entry.score = score;
       entry.lastSeen = Date.now();
