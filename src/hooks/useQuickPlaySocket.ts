@@ -339,7 +339,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   }, [sessionCode, clientId]);
 
   const updateScore = useCallback((score: number) => {
-    if (!sessionCode || !socketRef.current) return;
+    if (!sessionCode || !socketRef.current) {
+      console.warn('[QP updateScore] bail', {
+        score,
+        hasSessionCode: !!sessionCode,
+        hasSocketRef: !!socketRef.current,
+      });
+      return;
+    }
+    console.log('[QP updateScore] emit', { sessionCode, clientId, score });
     socketRef.current.emit(QP_EVENTS.SCORE_UPDATE, {
       sessionCode, clientId, score,
     });

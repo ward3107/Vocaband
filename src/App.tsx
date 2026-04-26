@@ -687,15 +687,37 @@ export default function App() {
   const emitScoreUpdate = (newScore: number) => {
     const now = Date.now();
     const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
-    if (!shouldEmit) return;
+    if (!shouldEmit) {
+      console.log('[emitScoreUpdate] throttled', { newScore, msSinceLast: now - lastScoreEmitRef.current, isFinished });
+      return;
+    }
     lastScoreEmitRef.current = now;
 
+    // Diagnostic — surfaces WHY a Quick Play student's score doesn't
+    // reach the server.  When teachers reported "students show 0 pts
+    // on my podium even after they played", the fly logs showed zero
+    // SCORE_UPDATE events.  These three conditions are the gate; if
+    // any is false the QP branch silently bails into the Live Challenge
+    // branch which itself bails because guests have no classCode.
+    console.log('[emitScoreUpdate] gate check', {
+      newScore,
+      QUICKPLAY_V2,
+      isGuest: user?.isGuest,
+      hasQpSession: !!quickPlayActiveSession,
+      qpSessionCode: quickPlayActiveSession?.sessionCode,
+      hasClassCode: !!user?.classCode,
+    });
+
     if (QUICKPLAY_V2 && user?.isGuest && quickPlayActiveSession) {
+      console.log('[emitScoreUpdate] QP path → updateScore', newScore);
       setTimeout(() => quickPlaySocket.updateScore(newScore), 0);
       return;
     }
 
-    if (!socket || !user?.classCode) return;
+    if (!socket || !user?.classCode) {
+      console.log('[emitScoreUpdate] both paths bailed — no emit');
+      return;
+    }
     setTimeout(() => {
       socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
     }, 0);
