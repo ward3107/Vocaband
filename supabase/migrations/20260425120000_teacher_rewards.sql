@@ -26,11 +26,13 @@ CREATE INDEX IF NOT EXISTS idx_teacher_rewards_student
 ALTER TABLE public.teacher_rewards ENABLE ROW LEVEL SECURITY;
 
 -- Teachers can view their own reward history
+DROP POLICY IF EXISTS "Teachers can view their own rewards" ON public.teacher_rewards;
 CREATE POLICY "Teachers can view their own rewards"
   ON public.teacher_rewards FOR SELECT
   USING (auth.uid()::text = teacher_uid);
 
 -- Teachers can insert rewards (they created)
+DROP POLICY IF EXISTS "Teachers can insert rewards" ON public.teacher_rewards;
 CREATE POLICY "Teachers can insert rewards"
   ON public.teacher_rewards FOR INSERT
   WITH CHECK (auth.uid()::text = teacher_uid);
