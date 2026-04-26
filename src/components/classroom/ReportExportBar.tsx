@@ -25,6 +25,48 @@ import type { ProgressData, AssignmentData, ClassData } from '../../core/supabas
 // into the initial Classroom bundle when most teachers never tap the
 // PDF button in a given session.  Lazy-import on first click.
 
+// Hebrew + Arabic glyph support for the PDF.  jsPDF ships only
+// Helvetica which has zero coverage for those scripts — without an
+// embedded font, Hebrew/Arabic cells render as ☐ or are dropped.
+// We fetch the TTFs from /fonts/ (vendored under public/fonts/),
+// base64-encode them in-browser, and register with jsPDF on first
+// PDF export.  Result is cached on `window` so subsequent exports
+// in the same tab don't re-fetch.
+type Base64Font = { hebrew: string; arabic: string };
+declare global {
+  interface Window { __vbExportFonts?: Promise<Base64Font>; }
+}
+
+async function loadHebrewArabicFonts(): Promise<Base64Font> {
+  if (window.__vbExportFonts) return window.__vbExportFonts;
+  const fetchAsBase64 = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Font fetch failed: ${url} → ${res.status}`);
+    const buf = await res.arrayBuffer();
+    // Convert ArrayBuffer to base64 in chunks so we don't hit the
+    // browser's apply() argument-count limit on the 188 KB Arabic file.
+    const bytes = new Uint8Array(buf);
+    const chunkSize = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(
+        null,
+        Array.from(bytes.subarray(i, i + chunkSize)),
+      );
+    }
+    return btoa(binary);
+  };
+  window.__vbExportFonts = Promise.all([
+    fetchAsBase64('/fonts/NotoSansHebrew-Regular.ttf'),
+    fetchAsBase64('/fonts/NotoSansArabic-Regular.ttf'),
+  ]).then(([hebrew, arabic]) => ({ hebrew, arabic }));
+  return window.__vbExportFonts;
+}
+
+// Detect script in a string so we can pick the right font for the cell.
+const HEBREW_RE = /[֐-׿יִ-ﭏ]/;
+const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
+
 interface ClassStudent {
   name: string;
   classCode: string;
@@ -171,7 +213,12 @@ export default function ReportExportBar({
         lines.push([s.studentName, s.plays, s.avgScore, s.bestScore, s.totalMistakes, s.lastActive]
           .map(escapeCsvCell).join(','));
       });
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      // Prefix with UTF-8 BOM (﻿) so Excel for Windows recognises
+      // the file as UTF-8 instead of Windows-1252.  Without the BOM,
+      // Hebrew + Arabic columns (student names, mistake words) open as
+      // mojibake (??? or random Latin-1 glyphs).  Costs 3 bytes; fixes
+      // every locale at once.
+      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, `vocaband-${classCode || 'all'}-${today()}.csv`);
       showToast('CSV exported', 'success');
     } catch (err) {
@@ -190,13 +237,39 @@ export default function ReportExportBar({
     setBusy('pdf');
     try {
       // Dynamic import so jspdf + autotable don't weigh down the
-      // Classroom bundle for teachers who never export.
-      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      // Classroom bundle for teachers who never export.  Fetch the
+      // Hebrew + Arabic TTFs in parallel — they're vendored under
+      // public/fonts/ so the request is same-origin.
+      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable'),
+        loadHebrewArabicFonts().catch(err => {
+          console.warn('[export] non-Latin font load failed; PDF will fall back to helvetica only', err);
+          return null;
+        }),
       ]);
       const doc = new jsPDF({ unit: 'pt', format: 'letter' });
       const pageW = doc.internal.pageSize.getWidth();
+
+      // Register the Hebrew + Arabic fonts so autotable can switch to
+      // them per-cell via the didParseCell hook.  Names "Hebrew" /
+      // "Arabic" are arbitrary jsPDF font ids; we reference them in
+      // the hook below.
+      if (fonts) {
+        doc.addFileToVFS('NotoSansHebrew-Regular.ttf', fonts.hebrew);
+        doc.addFont('NotoSansHebrew-Regular.ttf', 'Hebrew', 'normal');
+        doc.addFileToVFS('NotoSansArabic-Regular.ttf', fonts.arabic);
+        doc.addFont('NotoSansArabic-Regular.ttf', 'Arabic', 'normal');
+      }
+      // didParseCell hook: jsPDF-autotable lets us mutate the cell's
+      // styles before render.  We sniff the cell text and switch font
+      // to Hebrew/Arabic when needed; everything else stays helvetica.
+      const cellFontHook = (data: { cell: { text: string[]; styles: { font?: string } } }) => {
+        if (!fonts) return;
+        const text = (data.cell.text || []).join(' ');
+        if (HEBREW_RE.test(text)) data.cell.styles.font = 'Hebrew';
+        else if (ARABIC_RE.test(text)) data.cell.styles.font = 'Arabic';
+      };
 
       // Branded header
       doc.setFillColor(79, 70, 229); // indigo-600 to match the app's signature gradient anchor
@@ -239,6 +312,7 @@ export default function ReportExportBar({
         styles: { fontSize: 10, cellPadding: 6 },
         theme: 'grid',
         margin: { left: 40, right: 40 },
+        didParseCell: cellFontHook,
       });
 
       // Per-play detail table on a fresh page
@@ -262,6 +336,7 @@ export default function ReportExportBar({
         styles: { fontSize: 9, cellPadding: 5 },
         theme: 'grid',
         margin: { left: 40, right: 40 },
+        didParseCell: cellFontHook,
       });
 
       // Footer on every page
