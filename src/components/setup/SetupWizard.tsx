@@ -114,6 +114,22 @@ export interface SetupWizardProps {
 
   // Initial selected words (for pre-filling from analytics, etc.)
   initialSelectedWords?: Word[];
+  /** Pre-fill the game-mode selection (e.g. when reusing a saved
+   *  template).  Defaults to DEFAULT_ASSIGNMENT_MODE_IDS when absent. */
+  initialSelectedModes?: string[];
+
+  /** Save the current wizard state as a reusable template.  When set,
+   *  ReviewStep shows a "Save as template" toggle next to the launch
+   *  button.  The wizard builds the snapshot from its own state. */
+  onSaveTemplate?: (input: {
+    title: string;
+    mode: WizardMode;
+    wordIds: number[];
+    modes: string[];
+    instructions?: string;
+    sentenceDifficulty?: SentenceDifficulty;
+    sentences?: string[];
+  }) => void;
 
   // TopAppBar props
   user?: { displayName?: string; avatar?: string } | null;
@@ -155,6 +171,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   customWords = [],
   onCustomWordsChange,
   initialSelectedWords,
+  initialSelectedModes,
+  onSaveTemplate,
   user,
   onLogout,
 }) => {
@@ -185,7 +203,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // setup (sentence difficulty + bank), and teachers don't want to
   // land in that UI by accident every time.
   const [selectedModes, setSelectedModes] = useState<string[]>(
-    [...DEFAULT_ASSIGNMENT_MODE_IDS]
+    initialSelectedModes && initialSelectedModes.length > 0
+      ? [...initialSelectedModes]
+      : [...DEFAULT_ASSIGNMENT_MODE_IDS]
   );
 
   // ── Pre-populate from editing assignment ─────────────────────────────────────
@@ -239,6 +259,28 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
       onGenerateQR(selectedWords, selectedModes);
     }
   };
+
+  // Save the current wizard state as a reusable template.  The title
+  // falls back to a date-stamped placeholder when the teacher hasn't
+  // typed one yet — the dashboard's Saved-Templates section uses
+  // "Untitled template" as the visible label in that case so they can
+  // still find it.
+  const handleSaveTemplate = onSaveTemplate
+    ? () => {
+        const fallbackTitle = mode === 'quick-play'
+          ? `Quick Play · ${new Date().toLocaleDateString()}`
+          : `Template · ${new Date().toLocaleDateString()}`;
+        onSaveTemplate({
+          title: assignmentTitle?.trim() || fallbackTitle,
+          mode,
+          wordIds: selectedWords.map(w => w.id),
+          modes: selectedModes,
+          instructions: assignmentInstructions || undefined,
+          sentenceDifficulty,
+          sentences: assignmentSentences.length > 0 ? assignmentSentences : undefined,
+        });
+      }
+    : undefined;
 
   // Memoize step labels to prevent re-creation
   const stepLabels = useMemo<Record<1 | 2 | 3, string>>(() => ({
@@ -388,6 +430,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               onQuickStart={handleQuickStart}
               onEditWords={() => setCurrentStep(1)}
               onEditModes={() => setCurrentStep(2)}
+              onSaveTemplate={handleSaveTemplate}
               assignmentTitle={assignmentTitle}
               assignmentDeadline={assignmentDeadline}
               assignmentInstructions={assignmentInstructions}

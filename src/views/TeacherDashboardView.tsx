@@ -4,6 +4,7 @@ import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import { supabase } from "../core/supabase";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
+import SavedTasksSection from "../components/dashboard/SavedTasksSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
 import EditClassModal from "../components/dashboard/EditClassModal";
 import ClassCreatedModal from "../components/dashboard/ClassCreatedModal";
@@ -12,6 +13,7 @@ import RejectStudentModal from "../components/dashboard/RejectStudentModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
+import type { SavedTask } from "../hooks/useSavedTasks";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -78,6 +80,12 @@ interface TeacherDashboardViewProps {
   onEditAssignment: (a: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (a: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (a: AssignmentData) => void;
+
+  // Saved-task templates (localStorage-backed, see useSavedTasks).
+  savedTasks?: SavedTask[];
+  onUseSavedTask?: (task: SavedTask) => void;
+  onTogglePinSavedTask?: (id: string) => void;
+  onRemoveSavedTask?: (id: string) => void;
 }
 
 export default function TeacherDashboardView({
@@ -97,6 +105,7 @@ export default function TeacherDashboardView({
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
+  savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
 }: TeacherDashboardViewProps) {
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.
@@ -165,6 +174,15 @@ export default function TeacherDashboardView({
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}
           />
+
+          {savedTasks && onUseSavedTask && onTogglePinSavedTask && onRemoveSavedTask && (
+            <SavedTasksSection
+              tasks={savedTasks}
+              onUse={onUseSavedTask}
+              onTogglePin={onTogglePinSavedTask}
+              onRemove={onRemoveSavedTask}
+            />
+          )}
         </div>
       </div>
 

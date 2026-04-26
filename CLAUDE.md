@@ -310,3 +310,12 @@ Never commit `.env.local` — it holds the service-role key.
 - Major feature work should update this file's §5 (workstream) + §6
   (pending operator actions) + §7 (open issues) in the same commit as
   the code change, so the next session sees an accurate picture.
+
+---
+
+## 11. Parked future plans
+
+- **Multi-subject expansion** (Tanakh / Geography / Hebrew-as-L2 / Sciences).
+  Engine is mostly subject-agnostic — generalizing `Word → StudyCard` is
+  ~1 week of work and 6× the addressable market.  Defer until paywall is
+  landed and English-teacher revenue is meaningful.
