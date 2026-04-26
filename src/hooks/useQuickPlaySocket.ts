@@ -155,12 +155,21 @@ let cachedSocket: Socket | null = null;
 let cachedSocketUrl: string | null = null;
 
 async function getSocket(): Promise<Socket> {
-  const url = (import.meta.env.VITE_SOCKET_URL as string | undefined) || "/";
+  // VITE_SOCKET_URL is "" in production (post-Render→Fly migration) so
+  // socket.io connects to the same origin (vocaband.com) and the
+  // Cloudflare Worker proxies /socket.io/* through to Fly.  When url
+  // is "" or "/", we MUST pass just the namespace (e.g. "/quick-play")
+  // — concatenating "/" + "/quick-play" yields "//quick-play" which
+  // the browser interprets as a protocol-relative URL with "quick-play"
+  // as the hostname → ERR_NAME_NOT_RESOLVED.
+  const rawUrl = (import.meta.env.VITE_SOCKET_URL as string | undefined) ?? "";
+  const url = rawUrl && rawUrl !== "/" ? rawUrl : "";
+  const target = url ? url + QUICK_PLAY_NS : QUICK_PLAY_NS;
 
-  if (cachedSocket && cachedSocketUrl === url && cachedSocket.connected) {
+  if (cachedSocket && cachedSocketUrl === target && cachedSocket.connected) {
     return cachedSocket;
   }
-  if (cachedSocket && cachedSocketUrl === url) {
+  if (cachedSocket && cachedSocketUrl === target) {
     // Exists but disconnected — reuse, socket.io will reconnect.
     cachedSocket.connect();
     return cachedSocket;
@@ -170,7 +179,7 @@ async function getSocket(): Promise<Socket> {
   const mod = await loadSocketIO();
   const io = mod.default || mod;
 
-  const socket = io(url + QUICK_PLAY_NS, {
+  const socket = io(target, {
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
@@ -183,7 +192,7 @@ async function getSocket(): Promise<Socket> {
   }) as Socket;
 
   cachedSocket = socket;
-  cachedSocketUrl = url;
+  cachedSocketUrl = target;
   return socket;
 }
 
