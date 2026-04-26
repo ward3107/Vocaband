@@ -51,29 +51,68 @@ export function useGameRoundOptions(
     if (!currentWord) return [];
     const correct = currentWord;
 
-    // Use ONLY the assigned gameWords for distractors — students should
-    // only see what the teacher assigned.
-    let possibleDistractors = gameWords.filter(w => w.id !== correct.id);
+    // Distractors must (a) be unique by word id, (b) have different
+    // English text from the correct word, and (c) have different
+    // hebrew/arabic translations from the correct word.  Without (c)
+    // a teacher who assigns synonyms (e.g. two words that share a
+    // hebrew translation) would see "3 of the answers are the same
+    // word in hebrew" — students reported this as cheating.
+    //
+    // Strategy:
+    //   1. start from gameWords (only what the teacher assigned),
+    //      filtered for the rules above
+    //   2. if that's fewer than 3, top up from ALL_WORDS with the
+    //      same filter
+    //   3. dedupe by id + by translation so we never repeat a glyph
+    //      in the option grid
+    const sameTranslation = (a: Word, b: Word) =>
+      (a.hebrew && b.hebrew && a.hebrew.trim() === b.hebrew.trim()) ||
+      (a.arabic && b.arabic && a.arabic.trim() === b.arabic.trim());
 
-    // If fewer than 3 distractors are available (teacher assigned < 4
-    // words), cycle through the assigned words instead of borrowing
-    // from ALL_WORDS.  Edge case: if the teacher assigned exactly one
-    // word, possibleDistractors is empty and the cycle loop would
-    // never terminate — fall back to ALL_WORDS so we have real
-    // distractors to show.
-    if (possibleDistractors.length === 0) {
-      possibleDistractors = ALL_WORDS.filter(w => w.id !== correct.id);
-    }
-    if (possibleDistractors.length < 3) {
-      const shuffledDistractors = shuffle(possibleDistractors);
-      while (shuffledDistractors.length < 3) {
-        shuffledDistractors.push(...shuffle(possibleDistractors));
-      }
-      possibleDistractors = shuffledDistractors;
+    const isUsable = (w: Word) =>
+      w.id !== correct.id &&
+      w.english.trim().toLowerCase() !== correct.english.trim().toLowerCase() &&
+      !sameTranslation(w, correct);
+
+    // Tier 1: assigned words that pass the filter.
+    const fromAssigned = shuffle(gameWords.filter(isUsable));
+    // Tier 2: top up from ALL_WORDS if we don't have 3 yet.
+    const needFromAll = Math.max(0, 3 - fromAssigned.length);
+    const fromAll = needFromAll > 0
+      ? shuffle(ALL_WORDS.filter(isUsable)).slice(0, needFromAll * 4)
+      : [];
+
+    // Combine + dedupe by id AND by translation glyph so the option
+    // grid never shows the same hebrew/arabic word twice.
+    const seenIds = new Set<number>([correct.id]);
+    const seenTranslations = new Set<string>([
+      correct.hebrew?.trim() ?? '',
+      correct.arabic?.trim() ?? '',
+    ].filter(Boolean));
+    const distractors: Word[] = [];
+    for (const w of [...fromAssigned, ...fromAll]) {
+      if (distractors.length >= 3) break;
+      if (seenIds.has(w.id)) continue;
+      const heb = w.hebrew?.trim() ?? '';
+      const ara = w.arabic?.trim() ?? '';
+      if ((heb && seenTranslations.has(heb)) || (ara && seenTranslations.has(ara))) continue;
+      distractors.push(w);
+      seenIds.add(w.id);
+      if (heb) seenTranslations.add(heb);
+      if (ara) seenTranslations.add(ara);
     }
 
-    const shuffledOthers = possibleDistractors.slice(0, 3);
-    return shuffle([...shuffledOthers, correct]);
+    // Final safety net: if the vocabulary is so tiny that we still
+    // can't find 3 unique distractors, pad with whatever ALL_WORDS
+    // can offer (allowing translation-collisions only as last resort).
+    while (distractors.length < 3) {
+      const fallback = ALL_WORDS.find(w => !seenIds.has(w.id) && w.id !== correct.id);
+      if (!fallback) break;
+      distractors.push(fallback);
+      seenIds.add(fallback.id);
+    }
+
+    return shuffle([...distractors.slice(0, 3), correct]);
   }, [currentWord, gameWords]);
 
   // Synchronously derive tfOption so it is never null on the first

@@ -283,7 +283,7 @@ export default function ReportExportBar({
       // (a) switch font to Hebrew/Arabic when needed (Latin stays on
       // helvetica) and (b) pre-reverse RTL runs so Hebrew reads
       // correctly right-to-left in the rendered PDF.
-      const cellFontHook = (data: { cell: { text: string[]; styles: { font?: string } } }) => {
+      const cellFontHook = (data: { cell: { text: string[]; styles: { font?: string; halign?: string } } }) => {
         if (!fonts) return;
         const text = (data.cell.text || []).join(' ');
         const hasHebrew = HEBREW_RE.test(text);
@@ -291,7 +291,13 @@ export default function ReportExportBar({
         if (hasHebrew) data.cell.styles.font = 'Hebrew';
         else if (hasArabic) data.cell.styles.font = 'Arabic';
         if (hasHebrew || hasArabic) {
+          // Reverse the RTL runs so jsPDF (which writes left-to-right)
+          // ends up displaying right-to-left as the language requires.
           data.cell.text = (data.cell.text || []).map(line => fixRtl(line));
+          // Right-align so the cell layout reads as a native RTL
+          // reader expects — name pinned to the right edge of its
+          // column instead of floating at the left.
+          data.cell.styles.halign = 'right';
         }
       };
 
