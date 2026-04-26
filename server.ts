@@ -809,24 +809,50 @@ async function startServer() {
     socket.on(QP_EVENTS.SCORE_UPDATE, (payload: QpScoreUpdatePayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId, score } = payload;
-      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
-      if (typeof score !== "number" || !isFinite(score) || score < 0 || score > QP_MAX_SESSION_SCORE) return;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
+        console.warn(`[QP SCORE bad payload] session=${sessionCode} client=${clientId} score=${score}`);
+        return;
+      }
+      if (typeof score !== "number" || !isFinite(score) || score < 0 || score > QP_MAX_SESSION_SCORE) {
+        console.warn(`[QP SCORE bad score] session=${sessionCode} score=${score}`);
+        return;
+      }
 
-      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      if (!qpScoreLimiter.checkLimit(socket.id)) {
+        console.warn(`[QP SCORE rate-limited] socket=${socket.id} session=${sessionCode}`);
+        return;
+      }
       const state = qpSessions.get(sessionCode);
-      if (!state) return;
+      if (!state) {
+        console.warn(`[QP SCORE no session] session=${sessionCode}`);
+        return;
+      }
       const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) return;
+      if (owned !== clientId) {
+        // This is the suspected silent-drop point.  Log every detail so
+        // we can see WHY the server's socket→clientId mapping disagrees
+        // with the client's understanding (typically: socket reconnected
+        // with a new socket.id and STUDENT_JOIN wasn't replayed, or a
+        // race during the first join landed the score before the join
+        // populated socketToClient).
+        console.warn(
+          `[QP SCORE owner-mismatch] socket=${socket.id} ` +
+          `claimedClient=${clientId} socketOwnsClient=${owned ?? "<none>"} ` +
+          `session=${sessionCode} score=${score} ` +
+          `mapSize=${state.socketToClient.size} students=${state.students.size}`,
+        );
+        return;
+      }
       const entry = state.students.get(clientId);
-      if (!entry) return;
-      if (score < entry.score) return;
+      if (!entry) {
+        console.warn(`[QP SCORE no entry] session=${sessionCode} client=${clientId}`);
+        return;
+      }
+      if (score < entry.score) {
+        console.warn(`[QP SCORE regress] session=${sessionCode} client=${clientId} prev=${entry.score} new=${score}`);
+        return;
+      }
       if (score > entry.score + QP_MAX_SCORE_DELTA) {
-        // Surface the rejection so we don't have to guess again next
-        // time scores stop advancing.  The 100 → 5000 → 1500 tuning
-        // history is in QP_MAX_SCORE_DELTA's docstring; if this
-        // message starts firing in real classroom traffic, that's
-        // the signal to either bump the cap or look at why a single
-        // emit jumped that high.
         console.warn(
           `[QP score rejected] session=${sessionCode} client=${clientId} ` +
           `previous=${entry.score} attempted=${score} delta=${score - entry.score} ` +
@@ -835,8 +861,10 @@ async function startServer() {
         return;
       }
 
+      const prevScore = entry.score;
       entry.score = score;
       entry.lastSeen = Date.now();
+      console.log(`[QP SCORE accept] session=${sessionCode} client=${clientId} ${prevScore}→${score}`);
       qpScheduleBroadcast(sessionCode);
     });
 
