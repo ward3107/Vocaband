@@ -829,19 +829,35 @@ async function startServer() {
       }
       const owned = state.socketToClient.get(socket.id);
       if (owned !== clientId) {
-        // This is the suspected silent-drop point.  Log every detail so
-        // we can see WHY the server's socket→clientId mapping disagrees
-        // with the client's understanding (typically: socket reconnected
-        // with a new socket.id and STUDENT_JOIN wasn't replayed, or a
-        // race during the first join landed the score before the join
-        // populated socketToClient).
-        console.warn(
-          `[QP SCORE owner-mismatch] socket=${socket.id} ` +
-          `claimedClient=${clientId} socketOwnsClient=${owned ?? "<none>"} ` +
-          `session=${sessionCode} score=${score} ` +
-          `mapSize=${state.socketToClient.size} students=${state.students.size}`,
-        );
-        return;
+        // Self-heal: if the clientId is a KNOWN student in this
+        // session, the socket has just reconnected (browser sleep,
+        // Wi-Fi blip, socket.io reconnect) and the rejoin's
+        // STUDENT_JOIN hasn't re-populated the mapping yet — the
+        // SCORE_UPDATE just landed first.  Re-attach the mapping
+        // here so we don't silently drop the score.
+        //
+        // Security model: QP namespace is unauthenticated by design
+        // (students are guests).  Trust of `clientId` was already
+        // established at STUDENT_JOIN time when the row was inserted
+        // into `state.students` — anyone could have submitted an
+        // arbitrary clientId then too, so re-attaching here doesn't
+        // weaken the model.
+        if (state.students.has(clientId)) {
+          state.socketToClient.set(socket.id, clientId);
+          socket.join(sessionCode);
+          console.log(
+            `[QP SCORE self-heal] reattached socket=${socket.id} ` +
+            `to client=${clientId} session=${sessionCode}`,
+          );
+        } else {
+          console.warn(
+            `[QP SCORE owner-mismatch] socket=${socket.id} ` +
+            `claimedClient=${clientId} socketOwnsClient=${owned ?? "<none>"} ` +
+            `session=${sessionCode} score=${score} ` +
+            `mapSize=${state.socketToClient.size} students=${state.students.size}`,
+          );
+          return;
+        }
       }
       const entry = state.students.get(clientId);
       if (!entry) {
