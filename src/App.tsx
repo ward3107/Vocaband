@@ -12,6 +12,7 @@ import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, 
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
+import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
@@ -201,6 +202,11 @@ export default function App() {
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
 
+  // Saved task templates — teacher-side localStorage of full assignment /
+  // quick-play snapshots so a teacher can rebuild the same task in one
+  // tap.  Hook returns sorted list (pinned → most-used → most-recent).
+  const savedTasks = useSavedTasks(user?.uid);
+
   // Structure progression (Phase 1 of "build something meaningful").
   // Tracks a per-user persisted creation (garden/city/rocket/castle)
   // that grows as the student learns.  Gated behind the
@@ -264,7 +270,9 @@ export default function App() {
   // still exists so the teacher-monitor cleanup path can reset it to
   // null/[] on session end.
   const [, setQuickPlaySessionCode] = useState<string | null>(null);
-  const [, setQuickPlaySelectedWords] = useState<Word[]>([]);
+  const [quickPlayInitialWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
+  // Saved-task templates also restore mode selection when reused.
+  const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
   const [quickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
@@ -2277,6 +2285,50 @@ export default function App() {
             setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
             showToast("Assignment deleted successfully", "success");
           }}
+          savedTasks={savedTasks.tasks}
+          onTogglePinSavedTask={savedTasks.togglePin}
+          onRemoveSavedTask={savedTasks.remove}
+          onUseSavedTask={(task: SavedTask) => {
+            // Resolve word IDs back to full Word objects.  IDs that no
+            // longer exist in ALL_WORDS are silently skipped — that
+            // happens if the teacher deleted a custom word after saving
+            // the template.
+            const resolvedWords = task.wordIds
+              .map(id => ALL_WORDS.find(w => w.id === id))
+              .filter((w): w is Word => Boolean(w));
+            const resolvedIds = resolvedWords.map(w => w.id);
+
+            savedTasks.bumpUse(task.id);
+
+            if (task.mode === 'quick-play') {
+              setQuickPlaySelectedWords(resolvedWords);
+              setQuickPlayInitialModes(task.modes);
+              setView('quick-play-setup');
+              return;
+            }
+
+            // Assignment template — needs a class context.  Default to
+            // the teacher's first class so the wizard can render; the
+            // teacher can change class via the Back button if needed.
+            const targetClass = selectedClass ?? classes[0];
+            if (!targetClass) {
+              showToast('Create a class first to use this template.', 'info');
+              return;
+            }
+
+            setSelectedClass(targetClass);
+            setSelectedWords(resolvedIds);
+            setAssignmentTitle(task.title);
+            setAssignmentDeadline('');
+            setAssignmentModes(task.modes);
+            setAssignmentSentences(task.sentences ?? []);
+            if (task.sentenceDifficulty !== undefined) {
+              setSentenceDifficulty(task.sentenceDifficulty);
+            }
+            setEditingAssignment(null);
+            setView('create-assignment');
+            setAssignmentStep(1);
+          }}
         />
       </LazyWrapper>
     );
@@ -2291,6 +2343,7 @@ export default function App() {
         set1Words={SET_1_WORDS}
         set2Words={SET_2_WORDS}
         customWords={customWords}
+        onSaveTemplate={savedTasks.save}
         assignmentTitle={assignmentTitle}
         setCustomWords={setCustomWords}
         setAssignmentTitle={setAssignmentTitle}
@@ -2443,6 +2496,9 @@ export default function App() {
       <LazyWrapper loadingMessage="Loading quick play setup...">
       <QuickPlaySetupView
         allWords={ALL_WORDS}
+        onSaveTemplate={savedTasks.save}
+        initialSelectedWords={quickPlayInitialWords}
+        initialSelectedModes={quickPlayInitialModes}
         // use2026WordInput + OCR/DOCX handlers + custom-words state make
         // Quick Play's step 1 look and behave identically to Assignment's.
         // Without these the QP teacher got the older WordInputStep UI

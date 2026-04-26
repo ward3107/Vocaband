@@ -75,6 +75,18 @@ export interface CreateAssignmentWizardProps {
   setEditingAssignment: (assignment: AssignmentData | null) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
+  /** Save the current wizard state as a reusable template.  Forwarded
+   *  to SetupWizard, which renders a "Save as template" toggle in the
+   *  Review step. */
+  onSaveTemplate?: (input: {
+    title: string;
+    mode: 'quick-play' | 'assignment';
+    wordIds: number[];
+    modes: string[];
+    instructions?: string;
+    sentenceDifficulty?: SentenceDifficulty;
+    sentences?: string[];
+  }) => void;
 }
 
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
@@ -126,6 +138,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setEditingAssignment,
   showToast,
   onPlayWord,
+  onSaveTemplate,
 }) => {
   // ── Local State ─────────────────────────────────────────────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
@@ -332,10 +345,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       use2026WordInput={true}
       onComplete={handleWizardComplete}
       onBack={handleWizardBack}
+      onSaveTemplate={onSaveTemplate}
       autoMatchPartial={true}
       showLevelFilter={true}
       selectedClass={selectedClass}
       initialSelectedWords={selectedWords}
+      initialSelectedModes={assignmentModes}
       assignmentTitle={assignmentTitle}
       onTitleChange={setAssignmentTitle}
       assignmentDeadline={assignmentDeadline}

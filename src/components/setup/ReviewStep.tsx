@@ -7,9 +7,9 @@
  * - Assignment: "Assign to Class" or "Update Assignment" (blue gradient)
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, BookOpen, Target, QrCode, Users, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { WizardMode, AssignmentData, getGameModeConfig } from './types';
 
@@ -22,6 +22,11 @@ export interface ReviewStepProps {
   onQuickStart?: () => void;
   onEditWords?: () => void;
   onEditModes?: () => void;
+  /** When provided, ReviewStep shows a "Save as template" checkbox.
+   *  Toggling it on and clicking Launch fires this callback BEFORE
+   *  `onLaunch` so the template captures the wizard state, not whatever
+   *  the parent does after the launch (which usually clears state). */
+  onSaveTemplate?: () => void;
   assignmentTitle?: string;
   assignmentDeadline?: string;
   assignmentInstructions?: string;
@@ -38,6 +43,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   onQuickStart,
   onEditWords,
   onEditModes,
+  onSaveTemplate,
   assignmentTitle = '',
   assignmentDeadline = '',
   assignmentInstructions = '',
@@ -46,6 +52,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
 }) => {
   // Ref for launch button (auto-scroll)
   const launchButtonRef = useRef<HTMLButtonElement>(null);
+
+  // "Save as template" toggle.  Hidden when we're editing an existing
+  // assignment (templates are created from new tasks; editing an old
+  // one would just duplicate it).
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const showSaveToggle = !!onSaveTemplate && !editingAssignment;
 
   // Auto-scroll-to-launch-button removed. It fought the SetupWizard's
   // scroll-to-top on step change: SetupWizard scrolled to top of step 3,
@@ -280,6 +292,37 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       </div>
       </div>
 
+      {/* "Save as template" toggle.  Sits above the launch button so the
+          teacher sees it just before they tap Launch — that's the right
+          moment to remember "I'll want to reuse this".  Hidden during
+          edit-mode (templates are created from new tasks). */}
+      {showSaveToggle && (
+        <label
+          className={`flex items-start gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-colors ${
+            saveAsTemplate
+              ? 'border-indigo-300 bg-indigo-50'
+              : 'border-stone-200 bg-white hover:border-stone-300'
+          }`}
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
+          <input
+            type="checkbox"
+            checked={saveAsTemplate}
+            onChange={(e) => setSaveAsTemplate(e.target.checked)}
+            className="w-5 h-5 mt-0.5 accent-indigo-600 cursor-pointer"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+              <Bookmark size={14} className="text-indigo-600" />
+              Save as template
+            </div>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Reuse this exact task in one tap from your dashboard.
+            </p>
+          </div>
+        </label>
+      )}
+
       {/* Mobile spacer so the summary doesn't hide behind the sticky
           action bar below.  Desktop keeps the inline layout because the
           Review step is short enough to fit in a laptop viewport. */}
@@ -307,7 +350,14 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               assignmentTitle,
               isAssignment,
               isEditing,
+              saveAsTemplate,
             });
+            // Save BEFORE launching — `onLaunch` typically clears the
+            // wizard state in the parent, so by the time it returns the
+            // snapshot SetupWizard would build is empty.
+            if (saveAsTemplate && onSaveTemplate) {
+              onSaveTemplate();
+            }
             onLaunch();
           }}
           className={`flex-1 py-4 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${
