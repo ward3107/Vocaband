@@ -152,19 +152,41 @@ async function isPremiumTeacher(email: string): Promise<{ allowed: boolean; erro
 type UserRole = "teacher" | "student" | "admin";
 
 async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
-  if (!supabaseAdmin) return null;
+  if (!supabaseAdmin) {
+    console.warn("[getUserRoleAndClass] supabaseAdmin null — secrets missing");
+    return null;
+  }
   try {
     const { data, error } = await supabaseAdmin
       .from("users")
       .select("role, class_code")
       .eq("uid", uid)
       .maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.warn(
+        "[getUserRoleAndClass] query error",
+        "uid:", uid,
+        "code:", error.code,
+        "message:", error.message,
+        "details:", error.details,
+        "hint:", error.hint,
+      );
+      return null;
+    }
+    if (!data) {
+      console.warn(
+        "[getUserRoleAndClass] no row for uid",
+        uid,
+        "— check that public.users.uid matches auth.users.id::text in this project",
+      );
+      return null;
+    }
     return {
       role: data.role as UserRole,
       classCode: data.class_code ?? null,
     };
-  } catch {
+  } catch (err) {
+    console.error("[getUserRoleAndClass] exception:", err);
     return null;
   }
 }
