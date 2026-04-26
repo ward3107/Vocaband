@@ -229,14 +229,17 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Send OCR request DIRECTLY to Render (api.vocaband.com), bypassing the
-      // Cloudflare Worker proxy. Tesseract recognition takes 5-30 seconds,
-      // which exceeds the Worker's 30-second wall-clock limit. Going direct
-      // avoids the proxy timeout. CORS is configured on Render to accept
-      // requests from vocaband.com.
+      // OCR target.  Was sent direct to Render (api.vocaband.com) to
+      // dodge the Cloudflare Worker's 30s wall-clock for Tesseract.
+      // After the Render→Fly migration, Render is gone — direct fetch
+      // returned ERR_CONNECTION_CLOSED.  We now use the same-origin
+      // /api/ocr path which the Worker proxies to Fly.  Worker timeout
+      // is 30s; OCR on Gemini Vision typically completes in 5-15s,
+      // well under that.  If we ever need to bypass the Worker for
+      // long jobs again, set VITE_API_URL to a direct host.
       const ocrUrl = import.meta.env?.VITE_API_URL
         ? `${import.meta.env.VITE_API_URL}/api/ocr`
-        : 'https://api.vocaband.com/api/ocr';
+        : '/api/ocr';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s for OCR
 

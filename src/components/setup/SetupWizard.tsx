@@ -366,7 +366,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                     const formData = new FormData();
                     formData.append('file', file);
 
-                    const response = await fetch('https://api.vocaband.com/api/ocr', {
+                    // Same-origin /api/ocr — Cloudflare Worker proxies
+                    // to Fly (post Render→Fly migration).  Was hardcoded
+                    // to api.vocaband.com but Render is gone, so the
+                    // direct call returned ERR_CONNECTION_CLOSED.
+                    const response = await fetch('/api/ocr', {
                       method: 'POST',
                       headers: {
                         'Authorization': `Bearer ${token}`,
