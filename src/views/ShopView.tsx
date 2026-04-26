@@ -27,37 +27,10 @@ interface ShopViewProps {
   activateBooster: (id: 'streak_freeze' | 'lucky_spin' | 'xp_booster' | 'lucky_charm' | 'focus_mode' | 'weekend_warrior') => void;
 }
 
-// Per-title signature styling — each title gets its own gradient + type
-// vibe so the titles page looks like a roster of characters.  Tailwind
-// doesn't ship exotic fonts, so we lean on weight/case/italic/tracking
-// to communicate the personality (serif, mono, cursive-italic) without
-// shipping font files.
-const TITLE_STYLES: Record<string, {
-  gradient: string;
-  titleFont: string;
-  titleWeight: string;
-  titleExtra?: string;
-  titleStyle?: React.CSSProperties;
-  vibe: string;
-}> = {
-  _default:        { gradient: 'from-stone-600 to-stone-800',            titleFont: 'font-sans text-3xl sm:text-4xl',    titleWeight: 'font-black',          vibe: 'A classic flex.' },
-  champion:        { gradient: 'from-amber-500 via-orange-500 to-yellow-500', titleFont: 'font-sans text-3xl sm:text-4xl uppercase tracking-wider', titleWeight: 'font-black', vibe: 'Stand on the podium.' },
-  genius:          { gradient: 'from-sky-500 via-blue-600 to-indigo-700', titleFont: 'font-serif italic text-3xl sm:text-4xl', titleWeight: 'font-semibold',  vibe: 'For the quiet ones who know.' },
-  word_wizard:     { gradient: 'from-emerald-500 via-teal-500 to-cyan-600', titleFont: 'font-serif italic text-2xl sm:text-3xl', titleWeight: 'font-bold',     vibe: 'Spells cast in English.' },
-  vocab_king:      { gradient: 'from-yellow-500 via-amber-500 to-orange-600', titleFont: 'font-serif text-3xl sm:text-4xl',  titleWeight: 'font-black',         titleExtra: 'tracking-tight', vibe: 'Rule over the dictionary.' },
-  vocab_queen:     { gradient: 'from-pink-400 via-rose-500 to-fuchsia-600', titleFont: 'font-serif italic text-3xl sm:text-4xl', titleWeight: 'font-black',      vibe: 'Royal vocabulary energy.' },
-  speed_demon:     { gradient: 'from-rose-600 via-red-600 to-orange-600', titleFont: 'font-sans italic text-3xl sm:text-4xl uppercase', titleWeight: 'font-black', titleExtra: 'tracking-tight skew-x-[-6deg]', vibe: 'Nothing beats your WPM.' },
-  legend:          { gradient: 'from-indigo-700 via-violet-700 to-purple-800', titleFont: 'font-serif text-3xl sm:text-4xl',  titleWeight: 'font-black',        vibe: 'They\'ll tell stories about you.' },
-  brain:           { gradient: 'from-emerald-500 via-green-600 to-lime-500', titleFont: 'font-sans text-3xl sm:text-4xl',    titleWeight: 'font-black',         titleExtra: 'tracking-tight', vibe: 'Big thoughts only.' },
-  main_character:  { gradient: 'from-fuchsia-500 via-pink-500 to-rose-500', titleFont: 'font-serif italic text-3xl sm:text-4xl', titleWeight: 'font-black',     vibe: 'The story revolves around you.' },
-  goated:          { gradient: 'from-amber-400 via-yellow-500 to-orange-600', titleFont: 'font-sans text-3xl sm:text-4xl uppercase', titleWeight: 'font-black', titleExtra: 'tracking-widest', vibe: 'Greatest Of All Time.' },
-  aura_farmer:     { gradient: 'from-violet-500 via-fuchsia-500 to-pink-500', titleFont: 'font-sans italic text-3xl sm:text-4xl', titleWeight: 'font-light',      titleExtra: 'tracking-wide',  vibe: 'Your aura is farmable.' },
-  final_boss:      { gradient: 'from-red-700 via-rose-800 to-black',       titleFont: 'font-mono uppercase text-2xl sm:text-3xl',  titleWeight: 'font-black', titleExtra: 'tracking-widest', vibe: 'End of the rainbow.' },
-  rizzler:         { gradient: 'from-pink-500 via-rose-500 to-red-500',    titleFont: 'font-serif italic text-3xl sm:text-4xl',    titleWeight: 'font-black', vibe: 'Charisma meter: maxed.' },
-  chosen_one:      { gradient: 'from-amber-300 via-yellow-400 to-amber-600', titleFont: 'font-serif text-3xl sm:text-4xl', titleWeight: 'font-black',         titleStyle: { fontVariant: 'small-caps' }, vibe: 'Prophecy fulfilled.' },
-  speedrunner:     { gradient: 'from-lime-400 via-emerald-500 to-green-600', titleFont: 'font-mono uppercase text-2xl sm:text-3xl', titleWeight: 'font-black', titleExtra: 'tracking-tight', vibe: 'Any%. No hits. No mercy.' },
-  cracked:         { gradient: 'from-orange-500 via-red-600 to-rose-700',  titleFont: 'font-mono uppercase text-2xl sm:text-3xl',  titleWeight: 'font-black', titleExtra: 'tracking-[0.25em]', vibe: 'Cooking with gas.' },
-};
+// Per-title signature styling lives in src/constants/titleStyles.ts so
+// the dashboard banner can render the equipped title with the SAME
+// font / weight / gradient the student saw in the shop.
+import { TITLE_STYLES } from '../constants/titleStyles';
 
 // Per-booster gradient — vibe matches purpose (XP=warm, defensive=cool).
 const BOOSTER_STYLES: Record<string, string> = {
