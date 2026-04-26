@@ -67,6 +67,23 @@ async function loadHebrewArabicFonts(): Promise<Base64Font> {
 const HEBREW_RE = /[֐-׿יִ-ﭏ]/;
 const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
+// jsPDF renders Hebrew + Arabic GLYPHS once we register the Noto
+// fonts, but it has no native RTL handling — characters are written
+// left-to-right, so "שלום" comes out as "םולש".  Workaround: pre-
+// reverse RTL runs in the string before handing to jsPDF.  Process
+// word-by-word so that mixed strings like "Score: 80% (סימו)" keep
+// the Latin part untouched and only flip the Hebrew word.
+//
+// Caveat: this is naive bidi.  Arabic letters change shape based on
+// position (initial/medial/final/isolated forms) — without true glyph
+// shaping, reversed Arabic still reads as disconnected glyphs.  Hebrew
+// has no shaping so renders correctly.
+const RTL_WORD_RE = /[֐-׿؀-ۿݐ-ݿࢠ-ࣿיִ-﻿]+/g;
+
+function fixRtl(text: string): string {
+  return text.replace(RTL_WORD_RE, run => run.split('').reverse().join(''));
+}
+
 interface ClassStudent {
   name: string;
   classCode: string;
@@ -262,13 +279,20 @@ export default function ReportExportBar({
         doc.addFont('NotoSansArabic-Regular.ttf', 'Arabic', 'normal');
       }
       // didParseCell hook: jsPDF-autotable lets us mutate the cell's
-      // styles before render.  We sniff the cell text and switch font
-      // to Hebrew/Arabic when needed; everything else stays helvetica.
+      // styles AND text before render.  We sniff the cell text and
+      // (a) switch font to Hebrew/Arabic when needed (Latin stays on
+      // helvetica) and (b) pre-reverse RTL runs so Hebrew reads
+      // correctly right-to-left in the rendered PDF.
       const cellFontHook = (data: { cell: { text: string[]; styles: { font?: string } } }) => {
         if (!fonts) return;
         const text = (data.cell.text || []).join(' ');
-        if (HEBREW_RE.test(text)) data.cell.styles.font = 'Hebrew';
-        else if (ARABIC_RE.test(text)) data.cell.styles.font = 'Arabic';
+        const hasHebrew = HEBREW_RE.test(text);
+        const hasArabic = ARABIC_RE.test(text);
+        if (hasHebrew) data.cell.styles.font = 'Hebrew';
+        else if (hasArabic) data.cell.styles.font = 'Arabic';
+        if (hasHebrew || hasArabic) {
+          data.cell.text = (data.cell.text || []).map(line => fixRtl(line));
+        }
       };
 
       // Branded header
