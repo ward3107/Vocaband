@@ -102,6 +102,31 @@ export default function QuickPlayStudentView({
     }
   }, [quickPlaySocket.lastError, showToast]);
 
+  // KICKED + SESSION_ENDED — without these listeners the server emits
+  // the events but the student's tab keeps the game running.  Symptom
+  // teachers reported: "I kick a student and they vanish from my
+  // podium but their phone keeps playing."  Subscribe both events to
+  // cleanly tear down the local session and bounce back to landing.
+  useEffect(() => {
+    if (!QUICKPLAY_V2) return;
+    const offKicked = quickPlaySocket.onKicked(() => {
+      showToast("Your teacher removed you from the session.", "info");
+      cleanupSessionData();
+      setQuickPlayActiveSession(null);
+      setView("public-landing");
+    });
+    const offEnded = quickPlaySocket.onSessionEnded(() => {
+      showToast("The teacher ended the session.", "info");
+      cleanupSessionData();
+      setQuickPlayActiveSession(null);
+      setView("public-landing");
+    });
+    return () => {
+      offKicked();
+      offEnded();
+    };
+  }, [quickPlaySocket, cleanupSessionData, setQuickPlayActiveSession, setView, showToast]);
+
   return (
     <div className="min-h-screen flex flex-col bg-surface">
       <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 z-50">
