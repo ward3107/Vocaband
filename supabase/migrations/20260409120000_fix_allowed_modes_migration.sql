@@ -1,4 +1,10 @@
 -- Drop the old function first
+-- Need to drop both the original 1-arg and the 2-arg overload because
+-- a fresh migration apply may have created the 2-arg first via the
+-- earlier 20260326 migration; without dropping both we end up with
+-- an ambiguous overload set and the COMMENT below fails with
+-- "function name ... is not unique".
+DROP FUNCTION IF EXISTS public.create_quick_play_session(INTEGER[]);
 DROP FUNCTION IF EXISTS public.create_quick_play_session(INTEGER[], JSONB);
 
 -- Add allowed_modes column if not exists
@@ -44,4 +50,4 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.create_quick_play_session IS 'Create quick play session with database words, custom words, and allowed game modes';
+COMMENT ON FUNCTION public.create_quick_play_session(INTEGER[], JSONB, TEXT[]) IS 'Create quick play session with database words, custom words, and allowed game modes';
