@@ -58,20 +58,33 @@ const supabaseAdmin = hasSupabaseConfig
   : null;
 
 async function verifyToken(token: string): Promise<string | null> {
-  if (!supabaseAdmin) return null;
+  if (!supabaseAdmin) {
+    console.error("[verifyToken] supabaseAdmin is null — SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing");
+    return null;
+  }
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     if (error) {
-      console.warn("Token verification failed:", error.message);
+      // Log the FULL error so we can see if it's a network issue, a bad
+      // SUPABASE_URL, or a genuinely expired/invalid JWT.  Token-prefix
+      // helps tell which user/session is failing without leaking the
+      // whole JWT.
+      console.warn(
+        "[verifyToken] failed:",
+        error.message,
+        "status:", (error as { status?: number }).status,
+        "tokenPrefix:", token.slice(0, 16),
+        "supabaseUrl:", process.env.SUPABASE_URL,
+      );
       return null;
     }
     if (!user) {
-      console.warn("Token verification: no user returned");
+      console.warn("[verifyToken] no user returned for tokenPrefix:", token.slice(0, 16));
       return null;
     }
     return user.id;
   } catch (err) {
-    console.error("Token verification exception:", err);
+    console.error("[verifyToken] exception:", err);
     return null;
   }
 }
