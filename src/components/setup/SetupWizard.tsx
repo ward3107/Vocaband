@@ -270,8 +270,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         const fallbackTitle = mode === 'quick-play'
           ? `Quick Play · ${new Date().toLocaleDateString()}`
           : `Template · ${new Date().toLocaleDateString()}`;
+        const title = assignmentTitle?.trim() || fallbackTitle;
         onSaveTemplate({
-          title: assignmentTitle?.trim() || fallbackTitle,
+          title,
           mode,
           wordIds: selectedWords.map(w => w.id),
           modes: selectedModes,
@@ -279,6 +280,31 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           sentenceDifficulty,
           sentences: assignmentSentences.length > 0 ? assignmentSentences : undefined,
         });
+
+        // Also surface this exact word list under "Saved Groups" in
+        // the WordInputStep2026 picker, so a teacher who reused the
+        // same words last week can pick them in 1 tap next time.
+        // Storage key matches what SavedGroupsPanel reads
+        // (vocaband-saved-groups), so the panel picks up the group
+        // on next mount without any extra wiring.  Skip if the
+        // selection is empty.
+        try {
+          const ids = selectedWords.map(w => w.id);
+          if (ids.length > 0) {
+            const raw = localStorage.getItem('vocaband-saved-groups');
+            const groups: Array<{ id: string; name: string; words: number[] }> =
+              raw ? JSON.parse(raw) : [];
+            const groupId = `g_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            groups.unshift({ id: groupId, name: title, words: ids });
+            // Cap to last 50 groups so localStorage doesn't grow forever.
+            const capped = groups.slice(0, 50);
+            localStorage.setItem('vocaband-saved-groups', JSON.stringify(capped));
+          }
+        } catch {
+          // localStorage blocked / private mode — silent: the template
+          // still got saved via onSaveTemplate, so the teacher hasn't
+          // lost anything important.
+        }
       }
     : undefined;
 

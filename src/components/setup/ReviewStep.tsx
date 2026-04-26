@@ -314,10 +314,11 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           <div className="flex-1">
             <div className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
               <Bookmark size={14} className="text-indigo-600" />
-              Save as template
+              Save as template + word group
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Reuse this exact task in one tap from your dashboard.
+              Reuse this exact task in one tap, AND save these words
+              under "Saved Groups" so future assignments can pick them up.
             </p>
           </div>
         </label>
