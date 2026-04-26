@@ -275,6 +275,14 @@ export default function App() {
   const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
   const [quickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
+  // Cumulative score across all modes a guest has played in the
+  // current Quick Play session.  The per-mode `score` state (in
+  // useGameState) resets to 0 on every new mode, so emitting it
+  // directly to the QP socket caused the leaderboard to regress
+  // (server rejected with [QP SCORE regress] prev=15 new=10).
+  // This ref accumulates each mode's finalScore so the QP socket
+  // sees a monotonically-increasing total.
+  const qpCumulativeScoreRef = useRef(0);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
@@ -709,8 +717,13 @@ export default function App() {
     });
 
     if (QUICKPLAY_V2 && user?.isGuest && quickPlayActiveSession) {
-      console.log('[emitScoreUpdate] QP path → updateScore', newScore);
-      setTimeout(() => quickPlaySocket.updateScore(newScore), 0);
+      // Add the per-mode score on top of the cumulative running total
+      // for previously-completed modes in this session.  Without this,
+      // each new mode would emit a small per-mode value and the server
+      // would reject it as a regress (new < previous max).
+      const cumulative = qpCumulativeScoreRef.current + newScore;
+      console.log('[emitScoreUpdate] QP path → updateScore', { mode: newScore, cumulative });
+      setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
       return;
     }
 
@@ -1393,6 +1406,8 @@ export default function App() {
         setQuickPlayActiveSession(null);
         setQuickPlaySessionCode(null);
         setQuickPlayJoinedStudents([]);
+        // Reset cumulative QP score so a fresh session starts at 0.
+        qpCumulativeScoreRef.current = 0;
         setQuickPlayKicked(false);
         setQuickPlaySessionEnded(false);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
@@ -1685,7 +1700,16 @@ export default function App() {
     score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
     quickPlayActiveSession,
     quickPlayV2: QUICKPLAY_V2,
-    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+    // On mode-finish: accumulate this mode's finalScore into the
+    // session-wide cumulative ref BEFORE emitting, so the QP socket
+    // sees a monotonically-increasing total across modes.  Without
+    // this, mode 2 would emit its own (smaller) per-mode value and
+    // the server would reject as a regress.
+    quickPlaySocketUpdateScore: (finalScore: number) => {
+      qpCumulativeScoreRef.current += Math.max(0, finalScore);
+      console.log('[QP cumulative] mode finished', { mode: finalScore, totalNow: qpCumulativeScoreRef.current });
+      quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
+    },
     xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
     retention, boosters,
