@@ -14,6 +14,7 @@ import React from 'react';
 import { Flame, Sparkles, Crown } from 'lucide-react';
 import type { AppUser } from '../../core/supabase';
 import { getXpTitle, NAME_FRAMES, NAME_TITLES } from '../../constants/game';
+import { getTitleStyle } from '../../constants/titleStyles';
 
 export interface IdentityHeroProps {
   user: AppUser;
@@ -49,38 +50,6 @@ const HERO_GRADIENTS: Record<string, string> = {
   esports: 'from-green-500 via-emerald-500 to-teal-600',
 };
 
-/**
- * Per-title hero gradient.  When a student equips a title, the WHOLE
- * hero card recolours so it actually reads as "I'm wearing this" — the
- * old behaviour rendered every title in a generic white pill that
- * blended into the theme background.  Equipping a title now wins over
- * the theme gradient, matching teacher feedback that buying a title
- * "should change the rectangle, not just add a tiny chip".
- *
- * Add new title ids here when adding to NAME_TITLES; the fallback
- * (`'default'`) is the original warm amber so missing entries are
- * non-breaking.
- */
-const TITLE_GRADIENTS: Record<string, string> = {
-  default:        'from-amber-400 via-orange-500 to-rose-500',
-  champion:       'from-amber-300 via-yellow-500 to-orange-500',
-  genius:         'from-violet-500 via-fuchsia-500 to-pink-500',
-  word_wizard:    'from-indigo-500 via-violet-500 to-fuchsia-500',
-  vocab_king:     'from-amber-400 via-orange-500 to-red-600',
-  vocab_queen:    'from-fuchsia-500 via-pink-500 to-rose-500',
-  speed_demon:    'from-red-500 via-orange-500 to-yellow-500',
-  legend:         'from-yellow-400 via-amber-500 to-orange-600',
-  brain:          'from-cyan-400 via-sky-500 to-blue-600',
-  main_character: 'from-pink-500 via-fuchsia-500 to-violet-600',
-  goated:         'from-emerald-500 via-yellow-500 to-orange-500',
-  aura_farmer:    'from-purple-500 via-violet-500 to-indigo-600',
-  final_boss:     'from-rose-600 via-red-700 to-stone-900',
-  rizzler:        'from-cyan-400 via-pink-500 to-violet-600',
-  chosen_one:     'from-yellow-300 via-amber-400 to-rose-500',
-  speedrunner:    'from-lime-400 via-emerald-500 to-cyan-500',
-  cracked:        'from-cyan-400 via-blue-500 to-purple-600',
-};
-
 export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) => {
   const firstName = user.displayName?.split(' ')[0] ?? 'Friend';
   const avatar = user.avatar || '🦊';
@@ -101,9 +70,10 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
   // equipped, then the default if the theme is also unknown.
   const themeId = user.activeTheme ?? 'default';
   const themeGradient = HERO_GRADIENTS[themeId] ?? HERO_GRADIENTS.default;
-  const titleGradient = equippedTitle
-    ? (TITLE_GRADIENTS[equippedTitle.id] ?? TITLE_GRADIENTS.default)
-    : null;
+  // Equipped-title visuals come from the shared shop catalogue so the
+  // hero card matches what the student saw before buying.
+  const titleStyleEntry = getTitleStyle(equippedTitle?.id);
+  const titleGradient = equippedTitle ? titleStyleEntry.gradient : null;
   const heroGradient = titleGradient ?? themeGradient;
 
   return (
@@ -123,12 +93,19 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
           is recoloured to match. */}
       {equippedTitle && (
         <div className="relative mb-4 flex justify-center">
-          <div className="inline-flex items-center gap-2 sm:gap-3 bg-white/95 text-stone-900 rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-2xl ring-2 ring-white/40">
-            <Crown size={18} className="text-amber-500 fill-amber-300 drop-shadow" aria-hidden />
-            <span className="text-base sm:text-xl font-black tracking-wide leading-none">
+          {/* Pill background = equipped title's signature gradient
+              (same record the shop card uses).  Text inherits the
+              shop-defined font + weight + tracking + custom CSS so
+              equipping a title mirrors the shop preview exactly. */}
+          <div className={`inline-flex items-center gap-2 sm:gap-3 bg-gradient-to-r ${titleStyleEntry.gradient} text-white rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-2xl ring-2 ring-white/40`}>
+            <Crown size={18} className="text-white fill-white/90 drop-shadow" aria-hidden />
+            <span
+              className={`leading-none ${titleStyleEntry.titleFont} ${titleStyleEntry.titleWeight} ${titleStyleEntry.titleExtra ?? ''}`}
+              style={titleStyleEntry.titleStyle}
+            >
               {equippedTitle.display}
             </span>
-            <Crown size={18} className="text-amber-500 fill-amber-300 drop-shadow scale-x-[-1]" aria-hidden />
+            <Crown size={18} className="text-white fill-white/90 drop-shadow scale-x-[-1]" aria-hidden />
           </div>
         </div>
       )}
