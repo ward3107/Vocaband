@@ -851,45 +851,31 @@ async function startServer() {
       }
       const owned = state.socketToClient.get(socket.id);
       if (owned !== clientId) {
-        // Self-heal level 1: known clientId, just re-attach the
+        // Self-heal level 1 only: known clientId, just re-attach the
         // socket→client mapping (post-reconnect race).
         if (state.students.has(clientId)) {
           state.socketToClient.set(socket.id, clientId);
           socket.join(sessionCode);
           console.log(
-            `[QP SCORE self-heal-A] reattached socket=${socket.id} ` +
+            `[QP SCORE self-heal] reattached socket=${socket.id} ` +
             `to client=${clientId} session=${sessionCode}`,
           );
         } else {
-          // Self-heal level 2: clientId is NOT in students.  This
-          // happens when the client's join packet was lost, the JOIN
-          // handler raced with the first SCORE_UPDATE, or the client
-          // regenerated its UUID after a state inconsistency.
-          //
-          // QP is an unauthenticated guest namespace.  The trust
-          // boundary is "any client can claim any uuid" — that was
-          // already true at STUDENT_JOIN time, so creating an entry
-          // here doesn't widen the surface.  Drop a placeholder
-          // entry so the score has somewhere to land; the client's
-          // auto-rejoin (which fires STUDENT_JOIN on every connect)
-          // will overwrite the nickname + avatar within ~1s with the
-          // real values.  Without this, teachers report "students
-          // joined but my podium shows 0 pts" indefinitely whenever
-          // the join handshake glitches.
-          state.students.set(clientId, {
-            clientId,
-            nickname: "?",
-            avatar: "🦊",
-            score: 0,
-            lastSeen: Date.now(),
-          });
-          state.socketToClient.set(socket.id, clientId);
-          socket.join(sessionCode);
-          console.log(
-            `[QP SCORE self-heal-B] created placeholder for unknown ` +
-            `client=${clientId} session=${sessionCode} ` +
-            `(was: socketOwns=${owned ?? "<none>"} mapSize=${state.socketToClient.size - 1} students=${state.students.size - 1})`,
+          // Unknown clientId.  Previously we created a placeholder
+          // row here, but that produced phantom students on the
+          // teacher's podium ('?' avatar with the score, alongside
+          // the real student showing 0 pts) when the client raced a
+          // score emit ahead of the JOIN packet.  Better behaviour:
+          // log + drop.  The actual fix is on the client (use a ref
+          // for clientId so updateScore can never see a stale state
+          // value).
+          console.warn(
+            `[QP SCORE owner-mismatch] socket=${socket.id} ` +
+            `claimedClient=${clientId} socketOwnsClient=${owned ?? "<none>"} ` +
+            `session=${sessionCode} score=${score} ` +
+            `mapSize=${state.socketToClient.size} students=${state.students.size}`,
           );
+          return;
         }
       }
       const entry = state.students.get(clientId);
