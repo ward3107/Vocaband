@@ -53,7 +53,6 @@ No app store. No personal data required for students. Works on any device with a
     <td align="center"><b>Landing page — meet Vocaband</b></td>
   </tr>
   <tr>
-    <td><img src="./docs/screenshots/screen.png" alt="Vocaband landing page — Level Up Your Vocabulary hero with Start Learning and Teacher Login CTAs" width="800" /></td>
   </tr>
 </table>
 
@@ -62,7 +61,6 @@ No app store. No personal data required for students. Works on any device with a
     <td align="center"><b>Teacher dashboard — Quick Play, Classroom, Approvals</b></td>
   </tr>
   <tr>
-    <td><img src="./docs/screenshots/screen1.png" alt="Teacher dashboard with quick-action cards, class list, and saved templates" width="800" /></td>
   </tr>
 </table>
 
@@ -71,7 +69,6 @@ No app store. No personal data required for students. Works on any device with a
     <td align="center"><b>Student experience — pick a mode, pick a language, play</b></td>
   </tr>
   <tr>
-    <td><img src="./docs/screenshots/screen2.png" alt="Student game-mode selection with 10 modes grouped by difficulty" width="800" /></td>
   </tr>
 </table>
 
