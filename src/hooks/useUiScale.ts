@@ -34,9 +34,18 @@ function read(): UiScale {
 
 function applyToDocument(scale: UiScale) {
   if (typeof document === 'undefined') return;
-  // Set on documentElement (html) so EVERY rem unit picks it up,
-  // including portals / modals that mount at <body> level.
-  document.documentElement.style.fontSize = `${SCALE_TO_PX[scale]}px`;
+  const px = SCALE_TO_PX[scale];
+  // Set on documentElement (html) with !important so it beats any
+  // late-loading Tailwind/UA reset that re-anchors `html { font-size:
+  // 16px }`.  Using setProperty + 'important' instead of
+  // `.style.fontSize = ...` because the latter doesn't accept the
+  // priority flag and a normal-priority inline style still loses to
+  // an !important rule from a stylesheet.
+  document.documentElement.style.setProperty('font-size', `${px}px`, 'important');
+  // Also write the CSS custom property declared in index.css so any
+  // stylesheet that reads var(--a11y-font-size) picks the new value
+  // up automatically.
+  document.documentElement.style.setProperty('--a11y-font-size', `${px}px`);
 }
 
 export function useUiScale(): {

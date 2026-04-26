@@ -11,7 +11,10 @@ import './index.css';
 try {
   const v = localStorage.getItem('vocaband_ui_scale');
   const px = v === 'large' ? 19 : v === 'xlarge' ? 22 : null;
-  if (px !== null) document.documentElement.style.fontSize = `${px}px`;
+  if (px !== null) {
+    document.documentElement.style.setProperty('font-size', `${px}px`, 'important');
+    document.documentElement.style.setProperty('--a11y-font-size', `${px}px`);
+  }
 } catch { /* localStorage unavailable — keep Tailwind default */ }
 
 // Surface a top banner if a critical browser API is missing (Safari
