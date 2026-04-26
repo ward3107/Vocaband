@@ -6706,4 +6706,83 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "💪",
     ids: [1143, 1356, 203, 205, 2931, 3432, 3818], // 7 action verbs
   },
+  // ── 2026-04-26 — additional topic packs (teacher request) ─────────
+  {
+    name: "House & Rooms 🏠",
+    icon: "🏠",
+    // bath, bathroom, bedroom, ceiling, door, fence, floor, garage,
+    // garden, gate, hall, home, house, kitchen, roof, shower, stairs,
+    // toilet, wall, window, basement
+    ids: [373, 376, 420, 715, 1281, 1599, 1667, 1780, 1782, 1786, 2021, 2167, 2198, 2544, 3798, 4010, 4201, 4616, 4907, 5050, 8082],
+  },
+  {
+    name: "Opposites ⚖️",
+    icon: "⚖️",
+    // big↔small, tall↔short, fast↔slow, hot↔cold, happy↔sad,
+    // hard↔soft, heavy↔light, easy↔difficult, new↔old, clean↔dirty,
+    // empty↔full, near↔far, strong↔weak, good↔bad, right↔wrong,
+    // early↔late, dry↔wet, loud↔quiet, dark↔light, expensive↔cheap
+    ids: [465, 4075, 4414, 4000, 1575, 4069, 2190, 879, 2045, 3832, 2047, 4111, 2102, 2649, 1355, 1203, 3049, 3150, 824, 1223, 1398, 1757, 3020, 1564, 4266, 4948, 1930, 333, 3767, 5113, 1341, 2585, 1321, 4983, 2741, 3606, 6453, 5471, 762],
+  },
+  {
+    name: "At the Doctor 🏥",
+    icon: "🏥",
+    // ambulance, cough, dentist, doctor, ear, eye, heal, hospital,
+    // hurt, illness, medicine, nurse, pain, sick, stomach, teeth,
+    // temperature, throat, tooth, headache, fever, cure, flu
+    ids: [158, 1024, 1153, 1270, 1339, 1528, 2089, 2189, 2243, 2289, 2866, 3113, 3281, 4015, 4236, 4449, 4461, 4572, 4634, 5571, 6572, 7293, 7416],
+  },
+  {
+    name: "Money & Shopping 💰",
+    icon: "💰",
+    // bank, bill, buy, change, cheap, coin, cost, customer, dollar,
+    // euro, free, mall, market, money, owe, pay, price, sale, sell,
+    // shekel, spend, store, cash, credit, expensive
+    ids: [354, 471, 611, 745, 762, 876, 1018, 1092, 1274, 1450, 1728, 2814, 2831, 2944, 3265, 3342, 3515, 3852, 3940, 3975, 4170, 4242, 5316, 5385, 5471],
+  },
+  {
+    name: "Daily Routine ⏰",
+    icon: "⏰",
+    // bath, breakfast, cook, dinner, dress, drink, eat, exercise,
+    // homework, leave, listen, lunch, play, prepare, read, relax,
+    // return, shower, sleep, study, supper, walk, wash, watch, write,
+    // brush
+    ids: [373, 562, 991, 1212, 1305, 1308, 1356, 1493, 2173, 2612, 2671, 2757, 3424, 3503, 3652, 3696, 3750, 4010, 4063, 4275, 4329, 4900, 4922, 4931, 5110, 6314],
+  },
+  {
+    name: "In the City 🏙️",
+    icon: "🏙️",
+    // airport, building, bus, cinema, city, factory, fire (station),
+    // hotel, library, museum, office, park, police, restaurant, road,
+    // school, stadium, station, street, town, train, village, church,
+    // mosque, temple
+    ids: [114, 594, 605, 806, 813, 1537, 1632, 2194, 2641, 2989, 3136, 3308, 3452, 3746, 3782, 3892, 4198, 4217, 4258, 4661, 4678, 4878, 5342, 5750, 7931],
+  },
+  {
+    name: "Holidays & Celebrations 🎉",
+    icon: "🎉",
+    // birthday, cake, celebrate, festival, gift, holiday, invite,
+    // present, surprise, wedding, candle, guest, wish, party
+    ids: [478, 629, 716, 1600, 1850, 2162, 2409, 3505, 4339, 4962, 5301, 5552, 6155, 6848],
+  },
+  {
+    name: "Tools & Gadgets 🔧",
+    icon: "🔧",
+    // battery, camera, computer, fork, knife, microwave, phone,
+    // refrigerator, remote, spoon, television, laptop, oven, cable, nail
+    ids: [377, 642, 946, 1711, 2552, 2896, 3376, 3684, 3710, 4178, 4457, 5674, 6838, 8153, 8690],
+  },
+  {
+    name: "Question Words ❓",
+    icon: "❓",
+    // how, what, when, where, who, why, whose, which
+    ids: [2202, 4986, 5013, 5016, 5028, 5031, 6147, 9112],
+  },
+  {
+    name: "Greetings & Polite Words 👋",
+    icon: "👋",
+    // bye, goodbye, hi, maybe, no, please, sorry, sure, thank, yes,
+    // thanks, excuse
+    ids: [622, 1937, 2130, 2845, 3073, 3436, 4135, 4334, 4490, 5127, 6041, 6541],
+  },
 ];
