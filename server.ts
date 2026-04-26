@@ -47,6 +47,29 @@ if (!hasSupabaseConfig) {
   );
 }
 
+// Defensive startup check — surface the exact case that bit us once
+// already: a copy-paste of the service-role key included a non-ASCII
+// character (rightwards arrow, U+2192), which made every Supabase call
+// throw "Cannot convert argument to a ByteString".  The error happens
+// far from the secret-set step, so flag it loudly here at boot.
+function flagNonAscii(name: string, value: string | undefined) {
+  if (!value) return;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code > 127) {
+      console.error(
+        `[startup] WARNING: env var ${name} contains non-ASCII char U+${code.toString(16).padStart(4, '0').toUpperCase()} at index ${i}.  ` +
+        `HTTP headers cannot carry this — re-set the secret with a clean copy-paste from the Supabase dashboard.`
+      );
+      return;
+    }
+  }
+}
+flagNonAscii('SUPABASE_URL', process.env.SUPABASE_URL);
+flagNonAscii('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY);
+flagNonAscii('GOOGLE_AI_API_KEY', process.env.GOOGLE_AI_API_KEY);
+flagNonAscii('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY);
+
 // Supabase admin client — uses the service role key to verify tokens server-side
 // Only created if credentials are available.
 const supabaseAdmin = hasSupabaseConfig
