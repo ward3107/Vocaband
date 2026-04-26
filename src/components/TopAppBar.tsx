@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
+import UiScaleControl from "./dashboard/UiScaleControl";
 
 interface TopAppBarProps {
   title: string;
@@ -9,6 +10,10 @@ interface TopAppBarProps {
   onBack?: () => void;
   userAvatar?: string;
   onLogout?: () => void;
+  /** When true, surface the A/A/A display-size picker next to the
+   *  user chip.  Currently teacher-only — students don't need it on
+   *  their own dashboards (they can use browser zoom). */
+  showScaleControl?: boolean;
 }
 
 /**
@@ -36,6 +41,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   onBack,
   userAvatar,
   onLogout,
+  showScaleControl = false,
 }) => {
   const safeAvatarUrl = sanitizeAvatarUrl(userAvatar);
   const [isVisible, setIsVisible] = useState(true);
@@ -88,6 +94,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {showScaleControl && <UiScaleControl />}
         {userName && (
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>
