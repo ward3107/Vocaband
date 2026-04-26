@@ -1690,15 +1690,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           onClick={() => setOpenPanel('saved-groups')}
           delay={0.1}
         />
-        <OptionCard
-          emoji="📚"
-          title={TEXT.browseLibrary}
-          subtitle="Search & add words"
-          ctaText={TEXT.view}
-          gradient="from-indigo-500 to-violet-500"
-          onClick={() => setOpenPanel('browse-library')}
-          delay={0.2}
-        />
+        {/* Browse Library card removed per teacher feedback — the
+            full curriculum dump was overwhelming and teachers said
+            they prefer pasting / topic-packs / saved-groups / OCR.
+            The browse-library panel is still in the file (renderer +
+            state) so we can re-enable it later if needed. */}
         <OptionCard
           emoji="📷"
           title={TEXT.ocr}

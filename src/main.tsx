@@ -4,6 +4,16 @@ import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
 import './index.css';
 
+// Apply the teacher's saved display scale BEFORE React renders, so
+// the first paint already uses the right rem base.  Without this,
+// teachers who picked "large" see a brief flash of normal-size UI on
+// every page load while the React component mounts and re-applies.
+try {
+  const v = localStorage.getItem('vocaband_ui_scale');
+  const px = v === 'large' ? 19 : v === 'xlarge' ? 22 : null;
+  if (px !== null) document.documentElement.style.fontSize = `${px}px`;
+} catch { /* localStorage unavailable — keep Tailwind default */ }
+
 // Surface a top banner if a critical browser API is missing (Safari
 // Private Browsing, third-party cookies disabled, WebSocket blocked).
 // Teachers reported "the game doesn't work on Safari" with no DevTools

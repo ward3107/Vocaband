@@ -251,7 +251,18 @@ export function analyzePastedText(
   // Don't add detected phrases to termMap — they're handled separately
 
   const extractedTerms = Array.from(termMap.values());
-  const contentTerms = extractedTerms.filter(t => !t.isStopWord);
+  // Don't filter "stop words" out of teacher-pasted vocab lists.  The
+  // STOP_WORDS list was originally for prose analysis (extract content
+  // words from a paragraph) but it includes basic ESL vocab that
+  // teachers DO want to teach: 'one, two, three', 'before, after',
+  // 'next, last', 'why, how, where', 'very, too, more', etc.  When a
+  // teacher pastes 12 words and 4 of them are these "stop words", the
+  // analyzer dropped them silently and only 8 reached the lesson.
+  // Matching downstream already filters out anything not in the
+  // curriculum, so harmless terms stay harmless and real vocab gets
+  // matched.  Keep the isStopWord flag on the term for diagnostics
+  // but don't use it as a filter.
+  const contentTerms = extractedTerms;
 
   // ── Step 5: Multi-tier matching ─────────────────────────────────────────
   const matchedWords: WordMatch[] = [];

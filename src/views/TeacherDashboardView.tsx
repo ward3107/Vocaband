@@ -133,6 +133,7 @@ export default function TeacherDashboardView({
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
+          showScaleControl
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

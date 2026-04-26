@@ -27,6 +27,7 @@ import { supabase, type ProgressData, type AssignmentData, type ClassData } from
 import type { View } from "../core/views";
 import StatChip from "../components/classroom/StatChip";
 import ReportExportBar from "../components/classroom/ReportExportBar";
+import ReportsDashboard from "../components/classroom/ReportsDashboard";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -346,6 +347,17 @@ export default function ClassroomView(props: ClassroomViewProps) {
                   assignments={teacherAssignments}
                   classStudents={classStudents}
                   showToast={showToast}
+                />
+                {/* Real Reports content — per-week trend, top struggling
+                    words, plays/day histogram, attendance.  Sits between
+                    the export bar (where teachers grab data) and the
+                    legacy AnalyticsView (which keeps "what to reteach"
+                    + the CSV-ish per-mode mastery view). */}
+                <ReportsDashboard
+                  classCode={classCode}
+                  scores={allScores}
+                  assignments={teacherAssignments}
+                  classStudents={classStudents}
                 />
                 <AnalyticsView
                   user={user}
