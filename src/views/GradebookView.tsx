@@ -432,7 +432,9 @@ export default function GradebookView({
     const csv = rows.map(r =>
       r.map(cell => `"${(cell ?? '').toString().replace(/"/g, '""')}"`).join(',')
     ).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    // BOM prefix so Excel (Windows) reads as UTF-8 instead of CP-1252,
+    // which would otherwise turn Hebrew + Arabic names into mojibake.
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

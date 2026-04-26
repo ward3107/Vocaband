@@ -171,7 +171,12 @@ export default function ReportExportBar({
         lines.push([s.studentName, s.plays, s.avgScore, s.bestScore, s.totalMistakes, s.lastActive]
           .map(escapeCsvCell).join(','));
       });
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      // Prefix with UTF-8 BOM (﻿) so Excel for Windows recognises
+      // the file as UTF-8 instead of Windows-1252.  Without the BOM,
+      // Hebrew + Arabic columns (student names, mistake words) open as
+      // mojibake (??? or random Latin-1 glyphs).  Costs 3 bytes; fixes
+      // every locale at once.
+      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, `vocaband-${classCode || 'all'}-${today()}.csv`);
       showToast('CSV exported', 'success');
     } catch (err) {
