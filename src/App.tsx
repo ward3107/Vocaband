@@ -716,11 +716,18 @@ export default function App() {
       hasClassCode: !!user?.classCode,
     });
 
-    if (QUICKPLAY_V2 && user?.isGuest && quickPlayActiveSession) {
+    if (QUICKPLAY_V2 && quickPlayActiveSession) {
       // Add the per-mode score on top of the cumulative running total
       // for previously-completed modes in this session.  Without this,
       // each new mode would emit a small per-mode value and the server
       // would reject it as a regress (new < previous max).
+      // The previous gate also required `user.isGuest`, which silently
+      // dropped scores for any OAuth student who somehow ended up in a
+      // QP session — they appeared on the teacher's podium but their
+      // score never moved.  Today's QR-scan flow turns OAuth students
+      // into guests at join time, so this branch effectively covers
+      // them too; dropping the isGuest guard removes the failsafe that
+      // had no business being there.
       const cumulative = qpCumulativeScoreRef.current + newScore;
       console.log('[emitScoreUpdate] QP path → updateScore', { mode: newScore, cumulative });
       setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
@@ -883,6 +890,17 @@ export default function App() {
     // (fire-and-forget from the non-async onAuthStateChange callback).
     const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
       if (restoreInProgress.current) return;
+      // QR-scan Live Play: if the URL carries `?session=…` the user
+      // scanned a teacher's Quick Play QR and the initial-view setter
+      // (line ~132) already routed them to "quick-play-student".  We
+      // intentionally skip auth restore in that case so a logged-in
+      // OAuth student lands in the guest join flow exactly like a
+      // fresh visitor — they type a nickname, become a guest for the
+      // duration, and their score updates flow through the QP V2
+      // channel (which the legacy live-challenge channel does not).
+      // Without this guard, the dashboard setView calls below override
+      // the QR view and the student never sees the join form.
+      if (quickPlaySessionParam) return;
       restoreInProgress.current = true;
       try {
         // For anonymous students: RLS blocks SELECT on users table
