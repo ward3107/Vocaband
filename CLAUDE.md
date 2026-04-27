@@ -319,3 +319,186 @@ Never commit `.env.local` — it holds the service-role key.
   Engine is mostly subject-agnostic — generalizing `Word → StudyCard` is
   ~1 week of work and 6× the addressable market.  Defer until paywall is
   landed and English-teacher revenue is meaningful.
+
+---
+
+## 12. Quick Play / Live Play — debugging cheat sheet
+
+If teachers report "I started a Live Play, students appear on the
+podium but their scores never tick" or "I can't kick a student" or
+"only one student appears even though my whole class joined", almost
+every regression we've seen so far traces to one of these four
+gotchas.  Read this BEFORE re-deriving anything from `server.ts` and
+`useQuickPlaySocket.ts`.
+
+### A. Two hook instances of `useQuickPlaySocket`
+
+`useQuickPlaySocket()` is mounted in BOTH:
+- `src/App.tsx` (around line 653) — provides the score-emit channel
+  consumed by `emitScoreUpdate`
+- `src/views/QuickPlayStudentView.tsx` (around line 83) — owns the
+  click handler that calls `joinAsStudent`
+
+Each instance has its own `clientIdRef`.  When the student clicks
+Join, only the **QuickPlayStudentView** instance's ref is updated by
+`clientIdForJoin(nickname)`.  App.tsx's instance keeps the pre-join
+id in its ref.  When scores fire, they go through App.tsx's instance
+→ stale clientId → server's owner-mismatch check rejects.
+
+**Symptom on the server:** `[QP SCORE owner-mismatch] socketOwnsClient=A claimedClient=B`
+where A and B are different valid UUIDs (BOTH non-`<none>`).
+
+**Fix:** `updateScore` in `useQuickPlaySocket.ts` must read the
+clientId from `sessionStorage` (the source of truth) on every emit,
+NOT from `clientIdRef.current`.  Both hook instances share the
+tab-scoped storage so they always agree on "what id did we just
+join with".  Don't revert this without first refactoring the app to
+expose a single hook instance via context.
+
+### B. clientId persistence is sessionStorage, NOT localStorage
+
+`vocaband_qp_client_id` and `vocaband_qp_client_id_nickname` live in
+`sessionStorage` — per-tab.  This is deliberate:
+
+- `localStorage` is shared across every tab on the same origin.  Two
+  students on the same iPad or two test tabs in incognito would all
+  read back the same cached id, and the server's
+  `state.students.set(clientId, …)` would collapse them into one
+  podium row.  Symptom: "I had 5 students join from 5 tabs and only
+  one shows on the teacher's podium."
+- `sessionStorage` survives refreshes within the same tab (so
+  reconnect/replay works) but a separate tab — even in the same
+  browser — gets a fresh id and joins as its own row.
+
+**Side effect, by design:** closing the tab and reopening counts as
+a new student.  For Quick Play this is correct because the live
+session usually doesn't outlive the tab anyway.
+
+If you ever switch back to localStorage to "fix" the side effect,
+you reintroduce the multi-tab collapse bug.  Don't.
+
+### C. UI advance must wait for server-confirmed JOIN
+
+The hook exposes `joinedSessionCode: string | null` — set when the
+server's `JOINED` reply arrives, cleared on `KICKED`,
+`SESSION_ENDED`, or any `STUDENT_JOIN`-scoped error.
+
+`QuickPlayStudentView` stashes the post-join setup in a
+`pendingJoinRef` callback and only fires it from a `useEffect`
+watching `joinedSessionCode`.  If the server rejects the join
+(`nickname_taken`, `session_inactive`, kicked-clientId-replay,
+`rate_limited`), the existing `lastError` toast surfaces and the
+ref is cleared — the student stays on the join form instead of
+"playing" a phantom session.
+
+**Symptom if this is reverted:** server logs show
+`[QP SCORE owner-mismatch] socketOwnsClient=<none>` (because no
+JOIN ever registered the socket), client console shows
+`[QP updateScore] emit` lines that go nowhere, and the user
+swears they joined successfully (UI advanced optimistically).
+
+### D. OAuth students need the auth-restore guard
+
+`src/App.tsx`'s `restoreSession` early-returns when
+`quickPlaySessionParam` is in the URL.  Without it, an
+OAuth-signed-in student who scans a Live Play QR is yanked back to
+their dashboard before they ever see the join form.  The QR flow
+treats them like a guest for the duration — they type a nickname,
+become `isGuest=true` after the join handler calls `setUser(guestUser)`,
+and re-authenticate after the live session ends.
+
+This guard mirrors the existing ones at `App.tsx:1421`
+(`if (!quickPlaySessionParam) setView("public-landing")`) and
+`App.tsx:1782` (`if (loading && !quickPlaySessionParam)`).  Don't
+remove it.
+
+### Quick triage checklist
+
+When live-play scores aren't ticking, in order:
+
+1. **`fly logs -a vocaband`** — look for `[QP SCORE accept]`
+   (good) vs `[QP SCORE owner-mismatch]` (bad) lines.  The
+   `socketOwnsClient` value tells you which gotcha: `<none>` →
+   gotcha C (UI advance race) or D (auth restore yanked them);
+   non-`<none>` differs from `claimedClient` → gotcha A (dual
+   hook instances out of sync).
+2. **Student DevTools console** — confirm `[QP updateScore] emit`
+   fires with the SAME clientId you see at JOIN.  If different
+   → gotcha A.  If never fires → check whether `quickPlayActiveSession`
+   is set and `QUICKPLAY_V2` is on.
+3. **Multiple tabs same browser** — `sessionStorage` per-tab means
+   different clientIds; verify tabs don't share one.
+4. **Same nickname in two tabs** — server rejects with
+   `nickname_taken`.  This is correct — the join screen should
+   stay put with a toast.  If the UI advanced anyway, gotcha C
+   regressed.
+
+---
+
+## 13. Supabase call patterns — cost-conscious cheat sheet
+
+Every `supabase.from(...).select(...)`, `.insert(...)`, `.update(...)`,
+`.delete(...)`, and `.rpc(...)` is **one HTTP request**.  Supabase JS
+does not pipeline, coalesce, or batch on the client side.  If you
+want fewer Supabase calls, you batch yourself or move the work into
+a server-side RPC that does multiple ops in one round trip.
+
+### What's already optimized (don't undo)
+
+| Hot path | Optimization |
+|---|---|
+| Progress writes after a game | Batched via `save_progress_batch` RPC (migration `20260518_save_progress_batch.sql`).  Instead of one INSERT per word, the array is sent in a single round trip and the RPC does the bulk insert.  |
+| Audio MP3 fetches (`/storage/v1/object/public/sound/<id>.mp3`) | Public bucket = cacheable.  Cloudflare caches at the edge — only the FIRST fetch of each MP3 hits Supabase egress; every subsequent fetch is free. |
+| Motivational MP3s (`/storage/v1/object/public/motivational/*.mp3`) | Same as above — public bucket, edge-cached. |
+| Class lookup by code | Server-side rate limit 30/min/user inside `class_lookup_by_code` RPC (migration `20260505_class_lookup_fix_ambiguous_column.sql`).  A buggy client retry loop can't blow up the request count.  |
+| Auth session cache | The Supabase JS client caches the session in localStorage.  `supabase.auth.getSession()` is a local read, no network — call it freely.  |
+
+### Volume estimate (typical Live Play session)
+
+- 30 students × 30 words × 5 modes ≈ **4,500 storage GETs** for word
+  audio, dropping to ~30 unique URLs after Cloudflare caches them.
+- 30 × 1 = **30 concurrent realtime websocket connections** (1 per
+  student tab).  Realtime is billed by concurrent connections, not
+  per-message.
+- 30 students × ~3 RPCs per join (`class_lookup_by_code`,
+  `get_or_create_student_profile_oauth`, `save_progress_batch`)
+  ≈ **90 RPCs** total per session.
+
+The audio fetches dominate; the RPCs are negligible by comparison.
+
+### Patterns to AVOID
+
+- **No `setInterval` polling of Supabase.**  Use Realtime
+  subscriptions or React Query with `staleTime` so a re-render
+  doesn't trigger a network call.  Polling at 5s × 30 students
+  for an hour is 21,600 wasted requests.
+- **Don't call `supabase.auth.getUser()` on every render.**  It
+  re-fetches over the network.  Use `getSession()` for the
+  cached JWT-only read; reserve `getUser()` for "I really need to
+  re-validate the token against the server" cases.
+- **Don't re-fetch teacher classes / student assignments on every
+  dashboard mount** if state already has them.  The auth-restore
+  path already loads them once; trust the state and let it
+  stale-revalidate via Realtime.
+- **Don't add fallback retry loops without rate-limit awareness.**
+  If an RPC has a server-side rate limit (like
+  `class_lookup_by_code`), a client-side retry on failure can
+  trigger the limit and create a stuck loop.  Surface the error
+  to the user instead.
+
+### When you actually want to batch
+
+If a future feature triggers a high-frequency write pattern (e.g. a
+shared class chat, fast-tap-counter game), the playbook is:
+
+1. Buffer events in a `useRef`-backed array on the client.
+2. Flush the buffer every 1–2 seconds OR when it reaches a size
+   cap, whichever comes first.
+3. Send the buffer as a single argument to a `_batch` RPC that
+   does the multiple ops server-side.
+
+Example precedent: `save_progress_batch` RPC.  Mirror its shape if
+you need to roll a new batched endpoint.
+
+---
+
