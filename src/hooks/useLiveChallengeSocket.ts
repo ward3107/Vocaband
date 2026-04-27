@@ -127,7 +127,25 @@ export function useLiveChallengeSocket(
         }
       });
       sock.on('connect_error', (err: { message?: string }) => {
-        console.error('Socket connection error:', err.message);
+        // The default-namespace socket requires a Supabase JWT and the
+        // server rejects connections with empty/invalid tokens.  During
+        // brief auth-state transitions (token refresh, signed-out
+        // student returning to the dashboard, Quick Play guest who has
+        // no Supabase session at all) the server emits
+        // "Authentication required" / "Invalid token" — expected and
+        // harmless because the socket auto-retries with the next valid
+        // token from the auth callback.  Surfacing them as
+        // console.error spammed the DevTools tab and made real errors
+        // hard to spot.  Demote the known-benign messages to
+        // console.debug; leave anything else (network, CORS, server
+        // crash) at console.error so it still shows up for triage.
+        const benign = err.message === 'Authentication required'
+          || err.message === 'Invalid token';
+        if (benign) {
+          console.debug('[Live] socket auth not ready — will retry:', err.message);
+        } else {
+          console.error('Socket connection error:', err.message);
+        }
       });
       sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
         if (typeof data === 'object' && data !== null) {
