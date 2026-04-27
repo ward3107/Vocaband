@@ -101,7 +101,12 @@ function getOrCreateClientId(): string {
  *  previous id (refresh / reconnect should not zero the score). */
 function clientIdForJoin(nickname: string): string {
   let lastNick: string | null = null;
-  try { lastNick = localStorage.getItem(CLIENT_ID_NICK_STORAGE_KEY); } catch { /* ignore */ }
+  // Read lastNick from sessionStorage (per-tab) to match where
+  // writeStoredClientId persists it.  Reading from localStorage here
+  // (the previous behaviour) meant a fresh tab's sessionStorage value
+  // didn't pair with the localStorage name, so the cached-id path
+  // never short-circuited and we burned a fresh UUID on every join.
+  try { lastNick = sessionStorage.getItem(CLIENT_ID_NICK_STORAGE_KEY); } catch { /* ignore */ }
   const cached = readStoredClientId();
   const norm = nickname.trim().toLowerCase();
   if (cached && lastNick === norm) return cached;
@@ -391,7 +396,19 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       });
       return;
     }
-    const id = clientIdRef.current;
+    // Read the clientId from sessionStorage (the source of truth) every
+    // time, NOT from this hook instance's clientIdRef.  The app calls
+    // useQuickPlaySocket() in two places — App.tsx and
+    // QuickPlayStudentView.tsx — so there are two ref copies.  When the
+    // student joins via QuickPlayStudentView's hook instance,
+    // clientIdForJoin() updates sessionStorage AND that instance's ref,
+    // but App.tsx's instance still holds the stale pre-join id.  When
+    // scores are then emitted through App.tsx's hook (which is the path
+    // emitScoreUpdate uses), the stale id reaches the server and the
+    // socket-owns-vs-claimed check rejects every update.  Reading from
+    // sessionStorage here closes the gap — both instances see the same
+    // current value because there's only one tab-scoped storage.
+    const id = readStoredClientId() ?? clientIdRef.current;
     console.log('[QP updateScore] emit', { sessionCode, clientId: id, score });
     socketRef.current.emit(QP_EVENTS.SCORE_UPDATE, {
       sessionCode, clientId: id, score,
