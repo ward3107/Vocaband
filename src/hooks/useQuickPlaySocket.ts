@@ -211,6 +211,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   // student's leaderboard entry server-side.
   const [clientId, setClientId] = useState<string>(() => getOrCreateClientId());
 
+  // Mirror of `clientId` in a ref so emitters always read the LATEST id
+  // even when their useCallback closure was built one render earlier.
+  // Without this, a SCORE_UPDATE that fires in the same render as
+  // joinAsStudent's setClientId(...) sends the stale id, the server logs
+  // [QP SCORE owner-mismatch] and DROPS the score — student shows 0 pts
+  // on the teacher's podium. See server.ts:872 + commit abe8970.
+  const clientIdRef = useRef(clientId);
+  useEffect(() => { clientIdRef.current = clientId; }, [clientId]);
+
   // Callback refs for one-shot events — set via the `on*` helpers.
   const kickedRef = useRef<((p: QpKickedPayload) => void) | null>(null);
   const sessionEndedRef = useRef<((p: QpSessionEndedPayload) => void) | null>(null);
@@ -323,6 +332,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     // time" report.  Same nickname returns the cached uuid so refresh
     // and reconnect keep the existing score.
     const idForThisJoin = clientIdForJoin(nickname);
+    // Write the ref BEFORE the React state update so any score emit
+    // that fires in this same tick (or before the next render) reads
+    // the fresh id — never the previous student's cached value.
+    clientIdRef.current = idForThisJoin;
     if (idForThisJoin !== clientId) setClientId(idForThisJoin);
 
     // Include the Supabase auth uid so the server can persist a real
@@ -347,17 +360,20 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       });
       return;
     }
-    console.log('[QP updateScore] emit', { sessionCode, clientId, score });
+    const id = clientIdRef.current;
+    console.log('[QP updateScore] emit', { sessionCode, clientId: id, score });
     socketRef.current.emit(QP_EVENTS.SCORE_UPDATE, {
-      sessionCode, clientId, score,
+      sessionCode, clientId: id, score,
     });
-  }, [sessionCode, clientId]);
+  }, [sessionCode]);
 
   const leaveAsStudent = useCallback(() => {
     if (!sessionCode || !socketRef.current) return;
-    socketRef.current.emit(QP_EVENTS.STUDENT_LEAVE, { sessionCode, clientId });
+    socketRef.current.emit(QP_EVENTS.STUDENT_LEAVE, {
+      sessionCode, clientId: clientIdRef.current,
+    });
     lastJoinRef.current = null;
-  }, [sessionCode, clientId]);
+  }, [sessionCode]);
 
   const observeAsTeacher = useCallback((token: string) => {
     if (!sessionCode || !socketRef.current) return;

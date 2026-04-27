@@ -30,7 +30,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
     <button
       onClick={handleClick}
       disabled={isDisabled}
-      dir={gameMode === "reverse" ? "ltr" : "auto"}
+      dir={gameMode === "reverse" || gameMode === "fill-blank" ? "ltr" : "auto"}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
       className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
         showCorrect
@@ -48,7 +48,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
     >
       {showCorrect && <span aria-hidden="true">✓</span>}
       {showAnswer && <span aria-hidden="true">→</span>}
-      <span>{gameMode === "reverse" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}</span>
+      <span>{gameMode === "reverse" || gameMode === "fill-blank" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}</span>
     </button>
   );
 });

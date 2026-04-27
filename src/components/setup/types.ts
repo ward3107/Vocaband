@@ -27,6 +27,7 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
     { id: 'spelling', name: 'Spelling', emoji: '✍️', color: 'from-orange-400 to-orange-500' },
     { id: 'reverse', name: 'Reverse', emoji: '🔁', color: 'from-amber-400 to-amber-500' },
     { id: 'scramble', name: 'Scramble', emoji: '🔤', color: 'from-yellow-400 to-yellow-500' },
+    { id: 'fill-blank', name: 'Fill in the Blank', emoji: '✏️', color: 'from-lime-400 to-lime-500' },
   ],
   mastery: [
     { id: 'sentence-builder', name: 'Sentence Builder', emoji: '📝', color: 'from-rose-400 to-rose-500' },
@@ -36,14 +37,16 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
 export const ALL_GAME_MODE_IDS = Object.values(GAME_MODE_LEVELS).flat().map(m => m.id);
 
 // Default mode selection for a brand-new assignment — every mode turned
-// on EXCEPT Sentence Builder.  Teachers asked for this explicitly: the
-// previous default of just `['flashcards']` meant they had to hand-tick
-// every other mode before saving, and many shipped assignments with
-// only flashcards enabled by accident.  Sentence Builder stays opt-in
-// because it's the one mode that requires extra configuration (sentence
-// difficulty + sentence bank) so we don't want to land the teacher in
-// that UI state unless they've asked for it.
-export const DEFAULT_ASSIGNMENT_MODE_IDS = ALL_GAME_MODE_IDS.filter(id => id !== 'sentence-builder');
+// on EXCEPT Sentence Builder and Fill in the Blank.  Teachers asked for
+// this explicitly: the previous default of just `['flashcards']` meant
+// they had to hand-tick every other mode before saving, and many shipped
+// assignments with only flashcards enabled by accident.  Sentence Builder
+// and Fill in the Blank stay opt-in because they require extra
+// configuration (sentence difficulty + sentence bank) so we don't want
+// to land the teacher in that UI state unless they've asked for it.
+export const DEFAULT_ASSIGNMENT_MODE_IDS = ALL_GAME_MODE_IDS.filter(
+  id => id !== 'sentence-builder' && id !== 'fill-blank',
+);
 
 // ── Difficulty tiers ─────────────────────────────────────────────────────────
 // Three-tier difficulty used across every mode picker (assignment, quick
@@ -64,6 +67,7 @@ export const MODE_DIFFICULTY: Record<string, ModeDifficulty> = {
   'letter-sounds':  'hard',      // Phonics + spelling
   spelling:         'hard',      // Pure recall + exact spelling
   'sentence-builder': 'hard',    // Vocab + grammar + syntax
+  'fill-blank':     'hard',      // Read sentence in L2, infer missing word from context
 };
 
 export const DIFFICULTY_META: Record<ModeDifficulty, {

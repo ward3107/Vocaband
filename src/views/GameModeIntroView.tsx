@@ -15,6 +15,7 @@ const modeInstructionsAll: Record<string, Record<GameMode, { title: string; step
     reverse: { title: "Reverse Mode", icon: "🔄", steps: ["See the Hebrew/Arabic word", "Pick the English translation", "Reverse of classic!"] },
     "letter-sounds": { title: "Letter Sounds", icon: "🔡", steps: ["Each letter appears in a color", "Listen to each letter sound", "Type the full word when ready"] },
     "sentence-builder": { title: "Sentence Builder", icon: "🧩", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
+    "fill-blank": { title: "Fill in the Blank", icon: "✏️", steps: ["A sentence appears with one word missing", "Read it carefully — there's no audio in this mode", "Tap the word that fills the blank"] },
   },
   ar: {
     classic: { title: "الوضع الكلاسيكي", icon: "📖", steps: ["شاهد الكلمة بالإنجليزية", "استمع إلى النطق", "اختر الترجمة الصحيحة"] },
@@ -27,6 +28,7 @@ const modeInstructionsAll: Record<string, Record<GameMode, { title: string; step
     reverse: { title: "الوضع العكسي", icon: "🔄", steps: ["شاهد الكلمة بالعربية/العبرية", "اختر الترجمة بالإنجليزية", "عكس الكلاسيكي!"] },
     "letter-sounds": { title: "أصوات الحروف", icon: "🔡", steps: ["كل حرف يظهر بلون", "استمع لصوت كل حرف", "اكتب الكلمة كاملة عندما تكون جاهزاً"] },
     "sentence-builder": { title: "بناء الجمل", icon: "🧩", steps: ["الكلمات مخلوطة في الأسفل", "اضغط الكلمات بالترتيب الصحيح", "ابنِ الجملة لتنتهي!"] },
+    "fill-blank": { title: "املأ الفراغ", icon: "✏️", steps: ["تظهر جملة بكلمة مفقودة", "اقرأها بعناية — لا يوجد صوت في هذا الوضع", "اضغط على الكلمة التي تملأ الفراغ"] },
   },
   he: {
     classic: { title: "מצב קלאסי", icon: "📖", steps: ["ראה את המילה באנגלית", "הקשב להגייה", "בחר את התרגום הנכון"] },
@@ -39,6 +41,7 @@ const modeInstructionsAll: Record<string, Record<GameMode, { title: string; step
     reverse: { title: "מצב הפוך", icon: "🔄", steps: ["ראה את המילה בעברית/ערבית", "בחר את התרגום באנגלית", "הפוך מקלאסי!"] },
     "letter-sounds": { title: "צלילי אותיות", icon: "🔡", steps: ["כל אות מופיעה בצבע", "הקשב לצליל כל אות", "הקלד את המילה כשמוכן"] },
     "sentence-builder": { title: "בניית משפטים", icon: "🧩", steps: ["המילים מעורבבות למטה", "לחץ על מילים בסדר הנכון", "בנה את המשפט!"] },
+    "fill-blank": { title: "השלם את החסר", icon: "✏️", steps: ["מופיע משפט עם מילה חסרה", "קרא בעיון — אין שמע במצב זה", "לחץ על המילה שמשלימה את החסר"] },
   },
 };
 
@@ -61,6 +64,7 @@ const modeThemes: Record<GameMode, {
   reverse:           { gradient: "from-fuchsia-50 via-white to-purple-50",     card: "from-fuchsia-400 to-purple-600",     stepBg: "bg-fuchsia-50 border-fuchsia-100",    stepNum: "bg-fuchsia-500",      cta: "from-fuchsia-500 to-purple-600",      accent: "text-fuchsia-700" },
   "letter-sounds":   { gradient: "from-violet-50 via-white to-purple-50",      card: "from-violet-400 to-purple-500",      stepBg: "bg-violet-50 border-violet-100",      stepNum: "bg-violet-500",       cta: "from-violet-500 to-purple-500",       accent: "text-violet-700" },
   "sentence-builder":{ gradient: "from-teal-50 via-white to-emerald-50",       card: "from-teal-400 to-emerald-500",       stepBg: "bg-teal-50 border-teal-100",          stepNum: "bg-teal-500",         cta: "from-teal-500 to-emerald-500",        accent: "text-teal-700" },
+  "fill-blank":      { gradient: "from-lime-50 via-white to-emerald-50",       card: "from-lime-400 to-emerald-500",       stepBg: "bg-lime-50 border-lime-100",          stepNum: "bg-lime-500",         cta: "from-lime-500 to-emerald-500",        accent: "text-lime-700" },
 };
 
 interface GameModeIntroViewProps {

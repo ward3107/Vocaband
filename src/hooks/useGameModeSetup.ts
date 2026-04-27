@@ -98,7 +98,8 @@ export function useGameModeSetup(params: UseGameModeSetupParams): void {
     if (
       view === 'game' && !isFinished && currentWord &&
       !showModeSelection && !showModeIntro &&
-      gameMode !== 'sentence-builder' && gameMode !== 'matching'
+      gameMode !== 'sentence-builder' && gameMode !== 'matching' &&
+      gameMode !== 'fill-blank'
     ) {
       // Only speak if this is a different word than the last one we spoke
       if (lastSpokenWordRef.current !== currentWord.id) {

@@ -34,6 +34,7 @@ const COMBO_META: { match: (ids: string[]) => boolean; meta: DerivedMeta }[] = [
   { match: ids => ids.length === 1 && ids[0] === 'reverse',        meta: { title: 'Reverse Translate',   instructions: 'See the translation, pick the English word.' } },
   { match: ids => ids.length === 1 && ids[0] === 'letter-sounds',  meta: { title: 'Letter Sounds',       instructions: 'Hear each letter one by one, then spell the word.' } },
   { match: ids => ids.length === 1 && ids[0] === 'sentence-builder', meta: { title: 'Sentence Builder',  instructions: 'Arrange the words to form the correct sentence.' } },
+  { match: ids => ids.length === 1 && ids[0] === 'fill-blank',       meta: { title: 'Fill in the Blank', instructions: 'Read each sentence and pick the missing word.' } },
 
   // Multi-mode combos teachers commonly pick:
   { match: ids => ids.length === 2 && new Set(ids).has('spelling') && new Set(ids).has('scramble'),
@@ -538,13 +539,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         )}
       </motion.div>
 
-      {/* ── STEP 3 — Sentence Difficulty (only when sentence-builder is on) ── */}
-      {selectedModes.includes('sentence-builder') && (
+      {/* ── STEP 3 — Sentence config (sentence-builder OR fill-blank) ── */}
+      {(selectedModes.includes('sentence-builder') || selectedModes.includes('fill-blank')) && (
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white font-black text-sm shadow-md">3</span>
             <label className="block text-sm font-bold text-stone-900">
-              Sentence Builder Setup
+              {selectedModes.includes('sentence-builder') ? 'Sentence Builder Setup' : 'Fill-in-the-Blank Setup'}
             </label>
           </div>
           <label className="block text-xs font-bold text-stone-600 mt-2">
@@ -724,7 +725,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         >
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white font-black text-sm shadow-md">
-              {selectedModes.includes('sentence-builder') ? '4' : '3'}
+              {(selectedModes.includes('sentence-builder') || selectedModes.includes('fill-blank')) ? '4' : '3'}
             </span>
             <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
               <Calendar size={14} className="text-indigo-500" />

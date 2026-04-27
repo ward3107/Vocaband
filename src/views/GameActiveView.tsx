@@ -15,6 +15,7 @@ import TrueFalseGame from "../components/game/TrueFalseGame";
 import FlashcardsGame from "../components/game/FlashcardsGame";
 import LetterSoundsGame from "../components/game/LetterSoundsGame";
 import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
+import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
@@ -150,6 +151,20 @@ export default function GameActiveView({
         />
       );
     }
+    if (gameMode === "fill-blank") {
+      return (
+        <FillBlankGame
+          activeAssignment={activeAssignment}
+          currentWord={currentWord}
+          currentIndex={currentIndex}
+          options={options}
+          hiddenOptions={hiddenOptions}
+          feedback={feedback}
+          gameWordsCount={gameWords.length}
+          onAnswer={handleAnswer}
+        />
+      );
+    }
     // Default: spelling / scramble
     return (
       <SpellingGame
@@ -232,19 +247,25 @@ export default function GameActiveView({
                   </div>
                 )}
 
-                <WordPromptCard
-                  currentIndex={currentIndex}
-                  gameWordsLength={gameWords.length}
-                  currentWord={currentWord}
-                  gameMode={gameMode}
-                  targetLanguage={targetLanguage}
-                  feedback={feedback}
-                  isFlipped={isFlipped}
-                  scrambledWord={scrambledWord}
-                  speakWord={speakWord}
-                />
+                {/* Fill-in-the-Blank renders its own gapped sentence as
+                    the prompt — the standard WordPromptCard would show
+                    `currentWord.english` (or its translation) and
+                    instantly expose the answer.  Hide it for that mode. */}
+                {gameMode !== "fill-blank" && (
+                  <WordPromptCard
+                    currentIndex={currentIndex}
+                    gameWordsLength={gameWords.length}
+                    currentWord={currentWord}
+                    gameMode={gameMode}
+                    targetLanguage={targetLanguage}
+                    feedback={feedback}
+                    isFlipped={isFlipped}
+                    scrambledWord={scrambledWord}
+                    speakWord={speakWord}
+                  />
+                )}
 
-                {user?.role === "student" && gameMode !== "flashcards" && gameMode !== "sentence-builder" && !isFinished && (
+                {user?.role === "student" && gameMode !== "flashcards" && gameMode !== "sentence-builder" && gameMode !== "fill-blank" && !isFinished && (
                   <PowerUpToolbar
                     user={user}
                     gameMode={gameMode}

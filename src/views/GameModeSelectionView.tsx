@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Sparkles,
   Star,
+  Edit3,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
@@ -89,6 +90,7 @@ export default function GameModeSelectionView({
   const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[]; isLearnMode?: boolean }> = [
     { id: "flashcards", name: "Flashcards", desc: "Learn the words first — flip, listen, and earn XP at your own pace.", color: "cyan", icon: <Layers size={28} />, tooltip: ["Learn before you practice", "Flip cards to see answers", "No pressure — still earns XP"], isLearnMode: true },
     { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
+    { id: "fill-blank", name: "Fill in the Blank", desc: "Pick the word that completes the sentence.", color: "lime", icon: <Edit3 size={24} />, tooltip: ["Read the sentence with a missing word", "Tap the word that fits", "No audio — read carefully!"] },
     { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
     { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
     { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
@@ -124,6 +126,7 @@ export default function GameModeSelectionView({
     fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
     violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
     teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
+    lime: "bg-lime-50 border-lime-100 hover:bg-lime-100 text-lime-700",
   };
 
   const iconColorClasses: Record<string, string> = {
@@ -137,6 +140,7 @@ export default function GameModeSelectionView({
     fuchsia: "text-fuchsia-600",
     violet: "text-violet-600",
     teal: "text-teal-600",
+    lime: "text-lime-600",
   };
 
   return (
