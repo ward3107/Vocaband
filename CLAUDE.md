@@ -435,3 +435,70 @@ When live-play scores aren't ticking, in order:
 
 ---
 
+## 13. Supabase call patterns — cost-conscious cheat sheet
+
+Every `supabase.from(...).select(...)`, `.insert(...)`, `.update(...)`,
+`.delete(...)`, and `.rpc(...)` is **one HTTP request**.  Supabase JS
+does not pipeline, coalesce, or batch on the client side.  If you
+want fewer Supabase calls, you batch yourself or move the work into
+a server-side RPC that does multiple ops in one round trip.
+
+### What's already optimized (don't undo)
+
+| Hot path | Optimization |
+|---|---|
+| Progress writes after a game | Batched via `save_progress_batch` RPC (migration `20260518_save_progress_batch.sql`).  Instead of one INSERT per word, the array is sent in a single round trip and the RPC does the bulk insert.  |
+| Audio MP3 fetches (`/storage/v1/object/public/sound/<id>.mp3`) | Public bucket = cacheable.  Cloudflare caches at the edge — only the FIRST fetch of each MP3 hits Supabase egress; every subsequent fetch is free. |
+| Motivational MP3s (`/storage/v1/object/public/motivational/*.mp3`) | Same as above — public bucket, edge-cached. |
+| Class lookup by code | Server-side rate limit 30/min/user inside `class_lookup_by_code` RPC (migration `20260505_class_lookup_fix_ambiguous_column.sql`).  A buggy client retry loop can't blow up the request count.  |
+| Auth session cache | The Supabase JS client caches the session in localStorage.  `supabase.auth.getSession()` is a local read, no network — call it freely.  |
+
+### Volume estimate (typical Live Play session)
+
+- 30 students × 30 words × 5 modes ≈ **4,500 storage GETs** for word
+  audio, dropping to ~30 unique URLs after Cloudflare caches them.
+- 30 × 1 = **30 concurrent realtime websocket connections** (1 per
+  student tab).  Realtime is billed by concurrent connections, not
+  per-message.
+- 30 students × ~3 RPCs per join (`class_lookup_by_code`,
+  `get_or_create_student_profile_oauth`, `save_progress_batch`)
+  ≈ **90 RPCs** total per session.
+
+The audio fetches dominate; the RPCs are negligible by comparison.
+
+### Patterns to AVOID
+
+- **No `setInterval` polling of Supabase.**  Use Realtime
+  subscriptions or React Query with `staleTime` so a re-render
+  doesn't trigger a network call.  Polling at 5s × 30 students
+  for an hour is 21,600 wasted requests.
+- **Don't call `supabase.auth.getUser()` on every render.**  It
+  re-fetches over the network.  Use `getSession()` for the
+  cached JWT-only read; reserve `getUser()` for "I really need to
+  re-validate the token against the server" cases.
+- **Don't re-fetch teacher classes / student assignments on every
+  dashboard mount** if state already has them.  The auth-restore
+  path already loads them once; trust the state and let it
+  stale-revalidate via Realtime.
+- **Don't add fallback retry loops without rate-limit awareness.**
+  If an RPC has a server-side rate limit (like
+  `class_lookup_by_code`), a client-side retry on failure can
+  trigger the limit and create a stuck loop.  Surface the error
+  to the user instead.
+
+### When you actually want to batch
+
+If a future feature triggers a high-frequency write pattern (e.g. a
+shared class chat, fast-tap-counter game), the playbook is:
+
+1. Buffer events in a `useRef`-backed array on the client.
+2. Flush the buffer every 1–2 seconds OR when it reaches a size
+   cap, whichever comes first.
+3. Send the buffer as a single argument to a `_batch` RPC that
+   does the multiple ops server-side.
+
+Example precedent: `save_progress_batch` RPC.  Mirror its shape if
+you need to roll a new batched endpoint.
+
+---
+
