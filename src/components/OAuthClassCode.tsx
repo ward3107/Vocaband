@@ -73,17 +73,24 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
       // student_profiles row in a class that doesn't exist — the student
       // never sees any assignments because no real class matches their
       // class_code.
-      const { data: classMatch, error: classLookupError } = await supabase
-        .from('classes')
-        .select('id, code')
-        .eq('code', trimmedCode)
-        .maybeSingle();
+      //
+      // Direct .from('classes').select(...) returns an empty array here
+      // because the post-20260430 RLS policy on `classes` only allows
+      // SELECT for the teacher-owner OR a student already enrolled in
+      // the class — and OAuth students mid-signup are neither.  The
+      // SECURITY DEFINER RPC `class_lookup_by_code` (migration 20260505)
+      // bypasses RLS, is auth-required, and rate-limited 30/min/uid.
+      const { data: lookupRows, error: classLookupError } = await supabase
+        .rpc('class_lookup_by_code', { p_code: trimmedCode });
       if (classLookupError) {
         console.error('Class code lookup failed:', classLookupError);
         onError('Could not verify class code. Please try again.');
         setIsLoading(false);
         return;
       }
+      const classMatch = Array.isArray(lookupRows) && lookupRows.length > 0
+        ? lookupRows[0]
+        : null;
       if (!classMatch) {
         onError(`Class code "${trimmedCode}" not found. Please check with your teacher.`);
         setIsLoading(false);
