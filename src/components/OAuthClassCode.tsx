@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Loader2, CheckCircle2, ArrowRight, Pencil } from 'lucide-react';
 import { supabase } from '../core/supabase';
+import { readIntendedClassCode, clearIntendedClassCode } from '../utils/oauthIntent';
 
 interface OAuthClassCodeProps {
   email: string;
@@ -15,11 +16,34 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
   onSuccess,
   onError
 }) => {
-  const [classCode, setClassCode] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [avatar, setAvatar] = useState('🦊');
+  // The class code the student typed on the previous (login) screen is
+  // stashed in storage by `writeIntendedClassCode` before the Google
+  // redirect.  Pre-fill from there so they don't retype it AND so the
+  // submit button isn't left in its empty-input disabled state — the
+  // single biggest source of "I clicked Join Class and nothing happened"
+  // confusion.  Falling back to '' covers the cleared-storage / typed-
+  // URL-directly path, which still shows the input as today.
+  const prefilledCode = readIntendedClassCode() || '';
+  const [classCode, setClassCode] = useState(prefilledCode);
+  // Whether the code came from storage.  When true, render a read-only
+  // confirmation chip instead of a text input so the student can't
+  // accidentally clear it back to the broken empty state.  Tap-to-edit
+  // toggles this off if they really want to change classes here.
+  const [codeFromStorage, setCodeFromStorage] = useState(prefilledCode.length > 0);
+  const [avatar, setAvatar] = useState(() => {
+    // Random fun default so the avatar feels chosen-for-you instead of
+    // always-fox.  Students who tap a different one still get the
+    // picker; students who don't get a varied class roster instead of
+    // 30 identical foxes.
+    const pool = ['🦊','🦁','🐯','🐨','🐼','🐸','🐵','🦄','🐻','🐰','🦋','🐙','🦜','🐶','🐱','🦈','🐬','🦅','🐝','🦉','😎','🤓','🥳','🤩','🤠','🤖','🧙','🦸','🥷','🦖','🐉'];
+    return pool[Math.floor(Math.random() * pool.length)];
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  // When the code is pre-filled, students only need to confirm the
+  // avatar.  Open the picker by default so the affordance is obvious —
+  // a single 4xl button labelled with one emoji reads as decoration,
+  // not as something tap-able.
+  const [showAvatarPicker, setShowAvatarPicker] = useState(prefilledCode.length > 0);
 
   const avatarCategories = [
     { name: 'Animals', emojis: ['🦊', '🦁', '🐯', '🐨', '🐼', '🐸', '🐵', '🦄', '🐻', '🐰', '🦋', '🐙', '🦜', '🐶', '🐱', '🦈', '🐬', '🦅', '🐝', '🦉'] },
@@ -89,6 +113,12 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
       const profile = result[0].profile;
       const isNew = result[0].is_new;
 
+      // Clear the stashed code now that it's been consumed.  Without
+      // this, a student who logs out and a friend who signs in on the
+      // same device would carry the previous student's intended class
+      // code through their own OAuth flow.
+      clearIntendedClassCode();
+
       if (profile.status === 'approved') {
         // Auto-approved (shouldn't happen with OAuth, but just in case)
         onSuccess();
@@ -130,25 +160,51 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
         </p>
       </div>
 
-      {/* Class Code Input */}
+      {/* Class Code — chip when pre-filled, input otherwise */}
       <div className="space-y-4">
-        <div>
-          <label htmlFor="oauth-class-code" className="block text-sm font-bold text-on-surface mb-2">
-            Enter your class code:
-          </label>
-          <input
-            type="text"
-            id="oauth-class-code"
-            name="classCode"
-            autoComplete="off"
-            value={classCode}
-            onChange={(e) => setClassCode(e.target.value.toUpperCase())}
-            placeholder="MATH101"
-            className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/20 focus:border-primary focus:outline-none text-lg font-bold text-center uppercase"
-            disabled={isLoading}
-            maxLength={20}
-          />
-        </div>
+        {codeFromStorage ? (
+          <div>
+            <p className="block text-sm font-bold text-on-surface mb-2">
+              Joining class:
+            </p>
+            <div className="w-full px-4 py-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                <span className="text-lg font-bold tracking-wider text-emerald-800 truncate">
+                  {classCode}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCodeFromStorage(false)}
+                disabled={isLoading}
+                className="text-emerald-700 hover:text-emerald-900 font-bold text-xs flex items-center gap-1 px-2 py-1 rounded-md hover:bg-emerald-100 transition-colors"
+                aria-label="Change class code"
+              >
+                <Pencil size={12} />
+                Change
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="oauth-class-code" className="block text-sm font-bold text-on-surface mb-2">
+              Enter your class code:
+            </label>
+            <input
+              type="text"
+              id="oauth-class-code"
+              name="classCode"
+              autoComplete="off"
+              value={classCode}
+              onChange={(e) => setClassCode(e.target.value.toUpperCase())}
+              placeholder="MATH101"
+              className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/20 focus:border-primary focus:outline-none text-lg font-bold text-center uppercase"
+              disabled={isLoading}
+              maxLength={20}
+            />
+          </div>
+        )}
 
         {/* Avatar Selection */}
         <div>
