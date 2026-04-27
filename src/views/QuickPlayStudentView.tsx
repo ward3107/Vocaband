@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2, QrCode } from "lucide-react";
 import { QUICK_PLAY_AVATARS } from "../constants/avatars";
 import { shuffle } from "../utils";
@@ -100,7 +100,28 @@ export default function QuickPlayStudentView({
     } else {
       showToast(message || "Couldn't join the session. Please try again.", "error");
     }
+    // A failed join must clear any pending setup so the deferred
+    // useEffect doesn't fire when a LATER (successful) join arrives
+    // with the same callback baked into the closure.
+    pendingJoinRef.current = null;
   }, [quickPlaySocket.lastError, showToast]);
+
+  // Pending-join intent: when the student clicks Join in V2, we emit
+  // STUDENT_JOIN and stash a callback here.  If the server confirms
+  // (joinedSessionCode flips), the effect below fires the callback —
+  // game UI advance only happens AFTER the server says we're in.
+  // If the server rejects (lastError fires above), the ref is cleared
+  // and the callback never runs, so the student stays on the join form.
+  const pendingJoinRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!QUICKPLAY_V2) return;
+    if (!quickPlaySocket.joinedSessionCode) return;
+    const pending = pendingJoinRef.current;
+    if (!pending) return;
+    pendingJoinRef.current = null;
+    pending();
+  }, [quickPlaySocket.joinedSessionCode]);
 
   // KICKED + SESSION_ENDED — without these listeners the server emits
   // the events but the student's tab keeps the game running.  Symptom
@@ -341,7 +362,12 @@ export default function QuickPlayStudentView({
                     // when we emit STUDENT_JOIN. The hook's useEffect
                     // above surfaces "nickname_taken" as a toast.
 
-                    setTimeout(async () => {
+                    // Build the UI-advance callback once.  For QP V2 it
+                    // runs only after the server confirms JOIN (deferred
+                    // via pendingJoinRef + the useEffect on
+                    // joinedSessionCode).  For legacy it runs immediately
+                    // on next tick — no server confirmation flow exists.
+                    const applyJoinedState = () => {
                       setQuickPlayStudentName(trimmedName);
                       const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
                       setUser(guestUser);
@@ -383,17 +409,31 @@ export default function QuickPlayStudentView({
                           avatar: quickPlayAvatar,
                         }));
                       } catch {}
+                    };
 
+                    setTimeout(async () => {
                       if (QUICKPLAY_V2) {
                         // v2 path: emit STUDENT_JOIN on the /quick-play
-                        // socket. Server broadcasts the leaderboard back
-                        // to the teacher's monitor. No Supabase writes,
-                        // no anonymous auth users, no progress-table
-                        // insert. If the server rejects (nickname taken,
-                        // session inactive), the hook's lastError → toast.
+                        // socket and DEFER the UI advance until the
+                        // server's JOINED reply arrives.  Without the
+                        // defer, the optimistic UI raced ahead while the
+                        // server was rejecting (nickname_taken, session
+                        // inactive, kicked) and the student "played" a
+                        // session they were never in — scores were
+                        // emitted with a clientId the server never
+                        // registered, surfacing as silently-dropped
+                        // updates on the teacher's podium.  With the
+                        // defer, lastError → toast → user retries with a
+                        // different name.
+                        pendingJoinRef.current = applyJoinedState;
                         quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
                       } else {
                         // ─── Legacy path ────────────────────────────
+                        // Legacy doesn't have a server-confirmation
+                        // flow — fire the UI advance immediately, same
+                        // as the original behaviour.  V2 is the only
+                        // path that defers via pendingJoinRef.
+                        applyJoinedState();
                         // Record that student joined — so teacher sees them in live stats immediately.
                         // Run with retries + surface failures via showToast: errors previously
                         // only hit the console (invisible to the student) and on the teacher
@@ -424,7 +464,7 @@ export default function QuickPlayStudentView({
                             mode: "joined",
                             completed_at: new Date().toISOString(),
                             mistakes: [],
-                            avatar: guestUser.avatar || "🦊",
+                            avatar: quickPlayAvatar || "🦊",
                           });
                           if (error) {
                             console.error('[Quick Play] Failed to record join:', error);

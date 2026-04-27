@@ -137,6 +137,13 @@ export interface QuickPlaySocketApi {
   leaderboard: QpStudentEntry[];
   /** Last protocol-level error the server emitted to us (or null). */
   lastError: { code: QpErrorCode; message: string; event: string } | null;
+  /** Session code we've been confirmed in via the server's JOINED reply,
+   *  or null if we haven't joined (or were kicked / session ended).
+   *  Useful for gating UI advance until the server actually accepts the
+   *  join — without it, optimistic UIs render game state while the
+   *  server is silently rejecting (e.g. nickname_taken) and scoring
+   *  appears broken. */
+  joinedSessionCode: string | null;
 
   // ─── Student actions ────────────────────────────────────────────────
   joinAsStudent: (nickname: string, avatar?: string) => void;
@@ -215,6 +222,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const [status, setStatus] = useState<QuickPlaySocketStatus>("idle");
   const [leaderboard, setLeaderboard] = useState<QpStudentEntry[]>([]);
   const [lastError, setLastError] = useState<QuickPlaySocketApi["lastError"]>(null);
+  const [joinedSessionCode, setJoinedSessionCode] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
   // clientId starts as whatever's cached (or a fresh UUID if nothing is).
@@ -280,6 +288,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
       const onJoined = (p: QpJoinedPayload) => {
         if (p?.leaderboard) setLeaderboard(p.leaderboard);
+        // Mark the session as confirmed-joined so the UI can advance.
+        // Without this signal, optimistic UIs render game state while
+        // the server is silently rejecting (nickname_taken etc.) and
+        // scoring appears broken.
+        if (sessionCode) setJoinedSessionCode(sessionCode);
       };
       const onLeaderboard = (p: QpLeaderboardPayload) => {
         if (p?.students && p.sessionCode === sessionCode) {
@@ -296,13 +309,19 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         // tab from oscillating between "kicked" and "rejoined" if the
         // server-side block ever drifts.
         lastJoinRef.current = null;
+        setJoinedSessionCode(null);
         kickedRef.current?.(p);
       };
       const onSessionEnded = (p: QpSessionEndedPayload) => {
+        setJoinedSessionCode(null);
         sessionEndedRef.current?.(p);
       };
       const onErr = (p: QpErrorPayload) => {
         setLastError({ code: p.code, message: p.message, event: p.event });
+        // STUDENT_JOIN errors mean the server refused to add us to the
+        // session — clear any prior joined-state so the UI knows we're
+        // NOT in.  Errors on other events leave joinedSessionCode alone.
+        if (p.event === QP_EVENTS.STUDENT_JOIN) setJoinedSessionCode(null);
       };
 
       socket.on("connect", onConnect);
@@ -419,6 +438,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     clientId,
     leaderboard,
     lastError,
+    joinedSessionCode,
     joinAsStudent,
     updateScore,
     leaveAsStudent,
