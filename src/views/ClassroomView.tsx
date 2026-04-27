@@ -118,7 +118,17 @@ export default function ClassroomView(props: ClassroomViewProps) {
       try {
         const url = new URL(window.location.href);
         url.searchParams.set("tab", next);
-        window.history.pushState({ classroomTab: next }, "", url.toString());
+        // replaceState (not pushState) so tab navigation doesn't pile
+        // up entries in browser history.  The earlier pushState pattern
+        // produced a real bug: clicking the in-app back arrow set view
+        // to teacher-dashboard but the leftover ?tab= history entries
+        // stayed in the stack.  Each subsequent browser-back popped one
+        // of them, and once the user was past all tabs the next back
+        // hit the dashboard back-button trap → exit confirmation →
+        // accidental app exit.  With replaceState the URL still updates
+        // (so deep-links + bookmarks work) but back/forward go straight
+        // to the pre-classroom view.
+        window.history.replaceState({ classroomTab: next }, "", url.toString());
       } catch { /* non-browser env */ }
       return next;
     });
@@ -184,7 +194,16 @@ export default function ClassroomView(props: ClassroomViewProps) {
           title="Classroom"
           subtitle={V2_TABS.find(t => t.id === v2Tab)?.blurb.toUpperCase() ?? ""}
           showBack
-          onBack={() => setView("teacher-dashboard")}
+          onBack={() => {
+            // Strip the ?tab= param before leaving so browser back from
+            // the dashboard doesn't pop into a stale classroom URL.
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete("tab");
+              window.history.replaceState({ view: "teacher-dashboard" }, "", url.toString());
+            } catch { /* non-browser env */ }
+            setView("teacher-dashboard");
+          }}
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
