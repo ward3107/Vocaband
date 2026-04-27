@@ -41,6 +41,18 @@ import {
 const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
 const CLIENT_ID_NICK_STORAGE_KEY = "vocaband_qp_client_id_nickname";
 
+// clientId persistence uses sessionStorage instead of localStorage.
+// Reasoning: localStorage is shared across every tab of the same origin,
+// so two students on the same device (shared phone, sibling at home,
+// classroom Chromebook) — or a teacher opening multiple "test" tabs —
+// would all read back the same cached clientId, the server's
+// `state.students.set(clientId, …)` would collapse them into one row,
+// and the teacher's podium would silently show "one student" no matter
+// how many tabs joined.  sessionStorage is per-tab: same tab keeps the
+// id across refreshes (so reconnect/replay still works), but a fresh
+// tab gets a fresh id and joins as its own row.  A real student playing
+// on one device sees no behaviour change.
+
 // Generate a UUID that works on every browser we support (some older
 // mobile Safari builds lack crypto.randomUUID).
 function generateUuid(): string {
@@ -56,7 +68,7 @@ function generateUuid(): string {
 
 function readStoredClientId(): string | null {
   try {
-    const existing = localStorage.getItem(CLIENT_ID_STORAGE_KEY);
+    const existing = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY);
     if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing)) {
       return existing;
     }
@@ -66,8 +78,8 @@ function readStoredClientId(): string | null {
 
 function writeStoredClientId(id: string, nickname: string | null) {
   try {
-    localStorage.setItem(CLIENT_ID_STORAGE_KEY, id);
-    if (nickname) localStorage.setItem(CLIENT_ID_NICK_STORAGE_KEY, nickname.toLowerCase());
+    sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, id);
+    if (nickname) sessionStorage.setItem(CLIENT_ID_NICK_STORAGE_KEY, nickname.toLowerCase());
   } catch { /* fall through — in-memory still works for the tab */ }
 }
 
