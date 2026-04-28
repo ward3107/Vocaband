@@ -30,6 +30,7 @@ For deep technical detail, jump to the linked per-area docs.
 | Secret hygiene (no committed secrets, .gitignore correct) | ✅ Verified | Code |
 | Express global error handler (no stack-trace leaks) | ✅ Added | Code |
 | `/api/features?debug=1` info leak | ✅ Sanitised | Code |
+| TLS / transport — SSL Labs grade | ✅ **A+** (was B) — TLS 1.0/1.1 disabled, HSTS preload submitted | Operator (Cloudflare) |
 | Live pen-test against staging | ⏳ Optional (DIY with OWASP ZAP) | Operator |
 | Compliance certification | ⏳ Needs lawyer | Operator |
 
@@ -68,6 +69,39 @@ Findings:
 - `RewardInboxCard` called `supabase.auth.getUser()` per mount (~9k
   wasted Auth API calls/month) — fixed.
 - 2 LOW (narrow `select('*')`, dedupe class lookup) — deferred.
+
+### Phase 4 — TLS / transport hardening (Cloudflare)
+
+Configured 2026-04-28 via Cloudflare Dashboard → SSL/TLS → Edge
+Certificates.  No code changes; pure infrastructure.
+
+| Setting | Before | After |
+|---|---|---|
+| Minimum TLS Version | TLS 1.0 | **TLS 1.2** |
+| TLS 1.3 | On | On (confirmed) |
+| Always Use HTTPS | Off | **On** |
+| Automatic HTTPS Rewrites | Off | **On** |
+| HSTS | Sent (`max-age=31536000; includeSubDomains; preload`) | Same + submitted to https://hstspreload.org/ |
+
+**Result:** SSL Labs grade went from **B → A+** in one session.
+
+What "B" cost us:
+- Vulnerable to TLS 1.0 / 1.1 downgrade attacks (POODLE family).
+- Weak CBC + plain-RSA cipher suites available to old clients.
+- Not on the HSTS preload list — first-time visitor's initial request
+  still made over HTTP for ~1 round trip before the HSTS header was
+  received and cached.
+
+What "A+" gives us:
+- Only TLS 1.2 + 1.3.  Every cipher offers Forward Secrecy.
+- BEAST attack: server-side mitigated.
+- Forward Secrecy: ROBUST.
+- HSTS preload pending — once Chrome/Firefox/Edge ship the updated
+  list (6-12 weeks), browsers will hard-code that vocaband.com is
+  HTTPS-only, eliminating the first-visit window entirely.
+
+Verification URL (re-run quarterly):
+https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com
 
 ### Already-existing baseline docs
 
@@ -164,6 +198,9 @@ These are the things only a human can do.
 - ✅ Pasted 4 security migrations (130000, 131000, 132000, 133000) into Supabase SQL Editor.
 - ✅ Ran the verification SQL — all four checks green (after followup applied).
 - ✅ Ran `scripts/security-pen-test.sh` — 4 passed, 0 failed.
+- ✅ Cloudflare TLS hardening: min TLS 1.2, Always Use HTTPS, Automatic HTTPS Rewrites all enabled.
+- ✅ Submitted vocaband.com to https://hstspreload.org/ — pending inclusion.
+- ✅ SSL Labs re-scan: grade jumped from B → **A+**.
 
 ### Pending
 
@@ -217,6 +254,8 @@ NOT claiming:
 | XSS via inline-script injection | ⚠️ Mitigated — `unsafe-inline` still allowed for Cloudflare Insights; `unsafe-eval` blocked. Defence: input sanitisation + React's auto-escaping. |
 | CSRF on state-changing endpoints | ✅ N/A — Supabase JWTs in `Authorization: Bearer` header (not cookies); no implicit credentials sent cross-origin. |
 | Stack-trace leak via uncaught server exception | ❌ Blocked — global Express error handler returns generic 500. |
+| TLS downgrade attack (POODLE family / weak cipher) | ❌ Blocked — TLS 1.0/1.1 disabled at Cloudflare; only TLS 1.2 + 1.3 with Forward Secrecy. SSL Labs A+. |
+| First-visit MITM before HSTS header arrives | ⚠️ Mitigated — `Always Use HTTPS` redirects + HSTS preload submitted; will be fully closed once preload list ships (~6-12 weeks). |
 | Dependency vulnerability (npm audit) | ✅ Clean as of 2026-04-28; re-run quarterly. |
 | Secret leak via committed code | ✅ None — `.gitignore` correct, audited. |
 | Session hijack via service-role key in browser | ✅ N/A — service-role key is server-only, never in `src/`. |
@@ -235,5 +274,11 @@ checkpoint:
 4. Diff `git log` against the previous audit date and check for any
    new SECURITY DEFINER RPCs / new tables that need RLS / new
    `process.env.*` reads in client code.
+5. Re-scan SSL Labs at https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com
+   — confirm grade is still A+ (Cloudflare SSL settings haven't drifted,
+   certificate hasn't expired).
+6. Confirm vocaband.com appears in the HSTS preload list at
+   https://hstspreload.org/?domain=vocaband.com — once the initial
+   submission ships, the row should say "Status: Preloaded".
 
 If any of these fail, file a HIGH and patch ASAP.
