@@ -74,21 +74,40 @@ interface BucketInfo {
 /** Recursively list every object key in a bucket (handles nested folders). */
 async function listAllKeys(client: ReturnType<typeof createClient>, bucket: string, prefix = ''): Promise<string[]> {
   const keys: string[] = [];
-  const { data, error } = await client.storage.from(bucket).list(prefix, { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
-  if (error) {
-    console.error(`  ✗ list error in ${bucket}/${prefix}: ${error.message}`);
-    return keys;
-  }
-  for (const entry of data ?? []) {
-    // Supabase distinguishes folders from files by having `id === null` on folders.
-    // A "folder" entry's name is the sub-prefix; recurse into it.
-    const full = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.id === null) {
-      const nested = await listAllKeys(client, bucket, full);
-      keys.push(...nested);
-    } else {
-      keys.push(full);
+  // Supabase's storage `.list()` returns at most 1000 entries per call —
+  // even if you ask for more, the server caps the response.  Without a
+  // pagination loop, buckets with thousands of files (the word-audio
+  // bucket has ~9,000) silently get truncated to the first 1000 and
+  // the migration appears to "succeed" while losing 88% of the data.
+  // Loop with an offset until a partial page comes back, which is the
+  // signal that we've reached the end.
+  const PAGE_SIZE = 1000;
+  let offset = 0;
+  while (true) {
+    const { data, error } = await client.storage.from(bucket).list(prefix, {
+      limit: PAGE_SIZE,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+    if (error) {
+      console.error(`  ✗ list error in ${bucket}/${prefix} (offset=${offset}): ${error.message}`);
+      break;
     }
+    if (!data || data.length === 0) break;
+    for (const entry of data) {
+      // Supabase distinguishes folders from files by having `id === null` on folders.
+      // A "folder" entry's name is the sub-prefix; recurse into it.
+      const full = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.id === null) {
+        const nested = await listAllKeys(client, bucket, full);
+        keys.push(...nested);
+      } else {
+        keys.push(full);
+      }
+    }
+    // A non-full page means we've reached the end — stop paginating.
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
   return keys;
 }
