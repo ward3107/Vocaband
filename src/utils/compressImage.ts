@@ -5,10 +5,20 @@
  * so compression is NO LONGER required for the API to work. This function
  * just speeds up uploads on slow mobile connections by compressing files
  * over 4MB. Always falls back to the original file if compression fails.
+ *
+ * HEIC/HEIF carve-out (iPhone camera default format):
+ * Even if a HEIC file is under 4MB it ALWAYS goes through the canvas
+ * pipeline — drawing onto a canvas + toBlob('image/jpeg') is what
+ * physically converts the bytes from HEIC to JPEG. Without this, an
+ * iPhone teacher's photo arrives at the server as HEIC, and even
+ * though Gemini 2.5 Flash supports HEIC, fewer end-to-end pieces
+ * have to align if we just always send JPEG. Belt-and-suspenders.
  */
 export async function compressImageForUpload(file: File): Promise<File> {
-  // Skip compression for files under 4MB — upload time is fine
-  if (file.size <= 4 * 1024 * 1024) return file;
+  const isHeic = /image\/hei[cf]/i.test(file.type) || /\.heic$|\.heif$/i.test(file.name);
+  // Skip the early return for HEIC so the canvas pipeline always runs
+  // and converts to JPEG. For other formats keep the size guard.
+  if (!isHeic && file.size <= 4 * 1024 * 1024) return file;
 
   // Try modern createImageBitmap API (handles large photos reliably)
   try {

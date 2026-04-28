@@ -1402,13 +1402,19 @@ ${JSON.stringify(validWords)}`;
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
       // Gemini accepts the raw image buffer directly via inlineData.
-      // MIME type normalisation: HEIC/HEIF → JPEG (Gemini may still accept
-      // HEIC on some deployments, but JPEG is universally supported).
-      const rawMime = req.file.mimetype || "image/jpeg";
-      const mimeType =
-        rawMime === "image/heic" || rawMime === "image/heif"
-          ? "image/jpeg"
-          : rawMime;
+      //
+      // MIME type: pass through whatever the upload claimed (jpeg/png/
+      // webp/heic/heif).  Gemini 2.5 Flash supports all of these
+      // natively per the API docs, including HEIC/HEIF from iPhones.
+      //
+      // The previous version of this code re-labelled HEIC as JPEG
+      // ("image/heic" → "image/jpeg") WITHOUT converting the bytes,
+      // which broke OCR for iPhone camera captures: the server told
+      // Gemini "this is a JPEG" but the body was still HEIC, so
+      // Gemini couldn't decode it and OCR failed silently on mobile.
+      // The teacher reported this 2026-04-28; root cause was that
+      // mislabelling.
+      const mimeType = req.file.mimetype || "image/jpeg";
 
       // Prompt tuned to minimize hallucinations on mobile photos AND
       // preserve multi-word phrases as single entries. The old version
