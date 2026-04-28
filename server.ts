@@ -1884,7 +1884,16 @@ Examples of good vs bad sentences:
   // middleware; the unused `next` param is intentional.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error(`[unhandled] ${req.method} ${req.path}:`, err?.stack || err);
+    // SECURITY: pass req.method and req.path as separate arguments
+    // rather than interpolating into a template literal.  Node's
+    // console.error treats the first argument as a printf-style
+    // format string when it's a single string — an attacker requesting
+    // e.g. `GET /%s%s%s` could inject format specifiers, corrupt log
+    // structure, or extract context from subsequent arguments.
+    // Passing each piece as a discrete argument bypasses format-string
+    // parsing entirely; Node just stringifies and joins with spaces.
+    // CodeQL ref: js/tainted-format-string.
+    console.error("[unhandled]", req.method, req.path, "-", err?.stack || err);
     if (res.headersSent) return;
     res.status(500).json({ error: "Internal server error" });
   });
