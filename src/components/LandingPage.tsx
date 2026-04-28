@@ -29,6 +29,10 @@ import {
   Lock,
   Globe,
   ExternalLink,
+  Wand2,
+  Camera,
+  Radio,
+  Compass,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -121,7 +125,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
                 >
-                  The digital playground where ESL students become vocabulary legends through play.
+                  The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.
                 </motion.p>
 
                 {/* 3D CTA Buttons */}
@@ -646,10 +650,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </span>
             </motion.div>
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              Why Teachers Love Vocaband
+              The Easiest Tool You'll Use All Year
             </h2>
             <p className="text-lg text-white/80 font-bold">
-              Engage your class with zero prep time.
+              Zero prep, zero paperwork, zero learning curve. Teach more, click less.
             </p>
           </motion.div>
 
@@ -862,14 +866,101 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </div>
             </motion.div>
 
+            {/* AI Sentence Builder — power tool. */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.55 }}
+              whileHover={{ y: -12, scale: 1.03 }}
+              className="relative group"
+            >
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-purple-500 via-violet-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                    <Wand2 size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">AI Sentence Builder</h3>
+                  <p className="text-white/80 font-bold text-sm">
+                    One click, 10 example sentences per word — at the right level for your grade.
+                  </p>
+                  <div className="mt-4 px-3 py-2 rounded-xl bg-white/10 text-xs font-bold leading-relaxed">
+                    "She <span className="bg-white/30 px-1 rounded">sprinted</span> across the field to catch the ball."
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Camera OCR — power tool. */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              whileHover={{ y: -12, scale: 1.03 }}
+              className="relative group"
+            >
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                    <Camera size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">Snap a Wordlist</h3>
+                  <p className="text-white/80 font-bold text-sm">
+                    Take a photo of any printed list — handwriting, textbook page, board — words extracted in seconds.
+                  </p>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <div className="text-3xl">📷</div>
+                    <ArrowRight size={20} className="text-white/60" />
+                    <div className="text-3xl">📋</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Quick Play — full-width spanning card.  No-signup live
+                multiplayer is a unique feature worth surfacing
+                prominently — students join with just a class code on
+                the projected QR, no accounts to manage. */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.65 }}
+              whileHover={{ y: -12, scale: 1.02 }}
+              className="relative group md:col-span-2"
+            >
+              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
+                    <Radio size={40} />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <h3 className="text-3xl md:text-4xl font-black mb-3">Quick Play — No-Signup Live Game</h3>
+                    <p className="text-white/85 font-bold text-lg max-w-2xl">
+                      Project a QR on the board, students join with their phones — no accounts, no class code typing, no setup. Live podium, real-time scores, ready in 10 seconds.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                    <div className="px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm font-mono font-black text-2xl tracking-widest">
+                      ABC123
+                    </div>
+                    <div className="text-xs uppercase tracking-widest opacity-80">scan & play</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
             {/* Hebrew + Arabic translations — full-width finale of the
                 teacher grid.  This is THE differentiator vs. Quizlet,
                 Kahoot, Wordwall: every word ships with native HE + AR
                 translations baked into the data layer (vocabulary.ts
                 tuple format).  Surfaced here as its own card because
-                it's the single biggest reason an Israeli/Arab teacher
-                picks Vocaband over the global English-only
-                competitors. */}
+                it's the single biggest reason a multilingual classroom
+                picks Vocaband over global English-only competitors. */}
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -888,7 +979,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <h3 className="text-3xl md:text-4xl font-black mb-3">Hebrew + Arabic, built in</h3>
                     <p className="text-white/85 font-bold text-lg max-w-2xl">
                       Every word ships with native Hebrew AND Arabic translations — no second app, no copy-paste.
-                      RTL layouts handled automatically.  Built for ESL classrooms in Israel.
+                      RTL layouts handled automatically.  More languages on the roadmap.
                     </p>
                   </div>
                   {/* Three-language sample chip cluster.  Each shows the
@@ -1048,6 +1139,110 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </motion.div>
             </div>
           </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════
+            ROADMAP SECTION — "The Voca Family"
+            ───────────────────────────────────────────────────────────
+            Sneak-peek at the multi-subject expansion that's parked in
+            CLAUDE.md §11.  The engine is mostly subject-agnostic
+            (generalize Word → StudyCard) so the same gameplay loop
+            can power history dates, science vocab, math definitions,
+            etc.  Surfacing this as a "Coming Soon" teaser does two
+            things:
+
+              1. Signals to teachers in OTHER subjects that they're
+                 next on the list — converts curiosity into early-
+                 access signups even before we ship.
+              2. Positions Vocaband as a "learning-game platform"
+                 not just a vocab app, which raises the ceiling for
+                 school-wide licenses.
+
+            All entries explicitly labelled "Coming soon" so we never
+            misrepresent shipped features.  No CTA to buy — just a
+            "stay in the loop" mailto link for early-access leads.
+            ═══════════════════════════════════════════════════════════ */}
+        <section className="py-20 px-4 md:px-6 relative overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-5xl mx-auto text-center mb-12"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/30 mb-6"
+            >
+              <Compass size={16} className="text-amber-300" />
+              <span className="text-sm font-black tracking-widest uppercase text-amber-200">
+                Coming Soon
+              </span>
+            </motion.div>
+            <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
+              The Voca Family
+            </h2>
+            <p className="text-lg text-white/80 font-bold max-w-2xl mx-auto">
+              We're starting with English vocabulary — but the same gameplay engine teaches anything.
+              Subjects on the roadmap, by teacher demand:
+            </p>
+          </motion.div>
+
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              { name: "VocaHistory", emoji: "📜", color: "from-amber-500 to-orange-600", tag: "Dates · figures · events" },
+              { name: "VocaScience", emoji: "🔬", color: "from-emerald-500 to-teal-600", tag: "Terms · concepts · diagrams" },
+              { name: "VocaHebrew", emoji: "📖", color: "from-blue-500 to-indigo-600", tag: "Hebrew vocabulary" },
+              { name: "VocaArabic", emoji: "📚", color: "from-rose-500 to-pink-600", tag: "Arabic vocabulary" },
+              { name: "VocaMath", emoji: "🔢", color: "from-violet-500 to-fuchsia-600", tag: "Definitions · formulas" },
+            ].map((subject, i) => (
+              <motion.div
+                key={subject.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
+                whileHover={{ y: -8, scale: 1.04 }}
+                className="relative group"
+              >
+                <div className={`h-full p-5 rounded-3xl bg-gradient-to-br ${subject.color} text-white shadow-lg overflow-hidden`}>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                  <div className="relative z-10 text-center">
+                    <div className="text-4xl mb-2">{subject.emoji}</div>
+                    <h3 className="text-base sm:text-lg font-black mb-1">{subject.name}</h3>
+                    <p className="text-[11px] sm:text-xs font-bold text-white/80 leading-tight">{subject.tag}</p>
+                  </div>
+                  {/* "Coming soon" pill so nobody mistakes this for a
+                      shipped feature. */}
+                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-[9px] font-black uppercase tracking-wider">
+                    Soon
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Early-access lead capture — uses the team's existing
+              contact@ inbox so we don't need a new email pipeline.
+              Subject-line tag makes inbound triaging easy. */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto mt-12 text-center"
+          >
+            <p className="text-white/70 font-bold text-sm mb-3">
+              Teach a different subject? Tell us which Voca to build next:
+            </p>
+            <a
+              href="mailto:contact@vocaband.com?subject=Voca%20Roadmap%20%E2%80%93%20Subject%20Request"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-black transition-colors"
+            >
+              <FileText size={18} />
+              Request a subject
+            </a>
+          </motion.div>
         </section>
 
         {/* Final CTA - Epic 3D Card */}
