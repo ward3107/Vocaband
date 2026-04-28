@@ -28,6 +28,8 @@ import type { View } from "../core/views";
 import StatChip from "../components/classroom/StatChip";
 import ReportExportBar from "../components/classroom/ReportExportBar";
 import ReportsDashboard from "../components/classroom/ReportsDashboard";
+import TopStrugglingWords from "../components/classroom/TopStrugglingWords";
+import AttendanceTable from "../components/classroom/AttendanceTable";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -315,42 +317,81 @@ export default function ClassroomView(props: ClassroomViewProps) {
               </div>
             )}
             {v2Tab === "students" && (
-              <GradebookView
-                user={user}
-                allScores={allScores}
-                teacherAssignments={teacherAssignments}
-                classStudents={classStudents}
-                classes={classes}
-                expandedStudent={expandedStudent}
-                setExpandedStudent={setExpandedStudent}
-                setView={setView}
-                showToast={showToast}
-                embedded
-                sections={["students"]}
-                hideExport
-                useDrawerDrill
-                selectedClassCode={classCode}
-                onSelectedClassChange={setClassCode}
-              />
+              <div className="space-y-4">
+                <GradebookView
+                  user={user}
+                  allScores={allScores}
+                  teacherAssignments={teacherAssignments}
+                  classStudents={classStudents}
+                  classes={classes}
+                  expandedStudent={expandedStudent}
+                  setExpandedStudent={setExpandedStudent}
+                  setView={setView}
+                  showToast={showToast}
+                  embedded
+                  sections={["students"]}
+                  hideExport
+                  useDrawerDrill
+                  selectedClassCode={classCode}
+                  onSelectedClassChange={setClassCode}
+                />
+                {/* "Who needs help" — moved here from Reports tab on
+                    2026-04-28.  Lives next to the per-student roster
+                    so the teacher's mental flow is "scan the table →
+                    tap a low-attendance student → open their profile". */}
+                <div className="px-4 sm:px-6 max-w-5xl mx-auto">
+                  <AttendanceTable
+                    classCode={classCode}
+                    scores={allScores}
+                    classStudents={classStudents}
+                  />
+                </div>
+              </div>
             )}
             {v2Tab === "assignments" && (
-              <GradebookView
-                user={user}
-                allScores={allScores}
-                teacherAssignments={teacherAssignments}
-                classStudents={classStudents}
-                classes={classes}
-                expandedStudent={expandedStudent}
-                setExpandedStudent={setExpandedStudent}
-                setView={setView}
-                showToast={showToast}
-                embedded
-                sections={["assignments"]}
-                hideExport
-                useDrawerDrill
-                selectedClassCode={classCode}
-                onSelectedClassChange={setClassCode}
-              />
+              <div className="space-y-4">
+                <GradebookView
+                  user={user}
+                  allScores={allScores}
+                  teacherAssignments={teacherAssignments}
+                  classStudents={classStudents}
+                  classes={classes}
+                  expandedStudent={expandedStudent}
+                  setExpandedStudent={setExpandedStudent}
+                  setView={setView}
+                  showToast={showToast}
+                  embedded
+                  sections={["assignments"]}
+                  hideExport
+                  useDrawerDrill
+                  selectedClassCode={classCode}
+                  onSelectedClassChange={setClassCode}
+                />
+                {/* "What to reteach" — moved here from Reports tab on
+                    2026-04-28.  The "Reteach these" button sends the
+                    top-10 word IDs into the Create-Assignment wizard
+                    pre-filled, closing the loop teachers couldn't
+                    close before (they'd see the words on Reports and
+                    have to recreate them by hand on Assignments). */}
+                <div className="px-4 sm:px-6 max-w-5xl mx-auto">
+                  <TopStrugglingWords
+                    classCode={classCode}
+                    scores={allScores}
+                    classStudents={classStudents}
+                    onCreateReteachAssignment={(wordIds) => {
+                      // Use the currently-selected class if there is
+                      // one, otherwise fall back to the first class
+                      // that owns the picked class code (best-effort).
+                      const target = classCode
+                        ? classes.find(c => c.code === classCode) ?? selectedClass
+                        : selectedClass;
+                      if (target) setSelectedClass(target);
+                      setSelectedWords(wordIds);
+                      setView("create-assignment");
+                    }}
+                  />
+                </div>
+              </div>
             )}
             {v2Tab === "reports" && (
               <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-4">
