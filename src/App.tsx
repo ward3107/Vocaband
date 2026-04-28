@@ -1165,9 +1165,12 @@ export default function App() {
             // Check if a completed student_profiles row already exists (e.g.
             // the user entered a class code in a later session).  If so,
             // adopt it — otherwise prompt for class-code entry.
+            // Narrowed select on 2026-04-28 (LOW DB-cost finding) — pull
+            // only the 6 fields the AppUser builder reads, not every row
+            // column.  Saves ~1.4 KB / call.
             const { data: studentProfile } = await supabase
               .from('student_profiles')
-              .select('*')
+              .select('email, status, display_name, class_code, xp, avatar')
               .eq('email', supabaseUser.email ?? "")
               .maybeSingle();
             if (studentProfile && (studentProfile.status === 'active' || studentProfile.status === 'approved')) {
@@ -1275,9 +1278,10 @@ export default function App() {
           const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
           if (isGoogleSignIn) {
             // First check if this is an OAuth student (they exist in student_profiles, not users)
+            // Narrowed select on 2026-04-28 to match the consumer below.
             const { data: studentProfile } = await supabase
               .from('student_profiles')
-              .select('*')
+              .select('email, status, display_name, class_code, xp, avatar')
               .eq('email', supabaseUser.email ?? "")
               .maybeSingle();
             if (studentProfile && (studentProfile.status === 'active' || studentProfile.status === 'approved')) {
