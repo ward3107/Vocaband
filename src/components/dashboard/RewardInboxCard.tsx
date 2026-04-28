@@ -37,6 +37,14 @@ interface RewardRow {
 
 interface RewardInboxCardProps {
   /**
+   * Authenticated student's uid.  Required so the realtime channel can
+   * filter on student_uid without us needing to round-trip
+   * supabase.auth.getUser() (which is a network call to the Auth API,
+   * burning ~9k/month at 30 students × 10 dashboard mounts/day).  The
+   * parent already has it via the user object — thread it through.
+   */
+  userUid: string;
+  /**
    * Called when a reward newly arrives via polling so the dashboard
    * can update its in-memory user stats to match the DB (which the
    * award_reward RPC has already mutated).  Receives a summary of
@@ -71,7 +79,7 @@ const formatValue = (type: string, value: string): string => {
   return value;
 };
 
-export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxCardProps) {
+export default function RewardInboxCard({ userUid, onServerRewardsArrived }: RewardInboxCardProps) {
   const [rewards, setRewards] = useState<RewardRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [dismissing, setDismissing] = useState<Set<string>>(new Set());
@@ -157,15 +165,12 @@ export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxC
     // requests/day for nothing.
     let fallbackPollId: ReturnType<typeof setInterval> | null = null;
     let channel: ReturnType<typeof supabase.channel> | null = null;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const uid = user?.id;
-      if (!uid || cancelled) return;
+    if (userUid) {
       channel = supabase
-        .channel(`reward-inbox-${uid}`)
+        .channel(`reward-inbox-${userUid}`)
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'teacher_rewards', filter: `student_uid=eq.${uid}` },
+          { event: 'INSERT', schema: 'public', table: 'teacher_rewards', filter: `student_uid=eq.${userUid}` },
           () => { if (!document.hidden) fetchRewards(); },
         )
         .subscribe(status => {
@@ -177,7 +182,7 @@ export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxC
             }
           }
         });
-    })();
+    }
 
     const handleVisibility = () => {
       if (!document.hidden) fetchRewards();
@@ -194,7 +199,7 @@ export default function RewardInboxCard({ onServerRewardsArrived }: RewardInboxC
     // one-shot seed gate and adding it would re-run the effect every
     // time it flips, creating a tight loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onServerRewardsArrived]);
+  }, [onServerRewardsArrived, userUid]);
 
   const dismiss = async (reward: RewardRow) => {
     // Visual dismissal first — instant feedback even on flaky Wi-Fi.
