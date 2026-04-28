@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Palette } from "lucide-react";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
+import RatingPrompt from "../components/RatingPrompt";
 import { supabase } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
 import { getTeacherDashboardTheme } from "../constants/teacherDashboardThemes";
@@ -124,6 +125,23 @@ export default function TeacherDashboardView({
   // safety fallback so an unknown / removed theme doesn't break render.
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const dashboardTheme = getTeacherDashboardTheme(user?.teacherDashboardTheme);
+
+  // ─── First-rating prompt gate ─────────────────────────────────────
+  // Show the rating modal when the teacher has meaningfully USED the
+  // product (≥1 class + ≥1 assignment created), hasn't rated yet, and
+  // hasn't dismissed within the last 7 days.  A one-shot per session;
+  // dismissed/rated state is the parent's source of truth.
+  const [ratingDismissedThisSession, setRatingDismissedThisSession] = useState(false);
+  const showRatingPrompt = useMemo(() => {
+    if (ratingDismissedThisSession) return false;
+    if (user?.firstRating != null) return false;
+    if (user?.ratingDismissedAt) {
+      const dismissedMs = new Date(user.ratingDismissedAt).getTime();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      if (Date.now() - dismissedMs < sevenDaysMs) return false;
+    }
+    return classes.length >= 1 && teacherAssignments.length >= 1;
+  }, [user?.firstRating, user?.ratingDismissedAt, classes.length, teacherAssignments.length, ratingDismissedThisSession]);
 
   return (
     <>
@@ -271,6 +289,27 @@ export default function TeacherDashboardView({
       </button>
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
+      )}
+
+      {/* First-rating prompt — fires when the teacher has meaningfully
+          USED the product (≥1 class + ≥1 assignment), hasn't already
+          rated, and hasn't dismissed within the last 7 days.  See gate
+          logic above. */}
+      {showRatingPrompt && user && (
+        <RatingPrompt
+          user={user}
+          kind="teacher"
+          onDone={() => {
+            setRatingDismissedThisSession(true);
+            // Optimistically reflect the write so the gate flips off
+            // even before the next users-row refetch.
+            setUser(prev => prev ? {
+              ...prev,
+              firstRatingAt: new Date().toISOString(),
+              ratingDismissedAt: prev.firstRating == null ? new Date().toISOString() : prev.ratingDismissedAt,
+            } : prev);
+          }}
+        />
       )}
     </>
   );
