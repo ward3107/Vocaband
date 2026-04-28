@@ -149,6 +149,7 @@ export default function StudentDashboardView({
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
           {classNotFoundBanner}
           <RewardInboxCard
+            userUid={user.uid}
             onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
               onApplyServerRewards({ xpToAdd, badgesToAppend });
             }}
@@ -303,6 +304,7 @@ export default function StudentDashboardView({
             celebration before anything else on the dashboard. Hides
             itself when the inbox is empty. */}
         <RewardInboxCard
+          userUid={user.uid}
           onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
             // RPC already wrote to the DB — just mirror locally so the
             // dashboard reflects it without a page refresh.  Never writes
