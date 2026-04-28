@@ -44,6 +44,7 @@ interface QuickPlaySessionShape {
   wordIds: number[];
   words: Word[];
   allowedModes?: string[];
+  aiSentences?: string[];
 }
 
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
@@ -199,6 +200,11 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           wordIds: data.word_ids,
           words: allWords,
           allowedModes: data.allowed_modes || undefined,
+          // ai_sentences is populated by the teacher's session-create flow
+          // (see generateAndStoreQuickPlayAiSentences).  Empty / null here
+          // means the AI call hasn't finished yet OR failed — student-side
+          // falls back to template sentences when reading.
+          aiSentences: Array.isArray(data.ai_sentences) ? data.ai_sentences : undefined,
         });
 
         // Check if this student already joined this session (page refresh / re-scan)
