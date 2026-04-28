@@ -146,7 +146,7 @@ export default function StudentDashboardView({
           open={showPicker}
           onPick={(k) => structure.chooseKind(k)}
         />
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
           {classNotFoundBanner}
           <RewardInboxCard
             onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
@@ -296,7 +296,7 @@ export default function StudentDashboardView({
           onComplete={() => setShowStudentOnboarding(false)}
         />
       )}
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         {classNotFoundBanner}
         <StudentTopBar />
         {/* Teacher rewards land here FIRST so the student sees the
@@ -344,7 +344,11 @@ export default function StudentDashboardView({
           currentXp={xp}
           setView={setView}
         />
-        <BadgesStrip earned={badges} />
+        {/* Hide the strip for day-one students with no badges yet —
+            otherwise they see a row of locked tiles that reads as
+            "broken" instead of "you haven't earned any yet".  Mirrors
+            the modern-dashboard guard at line 224. */}
+        {badges.length > 0 && <BadgesStrip earned={badges} />}
         <StudentOverallProgress
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
