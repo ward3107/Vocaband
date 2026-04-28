@@ -44,7 +44,7 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   // Floating 3D cards data for hero
   const floatingCards = [
-    { icon: <Gamepad2 size={24} />, name: "10 Game Modes", color: "from-violet-500 to-purple-600", delay: 0 },
+    { icon: <Gamepad2 size={24} />, name: "11 Game Modes", color: "from-violet-500 to-purple-600", delay: 0 },
     { icon: <Trophy size={24} />, name: "Earn XP", color: "from-blue-500 to-cyan-500", delay: 0.2 },
     { icon: <Flame size={24} />, name: "Daily Streaks", color: "from-amber-500 to-orange-500", delay: 0.4 },
     { icon: <Gift size={24} />, name: "Mystery Eggs", color: "from-emerald-500 to-teal-500", delay: 0.6 },
@@ -253,12 +253,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-6 shadow-inner">
                     <Gamepad2 size={32} />
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-black mb-4">10 Game Modes</h3>
+                  <h3 className="text-3xl md:text-4xl font-black mb-4">11 Game Modes</h3>
                   <p className="text-white/80 font-bold mb-6 max-w-md">
                     From Classic to Sentence Builder — every mode teaches differently. Find your favorite!
                   </p>
                   {/* Mode Grid */}
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-6 gap-2">
                     {[
                       { emoji: "📖", name: "Classic" },
                       { emoji: "🎧", name: "Listen" },
@@ -270,6 +270,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       { emoji: "🔄", name: "Reverse" },
                       { emoji: "🔡", name: "Letters" },
                       { emoji: "🧩", name: "Sentence" },
+                      { emoji: "📝", name: "Fill Blank" },
                     ].map((mode, i) => (
                       <motion.div
                         key={mode.name}
@@ -860,6 +861,53 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+
+            {/* Hebrew + Arabic translations — full-width finale of the
+                teacher grid.  This is THE differentiator vs. Quizlet,
+                Kahoot, Wordwall: every word ships with native HE + AR
+                translations baked into the data layer (vocabulary.ts
+                tuple format).  Surfaced here as its own card because
+                it's the single biggest reason an Israeli/Arab teacher
+                picks Vocaband over the global English-only
+                competitors. */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              whileHover={{ y: -12, scale: 1.02 }}
+              className="relative group md:col-span-2"
+            >
+              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
+                    <Globe size={40} />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <h3 className="text-3xl md:text-4xl font-black mb-3">Hebrew + Arabic, built in</h3>
+                    <p className="text-white/85 font-bold text-lg max-w-2xl">
+                      Every word ships with native Hebrew AND Arabic translations — no second app, no copy-paste.
+                      RTL layouts handled automatically.  Built for ESL classrooms in Israel.
+                    </p>
+                  </div>
+                  {/* Three-language sample chip cluster.  Each shows the
+                      same word in EN/HE/AR so the teacher sees the
+                      claim is real, not marketing fluff. */}
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <div className="px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm font-bold text-sm">
+                      apple
+                    </div>
+                    <div className="px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm font-bold text-sm" dir="rtl">
+                      תפוח
+                    </div>
+                    <div className="px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm font-bold text-sm" dir="rtl">
+                      تفاحة
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
@@ -875,7 +923,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               Your Journey to Mastery
             </h2>
             <p className="text-lg text-white/80 font-bold">
-              Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 9,000+ words.
+              Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 6,500+ words.
             </p>
           </motion.div>
 
