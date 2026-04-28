@@ -1,7 +1,7 @@
 // vocabulary-matching.ts
 // Enhanced word matching with fuzzy search, multi-language support, and filtering
 
-import { Word } from './vocabulary';
+import type { Word } from './vocabulary';
 
 // ============================================================================
 // TEXT NORMALIZATION

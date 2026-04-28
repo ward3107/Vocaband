@@ -12,7 +12,8 @@ import {
   type AssignmentData,
   type ProgressData,
 } from "../core/supabase";
-import { ALL_WORDS, SET_2_WORDS, Word } from "../data/vocabulary";
+import type { Word } from "../data/vocabulary";
+import { getCachedVocabulary } from "./useVocabularyLazy";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
@@ -139,7 +140,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     const allMatches: Word[] = [];
     const unmatched: string[] = [];
     for (const word of words) {
-      const matches = SET_2_WORDS.filter(w =>
+      const matches = (getCachedVocabulary()?.SET_2_WORDS ?? []).filter(w =>
         w.english.toLowerCase() === word ||
         w.english.toLowerCase().startsWith(word) ||
         w.english.toLowerCase().endsWith(word)
@@ -510,7 +511,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       return;
     }
 
-    const allPossibleWords = [...ALL_WORDS, ...customWords];
+    const allPossibleWords = [...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToCheckSet = new Set(wordsToCheck);
     const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
@@ -610,7 +611,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     }
 
     // Get the selected words
-    const allPossibleWords = [...ALL_WORDS, ...customWords];
+    const allPossibleWords = [...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToPreview = uniqueWords.filter(w => new Set(selectedWords).has(w.id));
 
