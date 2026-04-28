@@ -2153,6 +2153,7 @@ export default function App() {
       <LazyWrapper loadingMessage="Loading dashboard...">
         <TeacherDashboardView
           user={user}
+          setUser={setUser}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           ocrCropModal={ocrCropModal}

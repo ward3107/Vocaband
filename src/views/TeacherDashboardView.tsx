@@ -1,7 +1,11 @@
+import { useState } from "react";
+import { Palette } from "lucide-react";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import { supabase } from "../core/supabase";
+import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
+import { getTeacherDashboardTheme } from "../constants/teacherDashboardThemes";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
@@ -17,6 +21,9 @@ import type { SavedTask } from "../hooks/useSavedTasks";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
+  /** Needed for the dashboard theme picker to optimistically update
+   *  the theme locally after the DB write succeeds. */
+  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   consentModal: React.ReactNode;
   exitConfirmModal: React.ReactNode;
   ocrCropModal: React.ReactNode;
@@ -89,7 +96,7 @@ interface TeacherDashboardViewProps {
 }
 
 export default function TeacherDashboardView({
-  user, consentModal, exitConfirmModal, ocrCropModal,
+  user, setUser, consentModal, exitConfirmModal, ocrCropModal,
   showOnboarding, setShowOnboarding,
   classes, teacherAssignments, pendingStudentsCount,
   copiedCode, setCopiedCode,
@@ -113,9 +120,14 @@ export default function TeacherDashboardView({
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const firstName = (user?.displayName || "").split(" ")[0] || "Teacher";
 
+  // Per-teacher dashboard theme.  Resolved from the stored id with a
+  // safety fallback so an unknown / removed theme doesn't break render.
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const dashboardTheme = getTeacherDashboardTheme(user?.teacherDashboardTheme);
+
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-20 sm:pt-24 pb-12">
+      <div className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
         {consentModal}
         {exitConfirmModal}
 
@@ -236,6 +248,25 @@ export default function TeacherDashboardView({
 
       {/* Confirmation Dialog */}
       <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
+
+      {/* Theme picker — fixed-position floating trigger so it doesn't
+          fight with the teacher's classes / assignments layout, and
+          modal that mounts on demand.  Both pieces are scoped to this
+          view; no other surface (game screens, student dashboards)
+          renders them. */}
+      <button
+        type="button"
+        onClick={() => setShowThemeMenu(true)}
+        title="Change dashboard theme"
+        aria-label="Change dashboard theme"
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full bg-white text-stone-700 ring-1 ring-stone-300 shadow-lg flex items-center justify-center hover:bg-stone-50 hover:scale-105 active:scale-95 transition-transform"
+      >
+        <Palette size={20} />
+      </button>
+      {showThemeMenu && (
+        <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
+      )}
     </>
   );
 }
