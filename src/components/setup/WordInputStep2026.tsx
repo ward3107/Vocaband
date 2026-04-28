@@ -695,6 +695,22 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 {TEXT.ocrSubtitle}
               </p>
 
+              {/*
+                Camera + gallery file inputs use `sr-only` (visually
+                hidden but still in layout flow) instead of `hidden`
+                (display:none).  iOS Safari and some Android browsers
+                silently drop `.click()` calls on display:none file
+                inputs — the camera/picker never opens, no onChange
+                ever fires, the user sees nothing happen.  Teacher
+                reported this 2026-04-28: tapping "Take Photo" did
+                literally nothing on their phone.
+
+                sr-only keeps the input in the document layout so the
+                OS-level camera intent can fire correctly on tap.  The
+                input is still invisible to sighted users; the styled
+                button above it is what they actually click.
+              */}
+
               {/* Camera input (with capture) */}
               <input
                 ref={cameraInputRef}
@@ -702,7 +718,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 id="ocr-camera-input"
                 name="cameraImage"
                 accept="image/*"
-                className="hidden"
+                className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) onUpload(file);
@@ -717,7 +733,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 id="ocr-gallery-input"
                 name="galleryImage"
                 accept="image/*"
-                className="hidden"
+                className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) onUpload(file);
