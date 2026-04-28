@@ -21,6 +21,10 @@ interface TeacherClassesSectionProps {
   onEditAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (assignment: AssignmentData) => void;
+  /** When true (Midnight dashboard theme), the heading + sub-text on
+   *  the page background flip to lighter colours so they don't
+   *  disappear against the slate-900 gradient. */
+  isDark?: boolean;
 }
 
 export default function TeacherClassesSection({
@@ -29,16 +33,17 @@ export default function TeacherClassesSection({
   onNewClass, onAssign, onDeleteClass, onEditClass,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
+  isDark = false,
 }: TeacherClassesSectionProps) {
   return (
     <div data-tour="my-classes">
       <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
-            <Users size={18} className="text-stone-400" />
+          <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${isDark ? 'text-stone-50' : 'text-stone-900'}`}>
+            <Users size={18} className={isDark ? 'text-stone-300' : 'text-stone-400'} />
             My classes
           </h2>
-          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+          <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-stone-300' : 'text-stone-500'}`}>
             {classes.length === 0
               ? "You haven't created any classes yet."
               : `${classes.length} class${classes.length === 1 ? '' : 'es'}`}

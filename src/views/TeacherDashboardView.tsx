@@ -149,15 +149,18 @@ export default function TeacherDashboardView({
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Welcome hero — sets a calm, personal tone */}
+          {/* Welcome hero — sets a calm, personal tone.
+              Text colours flip with `dashboardTheme.dark` so the
+              "Midnight" theme (slate-900 background) doesn't hide
+              the headline behind near-black text. */}
           <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
-            <p className="text-xs sm:text-sm font-bold uppercase tracking-widest text-indigo-500 mb-2">
+            <p className={`text-xs sm:text-sm font-bold uppercase tracking-widest mb-2 ${dashboardTheme.dark ? 'text-indigo-300' : 'text-indigo-500'}`}>
               {greeting}
             </p>
-            <h1 className="text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight">
+            <h1 className={`text-2xl sm:text-4xl font-bold tracking-tight ${dashboardTheme.dark ? 'text-stone-50' : 'text-stone-900'}`}>
               {firstName}, here's your classroom.
             </h1>
-            <p className="text-sm sm:text-base text-stone-500 mt-2">
+            <p className={`text-sm sm:text-base mt-2 ${dashboardTheme.dark ? 'text-stone-300' : 'text-stone-500'}`}>
               Manage your classes, review student progress, and create new assignments in a few taps.
             </p>
           </div>
@@ -186,6 +189,7 @@ export default function TeacherDashboardView({
             onEditAssignment={onEditAssignment}
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}
+            isDark={dashboardTheme.dark}
           />
 
           {savedTasks && onUseSavedTask && onTogglePinSavedTask && onRemoveSavedTask && (
@@ -194,6 +198,7 @@ export default function TeacherDashboardView({
               onUse={onUseSavedTask}
               onTogglePin={onTogglePinSavedTask}
               onRemove={onRemoveSavedTask}
+              isDark={dashboardTheme.dark}
             />
           )}
         </div>

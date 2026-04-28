@@ -76,7 +76,7 @@ export default function AdaptiveDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: 0.28 }}
-            className="fixed inset-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-2/5 lg:max-w-xl bg-white z-50 shadow-2xl flex flex-col"
+            className="fixed inset-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-1/2 lg:max-w-3xl bg-white z-50 shadow-2xl flex flex-col"
           >
             <header className="flex items-center gap-3 px-4 py-3 border-b border-stone-100 bg-white sticky top-0 z-10">
               <button
