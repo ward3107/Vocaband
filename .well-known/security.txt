@@ -1,9 +1,12 @@
 # Vocaband Security Policy
-# For security inquiries, please contact us using the information below.
+# https://securitytxt.org/
 
 Contact: mailto:contact@vocaband.com
-Preferred-Languages: en, he
+Preferred-Languages: en, he, ar
 Expires: 2027-03-29T00:00:00.000Z
 Policy: https://www.vocaband.com/terms.html
 Policy: https://www.vocaband.com/privacy.html
 Canonical: https://www.vocaband.com/.well-known/security.txt
+
+# Public-facing security overview (translated EN/HE/AR):
+# https://www.vocaband.com/security

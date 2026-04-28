@@ -9,6 +9,7 @@ export type View =
   | "public-landing"
   | "public-terms"
   | "public-privacy"
+  | "public-security"
   | "accessibility-statement"
   | "student-account-login"
   | "student-pending-approval"
