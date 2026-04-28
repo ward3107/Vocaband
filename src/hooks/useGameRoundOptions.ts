@@ -23,7 +23,8 @@
  *                    the original (possible on short words).
  */
 import { useMemo } from 'react';
-import { ALL_WORDS, type Word } from '../data/vocabulary';
+import type { Word } from '../data/vocabulary';
+import { getCachedVocabulary } from './useVocabularyLazy';
 import { secureRandomInt, shuffle } from '../utils';
 
 export interface UseGameRoundOptionsParams {
@@ -76,7 +77,11 @@ export function useGameRoundOptions(
 
     // Tier 1: assigned words that pass the filter.
     const fromAssigned = shuffle(gameWords.filter(isUsable));
-    // Tier 2: top up from ALL_WORDS if we don't have 3 yet.
+    // Tier 2: top up from ALL_WORDS if we don't have 3 yet.  Vocabulary
+    // is loaded lazily — see useVocabularyLazy.  By the time a game
+    // mode renders, vocab has resolved; the empty-array fallback here
+    // is only hit during the brief async window after a fresh login.
+    const ALL_WORDS = getCachedVocabulary()?.ALL_WORDS ?? [];
     const needFromAll = Math.max(0, 3 - fromAssigned.length);
     const fromAll = needFromAll > 0
       ? shuffle(ALL_WORDS.filter(isUsable)).slice(0, needFromAll * 4)
@@ -123,6 +128,7 @@ export function useGameRoundOptions(
     if (secureRandomInt(2) === 0) return currentWord;
     let possibleDistractors = gameWords.filter(w => w.id !== currentWord.id);
     if (possibleDistractors.length === 0) {
+      const ALL_WORDS = getCachedVocabulary()?.ALL_WORDS ?? [];
       const allPossibleWords = [...ALL_WORDS, ...gameWords];
       possibleDistractors = Array
         .from(new Map(allPossibleWords.map(w => [w.id, w])).values())

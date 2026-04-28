@@ -3,7 +3,7 @@
 // Every word gets at least one sentence. Hand-written sentences take priority,
 // then level-appropriate POS templates fill in the rest.
 
-import { Word } from "./vocabulary";
+import type { Word } from "./vocabulary";
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from "../constants/game";
 
 // Re-export for backward compatibility

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
 import type { View, ShopTab } from "./core/views";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
-import { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS, Word } from "./data/vocabulary";
+import type { Word } from "./data/vocabulary";
+import { useVocabularyLazy, getCachedVocabulary } from "./hooks/useVocabularyLazy";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
   RefreshCw,
@@ -175,6 +176,31 @@ export default function App() {
   const [shopTab, setShopTab] = useState<ShopTab>("hub");
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
+
+  // ─── Lazy-load vocabulary out of the initial bundle ────────────────
+  // The vocabulary tuple file is ~376 kB raw / 139 kB gzipped — by far
+  // the largest single asset.  Public visitors (landing, terms,
+  // privacy, security, accessibility) never need it.  Gate the load
+  // on the view: any non-public view triggers the dynamic import.
+  // (DemoMode lazy-loads vocabulary itself via its own static import,
+  // so we don't need a special demo gate here.)
+  // See docs/perf-2026-04-28.md for rationale + measurements.
+  const isPublicView =
+    view === "public-landing" ||
+    view === "public-terms" ||
+    view === "public-privacy" ||
+    view === "public-security" ||
+    view === "accessibility-statement";
+  const vocab = useVocabularyLazy(!isPublicView);
+  // Falsy-safe constants so existing code paths that reference these
+  // names compile unchanged.  When vocab is null (still loading or
+  // never triggered), these are empty arrays — every consumer is
+  // either gated behind an authenticated view (which won't render
+  // until vocab resolves) OR it's a fallback path that's safe to skip.
+  const ALL_WORDS = vocab?.ALL_WORDS ?? [];
+  const SET_1_WORDS = vocab?.SET_1_WORDS ?? [];
+  const SET_2_WORDS = vocab?.SET_2_WORDS ?? [];
+  const TOPIC_PACKS = vocab?.TOPIC_PACKS ?? [];
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
   // listener before handleStudentLogin finishes its DB queries).
@@ -1010,7 +1036,21 @@ export default function App() {
                     .eq('is_active', true)
                     .maybeSingle();
                   if (sessionData) {
-                    const dbWords = ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
+                    // Vocabulary may not be loaded yet at this point —
+                    // the lazy hook only triggers after view transitions
+                    // away from public-landing.  This restore path runs
+                    // BEFORE the view transition, so do an inline
+                    // dynamic import to be safe.  The import resolves
+                    // to the same cached chunk the hook will use.
+                    let vocabMod = getCachedVocabulary();
+                    if (!vocabMod) {
+                      const m = await import("./data/vocabulary");
+                      vocabMod = {
+                        ALL_WORDS: m.ALL_WORDS, SET_1_WORDS: m.SET_1_WORDS,
+                        SET_2_WORDS: m.SET_2_WORDS, TOPIC_PACKS: m.TOPIC_PACKS,
+                      };
+                    }
+                    const dbWords = vocabMod.ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
                     // allowed_modes can come from either the DB (source of
                     // truth on refresh) or the cached localStorage blob
                     // (fallback if the column was added after the session

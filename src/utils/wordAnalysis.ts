@@ -7,7 +7,7 @@
  * expansion, smart phrase detection, and confidence scoring.
  */
 
-import { Word } from '../data/vocabulary';
+import type { Word } from '../data/vocabulary';
 import {
   normalizeText,
   levenshteinDistance,

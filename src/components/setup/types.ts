@@ -1,4 +1,4 @@
-import { Word } from '../../data/vocabulary';
+import type { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
 
 // --- Wizard Mode ---

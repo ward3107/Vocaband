@@ -30,7 +30,8 @@ import {
   type AssignmentData,
   type AppUser,
 } from "../core/supabase";
-import { ALL_WORDS, type Word } from "../data/vocabulary";
+import type { Word } from "../data/vocabulary";
+import { getCachedVocabulary } from "./useVocabularyLazy";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import type { View } from "../core/views";
@@ -159,7 +160,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         }
 
         // Fetch database words from vocabulary
-        const dbWords = ALL_WORDS.filter(w => data.word_ids.includes(w.id));
+        const dbWords = (getCachedVocabulary()?.ALL_WORDS ?? []).filter(w => data.word_ids.includes(w.id));
 
         // Parse custom words from JSON
         let customWords: Word[] = [];
@@ -288,7 +289,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                 .maybeSingle();
 
               if (data) {
-                const dbWords = ALL_WORDS.filter(w => (data.word_ids || []).includes(w.id));
+                const dbWords = (getCachedVocabulary()?.ALL_WORDS ?? []).filter(w => (data.word_ids || []).includes(w.id));
                 let customWords: Word[] = [];
                 if (data.custom_words) {
                   try {

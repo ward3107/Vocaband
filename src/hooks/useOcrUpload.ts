@@ -26,7 +26,8 @@
  */
 import { useCallback } from "react";
 import { supabase, type ClassData } from "../core/supabase";
-import { ALL_WORDS, type Word } from "../data/vocabulary";
+import type { Word } from "../data/vocabulary";
+import { getCachedVocabulary } from "./useVocabularyLazy";
 import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
@@ -147,7 +148,7 @@ export function useOcrUpload(params: UseOcrUploadParams) {
       // nonsense with a glance instead of it silently joining the
       // assignment.
       const normalizeWord = (w: string) => w.toLowerCase().trim();
-      const knownEnglishSet = new Set(ALL_WORDS.map(w => normalizeWord(w.english)));
+      const knownEnglishSet = new Set((getCachedVocabulary()?.ALL_WORDS ?? []).map(w => normalizeWord(w.english)));
       const isKnownWord = (w: string) => knownEnglishSet.has(normalizeWord(w));
 
       // Auto-translate OCR words to Hebrew + Arabic via the same
