@@ -26,12 +26,15 @@ import {
   FileText,
   ShieldCheck,
   Accessibility,
+  Lock,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 
 interface LandingPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility") => void;
+  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security") => void;
   onGetStarted: () => void;
   onTeacherLogin: () => void;
   onTryDemo?: () => void;
@@ -1117,12 +1120,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 <span className="text-white font-black text-xl">Vocaband</span>
               </div>
 
-              {/* Legal Links — three matching pill buttons, each with
-                  an icon + label. Previously they were three plain text
-                  links with inconsistent styling (only Accessibility had
-                  an icon, and its button wrongly navigated to Privacy).
-                  Now each gets the same pill treatment for a tidier
-                  footer row + the Accessibility button routes correctly. */}
+              {/* Legal Links — four matching pill buttons.
+                  See the Security button: opens the /security page
+                  (PublicSecurityPage) which is our user-facing
+                  technical-trust summary in EN/HE/AR. */}
               <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3" aria-label="Legal and accessibility">
                 <button
                   onClick={() => onNavigate("terms")}
@@ -1141,6 +1142,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <span>Privacy Policy</span>
                 </button>
                 <button
+                  onClick={() => onNavigate("security")}
+                  type="button"
+                  title="Security & Trust"
+                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
+                >
+                  <Lock size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
+                  <span>Security</span>
+                </button>
+                <button
                   onClick={() => onNavigate("accessibility")}
                   type="button"
                   title="Accessibility Statement"
@@ -1150,6 +1160,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <span>Accessibility</span>
                 </button>
               </nav>
+            </div>
+
+            {/* Trust strip — three small badges showing the things we
+                CAN factually claim (TLS, SSL Labs grade, EU hosting).
+                The SSL Labs badge deep-links to a live report so any
+                visitor can verify it themselves. See docs/SECURITY-OVERVIEW.md
+                for what we are/are NOT claiming and why this list is
+                conservative (no GDPR/COPPA self-declaration). */}
+            <div className="pt-6 pb-2 border-t border-white/10 flex flex-wrap items-center justify-center gap-3 text-xs">
+              <a
+                href="https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 font-bold transition-colors"
+              >
+                <ShieldCheck size={13} />
+                <span>SSL Labs A+</span>
+                <ExternalLink size={10} className="opacity-60" />
+              </a>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/15 text-blue-200 border border-blue-400/30 font-bold">
+                <Lock size={13} />
+                TLS 1.3
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold">
+                <Globe size={13} />
+                EU-hosted (Frankfurt)
+              </span>
             </div>
 
             {/* Teacher resources — subtle internal links to the /answers

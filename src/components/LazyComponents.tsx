@@ -21,6 +21,7 @@ const LoadingFallback = ({ message = 'Loading...' }: { message?: string }) => (
 export const LazyLandingPage = lazy(() => import('./LandingPage'));
 export const LazyTermsPage = lazy(() => import('./TermsPage'));
 export const LazyPublicPrivacyPage = lazy(() => import('./PublicPrivacyPage'));
+export const LazyPublicSecurityPage = lazy(() => import('./PublicSecurityPage'));
 export const LazyDemoMode = lazy(() => import('./DemoMode'));
 export const LazyAccessibilityStatement = lazy(() => import('./AccessibilityStatement'));
 
@@ -45,6 +46,14 @@ export const PrivacyPageWrapper: ComponentType<any> = (props) => (
   <LazyErrorBoundary fallback={<LoadingFallback message="Loading privacy policy..." />}>
     <Suspense fallback={<LoadingFallback message="Loading privacy policy..." />}>
       <LazyPublicPrivacyPage {...props} />
+    </Suspense>
+  </LazyErrorBoundary>
+);
+
+export const SecurityPageWrapper: ComponentType<any> = (props) => (
+  <LazyErrorBoundary fallback={<LoadingFallback message="Loading security..." />}>
+    <Suspense fallback={<LoadingFallback message="Loading security..." />}>
+      <LazyPublicSecurityPage {...props} />
     </Suspense>
   </LazyErrorBoundary>
 );

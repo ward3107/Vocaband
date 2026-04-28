@@ -162,12 +162,13 @@ export default function App() {
     handleCookieCustomize,
   } = useCookieConsent();
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
       accessibility: "accessibility-statement",
+      security: "public-security",
     } as const;
     setView(viewMap[page]);
   };

@@ -22,12 +22,13 @@ import {
   LandingPageWrapper,
   TermsPageWrapper,
   PrivacyPageWrapper,
+  SecurityPageWrapper,
   DemoModeWrapper,
   AccessibilityStatementWrapper,
 } from "../components/LazyComponents";
 import FloatingButtons from "../components/FloatingButtons";
 
-type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility";
+type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security";
 
 export interface PublicViewsProps {
   view: View;
@@ -95,6 +96,19 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     return (
       <>
         <PrivacyPageWrapper
+          onNavigate={onPublicNavigate}
+          onGetStarted={() => setView("student-account-login")}
+          onBack={goBack}
+        />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "public-security") {
+    return (
+      <>
+        <SecurityPageWrapper
           onNavigate={onPublicNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
