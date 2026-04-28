@@ -609,3 +609,83 @@ WHERE lower(email) = lower('teacher@school.edu');
 
 ---
 
+## 15. Custom-word audio pipeline
+
+When a teacher adds words that are NOT in the built-in 9,159-word
+vocabulary (paste, OCR, manual entry), each gets a synthetic numeric
+ID — usually `Date.now()`-based or negative — and we generate audio
+for it on the fly so students hear a natural voice instead of the
+robotic browser-TTS fallback.
+
+### The flow
+
+1. Teacher saves an assignment with custom words.  The client calls
+   `requestCustomWordAudio(words)` in `src/utils/requestCustomWordAudio.ts`
+   — **fire-and-forget**, never awaited.  The teacher's UI doesn't
+   block on audio generation; the assignment is saved instantly.
+2. That helper POSTs to `server.ts:1536` (`/api/tts/custom-words`)
+   with `{ words: [{ id, english }, ...] }` and the teacher's JWT.
+3. Server (Fly.io):
+   - Verifies the JWT and confirms `users.role = 'teacher'`.
+   - Reads `GOOGLE_AI_API_KEY` (must be set on Fly).
+   - Processes words in batches of 5 (parallel).  For each word:
+     - Skips if `<id>.mp3` already exists in the `sound/` storage
+       bucket (idempotent — safe to call twice).
+     - Calls Google Cloud Neural2 TTS via `synthesizeSpeechMp3()`.
+     - Uploads to `sound/<id>.mp3` with `upsert: true`.
+4. Returns `{ generated, skipped, failed, total }`.  Logged at
+   `[TTS] <email>: generated=N skipped=N failed=N`.
+
+### Where the data lives
+
+| Asset | Location |
+|---|---|
+| Word metadata (English + translations) | `assignments.wordIds` array, plus your custom-words table if you store inflated word objects per-class |
+| Audio file | Supabase Storage, bucket `sound/`, key `<id>.mp3` |
+
+The two are **loosely coupled** — the audio file is just at a
+predictable URL based on the ID, no foreign key.  If audio is
+missing for any reason, `useAudio.ts` falls back to
+`window.speechSynthesis` automatically (line 322).
+
+### Timing
+
+| Custom words in assignment | Approximate generation time |
+|---|---|
+| 5 | ~1 second |
+| 30 | ~3 seconds |
+| 100 | ~10 seconds |
+| 500 (max per request) | ~50 seconds |
+
+Each Google Neural2 TTS call is ~200-500ms.  Batched 5 in parallel.
+Teacher never waits — the request runs in the background while they
+move on.
+
+### Failure modes — student always hears something
+
+| What fails | What student hears |
+|---|---|
+| `GOOGLE_AI_API_KEY` not set on Fly | Browser TTS forever for those words |
+| Google TTS rate-limit on a batch | That batch falls through to browser TTS, others succeed |
+| Storage upload fails | Browser TTS for that word |
+| Teacher not in `users.role='teacher'` | Request rejected (403) — should not happen if onboarding done correctly |
+| Network blip from teacher → Fly | `requestCustomWordAudio` swallows it; browser TTS for the entire set |
+
+The fallback chain in `useAudio.ts` means students never hear
+silence — only quality varies.
+
+### Things to keep in mind
+
+- **Hard cap of 500 words per request.**  Bigger payloads get
+  truncated server-side.  If you ever ship a "1000-word import"
+  feature, batch the calls client-side.
+- **The endpoint is teacher-only.**  Quick Play guests can't call
+  it — that's why Quick Play sentences come from local templates
+  not from the AI sentence endpoint.  See the architecture-split
+  note in the Quick Play debugging cheat sheet (§12).
+- **`sound/` bucket migration.**  When you migrate Supabase
+  projects, custom-word MP3s migrate alongside the built-in ones
+  via `scripts/migrate-storage.ts`.  Same bucket, same key shape.
+
+---
+
