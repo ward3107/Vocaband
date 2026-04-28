@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, RefreshCw, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut } from "lucide-react";
 import type { AppUser } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
+import RatingPrompt from "../components/RatingPrompt";
 import type { View } from "../core/views";
 
 // Unbiased secure random integer in [0, max).
@@ -65,6 +66,21 @@ export default function GameFinishedView({
   onQuickPlayExit,
 }: GameFinishedViewProps) {
   const isGuest = !!user?.isGuest;
+
+  // ─── First-rating prompt for students ──────────────────────────────
+  // Fire ONCE at the moment of success — first game with a passing
+  // score (≥70).  Skip for guests (no users row to write to) and for
+  // anyone who already rated or dismissed within the last 7 days.
+  const [ratingDismissedThisSession, setRatingDismissedThisSession] = useState(false);
+  const eligibleForRating =
+    !!user &&
+    !isGuest &&
+    user.firstRating == null &&
+    score >= 70 &&
+    !ratingDismissedThisSession &&
+    (!user.ratingDismissedAt ||
+      Date.now() - new Date(user.ratingDismissedAt).getTime() > 7 * 24 * 60 * 60 * 1000);
+
   // Shared reset used by every action button below — clears per-round
   // state so the next mode starts clean.
   const resetRound = () => {
@@ -320,6 +336,17 @@ export default function GameFinishedView({
 
       {/* Error Tracking Panel (Debug Mode) */}
       <ErrorTrackingPanel />
+
+      {/* First-rating prompt (students) — fires once after a passing
+          first game (score ≥ 70).  Guests skipped (no users row).  See
+          eligibleForRating for the full gate. */}
+      {eligibleForRating && user && (
+        <RatingPrompt
+          user={user}
+          kind="student"
+          onDone={() => setRatingDismissedThisSession(true)}
+        />
+      )}
 
       {/* Confirmation Dialog */}
       <AnimatePresence>

@@ -98,7 +98,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
@@ -131,6 +131,15 @@ export interface AppUser {
    *  Read only by the teacher dashboard chrome — students ignore this
    *  field even though it sits on every users row. */
   teacherDashboardTheme?: string;
+  /** First in-app rating (1-5 stars), captured the first time the
+   *  rating prompt fires.  Never overwritten — we want first-impression
+   *  NPS, not "happy returning user" inflation. */
+  firstRating?: number | null;
+  /** Timestamp of first_rating capture. */
+  firstRatingAt?: string | null;
+  /** Timestamp of when the user closed the prompt without rating.
+   *  Prompt waits ≥7 days before re-asking. */
+  ratingDismissedAt?: string | null;
   isGuest?: boolean;
   createdAt?: string;
 }
@@ -195,6 +204,9 @@ export function mapUser(row: any): AppUser {
     activeFrame: row.active_frame ?? null,
     activeTitle: row.active_title ?? null,
     teacherDashboardTheme: row.teacher_dashboard_theme ?? 'default',
+    firstRating: row.first_rating ?? null,
+    firstRatingAt: row.first_rating_at ?? null,
+    ratingDismissedAt: row.rating_dismissed_at ?? null,
   };
 }
 
