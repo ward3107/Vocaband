@@ -1768,9 +1768,24 @@ Strict quality rules:
         const response = await anthropic.messages.create({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 1024,
-          system: `You generate English sentences for Israeli EFL students (grades 4-9).
+          system: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
+
 Difficulty: ${DIFFICULTY_DESCRIPTIONS[diff]}
-Each sentence MUST contain the target word exactly as given. Output one sentence per line, no numbering, no extra text.`,
+
+CRITICAL RULES — every sentence must satisfy ALL of these:
+1. The target word appears EXACTLY as given (same form, same spelling, no inflection).
+2. The target word fits the sentence NATURALLY — it is the obvious word for that slot.  If the sentence reads weirdly with the word inserted, REWRITE the sentence around the word.
+3. The surrounding words give CONTEXT for the target word — a student reading the sentence with the word removed should be able to guess it from the rest.
+4. Concrete and visual — avoid abstract metaphors or idioms.  Vocabulary level for grades 4-9.
+5. One sentence per line, no numbering, no quotes, no extra text.
+
+Examples of good vs bad sentences:
+- Word "apple"  GOOD: "I ate a sweet red apple after lunch."  (context: ate, sweet, red, lunch all hint at a fruit)
+- Word "apple"  BAD:  "The apple was important to me."  (no context — could be any noun)
+- Word "run"    GOOD: "Every morning I run two kilometres in the park."  (context: morning, park, kilometres hint at exercise)
+- Word "run"    BAD:  "The run was nice yesterday."  (no context)
+- Word "happy"  GOOD: "The children were so happy when they opened their presents."  (context: children, presents hint at an emotion of joy)
+- Word "happy"  BAD:  "He felt happy."  (too short, no context)`,
           messages: [{ role: "user", content: `Generate one sentence for each word:\n${uncachedWords.join("\n")}` }],
         });
 
