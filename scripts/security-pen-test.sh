@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Security pen-test — verify the 4 audit-fix migrations are live.
+#
+# Usage:
+#   1. Fill in SUPABASE_URL + ANON_KEY below (or pass as env vars).
+#   2. chmod +x scripts/security-pen-test.sh
+#   3. ./scripts/security-pen-test.sh
+#
+# Nothing this script does is destructive — it sends 4 anon-role
+# requests that SHOULD all be rejected.  If any test FAILs, that
+# migration didn't take and there's a real exploit window open.
+# =============================================================================
+
+set -u
+
+SUPABASE_URL="${SUPABASE_URL:-}"
+ANON_KEY="${ANON_KEY:-}"
+
+# Fallback: read from .env.local if env vars weren't set.
+if [[ -z "$SUPABASE_URL" || -z "$ANON_KEY" ]]; then
+  if [[ -f .env.local ]]; then
+    SUPABASE_URL="${SUPABASE_URL:-$(grep -E '^VITE_SUPABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')}"
+    ANON_KEY="${ANON_KEY:-$(grep -E '^VITE_SUPABASE_ANON_KEY=' .env.local | cut -d= -f2- | tr -d '"')}"
+  fi
+fi
+
+if [[ -z "$SUPABASE_URL" || -z "$ANON_KEY" ]]; then
+  echo "ERROR: SUPABASE_URL and ANON_KEY must be set."
+  echo "  Either export them, or fill in .env.local with VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY."
+  exit 1
+fi
+
+echo "Target: $SUPABASE_URL"
+echo
+
+PASS=0
+FAIL=0
+
+check() {
+  local name="$1"
+  local expect_pattern="$2"
+  local body="$3"
+  if echo "$body" | grep -qE "$expect_pattern"; then
+    echo "  PASS  $name"
+    PASS=$((PASS+1))
+  else
+    echo "  FAIL  $name"
+    echo "        body: $body"
+    FAIL=$((FAIL+1))
+  fi
+}
+
+# ─── Test 1: anon forging another student's progress ─────────────────
+echo "[1] Anon forging save_student_progress_batch"
+body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/save_student_progress_batch" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"p_batch":[{"student_uid":"victim-uid","class_code":"ABC123","assignment_id":"00000000-0000-0000-0000-000000000000","mode":"classic","score":9999,"student_name":"hacker"}]}')
+check "anon save_progress is rejected" "Authentication required|permission denied|42501|not allowed" "$body"
+
+# ─── Test 2: anon enumerating teacher_profiles ───────────────────────
+echo "[2] Anon enumerating teacher_profiles"
+body=$(curl -s "$SUPABASE_URL/rest/v1/teacher_profiles?select=email,school_name" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon teacher_profiles returns empty" '^\[\]$' "$body"
+
+# ─── Test 3: anon enumerating quick_play_joins ───────────────────────
+echo "[3] Anon enumerating quick_play_joins"
+body=$(curl -s "$SUPABASE_URL/rest/v1/quick_play_joins?select=session_code,student_name" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon quick_play_joins returns empty" '^\[\]$' "$body"
+
+# ─── Test 4: anon inserting into quick_play_joins ────────────────────
+echo "[4] Anon inserting into quick_play_joins"
+body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/quick_play_joins" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"session_code":"FAKE99","student_name":"spam"}')
+check "anon insert is rejected" "row-level security|violates|permission denied|42501" "$body"
+
+echo
+echo "Results: $PASS passed, $FAIL failed."
+[[ $FAIL -eq 0 ]] && exit 0 || exit 1
