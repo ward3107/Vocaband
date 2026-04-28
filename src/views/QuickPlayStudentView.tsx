@@ -26,6 +26,7 @@ interface QuickPlaySession {
   wordIds: number[];
   words: Word[];
   allowedModes?: string[];
+  aiSentences?: string[];
 }
 
 interface QuickPlayStudentViewProps {
@@ -380,8 +381,34 @@ export default function QuickPlayStudentView({
 
                       setAssignmentWords(words);
                       // Create a virtual assignment so all game modes (including
-                      // sentence-builder) work the same as in real assignments.
-                      const quickPlaySentences = generateSentencesForAssignment(words, 2);
+                      // sentence-builder + fill-blank) work the same as in real
+                      // assignments.  Prefer AI-generated sentences populated on
+                      // the qp_sessions row at teacher-create time (see
+                      // generateAndStoreQuickPlayAiSentences) — they're context-
+                      // rich and Fill-in-the-Blank-friendly.  Fall back to the
+                      // POS-template library when the AI call hasn't completed
+                      // yet OR failed; templates are good enough for Sentence
+                      // Builder but lazier for Fill in the Blank.
+                      //
+                      // Important alignment detail: AI sentences are stored on
+                      // the qp_sessions row in the ORIGINAL word order from the
+                      // teacher's wizard, but `words` above was shuffled.  We
+                      // need the i-th sentence to match the i-th word, otherwise
+                      // Fill in the Blank shows a sentence about "run" but
+                      // expects the student to fill in "apple".  Re-align by
+                      // looking each shuffled word up in the original
+                      // session.words array and pulling the matching sentence
+                      // by that original index.  The template fallback is
+                      // computed AFTER the shuffle so it's already aligned.
+                      const aiFromSession = quickPlayActiveSession.aiSentences;
+                      const haveValidAi = Array.isArray(aiFromSession)
+                        && aiFromSession.length === quickPlayActiveSession.words.length;
+                      const quickPlaySentences: string[] = haveValidAi
+                        ? words.map(w => {
+                            const originalIdx = quickPlayActiveSession.words.findIndex(o => o.id === w.id);
+                            return originalIdx >= 0 ? aiFromSession![originalIdx] : `I like the word ${w.english}.`;
+                          })
+                        : generateSentencesForAssignment(words, 2);
                       setActiveAssignment({
                         id: "quickplay-" + quickPlayActiveSession.id,
                         classId: "",

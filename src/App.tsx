@@ -100,6 +100,7 @@ import { useOcrUpload } from "./hooks/useOcrUpload";
 import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
+import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQuickPlayAiSentences";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -274,7 +275,7 @@ export default function App() {
   // Saved-task templates also restore mode selection when reused.
   const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
   const [quickPlaySearchQuery] = useState("");
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[]} | null>(null);
+  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[], aiSentences?: string[]} | null>(null);
   // Cumulative score across all modes a guest has played in the
   // current Quick Play session.  The per-mode `score` state (in
   // useGameState) resets to 0 on every new mode, so emitting it
@@ -2621,6 +2622,13 @@ export default function App() {
             words,
             allowedModes: effectiveAllowedModes,
           });
+
+          // Fire-and-forget: generate AI sentences for this Quick Play
+          // session and store them on the row so every student who joins
+          // reads the same high-quality sentences (especially Fill in
+          // the Blank).  If this fails, the student-side falls back to
+          // template sentences, exactly like before this feature shipped.
+          void generateAndStoreQuickPlayAiSentences(session.id, words, 2);
 
           try {
             // Session just successfully launched — clear the skip-restore
