@@ -16,8 +16,12 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onBac
   const { language, isRTL } = useLanguage();
   const t = accessibilityTranslations[language];
 
+  // Section uses the Material Design surface tokens so it auto-themes
+  // with the rest of the app (matches PublicPrivacyPage's
+  // bg-surface-container-lowest cards) instead of the hardcoded
+  // bg-white that was visually inconsistent on the surface palette.
   const Section = ({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) => (
-    <section className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-surface-container-high">
+    <section className="bg-surface-container-lowest rounded-2xl p-5 sm:p-6 shadow-sm border border-surface-container-high">
       <h2 className="text-lg font-black text-on-surface mb-3 flex items-center gap-2">{icon} {title}</h2>
       {children}
     </section>

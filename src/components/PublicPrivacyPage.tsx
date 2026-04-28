@@ -9,7 +9,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { privacyTranslations, uiTranslations } from "../config/translations/legalTranslations";
 
 interface PublicPrivacyPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy") => void;
+  onNavigate: (page: "home" | "terms" | "privacy" | "security") => void;
   onGetStarted: () => void;
   onBack?: () => void;
 }
@@ -27,7 +27,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
     <div className="min-h-screen bg-surface" dir={dir}>
       <PublicNav
         currentPage="privacy"
-        onNavigate={onNavigate}
+        onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy")}
         onGetStarted={onGetStarted}
       />
 
@@ -403,6 +403,21 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                 </li>
               ))}
             </ul>
+            {/* Cross-link to /security — the technical-trust page added
+                in 2026-04-28 covers TLS/RLS/audit detail too granular
+                for the privacy policy itself.  Keeps the legal doc
+                short while still letting curious IT readers drill in. */}
+            <button
+              type="button"
+              onClick={() => onNavigate("security")}
+              className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-bold text-sm transition-colors"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+            >
+              <Lock size={14} />
+              {language === 'en' ? 'See full Security & Trust details →' :
+               language === 'he' ? 'ראו פרטי אבטחה ואמון מלאים ←' :
+               'اطلع على تفاصيل الأمان والثقة ←'}
+            </button>
           </section>
 
           {/* Section 9: Complaints */}
@@ -467,7 +482,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         </footer>
       </main>
 
-      <MobileNav currentPage="privacy" onNavigate={onNavigate} />
+      <MobileNav currentPage="privacy" onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy")} />
       <FloatingButtons />
     </div>
   );

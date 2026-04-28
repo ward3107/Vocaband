@@ -45,7 +45,7 @@ const t = {
       },
       audit: {
         title: "Regular audits",
-        body: "We run a full security review every quarter: dependency vulnerabilities, RLS policy drift, TLS configuration, and penetration tests. Findings are tracked publicly in our docs.",
+        body: "We run a full security review every quarter: dependency vulnerabilities, RLS policy drift, TLS configuration, and penetration tests. Our most recent audit (April 2026) closed 3 HIGH + 3 MED findings, plus a CodeQL alert; SSL Labs grade improved from B to A+.",
       },
     },
     contact: {
@@ -86,7 +86,7 @@ const t = {
       },
       audit: {
         title: "ביקורות סדירות",
-        body: "אנו עורכים סקירת אבטחה מלאה כל רבעון: פגיעויות תלויות, סחיפת מדיניות RLS, תצורת TLS, ובדיקות חדירה. הממצאים מתועדים בפומבי במסמכים שלנו.",
+        body: "אנו עורכים סקירת אבטחה מלאה כל רבעון: פגיעויות תלויות, סחיפת מדיניות RLS, תצורת TLS, ובדיקות חדירה. הביקורת האחרונה שלנו (אפריל 2026) סגרה 3 ממצאים בחומרה גבוהה ועוד 3 בחומרה בינונית, וכן התראת CodeQL; דירוג SSL Labs עלה מ-B ל-A+.",
       },
     },
     contact: {
@@ -127,7 +127,7 @@ const t = {
       },
       audit: {
         title: "عمليات تدقيق منتظمة",
-        body: "نقوم بمراجعة أمنية كاملة كل ربع سنة: ثغرات التبعيات، انحراف سياسة RLS، تكوين TLS، واختبارات الاختراق. النتائج موثقة علنًا في مستنداتنا.",
+        body: "نقوم بمراجعة أمنية كاملة كل ربع سنة: ثغرات التبعيات، انحراف سياسة RLS، تكوين TLS، واختبارات الاختراق. أغلق آخر تدقيق لنا (أبريل 2026) 3 نتائج عالية الخطورة و 3 متوسطة الخطورة، بالإضافة إلى تنبيه CodeQL؛ ارتفعت درجة SSL Labs من B إلى A+.",
       },
     },
     contact: {
@@ -225,12 +225,16 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
           ))}
         </div>
 
-        {/* Vulnerability disclosure */}
-        <section className="mt-10 bg-gradient-to-br from-stone-800 to-stone-900 dark:from-stone-700 dark:to-stone-900 text-white p-8 rounded-2xl">
+        {/* Vulnerability disclosure — uses the indigo→violet hero
+            gradient that anchors the rest of the app's "premium / trust"
+            surfaces (same family as PublicPrivacyPage.tsx:62 + the
+            shop's hero cards). Keeps a single visual language across
+            the legal/info pages instead of an isolated stone-grey card. */}
+        <section className="mt-10 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white p-8 rounded-2xl shadow-lg shadow-violet-500/20">
           <h3 className="text-2xl font-black mb-3">{tt.contact.title}</h3>
-          <p className="text-stone-200 mb-4">
+          <p className="text-white/85 mb-4">
             {tt.contact.body}{" "}
-            <a href="mailto:contact@vocaband.com" className="underline font-bold">
+            <a href="mailto:contact@vocaband.com" className="underline font-bold text-white">
               contact@vocaband.com
             </a>
           </p>
