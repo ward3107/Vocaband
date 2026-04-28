@@ -248,12 +248,28 @@ async function startServer() {
     // Trust proxy so req.ip reflects the real client IP behind Cloudflare/Render
     app.set("trust proxy", 1);
 
-    // Security headers via helmet
+    // Security headers via helmet.
+    //
+    // CSP policy notes:
+    //   * scriptSrc keeps 'unsafe-inline' because Cloudflare Insights
+    //     injects an inline beacon tag.  Dropping this needs a nonce-
+    //     based refactor of index.html — a separate workstream.
+    //   * 'unsafe-eval' was removed in 2026-04-28's Phase 3 sec audit.
+    //     Vite production output + React 19 + motion/react don't use
+    //     eval() / new Function() in production.  Keeping the door
+    //     closed prevents one of the most common XSS escalation paths.
+    //   * styleSrc keeps 'unsafe-inline' because motion/react animates
+    //     by writing inline `style="..."` attributes on every animated
+    //     element.  Removing it would break every transition, every
+    //     hover scale, every gradient pulse.  Load-bearing.
+    //   * upgrade-insecure-requests added in 2026-04-28: any straggling
+    //     http://supabase.co references in third-party libs get
+    //     rewritten to https:// transparently.
     app.use(helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
           scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -262,6 +278,7 @@ async function startServer() {
           frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
           workerSrc: ["'self'", "blob:"],
           mediaSrc: ["'self'", "https://*.supabase.co"],
+          upgradeInsecureRequests: [],
         },
       },
       hsts: {
@@ -1652,19 +1669,22 @@ Strict quality rules:
     const userData = await getUserRoleAndClass(authData.uid);
     if (!userData || userData.role !== "teacher") {
       console.log(`[features] aiSentences=false: user is not a teacher (role=${userData?.role ?? "none"}, email=${authData.email})`);
-      return reply(false, "not_teacher", { role: userData?.role ?? null, email: authData.email });
+      return reply(false, "not_teacher", { role: userData?.role ?? null });
     }
     const { allowed, error } = await isPremiumTeacher(authData.email);
     if (error) {
       console.error(`[features] ai_allowlist check error for ${authData.email}: ${error}`);
-      return reply(false, "allowlist_error", { email: authData.email, error });
+      return reply(false, "allowlist_error");
     }
     if (!allowed) {
+      // SQL hint kept in the SERVER LOG only (operator's eyes), never in
+      // the response body — operators have Render log access; the body
+      // is shipped over the network and could end up in shared logs.
       console.log(`[features] aiSentences=false: ${authData.email} is not in ai_allowlist (run: INSERT INTO public.ai_allowlist (email) VALUES ('${authData.email}');)`);
-      return reply(false, "not_in_allowlist", { email: authData.email });
+      return reply(false, "not_in_allowlist");
     }
     console.log(`[features] aiSentences=true for ${authData.email}`);
-    return reply(true, "ok", { email: authData.email });
+    return reply(true, "ok");
   });
 
   // Diagnostic endpoint: reports which environment variables are set on the
@@ -1850,6 +1870,24 @@ Examples of good vs bad sentences:
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  // ─── Global error handler ────────────────────────────────────────────
+  // Catch-all that runs when a route handler throws an uncaught exception
+  // (or calls next(err)).  Without this, Express's built-in handler
+  // returns the full stack trace as HTML — leaks file paths, library
+  // versions, and DB error details to the client.
+  //
+  // Body shape mirrors our existing handler responses so client error-
+  // surfacing code (toasts, retry banners) doesn't need a special case.
+  // Stack always logged server-side for debugging; never sent to client.
+  // The 4-arg signature is required by Express to register as an error
+  // middleware; the unused `next` param is intentional.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(`[unhandled] ${req.method} ${req.path}:`, err?.stack || err);
+    if (res.headersSent) return;
+    res.status(500).json({ error: "Internal server error" });
+  });
 
   httpServer.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
