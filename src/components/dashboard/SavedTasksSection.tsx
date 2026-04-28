@@ -15,6 +15,9 @@ export interface SavedTasksSectionProps {
   onUse: (task: SavedTask) => void;
   onTogglePin: (id: string) => void;
   onRemove: (id: string) => void;
+  /** Section heading + sub-text use lighter colours when the
+   *  Midnight theme is active, otherwise they vanish on slate-900. */
+  isDark?: boolean;
 }
 
 function relativeTime(ts: number | null): string {
@@ -33,20 +36,21 @@ export default function SavedTasksSection({
   onUse,
   onTogglePin,
   onRemove,
+  isDark = false,
 }: SavedTasksSectionProps) {
   if (tasks.length === 0) return null;
 
   return (
     <section className="mt-8 sm:mt-10">
       <div className="flex items-center gap-2 mb-2">
-        <Bookmark size={20} className="text-indigo-600" />
-        <h2 className="text-lg sm:text-xl font-bold text-stone-900">Saved templates</h2>
+        <Bookmark size={20} className={isDark ? 'text-indigo-300' : 'text-indigo-600'} />
+        <h2 className={`text-lg sm:text-xl font-bold ${isDark ? 'text-stone-50' : 'text-stone-900'}`}>Saved templates</h2>
         <span className="ml-1 inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">
           {tasks.length}
         </span>
       </div>
 
-      <p className="text-sm text-stone-500 mb-4">
+      <p className={`text-sm mb-4 ${isDark ? 'text-stone-300' : 'text-stone-500'}`}>
         Re-use a task in one tap. Pinned + most-used appear first.
       </p>
 

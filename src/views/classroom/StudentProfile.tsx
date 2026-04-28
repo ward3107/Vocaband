@@ -22,7 +22,7 @@
  * today, deep-link in Phase 3).
  */
 import { useMemo } from "react";
-import { Gift, Flame, Calendar, Trophy, ChartBar } from "lucide-react";
+import { Gift, Flame, Calendar, Trophy, ChartBar, AlertTriangle } from "lucide-react";
 import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import MasteryHeatmap, { type MasteryRow } from "../gradebook/MasteryHeatmap";
 import { ALL_WORDS } from "../../data/vocabulary";
@@ -105,6 +105,30 @@ export default function StudentProfile({
       .slice(0, 8);
   }, [scores]);
 
+  // Aggregate wrong-attempts across every play of this student.
+  // `progress.mistakes[]` is the array of word IDs the student missed
+  // (game modes give the student unlimited retries until correct, so the
+  // teacher otherwise never sees what they STRUGGLED with — only the
+  // final mastery state).  This gives the teacher visibility into the
+  // top words this student gets wrong on first try, regardless of
+  // whether they eventually got there.
+  const topMisses = useMemo(() => {
+    const byWord = new Map<number, number>();
+    scores.forEach(s => {
+      (s.mistakes || []).forEach(wid => {
+        byWord.set(wid, (byWord.get(wid) ?? 0) + 1);
+      });
+    });
+    return Array.from(byWord.entries())
+      .map(([wordId, count]) => {
+        const w = ALL_WORDS.find(x => x.id === wordId);
+        return w ? { word: w, count } : null;
+      })
+      .filter((x): x is { word: typeof ALL_WORDS[number]; count: number } => x !== null)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [scores]);
+
   const assignmentTitle = (id: string) =>
     teacherAssignments.find(a => a.id === id)?.title ?? "Quick Play";
 
@@ -149,19 +173,26 @@ export default function StudentProfile({
         </div>
       ) : (
         <div className="p-4 sm:p-5 space-y-5">
-          {/* ── Headline stats ─────────────────────────────────────── */}
+          {/* ── Headline stats ─────────────────────────────────────────
+              Each tile has a `title` attribute giving the teacher a
+              plain-English explanation on hover — useful since the
+              numbers (e.g. "XP earned" being a sum of scores) aren't
+              self-evident.  Drawer is wider on desktop now (max-w-3xl)
+              so the four tiles can breathe in a 2-col grid. */}
           <div className="grid grid-cols-2 gap-3">
             <StatTile
               value={`${stats.avg}%`}
               label="avg score"
               caption="across every game"
               tone={stats.avg >= 80 ? "emerald" : stats.avg >= 70 ? "amber" : "rose"}
+              tooltip="The student's average score (out of 100) across every game they've finished. 80+ = solid, 70-79 = okay, below 70 = needs help."
             />
             <StatTile
               value={String(stats.plays)}
               label={stats.plays === 1 ? "play" : "plays"}
               caption="total attempts"
               tone="indigo"
+              tooltip="Total number of game-rounds completed by this student across all assignments and modes."
             />
             <StatTile
               value={String(stats.totalXp)}
@@ -169,6 +200,7 @@ export default function StudentProfile({
               caption="sum of all scores"
               tone="violet"
               icon={<Flame size={14} />}
+              tooltip="Cumulative XP — the sum of every score the student has earned in every game. Drives shop unlocks + their level title."
             />
             <StatTile
               value={lastActiveLabel}
@@ -176,6 +208,7 @@ export default function StudentProfile({
               caption="most recent play"
               tone="stone"
               icon={<Calendar size={14} />}
+              tooltip="The date of this student's most recent game. Useful for spotting students who've gone quiet."
             />
           </div>
 
@@ -226,6 +259,42 @@ export default function StudentProfile({
             <MasteryHeatmap rows={masteryRows} words={ALL_WORDS} />
           </section>
 
+          {/* ── Struggled with ──────────────────────────────────────────
+              The 10 words this student got wrong most often (across all
+              their plays).  Surfaces the per-student equivalent of the
+              Reports tab's class-wide "Top Struggling Words" section —
+              gives the teacher a focused reteach list per kid.
+
+              IMPORTANT: game modes don't end on a wrong answer; the
+              student keeps trying until correct.  So mastery looks
+              fine for these words, but their FIRST-attempt accuracy
+              is what this list reflects. */}
+          {topMisses.length > 0 && (
+            <section className="bg-white rounded-2xl p-4 border border-stone-100">
+              <h3 className="text-sm font-black text-stone-800 mb-3 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-rose-500" />
+                Struggled with
+                <span className="text-xs font-bold text-stone-400">
+                  · words missed on first try (any game)
+                </span>
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {topMisses.map(({ word, count }) => (
+                  <span
+                    key={word.id}
+                    title={`Got "${word.english}" wrong on first try ${count} time${count === 1 ? '' : 's'}. Hebrew: ${word.hebrew}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs"
+                  >
+                    {word.english}
+                    <span className="px-1.5 py-0.5 rounded-md bg-rose-200 text-rose-800 tabular-nums text-[10px]">
+                      ×{count}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* ── Recent attempts ────────────────────────────────────── */}
           <section className="bg-white rounded-2xl p-4 border border-stone-100">
             <h3 className="text-sm font-black text-stone-800 mb-3">
@@ -267,13 +336,17 @@ export default function StudentProfile({
 
 // ── Stat tile (compact "big number + label" card) ──────────────────────
 function StatTile({
-  value, label, caption, tone, icon,
+  value, label, caption, tone, icon, tooltip,
 }: {
   value: string;
   label: string;
   caption: string;
   tone: "emerald" | "amber" | "rose" | "indigo" | "violet" | "stone";
   icon?: React.ReactNode;
+  /** Plain-English explanation shown on hover so the teacher knows
+   *  what the number actually means.  Native browser tooltip — no
+   *  extra component, works on every device. */
+  tooltip?: string;
 }) {
   const toneClass: Record<string, string> = {
     emerald: "text-emerald-600",
@@ -284,7 +357,10 @@ function StatTile({
     stone:   "text-stone-700",
   };
   return (
-    <div className="bg-white rounded-2xl p-3 border border-stone-100">
+    <div
+      className="bg-white rounded-2xl p-3 border border-stone-100"
+      title={tooltip}
+    >
       <div className={`text-2xl font-black leading-none ${toneClass[tone]} flex items-center gap-1`}>
         {icon}
         {value}
