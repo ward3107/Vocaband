@@ -1,20 +1,22 @@
 /**
- * ReportsDashboard — analytics widgets for the Classroom V2 → Reports
- * tab.  Four panels that answer the questions teachers actually ask
- * after a week of teaching:
+ * ReportsDashboard — class-level trend analytics.
+ *
+ * Two panels left after the 2026-04-28 split:
  *
  *   1. Per-week trend       — "is the class improving?"
- *   2. Top struggling words — "what should I reteach next?"
- *   3. Plays/day histogram  — "are they actually using it?"
- *   4. Attendance table     — "who's missing this week?"
+ *   2. Plays/day histogram  — "are they actually using it?"
  *
- * Renders read-only — no DB writes.  Pure derivations from the props
- * already passed into ClassroomView (allScores + teacherAssignments
- * + classStudents).  Adding more class-level analytics later means a
- * new <section> inside this file, not a new view.
+ * The "what to reteach" (top struggling words) and "who needs help"
+ * (attendance) sections moved to the Assignments and Students tabs
+ * respectively — they're action-oriented and belong next to the
+ * controls a teacher uses to act on them.  See:
+ *   - components/classroom/TopStrugglingWords.tsx
+ *   - components/classroom/AttendanceTable.tsx
+ *
+ * Renders read-only.  Pure derivation from props.  No fetches.
  */
 import { useMemo } from "react";
-import { TrendingUp, AlertTriangle, BarChart3, CalendarCheck } from "lucide-react";
+import { TrendingUp, BarChart3 } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -27,7 +29,6 @@ import {
   Bar,
 } from "recharts";
 import type { ProgressData, AssignmentData } from "../../core/supabase";
-import { ALL_WORDS } from "../../data/vocabulary";
 
 interface ClassStudent {
   name: string;
@@ -104,42 +105,7 @@ export default function ReportsDashboard({
     }));
   }, [classScores]);
 
-  // ── 2. Top struggling words ──────────────────────────────────────────
-  // Aggregate `mistakes` arrays across every play into a per-word
-  // miss-count.  Show top 10 with student-coverage % so the teacher
-  // sees both 'how many wrong' and 'how widespread'.
-  const topStrugglingWords = useMemo(() => {
-    const wordMisses = new Map<number, { total: number; students: Set<string> }>();
-    for (const s of classScores) {
-      const ms = s.mistakes;
-      if (!Array.isArray(ms)) continue;
-      const studentKey = s.studentUid || s.studentName;
-      for (const wid of ms) {
-        const cur = wordMisses.get(wid) ?? { total: 0, students: new Set<string>() };
-        cur.total += 1;
-        cur.students.add(studentKey);
-        wordMisses.set(wid, cur);
-      }
-    }
-    const totalStudents = classStudents.length || 1;
-    const rows = Array.from(wordMisses.entries())
-      .map(([wid, agg]) => {
-        const word = ALL_WORDS.find(w => w.id === wid);
-        return {
-          wid,
-          english: word?.english ?? `#${wid}`,
-          hebrew: word?.hebrew ?? "",
-          arabic: word?.arabic ?? "",
-          total: agg.total,
-          studentPct: Math.round((agg.students.size / totalStudents) * 100),
-        };
-      })
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
-    return rows;
-  }, [classScores, classStudents]);
-
-  // ── 3. Plays/day histogram ───────────────────────────────────────────
+  // ── 2. Plays/day histogram ───────────────────────────────────────────
   // Last 30 days, one bar per day.  Lets the teacher spot 'long
   // weekend gaps' and 'spike when an assignment was due'.
   const playsPerDay = useMemo(() => {
@@ -158,36 +124,6 @@ export default function ReportsDashboard({
       plays: count,
     }));
   }, [classScores]);
-
-  // ── 4. Attendance table ──────────────────────────────────────────────
-  // Last 14 days, one row per student, ✓ if the student played at
-  // least once that day.  Identifies absent / disengaged students at
-  // a glance.
-  const attendance = useMemo(() => {
-    const days: { iso: string; label: string }[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = startOfDayDaysAgo(i);
-      days.push({ iso: isoDate(d), label: shortDay(d) });
-    }
-    const studentDays: Record<string, Set<string>> = {};
-    for (const s of classScores) {
-      const key = s.studentUid || s.studentName;
-      if (!studentDays[key]) studentDays[key] = new Set();
-      studentDays[key].add(isoDate(new Date(s.completedAt)));
-    }
-    const rows = classStudents.map(stu => {
-      const key = stu.studentUid || stu.name;
-      const presence = days.map(d => studentDays[key]?.has(d.iso) ?? false);
-      return {
-        name: stu.name,
-        presence,
-        presentDays: presence.filter(Boolean).length,
-      };
-    });
-    // Most-present first, so teachers see at-risk students at the bottom.
-    rows.sort((a, b) => b.presentDays - a.presentDays);
-    return { days, rows };
-  }, [classScores, classStudents]);
 
   // ── Headline counts for the section labels ───────────────────────────
   const totalPlays = classScores.length;
@@ -227,50 +163,6 @@ export default function ReportsDashboard({
         </div>
       </Section>
 
-      {/* ── Top struggling words ────────────────────────────────────── */}
-      <Section
-        icon={<AlertTriangle size={18} className="text-rose-600" />}
-        title="Top 10 struggling words"
-        sub="Most-missed words across the class.  Coverage % shows how widespread the confusion is."
-      >
-        {topStrugglingWords.length === 0 ? (
-          <EmptyState text="No mistakes recorded yet — your class is doing great." />
-        ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-stone-500 border-b border-stone-200">
-                  <th className="px-3 py-2 font-bold">Word</th>
-                  <th className="px-3 py-2 font-bold">Hebrew</th>
-                  <th className="px-3 py-2 font-bold">Arabic</th>
-                  <th className="px-3 py-2 font-bold text-right">Misses</th>
-                  <th className="px-3 py-2 font-bold text-right">% of class</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topStrugglingWords.map(row => (
-                  <tr key={row.wid} className="border-b border-stone-100 last:border-b-0">
-                    <td className="px-3 py-2 font-bold text-stone-900">{row.english}</td>
-                    <td className="px-3 py-2 text-stone-700" dir="rtl">{row.hebrew}</td>
-                    <td className="px-3 py-2 text-stone-700" dir="rtl">{row.arabic}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{row.total}</td>
-                    <td className="px-3 py-2 text-right">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                        row.studentPct >= 60 ? "bg-rose-100 text-rose-700" :
-                        row.studentPct >= 30 ? "bg-amber-100 text-amber-700" :
-                        "bg-stone-100 text-stone-700"
-                      }`}>
-                        {row.studentPct}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
-
       {/* ── Plays per day histogram ─────────────────────────────────── */}
       <Section
         icon={<BarChart3 size={18} className="text-indigo-600" />}
@@ -293,53 +185,6 @@ export default function ReportsDashboard({
         </div>
       </Section>
 
-      {/* ── Attendance table ────────────────────────────────────────── */}
-      <Section
-        icon={<CalendarCheck size={18} className="text-sky-600" />}
-        title="Attendance — last 14 days"
-        sub="✓ = student played at least once that day.  Sorted by most active."
-      >
-        {attendance.rows.length === 0 ? (
-          <EmptyState text="Add a class to see attendance." />
-        ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="text-xs">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2 text-left font-bold text-stone-700 sticky left-0 bg-white">Student</th>
-                  {attendance.days.map(d => (
-                    <th key={d.iso} className="px-2 py-2 text-stone-500 font-semibold whitespace-nowrap">{d.label}</th>
-                  ))}
-                  <th className="px-3 py-2 text-right font-bold text-stone-700 whitespace-nowrap">Days</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendance.rows.map(row => (
-                  <tr key={row.name} className="border-t border-stone-100">
-                    <td className="px-3 py-2 font-bold text-stone-900 sticky left-0 bg-white whitespace-nowrap">{row.name}</td>
-                    {row.presence.map((p, idx) => (
-                      <td key={idx} className="px-2 py-2 text-center">
-                        {p ? (
-                          <span className="inline-block w-5 h-5 rounded-full bg-emerald-500 text-white text-[11px] font-bold leading-5">✓</span>
-                        ) : (
-                          <span className="inline-block w-5 h-5 rounded-full bg-stone-100 text-stone-300 text-[11px] leading-5">·</span>
-                        )}
-                      </td>
-                    ))}
-                    <td className={`px-3 py-2 text-right font-bold tabular-nums ${
-                      row.presentDays >= 10 ? "text-emerald-700" :
-                      row.presentDays >= 5 ? "text-amber-700" :
-                      "text-rose-700"
-                    }`}>
-                      {row.presentDays}/14
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
     </div>
   );
 }
@@ -368,11 +213,5 @@ function Section({
       </header>
       {children}
     </section>
-  );
-}
-
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="text-center text-sm text-stone-500 py-6">{text}</div>
   );
 }
