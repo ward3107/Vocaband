@@ -23,8 +23,7 @@ For deep technical detail, jump to the linked per-area docs.
 | Row-level security on every table | ✅ Enforced | Code |
 | Authentication (Google OAuth + anonymous Quick Play) | ✅ Wired | Code |
 | Three HIGH audit findings (2026-04-28) | ✅ Fixed in code, applied to live DB | Code + Operator |
-| One MED finding — `teacher_profiles` enumeration | ✅ Fixed in code, applied to live DB | Code + Operator |
-| Two MED findings — `quick_play_sessions` enum, class-RPC role check | ⏳ Deferred (mitigated, low impact) | Code |
+| All three MED findings — `teacher_profiles` enum, `quick_play_sessions` enum, class-RPC role check | ✅ Fixed in code (operator pastes migrations) | Code + Operator |
 | CSP `unsafe-eval` removed | ✅ Fixed | Code (deploys with Render) |
 | CSP `unsafe-inline` (script + style) | ⚠️ Load-bearing — kept, documented | — |
 | Secret hygiene (no committed secrets, .gitignore correct) | ✅ Verified | Code |
@@ -123,6 +122,8 @@ verified.
 | `20260428132000_security_high_award_reward.sql` | Adds class-ownership check + XP bounds [-1000, 1000] to teacher reward grants. |
 | `20260428133000_security_med_teacher_profiles.sql` | Narrows `teacher_profiles` SELECT from `USING(true)` to email-match-against-JWT. |
 | `20260428134000_security_high_revoke_anon_after_recreate.sql` | Followup: re-REVOKEs `anon` after `DROP+CREATE` reset the privilege table on `save_student_progress` (+batch). |
+| `20260428141000_security_med_quick_play_sessions.sql` | Narrows `quick_play_sessions` SELECT from `TO anon, authenticated` to `TO authenticated` only — closes the unauth-enumeration seam. |
+| `20260428142000_security_med_class_rpc_admin.sql` | Adds explicit `OR public.is_admin()` to `get_class_activity` + `get_class_mastery` so admins can support teachers without role-impersonation. |
 
 ### Verification queries
 
