@@ -1659,7 +1659,19 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       }));
 
     const totalAdded = newCurriculumWords.length + customWords.length;
-    onSelectedWordsChange([...selectedWords, ...newCurriculumWords, ...customWords]);
+    const newSelectedWords = [...selectedWords, ...newCurriculumWords, ...customWords];
+
+    console.log('[OCR confirm] BEFORE:', {
+      requestedAdd: words.length,
+      currentSelected: selectedWords.length,
+      curriculumMatches: newCurriculumWords.length,
+      customWords: customWords.length,
+      totalNew: totalAdded,
+      newTotal: newSelectedWords.length,
+      sampleWords: newSelectedWords.slice(-3).map(w => `${w.id}:${w.english}`),
+    });
+
+    onSelectedWordsChange(newSelectedWords);
     // Reset everything so the next OCR run starts from a clean idle
     // state — was previously left in 'success' so reopening the modal
     // showed stale extracted words from the previous run.
