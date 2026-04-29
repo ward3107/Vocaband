@@ -1324,28 +1324,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </motion.button>
                   )}
                 </div>
-
-                {/* Trust badges */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-12 flex flex-wrap justify-center gap-6 text-white/60 text-sm font-bold"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    Aligned with CEFR A1–B2
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    Loved by Schools
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    GDPR Compliant
-                  </span>
-                </motion.div>
               </div>
             </div>
           </motion.div>
