@@ -41,25 +41,31 @@ Gameplay loop:
 
 **Cloudflare Worker** (`worker/index.ts`, deployed via `wrangler deploy`)
 - Serves the static SPA (from `dist/client/`)
-- Proxies `/api/*` and `/socket.io/*` to the Render backend at
-  `https://api.vocaband.com`
+- Proxies `/api/*` and `/socket.io/*` to the Fly.io backend at
+  `https://vocaband.fly.dev`
 - Same-origin from the browser's view (no CORS preflight)
+- Migrated 2026-04-25 from Render → Fly.io.  Old `api.vocaband.com`
+  endpoint is dead.  Any client code that references it is stale —
+  always use same-origin `/api/*` so the Worker proxies correctly.
 
-**Render service** (`server.ts`, Node + Express + socket.io)
+**Fly.io service** (`server.ts`, Node + Express + socket.io)
 - REST endpoints at `/api/*` (health, translate, OCR, AI sentences, …)
 - WebSocket server on `/socket.io/` for live challenge + quick play
-- User is on the **Starter** tier → no cold starts, single instance
-- Do NOT use Redis for now — single instance means in-memory state is fine
+- Worker timeout 30s — Gemini OCR typically completes in 5-15s
+- App: `vocaband` — `fly secrets set X=Y -a vocaband`
 
 ### Database — Supabase (Postgres + RLS + Storage)
+- Region: **EU (Frankfurt)** since 2026-04-25 migration from Tokyo
 - Tables: `users`, `classes`, `assignments`, `progress`, `student_profiles`,
-  `teacher_profiles`, `quick_play_sessions`, `consent_log`, `word_attempts`
+  `teacher_profiles`, `quick_play_sessions`, `quick_play_joins`,
+  `quick_play_ratings`, `teacher_rewards`, `consent_log`, `word_attempts`
 - Row-level security policies per role (teacher / student / admin)
+- Custom domain: `auth.vocaband.com` (Supabase pointing at the project)
 - Storage buckets: `sound/` (word audio, keyed by word id), `motivational/`
   (74 praise phrase MP3s keyed by phrase key)
 
 ### Health check
-- `https://api.vocaband.com/api/health` (NOT `/health` — common mistake)
+- `https://www.vocaband.com/api/health` (same-origin via Worker)
 
 ---
 
@@ -125,25 +131,69 @@ src/
     GameModeSelectionView.tsx  — post-assignment mode picker
     GameModeIntroView.tsx      — "Here's how to play" per-mode intro
     GameActiveView.tsx         — the actual game screens
-    GameFinishedView.tsx       — results + XP bonuses
-    LiveChallengeView.tsx      — teacher's podium view
+    GameFinishedView.tsx       — results + XP bonuses (also mounts
+                                 the rating prompt: auth via
+                                 users.first_rating, QP guests via
+                                 quick_play_ratings)
+    LiveChallengeView.tsx      — teacher's podium view (2xl: variants
+                                 for classroom projector clarity)
     QuickPlayStudentView.tsx   — no-account QR join for students
+    classroom/
+      StudentProfile.tsx       — drill-down drawer per student;
+                                 includes "Struggled with" wrong-
+                                 answer chip list (mistakes[]
+                                 aggregated per student)
+  components/
+    classroom/
+      QuickPlayMonitor.tsx     — teacher's Quick Play live screen
+                                 (rank-4+ vertical list; 2xl
+                                 projector scaling)
+      TopStrugglingWords.tsx   — class-wide reteach radar with
+                                 one-click "Reteach these" CTA
+                                 (mounted in Assignments tab)
+      AttendanceTable.tsx      — 14-day per-student activity grid
+                                 (mounted in Students tab)
+    PublicSecurityPage.tsx     — /security technical-trust summary
+                                 in EN/HE/AR
+    RatingPrompt.tsx           — modal for first-impression NPS;
+                                 supports authenticated + guest
+                                 storage modes
   data/
-    vocabulary.ts              — ALL_WORDS — 9159 word objects with
-                                 English + Hebrew + Arabic + Set 1/2/3
+    vocabulary.ts              — ALL_WORDS — 6482 word objects with
+                                 English + Hebrew + Arabic + Set 1/2/3.
+                                 Lazy-loaded via useVocabularyLazy —
+                                 NEVER static-import this in App.tsx
+                                 (drops it into the landing-page
+                                 critical path).
     sentence-bank.ts           — pre-written sentences for the
                                  Sentence Builder mode
+  hooks/
+    useVocabularyLazy.ts       — defers the 376 KB vocabulary chunk
+                                 out of the landing-page bundle
+    useLanguage.tsx            — EN/HE/AR language state, dir, RTL
+    useStudentApproval.ts      — (planned) extracted from App.tsx
+                                 in a future session
+  locales/                     — i18n translation files per screen
+    student/
+      game-modes.ts            — GameModeSelectionView (DONE)
+      game-finished.ts         — GameFinishedView (TODO)
+      ...                      — see docs/I18N-MIGRATION.md
 supabase/
   schema.sql                   — baseline schema (idempotent — every
                                  CREATE POLICY has DROP IF EXISTS)
-  migrations/                  — incremental timestamped migrations
-                                 (see §6 for which haven't been applied)
+  migrations/                  — incremental timestamped migrations.
+                                 Naming: prefer 14-digit YYYYMMDDHHMMSS
+                                 to avoid CI phantom-version conflicts
+                                 (see .github/workflows/supabase-migrations.yml).
+                                 5 pending operator-paste — see §6.
 scripts/
   generate-audio.ts            — regenerate word MP3s (9000+, ~1 hour)
   generate-motivational.ts     — regenerate 99 praise-phrase MP3s
   upload-audio.ts              — push audio to Supabase storage
   upload-motivational.ts       — push motivational MP3s
-server.ts                      — Render Express + socket.io backend
+  security-pen-test.sh         — anon-role pen-test against the live
+                                 RLS gates (4 checks; expect all PASS)
+server.ts                      — Fly.io Express + socket.io backend
 worker/index.ts                — Cloudflare Worker proxy
 ```
 
@@ -194,25 +244,63 @@ worker/index.ts                — Cloudflare Worker proxy
 
 ---
 
-## 5. Active workstream — `claude/fix-mobile-back-button-q3Fmc`
+## 5. Active workstream — `claude/fix-points-display-9Q4Dw`
 
-This branch has 12 commits ahead of `main`.  All are shipped / pushed
-unless noted.  Most recent first:
+This branch shipped 31+ commits on 2026-04-28 in a marathon session.
+All are pushed.  Highlight reel below; full git log has details.
 
-| Commit | What shipped |
+### Security (3 HIGH + 3 MED + CodeQL + TLS)
+
+| Migration / commit | Closes |
 |---|---|
-| `042e24a` | Demo had 0 words bug (wrong Set filter), Band→Set rename, mode-click debug logs, live-podium socket warning banner |
-| `4c42d6d` | Made `supabase/schema.sql` idempotent — every CREATE POLICY now has a DROP IF EXISTS guard |
-| `2ef448b` | Removed Privacy button from StudentTopBar; demo polished (big mode cards, Arcade-Lobby-styled shop); white-page fallback when `view='live-challenge'` but no selectedClass |
-| `e3e87ea` | Teachers can rename a class + pick a curated avatar (non-destructive; students/assignments/progress preserved). Migration `20260424_add_class_avatar.sql` |
-| `1cc85f5` | Boosters actually do something — `useBoosters` hook + xp multiplier + streak-freeze + lucky-charm wired into finish-game. `ActiveBoostersStrip` on dashboard |
-| `a403016` | Demo mode tightened — 100-word pool, single shop entry, explainer stripped (belongs on landing) |
-| `e188568` | Shop categories + greeting card redesigned with big hero cards, per-title signature styling |
-| `d9eea56` | Assignment replay cap (5 max → locks), share-my-level, shop back chip, sign-out on class-not-found banner |
-| `c045309` | Shop redesigned as Arcade Lobby with egg-opening cinematic |
-| `9f40b7d` | Economy rebalance + retention system + sturdier class switch |
-| `5cbb1a4` | Demo mode redesigned as the product's sales card |
-| `128c458` | Shop eggs tab + 3D-feeling avatar cards |
+| `20260428130000_security_high_save_progress_auth.sql` | HIGH: save_progress lacked auth check + scope validation |
+| `20260428131000_security_high_quick_play_joins.sql` | HIGH: qp_joins RLS allowed anon enumeration |
+| `20260428132000_security_high_award_reward.sql` | HIGH: award_reward missing class-ownership + XP bounds |
+| `20260428133000_security_med_teacher_profiles.sql` | MED: teacher_profiles enumerable by any authenticated user |
+| `20260428134000_security_high_revoke_anon_after_recreate.sql` | followup: re-REVOKE anon after DROP+CREATE reset privileges |
+| `20260428141000_security_med_quick_play_sessions.sql` | MED: quick_play_sessions readable by anon |
+| `20260428142000_security_med_class_rpc_admin.sql` | MED: get_class_activity / get_class_mastery missing OR is_admin() |
+| `20260428140000_first_rating_columns.sql` | NEW: in-app rating prompt for authenticated users |
+| `20260428150000_quick_play_ratings.sql` | NEW: ratings table for QP guests |
+| `808462b` | CSP: dropped 'unsafe-eval', added upgrade-insecure-requests, /api/features sanitised, global Express error handler |
+| `4abd736` | CodeQL HIGH: js/tainted-format-string in error handler — passed req.method/req.path as discrete args, not interpolated |
+
+Plus: SSL Labs grade B → A+ via Cloudflare Edge Certificates settings (TLS 1.0/1.1 disabled, HSTS preload submitted).
+
+### Product
+
+| Commit | What |
+|---|---|
+| `0db465f` | Vocab lazy-load — 376 KB chunk pulled out of landing-page critical path. Desktop PageSpeed 56 → 98. |
+| `42a5463` + `d47ad49` | Dashboard UX: Midnight theme readable text, wider StudentProfile drawer (xl→3xl), tooltips per stat, "Struggled with" wrong-answer chip list |
+| `36caf13` | Reports tab restructure: "Top Struggling Words" → Assignments tab with one-click reteach CTA; "Attendance" → Students tab |
+| `1e18449` | In-app rating prompt: 5★ for teachers (after ≥1 class+assignment), 5-emoji for students (after first game ≥70) |
+| `a6cea24` | QP guest rating channel — rates write to `quick_play_ratings` table, dismissals tracked in localStorage per session |
+| `23df71a` + `fd0988d` | iPhone OCR fix: server stops lying about HEIC mime; client always converts HEIC → JPEG via canvas; sr-only file inputs so iOS Safari opens picker |
+| `e02144f` | OCR diagnostic surface: real error message in modal + console + toast (was silent catch) |
+| `4ca30ff` + `1b4058b` | Projector clarity: 2xl: Tailwind variants on QuickPlayMonitor + LiveChallengeView. Auto-scales on 1080p+ classroom screens. |
+| `53e829d` | QP same-nickname re-join: students who lose connection can re-scan and resume their slot, score preserved. Kicks inherit across reconnects. |
+| `fe88784` | QP redesign: bigger QR (3×), smaller code, vertical numbered list for rank 4+ with smooth FLIP re-order |
+| `c647951` | NEW /security public page (EN/HE/AR) + trust strip in landing footer (SSL Labs A+, TLS 1.3, EU-hosted) |
+| `066c217` | Landing redesign: worldwide voice + power-tool cards (AI Sentences / Camera OCR / Quick Play) + "Coming Soon — Voca Family" roadmap section |
+| `6f8bc5f` | Footer redesigned to 4-column grid; Privacy page Render → Fly.io + Cloudflare row |
+| `4447f43` | Privacy/Terms HE+AR copy de-Israeled (worldwide voice); effective date bumped March 2024 → April 2026 |
+| `1e11dbe` | CI: extended phantom-migration repair list with 7 new short versions |
+| `7251146` | i18n: GameModeSelectionView translated EN/HE/AR — proof of pattern (see docs/I18N-MIGRATION.md) |
+
+### New strategy docs (read before re-deriving in future sessions)
+
+| Doc | Purpose |
+|---|---|
+| `docs/SECURITY-OVERVIEW.md` | Master security posture; threat model; verification queries; pen-test script |
+| `docs/security-audit-2026-04-28.md` | Phase 1+2 findings (deps + RLS) |
+| `docs/security-phase3-2026-04-28.md` | Phase 3 findings (CSP / secrets / errors) |
+| `docs/db-cost-audit-2026-04-28.md` | DB cost audit; identifies wasteful patterns |
+| `docs/PUBLIC-PAGES-AUDIT-2026-04-28.md` | Privacy/Terms/Security/Accessibility audit |
+| `docs/PRICING-MODEL.md` | Schools-first hybrid: no public prices, mailto for teachers + schools, internal price ladder, cash-flow forecast |
+| `docs/GO-TO-MARKET.md` | Zero-cost 90-day playbook (FB groups, SEO, founding-100) |
+| `docs/VOCA-FAMILY-ROADMAP.md` | 6 future Vocas planned: Economics / Anatomy / Psychology / Finance / Civics / Bagrut. Engine generalization (Word → StudyCard) plan. |
+| `docs/I18N-MIGRATION.md` | Pattern for student-page translations (`src/locales/student/`). One screen per session. |
 
 ---
 
@@ -220,18 +308,40 @@ unless noted.  Most recent first:
 
 These are things the human needs to do — no code change will cover them:
 
-1. **Run the class-avatar migration**
-   ```sql
-   ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS avatar TEXT;
+1. **Apply the 5 pending Supabase migrations** from the 2026-04-28
+   branch.  Paste each into Supabase → SQL Editor:
+
    ```
-   Paste into Supabase → SQL editor.  The teacher UPDATE policy from
-   `20260402_add_teacher_class_rls.sql` already covers the new column.
+   20260428134000_security_high_revoke_anon_after_recreate.sql
+   20260428140000_first_rating_columns.sql
+   20260428141000_security_med_quick_play_sessions.sql
+   20260428142000_security_med_class_rpc_admin.sql
+   20260428150000_quick_play_ratings.sql
+   ```
 
-2. **(Optional) UptimeRobot ping** — not critical since they're on
-   Render Starter (no cold starts), but still a good belt-and-suspenders.
+   The first four close audit findings; the last enables QP guest
+   ratings.  Each is idempotent (safe to re-run).
 
-3. **Regenerate + re-upload motivational audio** if phrase audio is
-   still mismatched after prior spot-fixes:
+2. **Rotate the leaked `sb_secret_*` service-role key.**  Was pasted
+   into chat during pen-test verification 2026-04-28.  Rotate via
+   Supabase Dashboard → Settings → API → "Rotate", then update
+   `SUPABASE_SERVICE_ROLE_KEY` on Fly with
+   `fly secrets set SUPABASE_SERVICE_ROLE_KEY="<new>" -a vocaband`.
+
+3. **Verify all migrations live** by running the verification SQL in
+   `docs/SECURITY-OVERVIEW.md` (4-row CTE) — should return all-green.
+
+4. **Run the live pen-test** to confirm the gates work end-to-end:
+   ```bash
+   ./scripts/security-pen-test.sh   # needs .env.local or env vars
+   ```
+   Expected: 4 passed, 0 failed.
+
+5. **(Optional) UptimeRobot ping** — Fly Starter has no cold starts
+   but still good belt-and-suspenders.
+
+6. **Regenerate + re-upload motivational audio** if phrase audio is
+   still mismatched:
    ```bash
    npx tsx scripts/generate-motivational.ts
    npx tsx scripts/upload-motivational.ts   # needs .env.local with service_role key
