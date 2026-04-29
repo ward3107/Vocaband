@@ -104,11 +104,11 @@ export default function LiveChallengeView({
           <motion.h1
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-3xl sm:text-5xl 2xl:text-7xl font-black mb-2 drop-shadow-2xl"
+            className="text-3xl sm:text-5xl 2xl:text-6xl font-black mb-2 drop-shadow-2xl"
           >
             🏆 Live Challenge: {selectedClass.name}
           </motion.h1>
-          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-xl">Class Code: <span className="bg-white text-purple-600 px-4 py-2 2xl:px-6 2xl:py-3 rounded-xl font-mono font-black ml-2 shadow-lg 2xl:text-2xl">{selectedClass.code}</span></p>
+          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">Class Code: <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
         </div>
 
         {/* Socket-offline warning — if the live socket never connects,
@@ -149,17 +149,17 @@ export default function LiveChallengeView({
                   className="flex flex-col items-center"
                 >
                   <div className="relative">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-32 2xl:h-32 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-6xl shadow-xl shadow-slate-400/30 border-4 border-white">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl shadow-xl shadow-slate-400/30 border-4 border-white">
                       🥈
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs 2xl:text-base px-2 py-0.5 2xl:px-4 2xl:py-1 rounded-full font-black">2ND</div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">2ND</div>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 2xl:p-6 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-56">
-                    <p className="font-bold text-sm sm:text-base 2xl:text-xl truncate">{top3[1].name}{top3[1].isGuest && <span className="ml-1">🎭</span>}</p>
-                    <p className="text-2xl sm:text-3xl 2xl:text-5xl font-black">{top3[1].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-sm text-white/70 font-bold">POINTS</p>
+                  <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
+                    <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate">{top3[1].name}{top3[1].isGuest && <span className="ml-1">🎭</span>}</p>
+                    <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[1].totalScore}</p>
+                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">POINTS</p>
                   </div>
-                  <div className="h-16 sm:h-24 2xl:h-40 w-full bg-gradient-to-t from-slate-400/30 to-transparent rounded-t-lg mt-2"></div>
+                  <div className="h-16 sm:h-24 2xl:h-28 w-full bg-gradient-to-t from-slate-400/30 to-transparent rounded-t-lg mt-2"></div>
                 </motion.div>
               )}
 
@@ -175,25 +175,24 @@ export default function LiveChallengeView({
                   <motion.div
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    className="text-4xl sm:text-5xl 2xl:text-8xl mb-2 drop-shadow-lg"
+                    className="text-4xl sm:text-5xl 2xl:text-6xl mb-2 drop-shadow-lg"
                   >
                     👑
                   </motion.div>
                   <div className="relative">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 2xl:w-40 2xl:h-40 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-4xl sm:text-5xl 2xl:text-7xl shadow-2xl shadow-yellow-400/50 border-4 border-white animate-pulse">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 2xl:w-28 2xl:h-28 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-4xl sm:text-5xl 2xl:text-6xl shadow-2xl shadow-yellow-400/50 border-4 border-white animate-pulse">
                       🥇
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs 2xl:text-lg px-3 py-0.5 2xl:px-5 2xl:py-1.5 rounded-full font-black shadow-lg">1ST</div>
-                    {/* Sparkle effects */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">1ST</div>
                     <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
                     <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
                   </div>
-                  <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 2xl:p-8 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 2xl:w-64 shadow-2xl shadow-yellow-400/20">
-                    <p className="font-bold text-base sm:text-lg 2xl:text-2xl truncate">{top3[0].name}{top3[0].isGuest && <span className="ml-1">🎭</span>}</p>
-                    <p className="text-3xl sm:text-4xl 2xl:text-6xl font-black">{top3[0].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-base text-white/80 font-bold">POINTS</p>
+                  <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 2xl:w-44 shadow-2xl shadow-yellow-400/20">
+                    <p className="font-bold text-base sm:text-lg 2xl:text-xl truncate">{top3[0].name}{top3[0].isGuest && <span className="ml-1">🎭</span>}</p>
+                    <p className="text-3xl sm:text-4xl 2xl:text-5xl font-black">{top3[0].totalScore}</p>
+                    <p className="text-[10px] 2xl:text-xs text-white/80 font-bold">POINTS</p>
                   </div>
-                  <div className="h-24 sm:h-32 2xl:h-56 w-full bg-gradient-to-t from-yellow-400/40 to-transparent rounded-t-lg mt-2"></div>
+                  <div className="h-24 sm:h-32 2xl:h-36 w-full bg-gradient-to-t from-yellow-400/40 to-transparent rounded-t-lg mt-2"></div>
                 </motion.div>
               )}
 
@@ -206,17 +205,17 @@ export default function LiveChallengeView({
                   className="flex flex-col items-center"
                 >
                   <div className="relative">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-32 2xl:h-32 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-6xl shadow-xl shadow-orange-400/30 border-4 border-white">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl shadow-xl shadow-orange-400/30 border-4 border-white">
                       🥉
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs 2xl:text-base px-2 py-0.5 2xl:px-4 2xl:py-1 rounded-full font-black">3RD</div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">3RD</div>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 2xl:p-6 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-56">
-                    <p className="font-bold text-sm sm:text-base 2xl:text-xl truncate">{top3[2].name}{top3[2].isGuest && <span className="ml-1">🎭</span>}</p>
-                    <p className="text-2xl sm:text-3xl 2xl:text-5xl font-black">{top3[2].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-sm text-white/70 font-bold">POINTS</p>
+                  <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
+                    <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate">{top3[2].name}{top3[2].isGuest && <span className="ml-1">🎭</span>}</p>
+                    <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[2].totalScore}</p>
+                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">POINTS</p>
                   </div>
-                  <div className="h-12 sm:h-20 2xl:h-32 w-full bg-gradient-to-t from-orange-400/30 to-transparent rounded-t-lg mt-2"></div>
+                  <div className="h-12 sm:h-20 2xl:h-24 w-full bg-gradient-to-t from-orange-400/30 to-transparent rounded-t-lg mt-2"></div>
                 </motion.div>
               )}
             </div>
@@ -225,28 +224,28 @@ export default function LiveChallengeView({
 
         {/* Rest of Leaderboard */}
         <div className="bg-white/10 backdrop-blur-md rounded-[40px] p-6 sm:p-8 border border-white/20 shadow-2xl">
-          <h2 className="text-xl sm:text-2xl 2xl:text-4xl font-black mb-4 sm:mb-6 flex items-center gap-2">
-            <span className="text-2xl 2xl:text-4xl">📊</span> Full Leaderboard
+          <h2 className="text-xl sm:text-2xl 2xl:text-3xl font-black mb-4 sm:mb-6 flex items-center gap-2">
+            <span className="text-2xl 2xl:text-3xl">📊</span> Full Leaderboard
             {sortedLeaderboard.length > 0 && (
-              <span className="ml-auto text-sm 2xl:text-lg font-normal bg-white/20 px-3 py-1 2xl:px-5 2xl:py-2 rounded-full">
+              <span className="ml-auto text-sm 2xl:text-base font-normal bg-white/20 px-3 py-1 rounded-full">
                 {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'Player' : 'Players'}
               </span>
             )}
           </h2>
-          <div className="space-y-2 sm:space-y-3 2xl:space-y-4">
+          <div className="space-y-2 sm:space-y-3">
             {rest.map((entry, idx) => (
               <motion.div
                 key={`${entry.uid}-${idx}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: (idx + 3) * 0.05 }}
-                className="flex justify-between items-center p-3 sm:p-4 2xl:p-6 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 hover:scale-[1.02] transition-all"
+                className="flex justify-between items-center p-3 sm:p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 hover:scale-[1.02] transition-all"
               >
-                <div className="flex items-center gap-3 sm:gap-4 2xl:gap-6">
-                  <span className="w-8 h-8 sm:w-10 sm:h-10 2xl:w-14 2xl:h-14 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base 2xl:text-2xl">{idx + 4}</span>
-                  <span className="font-bold text-base sm:text-lg 2xl:text-2xl">{entry.name}{entry.isGuest && <span className="ml-1">🎭</span>}</span>
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <span className="w-8 h-8 sm:w-10 sm:h-10 2xl:w-12 2xl:h-12 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base 2xl:text-lg">{idx + 4}</span>
+                  <span className="font-bold text-base sm:text-lg 2xl:text-xl">{entry.name}{entry.isGuest && <span className="ml-1">🎭</span>}</span>
                 </div>
-                <span className="text-xl sm:text-2xl 2xl:text-4xl font-black tabular-nums">{entry.totalScore}</span>
+                <span className="text-xl sm:text-2xl 2xl:text-3xl font-black tabular-nums">{entry.totalScore}</span>
               </motion.div>
             ))}
             {sortedLeaderboard.length === 0 && (
