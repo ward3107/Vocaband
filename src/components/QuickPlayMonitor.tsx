@@ -557,19 +557,21 @@ export default function QuickPlayMonitor({
               side-by-side from `sm:` up, so the QR is big enough to
               scan on a phone projector but doesn't crowd the session
               code on narrow screens. */}
-          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-8 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
+          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-6 2xl:p-8 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
-            <div className="bg-white p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
+            {/* QR code container — visually dominant on projectors so
+                students at the back of the room can scan from their
+                seats.  Was a small 112px square; now scales up
+                aggressively on larger screens (224px on tablet,
+                320px on the projector breakpoint). */}
+            <div className="bg-white p-2.5 2xl:p-4 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
               {/* Client-side QR generator — replaces api.qrserver.com.
-                  That external service was failing in production (net::ERR_FAILED
-                  seen repeatedly on strict classroom Wi-Fi), leaving teachers
-                  with a broken QR and students unable to scan-to-join.
                   qrcode.react renders the matrix in SVG locally — zero network
                   calls, works fully offline, no rate limits. */}
-              <div className="w-28 h-28 sm:w-24 sm:h-24 flex items-center justify-center">
+              <div className="w-44 h-44 sm:w-56 sm:h-56 2xl:w-80 2xl:h-80 flex items-center justify-center">
                 <QRCodeSVG
                   value={qrUrl}
-                  size={112}
+                  size={224}
                   level="M"
                   marginSize={0}
                   style={{ width: '100%', height: '100%' }}
@@ -578,11 +580,14 @@ export default function QuickPlayMonitor({
               </div>
             </div>
             <div className="flex flex-col justify-center text-white min-w-0 flex-1 text-center sm:text-left">
-              <span className="font-label text-[10px] 2xl:text-base uppercase tracking-[0.2em] opacity-80">Join at {window.location.host}</span>
-              <h2 className="font-headline text-3xl sm:text-4xl 2xl:text-7xl font-black tracking-tighter">{session.sessionCode}</h2>
+              <span className="font-label text-[10px] 2xl:text-sm uppercase tracking-[0.2em] opacity-80">Join at {window.location.host}</span>
+              {/* Session code — DEMOTED visual weight (was the dominant
+                  text); QR is now the primary scan target.  Kept large
+                  enough to type by hand if a phone camera fails. */}
+              <h2 className="font-headline text-xl sm:text-2xl 2xl:text-4xl font-black tracking-tighter">{session.sessionCode}</h2>
               <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start">
-                <span className="w-2 h-2 2xl:w-4 2xl:h-4 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs 2xl:text-2xl font-medium">{effectiveStudents.length > 0 ? `${effectiveStudents.length} players joined` : 'Waiting for players...'}</span>
+                <span className="w-2 h-2 2xl:w-3 2xl:h-3 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-xs 2xl:text-lg font-medium">{effectiveStudents.length > 0 ? `${effectiveStudents.length} players joined` : 'Waiting for players...'}</span>
               </div>
               {/* Share button — prominent on both mobile and desktop so
                   the teacher can fire it with one tap during class.
@@ -708,22 +713,37 @@ export default function QuickPlayMonitor({
           </div>
         </section>
 
-        {/* ─── Student Grid ────────────────────────────────────────────────── */}
-        {sorted.length > 0 && (
+        {/* ─── Rank 4+ vertical list ───────────────────────────────────────────
+            Top-3 are rendered on the podium hero above; everyone from
+            rank 4 onward shows here as a numbered vertical list.  The
+            row order updates with motion.div's `layout` prop, so when
+            a student passes another the rows shuffle smoothly without
+            any extra animation code -- Framer Motion's FLIP handles
+            the transitions for free.  Cap of 100 students per session
+            (QP_MAX_STUDENTS_PER_SESSION) means the list never gets
+            unwieldy.  No internal max-height -- the page just scrolls
+            naturally below the podium hero, so newly-joined students
+            always have a visible row.
+        */}
+        {sorted.length > 3 && (
           <section>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+            <h3 className={`font-label text-[10px] 2xl:text-sm uppercase tracking-[0.2em] opacity-50 font-black mb-3 2xl:mb-4 ${t.text}`}>
+              Players · rank 4+
+            </h3>
+            <div className="flex flex-col gap-1.5 2xl:gap-2.5">
               <AnimatePresence mode="popLayout">
-                {sorted.map((student, idx) => {
+                {sorted.slice(3).map((student, idx) => {
+                  const rank = idx + 4;
                   const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000;
                   return (
                     <motion.div
                       key={student.name}
                       layout
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                      className={`${t.card} rounded-lg p-3 sm:p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-all border group relative`}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: 20, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
+                      className={`${t.card} rounded-lg px-3 sm:px-4 2xl:px-6 py-2 2xl:py-3 flex items-center gap-3 2xl:gap-5 shadow-sm hover:shadow-md transition-all border group relative`}
                     >
                       {/* Kick on hover */}
                       <button
@@ -733,16 +753,25 @@ export default function QuickPlayMonitor({
                       >
                         <X size={10} />
                       </button>
+                      {/* Rank number — wide enough for triple-digit just
+                          in case (max 100 students = 3 chars max). */}
+                      <span className={`font-headline text-base sm:text-lg 2xl:text-3xl font-black tabular-nums w-8 2xl:w-12 text-center ${t.accent}`}>
+                        {rank}
+                      </span>
                       <div className="relative shrink-0">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 2xl:w-20 2xl:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-xl sm:text-2xl 2xl:text-4xl border-2 border-surface-container-highest">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 2xl:w-16 2xl:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-lg sm:text-xl 2xl:text-3xl border-2 border-surface-container-highest">
                           {getStudentAvatar(student)}
                         </div>
-                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 2xl:w-4 2xl:h-4 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                        <div className={`absolute bottom-0 right-0 w-2 h-2 2xl:w-3 2xl:h-3 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                       </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-headline text-xs sm:text-sm 2xl:text-2xl font-bold truncate">{student.name}</span>
-                        <span className="font-label text-[9px] sm:text-[10px] 2xl:text-lg text-on-surface-variant font-medium">{student.score} pts</span>
-                      </div>
+                      <span className="font-headline text-sm sm:text-base 2xl:text-2xl font-bold truncate flex-1 min-w-0">
+                        {student.name}
+                      </span>
+                      {/* Score — right-aligned tabular nums so digits stay
+                          column-aligned across rows even as ranks shift. */}
+                      <span className={`font-label text-sm sm:text-base 2xl:text-2xl font-black tabular-nums shrink-0 ${t.accent}`}>
+                        {student.score} pts
+                      </span>
                     </motion.div>
                   );
                 })}
