@@ -1359,9 +1359,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
               {/* Col 1: Brand + tagline + contact */}
               <div className="col-span-2 md:col-span-1">
+                {/* Brand V — uses the canonical signature-gradient +
+                    italic font-headline treatment that PublicNav and
+                    QuickPlayStudentView already use, so the V mark is
+                    visually identical wherever it appears in the app. */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-black text-xl shadow-lg">
-                    V
+                  <div className="w-11 h-11 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+                    <span className="text-white text-2xl font-black font-headline italic">V</span>
                   </div>
                   <span className="text-white font-black text-xl">Vocaband</span>
                 </div>
