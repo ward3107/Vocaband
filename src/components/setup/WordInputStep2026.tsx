@@ -1648,6 +1648,16 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     } else {
       showToast?.(`Added ${newCurriculumWords.length} curriculum + ${customWords.length} custom`, 'success');
     }
+
+    // On mobile the wizard scrolls past the viewport — without this the
+    // newly added words land off-screen and the teacher sees only a
+    // toast.  Scroll to the "N words selected" section so they get
+    // visual confirmation, same as Topic Packs / Saved Groups do.
+    if (totalAdded > 0) {
+      setTimeout(() => {
+        selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
   }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
   // Add words from panels (Topic Packs, Saved Groups, Browse Library)
