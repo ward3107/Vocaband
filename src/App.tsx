@@ -1714,6 +1714,77 @@ export default function App() {
     if (currentWord) setIsFlipped(false);
   }, [currentIndex, currentWord]);
 
+  // ── OCR rescue: Android Chrome on memory-constrained phones (e.g.
+  // Samsung Galaxy A series) can kill the Vocaband tab when the OS
+  // camera intent launches.  When the user returns from the camera,
+  // Chrome reloads the page and the teacher lands on the dashboard
+  // — wizard component long unmounted, OCR words gone with it.  To
+  // prevent that, SetupWizard's inline /api/ocr handler writes the
+  // extracted words to localStorage as soon as they arrive.  Here on
+  // the dashboard we detect that key, navigate the teacher straight
+  // back into a fresh assignment wizard pre-filled with those words,
+  // and clear the key so the rescue only fires once.
+  useEffect(() => {
+    if (user?.role !== 'teacher') return;
+    if (view !== 'teacher-dashboard') return;
+    if (classes.length === 0) return;
+    let rescued = false;
+    try {
+      const raw = localStorage.getItem('vocaband-pending-ocr-words');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { words?: unknown; timestamp?: unknown };
+      const words = Array.isArray(parsed.words) ? parsed.words.filter((w): w is string => typeof w === 'string') : [];
+      const ts = typeof parsed.timestamp === 'number' ? parsed.timestamp : 0;
+      // Only rescue recent OCR (5 min window) — older entries are
+      // probably stale from a previous session the teacher abandoned.
+      const fresh = ts > 0 && Date.now() - ts < 5 * 60 * 1000;
+      if (!fresh || words.length === 0) {
+        localStorage.removeItem('vocaband-pending-ocr-words');
+        return;
+      }
+      // Build Word objects: curriculum-match by english (lowercase)
+      // first, synthesise Custom Words for the rest.
+      const matched: Word[] = [];
+      const unmatched: string[] = [];
+      for (const w of words) {
+        const trimmed = w.trim();
+        if (!trimmed) continue;
+        const hit = ALL_WORDS.find(aw => aw.english.toLowerCase() === trimmed.toLowerCase());
+        if (hit) matched.push(hit);
+        else unmatched.push(trimmed);
+      }
+      const now = Date.now();
+      const customs: Word[] = unmatched.map((s, i) => ({
+        id: -(now + i),
+        english: s,
+        hebrew: '',
+        arabic: '',
+        level: 'Custom' as const,
+      }));
+      const allRescued = [...matched, ...customs];
+      if (allRescued.length === 0) {
+        localStorage.removeItem('vocaband-pending-ocr-words');
+        return;
+      }
+      // Pre-fill the wizard exactly like the existing onEditAssignment
+      // / onDuplicateAssignment paths do (see App.tsx:2356-2368).
+      setSelectedWords(allRescued.map(w => w.id));
+      setCustomWords(customs);
+      setSelectedLevel('Custom');
+      setSelectedClass(classes[0]);
+      setView('create-assignment');
+      showToast(`Recovered ${allRescued.length} words from your last photo — picking up where you left off`, 'success');
+      rescued = true;
+    } catch {
+      /* malformed payload — fall through and clear */
+    } finally {
+      // Always clear, whether we rescued or not, so we don't loop.
+      if (rescued || true) {
+        try { localStorage.removeItem('vocaband-pending-ocr-words'); } catch { /* noop */ }
+      }
+    }
+  }, [user?.role, view, classes]);
+
 
   // Voice selection + caching + voiceschanged listener are bundled in
   // a hook so this component doesn't hold browser-API plumbing.

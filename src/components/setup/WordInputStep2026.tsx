@@ -1770,18 +1770,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   return (
     <div>
-      {/* DEBUG indicator — temporarily visible to confirm OCR words
-          are being tracked.  Remove once OCR flow is verified working
-          on user's device. */}
-      <div className="mb-4 px-4 py-2 rounded-lg bg-indigo-100 border-2 border-indigo-300 text-indigo-900 text-sm font-bold text-center">
-        🔧 Debug: {selectedWords.length} words in wizard state · build {APP_VERSION}
-      </div>
-      {ocrDebugInfo && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-yellow-100 border-2 border-yellow-400 text-yellow-900 text-xs font-mono break-words">
-          {ocrDebugInfo}
-        </div>
-      )}
-
       {/* Hero Paste Area */}
       <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
 
