@@ -144,8 +144,8 @@ export const uiTranslations: Record<Language, {
       "רישום ביקורת",
     ],
     serviceDescription: [
-      "מתוכנן לשימוש בבתי ספר בישראל בפיקוח מורים",
-      "מותאם לתכנית הלימודים לאנגלית של משרד החינוך (Set 1, 2, 3)",
+      "מתוכנן לשימוש בכיתות ESL בפיקוח מורים",
+      "רמות אוצר מילים מותאמות ל-CEFR A1–B2 (שלוש סטים מקיפים)",
       "בנוי לתמיכה בחשבונות תלמידים אנונימיים",
       "מיועד למטרות חינוכיות בלבד",
     ],
@@ -218,8 +218,8 @@ export const uiTranslations: Record<Language, {
       "تسجيل التدقيق",
     ],
     serviceDescription: [
-      "مصمم للاستخدام في المدارس الإسرائيلية تحت إشراف المعلم",
-      "متوافق مع منهج اللغة الإنجليزية لوزارة التعليم الإسرائيلية (Set 1, 2, 3)",
+      "مصمم للاستخدام في فصول ESL تحت إشراف المعلم",
+      "مستويات المفردات متوافقة مع CEFR A1–B2 (ثلاث مجموعات شاملة)",
       "مبني لدعم حسابات الطلاب المجهولة",
       "مخصص للأغراض التعليمية فقط",
     ],
@@ -282,8 +282,8 @@ export const privacyTranslations: Record<Language, {
   en: {
     title: "Privacy",
     titleHighlight: "Policy",
-    effective: "Effective: March 2024",
-    version: "Version 2.0",
+    effective: "Effective: April 2026",
+    version: "Version 2.1",
     legalBasis: "Legal Basis: Privacy Protection Law, 5741-1981 (Israel), Amendment 13",
     summary: {
       badge: "Summary",
@@ -301,12 +301,12 @@ export const privacyTranslations: Record<Language, {
   he: {
     title: "מדיניות",
     titleHighlight: "פרטיות",
-    effective: "תוקף: מרץ 2024",
-    version: "גרסה 2.0",
+    effective: "תוקף: אפריל 2026",
+    version: "גרסה 2.1",
     legalBasis: "בסיס חוקי: חוק הגנת הפרטיות, התשמ\"א-1981 (ישראל), תיקון 13",
     summary: {
       badge: "תקציר",
-      text: "Vocaband מתוכנן לבתי ספר בישראל. חשבונות תלמידים הם אנונימיים - ללא דוא\"ל או זיהוי אישי. מורים נכנסים עם Google. איננו מוכרים מידע, מציגים פרסומות, או עוקבים אחר משתמשים לצורכי שיווק.",
+      text: "Vocaband מתוכנן לכיתות ESL ברחבי העולם. חשבונות תלמידים הם אנונימיים - ללא דוא\"ל או זיהוי אישי. מורים נכנסים עם Google. איננו מוכרים מידע, מציגים פרסומות, או עוקבים אחר משתמשים לצורכי שיווק.",
     },
     footer: {
       haveQuestions: "יש לך שאלות?",
@@ -320,12 +320,12 @@ export const privacyTranslations: Record<Language, {
   ar: {
     title: "سياسة",
     titleHighlight: "الخصوصية",
-    effective: "ساري المفعول: مارس 2024",
-    version: "الإصدار 2.0",
+    effective: "ساري المفعول: أبريل 2026",
+    version: "الإصدار 2.1",
     legalBasis: "الأساس القانوني: قانون حماية الخصوصية، 5741-1981 (إسرائيل)، التعديل 13",
     summary: {
       badge: "ملخص",
-      text: "تم تصميم Vocaband للمدارس الإسرائيلية. حسابات الطلاب مجهولة - لا حاجة للبريد الإلكتروني أو الهوية الشخصية. يسجل المعلمون عبر Google. نحن لا نبيع البيانات أو نعرض الإعلانات أو نتتبع المستخدمين للتسويق.",
+      text: "تم تصميم Vocaband لفصول ESL في جميع أنحاء العالم. حسابات الطلاب مجهولة - لا حاجة للبريد الإلكتروني أو الهوية الشخصية. يسجل المعلمون عبر Google. نحن لا نبيع البيانات أو نعرض الإعلانات أو نتتبع المستخدمين للتسويق.",
     },
     footer: {
       haveQuestions: "هل لديك أسئلة؟",
@@ -357,9 +357,9 @@ export const termsTranslations: Record<Language, {
   en: {
     title: "Terms of",
     titleHighlight: "Service",
-    effective: "Effective: March 2024",
-    version: "Version 2.0",
-    intro: "Vocaband is an educational vocabulary platform for Israeli schools. Students use anonymous accounts; teachers sign in with Google.",
+    effective: "Effective: April 2026",
+    version: "Version 2.1",
+    intro: "Vocaband is an educational vocabulary platform for ESL classrooms worldwide. Students use anonymous accounts; teachers sign in with Google.",
     footer: {
       questions: "Questions?",
       contact: "Contact us about these Terms.",
@@ -372,9 +372,9 @@ export const termsTranslations: Record<Language, {
   he: {
     title: "תנאי",
     titleHighlight: "שימוש",
-    effective: "תוקף: מרץ 2024",
-    version: "גרסה 2.0",
-    intro: "Vocaband היא פלטפורמה חינוכית לאוצר מילים לבתי ספר בישראל. תלמידים משתמשים בחשבונות אנונימיים; מורים נכנסים עם Google.",
+    effective: "תוקף: אפריל 2026",
+    version: "גרסה 2.1",
+    intro: "Vocaband היא פלטפורמה חינוכית לאוצר מילים לכיתות ESL ברחבי העולם. תלמידים משתמשים בחשבונות אנונימיים; מורים נכנסים עם Google.",
     footer: {
       questions: "שאלות?",
       contact: "צור איתנו קשר לגבי תנאים אלה.",
@@ -387,9 +387,9 @@ export const termsTranslations: Record<Language, {
   ar: {
     title: "شروط",
     titleHighlight: "الخدمة",
-    effective: "ساري المفعول: مارس 2024",
-    version: "الإصدار 2.0",
-    intro: "Vocaband هي منصة تعليمية للمفردات للمدارس الإسرائيلية. يستخدم الطلاب حسابات مجهولة؛ يسجل المعلمون عبر Google.",
+    effective: "ساري المفعول: أبريل 2026",
+    version: "الإصدار 2.1",
+    intro: "Vocaband هي منصة تعليمية للمفردات لفصول ESL في جميع أنحاء العالم. يستخدم الطلاب حسابات مجهولة؛ يسجل المعلمون عبر Google.",
     footer: {
       questions: "أسئلة؟",
       contact: "تواصل معنا بشأن هذه الشروط.",

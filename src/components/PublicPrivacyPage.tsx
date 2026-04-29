@@ -294,10 +294,15 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                     <td className="py-2 pr-4">{language === 'en' ? 'Teacher sign-in only' : language === 'he' ? 'כניסת מורים בלבד' : 'تسجيل دخول المعلمين فقط'}</td>
                     <td className="py-2 pr-4">US</td>
                   </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Fly.io</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Application server hosting' : language === 'he' ? 'אירוח שרת היישום' : 'استضافة خادم التطبيق'}</td>
+                    <td className="py-2 pr-4">EU / US</td>
+                  </tr>
                   <tr>
-                    <td className="py-2 pr-4 font-medium">Render</td>
-                    <td className="py-2 pr-4">{language === 'en' ? 'Application hosting' : language === 'he' ? 'אירוח אפליקציה' : 'استضافة التطبيق'}</td>
-                    <td className="py-2 pr-4">US</td>
+                    <td className="py-2 pr-4 font-medium">Cloudflare</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Static asset delivery + CDN' : language === 'he' ? 'אספקת נכסים סטטיים + CDN' : 'تسليم الأصول الثابتة + CDN'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Global edge' : language === 'he' ? 'קצה גלובלי' : 'الحافة العالمية'}</td>
                   </tr>
                 </tbody>
               </table>

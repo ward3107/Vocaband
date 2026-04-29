@@ -1324,135 +1324,229 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </motion.button>
                   )}
                 </div>
-
-                {/* Trust badges */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-12 flex flex-wrap justify-center gap-6 text-white/60 text-sm font-bold"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    Aligned with CEFR A1–B2
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    Loved by Schools
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    GDPR Compliant
-                  </span>
-                </motion.div>
               </div>
             </div>
           </motion.div>
         </section>
 
-        {/* Footer - Privacy, Terms, Accessibility */}
-        <footer className="py-12 px-4 md:px-6 relative">
+        {/*
+          ═══════════════════════════════════════════════════════════
+          REDESIGNED FOOTER — 4-column structured grid
+          ───────────────────────────────────────────────────────────
+          Was: brand + 4 legal pills crammed onto one centred row,
+               trust strip + teacher links + copyright stacked below.
+          Now: a proper 4-column footer grid (brand / company /
+               resources / legal), trust strip + copyright in a
+               unified bottom bar. Stacks to 1-col on mobile.
+
+          Layout principles:
+          - Each column has its own vertical heading + linked items.
+          - Brand column doubles as the contact channel (school +
+            teacher mailto buttons match the pricing strategy in
+            docs/PRICING-MODEL.md — schools-first public face,
+            private teacher channel).
+          - Trust strip moved into the bottom bar alongside copyright
+            (was its own row, now reads as supporting evidence).
+          - All visual styling stays in the violet/fuchsia hero
+            family — no contrast breaks.
+          ═══════════════════════════════════════════════════════════
+        */}
+        <footer className="py-16 px-4 md:px-6 relative">
           <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-white/10">
-              {/* Logo/Brand */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
-                  V
+
+            {/* ── 4-column grid ─────────────────────────────────── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pb-10 border-b border-white/10">
+
+              {/* Col 1: Brand + tagline + contact */}
+              <div className="col-span-2 md:col-span-1">
+                {/* Brand V — uses the canonical signature-gradient +
+                    italic font-headline treatment that PublicNav and
+                    QuickPlayStudentView already use, so the V mark is
+                    visually identical wherever it appears in the app. */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+                    <span className="text-white text-2xl font-black font-headline italic">V</span>
+                  </div>
+                  <span className="text-white font-black text-xl">Vocaband</span>
                 </div>
-                <span className="text-white font-black text-xl">Vocaband</span>
+                <p className="text-white/60 text-sm leading-relaxed mb-5 max-w-xs">
+                  The vocabulary platform students worldwide actually want to play —
+                  and the easiest classroom tool teachers will use all year.
+                </p>
+                {/* Two contact CTAs reflecting the pricing strategy:
+                    schools-first public, private teacher channel. */}
+                <div className="flex flex-col gap-2">
+                  <a
+                    href="mailto:contact@vocaband.com?subject=School%20Plan%20Inquiry"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-xs transition-all"
+                  >
+                    <GraduationCap size={14} />
+                    School plans
+                  </a>
+                  <a
+                    href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/25 text-white/80 hover:text-white font-bold text-xs transition-all"
+                  >
+                    <FileText size={14} />
+                    Individual teacher
+                  </a>
+                </div>
               </div>
 
-              {/* Legal Links — four matching pill buttons.
-                  See the Security button: opens the /security page
-                  (PublicSecurityPage) which is our user-facing
-                  technical-trust summary in EN/HE/AR. */}
-              <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3" aria-label="Legal and accessibility">
-                <button
-                  onClick={() => onNavigate("terms")}
-                  type="button"
-                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
-                >
-                  <FileText size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
-                  <span>Terms of Service</span>
-                </button>
-                <button
-                  onClick={() => onNavigate("privacy")}
-                  type="button"
-                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
-                >
-                  <ShieldCheck size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
-                  <span>Privacy Policy</span>
-                </button>
-                <button
-                  onClick={() => onNavigate("security")}
-                  type="button"
-                  title="Security & Trust"
-                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
-                >
-                  <Lock size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
-                  <span>Security</span>
-                </button>
-                <button
-                  onClick={() => onNavigate("accessibility")}
-                  type="button"
-                  title="Accessibility Statement"
-                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-sm transition-all shadow-sm hover:shadow focus-visible:ring-2 focus-visible:ring-white/60"
-                >
-                  <Accessibility size={16} className="text-white/80 group-hover:text-white transition-colors" aria-hidden="true" />
-                  <span>Accessibility</span>
-                </button>
-              </nav>
-            </div>
+              {/* Col 2: Product */}
+              <div>
+                <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
+                  Product
+                </h4>
+                <ul className="space-y-2.5">
+                  <li>
+                    <button
+                      onClick={onGetStarted}
+                      type="button"
+                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      Start Learning
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={onTryDemo}
+                      type="button"
+                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      Try the Demo
+                    </button>
+                  </li>
+                  {!isAuthenticated && (
+                    <li>
+                      <button
+                        onClick={onTeacherLogin}
+                        type="button"
+                        className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      >
+                        Teacher Login
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              </div>
 
-            {/* Trust strip — three small badges showing the things we
-                CAN factually claim (TLS, SSL Labs grade, EU hosting).
-                The SSL Labs badge deep-links to a live report so any
-                visitor can verify it themselves. See docs/SECURITY-OVERVIEW.md
-                for what we are/are NOT claiming and why this list is
-                conservative (no GDPR/COPPA self-declaration). */}
-            <div className="pt-6 pb-2 border-t border-white/10 flex flex-wrap items-center justify-center gap-3 text-xs">
-              <a
-                href="https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 font-bold transition-colors"
-              >
-                <ShieldCheck size={13} />
-                <span>SSL Labs A+</span>
-                <ExternalLink size={10} className="opacity-60" />
-              </a>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/15 text-blue-200 border border-blue-400/30 font-bold">
-                <Lock size={13} />
-                TLS 1.3
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold">
-                <Globe size={13} />
-                EU-hosted (Frankfurt)
-              </span>
-            </div>
+              {/* Col 3: Resources */}
+              <div>
+                <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
+                  Resources
+                </h4>
+                <ul className="space-y-2.5">
+                  <li>
+                    <a
+                      href="/answers/cefr-a1-vocabulary-list.html"
+                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      CEFR A1 vocabulary
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="/answers/cefr-a1-vs-a2-vocabulary.html"
+                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      A1 vs A2 explained
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="/answers/best-english-vocabulary-app-grade-5.html"
+                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      Best ESL app — Grades 1-12
+                    </a>
+                  </li>
+                </ul>
+              </div>
 
-            {/* Teacher resources — subtle internal links to the /answers
-                guides. Not a hero section; just enough to give Google's
-                crawler + AI assistants the internal-link signal that
-                these pages are real first-party content, and to help
-                teachers already browsing the footer discover them. */}
-            <div className="pt-8 pb-4 border-t border-white/10">
-              <p className="text-white/50 text-xs font-black uppercase tracking-[0.2em] text-center mb-3">
-                Teacher resources
-              </p>
-              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-                <a href="/answers/cefr-a1-vocabulary-list.html" className="text-white/70 hover:text-white transition-colors">CEFR A1 vocabulary</a>
-                <a href="/answers/cefr-a1-vs-a2-vocabulary.html" className="text-white/70 hover:text-white transition-colors">A1 vs A2</a>
-                <a href="/answers/best-english-vocabulary-app-grade-5.html" className="text-white/70 hover:text-white transition-colors">Best for school ESL — Grades 1 to 12</a>
+              {/* Col 4: Legal + Trust */}
+              <div>
+                <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
+                  Legal & Trust
+                </h4>
+                <ul className="space-y-2.5">
+                  <li>
+                    <button
+                      onClick={() => onNavigate("terms")}
+                      type="button"
+                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      Terms of Service
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => onNavigate("privacy")}
+                      type="button"
+                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      <ShieldCheck size={14} aria-hidden="true" />
+                      Privacy Policy
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => onNavigate("security")}
+                      type="button"
+                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      <Lock size={14} aria-hidden="true" />
+                      Security & Trust
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => onNavigate("accessibility")}
+                      type="button"
+                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                    >
+                      <Accessibility size={14} aria-hidden="true" />
+                      Accessibility
+                    </button>
+                  </li>
+                </ul>
               </div>
             </div>
 
-            {/* Copyright */}
-            <div className="pt-6 text-center">
-              <p className="text-white text-sm font-bold">
-                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for English learners everywhere.
+            {/* ── Bottom bar: trust strip + copyright ───────────── */}
+            <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+              {/* Copyright */}
+              <p className="text-white/50 text-xs font-medium order-2 md:order-1">
+                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for learners everywhere.
               </p>
+
+              {/* Trust strip — three small badges showing the things
+                  we CAN factually claim (SSL Labs grade, TLS 1.3,
+                  EU hosting).  The SSL Labs badge deep-links to a
+                  live report so visitors can verify it.  See
+                  docs/SECURITY-OVERVIEW.md for what we are/are NOT
+                  claiming. */}
+              <div className="flex flex-wrap items-center justify-center gap-2 order-1 md:order-2">
+                <a
+                  href="https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 font-bold text-[11px] transition-colors"
+                >
+                  <ShieldCheck size={11} />
+                  <span>SSL Labs A+</span>
+                  <ExternalLink size={9} className="opacity-60" />
+                </a>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-200 border border-blue-400/30 font-bold text-[11px]">
+                  <Lock size={11} />
+                  TLS 1.3
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold text-[11px]">
+                  <Globe size={11} />
+                  EU-hosted
+                </span>
+              </div>
             </div>
           </div>
         </footer>
