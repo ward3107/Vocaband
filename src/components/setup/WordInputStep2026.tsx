@@ -21,7 +21,7 @@ import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnal
 // English-only text constants for the word input step
 // Build marker bumped each diagnostic deploy — lets us confirm the
 // user is seeing the latest code, not a stale service-worker copy.
-const APP_VERSION = 'ocr-debug-2026-04-29-d';
+const APP_VERSION = 'ocr-debug-2026-04-29-e';
 
 const TEXT = {
   pasteTitle: 'Paste your word list here',
@@ -1680,8 +1680,13 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
     // Surface the OCR add path on screen so the user can confirm it
     // ran without needing remote DevTools.  Diagnostic only — to be
-    // removed once OCR is verified working.
+    // removed once OCR is verified working.  Also stamp the URL hash
+    // so it survives even if the component unmounts or a stale render
+    // wipes state — user can read the URL to see if the path executed.
     setOcrDebugInfo(`OCR add fired: in=${words.length}, curriculum=${newCurriculumWords.length}, custom=${customWords.length}, total=${newSelectedWords.length}`);
+    try {
+      window.location.hash = `ocr-${Date.now()}-in${words.length}-c${newCurriculumWords.length}-cu${customWords.length}-tot${newSelectedWords.length}`;
+    } catch { /* hash setting can throw in some sandboxed contexts */ }
 
     onSelectedWordsChange(newSelectedWords);
     // Reset everything so the next OCR run starts from a clean idle
@@ -1765,18 +1770,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   return (
     <div>
-      {/* DEBUG indicator — temporarily visible to confirm OCR words
-          are being tracked.  Remove once OCR flow is verified working
-          on user's device. */}
-      <div className="mb-4 px-4 py-2 rounded-lg bg-indigo-100 border-2 border-indigo-300 text-indigo-900 text-sm font-bold text-center">
-        🔧 Debug: {selectedWords.length} words in wizard state · build {APP_VERSION}
-      </div>
-      {ocrDebugInfo && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-yellow-100 border-2 border-yellow-400 text-yellow-900 text-xs font-mono break-words">
-          {ocrDebugInfo}
-        </div>
-      )}
-
       {/* Hero Paste Area */}
       <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
 
