@@ -21,7 +21,7 @@ import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnal
 // English-only text constants for the word input step
 // Build marker bumped each diagnostic deploy — lets us confirm the
 // user is seeing the latest code, not a stale service-worker copy.
-const APP_VERSION = 'ocr-debug-2026-04-29-c';
+const APP_VERSION = 'ocr-debug-2026-04-29-d';
 
 const TEXT = {
   pasteTitle: 'Paste your word list here',
@@ -1459,6 +1459,8 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   // (A naive setTimeout-based scroll fails on first add because the
   // ref target is conditionally rendered behind selectedWords.length.)
   const [shouldScrollToSelected, setShouldScrollToSelected] = useState(false);
+  // Diagnostic-only — visible banner showing the last OCR add call.
+  const [ocrDebugInfo, setOcrDebugInfo] = useState<string | null>(null);
   useEffect(() => {
     if (!shouldScrollToSelected) return;
     if (selectedWords.length === 0) return;
@@ -1588,6 +1590,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       setOcrProgress(100);
 
       console.log(`[OCR] upload complete: ${result.words.length} words extracted`);
+      setOcrDebugInfo(`Server returned ${result.words.length} words: [${result.words.slice(0, 3).join(', ')}...]`);
 
       if (result.words.length === 0) {
         setOcrErrorMessage(null); // generic "no words" text is fine here
@@ -1674,6 +1677,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       newTotal: newSelectedWords.length,
       sampleWords: newSelectedWords.slice(-3).map(w => `${w.id}:${w.english}`),
     });
+
+    // Surface the OCR add path on screen so the user can confirm it
+    // ran without needing remote DevTools.  Diagnostic only — to be
+    // removed once OCR is verified working.
+    setOcrDebugInfo(`OCR add fired: in=${words.length}, curriculum=${newCurriculumWords.length}, custom=${customWords.length}, total=${newSelectedWords.length}`);
 
     onSelectedWordsChange(newSelectedWords);
     // Reset everything so the next OCR run starts from a clean idle
@@ -1763,6 +1771,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       <div className="mb-4 px-4 py-2 rounded-lg bg-indigo-100 border-2 border-indigo-300 text-indigo-900 text-sm font-bold text-center">
         🔧 Debug: {selectedWords.length} words in wizard state · build {APP_VERSION}
       </div>
+      {ocrDebugInfo && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-yellow-100 border-2 border-yellow-400 text-yellow-900 text-xs font-mono break-words">
+          {ocrDebugInfo}
+        </div>
+      )}
 
       {/* Hero Paste Area */}
       <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />

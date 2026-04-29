@@ -351,7 +351,12 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   key="step1-2026"
                   allWords={allWords}
                   selectedWords={selectedWords}
-                  onSelectedWordsChange={setSelectedWords}
+                  onSelectedWordsChange={(words) => {
+                    console.log('[SetupWizard] setSelectedWords called with', words.length, 'words', {
+                      sample: words.slice(-3).map(w => w.english),
+                    });
+                    setSelectedWords(words);
+                  }}
                   onNext={handleNext}
                   onBack={handleBack}
                   onTranslateWord={onTranslateWord}
