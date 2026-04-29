@@ -19,6 +19,10 @@ import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
 
 // English-only text constants for the word input step
+// Build marker bumped each diagnostic deploy — lets us confirm the
+// user is seeing the latest code, not a stale service-worker copy.
+const APP_VERSION = 'ocr-debug-2026-04-29-c';
+
 const TEXT = {
   pasteTitle: 'Paste your word list here',
   pastePlaceholder: 'apple, banana, orange, grape',
@@ -1753,6 +1757,13 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   return (
     <div>
+      {/* DEBUG indicator — temporarily visible to confirm OCR words
+          are being tracked.  Remove once OCR flow is verified working
+          on user's device. */}
+      <div className="mb-4 px-4 py-2 rounded-lg bg-indigo-100 border-2 border-indigo-300 text-indigo-900 text-sm font-bold text-center">
+        🔧 Debug: {selectedWords.length} words in wizard state · build {APP_VERSION}
+      </div>
+
       {/* Hero Paste Area */}
       <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
 
