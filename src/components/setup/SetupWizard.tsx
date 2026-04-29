@@ -5,7 +5,7 @@
  * Both Quick Play and Assignment use this shell with different props.
  */
 
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
 import { Word } from '../../data/vocabulary';
@@ -221,9 +221,18 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   }, [editingAssignment]);
 
   // ── Pre-populate from initial selected words (analytics flow, etc.) ────────────
+  // ONE-SHOT: only run on first mount when initialSelectedWords is
+  // non-empty.  Earlier this effect re-fired on every parent re-render
+  // because the parent's useMemo'd initialSelectedWords array got a
+  // fresh reference each render — wiping the user's in-wizard
+  // selection (e.g. words just added via OCR).  Latch with a ref so
+  // we only seed once.
+  const seededInitialRef = useRef(false);
   useEffect(() => {
+    if (seededInitialRef.current) return;
     if (initialSelectedWords && initialSelectedWords.length > 0) {
       setSelectedWords(initialSelectedWords);
+      seededInitialRef.current = true;
     }
   }, [initialSelectedWords]);
 
