@@ -230,17 +230,19 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const formData = new FormData();
       formData.append('file', file);
 
-      // OCR target.  Was sent direct to Render (api.vocaband.com) to
-      // dodge the Cloudflare Worker's 30s wall-clock for Tesseract.
-      // After the Render→Fly migration, Render is gone — direct fetch
-      // returned ERR_CONNECTION_CLOSED.  We now use the same-origin
-      // /api/ocr path which the Worker proxies to Fly.  Worker timeout
-      // is 30s; OCR on Gemini Vision typically completes in 5-15s,
-      // well under that.  If we ever need to bypass the Worker for
-      // long jobs again, set VITE_API_URL to a direct host.
-      const ocrUrl = import.meta.env?.VITE_API_URL
-        ? `${import.meta.env.VITE_API_URL}/api/ocr`
-        : '/api/ocr';
+      // OCR target — same-origin /api/ocr.  Cloudflare Worker
+      // proxies to Fly.io (api.vocaband.com / Render is gone post
+      // 2026-04-25 migration).  Worker timeout 30s; Gemini Vision
+      // typically completes in 5-15s.
+      //
+      // Hardcoded — was previously conditional on VITE_API_URL
+      // ("set this env var to bypass the Worker for long jobs").
+      // The conditional was a footgun: if Cloudflare Pages or a
+      // stale .env.local set VITE_API_URL to the dead Render URL,
+      // every OCR request hit api.vocaband.com → ERR_CONNECTION_CLOSED
+      // and the user saw a silent failure with no diagnostic.
+      // Hardcoding /api/ocr removes that ambiguity completely.
+      const ocrUrl = '/api/ocr';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s for OCR
 
