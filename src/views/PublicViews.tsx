@@ -26,6 +26,7 @@ import {
   DemoModeWrapper,
   AccessibilityStatementWrapper,
 } from "../components/LazyComponents";
+import TeacherLoginView from "./TeacherLoginView";
 import FloatingButtons from "../components/FloatingButtons";
 
 type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security";
@@ -113,6 +114,20 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "teacher-login") {
+    // Self-contained teacher login screen — Google OAuth + email OTP
+    // (6-digit code).  See src/components/TeacherLoginCard.tsx +
+    // src/hooks/useTeacherOtpAuth.ts.  All auth logic lives in the
+    // component; App.tsx's existing onAuthStateChange listener picks
+    // up the resulting session and routes to the dashboard.
+    return (
+      <>
+        <TeacherLoginView onBack={goBack} />
         {cookieBannerOverlay}
       </>
     );

@@ -18,6 +18,8 @@ import {
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
+import { useLanguage } from "../hooks/useLanguage";
+import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 
 // Small star-rating component — 3 stars with N filled. Same visual
 // vocabulary as app-store difficulty ratings, so it reads as a
@@ -83,23 +85,43 @@ export default function GameModeSelectionView({
   setShowModeIntro,
   handleExitGame,
 }: GameModeSelectionViewProps) {
-  // Flashcards is flagged as the "learning" mode — it's where students
-  // are meant to START before practising.  It's rendered as a big hero
-  // card above the rest so a first-time player sees it before the
-  // practice grid.  The other nine modes are laid out normally.
-  const modes: Array<{ id: GameMode; name: string; desc: string; color: string; icon: React.ReactNode; tooltip: string[]; isLearnMode?: boolean }> = [
-    { id: "flashcards", name: "Flashcards", desc: "Learn the words first — flip, listen, and earn XP at your own pace.", color: "cyan", icon: <Layers size={28} />, tooltip: ["Learn before you practice", "Flip cards to see answers", "No pressure — still earns XP"], isLearnMode: true },
-    { id: "classic", name: "Classic Mode", desc: "See the word, hear the word, pick translation.", color: "emerald", icon: <BookOpen size={24} />, tooltip: ["See the word in Hebrew/Arabic", "Hear the pronunciation", "Choose the correct English translation"] },
-    { id: "fill-blank", name: "Fill in the Blank", desc: "Pick the word that completes the sentence.", color: "lime", icon: <Edit3 size={24} />, tooltip: ["Read the sentence with a missing word", "Tap the word that fits", "No audio — read carefully!"] },
-    { id: "listening", name: "Listening Mode", desc: "Only hear the word. No English text!", color: "blue", icon: <Volume2 size={24} />, tooltip: ["Listen to the word pronunciation", "No text shown - audio only!", "Great for training your ear"] },
-    { id: "spelling", name: "Spelling Mode", desc: "Type the English word. Hardest mode!", color: "purple", icon: <PenTool size={24} />, tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"] },
-    { id: "matching", name: "Matching Mode", desc: "Match Hebrew to English. Fun & fast!", color: "amber", icon: <Zap size={24} />, tooltip: ["Match pairs together", "Connect Hebrew to English", "Fast-paced and fun!"] },
-    { id: "true-false", name: "True/False", desc: "Is the translation correct? Quick thinking!", color: "rose", icon: <CheckCircle2 size={24} />, tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"] },
-    { id: "scramble", name: "Word Scramble", desc: "Unscramble the letters to find the word.", color: "indigo", icon: <Shuffle size={24} />, tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"] },
-    { id: "reverse", name: "Reverse Mode", desc: "See Hebrew/Arabic, pick the English word.", color: "fuchsia", icon: <Repeat size={24} />, tooltip: ["See Hebrew/Arabic word", "Choose matching English word", "Reverse of classic mode"] },
-    { id: "letter-sounds", name: "Letter Sounds", desc: "Watch each letter light up and hear its sound.", color: "violet", icon: <span className="text-2xl">🔡</span>, tooltip: ["Each letter lights up in color", "Listen to each letter sound", "Type the full word you heard"] },
-    { id: "sentence-builder", name: "Sentence Builder", desc: "Tap words in the right order to build the sentence.", color: "teal", icon: <span className="text-2xl">🧩</span>, tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"] },
+  // i18n: pull every visible string from the locale file. Mode names,
+  // descriptions, tooltips, and chrome copy all live in
+  // src/locales/student/game-modes.ts (EN / HE / AR). Adding a new
+  // language = add it to the union in useLanguage + drop a new key
+  // in that file. See docs/I18N-MIGRATION.md for the pattern.
+  const { language } = useLanguage();
+  const t = gameModesT[language];
+
+  // Layout-only metadata (id, color, icon, learn-mode flag) stays in
+  // the view because it's not localisable. The visible strings
+  // (name/desc/tooltip) come from `t.modes[id]`.
+  const modesMeta: Array<{ id: GameMode; color: string; icon: React.ReactNode; isLearnMode?: boolean }> = [
+    { id: "flashcards",        color: "cyan",    icon: <Layers size={28} />,         isLearnMode: true },
+    { id: "classic",           color: "emerald", icon: <BookOpen size={24} /> },
+    { id: "fill-blank",        color: "lime",    icon: <Edit3 size={24} /> },
+    { id: "listening",         color: "blue",    icon: <Volume2 size={24} /> },
+    { id: "spelling",          color: "purple",  icon: <PenTool size={24} /> },
+    { id: "matching",          color: "amber",   icon: <Zap size={24} /> },
+    { id: "true-false",        color: "rose",    icon: <CheckCircle2 size={24} /> },
+    { id: "scramble",          color: "indigo",  icon: <Shuffle size={24} /> },
+    { id: "reverse",           color: "fuchsia", icon: <Repeat size={24} /> },
+    { id: "letter-sounds",     color: "violet",  icon: <span className="text-2xl">🔡</span> },
+    { id: "sentence-builder",  color: "teal",    icon: <span className="text-2xl">🧩</span> },
   ];
+
+  // Combined modes array — layout metadata + localised strings keyed
+  // by the mode id.  Same shape the rest of this view consumes (name,
+  // desc, tooltip), so the JSX below is unchanged.
+  const modes = modesMeta.map(m => {
+    const strings = t.modes[m.id as GameModeId];
+    return {
+      ...m,
+      name: strings.name,
+      desc: strings.desc,
+      tooltip: strings.tooltip as unknown as string[],
+    };
+  });
 
   const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
   const filteredModes = modes.filter(m => allowedModes.includes(m.id));
@@ -150,8 +172,8 @@ export default function GameModeSelectionView({
         <button
           onClick={handleExitGame}
           className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
-          aria-label="Close mode selection"
-          title="Close mode selection"
+          aria-label={t.closeAria}
+          title={t.closeAria}
         >
           <X size={28} />
         </button>
@@ -161,8 +183,8 @@ export default function GameModeSelectionView({
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 sm:mb-10 mt-4 sm:mt-0"
         >
-          <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">Choose Your Mode</h2>
-          <p className="text-stone-500 text-base sm:text-xl font-medium">Start with Flashcards to learn — then practise with the other modes.</p>
+          <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">{t.chooseYourMode}</h2>
+          <p className="text-stone-500 text-base sm:text-xl font-medium">{t.tagline}</p>
         </motion.div>
 
         {/* Learning hero — Flashcards is promoted above the practice grid
@@ -194,7 +216,7 @@ export default function GameModeSelectionView({
               <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
                 <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
                   <Sparkles size={12} />
-                  Start here · Learn first
+                  {t.startHereBadge}
                 </span>
                 {(isCompleted || isQpLocked) && (
                   <span className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
@@ -220,7 +242,7 @@ export default function GameModeSelectionView({
 
         {practiceModes.length > 0 && (
           <div className="mb-3 text-left">
-            <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">Then practise with</p>
+            <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">{t.thenPractiseWith}</p>
           </div>
         )}
 

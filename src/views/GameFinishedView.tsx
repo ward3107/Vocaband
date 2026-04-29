@@ -6,6 +6,8 @@ import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
+import { useLanguage } from "../hooks/useLanguage";
+import { gameFinishedT } from "../locales/student/game-finished";
 import type { View } from "../core/views";
 
 // Unbiased secure random integer in [0, max).
@@ -126,8 +128,15 @@ export default function GameFinishedView({
   const t = activeThemeConfig.colors;
   const isDark = t.bg.includes('gray-9') || t.bg.includes('gray-950');
 
+  // i18n strings — all visible chrome lives in the locale file.
+  // Uses `tt` to avoid colliding with the existing theme variable `t`.
+  const { language, dir } = useLanguage();
+  const tt = gameFinishedT[language];
+  const displayName = user?.displayName || "";
+  const fillName = (template: string) => template.replace("{name}", displayName);
+
   return (
-    <div className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
+    <div dir={dir} className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -135,39 +144,24 @@ export default function GameFinishedView({
       >
         <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
       </motion.div>
-      <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>{
-        [
-          `Kol Hakavod, ${user?.displayName}!`,
-          `Amazing work, ${user?.displayName}!`,
-          `You crushed it, ${user?.displayName}!`,
-          `${user?.displayName}, you're a star!`,
-          `Incredible, ${user?.displayName}!`,
-          `Way to go, ${user?.displayName}!`,
-          `${user?.displayName} is on fire!`,
-          `Bravo, ${user?.displayName}!`,
-        ][secureRandomInt( 8)]
-      }</h1>
-      <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>{
-        [
-          "You finished the assignment!",
-          "Another challenge conquered!",
-          "Your vocabulary is growing!",
-          "Keep this momentum going!",
-          "You're making great progress!",
-        ][secureRandomInt( 5)]
-      }</p>
+      <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>
+        {fillName(tt.headlines[secureRandomInt(tt.headlines.length)])}
+      </h1>
+      <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+        {tt.subtitles[secureRandomInt(tt.subtitles.length)]}
+      </p>
       <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
         <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
-          <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Final Score</p>
+          <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.finalScore}</p>
           <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
         </div>
         <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
-          <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>Total XP</p>
+          <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.totalXp}</p>
           <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
         </div>
         {streak > 0 && (
           <div className={`${t.card} p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
-            <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">Streak</p>
+            <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">{tt.streak}</p>
             <p className="text-5xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
           </div>
         )}
@@ -175,13 +169,13 @@ export default function GameFinishedView({
       {/* Accuracy summary */}
       {gameWords.length > 0 && (
         <div className={`${t.card} rounded-2xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
-          <span className="font-bold">{gameWords.length - mistakes.length}</span> / {gameWords.length} correct
-          {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">({mistakes.length} to review)</span>}
+          {tt.correctOf(gameWords.length - mistakes.length, gameWords.length)}
+          {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">{tt.toReview(mistakes.length)}</span>}
         </div>
       )}
       {badges.length > 0 && (
         <div className="mb-8">
-          <p className={`text-xs font-black ${isDark ? 'text-gray-500' : 'text-stone-400'} uppercase mb-4 tracking-widest`}>Badges Earned</p>
+          <p className={`text-xs font-black ${isDark ? 'text-gray-500' : 'text-stone-400'} uppercase mb-4 tracking-widest`}>{tt.badgesEarned}</p>
           <div className="flex flex-wrap justify-center gap-3">
             {badges.map(badge => (
               <motion.div
@@ -200,7 +194,7 @@ export default function GameFinishedView({
       {isSaving ? (
         <div className="flex items-center gap-2 text-yellow-600 mb-4">
           <RefreshCw className="animate-spin" size={18} />
-          <span className="font-semibold">Saving your score...</span>
+          <span className="font-semibold">{tt.savingScore}</span>
         </div>
       ) : saveError ? (
         <div className="flex items-center gap-2 text-red-500 mb-4">
@@ -223,7 +217,7 @@ export default function GameFinishedView({
         className={`${t.card} rounded-[28px] shadow-2xl border ${isDark ? 'border-gray-700' : 'border-stone-200'} p-5 sm:p-6 w-full max-w-md`}
       >
         <p className={`text-[11px] font-black uppercase tracking-widest text-center mb-3 ${isDark ? 'text-gray-400' : 'text-stone-400'}`}>
-          What's next?
+          {tt.whatsNext}
         </p>
 
         <div className="flex flex-col gap-2.5">
@@ -247,7 +241,7 @@ export default function GameFinishedView({
                 className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 <Grid3X3 size={20} />
-                Play Another Mode
+                {tt.playAnotherMode}
               </button>
               <button
                 onClick={() => {
@@ -260,7 +254,7 @@ export default function GameFinishedView({
                 className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-stone-700 border-2 border-stone-200 hover:bg-stone-50'}`}
               >
                 <LogOut size={16} />
-                Exit Quick Play
+                {tt.exitQuickPlay}
               </button>
             </>
           ) : (
@@ -274,7 +268,7 @@ export default function GameFinishedView({
                 className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 <RefreshCw size={20} />
-                Try Again
+                {tt.tryAgain}
               </button>
 
               {/* Secondary — Back to Game Modes.  Keeps the student
@@ -292,7 +286,7 @@ export default function GameFinishedView({
                 className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600' : 'bg-white text-stone-900 border-2 border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
               >
                 <Grid3X3 size={18} />
-                Choose Another Mode
+                {tt.chooseAnotherMode}
               </button>
 
               {/* Review missed words — only when mistakes > 0. */}
@@ -310,7 +304,7 @@ export default function GameFinishedView({
                   style={{ touchAction: 'manipulation' }}
                   className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-rose-900/40 text-rose-200 hover:bg-rose-900/60' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`}
                 >
-                  Review {mistakes.length} Missed Word{mistakes.length > 1 ? 's' : ''}
+                  {tt.reviewMissedWord(mistakes.length)}
                 </button>
               )}
 
@@ -327,7 +321,7 @@ export default function GameFinishedView({
                 className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}
               >
                 <Home size={14} />
-                Back to Dashboard
+                {tt.backToDashboard}
               </button>
             </>
           )}

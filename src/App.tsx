@@ -1872,23 +1872,13 @@ export default function App() {
     goBack,
     onPublicNavigate: handlePublicNavigate,
     onTeacherOAuth: () => {
-      // Stamp the user's intent BEFORE the Google redirect so we can
-      // honour it on the way back.  Without this, "Log in as Teacher"
-      // and "Sign in with Google" on the student page fire the same
-      // OAuth flow — and restoreSession then routes based purely on
-      // whatever role exists in the users table for that email.  If
-      // the Google account has a student profile, the teacher button
-      // silently logs you in as the student.  Not good.
-      //
-      // After OAuth returns, restoreSession reads this flag and will
-      // refuse to complete login when the intent is 'teacher' but the
-      // found profile is not a teacher — the user sees an error and
-      // stays signed out instead of being dropped into the wrong role.
-      writeIntendedRole('teacher');
-      supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin },
-      });
+      // Was: inline writeIntendedRole + signInWithOAuth.
+      // Now: navigate to the new self-contained TeacherLoginView,
+      // which renders BOTH options (Google + email-OTP code).  The
+      // intended-role stamp + OAuth call moved into
+      // TeacherLoginCard so all teacher-auth concerns live in one
+      // place outside App.tsx.  See src/components/TeacherLoginCard.tsx.
+      setView('teacher-login');
     },
     configErrorBanner,
     cookieBannerOverlay,

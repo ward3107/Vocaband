@@ -11,6 +11,7 @@ export type View =
   | "public-privacy"
   | "public-security"
   | "accessibility-statement"
+  | "teacher-login"
   | "student-account-login"
   | "student-pending-approval"
   | "landing"

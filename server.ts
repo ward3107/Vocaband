@@ -802,13 +802,65 @@ async function startServer() {
         return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
       }
 
-      // If another live clientId has the same nickname, reject. Lets us
-      // keep nicknames unique per session without polluting the progress
-      // table like the old flow did.
-      for (const entry of state.students.values()) {
-        if (entry.clientId !== clientId && entry.nickname.toLowerCase() === nickname.toLowerCase()) {
-          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "nickname_taken", "that nickname is already in this session");
+      // Nickname adoption — same-nickname re-join.
+      //
+      // Before this change: a student who lost connection (back button,
+      // tab close, network blip) and re-scanned the QR with the SAME
+      // nickname was rejected with "nickname_taken" because they
+      // arrived with a fresh clientId (sessionStorage doesn't survive
+      // a closed tab) and the old slot was still in state.students.
+      //
+      // After: same-nickname re-joiners ADOPT the existing slot.
+      // Their score / avatar / authUid carry over.  The old socket
+      // (if still connected) is force-disconnected so two devices
+      // can't play as the same nickname simultaneously.
+      //
+      // Kick still wins.  If the old clientId was kicked, the new
+      // clientId inherits the kick — kicks are per-PLAYER, not
+      // per-DEVICE, so a teacher's removal sticks across reconnects.
+      // The teacher must explicitly un-kick (end session + restart)
+      // to let the player back in.
+      let adoptedFrom: string | null = null;
+      for (const [oldClientId, entry] of state.students.entries()) {
+        if (oldClientId !== clientId && entry.nickname.toLowerCase() === nickname.toLowerCase()) {
+          if (state.kickedClientIds.has(oldClientId)) {
+            // Old slot was kicked — the new clientId is just a fresh
+            // device for the same kicked player.  Mark them too so
+            // re-scanning won't bypass the kick.
+            state.kickedClientIds.add(clientId);
+            socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
+            return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
+          }
+          adoptedFrom = oldClientId;
+          break;
         }
+      }
+
+      if (adoptedFrom) {
+        const oldEntry = state.students.get(adoptedFrom)!;
+        // Lift the old slot into the new clientId, preserving
+        // gameplay state.  Avatar from the new payload wins (kid
+        // may have re-picked it on the join screen) but score and
+        // authUid carry forward.
+        state.students.delete(adoptedFrom);
+        state.students.set(clientId, {
+          clientId,
+          nickname: oldEntry.nickname,
+          avatar: avatar || oldEntry.avatar,
+          score: oldEntry.score,
+          lastSeen: Date.now(),
+          authUid: oldEntry.authUid,
+        });
+        // Boot the OLD socket if it's still hanging around so the
+        // ghost device doesn't keep playing under the same name.
+        for (const [sockId, cId] of Array.from(state.socketToClient.entries())) {
+          if (cId === adoptedFrom) {
+            const oldSock = qpIo.sockets.get(sockId);
+            if (oldSock) oldSock.disconnect(true);
+            state.socketToClient.delete(sockId);
+          }
+        }
+        console.log(`[QP JOIN adopt] session=${sessionCode} nickname=${nickname} oldClient=${adoptedFrom.slice(0, 8)} newClient=${clientId.slice(0, 8)} score=${oldEntry.score}`);
       }
 
       if (!state.students.has(clientId) && state.students.size >= QP_MAX_STUDENTS_PER_SESSION) {
