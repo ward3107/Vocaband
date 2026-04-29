@@ -1589,8 +1589,15 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         setOcrErrorMessage(null); // generic "no words" text is fine here
         setOcrState('error');
       } else {
-        setExtractedWords(result.words);
-        setOcrState('success');
+        // Skip the in-modal review step — it was vanishing on some mobile
+        // browsers (Chrome on Android can recycle the page when returning
+        // from the camera intent on memory-constrained devices), losing
+        // the extracted words.  Add them straight to the assignment word
+        // list instead.  The teacher can still edit / remove individual
+        // words from the selected-words list (each card has its own
+        // edit + trash buttons), so we lose nothing by skipping the
+        // intermediate review.
+        handleConfirmOcr(result.words);
       }
     } catch (error) {
       if (progressInterval) clearInterval(progressInterval);
@@ -1653,7 +1660,14 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
     const totalAdded = newCurriculumWords.length + customWords.length;
     onSelectedWordsChange([...selectedWords, ...newCurriculumWords, ...customWords]);
+    // Reset everything so the next OCR run starts from a clean idle
+    // state — was previously left in 'success' so reopening the modal
+    // showed stale extracted words from the previous run.
     setOcrModalOpen(false);
+    setOcrState('idle');
+    setExtractedWords([]);
+    setOcrErrorMessage(null);
+    setOcrProgress(0);
 
     if (totalAdded === 0) {
       showToast?.('No new words to add — all items already selected.', 'info');
