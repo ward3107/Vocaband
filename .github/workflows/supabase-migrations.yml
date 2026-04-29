@@ -107,14 +107,33 @@ jobs:
         # reverted so the CLI ignores them and pushes only the current
         # local migrations. `|| true` keeps the step idempotent — once
         # the rows are gone, repair returns non-zero and we don't care.
+        #
+        # When the CLI's `db push` fails with the same error citing
+        # NEW phantom versions, the fix is to add them here.  The
+        # error message itself tells you the exact versions to add —
+        # copy them out of the action log into this list.  After the
+        # next CI run marks them reverted, the corresponding LOCAL
+        # 14-digit files (e.g. 20260406120000_*.sql) will be applied
+        # cleanly on subsequent pushes.
+        #
+        # 2026-04-28: extended with the 7-version list from the CI
+        # error log after today's migration burst pushed schema_
+        # migrations into a conflicting state.
         run: |
           supabase migration repair --status reverted \
             20260325 \
             20260403142757 \
+            20260406 \
+            20260409 \
             20260410093834 \
             20260410093847 \
             20260410093922 \
-            20260410102931 || echo "No phantom entries to repair (already clean)."
+            20260410102931 \
+            20260417 \
+            20260424 \
+            20260425 \
+            20260428 \
+            20260517 || echo "No phantom entries to repair (already clean)."
 
       - name: Mark already-applied migrations as applied
         # Every local migration's SQL body is idempotent (CREATE TABLE
