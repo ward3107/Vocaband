@@ -2805,6 +2805,7 @@ export default function App() {
           badges={badges}
           mistakes={mistakes}
           gameWords={gameWords}
+          quickPlaySessionCode={quickPlayActiveSession?.sessionCode}
           isSaving={isSaving}
           saveError={saveError}
           toasts={toasts}
