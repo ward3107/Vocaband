@@ -1,18 +1,22 @@
 /**
  * RatingPrompt — first-impression NPS-style rating modal.
  *
- * Fires once per user, gated by trigger logic in the parent.  Stores
- * the response on `users.first_rating` (1-5) + `users.first_rating_at`,
- * or `users.rating_dismissed_at` if the user closes without rating.
+ * Two storage modes:
  *
- * Two visual variants:
+ *  1. AUTHENTICATED (default) — writes to public.users.first_rating
+ *     for the calling user.  Used by teachers + signed-in students.
+ *     `users.first_rating_at` + `users.rating_dismissed_at` track
+ *     the prompt's lifecycle.
+ *
+ *  2. GUEST (when `guestStorage` prop is supplied) — writes to
+ *     public.quick_play_ratings keyed by (session_code, nickname).
+ *     Used by Quick Play guests who have NO users row.  Dismissals
+ *     are tracked in localStorage so we don't re-prompt the same
+ *     guest in the same session.
+ *
+ * Visual variants:
  *   - kind="teacher" — 5-star UI, copy aimed at teachers.
  *   - kind="student" — 5-emoji UI (😡😕😐🙂😍), copy aimed at students.
- *
- * Why one component for both: the storage shape is identical, the
- * trigger conditions differ.  Trying to share emoji↔star UI would
- * have been hostile to both audiences.  Two short JSX branches is
- * the cheaper read.
  *
  * Accessibility: every interactive element has aria-label; the dialog
  * is keyboard-traversable; Esc closes (counts as dismiss).
@@ -26,6 +30,21 @@ import type { AppUser } from "../core/supabase";
 interface RatingPromptProps {
   user: AppUser;
   kind: "teacher" | "student";
+  /**
+   * Optional guest-storage context.  When provided, the rating is
+   * written to public.quick_play_ratings instead of public.users.
+   * Used for Quick Play guests who have no users row.
+   *
+   * `dismissedKey` is a localStorage key that's set to '1' when the
+   * guest dismisses (so they don't get re-prompted in the same
+   * session).  Caller is responsible for checking it BEFORE
+   * mounting the prompt.
+   */
+  guestStorage?: {
+    sessionCode: string;
+    nickname: string;
+    dismissedKey: string;
+  };
   /** Called after a successful submit OR dismiss so the parent
    *  removes the trigger condition.  Local state on the parent is
    *  the parent's job; this component just hides itself. */
@@ -34,7 +53,7 @@ interface RatingPromptProps {
 
 const STUDENT_EMOJIS = ["😡", "😕", "😐", "🙂", "😍"];
 
-export default function RatingPrompt({ user, kind, onDone }: RatingPromptProps) {
+export default function RatingPrompt({ user, kind, guestStorage, onDone }: RatingPromptProps) {
   const [open, setOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -51,33 +70,60 @@ export default function RatingPrompt({ user, kind, onDone }: RatingPromptProps) 
   const handleSubmit = async (rating: number) => {
     if (submitting) return;
     setSubmitting(true);
-    // Best-effort write.  If the network fails we still close the
-    // modal — re-asking on every load would feel like a bug.  The
-    // dismissed_at write below catches that fallback.
-    const { error } = await supabase
-      .from("users")
-      .update({
-        first_rating: rating,
-        first_rating_at: new Date().toISOString(),
-      })
-      .eq("uid", user.uid);
-    if (error) {
-      console.warn("[rating] save failed, falling back to dismissed_at:", error);
-      await supabase
+
+    if (guestStorage) {
+      // Guest path — write to quick_play_ratings.  Public INSERT
+      // policy with active-session check (see migration
+      // 20260428150000).  Unique constraint on (session_code,
+      // nickname) means a re-rate triggers 23505 — treat as
+      // "already rated, dismiss the modal".
+      const { error } = await supabase
+        .from("quick_play_ratings")
+        .insert({
+          session_code: guestStorage.sessionCode,
+          nickname: guestStorage.nickname,
+          rating,
+        });
+      if (error && error.code !== "23505") {
+        console.warn("[rating] guest save failed:", error);
+      }
+      try { localStorage.setItem(guestStorage.dismissedKey, "1"); } catch { /* ignore */ }
+    } else {
+      // Authenticated path — write to users.first_rating.
+      const { error } = await supabase
         .from("users")
-        .update({ rating_dismissed_at: new Date().toISOString() })
+        .update({
+          first_rating: rating,
+          first_rating_at: new Date().toISOString(),
+        })
         .eq("uid", user.uid);
+      if (error) {
+        console.warn("[rating] save failed, falling back to dismissed_at:", error);
+        await supabase
+          .from("users")
+          .update({ rating_dismissed_at: new Date().toISOString() })
+          .eq("uid", user.uid);
+      }
     }
+
     setOpen(false);
     setTimeout(onDone, 300);
   };
 
   const handleDismiss = async () => {
     if (submitting) return;
-    await supabase
-      .from("users")
-      .update({ rating_dismissed_at: new Date().toISOString() })
-      .eq("uid", user.uid);
+
+    if (guestStorage) {
+      // Guest dismiss — localStorage only, no DB write.
+      try { localStorage.setItem(guestStorage.dismissedKey, "1"); } catch { /* ignore */ }
+    } else {
+      // Authenticated dismiss — write rating_dismissed_at.
+      await supabase
+        .from("users")
+        .update({ rating_dismissed_at: new Date().toISOString() })
+        .eq("uid", user.uid);
+    }
+
     setOpen(false);
     setTimeout(onDone, 300);
   };

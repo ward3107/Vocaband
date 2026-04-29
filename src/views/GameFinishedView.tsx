@@ -39,6 +39,11 @@ interface GameFinishedViewProps {
   gameWords: Word[];
   isSaving: boolean;
   saveError: string | null;
+  /** Optional Quick Play context. When the player is a QP guest, this
+   *  carries the active session_code so the rating prompt can write to
+   *  public.quick_play_ratings instead of users.first_rating (guests
+   *  have no users row). Caller passes undefined for non-QP games. */
+  quickPlaySessionCode?: string;
   toasts: Toast[];
   confirmDialog: ConfirmDialogState;
   setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
@@ -59,7 +64,7 @@ interface GameFinishedViewProps {
 
 export default function GameFinishedView({
   user, score, xp, streak, badges, mistakes, gameWords,
-  isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
+  isSaving, saveError, quickPlaySessionCode, toasts, confirmDialog, setConfirmDialog,
   setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
   setWordAttempts, setHiddenOptions, setSpellingInput,
   setAssignmentWords, setShowModeSelection, setView,
@@ -67,12 +72,36 @@ export default function GameFinishedView({
 }: GameFinishedViewProps) {
   const isGuest = !!user?.isGuest;
 
-  // ─── First-rating prompt for students ──────────────────────────────
-  // Fire ONCE at the moment of success — first game with a passing
-  // score (≥70).  Skip for guests (no users row to write to) and for
-  // anyone who already rated or dismissed within the last 7 days.
+  // ─── Rating prompt for students ────────────────────────────────────
+  //
+  // AUTHENTICATED student: fire ONCE at the moment of success — first
+  // game with a passing score (≥70).  Skip if already rated or dismissed
+  // within the last 7 days.  Writes to users.first_rating.
+  //
+  // QUICK PLAY GUEST: fire after EVERY game finished in QP (still
+  // gated on score ≥ 70 to capture happy-moment ratings).  Writes to
+  // quick_play_ratings.  Per-session dismiss tracked in localStorage
+  // so we don't re-prompt the same guest twice in the same session.
   const [ratingDismissedThisSession, setRatingDismissedThisSession] = useState(false);
-  const eligibleForRating =
+
+  // Localstorage key for guest "I already dismissed in this QP session".
+  const guestRatingKey = quickPlaySessionCode && user?.displayName
+    ? `vocaband_qp_rated_${quickPlaySessionCode}`
+    : null;
+  const guestAlreadyHandled = (() => {
+    if (!guestRatingKey) return false;
+    try { return localStorage.getItem(guestRatingKey) === "1"; } catch { return false; }
+  })();
+
+  const eligibleForGuestRating =
+    !!user &&
+    isGuest &&
+    !!quickPlaySessionCode &&
+    score >= 70 &&
+    !ratingDismissedThisSession &&
+    !guestAlreadyHandled;
+
+  const eligibleForUserRating =
     !!user &&
     !isGuest &&
     user.firstRating == null &&
@@ -337,13 +366,24 @@ export default function GameFinishedView({
       {/* Error Tracking Panel (Debug Mode) */}
       <ErrorTrackingPanel />
 
-      {/* First-rating prompt (students) — fires once after a passing
-          first game (score ≥ 70).  Guests skipped (no users row).  See
-          eligibleForRating for the full gate. */}
-      {eligibleForRating && user && (
+      {/* Rating prompt — two paths:
+          - AUTHENTICATED student: writes to users.first_rating.
+          - QUICK PLAY GUEST: writes to quick_play_ratings keyed by
+            (session_code, nickname).  Per-session dismiss in
+            localStorage so we don't nag during the same QP. */}
+      {(eligibleForUserRating || eligibleForGuestRating) && user && (
         <RatingPrompt
           user={user}
           kind="student"
+          guestStorage={
+            eligibleForGuestRating && quickPlaySessionCode && guestRatingKey
+              ? {
+                  sessionCode: quickPlaySessionCode,
+                  nickname: user.displayName || "Anonymous",
+                  dismissedKey: guestRatingKey,
+                }
+              : undefined
+          }
           onDone={() => setRatingDismissedThisSession(true)}
         />
       )}

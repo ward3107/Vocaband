@@ -651,10 +651,14 @@ interface OcrModalProps {
   extractedWords: string[];
   onConfirm: (words: string[]) => void;
   onEditWord: (index: number, value: string) => void;
+  /** When state==='error', show the real error reason instead of
+   *  the generic "No words detected" message.  Surfaced 2026-04-28
+   *  after teacher reported "doesn't work" with no signal at all. */
+  errorMessage?: string;
 }
 
 const OcrModal: React.FC<OcrModalProps> = ({
-  isOpen, onClose, onUpload, state, progress, extractedWords, onConfirm, onEditWord
+  isOpen, onClose, onUpload, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
 }) => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -838,17 +842,20 @@ const OcrModal: React.FC<OcrModalProps> = ({
             </div>
           )}
 
-          {/* Error State */}
+          {/* Error State — shows the REAL error when available,
+              not just the generic "no words detected" string.  Helps
+              teachers (and us) diagnose whether it's a network /
+              auth / server / camera failure on mobile. */}
           {state === 'error' && (
             <div className="text-center py-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-100 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-rose-500" />
               </div>
               <p className="text-stone-700 font-medium mb-2">
-                {TEXT.ocrError}
+                {errorMessage ? 'Something went wrong' : TEXT.ocrError}
               </p>
-              <p className="text-sm text-stone-500 mb-4">
-                {TEXT.ocrErrorDesc}
+              <p className="text-sm text-stone-500 mb-4 max-w-xs mx-auto break-words">
+                {errorMessage || TEXT.ocrErrorDesc}
               </p>
               <button
                 onClick={onClose}
@@ -1464,6 +1471,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   // OCR State
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
   const [ocrState, setOcrState] = useState<OcrState>('idle');
+  // Real error message captured when OCR fails -- replaces the
+  // previous silent catch-then-set-error-state pattern that left
+  // teachers staring at a generic "no words detected" with zero
+  // signal about what actually broke.
+  const [ocrErrorMessage, setOcrErrorMessage] = useState<string | null>(null);
   const [ocrProgress, setOcrProgress] = useState(0);
   const [extractedWords, setExtractedWords] = useState<string[]>([]);
 
@@ -1533,31 +1545,49 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   // OCR Upload handler
   const handleOcrUpload = useCallback(async (file: File) => {
-    if (!onOcrUpload) return;
+    if (!onOcrUpload) {
+      console.warn('[OCR] no onOcrUpload prop wired -- nothing will happen');
+      showToast?.('OCR is not available right now', 'error');
+      return;
+    }
 
     setOcrState('uploading');
     setOcrProgress(0);
+    setOcrErrorMessage(null);
+    console.log(`[OCR] starting upload: ${file.name} (${Math.round(file.size / 1024)} KB, ${file.type})`);
 
+    let progressInterval: ReturnType<typeof setInterval> | null = null;
     try {
       // Simulate progress
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setOcrProgress(p => Math.min(p + 10, 90));
       }, 100);
 
       const result = await onOcrUpload(file);
-      clearInterval(progressInterval);
+      if (progressInterval) clearInterval(progressInterval);
       setOcrProgress(100);
 
+      console.log(`[OCR] upload complete: ${result.words.length} words extracted`);
+
       if (result.words.length === 0) {
+        setOcrErrorMessage(null); // generic "no words" text is fine here
         setOcrState('error');
       } else {
         setExtractedWords(result.words);
         setOcrState('success');
       }
     } catch (error) {
+      if (progressInterval) clearInterval(progressInterval);
+      // Surface the real reason — teachers were stuck staring at the
+      // generic "No words detected" with no idea whether the picture
+      // failed to upload, the server choked, or auth was stale.
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[OCR] upload FAILED:', message, error);
+      setOcrErrorMessage(message);
       setOcrState('error');
+      showToast?.(`OCR failed: ${message}`, 'error');
     }
-  }, [onOcrUpload]);
+  }, [onOcrUpload, showToast]);
 
   const handleEditOcrWord = useCallback((index: number, value: string) => {
     setExtractedWords(prev => {
@@ -1862,6 +1892,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           setOcrModalOpen(false);
           setOcrState('idle');
           setExtractedWords([]);
+          setOcrErrorMessage(null);
         }}
         onUpload={handleOcrUpload}
         state={ocrState}
@@ -1869,6 +1900,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         extractedWords={extractedWords}
         onConfirm={handleConfirmOcr}
         onEditWord={handleEditOcrWord}
+        errorMessage={ocrErrorMessage ?? undefined}
       />
 
       {/* Topic Packs Panel */}
