@@ -71,6 +71,30 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-slate-800 to-indigo-900',
     dark: true,
   },
+  {
+    id: 'ocean',
+    name: 'Ocean',
+    emoji: '🌊',
+    bg: 'bg-gradient-to-b from-sky-50 via-cyan-50 to-blue-50',
+    swatch: 'bg-gradient-to-br from-sky-300 to-blue-500',
+    dark: false,
+  },
+  {
+    id: 'berry',
+    name: 'Berry',
+    emoji: '🍇',
+    bg: 'bg-gradient-to-b from-violet-50 via-fuchsia-50 to-purple-50',
+    swatch: 'bg-gradient-to-br from-violet-400 to-fuchsia-500',
+    dark: false,
+  },
+  {
+    id: 'autumn',
+    name: 'Autumn',
+    emoji: '🍂',
+    bg: 'bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50',
+    swatch: 'bg-gradient-to-br from-orange-400 to-red-500',
+    dark: false,
+  },
 ];
 
 /** Look up a theme by id, falling back to 'default' if the id is

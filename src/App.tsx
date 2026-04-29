@@ -28,6 +28,7 @@ import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
+import PwaInstallBanner from "./components/PwaInstallBanner";
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
@@ -1827,9 +1828,17 @@ export default function App() {
 
   // Global cookie banner — renders on top of ANY view until accepted
   // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
-  const cookieBannerOverlay = showCookieBanner && !user ? (
-    <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
-  ) : null;
+  // Also bundles the mobile PWA install banner — fully self-gated (mobile-only,
+  // not-installed-only, not-recently-dismissed) so it costs nothing on
+  // teacher desktops or already-installed PWAs.
+  const cookieBannerOverlay = (
+    <>
+      {showCookieBanner && !user && (
+        <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
+      )}
+      <PwaInstallBanner />
+    </>
+  );
 
   // Image crop modal for OCR — shown when user picks a photo, before uploading
   const ocrCropModal = ocrPendingFile ? (

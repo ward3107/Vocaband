@@ -1450,6 +1450,24 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const selectedWordsRef = useRef<HTMLDivElement>(null);
+  // OCR / panels set this true when they add words; the effect below
+  // scrolls to selectedWordsRef once the section has actually mounted.
+  // (A naive setTimeout-based scroll fails on first add because the
+  // ref target is conditionally rendered behind selectedWords.length.)
+  const [shouldScrollToSelected, setShouldScrollToSelected] = useState(false);
+  useEffect(() => {
+    if (!shouldScrollToSelected) return;
+    if (selectedWords.length === 0) return;
+    const node = selectedWordsRef.current;
+    if (!node) return;
+    // Wait one frame so the section's children paint before the scroll
+    // animation starts — feels smoother on Android.
+    const id = requestAnimationFrame(() => {
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setShouldScrollToSelected(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [shouldScrollToSelected, selectedWords.length]);
 
   // Language preference for translations
   const [translationLang, setTranslationLang] = useState<TranslationLang>('both');
@@ -1522,10 +1540,8 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       if (newWords.length > 0) {
         onSelectedWordsChange([...selectedWords, ...newWords]);
         showToast?.(`Added ${newWords.length} words`, 'success');
-        // Scroll to selected words section after a short delay for re-render
-        setTimeout(() => {
-          selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        // Same flag-based scroll as handleConfirmOcr / handleAddWords.
+        setShouldScrollToSelected(true);
       } else {
         showToast?.('No new words found', 'info');
       }
@@ -1651,12 +1667,14 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
     // On mobile the wizard scrolls past the viewport — without this the
     // newly added words land off-screen and the teacher sees only a
-    // toast.  Scroll to the "N words selected" section so they get
-    // visual confirmation, same as Topic Packs / Saved Groups do.
+    // toast.  Set a flag instead of scrolling synchronously: the
+    // selectedWordsRef target is conditionally rendered, so on first
+    // OCR (selectedWords starts empty) a setTimeout would fire before
+    // React commits and the ref would still be null.  The useEffect
+    // below watches selectedWords.length and scrolls once the section
+    // has actually mounted.
     if (totalAdded > 0) {
-      setTimeout(() => {
-        selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
+      setShouldScrollToSelected(true);
     }
   }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
@@ -1667,14 +1685,9 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     if (newWords.length > 0) {
       onSelectedWordsChange([...selectedWords, ...newWords]);
       showToast?.(`Added ${newWords.length} words`, 'success');
-      // Scroll to the "N words selected" section so the teacher actually
-      // sees the new words land. Without this the Topic Packs / Saved
-      // Groups modals close back onto the source-cards view and the
-      // teacher has no visual confirmation — it feels like nothing happened.
-      // Short timeout so the section has mounted/rerendered first.
-      setTimeout(() => {
-        selectedWordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      // Same trick as handleConfirmOcr — flag-based scroll via the
+      // useEffect that waits for the section to mount.
+      setShouldScrollToSelected(true);
     } else {
       showToast?.('Those words are already selected', 'info');
     }
@@ -1763,9 +1776,15 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         />
       </div>
 
-      {/* Selected Words Section */}
+      {/* Selected Words Section.  The ref-wrapper div is rendered
+          UNCONDITIONALLY so post-add scrollIntoView() has a real DOM
+          target even on the very first add (e.g. OCR is the first
+          word source — selectedWords starts empty, so a conditional
+          wrapper would mean the ref is null when handleConfirmOcr
+          tries to scroll). */}
+      <div ref={selectedWordsRef}>
       {selectedWords.length > 0 && (
-        <div ref={selectedWordsRef}>
+        <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1861,8 +1880,9 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
             </AnimatePresence>
           </div>
         </motion.div>
-        </div>
+        </>
       )}
+      </div>
 
       {/* Continue Button */}
       {selectedWords.length > 0 && (
