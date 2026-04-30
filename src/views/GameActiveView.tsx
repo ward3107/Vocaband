@@ -6,6 +6,35 @@ import type { LeaderboardEntry } from "../core/types";
 import { THEMES } from "../constants/game";
 import { useLanguage } from "../hooks/useLanguage";
 import { gameActiveT } from "../locales/student/game-active";
+import { getThemeColors, type GameThemeColor } from "../components/game/GameShell";
+
+/** Phase-3 redesign: each mode picks a theme colour from the palette
+ *  defined in `src/components/game/GameShell.tsx` (and indirectly the
+ *  modeThemes table in GameModeIntroView).  The colour drives the
+ *  prompt-card hero gradient, the mode-label pill, and the answer
+ *  cards' resting-state border.  Modes not yet in the redesign queue
+ *  fall through to undefined and keep their legacy stone styling. */
+const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
+  classic: "emerald",
+  listening: "emerald",
+  reverse: "emerald",
+};
+
+/** Short uppercase label shown in the top pill of every game.  Falls
+ *  back to the gameMode string raw if a label isn't yet defined. */
+const MODE_LABEL: Record<string, string> = {
+  classic: "Classic",
+  listening: "Listening",
+  reverse: "Reverse",
+  spelling: "Spelling",
+  matching: "Matching",
+  "true-false": "True / False",
+  flashcards: "Flashcards",
+  scramble: "Scramble",
+  "letter-sounds": "Letter Sounds",
+  "sentence-builder": "Sentence Builder",
+  "fill-blank": "Fill in the Blank",
+};
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
 import ClassicModeGame from "../components/ClassicModeGame";
@@ -102,6 +131,8 @@ export default function GameActiveView({
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
   const { language } = useLanguage();
   const t = gameActiveT[language];
+  const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
+  const modeLabel = MODE_LABEL[gameMode] ?? gameMode;
 
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
@@ -116,6 +147,7 @@ export default function GameActiveView({
           gameWordsCount={gameWords.length}
           currentIndex={currentIndex}
           onAnswer={handleAnswer}
+          themeColor={modeTheme}
         />
       );
     }
@@ -265,6 +297,21 @@ export default function GameActiveView({
                     the prompt — the standard WordPromptCard would show
                     `currentWord.english` (or its translation) and
                     instantly expose the answer.  Hide it for that mode. */}
+                {/* Phase-3 redesign (2026-04-30): mode-label pill at
+                    the very top of the answer card, theme-coloured
+                    when the mode has a theme assigned in MODE_THEME.
+                    Modes without a theme (yet) don't render the pill
+                    so the legacy layout for them stays unchanged. */}
+                {modeTheme && (
+                  <div className="flex justify-center mb-3 sm:mb-4">
+                    <span
+                      className={`inline-block ${getThemeColors(modeTheme).pillBg} ${getThemeColors(modeTheme).pillText} font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-sm`}
+                    >
+                      {modeLabel}
+                    </span>
+                  </div>
+                )}
+
                 {gameMode !== "fill-blank" && (
                   <WordPromptCard
                     currentIndex={currentIndex}
@@ -276,6 +323,7 @@ export default function GameActiveView({
                     isFlipped={isFlipped}
                     scrambledWord={scrambledWord}
                     speakWord={speakWord}
+                    themeColor={modeTheme}
                   />
                 )}
 
