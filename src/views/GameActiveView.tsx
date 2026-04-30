@@ -4,6 +4,8 @@ import type { AppUser, AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { LeaderboardEntry } from "../core/types";
 import { THEMES } from "../constants/game";
+import { useLanguage } from "../hooks/useLanguage";
+import { gameActiveT } from "../locales/student/game-active";
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
 import ClassicModeGame from "../components/ClassicModeGame";
@@ -98,6 +100,8 @@ export default function GameActiveView({
   handleSentenceCheck, speakWord, speak, shuffle,
 }: GameActiveViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
 
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
@@ -188,8 +192,8 @@ export default function GameActiveView({
           <button
             onClick={() => setSaveError(null)}
             className="ml-1 hover:opacity-75"
-            aria-label="Dismiss error message"
-            title="Dismiss error message"
+            aria-label={t.dismissError}
+            title={t.dismissError}
           >
             <X size={16} />
           </button>
@@ -299,7 +303,7 @@ export default function GameActiveView({
               value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
             />
             <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">
-              Word {currentIndex + 1} of {gameWords.length}
+              {t.wordOfTotal(currentIndex + 1, gameWords.length)}
             </p>
           </div>
         </div>
