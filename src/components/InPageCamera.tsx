@@ -24,16 +24,21 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Camera, X, AlertTriangle, RefreshCw } from "lucide-react";
+import { Camera, X, AlertTriangle, RefreshCw, Image as ImageIcon } from "lucide-react";
 
 export interface InPageCameraProps {
   /** Called with a JPEG File when the user captures a frame. */
   onCapture: (file: File) => void;
   /** Called when the user dismisses the camera without capturing. */
   onCancel: () => void;
+  /** Optional fallback — if camera permission is denied or the stream
+   *  fails to start, show a "Pick from gallery instead" button that
+   *  invokes this callback.  Caller is responsible for opening the
+   *  gallery file picker; we just close the camera modal first. */
+  onUseGallery?: () => void;
 }
 
-export default function InPageCamera({ onCapture, onCancel }: InPageCameraProps) {
+export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPageCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -208,10 +213,28 @@ export default function InPageCamera({ onCapture, onCancel }: InPageCameraProps)
             </div>
             <p className="text-base font-semibold mb-3">Couldn't open the camera</p>
             <p className="text-sm text-white/80 mb-6 leading-relaxed">{error}</p>
+            {/* Gallery fallback — when camera is blocked, the teacher
+                shouldn't have to back out of the modal and tap Gallery
+                themselves.  Surface it inline so the path stays
+                "tap → pick photo → done" with no detour. */}
+            {onUseGallery && (
+              <button
+                type="button"
+                onClick={() => {
+                  onCancel();      // close the camera modal first
+                  onUseGallery();  // then open the gallery picker
+                }}
+                className="w-full px-6 py-3 mb-3 rounded-xl bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              >
+                <ImageIcon className="w-5 h-5" />
+                Pick from gallery instead
+              </button>
+            )}
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 rounded-xl bg-white text-stone-900 font-bold text-sm"
+              className="px-6 py-3 rounded-xl bg-white/10 text-white font-bold text-sm border border-white/20"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
               Close
