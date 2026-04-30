@@ -19,6 +19,7 @@ import { supabase } from '../core/supabase';
 import SetupWizard, { SetupWizardProps } from './setup/SetupWizard';
 import { AssignmentData } from './setup/types';
 import { useTranslate } from '../hooks/useTranslate';
+import { useSavedWordGroups } from '../hooks/useSavedWordGroups';
 import { saveCorrection } from '../utils/translationCorrections';
 
 // Keep the existing AssignmentData interface for backward compatibility
@@ -150,6 +151,10 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   // for idioms/phrases (e.g. "a shame" → machine-literal).  /api/translate
   // is the same endpoint the Quick Play flow already uses.
   const { translateWord: geminiTranslate, translateWordsBatch } = useTranslate();
+  // Per-teacher saved-groups picker — persists across logins/devices
+  // via the public.saved_word_groups Supabase table (replaces the old
+  // localStorage-only path).
+  const savedGroupsHook = useSavedWordGroups();
 
   // ── Convert number[] to Word[] for SetupWizard ───────────────────────────────
   const selectedWords = useMemo(() => {
@@ -346,6 +351,10 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       onComplete={handleWizardComplete}
       onBack={handleWizardBack}
       onSaveTemplate={onSaveTemplate}
+      onSaveSavedGroup={async (name, wordIds) => { await savedGroupsHook.addGroup({ name, wordIds }); }}
+      savedGroups={savedGroupsHook.groups}
+      onRenameSavedGroup={savedGroupsHook.renameGroup}
+      onDeleteSavedGroup={savedGroupsHook.deleteGroup}
       autoMatchPartial={true}
       showLevelFilter={true}
       selectedClass={selectedClass}

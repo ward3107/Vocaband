@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Check, AlertTriangle, Sparkles, Upload, Camera,
   ChevronRight, Loader2, X, Search, Package, FolderOpen,
-  BookOpen, Plus, Trash2
+  BookOpen, Plus, Trash2, Pencil
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
@@ -125,6 +125,12 @@ export interface WordInputStep2026Props {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
   savedGroups?: Array<{ id: string; name: string; words: number[] }>;
+  /** Rename a saved group from inside the SavedGroupsPanel.  Returns
+   *  true on success.  Plumbed in 2026-04-30 — previously the panel
+   *  only showed groups read-only. */
+  onRenameSavedGroup?: (id: string, newName: string) => Promise<boolean>;
+  /** Delete a saved group from inside the SavedGroupsPanel. */
+  onDeleteSavedGroup?: (id: string) => Promise<boolean>;
   customWords?: Word[];
   onCustomWordsChange?: (words: Word[]) => void;
 }
@@ -1157,12 +1163,24 @@ interface SavedGroupsPanelProps {
   allWords: Word[];
   selectedWords: Word[];
   onAddWords: (words: Word[]) => void;
+  /** Rename callback — when provided, each group card shows a pencil
+   *  icon that opens an inline rename input.  When omitted, rename UI
+   *  is hidden (e.g. Quick Play setup that doesn't pass it through). */
+  onRenameGroup?: (id: string, newName: string) => Promise<boolean>;
+  /** Delete callback — same conditional UI as rename. */
+  onDeleteGroup?: (id: string) => Promise<boolean>;
 }
 
 const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
-  isOpen, onClose, savedGroups, allWords, selectedWords, onAddWords
+  isOpen, onClose, savedGroups, allWords, selectedWords, onAddWords,
+  onRenameGroup, onDeleteGroup,
 }) => {
   const selectedWordIds = new Set(selectedWords.map(w => w.id));
+
+  // Inline-rename state — track which group id is being edited and
+  // its draft name.  Only one row is editable at a time.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
 
   const groupsWithCounts = useMemo(() => {
     return savedGroups.map(group => {
@@ -1209,36 +1227,117 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
             </div>
           ) : (
             <div className="space-y-2">
-              {groupsWithCounts.map((group) => (
-                <motion.button
-                  key={group.id}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => {
-                    const newWords = group.words.filter(w => !selectedWordIds.has(w.id));
-                    onAddWords(newWords);
-                    onClose();
-                  }}
-                  type="button"
-                  className="w-full p-4 rounded-xl border border-stone-200 bg-white hover:border-amber-300 text-left transition-colors"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-stone-800">{group.name}</p>
-                      <p className="mt-1 text-sm text-stone-500">
-                        {group.words.length} {TEXT.words}
-                        {group.newCount > 0 && (
-                          <span className="text-emerald-600 ml-2">
-                            (+{group.newCount} {TEXT.new})
-                          </span>
+              {groupsWithCounts.map((group) => {
+                const isEditing = editingId === group.id;
+                return (
+                  <div
+                    key={group.id}
+                    className="w-full p-4 rounded-xl border border-stone-200 bg-white hover:border-amber-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {isEditing ? (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              if (!onRenameGroup) return;
+                              const trimmed = editingName.trim();
+                              if (!trimmed || trimmed === group.name) { setEditingId(null); return; }
+                              const ok = await onRenameGroup(group.id, trimmed);
+                              if (ok) setEditingId(null);
+                            }}
+                            className="flex gap-2"
+                          >
+                            <input
+                              autoFocus
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value.slice(0, 80))}
+                              maxLength={80}
+                              className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border-2 border-amber-300 focus:border-amber-500 focus:outline-none font-bold text-sm"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <button
+                              type="submit"
+                              className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold"
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 text-xs font-bold"
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newWords = group.words.filter(w => !selectedWordIds.has(w.id));
+                              onAddWords(newWords);
+                              onClose();
+                            }}
+                            className="text-left w-full"
+                            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                          >
+                            <p className="font-bold text-stone-800 truncate">{group.name}</p>
+                            <p className="mt-1 text-sm text-stone-500">
+                              {group.words.length} {TEXT.words}
+                              {group.newCount > 0 && (
+                                <span className="text-emerald-600 ml-2">
+                                  (+{group.newCount} {TEXT.new})
+                                </span>
+                              )}
+                            </p>
+                          </button>
                         )}
-                      </p>
+                      </div>
+                      {!isEditing && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {onRenameGroup && (
+                            <button
+                              type="button"
+                              aria-label={`Rename ${group.name}`}
+                              title="Rename"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(group.id);
+                                setEditingName(group.name);
+                              }}
+                              className="p-2 rounded-lg text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {onDeleteGroup && (
+                            <button
+                              type="button"
+                              aria-label={`Delete ${group.name}`}
+                              title="Delete"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete saved group "${group.name}"?`)) {
+                                  await onDeleteGroup(group.id);
+                                }
+                              }}
+                              className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <ChevronRight className="w-5 h-5 text-stone-300" />
+                        </div>
+                      )}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-stone-400" />
                   </div>
-                </motion.button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1445,6 +1544,8 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   showToast,
   topicPacks = [],
   savedGroups = [],
+  onRenameSavedGroup,
+  onDeleteSavedGroup,
   customWords = [],
   onCustomWordsChange,
 }) => {
@@ -1478,15 +1579,12 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   const [openPanel, setOpenPanel] = useState<PanelType>(null);
 
   // Saved Groups from localStorage
-  const [localSavedGroups, setLocalSavedGroups] = useState<Array<{ id: string; name: string; words: number[] }>>([]);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('vocaband-saved-groups');
-      if (saved) {
-        setLocalSavedGroups(JSON.parse(saved));
-      }
-    } catch {}
-  }, []);
+  // Saved groups now flow through props (backed by Supabase via
+  // useSavedWordGroups in CreateAssignmentWizard).  The previous
+  // localStorage path lost groups on logout / device change.
+  // Fall back to [] when caller didn't pass any (e.g. Quick Play
+  // setup before useSavedWordGroups was wired in there).
+  const localSavedGroups = savedGroups;
 
   // OCR State
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
@@ -2150,6 +2248,8 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         allWords={allWords}
         selectedWords={selectedWords}
         onAddWords={handleAddWords}
+        onRenameGroup={onRenameSavedGroup}
+        onDeleteGroup={onDeleteSavedGroup}
       />
 
       {/* Browse Library Panel */}

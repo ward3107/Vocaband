@@ -7,6 +7,7 @@ import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
+import { containsProfanity } from "../utils/nicknameProfanity";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -300,6 +301,17 @@ export default function QuickPlayStudentView({
 
                     if (!trimmedName) {
                       showToast("Please enter your name first", "error");
+                      return;
+                    }
+
+                    // Profanity gate — best-effort filter for obvious
+                    // slurs in EN/HE/AR.  Teachers asked because the
+                    // nickname renders on the classroom projector and
+                    // an inappropriate display name embarrasses the
+                    // class.  Server-side validation catches anything
+                    // the client bypasses.
+                    if (containsProfanity(trimmedName)) {
+                      showToast("Please pick a different name.", "error");
                       return;
                     }
 

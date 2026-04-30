@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
@@ -149,6 +149,22 @@ export default function QuickPlayMonitor({
   realtimeStatus = 'connecting',
 }: QuickPlayMonitorProps) {
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  // Collapsed-by-default QR card.  Per teacher request the inline
+  // QR/code/share strip eats too much podium real estate after the
+  // first few seconds of the session — once students have scanned,
+  // the teacher only wants the podium visible.  Collapsed renders as
+  // a small chip ("Code: ABC123 · 12 joined" + Show button) and
+  // tapping the chip OR the Show button enlarges to the modal QR.
+  const [qrCollapsed, setQrCollapsed] = useState(() => {
+    try { return localStorage.getItem('vocaband-qp-qr-collapsed') === '1'; } catch { return false; }
+  });
+  const toggleQrCollapsed = useCallback(() => {
+    setQrCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('vocaband-qp-qr-collapsed', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  }, []);
   const [endModal, setEndModal] = useState(false);
   const [showWordsModal, setShowWordsModal] = useState(false);
   const [theme, setTheme] = useState<ThemeKey>('galaxy');
@@ -327,6 +343,33 @@ export default function QuickPlayMonitor({
       }
     };
   }, []);
+
+  // ── Auto-shuffle every 2 minutes ─────────────────────────────────────
+  // Per teacher request: while music is playing, automatically swap to
+  // a different random track every 2 minutes so the same loop doesn't
+  // become background-noise-blindness.  The manual track-picker still
+  // works (changeTrack) — auto-shuffle just kicks in on top of it.
+  // The interval only ticks while musicPlaying is true so toggling
+  // music off pauses both the audio AND the shuffle timer.
+  const AUTO_SHUFFLE_MS = 2 * 60 * 1000; // 2 minutes
+  useEffect(() => {
+    if (!musicPlaying) return;
+    const id = setInterval(() => {
+      if (MUSIC_TRACKS.length < 2) return;
+      // Pick a random different track than the current one so the
+      // shuffle is actually noticeable.
+      let next = currentTrack;
+      while (next === currentTrack) {
+        next = Math.floor(Math.random() * MUSIC_TRACKS.length);
+      }
+      changeTrack(next);
+    }, AUTO_SHUFFLE_MS);
+    return () => clearInterval(id);
+    // changeTrack is stable across renders for our purposes (uses
+    // refs) — including only the shuffle gates here.  eslint-disable
+    // is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicPlaying, currentTrack]);
 
   // ─── Remove student ───────────────────────────────────────────────────────
   const removeStudent = async (name: string) => {
@@ -608,13 +651,40 @@ export default function QuickPlayMonitor({
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
-        {/* ─── Hero: QR + Podium row ────────────────────────────────────────── */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8">
-          {/* QR Code & Join Info.
-              Layout stacks on mobile (avatar+text column) and sits
-              side-by-side from `sm:` up, so the QR is big enough to
-              scan on a phone projector but doesn't crowd the session
-              code on narrow screens. */}
+        {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
+            When qrCollapsed is true the whole QR card collapses to a
+            small chip-style bar (just the code + player count + Show
+            button) and the podium expands to the full row — keeps the
+            podium dominant once students have already scanned in.
+            Toggle via the chip itself or the QR-enlarge modal's "Hide"
+            button. */}
+        <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8`}>
+          {qrCollapsed ? (
+            <button
+              type="button"
+              onClick={toggleQrCollapsed}
+              aria-label="Show QR code and share link"
+              className={`w-full bg-gradient-to-r ${t.qrCard} rounded-xl px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 shadow-md text-white hover:shadow-lg active:scale-[0.99] transition-all`}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                  <QrCode size={18} />
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="font-label text-[10px] uppercase tracking-[0.2em] opacity-80 leading-tight">Join code</p>
+                  <p className="font-headline text-base sm:text-lg font-black tracking-tighter truncate">{session.sessionCode}</p>
+                </div>
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium ml-2 opacity-90">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  {effectiveStudents.length > 0 ? `${effectiveStudents.length} joined` : 'Waiting…'}
+                </span>
+              </div>
+              <span className="text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg shrink-0">
+                Show QR
+              </span>
+            </button>
+          ) : (
           <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
             {/* QR code container — sized so students at the back of
@@ -694,8 +764,18 @@ export default function QuickPlayMonitor({
               >
                 <Copy size={11} /> Copy link
               </button>
+              {/* Hide button — collapses to the chip strip above. */}
+              <button
+                type="button"
+                onClick={toggleQrCollapsed}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className="mt-2 inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-white/70 hover:text-white transition-colors mx-auto sm:mx-0"
+              >
+                Hide QR
+              </button>
             </div>
           </div>
+          )}
 
           {/* Podium Section.  Sized in 4 tiers:
                  base — phones (wraps to its own row above the QR)
@@ -705,7 +785,7 @@ export default function QuickPlayMonitor({
                                 Bigger podium so first 3 places are
                                 clearly readable from across the room.
                                 Per teacher request 2026-04-30. */}
-          <div className={`lg:col-span-8 ${t.podiumCard} rounded-xl p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
+          <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-xl p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
             <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text}`}>Current Leaders</div>
 
             {top3.length > 0 ? (
@@ -714,9 +794,22 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[1] ? (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
                         <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>2nd</div>
+                        {/* Teacher-only kick affordance — same hover-
+                            reveal pattern as the rank-4+ tiles.  Top-3
+                            students can be kicked too if their name /
+                            behaviour warrants it (per teacher request
+                            2026-04-30). */}
+                        <button
+                          onClick={() => setConfirmKick(top3[1].name)}
+                          aria-label={`Remove ${top3[1].name}`}
+                          title={`Remove ${top3[1].name}`}
+                          className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
+                        >
+                          <X size={12} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
                       <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[1].score} pts</p>
@@ -731,9 +824,17 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[0] && (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
                         <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
+                        <button
+                          onClick={() => setConfirmKick(top3[0].name)}
+                          aria-label={`Remove ${top3[0].name}`}
+                          title={`Remove ${top3[0].name}`}
+                          className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
+                        >
+                          <X size={14} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
                       <p className={`font-label text-xs 2xl:text-base min-[1700px]:text-2xl ${t.accent} font-black`}>{top3[0].score} pts</p>
@@ -749,9 +850,17 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[2] ? (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
                         <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
+                        <button
+                          onClick={() => setConfirmKick(top3[2].name)}
+                          aria-label={`Remove ${top3[2].name}`}
+                          title={`Remove ${top3[2].name}`}
+                          className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
+                        >
+                          <X size={12} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
                       <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[2].score} pts</p>
