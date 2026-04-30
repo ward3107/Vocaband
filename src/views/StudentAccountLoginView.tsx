@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useEffect } from "react";
+import { type ReactNode, useRef, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import OAuthCallback from "../components/OAuthCallback";
@@ -6,8 +6,9 @@ import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
+import { Globe } from "lucide-react";
 
 interface StudentAccountLoginViewProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -183,8 +184,10 @@ export default function StudentAccountLoginView({
   };
 
   const hasEnoughCode = studentLoginClassCode.trim().length >= 3;
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const t = studentLoginT[language];
+  const [langOpen, setLangOpen] = useState(false);
+  const langs: Language[] = ["en", "he", "ar"];
 
   return (
     <>
@@ -242,9 +245,53 @@ export default function StudentAccountLoginView({
                 <ArrowLeft size={16} />
                 {t.back}
               </button>
-              <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
-                {t.student}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
+                  {t.student}
+                </span>
+                {/* Language picker — students often need to change the
+                    UI language before they can read the rest of the
+                    login screen.  Surfacing it in the header (instead
+                    of hiding it on the legal pages) makes the
+                    EN/HE/AR translations from src/locales/student/*
+                    actually reachable.  Once selected, useLanguage
+                    persists the choice via localStorage so the
+                    dashboard, games, and shop all inherit it. */}
+                <div className="relative">
+                  <button
+                    onClick={() => setLangOpen(o => !o)}
+                    type="button"
+                    aria-label="Change language"
+                    aria-expanded={langOpen}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white text-xs font-bold hover:bg-white/20 transition-colors"
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    <Globe size={14} />
+                    <span>{languageFlags[language]} {languageNames[language]}</span>
+                  </button>
+                  {langOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
+                      <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-xl shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
+                        {langs.map(lng => (
+                          <button
+                            key={lng}
+                            onClick={() => { setLanguage(lng); setLangOpen(false); }}
+                            type="button"
+                            style={{ touchAction: 'manipulation' }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-stone-50 transition-colors ${
+                              language === lng ? 'bg-indigo-50 text-indigo-700' : 'text-stone-700'
+                            }`}
+                          >
+                            <span>{languageFlags[lng]}</span>
+                            <span>{languageNames[lng]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </header>
 
             <main className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
