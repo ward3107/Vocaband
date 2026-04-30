@@ -440,12 +440,19 @@ export default function QuickPlayStudentView({
                       setShowModeSelection(true);
 
                       // Save guest session to localStorage for page refresh recovery
+                      // AND for the 90-min resume banner that surfaces on a fresh
+                      // landing-page mount (see src/components/QuickPlayResumeBanner.tsx).
+                      // joinedAt is the TTL anchor — refreshed on every score
+                      // update via App.tsx's emitScoreUpdate so an active player
+                      // never sees the banner; only kids who walked away see it.
                       try {
                         localStorage.setItem('vocaband_qp_guest', JSON.stringify({
                           sessionId: quickPlayActiveSession.id,
                           sessionCode: quickPlayActiveSession.sessionCode,
                           name: trimmedName,
                           avatar: quickPlayAvatar,
+                          lastScore: 0,
+                          joinedAt: Date.now(),
                         }));
                       } catch {}
                     };
