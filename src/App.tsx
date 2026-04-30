@@ -1721,29 +1721,27 @@ export default function App() {
   // — wizard component long unmounted, OCR words gone with it.  To
   // prevent that, SetupWizard's inline /api/ocr handler writes the
   // extracted words to localStorage as soon as they arrive.  Here on
-  // the dashboard we detect that key, hydrate the app's customWords +
-  // selectedWords state and surface a banner so the teacher can
-  // resume — we DON'T auto-navigate to create-assignment, because
-  // doing setView() inside this effect collides with the
-  // useBackButtonTrap history shuffle and pops the 'Leave Vocaband?'
-  // modal.  Letting the teacher tap 'Create assignment' themselves
-  // keeps the back-button trap quiet.
+  // the dashboard we detect that key, navigate the teacher straight
+  // back into a fresh assignment wizard pre-filled with those words,
+  // and clear the key so the rescue only fires once.
   useEffect(() => {
     if (user?.role !== 'teacher') return;
     if (view !== 'teacher-dashboard') return;
     if (classes.length === 0) return;
+    let rescued = false;
     try {
       const raw = localStorage.getItem('vocaband-pending-ocr-words');
       if (!raw) return;
       const parsed = JSON.parse(raw) as { words?: unknown; timestamp?: unknown };
       const words = Array.isArray(parsed.words) ? parsed.words.filter((w): w is string => typeof w === 'string') : [];
       const ts = typeof parsed.timestamp === 'number' ? parsed.timestamp : 0;
+      // Only rescue recent OCR (5 min window) — older entries are
+      // probably stale from a previous session the teacher abandoned.
       const fresh = ts > 0 && Date.now() - ts < 5 * 60 * 1000;
-      // Always clear the localStorage key on dashboard arrival so we
-      // don't loop / re-show the banner forever.
-      localStorage.removeItem('vocaband-pending-ocr-words');
-      if (!fresh || words.length === 0) return;
-
+      if (!fresh || words.length === 0) {
+        localStorage.removeItem('vocaband-pending-ocr-words');
+        return;
+      }
       // Build Word objects: curriculum-match by english (lowercase)
       // first, synthesise Custom Words for the rest.
       const matched: Word[] = [];
@@ -1764,25 +1762,26 @@ export default function App() {
         level: 'Custom' as const,
       }));
       const allRescued = [...matched, ...customs];
-      if (allRescued.length === 0) return;
-
-      // Hydrate state so the next tap on 'Create assignment' opens
-      // the wizard pre-filled.  The existing dashboard 'Create' button
-      // already calls setSelectedClass + setView('create-assignment'),
-      // so we just stage selectedWords + customWords here.
+      if (allRescued.length === 0) {
+        localStorage.removeItem('vocaband-pending-ocr-words');
+        return;
+      }
+      // Pre-fill the wizard exactly like the existing onEditAssignment
+      // / onDuplicateAssignment paths do (see App.tsx:2356-2368).
       setSelectedWords(allRescued.map(w => w.id));
-      setCustomWords(prev => {
-        const existingIds = new Set(prev.map(w => w.id));
-        const dedup = customs.filter(w => !existingIds.has(w.id));
-        return [...prev, ...dedup];
-      });
+      setCustomWords(customs);
       setSelectedLevel('Custom');
-      showToast(
-        `Recovered ${allRescued.length} words from your last photo — tap any class's "+ New assignment" to continue`,
-        'success',
-      );
+      setSelectedClass(classes[0]);
+      setView('create-assignment');
+      showToast(`Recovered ${allRescued.length} words from your last photo — picking up where you left off`, 'success');
+      rescued = true;
     } catch {
-      // Malformed payload — already cleared above.
+      /* malformed payload — fall through and clear */
+    } finally {
+      // Always clear, whether we rescued or not, so we don't loop.
+      if (rescued || true) {
+        try { localStorage.removeItem('vocaband-pending-ocr-words'); } catch { /* noop */ }
+      }
     }
   }, [user?.role, view, classes]);
 
