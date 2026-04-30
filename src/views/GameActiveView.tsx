@@ -159,7 +159,18 @@ export default function GameActiveView({
       return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} themeColor={modeTheme} />;
     }
     if (gameMode === "flashcards") {
-      return <FlashcardsGame isFlipped={isFlipped} setIsFlipped={setIsFlipped} isProcessingRef={isProcessingRef} onAnswer={handleFlashcardAnswer} />;
+      return (
+        <FlashcardsGame
+          currentWord={currentWord}
+          targetLanguage={targetLanguage}
+          isFlipped={isFlipped}
+          setIsFlipped={setIsFlipped}
+          isProcessingRef={isProcessingRef}
+          onAnswer={handleFlashcardAnswer}
+          speakWord={speakWord}
+          themeColor={modeTheme}
+        />
+      );
     }
     if (gameMode === "letter-sounds") {
       return (
@@ -318,7 +329,11 @@ export default function GameActiveView({
                   </div>
                 )}
 
-                {gameMode !== "fill-blank" && (
+                {/* Skip WordPromptCard for fill-blank (renders its own
+                    gapped sentence as the prompt) AND flashcards (the
+                    new 3D flip card BECOMES the prompt — rendering
+                    WordPromptCard above it would double-show the word). */}
+                {gameMode !== "fill-blank" && gameMode !== "flashcards" && (
                   <WordPromptCard
                     currentIndex={currentIndex}
                     gameWordsLength={gameWords.length}
