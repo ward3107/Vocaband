@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft } from "lucide-react";
 import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
+import StudentEmailOtpCard from "../components/StudentEmailOtpCard";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
 import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
@@ -188,6 +189,12 @@ export default function StudentAccountLoginView({
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
   const langs: Language[] = ["en", "he", "ar"];
+  // Toggle between Google OAuth (default) and email-OTP auth path.
+  // Same Supabase session afterwards either way — only the UI for
+  // identity verification differs.  See StudentEmailOtpCard.tsx for
+  // why students need this (shared classroom PCs, Google-cookie
+  // leakage between back-to-back logins).
+  const [emailOtpMode, setEmailOtpMode] = useState(false);
 
   return (
     <>
@@ -387,21 +394,52 @@ export default function StudentAccountLoginView({
                       - First-timers: Google identifies them, then we
                         show the OAuthClassCode screen to bind them
                         to the class code they just typed. */}
-                  <OAuthButton
-                    onSuccess={() => {
-                      setIsOAuthCallback(true);
-                    }}
-                    onError={(errorMessage) => {
-                      setError(errorMessage);
-                    }}
-                    beforeSignIn={() => {
-                      // Persist class code so OAuthClassCode can pre-fill
-                      // for first-timers + App can detect class-switch
-                      // intent for returning students.  writeIntendedClassCode
-                      // normalises empty strings to "clear".
-                      writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
-                    }}
-                  />
+                  {emailOtpMode ? (
+                    /* Email + 6-digit OTP path.  Self-contained — uses
+                       useTeacherOtpAuth (which is actually a generic
+                       email-OTP hook, not teacher-specific) and on
+                       verifyOtp success flips isOAuthCallback so the
+                       existing OAuthCallback → OAuthClassCode chain
+                       takes over (find existing student profile OR
+                       show class-code binding screen, same as Google
+                       OAuth lands in). */
+                    <StudentEmailOtpCard
+                      classCode={studentLoginClassCode}
+                      onVerified={() => setIsOAuthCallback(true)}
+                      onUseGoogle={() => setEmailOtpMode(false)}
+                    />
+                  ) : (
+                    <>
+                      <OAuthButton
+                        onSuccess={() => {
+                          setIsOAuthCallback(true);
+                        }}
+                        onError={(errorMessage) => {
+                          setError(errorMessage);
+                        }}
+                        beforeSignIn={() => {
+                          // Persist class code so OAuthClassCode can pre-fill
+                          // for first-timers + App can detect class-switch
+                          // intent for returning students.  writeIntendedClassCode
+                          // normalises empty strings to "clear".
+                          writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
+                        }}
+                      />
+                      {/* Email-OTP escape hatch — for students who'd
+                          rather not use a personal Google account on a
+                          shared classroom PC, or who don't have a
+                          Google account at all.  Subtle styling so
+                          Google stays visually primary. */}
+                      <button
+                        type="button"
+                        onClick={() => setEmailOtpMode(true)}
+                        className="w-full mt-3 text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-stone-100 transition-colors"
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                      >
+                        Or use email instead
+                      </button>
+                    </>
+                  )}
 
                   <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
                     {hasEnoughCode ? t.signedInBefore : t.firstTime}
