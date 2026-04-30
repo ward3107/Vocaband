@@ -231,10 +231,41 @@ export default function QuickPlayMonitor({
   const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
 
   // ─── Join sound effect ────────────────────────────────────────────────────
-  // Track student count changes (no sound — teacher requested silence on join)
+  // Detect newly-joined students by name diff against the previous render
+  // and surface a brief celebration toast at the top of the projector.
+  // Teachers asked for "more icons when student joins" so the new student
+  // is also visually highlighted via a stronger spring-in animation +
+  // sparkle ring on their first render in the rank-4+ grid (see the
+  // motion.div initial/animate values in the grid below).
+  const prevStudentNamesRef = useRef<Set<string>>(new Set());
+  const [recentJoiners, setRecentJoiners] = useState<{ name: string; avatar: string; ts: number }[]>([]);
   useEffect(() => {
     prevStudentCountRef.current = effectiveStudents.length;
-  }, [effectiveStudents.length]);
+    const currentNames = new Set(effectiveStudents.map(s => s.name));
+    const newcomers: { name: string; avatar: string; ts: number }[] = [];
+    for (const s of effectiveStudents) {
+      if (!prevStudentNamesRef.current.has(s.name)) {
+        // Inline the avatar fallback rather than calling getStudentAvatar
+        // (declared further down in the file, would TDZ).
+        newcomers.push({ name: s.name, avatar: s.avatar || '🦊', ts: Date.now() });
+      }
+    }
+    if (newcomers.length > 0) {
+      setRecentJoiners(prev => {
+        // Keep at most 3 toasts on screen at once — drop the oldest if
+        // a busy class fires faster than the timeout can prune.
+        const merged = [...prev, ...newcomers];
+        return merged.slice(-3);
+      });
+      // Auto-dismiss each toast 3.5s after it lands.
+      newcomers.forEach(n => {
+        setTimeout(() => {
+          setRecentJoiners(prev => prev.filter(j => j.ts !== n.ts));
+        }, 3500);
+      });
+    }
+    prevStudentNamesRef.current = currentNames;
+  }, [effectiveStudents]);
 
   // ─── Background music ──────────────────────────────────────────────────────
   const toggleMusic = () => {
@@ -423,6 +454,33 @@ export default function QuickPlayMonitor({
   return (
     <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}>
       <style>{floatStyle}</style>
+
+      {/* ─── Recent-joiner toasts ─────────────────────────────────────────────
+          Stack of brief 'X joined!' celebrations near the top so the
+          teacher (and the rest of the class watching the projector) see
+          who just walked in.  Self-dismissing after 3.5s.  Uses a fixed
+          overlay so it sits above the TopAppBar without pushing layout. */}
+      <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
+        <AnimatePresence>
+          {recentJoiners.map(j => (
+            <motion.div
+              key={j.ts}
+              initial={{ y: -20, opacity: 0, scale: 0.85 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -10, opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+              className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white px-5 py-3 sm:px-6 sm:py-4 2xl:px-8 2xl:py-5 rounded-full shadow-2xl flex items-center gap-3 max-w-[90vw]"
+            >
+              <span className="text-2xl sm:text-3xl 2xl:text-4xl">{j.avatar}</span>
+              <div>
+                <p className="font-headline text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-widest opacity-90">Joined!</p>
+                <p className="font-headline text-base sm:text-lg 2xl:text-xl font-black truncate max-w-[60vw]">{j.name}</p>
+              </div>
+              <span className="text-xl sm:text-2xl 2xl:text-3xl ml-1">✨</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
       <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>
@@ -639,59 +697,66 @@ export default function QuickPlayMonitor({
             </div>
           </div>
 
-          {/* Podium Section */}
-          <div className={`lg:col-span-8 ${t.podiumCard} rounded-xl p-4 sm:p-6 flex items-end justify-center gap-3 sm:gap-6 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px]`}>
-            <div className={`absolute top-3 left-4 font-label text-[10px] uppercase tracking-widest opacity-30 font-black ${t.text}`}>Current Leaders</div>
+          {/* Podium Section.  Sized in 4 tiers:
+                 base — phones (wraps to its own row above the QR)
+                 sm:  — tablets / small laptops (1024px+)
+                 2xl: — regular desktops (1536px+, mostly teacher PCs)
+                 min-[1700px]: — classroom projectors / 4K wall-mounts.
+                                Bigger podium so first 3 places are
+                                clearly readable from across the room.
+                                Per teacher request 2026-04-30. */}
+          <div className={`lg:col-span-8 ${t.podiumCard} rounded-xl p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
+            <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text}`}>Current Leaders</div>
 
             {top3.length > 0 ? (
               <>
                 {/* 2nd place */}
-                <div className="flex flex-col items-center gap-1.5">
+                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[1] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
-                        <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs font-black px-1.5 py-0.5 rounded-full shadow-sm`}>2nd</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
+                        <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>2nd</div>
                       </motion.div>
-                      <p className={`font-headline text-xs sm:text-sm 2xl:text-base font-bold truncate max-w-[80px] 2xl:max-w-[120px] text-center ${t.text}`}>{top3[1].name}</p>
-                      <p className={`font-label text-[10px] 2xl:text-sm ${t.accent} font-bold`}>{top3[1].score} pts</p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 bg-gradient-to-b ${t.podium2} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
-                        <span className="text-white/20 text-4xl 2xl:text-5xl font-black">2</span>
+                      <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
+                      <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[1].score} pts</p>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-32 bg-gradient-to-b ${t.podium2} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
+                        <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">2</span>
                       </motion.div>
                     </>
                   ) : <div className="w-20" style={{ height: 140 }} />}
                 </div>
 
                 {/* 1st place */}
-                <div className="flex flex-col items-center gap-1.5">
+                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[0] && (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
-                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl border-4 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
-                        <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs font-black px-2 py-0.5 rounded-full shadow-md`}>1st</div>
+                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
+                        <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
                       </motion.div>
-                      <p className={`font-headline text-sm sm:text-lg 2xl:text-xl font-black truncate max-w-[100px] 2xl:max-w-[140px] text-center ${t.text}`}>{top3[0].name}</p>
-                      <p className={`font-label text-xs 2xl:text-base ${t.accent} font-black`}>{top3[0].score} pts</p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 bg-gradient-to-b ${t.podium1} rounded-t-xl flex items-center justify-center shadow-2xl overflow-hidden relative`}>
+                      <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
+                      <p className={`font-label text-xs 2xl:text-base min-[1700px]:text-2xl ${t.accent} font-black`}>{top3[0].score} pts</p>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-xl flex items-center justify-center shadow-2xl overflow-hidden relative`}>
                         <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                        <span className="text-white/20 text-6xl 2xl:text-7xl font-black relative z-10">1</span>
+                        <span className="text-white/20 text-6xl 2xl:text-7xl min-[1700px]:text-9xl font-black relative z-10">1</span>
                       </motion.div>
                     </>
                   )}
                 </div>
 
                 {/* 3rd place */}
-                <div className="flex flex-col items-center gap-1.5">
+                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[2] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
-                        <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs font-black px-1.5 py-0.5 rounded-full shadow-sm`}>3rd</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
+                        <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
                       </motion.div>
-                      <p className={`font-headline text-xs sm:text-sm 2xl:text-base font-bold truncate max-w-[80px] 2xl:max-w-[120px] text-center ${t.text}`}>{top3[2].name}</p>
-                      <p className={`font-label text-[10px] 2xl:text-sm ${t.accent} font-bold`}>{top3[2].score} pts</p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 bg-gradient-to-b ${t.podium3} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
-                        <span className="text-white/20 text-4xl 2xl:text-5xl font-black">3</span>
+                      <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
+                      <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[2].score} pts</p>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-24 bg-gradient-to-b ${t.podium3} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
+                        <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">3</span>
                       </motion.div>
                     </>
                   ) : <div className="w-20" style={{ height: 120 }} />}
@@ -726,20 +791,34 @@ export default function QuickPlayMonitor({
             <h3 className={`font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-50 font-black mb-3 ${t.text}`}>
               Players · rank 4+
             </h3>
-            <div className="flex flex-col gap-1.5 2xl:gap-2">
+            {/* Responsive grid: 1 col on phones, 2 on tablets, 3 on
+                desktops, 4 on classroom projectors / 4K screens.
+                Replaces the previous full-width single-row layout
+                that wasted ~70% of horizontal space and made each
+                avatar+name tiny when projected.  Tiles are now bigger
+                and easier to read across the room. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
               <AnimatePresence mode="popLayout">
                 {sorted.slice(3).map((student, idx) => {
                   const rank = idx + 4;
                   const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000;
+                  // Newly-joined within the last 4s — give them a brief
+                  // sparkle ring + bigger spring-in so they pop into
+                  // view across the projector.
+                  const justJoined = recentJoiners.some(j => j.name === student.name);
                   return (
                     <motion.div
                       key={student.name}
                       layout
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: 20, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-                      className={`${t.card} rounded-lg px-3 sm:px-4 py-2 2xl:py-2.5 flex items-center gap-3 2xl:gap-4 shadow-sm hover:shadow-md transition-all border group relative`}
+                      initial={justJoined
+                        ? { scale: 0.6, opacity: 0, y: 20 }
+                        : { x: -20, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+                      className={`${t.card} rounded-xl px-3 sm:px-4 py-3 2xl:py-4 flex items-center gap-3 2xl:gap-4 shadow-sm hover:shadow-md transition-all border group relative ${
+                        justJoined ? 'ring-4 ring-emerald-400/60 ring-offset-2 ring-offset-transparent' : ''
+                      }`}
                     >
                       {/* Kick on hover */}
                       <button
@@ -749,25 +828,23 @@ export default function QuickPlayMonitor({
                       >
                         <X size={10} />
                       </button>
-                      {/* Rank number — wide enough for triple-digit just
-                          in case (max 100 students = 3 chars max). */}
-                      <span className={`font-headline text-base sm:text-lg 2xl:text-xl font-black tabular-nums w-8 2xl:w-10 text-center ${t.accent}`}>
+                      <span className={`font-headline text-base sm:text-lg 2xl:text-2xl font-black tabular-nums w-8 2xl:w-12 text-center shrink-0 ${t.accent}`}>
                         {rank}
                       </span>
                       <div className="relative shrink-0">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 2xl:w-12 2xl:h-12 rounded-full bg-surface-container-high flex items-center justify-center text-lg sm:text-xl 2xl:text-2xl border-2 border-surface-container-highest">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 2xl:w-16 2xl:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-2xl 2xl:text-3xl border-2 border-surface-container-highest">
                           {getStudentAvatar(student)}
                         </div>
-                        <div className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                       </div>
-                      <span className="font-headline text-sm sm:text-base 2xl:text-lg font-bold truncate flex-1 min-w-0">
-                        {student.name}
-                      </span>
-                      {/* Score — right-aligned tabular nums so digits stay
-                          column-aligned across rows even as ranks shift. */}
-                      <span className={`font-label text-sm sm:text-base 2xl:text-lg font-black tabular-nums shrink-0 ${t.accent}`}>
-                        {student.score} pts
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-headline text-sm sm:text-base 2xl:text-xl font-bold truncate block">
+                          {student.name}
+                        </span>
+                        <span className={`font-label text-xs sm:text-sm 2xl:text-base font-black tabular-nums ${t.accent}`}>
+                          {student.score} pts
+                        </span>
+                      </div>
                     </motion.div>
                   );
                 })}
