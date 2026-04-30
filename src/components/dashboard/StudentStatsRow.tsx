@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { motion } from "motion/react";
 import { Zap, Flame, BookOpenCheck, Trophy } from "lucide-react";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface StudentStatsRowProps {
   xp: number;
@@ -31,6 +33,8 @@ interface StudentStatsRowProps {
 export default function StudentStatsRow({
   xp, streak, studentAssignments, studentProgress,
 }: StudentStatsRowProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   void xp; // reserved for future per-session XP delta; currently uses derived `xpToday`
   const { xpToday, wordsMastered, assignmentsCompleted } = useMemo(() => {
     const today = new Date();
@@ -81,7 +85,7 @@ export default function StudentStatsRow({
         <div className="relative">
           <div className="flex items-center gap-1.5 mb-1">
             <Zap size={16} className="text-amber-100" />
-            <span className="text-[11px] font-black uppercase tracking-widest opacity-90">Today</span>
+            <span className="text-[11px] font-black uppercase tracking-widest opacity-90">{t.today}</span>
           </div>
 
           {/* Headline: XP earned today */}
@@ -89,13 +93,13 @@ export default function StudentStatsRow({
             +{xpToday}
           </div>
           <div className="mt-1 text-xs sm:text-sm font-bold opacity-90">
-            XP earned today
+            {t.xpEarnedToday}
           </div>
 
           {/* Sub-stat: current streak */}
           <div className="mt-4 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs sm:text-sm font-bold">
             <Flame size={14} className="text-amber-100 fill-amber-100" />
-            {streak > 0 ? `${streak}-day streak` : 'Start your streak'}
+            {streak > 0 ? t.dayStreak(streak) : t.startYourStreak}
           </div>
         </div>
       </motion.div>
@@ -115,7 +119,7 @@ export default function StudentStatsRow({
         <div className="relative">
           <div className="flex items-center gap-1.5 mb-1">
             <BookOpenCheck size={16} className="text-emerald-50" />
-            <span className="text-[11px] font-black uppercase tracking-widest opacity-90">Progress</span>
+            <span className="text-[11px] font-black uppercase tracking-widest opacity-90">{t.progress}</span>
           </div>
 
           {/* Headline: words mastered */}
@@ -123,15 +127,13 @@ export default function StudentStatsRow({
             {wordsMastered}
           </div>
           <div className="mt-1 text-xs sm:text-sm font-bold opacity-90">
-            {wordsMastered === 1 ? 'word mastered' : 'words mastered'}
+            {t.wordsMastered(wordsMastered)}
           </div>
 
           {/* Sub-stat: assignments completed */}
           <div className="mt-4 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs sm:text-sm font-bold">
             <Trophy size={14} className="text-amber-200" />
-            {assignmentsCompleted === 1
-              ? '1 assignment done'
-              : `${assignmentsCompleted} assignments done`}
+            {t.assignmentsDone(assignmentsCompleted)}
           </div>
         </div>
       </motion.div>

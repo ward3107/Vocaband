@@ -174,10 +174,43 @@ src/
     useStudentApproval.ts      — (planned) extracted from App.tsx
                                  in a future session
   locales/                     — i18n translation files per screen
-    student/
-      game-modes.ts            — GameModeSelectionView (DONE)
-      game-finished.ts         — GameFinishedView (TODO)
-      ...                      — see docs/I18N-MIGRATION.md
+    student/                   — ALL student-facing screens translated
+      game-modes.ts            — GameModeSelectionView ✅
+      game-finished.ts         — GameFinishedView ✅
+      teacher-login.ts         — TeacherLoginCard (Google + email OTP) ✅
+      mode-intro.ts            — GameModeIntroView ✅
+      game-active.ts           — GameActiveView + 4 game components ✅
+      student-login.ts         — StudentAccountLoginView ✅
+      student-dashboard.ts     — StudentDashboardView + 9 sub-cards ✅
+      shop.ts                  — ShopView hub + every category sheet ✅
+                               — see docs/I18N-MIGRATION.md
+  components/
+    InPageCamera.tsx           — getUserMedia camera modal used by
+                                 OCR.  Replaces <input capture> which
+                                 let Android Chrome kill our tab to
+                                 free RAM for the OS camera intent on
+                                 memory-constrained phones.  Stream
+                                 stays inside the Vocaband tab; on
+                                 capture we draw to canvas → JPEG file
+                                 → handleOcrUpload.  Same shape as the
+                                 gallery <input> path.
+    PwaInstallBanner.tsx       — mobile-only "Install Vocaband" banner.
+                                 Captures Android Chrome's
+                                 beforeinstallprompt for the native
+                                 prompt; iOS Safari fallback shows
+                                 step-by-step "Tap Share → Add to
+                                 Home Screen" instructions.  20s
+                                 warm-up + 14-day dismiss cooldown.
+    TeacherLoginCard.tsx       — teacher-only login screen with TWO
+                                 paths: Google OAuth (default) AND
+                                 email + 6-digit OTP code.  The OTP
+                                 path solves the "personal Google
+                                 session leaks on shared classroom
+                                 PCs" problem — teacher gets a code
+                                 by email, signs in once, no Google
+                                 cookie persists.  See
+                                 src/hooks/useTeacherOtpAuth.ts for
+                                 the state machine.
 supabase/
   schema.sql                   — baseline schema (idempotent — every
                                  CREATE POLICY has DROP IF EXISTS)
@@ -246,8 +279,27 @@ worker/index.ts                — Cloudflare Worker proxy
 
 ## 5. Active workstream — `claude/fix-points-display-9Q4Dw`
 
-This branch shipped 31+ commits on 2026-04-28 in a marathon session.
-All are pushed.  Highlight reel below; full git log has details.
+This branch shipped 31+ commits on 2026-04-28 + a follow-up marathon
+on 2026-04-29/30 that closed the OCR mobile saga, added PWA install,
+shipped teacher OTP login, three new dashboard themes, and finished
+the student-screens i18n migration.  All pushed.  Highlight reel
+below; full git log has details.
+
+### 2026-04-29/30 follow-up session
+
+| Commit | What |
+|---|---|
+| `3cef114` | OCR — final fix.  Replaced `<input type="file" capture="environment">` with in-page `getUserMedia()` camera modal (`src/components/InPageCamera.tsx`).  Old approach launched the OS camera app, which let Android Chrome evict the Vocaband tab to free RAM on memory-constrained phones (Samsung Galaxy A series).  When teacher returned from camera, page reloaded → wizard gone → words lost.  In-page stream sidesteps it entirely: camera runs as a `<video>` element in the same document, capture draws to canvas, JPEG file fed into the existing handleOcrUpload pipeline.  Works identically on every phone. |
+| `21df8c8` | i18n: GameModeIntroView + GameActiveView translated EN/HE/AR.  Added per-game-mode title + step strings + CTA labels.  Wired into 4 game components (FlashcardsGame, SpellingGame, LetterSoundsGame, SentenceBuilderGame). |
+| `a6749de` | i18n: student-login + student-dashboard + shop translated EN/HE/AR.  9 dashboard sub-components touched (StudentTopBar, GreetingCard, StatsRow, RetentionStrip, BadgesStrip, DailyGoalBanner, LeaderboardTeaser, OverallProgress, AssignmentsList + Card).  Shop covers hub chrome (Trending now, Browse shop, balance row), 7 portal tiles, 8 category headings, common toasts (Not enough XP, equipped/applied, purchase failed).  ALL student-facing screens now translate. |
+| `f2a97be` | PwaInstallBanner — mobile install nudge.  Android: capture beforeinstallprompt + show native prompt.  iOS: step-by-step Share → Add to Home Screen instructions.  20s warm-up + 14-day cooldown.  Mounted once via cookieBannerOverlay. |
+| `f2a97be` | 3 new teacher dashboard themes — Ocean (sky/cyan blue), Berry (violet/fuchsia), Autumn (orange/amber/rose).  Brings the picker total from 5 → 8.  TeacherThemeMenu auto-renders. |
+| `292612d` | Teacher OTP login — alternative to Google OAuth for shared classroom PCs.  Teacher enters email → gets 6-digit code → types code → signed in.  All logic outside App.tsx in `src/hooks/useTeacherOtpAuth.ts` + `src/components/TeacherLoginCard.tsx`.  Operator must enable Email provider in Supabase + set Email OTP length to 6 + add `{{ .Token }}` to the Magic Link template. |
+| `868e287` | OCR — selectedWords ref-wrapper rendered unconditionally so post-add scrollIntoView() has a target on first add. |
+| `4e4b24d` | OCR — SetupWizard's initial-seed useEffect latched with a useRef so it only fires once on mount.  Earlier it wiped user-added words every time the parent re-rendered (App.tsx polling tick = invisible reset). |
+| `81a5f53` | UI — dialed back the 2xl: Tailwind variants on QuickPlayMonitor + LiveChallengeView.  Earlier bump was sized for 4K projectors but Tailwind's 2xl breakpoint catches every 1080p+ desktop, ballooning UI on regular monitors. |
+
+### 2026-04-28 marathon
 
 ### Security (3 HIGH + 3 MED + CodeQL + TLS)
 
@@ -322,11 +374,10 @@ These are things the human needs to do — no code change will cover them:
    The first four close audit findings; the last enables QP guest
    ratings.  Each is idempotent (safe to re-run).
 
-2. **Rotate the leaked `sb_secret_*` service-role key.**  Was pasted
-   into chat during pen-test verification 2026-04-28.  Rotate via
-   Supabase Dashboard → Settings → API → "Rotate", then update
-   `SUPABASE_SERVICE_ROLE_KEY` on Fly with
-   `fly secrets set SUPABASE_SERVICE_ROLE_KEY="<new>" -a vocaband`.
+2. ~~**Rotate the leaked `sb_secret_*` service-role key.**~~ ✅ DONE
+   2026-04-29 during the OCR auth investigation — operator pushed a
+   fresh key to Fly via the Dashboard secrets UI and the OCR endpoint
+   started accepting tokens again.
 
 3. **Verify all migrations live** by running the verification SQL in
    `docs/SECURITY-OVERVIEW.md` (4-row CTE) — should return all-green.
@@ -346,6 +397,20 @@ These are things the human needs to do — no code change will cover them:
    npx tsx scripts/generate-motivational.ts
    npx tsx scripts/upload-motivational.ts   # needs .env.local with service_role key
    ```
+
+7. **Configure Supabase email + magic-link template for teacher OTP**
+   (added 2026-04-29).  Authentication → Providers → Email: enable +
+   Email OTP length = **6** digits (default 8 won't validate against
+   our `<input maxLength={6}>`).  Authentication → Email Templates →
+   Magic Link: paste the styled template from the OTP shipping notes —
+   must include `{{ .Token }}` so the 6-digit code is visible in the
+   email body.  Subject: `Vocaband sign-in code: {{ .Token }}`
+   (shows code in inbox preview).
+
+8. **Merge `claude/fix-points-display-9Q4Dw` → `main`**.  All of the
+   2026-04-29/30 work (OCR final fix via in-page camera, PWA install
+   banner, 3 new dashboard themes, teacher OTP login, full student
+   i18n) only ships on this branch's preview deploy until merged.
 
 ---
 

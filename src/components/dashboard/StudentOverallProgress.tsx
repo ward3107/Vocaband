@@ -1,4 +1,6 @@
 import type { AssignmentData, ProgressData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 const DEFAULT_MODES = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
 
@@ -55,6 +57,8 @@ function partialModeProgress(
 }
 
 export default function StudentOverallProgress({ studentAssignments, studentProgress }: StudentOverallProgressProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   if (studentAssignments.length === 0) return null;
 
   const completed = countCompletedAssignments(studentAssignments, studentProgress);
@@ -63,7 +67,7 @@ export default function StudentOverallProgress({ studentAssignments, studentProg
 
   return (
     <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[32px] shadow-sm mb-6 sm:mb-8">
-      <h3 className="text-lg sm:text-lg font-bold text-stone-800 mb-3 sm:mb-2">Overall Progress</h3>
+      <h3 className="text-lg sm:text-lg font-bold text-stone-800 mb-3 sm:mb-2">{t.overallProgress}</h3>
       <div className="flex items-center gap-3 sm:gap-4">
         <progress
           className="flex-1 h-5 sm:h-4 [&::-webkit-progress-bar]:bg-stone-100 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600 rounded-full overflow-hidden"

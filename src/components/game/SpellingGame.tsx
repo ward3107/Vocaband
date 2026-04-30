@@ -1,5 +1,7 @@
 import { ShowAnswerFeedback } from "../ShowAnswerFeedback";
 import type { Word } from "../../data/vocabulary";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 interface SpellingGameProps {
   currentWord: Word | undefined;
@@ -15,6 +17,8 @@ export default function SpellingGame({
   currentWord, gameMode, targetLanguage, feedback,
   spellingInput, setSpellingInput, onSpellingSubmit,
 }: SpellingGameProps) {
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
   return (
     <form onSubmit={onSpellingSubmit} className="max-w-md mx-auto">
       <input
@@ -28,7 +32,7 @@ export default function SpellingGame({
         value={spellingInput}
         onChange={(e) => setSpellingInput(e.target.value)}
         disabled={feedback === "show-answer" || feedback === "correct"}
-        placeholder="Type in English..."
+        placeholder={t.typeInEnglish}
         className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
           feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
           feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
@@ -38,7 +42,7 @@ export default function SpellingGame({
       />
       {gameMode === "spelling" && (
         <p className="text-stone-400 font-bold mb-3 sm:mb-6 text-base sm:text-lg">
-          Translation: <span className="text-stone-900 text-xl sm:text-2xl" dir="auto">
+          {t.translationLabel} <span className="text-stone-900 text-xl sm:text-2xl" dir="auto">
             {currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew}
           </span>
         </p>
@@ -50,7 +54,7 @@ export default function SpellingGame({
         type="submit"
         disabled={!!feedback}
         className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >Check Answer</button>
+      >{t.checkAnswer}</button>
     </form>
   );
 }

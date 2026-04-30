@@ -2,6 +2,8 @@ import { motion } from "motion/react";
 import { Zap, Trophy, Sparkles } from "lucide-react";
 import type { RetentionState } from "../../hooks/useRetention";
 import { WEEKLY_CHALLENGE_PLAYS } from "../../constants/game";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface RetentionStripProps {
   retention: RetentionState;
@@ -16,6 +18,8 @@ interface RetentionStripProps {
  * is kept under 200 lines on purpose — this is surface, not logic.
  */
 export default function RetentionStrip({ retention, onGrantXp }: RetentionStripProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   const {
     dailyChestAvailable, weeklyPlays, weeklyChallengeClaimable, comebackAvailable,
     limitedItem,
@@ -29,15 +33,15 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
 
   const handleDaily = () => {
     const r = claimDailyChest();
-    if (r?.xp) onGrantXp(r.xp, `Daily chest: +${r.xp} XP`);
+    if (r?.xp) onGrantXp(r.xp, t.dailyChestXpToast(r.xp));
   };
   const handleWeekly = () => {
     const r = claimWeeklyChallenge();
-    if (r?.xp) onGrantXp(r.xp, `Weekly challenge complete! +${r.xp} XP`);
+    if (r?.xp) onGrantXp(r.xp, t.weeklyChallengeXpToast(r.xp));
   };
   const handleComeback = () => {
     const r = claimComebackBonus();
-    if (r) onGrantXp(75, "Welcome back! +75 XP bonus");
+    if (r) onGrantXp(75, t.welcomeBackXpBonus(75));
   };
 
   return (
@@ -64,11 +68,11 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
               🎁
             </motion.div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/85">Daily chest</p>
-              <p className="font-black text-sm">Claim today's reward</p>
-              <p className="text-xs text-white/90">Bonus XP + streak keeper</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/85">{t.dailyChest}</p>
+              <p className="font-black text-sm">{t.claimTodaysReward}</p>
+              <p className="text-xs text-white/90">{t.bonusXpStreakKeeper}</p>
             </div>
-            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30">Open</div>
+            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30">{t.openButton}</div>
           </div>
         </motion.button>
       )}
@@ -88,11 +92,11 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
           <div className="relative flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl">👋</div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/85">Welcome back!</p>
-              <p className="font-black text-sm">We missed you</p>
-              <p className="text-xs text-white/90">Claim a bonus for returning</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/85">{t.welcomeBack}</p>
+              <p className="font-black text-sm">{t.weMissedYou}</p>
+              <p className="text-xs text-white/90">{t.claimBonusForReturning}</p>
             </div>
-            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30">Claim</div>
+            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30">{t.claimButton}</div>
           </div>
         </motion.button>
       )}
@@ -108,9 +112,9 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
             <Trophy size={20} className={weeklyChallengeClaimable ? 'text-white' : 'text-emerald-600'} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className={`text-[10px] font-black uppercase tracking-widest ${weeklyChallengeClaimable ? 'text-white/85' : 'text-stone-400'}`}>Weekly challenge</p>
+            <p className={`text-[10px] font-black uppercase tracking-widest ${weeklyChallengeClaimable ? 'text-white/85' : 'text-stone-400'}`}>{t.weeklyChallenge}</p>
             <p className={`font-black text-sm ${weeklyChallengeClaimable ? 'text-white' : 'text-stone-900'}`}>
-              {weeklyChallengeClaimable ? 'Ready to claim!' : `${weeklyPlays} / ${WEEKLY_CHALLENGE_PLAYS} games this week`}
+              {weeklyChallengeClaimable ? t.weeklyReadyToClaim : t.weeklyProgressText(weeklyPlays, WEEKLY_CHALLENGE_PLAYS)}
             </p>
             <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden ${weeklyChallengeClaimable ? 'bg-white/25' : 'bg-stone-100'}`}>
               <div
@@ -126,7 +130,7 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
               style={{ touchAction: 'manipulation' }}
               className="shrink-0 bg-white/25 hover:bg-white/35 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30 transition-colors"
             >
-              Claim
+              {t.claimButton}
             </button>
           )}
         </div>
@@ -142,12 +146,12 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/85 flex items-center gap-1">
-                <Sparkles size={10} /> This week only
+                <Sparkles size={10} /> {t.thisWeekOnly}
               </p>
               <p className="font-black text-sm">{limitedItem.tagline}</p>
               <p className="text-xs text-white/90">
                 <Zap size={10} className="inline -mt-0.5 mr-0.5" />
-                {Math.round(limitedItem.discount * 100)}% off in shop
+                {t.percentOffInShop(Math.round(limitedItem.discount * 100))}
               </p>
             </div>
           </div>

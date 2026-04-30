@@ -2,6 +2,8 @@ import { LETTER_COLORS } from "../../constants/game";
 import { ShowAnswerFeedback } from "../ShowAnswerFeedback";
 import { cleanWordForDisplay } from "../../utils/answerMatch";
 import type { Word } from "../../data/vocabulary";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 interface LetterSoundsGameProps {
   currentWord: Word | undefined;
@@ -17,6 +19,8 @@ export default function LetterSoundsGame({
   currentWord, targetLanguage, revealedLetters,
   spellingInput, setSpellingInput, feedback, onSpellingSubmit,
 }: LetterSoundsGameProps) {
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
   return (
     <div className="max-w-lg mx-auto">
       <p className="text-stone-600 text-lg sm:text-xl font-bold mb-4 text-center" dir="auto">
@@ -60,7 +64,7 @@ export default function LetterSoundsGame({
             value={spellingInput}
             onChange={(e) => setSpellingInput(e.target.value)}
             disabled={feedback === "show-answer" || feedback === "correct"}
-            placeholder="Type the word..."
+            placeholder={t.typeTheWord}
             className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
               feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
               feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
@@ -75,7 +79,7 @@ export default function LetterSoundsGame({
             type="submit"
             disabled={!!feedback}
             className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >Check Answer</button>
+          >{t.checkAnswer}</button>
         </form>
       )}
     </div>

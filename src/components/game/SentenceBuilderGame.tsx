@@ -1,4 +1,6 @@
 import type { AssignmentData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 interface SentenceBuilderGameProps {
   activeAssignment: AssignmentData | null;
@@ -19,6 +21,8 @@ export default function SentenceBuilderGame({
   builtSentence, setBuiltSentence, availableWords, setAvailableWords,
   onSentenceWordTap, onSentenceCheck, speak, shuffle,
 }: SentenceBuilderGameProps) {
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
   const sentences = (activeAssignment as AssignmentData & { sentences?: string[] })?.sentences?.filter(s => s.trim()) || [];
   if (sentences.length === 0) {
     return (
@@ -79,12 +83,12 @@ export default function SentenceBuilderGame({
           }}
           disabled={sentenceFeedback !== null}
           className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >Clear</button>
+        >{t.clear}</button>
         <button
           onClick={onSentenceCheck}
           disabled={builtSentence.length === 0 || sentenceFeedback !== null}
           className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50"
-        >Check ✓</button>
+        >{t.checkSentence}</button>
       </div>
     </div>
   );

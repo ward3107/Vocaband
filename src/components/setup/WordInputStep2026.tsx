@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
+import InPageCamera from '../InPageCamera';
 
 // English-only text constants for the word input step
 // Build marker bumped each diagnostic deploy — lets us confirm the
@@ -650,6 +651,10 @@ interface OcrModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (file: File) => Promise<void>;
+  /** Open the in-page camera (getUserMedia stream).  Replaces the old
+   *  <input capture="environment"> path which launched the OS camera
+   *  app and let Android Chrome kill our tab to free RAM. */
+  onOpenCamera: () => void;
   state: OcrState;
   progress: number;
   extractedWords: string[];
@@ -662,9 +667,8 @@ interface OcrModalProps {
 }
 
 const OcrModal: React.FC<OcrModalProps> = ({
-  isOpen, onClose, onUpload, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
+  isOpen, onClose, onUpload, onOpenCamera, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
 }) => {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -704,35 +708,14 @@ const OcrModal: React.FC<OcrModalProps> = ({
               </p>
 
               {/*
-                Camera + gallery file inputs use `sr-only` (visually
-                hidden but still in layout flow) instead of `hidden`
-                (display:none).  iOS Safari and some Android browsers
-                silently drop `.click()` calls on display:none file
-                inputs — the camera/picker never opens, no onChange
-                ever fires, the user sees nothing happen.  Teacher
-                reported this 2026-04-28: tapping "Take Photo" did
-                literally nothing on their phone.
-
-                sr-only keeps the input in the document layout so the
-                OS-level camera intent can fire correctly on tap.  The
-                input is still invisible to sighted users; the styled
-                button above it is what they actually click.
+                Gallery uses sr-only file input — `hidden` /
+                `display:none` made iOS Safari + some Android Chromes
+                silently drop the click(), so we keep it in layout
+                flow but invisible.  Camera no longer uses a file
+                input at all — InPageCamera (getUserMedia) opens the
+                stream INSIDE the tab so Android Chrome can't kill us
+                to free RAM for an OS camera app.
               */}
-
-              {/* Camera input (with capture) */}
-              <input
-                ref={cameraInputRef}
-                type="file"
-                id="ocr-camera-input"
-                name="cameraImage"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onUpload(file);
-                }}
-                capture="environment"
-              />
 
               {/* Gallery input (without capture) */}
               <input
@@ -750,7 +733,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={onOpenCamera}
                   type="button"
                   className="flex-1 bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
@@ -1494,6 +1477,10 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   // OCR State
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  // In-page camera (getUserMedia stream) shown over the OCR modal
+  // when the teacher taps "Camera".  Replaces the OS camera intent
+  // so Android Chrome can't kill our tab to free RAM.
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [ocrState, setOcrState] = useState<OcrState>('idle');
   // Real error message captured when OCR fails -- replaces the
   // previous silent catch-then-set-error-state pattern that left
@@ -1968,6 +1955,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           setOcrErrorMessage(null);
         }}
         onUpload={handleOcrUpload}
+        onOpenCamera={() => setCameraOpen(true)}
         state={ocrState}
         progress={ocrProgress}
         extractedWords={extractedWords}
@@ -1975,6 +1963,21 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         onEditWord={handleEditOcrWord}
         errorMessage={ocrErrorMessage ?? undefined}
       />
+
+      {/* In-page camera — getUserMedia stream rendered as a fullscreen
+          modal.  When the teacher captures a frame, we feed the
+          resulting JPEG File straight into handleOcrUpload — same
+          shape as the gallery <input> path — so all downstream OCR
+          logic stays unchanged. */}
+      {cameraOpen && (
+        <InPageCamera
+          onCapture={(file) => {
+            setCameraOpen(false);
+            void handleOcrUpload(file);
+          }}
+          onCancel={() => setCameraOpen(false)}
+        />
+      )}
 
       {/* Topic Packs Panel */}
       <TopicPacksPanel

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, Zap, Sparkles, ChevronRight } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
+import { useLanguage } from "../hooks/useLanguage";
+import { shopT } from "../locales/student/shop";
 import FloatingButtons from "../components/FloatingButtons";
 import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import {
@@ -76,6 +78,8 @@ function currentLimitedItem() {
 }
 
 export default function ShopView({ user, xp, setXp, setUser, setView, showToast, shopTab, setShopTab, activateBooster }: ShopViewProps) {
+  const { language } = useLanguage();
+  const t = shopT[language];
   // Cinematic egg-opening state.  Phases:
   //   'idle'    → no cinematic
   //   'zoom'    → egg zooming into centre (250ms)
@@ -86,9 +90,9 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
   const [openingEgg, setOpeningEgg] = useState<null | { egg: typeof MYSTERY_EGGS[0]; phase: 'zoom' | 'shake' | 'crack'; rewardLabel?: string }>(null);
 
   const purchaseAvatar = async (avatar: typeof PREMIUM_AVATARS[0]) => {
-    if (xp < avatar.cost) { showToast("Not enough XP!", "error"); return; }
+    if (xp < avatar.cost) { showToast(t.notEnoughXp, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: avatar.emoji, item_cost: avatar.cost });
-    if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+    if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
     setXp(data.new_xp);
     setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), avatar.emoji] } : prev);
     showToast(`Unlocked ${avatar.name}!`, "success");
@@ -97,13 +101,13 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
   const equipAvatar = async (emoji: string) => {
     setUser(prev => prev ? { ...prev, avatar: emoji } : prev);
     await supabase.from('users').update({ avatar: emoji }).eq('uid', user.uid);
-    showToast("Avatar equipped!", "success");
+    showToast(t.avatarEquipped, "success");
   };
 
   const purchaseTheme = async (theme: typeof THEMES[0]) => {
-    if (xp < theme.cost) { showToast("Not enough XP!", "error"); return; }
+    if (xp < theme.cost) { showToast(t.notEnoughXp, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'theme', item_id: theme.id, item_cost: theme.cost });
-    if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+    if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
     setXp(data.new_xp);
     setUser(prev => prev ? { ...prev, unlockedThemes: [...(prev.unlockedThemes ?? []), theme.id] } : prev);
     showToast(`Unlocked ${theme.name}!`, "success");
@@ -112,13 +116,13 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
   const equipTheme = async (themeId: string) => {
     setUser(prev => prev ? { ...prev, activeTheme: themeId } : prev);
     await supabase.from('users').update({ active_theme: themeId }).eq('uid', user.uid);
-    showToast("Theme applied!", "success");
+    showToast(t.themeApplied, "success");
   };
 
   const purchasePowerUp = async (powerUp: typeof POWER_UP_DEFS[0]) => {
-    if (xp < powerUp.cost) { showToast("Not enough XP!", "error"); return; }
+    if (xp < powerUp.cost) { showToast(t.notEnoughXp, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'power_up', item_id: powerUp.id, item_cost: powerUp.cost });
-    if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+    if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
     setXp(data.new_xp);
     setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [powerUp.id]: ((prev.powerUps ?? {})[powerUp.id] ?? 0) + 1 } } : prev);
     showToast(`Got ${powerUp.name}!`, "success");
@@ -134,7 +138,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
   // animation hides most RPC latency and the reward label only updates
   // once the real result lands, so students see a matching number.
   const purchaseEgg = async (egg: typeof MYSTERY_EGGS[0]) => {
-    if (xp < egg.cost) { showToast("Not enough XP!", "error"); return; }
+    if (xp < egg.cost) { showToast(t.notEnoughXp, "error"); return; }
     // Kick off the cinematic immediately.
     setOpeningEgg({ egg, phase: 'zoom' });
     setTimeout(() => setOpeningEgg(prev => prev ? { ...prev, phase: 'shake' } : prev), 300);
@@ -149,7 +153,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
       const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
       const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
       if (pErr || !pData?.success) {
-        showToast(pData?.error || "Could not open egg — try again later.", "error");
+        showToast(pData?.error || t.couldNotOpenEgg, "error");
         return null;
       }
       setXp(pData.new_xp);
@@ -164,9 +168,9 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
   };
 
   const purchaseBooster = async (booster: typeof BOOSTERS_DEFS[0]) => {
-    if (xp < booster.cost) { showToast("Not enough XP!", "error"); return; }
+    if (xp < booster.cost) { showToast(t.notEnoughXp, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'booster', item_id: booster.id, item_cost: booster.cost });
-    if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+    if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
     setXp(data.new_xp);
     // Activate the booster client-side so it actually takes effect in
     // the next game.  Previously the purchase succeeded but the booster
@@ -255,7 +259,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
               <div className="relative flex items-center gap-3">
                 <Sparkles size={22} className="text-white" />
                 <div>
-                  <h2 className="text-lg sm:text-xl font-black text-white">Mystery Eggs & Chests</h2>
+                  <h2 className="text-lg sm:text-xl font-black text-white">{t.mysteryEggsAndChests}</h2>
                   <p className="text-xs sm:text-sm text-white/90 mt-0.5">Spend XP to open an egg — every egg drops a random XP reward (and sometimes a surprise).</p>
                 </div>
               </div>
@@ -321,7 +325,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
           <div className="space-y-6">
             {/* Avatar Collections — Category-based unlocking */}
             <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-blue-100">
-              <h2 className="text-xl font-black mb-2">Avatar Collections</h2>
+              <h2 className="text-xl font-black mb-2">{t.avatarCollections}</h2>
               <p className="text-stone-500 text-sm mb-4">Earn XP to unlock new avatar packs! Select any unlocked avatar to equip it.</p>
               <div className="space-y-4">
                 {(Object.keys(AVATAR_CATEGORIES) as Array<keyof typeof AVATAR_CATEGORIES>).map(category => {
@@ -341,7 +345,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                           <span className="text-xs text-stone-400">({AVATAR_CATEGORIES[category].length} avatars)</span>
                         </div>
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isUnlocked ? "bg-green-200 text-green-800" : "bg-amber-100 text-amber-700"}`}>
-                          {unlock.xpRequired === 0 ? "Free" : isUnlocked ? "Unlocked!" : `${unlock.label} needed`}
+                          {unlock.xpRequired === 0 ? t.free : isUnlocked ? t.unlocked : t.needed(unlock.label)}
                         </span>
                       </div>
                       {!isUnlocked && (
@@ -392,7 +396,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
             <div className="bg-gradient-to-br from-white to-amber-50/40 rounded-3xl p-6 shadow-md border-2 border-amber-100">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles size={18} className="text-amber-500" />
-                <h2 className="text-xl font-black">Featured Avatars</h2>
+                <h2 className="text-xl font-black">{t.featuredAvatars}</h2>
               </div>
               <p className="text-stone-500 text-sm mb-4">Exclusive premium avatars — limited-style drops for XP.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -471,7 +475,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
         {shopTab === "themes" && (
           <div>
             <div className="mb-4">
-              <h2 className="text-2xl font-black text-stone-900">Themes</h2>
+              <h2 className="text-2xl font-black text-stone-900">{t.themes}</h2>
               <p className="text-stone-500 text-sm mt-1">Change the whole-app vibe. Preview shows the actual theme background.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -536,7 +540,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
         {shopTab === "titles" && (
           <div>
             <div className="mb-4">
-              <h2 className="text-2xl font-black text-stone-900">Name Titles</h2>
+              <h2 className="text-2xl font-black text-stone-900">{t.nameTitles}</h2>
               <p className="text-stone-500 text-sm mt-1">Show off a custom title below your name. Each one has its own vibe.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -558,7 +562,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
 
                     <div className="relative p-5 sm:p-6 min-h-[140px] flex items-center justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">Title</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">{t.titleKind}</p>
                         <p
                           className={`${style.titleFont} ${style.titleWeight} ${style.titleExtra ?? ''} text-white drop-shadow-lg leading-tight truncate`}
                           style={style.titleStyle}
@@ -591,7 +595,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                                 showToast(`Couldn't equip title: ${error.message}`, "error");
                                 return;
                               }
-                              showToast("Title equipped!", "success");
+                              showToast(t.titleEquipped, "success");
                             }}
                             type="button"
                             style={{ touchAction: 'manipulation' }}
@@ -602,9 +606,9 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                         ) : (
                           <button
                             onClick={async () => {
-                              if (xp < title.cost) { showToast("Not enough XP!", "error"); return; }
+                              if (xp < title.cost) { showToast(t.notEnoughXp, "error"); return; }
                               const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
-                              if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                              if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
                               setXp(data.new_xp);
                               setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
                               showToast(`Unlocked "${title.display}"!`, "success");
@@ -630,7 +634,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
         {shopTab === "frames" && (
           <div>
             <div className="mb-4">
-              <h2 className="text-2xl font-black text-stone-900">Avatar Frames</h2>
+              <h2 className="text-2xl font-black text-stone-900">{t.avatarFrames}</h2>
               <p className="text-stone-500 text-sm mt-1">A glowing border that wraps your avatar everywhere it appears.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -658,9 +662,9 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-1">Frame</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-1">{t.frameKind}</p>
                         <h3 className="text-lg sm:text-xl font-black text-white leading-tight">{frame.name}</h3>
-                        <p className="text-xs text-white/70 mt-1">Wraps your avatar with a glowing ring.</p>
+                        <p className="text-xs text-white/70 mt-1">{t.framesGlowingRing}</p>
                         <div className="mt-3">
                           {isActive ? (
                             <span className="inline-flex items-center gap-1 text-xs font-black text-blue-100 bg-blue-500/30 border border-blue-400/40 px-3 py-2 rounded-xl">
@@ -682,7 +686,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                                   showToast(`Couldn't equip frame: ${error.message}`, "error");
                                   return;
                                 }
-                                showToast("Frame equipped!", "success");
+                                showToast(t.frameEquipped, "success");
                               }}
                               type="button"
                               style={{ touchAction: 'manipulation' }}
@@ -693,9 +697,9 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                           ) : (
                             <button
                               onClick={async () => {
-                                if (xp < frame.cost) { showToast("Not enough XP!", "error"); return; }
+                                if (xp < frame.cost) { showToast(t.notEnoughXp, "error"); return; }
                                 const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
-                                if (error || !data?.success) { showToast(data?.error || "Purchase failed!", "error"); return; }
+                                if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
                                 setXp(data.new_xp);
                                 setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
                                 showToast(`Unlocked ${frame.name}!`, "success");
@@ -723,7 +727,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
         {shopTab === "boosters" && (
           <div>
             <div className="mb-4">
-              <h2 className="text-2xl font-black text-stone-900">Boosters</h2>
+              <h2 className="text-2xl font-black text-stone-900">{t.boosters}</h2>
               <p className="text-stone-500 text-sm mt-1">One-shot buffs that make your next plays count more.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -742,7 +746,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                         {booster.emoji}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-0.5">Booster</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-0.5">{t.boosterKind}</p>
                         <h3 className="text-lg sm:text-xl font-black text-white leading-tight">{booster.name}</h3>
                         <p className="text-xs text-white/85 mt-1 leading-relaxed">{booster.desc}</p>
                         <div className="mt-3">
@@ -769,7 +773,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
         {shopTab === "powerups" && (
           <div>
             <div className="mb-4">
-              <h2 className="text-2xl font-black text-stone-900">Power-ups</h2>
+              <h2 className="text-2xl font-black text-stone-900">{t.powerUps}</h2>
               <p className="text-stone-500 text-sm mt-1">Stash these in your inventory and trigger them mid-game.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -795,7 +799,7 @@ export default function ShopView({ user, xp, setXp, setUser, setView, showToast,
                         {powerUp.emoji}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-0.5">Power-up</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-0.5">{t.powerupKind}</p>
                         <h3 className="text-lg sm:text-xl font-black text-white leading-tight">{powerUp.name}</h3>
                         <p className="text-xs text-white/85 mt-1 leading-relaxed">{powerUp.desc}</p>
                         <div className="mt-3">
@@ -891,13 +895,13 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
   // Portals — the 5 main categories as big pressable tiles.  Each has a
   // distinct vibe so the hub doesn't feel monotone.
   const portals: { tab: Exclude<ShopTab, 'hub'>; label: string; emoji: string; subtitle: string; gradient: string }[] = [
-    { tab: 'eggs',     label: 'Mystery Eggs', emoji: '🥚', subtitle: 'Random XP drops',            gradient: 'from-indigo-500 via-violet-500 to-fuchsia-500' },
-    { tab: 'avatars',  label: 'Avatars',      emoji: '🎭', subtitle: 'Collect them all',           gradient: 'from-blue-500 via-sky-500 to-cyan-500' },
-    { tab: 'frames',   label: 'Frames',       emoji: '🖼️', subtitle: 'Flex your profile',          gradient: 'from-amber-500 via-orange-500 to-rose-500' },
-    { tab: 'titles',   label: 'Titles',       emoji: '🏷️', subtitle: 'What you\'re known for',     gradient: 'from-violet-500 via-purple-500 to-fuchsia-500' },
-    { tab: 'themes',   label: 'Themes',       emoji: '🎨', subtitle: 'Change the vibe',            gradient: 'from-emerald-500 via-teal-500 to-sky-500' },
-    { tab: 'boosters', label: 'Boosters',     emoji: '🔥', subtitle: '24h + weekend buffs',        gradient: 'from-rose-500 via-pink-500 to-fuchsia-500' },
-    { tab: 'powerups', label: 'Power-ups',    emoji: '⚡', subtitle: 'Use during games',           gradient: 'from-yellow-500 via-amber-500 to-orange-500' },
+    { tab: 'eggs',     label: t.portalEggsLabel,     emoji: '🥚', subtitle: t.portalEggsSubtitle,     gradient: 'from-indigo-500 via-violet-500 to-fuchsia-500' },
+    { tab: 'avatars',  label: t.portalAvatarsLabel,  emoji: '🎭', subtitle: t.portalAvatarsSubtitle,  gradient: 'from-blue-500 via-sky-500 to-cyan-500' },
+    { tab: 'frames',   label: t.portalFramesLabel,   emoji: '🖼️', subtitle: t.portalFramesSubtitle,   gradient: 'from-amber-500 via-orange-500 to-rose-500' },
+    { tab: 'titles',   label: t.portalTitlesLabel,   emoji: '🏷️', subtitle: t.portalTitlesSubtitle,   gradient: 'from-violet-500 via-purple-500 to-fuchsia-500' },
+    { tab: 'themes',   label: t.portalThemesLabel,   emoji: '🎨', subtitle: t.portalThemesSubtitle,   gradient: 'from-emerald-500 via-teal-500 to-sky-500' },
+    { tab: 'boosters', label: t.portalBoostersLabel, emoji: '🔥', subtitle: t.portalBoostersSubtitle, gradient: 'from-rose-500 via-pink-500 to-fuchsia-500' },
+    { tab: 'powerups', label: t.portalPowerupsLabel, emoji: '⚡', subtitle: t.portalPowerupsSubtitle, gradient: 'from-yellow-500 via-amber-500 to-orange-500' },
   ];
 
   return (
@@ -908,8 +912,8 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
       {/* TRENDING RAIL — horizontal scrolling mini-cards */}
       <div>
         <div className="flex items-center justify-between mb-2 px-1">
-          <h2 className="text-sm font-black text-stone-900 uppercase tracking-widest">Trending now</h2>
-          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Featured drops</span>
+          <h2 className="text-sm font-black text-stone-900 uppercase tracking-widest">{t.trendingNow}</h2>
+          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{t.featuredDrops}</span>
         </div>
         <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-1 px-1" style={{ scrollSnapType: 'x mandatory' }}>
           {trending.map((item, i) => (
@@ -941,7 +945,7 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
 
       {/* PORTAL TILES — the 5+ main category entrances */}
       <div>
-        <h2 className="text-sm font-black text-stone-900 uppercase tracking-widest mb-2 px-1">Browse shop</h2>
+        <h2 className="text-sm font-black text-stone-900 uppercase tracking-widest mb-2 px-1">{t.browseShop}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {portals.map(p => (
             <motion.button
@@ -979,11 +983,11 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
           <Zap size={20} className="text-white fill-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Your balance</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">{t.yourBalance}</p>
           <p className="text-xl font-black text-stone-900 tabular-nums">{xp} XP</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Next tier</p>
+          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{t.nextTier}</p>
           <p className="text-sm font-black text-stone-900">{getXpTitle(xp).emoji} {getXpTitle(xp).title}</p>
         </div>
       </div>
