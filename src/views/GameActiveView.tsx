@@ -215,7 +215,17 @@ export default function GameActiveView({
           screen. Matching mode also gets vertical breathing room via
           a min-height so the grid sits mid-viewport instead of pinned
           under the header. */}
-      <div className={`w-full max-w-4xl mx-auto ${gameMode === 'matching' ? 'min-h-[60vh] flex items-center justify-center' : ''}`}>
+      {/* Phase-1 redesign (2026-04-30): every mode now sits in the
+          vertical centre of the viewport on phones, not glued to the
+          top with empty dead space below.  Previously only matching
+          mode had this; other modes had `text-3xl` prompts hanging at
+          the very top of the screen with the answer cards immediately
+          below and a huge gap underneath.  Generalising the
+          `flex items-center justify-center` wrapper centres every
+          mode's content vertically — matching keeps its
+          slightly-larger min-h-[60vh] for the larger pair grid, the
+          rest land at min-h-[55vh]. */}
+      <div className={`w-full max-w-4xl mx-auto ${gameMode === 'matching' ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
         <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (

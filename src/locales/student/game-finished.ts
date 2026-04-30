@@ -33,6 +33,11 @@ export interface GameFinishedT {
   chooseAnotherMode: string;
   reviewMissedWord: (n: number) => string;
   backToDashboard: string;
+  /** Phase-1 redesign (2026-04-30): the post-game screen now collapses
+   *  to a single big primary button + a tiny secondary text link.
+   *  backToModes is the primary; exitToDashboard is the link. */
+  backToModes: string;
+  exitToDashboard: string;
 }
 
 export const gameFinishedT: Record<Language, GameFinishedT> = {
@@ -68,6 +73,8 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     chooseAnotherMode: "Choose Another Mode",
     reviewMissedWord: (n) => `Review ${n} Missed Word${n > 1 ? "s" : ""}`,
     backToDashboard: "Back to Dashboard",
+    backToModes: "Back to Modes →",
+    exitToDashboard: "Exit to dashboard",
   },
 
   he: {
@@ -102,6 +109,8 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     chooseAnotherMode: "בחר מצב אחר",
     reviewMissedWord: (n) => `חזור על ${n} מילים שפיספסת`,
     backToDashboard: "חזור ללוח הבקרה",
+    backToModes: "חזרה למצבים →",
+    exitToDashboard: "יציאה ללוח הבקרה",
   },
 
   ar: {
@@ -136,5 +145,7 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     chooseAnotherMode: "اختر وضعًا آخر",
     reviewMissedWord: (n) => `راجع ${n} كلمة فاتتك`,
     backToDashboard: "العودة إلى لوحة التحكم",
+    backToModes: "العودة إلى الأوضاع →",
+    exitToDashboard: "الخروج إلى لوحة التحكم",
   },
 };

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, RefreshCw, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut } from "lucide-react";
+import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut } from "lucide-react";
 import type { AppUser } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
@@ -225,15 +225,20 @@ export default function GameFinishedView({
           {tt.whatsNext}
         </p>
 
-        <div className="flex flex-col gap-2.5">
+        {/* Phase-1 redesign (2026-04-30): collapsed from 4 buttons
+            (Try Again / Choose Another Mode / Review / Back to
+            Dashboard) to ONE big primary "Back to Modes" + an
+            optional Review ghost button + a tiny "Exit to dashboard"
+            text link.  The kid always knows which one to tap.
+
+            "Try Again" was removed — replaying the same mode now
+            requires Back-to-Modes → tap the same mode card again.
+            One extra tap, but eliminates the "wait, did I press the
+            right one?" hesitation teachers reported. */}
+        <div className="flex flex-col gap-3">
           {isGuest ? (
-            // Guest (Quick Play) layout.  Logged-in students get Try Again
-            // + Review, but for a Quick Play guest "Try Again" on the same
-            // mode just replays words they've already finished, and the
-            // old Dashboard / Assignment-words paths don't exist for them
-            // — those buttons sent them to a blank view. Give guests the
-            // two actions that actually make sense: play a different
-            // mode, or leave Quick Play.
+            // Quick Play guest layout — same shape as authenticated
+            // students: one big primary button + tiny exit link below.
             <>
               <button
                 onClick={() => {
@@ -243,10 +248,10 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-5 rounded-2xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                <Grid3X3 size={20} />
-                {tt.playAnotherMode}
+                <Grid3X3 size={22} />
+                {tt.backToModes}
               </button>
               <button
                 onClick={() => {
@@ -256,30 +261,17 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-stone-700 border-2 border-stone-200 hover:bg-stone-50'}`}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-xs transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'}`}
               >
-                <LogOut size={16} />
+                <LogOut size={12} />
                 {tt.exitQuickPlay}
               </button>
             </>
           ) : (
             <>
-              {/* Primary — Try Again (same mode + words) */}
-              <button
-                onClick={resetRound}
-                disabled={isSaving}
-                type="button"
-                style={{ touchAction: 'manipulation' }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                <RefreshCw size={20} />
-                {tt.tryAgain}
-              </button>
-
-              {/* Secondary — Back to Game Modes.  Keeps the student
-                  inside the same assignment but returns them to the mode
-                  selection screen so they don't have to bounce through
-                  the dashboard + assignment picker every time. */}
+              {/* PRIMARY — Back to Modes.  Filling 100% width, py-5,
+                  emoji, large font.  This is the only tap target a kid
+                  needs to find. */}
               <button
                 onClick={() => {
                   resetRound();
@@ -288,13 +280,15 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600' : 'bg-white text-stone-900 border-2 border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}
+                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-5 rounded-2xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                <Grid3X3 size={18} />
-                {tt.chooseAnotherMode}
+                <Grid3X3 size={22} />
+                {tt.backToModes}
               </button>
 
-              {/* Review missed words — only when mistakes > 0. */}
+              {/* OPTIONAL — Review missed words (only when there are
+                  mistakes).  Ghost button between the primary and the
+                  exit link so it's visible but doesn't compete. */}
               {mistakes.length > 0 && (
                 <button
                   onClick={() => {
@@ -313,7 +307,9 @@ export default function GameFinishedView({
                 </button>
               )}
 
-              {/* Tertiary — Back to Dashboard, de-emphasised link-style. */}
+              {/* TINY SECONDARY — Exit to dashboard.  Discoverable but
+                  visually de-emphasised so kids gravitate to the big
+                  primary button instead. */}
               <button
                 onClick={() => {
                   resetRound();
@@ -323,10 +319,10 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-xs transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'}`}
               >
-                <Home size={14} />
-                {tt.backToDashboard}
+                <Home size={12} />
+                {tt.exitToDashboard}
               </button>
             </>
           )}
