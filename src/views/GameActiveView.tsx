@@ -171,6 +171,7 @@ export default function GameActiveView({
           setSpellingInput={setSpellingInput}
           feedback={feedback}
           onSpellingSubmit={handleSpellingSubmit}
+          themeColor={modeTheme}
         />
       );
     }
