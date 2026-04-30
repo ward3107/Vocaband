@@ -1,13 +1,15 @@
-import { type ReactNode, useRef, useEffect } from "react";
+import { type ReactNode, useRef, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
+import StudentEmailOtpCard from "../components/StudentEmailOtpCard";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
+import { Globe } from "lucide-react";
 
 interface StudentAccountLoginViewProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -183,8 +185,16 @@ export default function StudentAccountLoginView({
   };
 
   const hasEnoughCode = studentLoginClassCode.trim().length >= 3;
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const t = studentLoginT[language];
+  const [langOpen, setLangOpen] = useState(false);
+  const langs: Language[] = ["en", "he", "ar"];
+  // Toggle between Google OAuth (default) and email-OTP auth path.
+  // Same Supabase session afterwards either way — only the UI for
+  // identity verification differs.  See StudentEmailOtpCard.tsx for
+  // why students need this (shared classroom PCs, Google-cookie
+  // leakage between back-to-back logins).
+  const [emailOtpMode, setEmailOtpMode] = useState(false);
 
   return (
     <>
@@ -242,9 +252,53 @@ export default function StudentAccountLoginView({
                 <ArrowLeft size={16} />
                 {t.back}
               </button>
-              <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
-                {t.student}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
+                  {t.student}
+                </span>
+                {/* Language picker — students often need to change the
+                    UI language before they can read the rest of the
+                    login screen.  Surfacing it in the header (instead
+                    of hiding it on the legal pages) makes the
+                    EN/HE/AR translations from src/locales/student/*
+                    actually reachable.  Once selected, useLanguage
+                    persists the choice via localStorage so the
+                    dashboard, games, and shop all inherit it. */}
+                <div className="relative">
+                  <button
+                    onClick={() => setLangOpen(o => !o)}
+                    type="button"
+                    aria-label="Change language"
+                    aria-expanded={langOpen}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white text-xs font-bold hover:bg-white/20 transition-colors"
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    <Globe size={14} />
+                    <span>{languageFlags[language]} {languageNames[language]}</span>
+                  </button>
+                  {langOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
+                      <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-xl shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
+                        {langs.map(lng => (
+                          <button
+                            key={lng}
+                            onClick={() => { setLanguage(lng); setLangOpen(false); }}
+                            type="button"
+                            style={{ touchAction: 'manipulation' }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-stone-50 transition-colors ${
+                              language === lng ? 'bg-indigo-50 text-indigo-700' : 'text-stone-700'
+                            }`}
+                          >
+                            <span>{languageFlags[lng]}</span>
+                            <span>{languageNames[lng]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </header>
 
             <main className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
@@ -340,21 +394,52 @@ export default function StudentAccountLoginView({
                       - First-timers: Google identifies them, then we
                         show the OAuthClassCode screen to bind them
                         to the class code they just typed. */}
-                  <OAuthButton
-                    onSuccess={() => {
-                      setIsOAuthCallback(true);
-                    }}
-                    onError={(errorMessage) => {
-                      setError(errorMessage);
-                    }}
-                    beforeSignIn={() => {
-                      // Persist class code so OAuthClassCode can pre-fill
-                      // for first-timers + App can detect class-switch
-                      // intent for returning students.  writeIntendedClassCode
-                      // normalises empty strings to "clear".
-                      writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
-                    }}
-                  />
+                  {emailOtpMode ? (
+                    /* Email + 6-digit OTP path.  Self-contained — uses
+                       useTeacherOtpAuth (which is actually a generic
+                       email-OTP hook, not teacher-specific) and on
+                       verifyOtp success flips isOAuthCallback so the
+                       existing OAuthCallback → OAuthClassCode chain
+                       takes over (find existing student profile OR
+                       show class-code binding screen, same as Google
+                       OAuth lands in). */
+                    <StudentEmailOtpCard
+                      classCode={studentLoginClassCode}
+                      onVerified={() => setIsOAuthCallback(true)}
+                      onUseGoogle={() => setEmailOtpMode(false)}
+                    />
+                  ) : (
+                    <>
+                      <OAuthButton
+                        onSuccess={() => {
+                          setIsOAuthCallback(true);
+                        }}
+                        onError={(errorMessage) => {
+                          setError(errorMessage);
+                        }}
+                        beforeSignIn={() => {
+                          // Persist class code so OAuthClassCode can pre-fill
+                          // for first-timers + App can detect class-switch
+                          // intent for returning students.  writeIntendedClassCode
+                          // normalises empty strings to "clear".
+                          writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
+                        }}
+                      />
+                      {/* Email-OTP escape hatch — for students who'd
+                          rather not use a personal Google account on a
+                          shared classroom PC, or who don't have a
+                          Google account at all.  Subtle styling so
+                          Google stays visually primary. */}
+                      <button
+                        type="button"
+                        onClick={() => setEmailOtpMode(true)}
+                        className="w-full mt-3 text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-stone-100 transition-colors"
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                      >
+                        Or use email instead
+                      </button>
+                    </>
+                  )}
 
                   <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
                     {hasEnoughCode ? t.signedInBefore : t.firstTime}
