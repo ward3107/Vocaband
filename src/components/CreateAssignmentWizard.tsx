@@ -149,7 +149,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   // the older mymemory.translated.net path which gave worse results
   // for idioms/phrases (e.g. "a shame" → machine-literal).  /api/translate
   // is the same endpoint the Quick Play flow already uses.
-  const { translateWord: geminiTranslate } = useTranslate();
+  const { translateWord: geminiTranslate, translateWordsBatch } = useTranslate();
 
   // ── Convert number[] to Word[] for SetupWizard ───────────────────────────────
   const selectedWords = useMemo(() => {
@@ -391,6 +391,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         }
         return result;
       }}
+      onTranslateBatch={translateWordsBatch}
       topicPacks={TOPIC_PACKS}
       onOcrUpload={handleOcrUpload}
       isOcrProcessing={isOcrProcessing}

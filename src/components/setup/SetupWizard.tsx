@@ -99,6 +99,12 @@ export interface SetupWizardProps {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
   onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
+  /** Batch translate — used by WordInputStep2026 to auto-translate
+   *  Custom-tier words after OCR/paste, and to power the "Translate
+   *  N missing" button in the wizard header.  Curriculum words are
+   *  never sent through this — only synthesized customs that lack
+   *  hebrew/arabic. */
+  onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
 
   // Feature flags
   use2026WordInput?: boolean; // Use new 2026 word input design
@@ -162,6 +168,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   showToast,
   onPlayWord,
   onTranslateWord,
+  onTranslateBatch,
   use2026WordInput = false,
   topicPacks = [],
   onOcrUpload,
@@ -360,6 +367,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   onNext={handleNext}
                   onBack={handleBack}
                   onTranslateWord={onTranslateWord}
+                  onTranslateBatch={onTranslateBatch}
                   onOcrUpload={async (file) => {
                     // The OCR handler used to read localStorage keys that
                     // never existed ('vocaband-token' / 'sb-access-token'),

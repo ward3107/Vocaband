@@ -47,6 +47,8 @@ const TEXT = {
   needsWork: 'NEEDS WORK',
   needsWorkDesc: 'Missing translations',
   fixTranslations: 'Fix Missing Translations',
+  translateMissing: (n: number) => `Translate ${n} missing word${n === 1 ? '' : 's'}`,
+  translating: 'Translating…',
   done: 'Done',
   fix: 'Fix',
   addTranslation: 'Add translation',
@@ -109,6 +111,16 @@ export interface WordInputStep2026Props {
   onNext: () => void;
   onBack: () => void;
   onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
+  /** Batch translate — single round trip for many words.  Used to:
+   *  (a) auto-translate Custom-tier words the moment they land via OCR
+   *      or paste, so the teacher never sees an empty Hebrew/Arabic
+   *      column; and
+   *  (b) power the visible "Translate N missing" button at the top of
+   *      the selected-words section as a one-click escape hatch.
+   *  Curriculum words (Set 1/2/3) already have translations baked in
+   *  and are NEVER passed through this — only `level === 'Custom'` rows
+   *  with empty hebrew/arabic. */
+  onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
   onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
@@ -250,12 +262,16 @@ const OptionCard: React.FC<OptionCardProps> = ({
 
 // Status Cards
 interface StatusCardsProps {
+  /** True while a batch translation is in flight — disables the button
+   *  and swaps its label to a translating state so the teacher knows
+   *  the click actually fired (the request takes 1-3s). */
+  isTranslating?: boolean;
   readyCount: number;
   needsWorkCount: number;
   onFixClick?: () => void;
 }
 
-const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, onFixClick }) => {
+const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, onFixClick, isTranslating }) => {
 
   if (readyCount === 0 && needsWorkCount === 0) return null;
 
@@ -310,10 +326,18 @@ const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, o
             <button
               onClick={onFixClick}
               type="button"
-              className="mt-3 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:shadow-md transition-shadow"
+              disabled={isTranslating}
+              className="mt-3 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:shadow-md transition-shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
-              {TEXT.fixTranslations}
+              {isTranslating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {TEXT.translating}
+                </>
+              ) : (
+                <>🌐 {TEXT.translateMissing(needsWorkCount)}</>
+              )}
             </button>
           )}
         </motion.div>
@@ -1416,6 +1440,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   onNext,
   onBack,
   onTranslateWord,
+  onTranslateBatch,
   onOcrUpload,
   showToast,
   topicPacks = [],
@@ -1708,7 +1733,30 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     if (totalAdded > 0) {
       setShouldScrollToSelected(true);
     }
-  }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
+
+    // Auto-translate the custom words in the background.  Curriculum
+    // words already have hebrew + arabic from vocabulary.ts; only the
+    // synthesized customs need a round trip to /api/translate.  This
+    // means by the time the teacher scrolls to step 2, every word
+    // they added has translations filled in — no per-card click,
+    // no manual "translate" buttons.
+    if (customWords.length > 0 && onTranslateBatch) {
+      void runBatchTranslate(customWords).then(filled => {
+        const filledById = new Map(filled.map(w => [w.id, w]));
+        // Read the latest selectedWords from the ref — by the time
+        // the translate resolves the teacher may have added more
+        // words, and we don't want to clobber those with the stale
+        // closure value.
+        const latest = selectedWordsRefForBatch.current;
+        const merged = latest.map(w => filledById.get(w.id) ?? w);
+        onSelectedWordsChange(merged);
+        const filledCount = filled.filter(w => w.hebrew && w.arabic).length;
+        if (filledCount > 0) {
+          showToast?.(`Auto-translated ${filledCount} new word${filledCount === 1 ? '' : 's'}`, 'success');
+        }
+      });
+    }
+  }, [allWords, selectedWords, onSelectedWordsChange, showToast, onTranslateBatch, runBatchTranslate]);
 
   // Add words from panels (Topic Packs, Saved Groups, Browse Library)
   const handleAddWords = useCallback((words: Word[]) => {
@@ -1731,9 +1779,83 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   }, [selectedWords, onSelectedWordsChange]);
 
   // Fix missing translations
-  const handleFixTranslations = useCallback(() => {
-    setOpenPanel('browse-library');
-  }, []);
+  // Track whether a batch translate is in flight so the button can
+  // show a spinner instead of letting the teacher fire it twice.
+  const [isBatchTranslating, setIsBatchTranslating] = useState(false);
+
+  // Latest selectedWords mirror — async translate callbacks read from
+  // this ref so they don't clobber words the teacher added while the
+  // /api/translate request was in flight.
+  const selectedWordsRefForBatch = useRef(selectedWords);
+  useEffect(() => { selectedWordsRefForBatch.current = selectedWords; }, [selectedWords]);
+
+  // Find Custom-tier words with at least one empty translation column.
+  // Curriculum words (Set 1/2/3) already have hebrew + arabic baked in
+  // via vocabulary.ts and are skipped — we only spend AI tokens on
+  // words the teacher actually typed/pasted/OCR'd that aren't in our
+  // dictionary.
+  const customNeedingTranslation = useCallback(() => {
+    return selectedWords.filter(w =>
+      w.level === 'Custom' && (!w.hebrew?.trim() || !w.arabic?.trim())
+    );
+  }, [selectedWords]);
+
+  // Generic batch translate: fills hebrew + arabic for any Custom-tier
+  // words that are still missing them, using the parent-provided
+  // onTranslateBatch (one /api/translate round trip).  Used by:
+  //   - handleConfirmOcr (auto-fire after OCR adds custom words)
+  //   - handleFixTranslations (visible button when teacher wants to
+  //     retry / catch up after editing word english strings)
+  const runBatchTranslate = useCallback(async (
+    customs: Word[],
+  ): Promise<Word[]> => {
+    if (!onTranslateBatch || customs.length === 0) return customs;
+    const targets = customs
+      .map(w => w.english.trim())
+      .filter(s => s.length > 0);
+    if (targets.length === 0) return customs;
+    try {
+      const batch = await onTranslateBatch(targets);
+      return customs.map(w => {
+        const entry = batch.get(w.english.toLowerCase().trim());
+        if (!entry) return w;
+        return {
+          ...w,
+          hebrew: w.hebrew?.trim() || entry.hebrew || '',
+          arabic: w.arabic?.trim() || entry.arabic || '',
+        };
+      });
+    } catch (err) {
+      console.warn('[i18n] batch translate failed:', err);
+      return customs;
+    }
+  }, [onTranslateBatch]);
+
+  // Visible "Translate N missing" button — replaces the previous
+  // handler that just opened the Browse Library panel, which didn't
+  // actually fix anything.  Now batches the missing-translation custom
+  // words through onTranslateBatch and merges the results back into
+  // selectedWords.
+  const handleFixTranslations = useCallback(async () => {
+    if (isBatchTranslating) return;
+    const missing = customNeedingTranslation();
+    if (missing.length === 0) return;
+    setIsBatchTranslating(true);
+    try {
+      const filled = await runBatchTranslate(missing);
+      const filledById = new Map(filled.map(w => [w.id, w]));
+      const next = selectedWords.map(w => filledById.get(w.id) ?? w);
+      onSelectedWordsChange(next);
+      const filledCount = filled.filter(w => w.hebrew && w.arabic).length;
+      if (filledCount > 0) {
+        showToast?.(`Translated ${filledCount} words`, 'success');
+      } else {
+        showToast?.('Translation didn\'t return any results — try again', 'info');
+      }
+    } finally {
+      setIsBatchTranslating(false);
+    }
+  }, [customNeedingTranslation, runBatchTranslate, selectedWords, onSelectedWordsChange, showToast, isBatchTranslating]);
 
   // Edit translation handlers
   const handleEditWord = useCallback((word: WordWithStatus) => {
@@ -1895,6 +2017,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
             readyCount={readyCount}
             needsWorkCount={needsWorkCount}
             onFixClick={needsWorkCount > 0 ? handleFixTranslations : undefined}
+            isTranslating={isBatchTranslating}
           />
 
           {/* Words Grid */}

@@ -26,7 +26,7 @@
     "deploy:preview": "npm run build && wrangler deploy --config dist/vocaband/wrangler.json --name vocaband-preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.87.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@floating-ui/react": "^0.27.19",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.100.0",
