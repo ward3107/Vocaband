@@ -655,6 +655,10 @@ interface OcrModalProps {
    *  <input capture="environment"> path which launched the OS camera
    *  app and let Android Chrome kill our tab to free RAM. */
   onOpenCamera: () => void;
+  /** Open the gallery picker.  The actual <input type="file"> lives
+   *  in the parent so that the InPageCamera permission-denied fallback
+   *  can trigger the same picker without re-mounting another input. */
+  onOpenGallery: () => void;
   state: OcrState;
   progress: number;
   extractedWords: string[];
@@ -667,9 +671,8 @@ interface OcrModalProps {
 }
 
 const OcrModal: React.FC<OcrModalProps> = ({
-  isOpen, onClose, onUpload, onOpenCamera, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
+  isOpen, onClose, onUpload, onOpenCamera, onOpenGallery, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
 }) => {
-  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -708,28 +711,13 @@ const OcrModal: React.FC<OcrModalProps> = ({
               </p>
 
               {/*
-                Gallery uses sr-only file input — `hidden` /
-                `display:none` made iOS Safari + some Android Chromes
-                silently drop the click(), so we keep it in layout
-                flow but invisible.  Camera no longer uses a file
-                input at all — InPageCamera (getUserMedia) opens the
-                stream INSIDE the tab so Android Chrome can't kill us
-                to free RAM for an OS camera app.
+                Gallery file <input> lives in the parent component
+                (see WordInputStep2026 below the OcrModal mount) so
+                BOTH this button and the InPageCamera permission-
+                denied fallback can trigger the same picker without
+                duplicating the input.  We just call onOpenGallery,
+                which fires the parent's input.click().
               */}
-
-              {/* Gallery input (without capture) */}
-              <input
-                ref={galleryInputRef}
-                type="file"
-                id="ocr-gallery-input"
-                name="galleryImage"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onUpload(file);
-                }}
-              />
 
               <div className="flex gap-3">
                 <button
@@ -742,7 +730,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   {TEXT.camera}
                 </button>
                 <button
-                  onClick={() => galleryInputRef.current?.click()}
+                  onClick={onOpenGallery}
                   type="button"
                   className="flex-1 bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
@@ -1481,6 +1469,20 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   // when the teacher taps "Camera".  Replaces the OS camera intent
   // so Android Chrome can't kill our tab to free RAM.
   const [cameraOpen, setCameraOpen] = useState(false);
+  // Gallery file input lives at the parent so InPageCamera's "Pick
+  // from gallery instead" fallback can trigger it from the camera
+  // permission-denied error screen, not just OcrModal's Gallery
+  // button.  Both consumers call openGalleryPicker() which fires the
+  // hidden <input>'s native click(), surfacing the OS picker.
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const openGalleryPicker = useCallback(() => {
+    // Reset value first so picking the same file twice in a row still
+    // fires onChange (browsers de-dupe identical values otherwise).
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
+      galleryInputRef.current.click();
+    }
+  }, []);
   const [ocrState, setOcrState] = useState<OcrState>('idle');
   // Real error message captured when OCR fails -- replaces the
   // previous silent catch-then-set-error-state pattern that left
@@ -1945,6 +1947,23 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         onTranslate={onTranslateWord}
       />
 
+      {/* Parent-level gallery file input — shared between OcrModal's
+          Gallery button and InPageCamera's "Pick from gallery instead"
+          fallback.  Reset-on-open via openGalleryPicker so picking the
+          same file twice still fires onChange. */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        id="ocr-gallery-input"
+        name="galleryImage"
+        accept="image/*"
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleOcrUpload(file);
+        }}
+      />
+
       {/* OCR Modal */}
       <OcrModal
         isOpen={ocrModalOpen}
@@ -1956,6 +1975,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         }}
         onUpload={handleOcrUpload}
         onOpenCamera={() => setCameraOpen(true)}
+        onOpenGallery={openGalleryPicker}
         state={ocrState}
         progress={ocrProgress}
         extractedWords={extractedWords}
@@ -1976,6 +1996,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
             void handleOcrUpload(file);
           }}
           onCancel={() => setCameraOpen(false)}
+          onUseGallery={openGalleryPicker}
         />
       )}
 
