@@ -121,10 +121,17 @@ export default function StudentEmailOtpCard({
           </label>
           <input
             id="student-otp-email"
-            name="email"
+            /* Non-standard `name` + autoComplete="off" so the browser
+               doesn't remember + autofill the email on the next visit
+               from a shared classroom PC.  Privacy: prevents the next
+               student from seeing the previous student's email pre-
+               filled, which would let them trigger a code-to-someone-
+               else's-inbox flow. */
+            name="vocaband-student-otp-email"
             type="email"
             inputMode="email"
-            autoComplete="email"
+            autoComplete="off"
+            spellCheck={false}
             placeholder="you@example.com"
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}

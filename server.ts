@@ -35,6 +35,7 @@ import {
   type QpStudentEntry,
   type QpErrorCode,
 } from "./src/core/quickPlayProtocol";
+import { containsProfanity } from "./src/utils/nicknameProfanity";
 
 // Check if Supabase is configured — server features (auth, socket, API endpoints)
 // require these, but the frontend can still be served without them.
@@ -783,6 +784,10 @@ async function startServer() {
       if (!isValidSessionCode(sessionCode)) return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad session code");
       if (!isValidClientId(clientId))      return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad clientId");
       if (!isValidNickname(nickname))      return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad nickname");
+      // Defense-in-depth profanity gate — the client also blocks but
+      // a determined student could bypass via direct socket payload.
+      // Filter covers EN/HE/AR best-effort.
+      if (containsProfanity(nickname))     return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "Please pick a different name.");
 
       // Session must exist and be active in the DB. Cheap single-row read.
       if (!(await qpSessionIsActive(sessionCode))) {

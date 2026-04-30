@@ -159,7 +159,16 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
               <input
                 id="teacher-email"
                 type="email"
-                autoComplete="email"
+                /* autoComplete="off" + a non-standard name tells most
+                   browsers not to remember + autofill the email after
+                   the teacher logs in.  On a shared classroom PC this
+                   prevents the next teacher from seeing the previous
+                   teacher's email pre-filled (they could otherwise
+                   click 'Send code' and start a code-to-someone-else's-
+                   inbox flow).  Reported 2026-04-30. */
+                autoComplete="off"
+                name="vocaband-otp-email"
+                spellCheck={false}
                 inputMode="email"
                 placeholder={tt.emailPlaceholder}
                 value={emailInput}

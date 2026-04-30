@@ -136,6 +136,18 @@ export interface SetupWizardProps {
     sentenceDifficulty?: SentenceDifficulty;
     sentences?: string[];
   }) => void;
+  /** Called alongside onSaveTemplate to also persist the word list as
+   *  a "Saved Group" the teacher can re-pick next time.  Backed by
+   *  the public.saved_word_groups table (replaces the previous
+   *  localStorage path that disappeared on logout / device change). */
+  onSaveSavedGroup?: (name: string, wordIds: number[]) => Promise<unknown>;
+  /** Saved groups owned by this teacher — passed through to the
+   *  WordInputStep2026 SavedGroupsPanel. */
+  savedGroups?: Array<{ id: string; name: string; words: number[] }>;
+  /** Rename a saved group from inside the picker. */
+  onRenameSavedGroup?: (id: string, newName: string) => Promise<boolean>;
+  /** Delete a saved group from inside the picker. */
+  onDeleteSavedGroup?: (id: string) => Promise<boolean>;
 
   // TopAppBar props
   user?: { displayName?: string; avatar?: string } | null;
@@ -180,6 +192,10 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   initialSelectedWords,
   initialSelectedModes,
   onSaveTemplate,
+  onSaveSavedGroup,
+  savedGroups: savedGroupsProp,
+  onRenameSavedGroup,
+  onDeleteSavedGroup,
   user,
   onLogout,
 }) => {
@@ -297,29 +313,17 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           sentences: assignmentSentences.length > 0 ? assignmentSentences : undefined,
         });
 
-        // Also surface this exact word list under "Saved Groups" in
-        // the WordInputStep2026 picker, so a teacher who reused the
-        // same words last week can pick them in 1 tap next time.
-        // Storage key matches what SavedGroupsPanel reads
-        // (vocaband-saved-groups), so the panel picks up the group
-        // on next mount without any extra wiring.  Skip if the
-        // selection is empty.
-        try {
-          const ids = selectedWords.map(w => w.id);
-          if (ids.length > 0) {
-            const raw = localStorage.getItem('vocaband-saved-groups');
-            const groups: Array<{ id: string; name: string; words: number[] }> =
-              raw ? JSON.parse(raw) : [];
-            const groupId = `g_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-            groups.unshift({ id: groupId, name: title, words: ids });
-            // Cap to last 50 groups so localStorage doesn't grow forever.
-            const capped = groups.slice(0, 50);
-            localStorage.setItem('vocaband-saved-groups', JSON.stringify(capped));
-          }
-        } catch {
-          // localStorage blocked / private mode — silent: the template
-          // still got saved via onSaveTemplate, so the teacher hasn't
-          // lost anything important.
+        // Also surface this word list in the "Saved Groups" picker so
+        // the teacher can re-pick it in one tap next time — now backed
+        // by the public.saved_word_groups Supabase table (per-teacher,
+        // RLS-gated) instead of localStorage so the saved group
+        // survives logout / device change / browser cache clear.
+        // The onSaveSavedGroup callback is supplied by
+        // CreateAssignmentWizard / QuickPlaySetupView, which both
+        // mount useSavedWordGroups and pass through addGroup.
+        const ids = selectedWords.map(w => w.id);
+        if (ids.length > 0 && onSaveSavedGroup) {
+          void onSaveSavedGroup(title, ids);
         }
       }
     : undefined;
@@ -413,7 +417,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   }}
                   showToast={showToast}
                   topicPacks={topicPacks}
-                  savedGroups={[]} // TODO: pass from props
+                  savedGroups={savedGroupsProp ?? []}
+                  onRenameSavedGroup={onRenameSavedGroup}
+                  onDeleteSavedGroup={onDeleteSavedGroup}
                   customWords={customWords}
                   onCustomWordsChange={onCustomWordsChange}
                 />

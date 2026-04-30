@@ -714,9 +714,22 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[1] ? (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
                         <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>2nd</div>
+                        {/* Teacher-only kick affordance — same hover-
+                            reveal pattern as the rank-4+ tiles.  Top-3
+                            students can be kicked too if their name /
+                            behaviour warrants it (per teacher request
+                            2026-04-30). */}
+                        <button
+                          onClick={() => setConfirmKick(top3[1].name)}
+                          aria-label={`Remove ${top3[1].name}`}
+                          title={`Remove ${top3[1].name}`}
+                          className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
+                        >
+                          <X size={12} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
                       <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[1].score} pts</p>
@@ -731,9 +744,17 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[0] && (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
                         <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
+                        <button
+                          onClick={() => setConfirmKick(top3[0].name)}
+                          aria-label={`Remove ${top3[0].name}`}
+                          title={`Remove ${top3[0].name}`}
+                          className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
+                        >
+                          <X size={14} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
                       <p className={`font-label text-xs 2xl:text-base min-[1700px]:text-2xl ${t.accent} font-black`}>{top3[0].score} pts</p>
@@ -749,9 +770,17 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
                   {top3[2] ? (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
                         <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
+                        <button
+                          onClick={() => setConfirmKick(top3[2].name)}
+                          aria-label={`Remove ${top3[2].name}`}
+                          title={`Remove ${top3[2].name}`}
+                          className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
+                        >
+                          <X size={12} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
                       <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[2].score} pts</p>
