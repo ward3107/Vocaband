@@ -1,9 +1,10 @@
 import React from "react";
 import type { Word } from "../data/vocabulary";
 import AnswerOptionButton from "./AnswerOptionButton";
+import type { GameThemeColor } from "./game/GameShell";
 
 // Memoized Classic Mode Game component with debugging and error handling
-const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOptions, feedback, targetLanguage, gameWordsCount, currentIndex, onAnswer }: {
+const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOptions, feedback, targetLanguage, gameWordsCount, currentIndex, onAnswer, themeColor }: {
   gameMode: string;
   currentWord: Word | undefined;
   options: Word[];
@@ -13,6 +14,11 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
   gameWordsCount: number;
   currentIndex: number;
   onAnswer: (w: Word) => void;
+  /** Phase-3 theme: when supplied, AnswerOptionButton's resting state
+   *  picks up a theme-coloured border + hover.  Default undefined
+   *  preserves the legacy stone palette for any caller that hasn't
+   *  migrated yet. */
+  themeColor?: GameThemeColor;
 }) => {
   // Handle error cases
   if (!currentWord) {
@@ -36,9 +42,18 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
   }
 
   return (
-    <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+    <div className="grid grid-cols-2 gap-2 sm:gap-3">
       {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
-        <AnswerOptionButton key={option.id} option={option} currentWordId={currentWord.id} feedback={feedback} gameMode={gameMode} targetLanguage={targetLanguage} onAnswer={onAnswer} />
+        <AnswerOptionButton
+          key={option.id}
+          option={option}
+          currentWordId={currentWord.id}
+          feedback={feedback}
+          gameMode={gameMode}
+          targetLanguage={targetLanguage}
+          onAnswer={onAnswer}
+          themeColor={themeColor}
+        />
       ))}
     </div>
   );
