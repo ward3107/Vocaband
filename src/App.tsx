@@ -29,6 +29,7 @@ import { isAnswerCorrect } from './utils/answerMatch';
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import PwaInstallBanner from "./components/PwaInstallBanner";
+import QuickPlayResumeBanner from "./components/QuickPlayResumeBanner";
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
@@ -760,6 +761,22 @@ export default function App() {
       const cumulative = qpCumulativeScoreRef.current + newScore;
       console.log('[emitScoreUpdate] QP path → updateScore', { mode: newScore, cumulative });
       setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
+      // Also refresh the localStorage resume hint with the latest score
+      // and a fresh joinedAt timestamp.  This (a) lets the
+      // QuickPlayResumeBanner show the actual score the student has
+      // earned if they accidentally close the tab, and (b) extends the
+      // 90-minute TTL window for as long as the student is actively
+      // scoring — kids who walk away for 90 min see no banner; kids
+      // who scored 30 sec ago see "850 points".
+      try {
+        const raw = localStorage.getItem('vocaband_qp_guest');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.lastScore = cumulative;
+          parsed.joinedAt = Date.now();
+          localStorage.setItem('vocaband_qp_guest', JSON.stringify(parsed));
+        }
+      } catch { /* localStorage blocked / private mode — silent */ }
       return;
     }
 
@@ -1831,12 +1848,23 @@ export default function App() {
   // Also bundles the mobile PWA install banner — fully self-gated (mobile-only,
   // not-installed-only, not-recently-dismissed) so it costs nothing on
   // teacher desktops or already-installed PWAs.
+  // Suppress the QP resume banner when:
+  //   - the student is already on a QP URL (resume-in-progress)
+  //   - the student is actively in a game / mode-selection / dashboard
+  //     of a QP session (don't nag during play)
+  // Otherwise it surfaces on landing / login / public pages whenever
+  // there's a valid <90-min resume hint in localStorage.
+  const qpResumeSuppress =
+    !!quickPlaySessionParam ||
+    !!quickPlayActiveSession ||
+    view === "quick-play-student";
   const cookieBannerOverlay = (
     <>
       {showCookieBanner && !user && (
         <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
       )}
       <PwaInstallBanner />
+      <QuickPlayResumeBanner suppress={qpResumeSuppress} />
     </>
   );
 
