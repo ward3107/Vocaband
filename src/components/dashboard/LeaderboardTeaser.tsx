@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { TrendingUp, ChevronRight } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import type { View } from "../../core/views";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface LeaderboardTeaserProps {
   classCode: string | undefined;
@@ -30,6 +32,8 @@ interface ClassmateRow {
 export default function LeaderboardTeaser({
   classCode, currentStudentUid, currentXp, setView,
 }: LeaderboardTeaserProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   const [rows, setRows] = useState<ClassmateRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -94,22 +98,14 @@ export default function LeaderboardTeaser({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-0.5">
           <TrendingUp size={12} className="text-indigo-500" />
-          <span className="text-[10px] sm:text-xs font-bold text-stone-500 uppercase tracking-widest">Class rank</span>
+          <span className="text-[10px] sm:text-xs font-bold text-stone-500 uppercase tracking-widest">{t.classRank}</span>
         </div>
         <p className="text-sm sm:text-base font-bold text-stone-900 leading-snug">
-          {myRank === 1 ? (
-            <>You're <span className="text-amber-600">#1</span> in your class! 👑</>
-          ) : ahead ? (
-            <>
-              {gap > 0 ? (
-                <><span className="text-indigo-600 tabular-nums">{gap} XP</span> behind <span className="text-stone-900">{ahead.displayName}</span> </>
-              ) : (
-                <>Tied with <span className="text-stone-900">{ahead.displayName}</span> — push ahead! </>
-              )}
-            </>
-          ) : (
-            <>Keep earning XP to climb the class rank!</>
-          )}
+          {myRank === 1
+            ? t.topOfClass
+            : ahead
+              ? (gap > 0 ? t.xpBehind(gap, ahead.displayName) : t.tiedWith(ahead.displayName))
+              : t.keepClimbing}
         </p>
       </div>
 

@@ -7,6 +7,8 @@ import { resolveAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } fr
 import type { AppUser, AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 const DEFAULT_MODES = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
 
@@ -75,6 +77,8 @@ export default function StudentAssignmentCard({
   assignment, assignmentIdx, studentProgress, userUid,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentCardProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   const allowedModes = (assignment.allowedModes || DEFAULT_MODES).filter(m => m !== "flashcards");
   const totalModes = allowedModes.length;
 
@@ -217,7 +221,7 @@ export default function StudentAssignmentCard({
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             className={`hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${accent.cta} text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all`}
           >
-            {isComplete ? "Play again" : "Start"} →
+            {isComplete ? t.playAgain : t.startAssignment} →
           </button>
         )}
       </div>
@@ -230,7 +234,7 @@ export default function StudentAssignmentCard({
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           className={`sm:hidden w-full mt-3 py-2.5 ${accent.cta} text-white rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all`}
         >
-          {isComplete ? "Play again" : "Start learning"} →
+          {isComplete ? t.playAgain : t.startLearning} →
         </button>
       )}
       {isLocked && (

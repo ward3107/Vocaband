@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Flame, CheckCircle2, Target } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface DailyGoalBannerProps {
   studentProgress: ProgressData[];
@@ -21,6 +23,8 @@ interface DailyGoalBannerProps {
  * trust raw count.
  */
 export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoalBannerProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   const { playedToday, pct, hit } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -48,9 +52,9 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
               <CheckCircle2 size={22} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white/80 uppercase tracking-widest">Daily goal</p>
+              <p className="text-xs font-bold text-white/80 uppercase tracking-widest">{t.dailyGoal}</p>
               <h3 className="text-base sm:text-lg font-black text-white leading-tight">
-                You did it! 🎉 +10 XP bonus
+                {t.youDidIt(10)}
               </h3>
             </div>
           </div>
@@ -80,7 +84,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
             </motion.div>
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">Daily goal</p>
+                <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">{t.dailyGoal}</p>
                 <span className="text-xs font-bold text-stone-500 tabular-nums">
                   {playedToday} / {goal}
                 </span>
@@ -95,11 +99,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
                 />
               </div>
               <p className="text-xs sm:text-sm font-semibold text-stone-700 mt-1.5">
-                {playedToday === 0 ? (
-                  <>Play 1 game today to earn a <span className="text-rose-600 font-black">+10 XP</span> bonus</>
-                ) : (
-                  <>Almost there — {goal - playedToday} more to go!</>
-                )}
+                {playedToday === 0 ? t.playGameForBonus(10) : t.almostThere(goal - playedToday)}
               </p>
             </div>
           </div>

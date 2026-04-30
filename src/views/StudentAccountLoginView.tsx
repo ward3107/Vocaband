@@ -6,6 +6,8 @@ import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
+import { useLanguage } from "../hooks/useLanguage";
+import { studentLoginT } from "../locales/student/student-login";
 
 interface StudentAccountLoginViewProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -181,6 +183,8 @@ export default function StudentAccountLoginView({
   };
 
   const hasEnoughCode = studentLoginClassCode.trim().length >= 3;
+  const { language } = useLanguage();
+  const t = studentLoginT[language];
 
   return (
     <>
@@ -236,10 +240,10 @@ export default function StudentAccountLoginView({
                 className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
               >
                 <ArrowLeft size={16} />
-                Back
+                {t.back}
               </button>
               <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
-                Student
+                {t.student}
               </span>
             </header>
 
@@ -265,10 +269,10 @@ export default function StudentAccountLoginView({
                   />
                   <div>
                     <h1 className="text-3xl sm:text-5xl font-black text-white leading-[0.95] tracking-tight">
-                      Join your<br />class.
+                      {t.heroLine1}<br />{t.heroLine2}
                     </h1>
                     <p className="mt-2 text-base sm:text-lg font-bold text-white/80">
-                      Play to learn English.
+                      {t.heroSubtitle}
                     </p>
                   </div>
                 </div>
@@ -280,7 +284,7 @@ export default function StudentAccountLoginView({
                       htmlFor="student-class-code-input"
                       className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 text-center mb-3"
                     >
-                      Class code from your teacher
+                      {t.classCodeLabel}
                     </label>
 
                     <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-2xl p-4 shadow-inner">
@@ -308,12 +312,12 @@ export default function StudentAccountLoginView({
                         }
                       }}
                       maxLength={20}
-                      aria-label="Class code"
+                      aria-label={t.classCodeAria}
                       aria-describedby={error ? "student-login-error" : "class-code-hint"}
                       className="sr-only"
                     />
                     <p id="class-code-hint" className="text-xs text-stone-500 text-center mt-3">
-                      Got a link from your teacher? Paste it — we'll pull out the code.
+                      {t.classCodeHint}
                     </p>
 
                     {error && (
@@ -353,20 +357,13 @@ export default function StudentAccountLoginView({
                   />
 
                   <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
-                    {hasEnoughCode
-                      ? "Sign in with the same Google account every time to keep your XP and streak."
-                      : "First time? Type your class code above, then sign in with Google. Your teacher approves new students from the dashboard."}
+                    {hasEnoughCode ? t.signedInBefore : t.firstTime}
                   </p>
                 </div>
 
                 {/* Feature chips — subtle reminder of what students get */}
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  {[
-                    { emoji: '🏆', text: 'Earn XP' },
-                    { emoji: '🎯', text: 'Beat your friends' },
-                    { emoji: '🎨', text: 'Unlock avatars' },
-                    { emoji: '⚡', text: 'Live challenges' },
-                  ].map(f => (
+                  {t.features.map(f => (
                     <span
                       key={f.text}
                       className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"

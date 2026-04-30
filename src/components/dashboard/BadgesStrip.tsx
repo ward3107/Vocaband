@@ -1,5 +1,7 @@
 import { motion } from "motion/react";
 import { Trophy, Lock } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface BadgesStripProps {
   /** IDs (or display names) of badges the student has earned. */
@@ -40,6 +42,8 @@ function normalize(s: string): string {
 }
 
 export default function BadgesStrip({ earned }: BadgesStripProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   const isEarned = (b: { id: string; name: string }) => {
     const targetId = normalize(b.id);
     const targetName = normalize(b.name);
@@ -54,7 +58,7 @@ export default function BadgesStrip({ earned }: BadgesStripProps) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-amber-500 fill-amber-200" />
-          <h3 className="text-sm sm:text-base font-bold text-stone-900">Badges</h3>
+          <h3 className="text-sm sm:text-base font-bold text-stone-900">{t.badges}</h3>
         </div>
         <span className="text-xs font-bold text-stone-500">
           {earned.length} / {ALL_BADGES.length}

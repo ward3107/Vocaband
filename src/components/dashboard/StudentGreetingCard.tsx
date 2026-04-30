@@ -4,6 +4,8 @@ import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from 
 import { getXpTitle, NAME_FRAMES, NAME_TITLES } from "../../constants/game";
 import { getTitleStyle } from "../../constants/titleStyles";
 import type { AppUser } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 // Hero-card gradient when no title is equipped.  When a title IS
 // equipped, the equipped title's full visual signature (gradient +
@@ -122,8 +124,10 @@ export default function StudentGreetingCard({
     return () => cancelAnimationFrame(raf);
   }, [xp]);
 
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = hour < 12 ? t.greetingMorning : hour < 18 ? t.greetingAfternoon : t.greetingEvening;
 
   // Title visuals from the shared shop catalogue.  When a title is
   // equipped, its FULL signature (gradient + font + weight + extras)
@@ -208,8 +212,8 @@ export default function StudentGreetingCard({
                   maxLength={30}
                   disabled={renameSaving}
                   className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white text-stone-900 text-xl sm:text-2xl font-black placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-white/70"
-                  placeholder="Your name"
-                  aria-label="Your display name"
+                  placeholder={t.yourNamePlaceholder}
+                  aria-label={t.yourDisplayName}
                 />
                 <button
                   type="button"
@@ -217,7 +221,7 @@ export default function StudentGreetingCard({
                   disabled={renameSaving}
                   style={{ touchAction: 'manipulation' }}
                   className="p-2 rounded-xl bg-white text-stone-900 hover:bg-white/90 disabled:opacity-60 shrink-0"
-                  aria-label="Save name"
+                  aria-label={t.saveName}
                 >
                   <Check size={18} />
                 </button>
@@ -227,7 +231,7 @@ export default function StudentGreetingCard({
                   disabled={renameSaving}
                   style={{ touchAction: 'manipulation' }}
                   className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white disabled:opacity-60 shrink-0"
-                  aria-label="Cancel"
+                  aria-label={t.cancel}
                 >
                   <XIcon size={18} />
                 </button>
@@ -248,8 +252,8 @@ export default function StudentGreetingCard({
                   onClick={() => setIsRenaming(true)}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                   className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white/90 transition-colors shrink-0"
-                  aria-label="Change display name"
-                  title="Change display name"
+                  aria-label={t.changeDisplayName}
+                  title={t.changeDisplayName}
                 >
                   <Pencil size={14} />
                 </button>
@@ -270,7 +274,7 @@ export default function StudentGreetingCard({
               type="button"
               style={{ touchAction: 'manipulation' }}
               className="bg-white/10 hover:bg-white/20 text-white/90 font-mono font-bold px-2.5 py-0.5 rounded-full border border-white/20 inline-flex items-center gap-1 active:scale-95 transition-all"
-              title="Tap to copy class code"
+              title={t.tapToCopyClassCode}
             >
               {user.classCode}
               {copiedCode === user.classCode ? (
@@ -299,7 +303,7 @@ export default function StudentGreetingCard({
               </div>
               <div className="flex flex-col">
                 <span className="text-2xl font-black text-stone-900 tabular-nums leading-none">{displayedXp}</span>
-                <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">Total XP</span>
+                <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">{t.totalXp}</span>
               </div>
             </div>
           </div>
@@ -328,7 +332,7 @@ export default function StudentGreetingCard({
           <Zap size={14} className="text-stone-900 fill-amber-600 shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-lg font-black text-stone-900 tabular-nums leading-none truncate">{displayedXp}</span>
-            <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">Total XP</span>
+            <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">{t.totalXp}</span>
           </div>
         </div>
         <button

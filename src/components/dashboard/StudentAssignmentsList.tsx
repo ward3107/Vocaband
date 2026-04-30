@@ -3,6 +3,8 @@ import StudentAssignmentCard from "./StudentAssignmentCard";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface StudentAssignmentsListProps {
   studentAssignments: AssignmentData[];
@@ -21,23 +23,25 @@ export default function StudentAssignmentsList({
   studentAssignments, studentProgress, studentDataLoading, userUid,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentsListProps) {
+  const { language } = useLanguage();
+  const t = studentDashboardT[language];
   return (
     <div className="bg-white p-5 sm:p-8 rounded-[28px] sm:rounded-[40px] shadow-xl">
       <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2">
-        <BookOpen className="text-blue-700" size={22} /> Your Assignments
+        <BookOpen className="text-blue-700" size={22} /> {t.yourAssignments}
       </h2>
 
       {/* Background loading indicator */}
       {studentDataLoading && (
         <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 animate-pulse">
           <RefreshCw className="text-blue-700 animate-spin" size={16} />
-          <span className="text-blue-800 font-bold text-sm">Loading your assignments...</span>
+          <span className="text-blue-800 font-bold text-sm">{t.loadingAssignments}</span>
         </div>
       )}
 
       {studentAssignments.length === 0 && !studentDataLoading ? (
         <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">
-          No assignments yet. Check back later!
+          {t.noAssignmentsYet}
         </p>
       ) : (
         <div className="space-y-5 sm:space-y-4">
