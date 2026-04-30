@@ -95,11 +95,16 @@ export default function GameFinishedView({
     try { return localStorage.getItem(guestRatingKey) === "1"; } catch { return false; }
   })();
 
+  // QP guests are by definition a single-session experience, so we don't
+  // gate the rating on a "happy moment" score >= 70 the way we do for
+  // signed-up students.  A QP guest who plays one game and never returns
+  // is exactly who we need feedback from — we'd rather have a low rating
+  // than no signal at all.  The localStorage flag (vocaband_qp_rated_<code>)
+  // still prevents nagging within the same session.
   const eligibleForGuestRating =
     !!user &&
     isGuest &&
     !!quickPlaySessionCode &&
-    score >= 70 &&
     !ratingDismissedThisSession &&
     !guestAlreadyHandled;
 
