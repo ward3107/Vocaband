@@ -18,6 +18,7 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   classic: "emerald",
   listening: "emerald",
   reverse: "emerald",
+  spelling: "violet",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -210,6 +211,7 @@ export default function GameActiveView({
         feedback={feedback}
         spellingInput={spellingInput}
         setSpellingInput={setSpellingInput}
+        themeColor={modeTheme}
         onSpellingSubmit={handleSpellingSubmit}
       />
     );
