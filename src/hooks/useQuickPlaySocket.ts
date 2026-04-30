@@ -268,8 +268,21 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
       const onConnect = async () => {
         setStatus("connected");
-        // If we had a pending student join when the socket dropped, replay it.
+        // If we had a pending student join when the socket dropped OR
+        // a join fired before the socket finished connecting (e.g. a
+        // user resuming via QuickPlayResumeBanner taps Start playing
+        // immediately on a fresh page load), replay it now.
         if (lastJoinRef.current && sessionCode) {
+          // Use clientIdForJoin so the replayed STUDENT_JOIN goes out
+          // with a proper nickname-scoped UUID — NOT the outer-scope
+          // `clientId` state, which on a brand-new tab can still be
+          // empty/stale at this point.  Same nickname returns the
+          // cached uuid so a real reconnect (sessionStorage already
+          // populated) preserves the score.  Mirrors what
+          // joinAsStudent does on the synchronous path.
+          const replayClientId = clientIdForJoin(lastJoinRef.current.nickname);
+          clientIdRef.current = replayClientId;
+          if (replayClientId !== clientId) setClientId(replayClientId);
           // Refetch the auth uid each reconnect — anon sessions can
           // get refreshed during the gap.  Falls through silently if
           // it can't (older clients / private mode).
@@ -281,7 +294,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
           } catch { /* best-effort */ }
           socket.emit(QP_EVENTS.STUDENT_JOIN, {
             sessionCode,
-            clientId,
+            clientId: replayClientId,
             nickname: lastJoinRef.current.nickname,
             avatar: lastJoinRef.current.avatar,
             authUid,
@@ -358,8 +371,27 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   // ─── Imperative actions ────────────────────────────────────────────
 
   const joinAsStudent = useCallback(async (nickname: string, avatar: string = "🦊") => {
-    if (!sessionCode || !socketRef.current) return;
+    // Save the join intent UP FRONT — even if the socket isn't ready
+    // yet, the onConnect handler above will replay this once it
+    // connects.  Previously this assignment came AFTER the early-
+    // return below, which meant a click that fired before
+    // socketRef.current was set silently dropped the join: no toast,
+    // no queued emit, no UI advance.  Reproducible on a Resume from
+    // QuickPlayResumeBanner — the page is fresh, the user taps
+    // "Start playing" instantly, the socket setup useEffect hasn't
+    // run yet, and the click does literally nothing.  Reported by
+    // the teacher 2026-04-30.
     lastJoinRef.current = { nickname, avatar };
+    if (!sessionCode || !socketRef.current) {
+      // Diagnostic — surfaces in DevTools so we see the queued path
+      // fire instead of silently disappearing.
+      console.log('[QP joinAsStudent] socket not ready, queued for replay onConnect', {
+        nickname,
+        hasSessionCode: !!sessionCode,
+        hasSocketRef: !!socketRef.current,
+      });
+      return;
+    }
     // Pick a clientId scoped to this nickname.  If a different student
     // (shared phone / Chromebook / family iPad) is joining with a new
     // name, this returns a FRESH uuid so the server-side
