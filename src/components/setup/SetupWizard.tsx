@@ -398,25 +398,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                     }
 
                     const result = await response.json();
-                    const words = result.words || [];
-                    // PERSIST to localStorage immediately so the words
-                    // survive Android Chrome killing the tab when the
-                    // OS camera intent returns.  On the next page load
-                    // App.tsx reads this key and re-routes the teacher
-                    // back into the wizard with these words already
-                    // selected.  Without this, the OCR fetch resolves,
-                    // the toast fires, but the wizard component has
-                    // been unmounted so the words vanish.
-                    if (words.length > 0) {
-                      try {
-                        localStorage.setItem('vocaband-pending-ocr-words', JSON.stringify({
-                          words,
-                          timestamp: Date.now(),
-                        }));
-                      } catch { /* localStorage full / disabled — fall through */ }
-                    }
                     return {
-                      words,
+                      words: result.words || [],
                       success: result.success,
                     };
                   }}
