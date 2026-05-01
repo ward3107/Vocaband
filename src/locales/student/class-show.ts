@@ -32,6 +32,20 @@ export interface ClassShowStrings {
   modeFillBlank: string;
   modeTrueFalse: string;
   modeFlashcards: string;
+  modeSpelling: string;
+  modeScramble: string;
+  modeLetterSounds: string;
+  modeMatching: string;
+  modeMemoryFlip: string;
+  modeSentenceBuilder: string;
+  // Adapted-mode hints
+  spellingHint: string;
+  scrambleHint: string;
+  matchingHint: string;
+  memoryFlipHint: string;
+  sentenceBuilderHint: string;
+  letterSoundsHint: string;
+  reset: string;
   // Word source labels
   set1: string;
   set2: string;
@@ -71,6 +85,19 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeFillBlank: 'Fill the blank',
     modeTrueFalse: 'True or False',
     modeFlashcards: 'Flashcards',
+    modeSpelling: 'Spelling',
+    modeScramble: 'Scramble',
+    modeLetterSounds: 'Letter Sounds',
+    modeMatching: 'Matching',
+    modeMemoryFlip: 'Memory Flip',
+    modeSentenceBuilder: 'Sentence Builder',
+    spellingHint: 'Type each letter as the class calls it out',
+    scrambleHint: 'Class shouts the answer · tap reveal',
+    matchingHint: 'Tap an English word, then its translation',
+    memoryFlipHint: 'Tap two cards · class remembers locations',
+    sentenceBuilderHint: 'Tap tiles in order as the class calls them',
+    letterSoundsHint: 'Tap the speaker to play the sound',
+    reset: 'Reset',
     set1: 'Set 1',
     set2: 'Set 2',
     set3: 'Set 3',
@@ -105,6 +132,19 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeFillBlank: 'השלם את החסר',
     modeTrueFalse: 'נכון או לא נכון',
     modeFlashcards: 'כרטיסיות',
+    modeSpelling: 'איות',
+    modeScramble: 'ערבוב',
+    modeLetterSounds: 'צלילי אותיות',
+    modeMatching: 'התאמה',
+    modeMemoryFlip: 'משחק זיכרון',
+    modeSentenceBuilder: 'בנה משפט',
+    spellingHint: 'הקלד כל אות שהכיתה קוראת',
+    scrambleHint: 'הכיתה אומרת את התשובה · לחץ הצג',
+    matchingHint: 'לחץ מילה באנגלית ואז את התרגום',
+    memoryFlipHint: 'לחץ שני כרטיסים · הכיתה זוכרת מיקומים',
+    sentenceBuilderHint: 'לחץ אריחים לפי הסדר שהכיתה קוראת',
+    letterSoundsHint: 'לחץ על הרמקול להשמעת הצליל',
+    reset: 'אפס',
     set1: 'סט 1',
     set2: 'סט 2',
     set3: 'סט 3',
@@ -139,6 +179,19 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeFillBlank: 'املأ الفراغ',
     modeTrueFalse: 'صح أم خطأ',
     modeFlashcards: 'بطاقات',
+    modeSpelling: 'تهجئة',
+    modeScramble: 'خلط',
+    modeLetterSounds: 'أصوات الحروف',
+    modeMatching: 'مطابقة',
+    modeMemoryFlip: 'لعبة الذاكرة',
+    modeSentenceBuilder: 'ابن جملة',
+    spellingHint: 'اكتب كل حرف كما يقوله الصف',
+    scrambleHint: 'الصف يقول الإجابة · اضغط اكشف',
+    matchingHint: 'اضغط كلمة إنجليزية ثم ترجمتها',
+    memoryFlipHint: 'اضغط بطاقتين · الصف يتذكر المواقع',
+    sentenceBuilderHint: 'اضغط البلاط بالترتيب الذي يقوله الصف',
+    letterSoundsHint: 'اضغط السماعة لتشغيل الصوت',
+    reset: 'إعادة',
     set1: 'مجموعة 1',
     set2: 'مجموعة 2',
     set3: 'مجموعة 3',

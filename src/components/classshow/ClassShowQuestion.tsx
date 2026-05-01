@@ -13,6 +13,14 @@ import type { ClassShowMode } from './ClassShowSetup';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings } from '../../locales/student/class-show';
 import { useAudio } from '../../hooks/useAudio';
+import {
+  SpellingProjector,
+  ScrambleProjector,
+  LetterSoundsProjector,
+  MatchingProjector,
+  MemoryFlipProjector,
+  SentenceBuilderProjector,
+} from './AdaptedModes';
 
 interface ClassShowQuestionProps {
   mode: ClassShowMode;
@@ -23,6 +31,9 @@ interface ClassShowQuestionProps {
   /** Flashcards-only — toggles between front/back. */
   flashcardFlipped: boolean;
   onToggleFlashcard: () => void;
+  /** Batch modes (matching, memory-flip) need a slice of the pool. */
+  batch: Word[];
+  pool: Word[];
 }
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -31,9 +42,17 @@ export default function ClassShowQuestion(props: ClassShowQuestionProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
   const audio = useAudio();
-  const { mode, word, multiChoice, trueFalse, revealed } = props;
+  const { mode, word, multiChoice, trueFalse, revealed, batch, pool } = props;
 
   const playAudio = () => audio.speak(word.id, word.english);
+
+  // Pillar B — adapted projector modes ─────────────────────────────
+  if (mode === 'spelling') return <SpellingProjector word={word} revealed={revealed} />;
+  if (mode === 'scramble') return <ScrambleProjector word={word} revealed={revealed} />;
+  if (mode === 'letter-sounds') return <LetterSoundsProjector word={word} pool={pool} revealed={revealed} />;
+  if (mode === 'matching') return <MatchingProjector pool={pool} words={batch} revealed={revealed} />;
+  if (mode === 'memory-flip') return <MemoryFlipProjector words={batch} revealed={revealed} />;
+  if (mode === 'sentence-builder') return <SentenceBuilderProjector word={word} revealed={revealed} />;
 
   // Flashcards: just show the front (English) → tap → back (translation).
   if (mode === 'flashcards') {

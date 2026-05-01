@@ -5,7 +5,10 @@
  */
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play } from 'lucide-react';
+import {
+  Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
+  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle,
+} from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
@@ -16,7 +19,13 @@ export type ClassShowMode =
   | 'reverse'
   | 'fill-blank'
   | 'true-false'
-  | 'flashcards';
+  | 'flashcards'
+  | 'spelling'
+  | 'scramble'
+  | 'letter-sounds'
+  | 'matching'
+  | 'memory-flip'
+  | 'sentence-builder';
 
 export interface ClassShowWordSource {
   /** Stable label shown in the picker. */
@@ -34,12 +43,18 @@ interface ClassShowSetupProps {
 }
 
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
-  { id: 'classic',     nameKey: 'modeClassic',    icon: <Layers size={26} />,        gradient: 'from-indigo-500 to-violet-600' },
-  { id: 'listening',   nameKey: 'modeListening',  icon: <Headphones size={26} />,    gradient: 'from-sky-500 to-cyan-600' },
-  { id: 'reverse',     nameKey: 'modeReverse',    icon: <ArrowLeftRight size={26} />,gradient: 'from-amber-500 to-orange-600' },
-  { id: 'fill-blank',  nameKey: 'modeFillBlank',  icon: <FileText size={26} />,      gradient: 'from-emerald-500 to-teal-600' },
-  { id: 'true-false',  nameKey: 'modeTrueFalse',  icon: <CheckCircle size={26} />,   gradient: 'from-rose-500 to-pink-600' },
-  { id: 'flashcards',  nameKey: 'modeFlashcards', icon: <Sparkles size={26} />,      gradient: 'from-fuchsia-500 to-purple-600' },
+  { id: 'classic',          nameKey: 'modeClassic',         icon: <Layers size={26} />,         gradient: 'from-indigo-500 to-violet-600' },
+  { id: 'listening',        nameKey: 'modeListening',       icon: <Headphones size={26} />,     gradient: 'from-sky-500 to-cyan-600' },
+  { id: 'reverse',          nameKey: 'modeReverse',         icon: <ArrowLeftRight size={26} />, gradient: 'from-amber-500 to-orange-600' },
+  { id: 'fill-blank',       nameKey: 'modeFillBlank',       icon: <FileText size={26} />,       gradient: 'from-emerald-500 to-teal-600' },
+  { id: 'true-false',       nameKey: 'modeTrueFalse',       icon: <CheckCircle size={26} />,    gradient: 'from-rose-500 to-pink-600' },
+  { id: 'flashcards',       nameKey: 'modeFlashcards',      icon: <Sparkles size={26} />,       gradient: 'from-fuchsia-500 to-purple-600' },
+  { id: 'spelling',         nameKey: 'modeSpelling',        icon: <Keyboard size={26} />,       gradient: 'from-blue-500 to-indigo-600' },
+  { id: 'scramble',         nameKey: 'modeScramble',        icon: <Shuffle size={26} />,        gradient: 'from-orange-500 to-red-600' },
+  { id: 'letter-sounds',    nameKey: 'modeLetterSounds',    icon: <AudioLines size={26} />,     gradient: 'from-cyan-500 to-blue-600' },
+  { id: 'matching',         nameKey: 'modeMatching',        icon: <Link2 size={26} />,          gradient: 'from-pink-500 to-rose-600' },
+  { id: 'memory-flip',      nameKey: 'modeMemoryFlip',      icon: <Grid3x3 size={26} />,        gradient: 'from-violet-500 to-purple-600' },
+  { id: 'sentence-builder', nameKey: 'modeSentenceBuilder', icon: <Puzzle size={26} />,         gradient: 'from-teal-500 to-emerald-600' },
 ];
 
 const COUNT_OPTIONS = [10, 20, 30, 50];

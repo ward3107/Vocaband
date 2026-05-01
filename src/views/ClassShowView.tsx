@@ -147,6 +147,12 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
   // playing
   const word = phase.source.words[phase.wordOrder[phase.currentIndex]];
   const isLast = phase.currentIndex >= phase.wordOrder.length - 1;
+  // Batch modes (matching, memory-flip) consume multiple words per
+  // "question" — slice from the current position into the order.
+  const batchSize = phase.mode === 'memory-flip' ? 6 : 4;
+  const batch = phase.source.words
+    ? phase.wordOrder.slice(phase.currentIndex, phase.currentIndex + batchSize).map(i => phase.source.words[i])
+    : [];
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
@@ -162,6 +168,8 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
             onToggleFlashcard={() =>
               setPhase(p => (p.kind === 'playing' ? { ...p, flashcardFlipped: !p.flashcardFlipped } : p))
             }
+            batch={batch}
+            pool={phase.source.words}
           />
         )}
       </div>
