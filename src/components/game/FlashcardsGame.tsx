@@ -106,9 +106,31 @@ export default function FlashcardsGame({
             >
               <Volume2 size={28} className={themed ? themed.pillText : "text-stone-600"} />
             </button>
-            <p className="absolute bottom-4 left-0 right-0 text-center text-[11px] sm:text-xs font-bold text-stone-400 uppercase tracking-widest">
-              {t.showTranslation} ↻
-            </p>
+            {/* Tap-to-flip hint — bouncing pointing-finger chip
+                inside the front face.  The original 11px gray text
+                got lost behind the giant word; kids didn't realise
+                the card was tappable.  This chip sits in the lower
+                third of the card with an obvious bounce animation
+                so the affordance is unmissable on first sight.
+
+                The 👆 emoji bounces vertically (Y -4 → 0 → -4) on
+                a slow loop so it looks like the finger is tapping
+                the card from above.  Pointer-events stay disabled
+                so the chip doesn't intercept the card's onClick
+                flip handler — the kid taps anywhere on the card,
+                including through the chip. */}
+            <motion.div
+              animate={{ y: [-4, 0, -4] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              className={`absolute bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2 px-4 py-2 rounded-full shadow-md ${
+                themed ? `${themed.pillBg} ${themed.pillText}` : "bg-stone-100 text-stone-600"
+              }`}
+            >
+              <span className="text-2xl sm:text-3xl leading-none" aria-hidden="true">👆</span>
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wider">
+                {t.showTranslation}
+              </span>
+            </motion.div>
           </div>
 
           {/* BACK — target-language translation */}
