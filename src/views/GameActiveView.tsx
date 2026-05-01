@@ -204,6 +204,7 @@ export default function GameActiveView({
           onSentenceCheck={handleSentenceCheck}
           speak={speak}
           shuffle={shuffle}
+          themeColor={modeTheme}
         />
       );
     }
