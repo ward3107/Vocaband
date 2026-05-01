@@ -8,7 +8,7 @@
  * - Conversational, helpful tone
  */
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Check, AlertTriangle, Sparkles, Upload, Camera,
@@ -149,6 +149,22 @@ interface HeroPasteAreaProps {
 
 const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing }) => {
   const [text, setText] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow the textarea so a long paste (10, 50, 200 words) doesn't
+  // get hidden inside a fixed 5-line box.  Teachers reported being
+  // unable to scan / edit / delete words before hitting Analyze when
+  // their list overflowed the original h-32 box.  Min stays at the
+  // original 8rem so a brand-new field doesn't look weirdly large; max
+  // caps at ~60vh so the box never eats the whole screen on a phone.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const max = Math.round(window.innerHeight * 0.6);
+    const min = 128; // h-32 in px
+    el.style.height = `${Math.max(min, Math.min(el.scrollHeight, max))}px`;
+  }, [text]);
 
   return (
     <motion.div
@@ -168,11 +184,12 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
         {/* Input Area */}
         <div className="p-6">
           <textarea
+            ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={TEXT.pastePlaceholder}
             dir="ltr"
-            className="w-full h-32 p-4 border border-stone-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-stone-700 placeholder:text-stone-400"
+            className="w-full min-h-32 p-4 border border-stone-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-stone-700 placeholder:text-stone-400 leading-relaxed"
             style={{ textAlign: 'left' }}
           />
 
