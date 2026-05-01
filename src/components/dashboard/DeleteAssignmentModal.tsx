@@ -16,13 +16,16 @@ export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: De
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
+            style={{ backgroundColor: 'var(--vb-surface)' }}
+            className="rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
-            <h2 className="text-2xl font-black mb-2">Delete Assignment?</h2>
-            <p className="text-stone-500 mb-6">
+            <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
+              Delete Assignment?
+            </h2>
+            <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
               You're about to delete <strong>"{modal.title}"</strong>. This action cannot be undone — all student progress and data for this assignment will be permanently removed.
             </p>
             <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
@@ -31,7 +34,12 @@ export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: De
             <div className="flex gap-3">
               <button
                 onClick={onCancel}
-                className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-colors border-2 border-stone-200"
+                style={{
+                  borderColor: 'var(--vb-border)',
+                  color: 'var(--vb-text-secondary)',
+                  backgroundColor: 'var(--vb-surface)',
+                }}
+                className="flex-1 py-4 rounded-2xl font-bold transition-colors border-2 hover:opacity-90"
               >
                 Keep Assignment
               </button>

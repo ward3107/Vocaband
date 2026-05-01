@@ -60,18 +60,27 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+            style={{ backgroundColor: 'var(--vb-surface)' }}
+            className="rounded-[32px] p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="mb-5">
-              <h2 className="text-2xl font-black text-stone-900">Edit class</h2>
-              <p className="text-sm text-stone-500 mt-1">
+              <h2 className="text-2xl font-black" style={{ color: 'var(--vb-text-primary)' }}>
+                Edit class
+              </h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>
                 Rename this class or pick a new avatar — students, assignments,
                 and progress all stay intact.  Class code stays the same.
               </p>
             </div>
 
             {/* Name */}
-            <label htmlFor="edit-class-name" className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Class name</label>
+            <label
+              htmlFor="edit-class-name"
+              className="block text-xs font-bold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--vb-text-muted)' }}
+            >
+              Class name
+            </label>
             <input
               autoFocus
               type="text"
@@ -82,38 +91,61 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Grade 8-B"
               maxLength={60}
-              className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 focus:border-indigo-600 outline-none mb-1 font-bold text-stone-900"
+              style={{
+                borderColor: 'var(--vb-border)',
+                color: 'var(--vb-text-primary)',
+                backgroundColor: 'var(--vb-surface)',
+              }}
+              className="w-full px-4 py-3 rounded-2xl border-2 outline-none mb-1 font-bold focus:border-[var(--vb-accent)]"
             />
             <div className="flex justify-between mb-5">
-              <span className="text-[11px] text-stone-400">Class code: <span className="font-mono font-bold text-stone-600">{klass.code}</span> (cannot change)</span>
-              <span className={`text-[11px] font-bold ${trimmed.length > 60 ? 'text-rose-600' : 'text-stone-400'}`}>{trimmed.length}/60</span>
+              <span className="text-[11px]" style={{ color: 'var(--vb-text-muted)' }}>
+                Class code:{' '}
+                <span className="font-mono font-bold" style={{ color: 'var(--vb-text-secondary)' }}>{klass.code}</span>{' '}
+                (cannot change)
+              </span>
+              <span
+                className="text-[11px] font-bold"
+                style={{ color: trimmed.length > 60 ? '#e11d48' : 'var(--vb-text-muted)' }}
+              >
+                {trimmed.length}/60
+              </span>
             </div>
 
             {/* Avatar picker — grouped by theme so it stays scannable */}
-            <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Class avatar</label>
+            <label
+              className="block text-xs font-bold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--vb-text-muted)' }}
+            >
+              Class avatar
+            </label>
 
             {/* "Default" tile — clears the selection back to the standard icon */}
             <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 mb-3">
               <button
                 onClick={() => setAvatar(null)}
                 type="button"
-                style={{ touchAction: 'manipulation' }}
+                style={{
+                  touchAction: 'manipulation',
+                  backgroundColor: avatar === null ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
+                  borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
+                }}
                 title="Use default icon"
-                className={`aspect-square rounded-xl flex items-center justify-center transition-all border-2 ${
-                  avatar === null
-                    ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200'
-                    : 'bg-white border-stone-200 hover:border-stone-300'
-                }`}
+                className="aspect-square rounded-xl flex items-center justify-center transition-all border-2"
               >
-                <GraduationCap size={18} className="text-stone-600" />
+                <GraduationCap size={18} style={{ color: 'var(--vb-text-secondary)' }} />
               </button>
-              {/* Currently picked avatar appears here as a confirmation chip too */}
             </div>
 
             <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 -mr-1">
               {CLASS_AVATAR_GROUPS.map(group => (
                 <div key={group.label}>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1.5">{group.label}</p>
+                  <p
+                    className="text-[11px] font-bold uppercase tracking-widest mb-1.5"
+                    style={{ color: 'var(--vb-text-muted)' }}
+                  >
+                    {group.label}
+                  </p>
                   <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                     {group.emojis.map(em => {
                       const selected = avatar === em;
@@ -122,17 +154,20 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                           key={em}
                           onClick={() => setAvatar(em)}
                           type="button"
-                          style={{ touchAction: 'manipulation' }}
-                          className={`relative aspect-square rounded-xl flex items-center justify-center text-2xl transition-all border-2 ${
-                            selected
-                              ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200 scale-105'
-                              : 'bg-white border-stone-200 hover:border-stone-300 hover:scale-105'
-                          }`}
+                          style={{
+                            touchAction: 'manipulation',
+                            backgroundColor: selected ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
+                            borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
+                          }}
+                          className={`relative aspect-square rounded-xl flex items-center justify-center text-2xl transition-all border-2 ${selected ? 'scale-105' : 'hover:scale-105'}`}
                         >
                           {em}
                           {selected && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center shadow-sm">
-                              <CheckCircle2 size={10} className="text-white" />
+                            <span
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+                              style={{ backgroundColor: 'var(--vb-accent)' }}
+                            >
+                              <CheckCircle2 size={10} style={{ color: 'var(--vb-accent-text)' }} />
                             </span>
                           )}
                         </button>
@@ -144,13 +179,21 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 mt-6 pt-4 border-t border-stone-100">
+            <div
+              className="flex gap-3 mt-6 pt-4 border-t"
+              style={{ borderColor: 'var(--vb-border)' }}
+            >
               <button
                 onClick={onClose}
                 disabled={saving}
                 type="button"
-                style={{ touchAction: 'manipulation' }}
-                className="flex-1 py-3 rounded-2xl font-bold text-stone-600 hover:bg-stone-50 transition-colors border-2 border-stone-200 disabled:opacity-50"
+                style={{
+                  touchAction: 'manipulation',
+                  borderColor: 'var(--vb-border)',
+                  color: 'var(--vb-text-secondary)',
+                  backgroundColor: 'var(--vb-surface)',
+                }}
+                className="flex-1 py-3 rounded-2xl font-bold transition-colors border-2 disabled:opacity-50 hover:opacity-90"
               >
                 Cancel
               </button>
@@ -158,8 +201,12 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 onClick={handleSave}
                 disabled={!valid || !dirty || saving}
                 type="button"
-                style={{ touchAction: 'manipulation' }}
-                className="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-accent)',
+                  color: 'var(--vb-accent-text)',
+                }}
+                className="flex-1 py-3 rounded-2xl font-black hover:opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving…' : 'Save changes'}
               </button>

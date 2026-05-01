@@ -20,18 +20,38 @@ export default function ClassCreatedModal({
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
+            style={{ backgroundColor: 'var(--vb-surface)' }}
+            className="rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
           >
-            <div className="w-16 h-16 bg-blue-50 text-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{
+                backgroundColor: 'var(--vb-accent-soft)',
+                color: 'var(--vb-accent)',
+              }}
+            >
               <CheckCircle2 size={32} />
             </div>
-            <h2 className="text-2xl font-black mb-2">Class Created!</h2>
-            <p className="text-stone-500 mb-6">Share this code with your students so they can join.</p>
+            <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
+              Class Created!
+            </h2>
+            <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
+              Share this code with your students so they can join.
+            </p>
 
-            <div className="bg-gradient-to-br from-blue-50 to-stone-50 p-6 rounded-3xl border-2 border-blue-100 mb-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 opacity-50"></div>
-              <div className="absolute bottom-0 left-0 w-16 h-16 bg-stone-100 rounded-full -ml-8 -mb-8 opacity-50"></div>
-              <p className="text-5xl font-mono font-black text-blue-700 tracking-widest relative z-10">{createdClassCode}</p>
+            <div
+              className="p-6 rounded-3xl border-2 mb-6 relative overflow-hidden"
+              style={{
+                backgroundColor: 'var(--vb-accent-soft)',
+                borderColor: 'var(--vb-border)',
+              }}
+            >
+              <p
+                className="text-5xl font-mono font-black tracking-widest relative z-10"
+                style={{ color: 'var(--vb-accent)' }}
+              >
+                {createdClassCode}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -41,9 +61,17 @@ export default function ClassCreatedModal({
                   setCopiedCode(createdClassCode);
                   setTimeout(() => setCopiedCode(null), 2000);
                 }}
-                className="py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2 border-blue-200"
+                style={{
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-primary)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="py-4 rounded-2xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2"
               >
-                {copiedCode === createdClassCode ? <Check size={20} className="text-blue-700" /> : <Copy size={20} />}
+                {copiedCode === createdClassCode
+                  ? <Check size={20} style={{ color: 'var(--vb-accent)' }} />
+                  : <Copy size={20} />
+                }
                 <span>Copy</span>
               </button>
               <a
@@ -59,7 +87,8 @@ export default function ClassCreatedModal({
 
             <button
               onClick={onDone}
-              className="w-full py-4 text-stone-500 font-bold hover:text-stone-700 hover:bg-stone-50 rounded-2xl transition-all"
+              style={{ color: 'var(--vb-text-secondary)' }}
+              className="w-full py-4 font-bold hover:opacity-80 rounded-2xl transition-all"
             >
               Done
             </button>

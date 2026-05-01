@@ -8,6 +8,56 @@
   --a11y-font-size: 16px;
   --a11y-line-height: 1.5;
   --a11y-letter-spacing: 0em;
+
+  /* Teacher dashboard theme tokens — defaults match the 'default' theme.
+     Overridden at runtime by useTeacherTheme() on teacher-side routes. */
+  --vb-surface: #ffffff;
+  --vb-surface-alt: #f5f5f4;
+  --vb-border: #e7e5e4;
+  --vb-text-primary: #1c1917;
+  --vb-text-secondary: #57534e;
+  --vb-text-muted: #a8a29e;
+  --vb-accent: #6366f1;
+  --vb-accent-soft: #eef2ff;
+  --vb-accent-text: #ffffff;
+}
+
+/* =============================================================================
+   Print mode — used by the Worksheet feature.  When printing, hide the
+   on-screen UI and show ONLY the .vb-print-only container.  The
+   teacher hits Cmd/Ctrl+P (or our "Print" button which calls
+   window.print()) and gets a clean page exported to PDF or paper.
+   ============================================================================= */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .vb-print-only,
+  .vb-print-only * {
+    visibility: visible;
+  }
+  .vb-print-only {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+  .vb-print-page-break {
+    page-break-before: always;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+/* The print-only container is hidden from screen rendering — only
+   becomes visible when the print dialog is active. */
+@media screen {
+  .vb-print-only {
+    display: none;
+  }
 }
 
 /* =============================================================================

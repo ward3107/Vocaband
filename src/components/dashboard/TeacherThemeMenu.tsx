@@ -52,26 +52,33 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.92, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-        className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl ring-1 ring-stone-200"
+        style={{
+          backgroundColor: 'var(--vb-surface)',
+          borderColor: 'var(--vb-border)',
+        }}
+        className="rounded-3xl p-6 max-w-md w-full shadow-2xl border"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-black text-stone-900">Dashboard theme</h2>
+          <h2 className="text-2xl font-black" style={{ color: 'var(--vb-text-primary)' }}>
+            Dashboard theme
+          </h2>
           <button
             onClick={onClose}
             type="button"
-            className="p-2 rounded-full hover:bg-stone-100 text-stone-500"
+            style={{ color: 'var(--vb-text-muted)' }}
+            className="p-2 rounded-full hover:opacity-80"
             aria-label="Close theme picker"
           >
             <X size={20} />
           </button>
         </div>
 
-        <p className="text-sm text-stone-600 mb-5">
+        <p className="text-sm mb-5" style={{ color: 'var(--vb-text-secondary)' }}>
           Pick a look for your teacher dashboard.  Only you see this — students keep their own theme from the shop.
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
           {TEACHER_DASHBOARD_THEMES.map(theme => {
             const selected = theme.id === currentId;
             return (

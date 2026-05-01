@@ -1,4 +1,4 @@
-import { QrCode, GraduationCap, UserCircle } from "lucide-react";
+import { QrCode, GraduationCap, UserCircle, Tv2, Printer } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import ActionCard from "../ActionCard";
 
@@ -12,18 +12,27 @@ interface TeacherQuickActionsProps {
    *  ~40% duplicate code and forced teachers to context-switch. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Class Show — projector mode for classrooms where students don't
+   *  have phones.  Teacher's screen IS the entire experience. */
+  onClassShowClick?: () => void;
+  /** Worksheet builder — print word lists / scrambles / fill-blank /
+   *  match-up sheets.  Works in classrooms with no projector at all. */
+  onWorksheetClick?: () => void;
 }
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick,
 }: TeacherQuickActionsProps) {
   return (
     <div className="mb-8 sm:mb-10">
-      <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-stone-400 mb-3 sm:mb-4 px-1">
+      <h2
+        style={{ color: 'var(--vb-text-muted)' }}
+        className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3 sm:mb-4 px-1"
+      >
         Quick actions
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Quick Play */}
         <HelpTooltip className="h-full" content="Create a QR code for students to scan and play selected words - no login required!">
           <div className="h-full" data-tour="quick-play">
@@ -38,6 +47,40 @@ export default function TeacherQuickActions({
             />
           </div>
         </HelpTooltip>
+
+        {/* Class Show — projector mode for phone-less classrooms */}
+        {onClassShowClick && (
+          <HelpTooltip className="h-full" content="Project a vocabulary game on your classroom screen. Students answer by raising their hand or shouting the answer - no phones needed.">
+            <div className="h-full" data-tour="class-show">
+              <ActionCard
+                icon={<Tv2 size={22} />}
+                iconBg="bg-fuchsia-50"
+                iconColor="text-fuchsia-600"
+                title="Class Show"
+                description="Project to the classroom"
+                buttonText="Start"
+                onClick={onClassShowClick}
+              />
+            </div>
+          </HelpTooltip>
+        )}
+
+        {/* Worksheet — printable for classrooms with no projector */}
+        {onWorksheetClick && (
+          <HelpTooltip className="h-full" content="Generate a printable worksheet (word list, scramble, fill-in-the-blank, or match-up) and print or save as PDF. Works without any projector.">
+            <div className="h-full" data-tour="worksheet">
+              <ActionCard
+                icon={<Printer size={22} />}
+                iconBg="bg-emerald-50"
+                iconColor="text-emerald-600"
+                title="Worksheet"
+                description="Print a sheet for class"
+                buttonText="Build"
+                onClick={onWorksheetClick}
+              />
+            </div>
+          </HelpTooltip>
+        )}
 
         {/* Classroom — merged Analytics + Gradebook */}
         <HelpTooltip className="h-full" content="One place for everything classroom: who needs attention now (Pulse), per-word mastery + weak words (Mastery), and the full per-student records + CSV export (Records).">
