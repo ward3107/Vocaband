@@ -14,6 +14,7 @@ import {
   Sparkles,
   Star,
   Edit3,
+  Brain,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
@@ -103,6 +104,7 @@ export default function GameModeSelectionView({
     { id: "listening",         color: "blue",    icon: <Volume2 size={24} /> },
     { id: "spelling",          color: "purple",  icon: <PenTool size={24} /> },
     { id: "matching",          color: "amber",   icon: <Zap size={24} /> },
+    { id: "memory-flip",       color: "pink",    icon: <Brain size={24} /> },
     { id: "true-false",        color: "rose",    icon: <CheckCircle2 size={24} /> },
     { id: "scramble",          color: "indigo",  icon: <Shuffle size={24} /> },
     { id: "reverse",           color: "fuchsia", icon: <Repeat size={24} /> },
@@ -149,6 +151,7 @@ export default function GameModeSelectionView({
     violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
     teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
     lime: "bg-lime-50 border-lime-100 hover:bg-lime-100 text-lime-700",
+    pink: "bg-pink-50 border-pink-100 hover:bg-pink-100 text-pink-700",
   };
 
   const iconColorClasses: Record<string, string> = {
@@ -163,6 +166,7 @@ export default function GameModeSelectionView({
     violet: "text-violet-600",
     teal: "text-teal-600",
     lime: "text-lime-600",
+    pink: "text-pink-600",
   };
 
   return (
