@@ -19,7 +19,7 @@ import {
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 
 // Small star-rating component — 3 stars with N filled. Same visual
@@ -91,7 +91,7 @@ export default function GameModeSelectionView({
   // src/locales/student/game-modes.ts (EN / HE / AR). Adding a new
   // language = add it to the union in useLanguage + drop a new key
   // in that file. See docs/I18N-MIGRATION.md for the pattern.
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const t = gameModesT[language];
 
   // Layout-only metadata (id, color, icon, learn-mode flag) stays in
@@ -181,6 +181,36 @@ export default function GameModeSelectionView({
         >
           <X size={28} />
         </button>
+
+        {/* Inline language picker — duplicates the dashboard top-bar
+            switcher but at the moment-of-decision (about to start a
+            game).  Mode names + tooltips re-render in the chosen
+            language because each tile reads `t.modes[id].name` from
+            gameModesT[language].  Available for both real-assignment
+            and Quick Play students.  Persists via useLanguage's
+            localStorage. */}
+        <div className="mb-5 sm:mb-7 flex items-center justify-center gap-2 flex-wrap">
+          {(["en", "he", "ar"] as Language[]).map((lang) => {
+            const isActive = language === lang;
+            return (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                aria-pressed={isActive}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black transition-all ${
+                  isActive
+                    ? "bg-stone-900 text-white shadow-md scale-105"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              >
+                <span className="text-lg leading-none">{languageFlags[lang]}</span>
+                <span>{languageNames[lang]}</span>
+              </button>
+            );
+          })}
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: -20 }}
