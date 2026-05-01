@@ -18,6 +18,7 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   classic: "emerald",
   listening: "emerald",
   reverse: "emerald",
+  matching: "amber",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -267,6 +268,8 @@ export default function GameActiveView({
                 selectedMatch={selectedMatch}
                 isMatchingProcessing={isMatchingProcessing}
                 onMatchClick={handleMatchClick}
+                themeColor={modeTheme}
+                modeLabel={modeLabel}
               />
             ) : (
               <motion.div
