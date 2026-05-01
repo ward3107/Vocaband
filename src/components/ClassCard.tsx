@@ -175,7 +175,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
+    <div
+      style={{
+        backgroundColor: 'var(--vb-surface)',
+        borderColor: 'var(--vb-border)',
+      }}
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow"
+    >
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -297,7 +303,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="group text-left w-full"
                   title={onNameChange ? "Click to edit name" : undefined}
                 >
-                  <h3 className="text-lg sm:text-xl font-bold text-stone-900 leading-tight truncate group-hover:text-indigo-600 transition-colors flex items-center gap-2">
+                  <h3
+                    style={{ color: 'var(--vb-text-primary)' }}
+                    className="text-lg sm:text-xl font-bold leading-tight truncate transition-colors flex items-center gap-2 group-hover:text-[var(--vb-accent)]"
+                  >
                     <span className="truncate">{name}</span>
                     {onNameChange && (
                       <Pencil size={14} className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" />
@@ -310,8 +319,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={onCopyCode}
                   type="button"
-                  style={{ touchAction: 'manipulation' }}
-                  className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider text-stone-600 hover:text-indigo-600 transition-colors"
+                  style={{ touchAction: 'manipulation', color: 'var(--vb-text-secondary)' }}
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
                   title="Copy class code"
                 >
                   <span>{code}</span>
@@ -322,7 +331,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   )}
                 </button>
                 {studentCount !== undefined && (
-                  <span className="text-xs text-stone-500 flex items-center gap-1">
+                  <span
+                    style={{ color: 'var(--vb-text-muted)' }}
+                    className="text-xs flex items-center gap-1"
+                  >
                     · 👥 {studentCount}
                   </span>
                 )}
@@ -335,18 +347,25 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <button
               onClick={() => setMenuOpen(v => !v)}
               type="button"
-              style={{ touchAction: 'manipulation' }}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+              style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
               aria-label="Class options"
             >
               <MoreVertical size={18} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-stone-200 shadow-lg py-1 z-20">
+              <div
+                style={{
+                  backgroundColor: 'var(--vb-surface)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
+              >
                 <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <MessageCircle size={14} className="text-emerald-600" />
                   Share via WhatsApp
@@ -354,7 +373,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={() => { onCopyCode(); setMenuOpen(false); }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <Copy size={14} className="text-stone-500" />
                   Copy class code
@@ -380,12 +400,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     setMenuOpen(false);
                   }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <Printer size={14} className="text-indigo-600" />
                   Print classroom poster
                 </button>
-                <div className="h-px bg-stone-100 my-1" />
+                <div className="h-px my-1" style={{ backgroundColor: 'var(--vb-border)' }} />
                 <button
                   onClick={() => { onDelete(); setMenuOpen(false); }}
                   type="button"
@@ -404,8 +425,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
           <button
             onClick={onAssign}
             type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-all"
+            style={{
+              touchAction: 'manipulation',
+              backgroundColor: 'var(--vb-accent)',
+              color: 'var(--vb-accent-text)',
+            }}
+            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
           >
             <Zap size={15} />
             New assignment
@@ -414,8 +439,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <button
               onClick={handleToggleAssignments}
               type="button"
-              style={{ touchAction: 'manipulation' }}
-              className="inline-flex items-center gap-1.5 py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-semibold text-sm transition-colors"
+              style={{
+                touchAction: 'manipulation',
+                backgroundColor: 'var(--vb-surface-alt)',
+                color: 'var(--vb-text-secondary)',
+              }}
+              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-sm transition-colors hover:opacity-90"
               aria-expanded={showAssignments}
             >
               <BookOpen size={15} />
@@ -434,16 +463,32 @@ const ClassCard: React.FC<ClassCardProps> = ({
       {assignments.length > 0 && showAssignments && (
         <div
           ref={assignmentsListRef}
-          className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl"
+          style={{
+            borderColor: 'var(--vb-border)',
+            backgroundColor: 'var(--vb-surface-alt)',
+          }}
+          className="border-t px-5 py-4 space-y-2 rounded-b-2xl"
         >
           {assignments.map((assignment) => (
             <div
               key={assignment.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white rounded-xl border border-stone-200"
+              style={{
+                backgroundColor: 'var(--vb-surface)',
+                borderColor: 'var(--vb-border)',
+              }}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border"
             >
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-stone-900 text-sm truncate">{assignment.title}</p>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p
+                  style={{ color: 'var(--vb-text-primary)' }}
+                  className="font-semibold text-sm truncate"
+                >
+                  {assignment.title}
+                </p>
+                <p
+                  style={{ color: 'var(--vb-text-muted)' }}
+                  className="text-xs mt-0.5"
+                >
                   {assignment.wordIds.length} word{assignment.wordIds.length === 1 ? '' : 's'} · {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : 'No deadline'}
                 </p>
               </div>
@@ -452,7 +497,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => onEditAssignment(assignment)}
                     type="button"
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
                     Edit
                   </button>
@@ -461,7 +507,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => onDuplicateAssignment(assignment)}
                     type="button"
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
                     Duplicate
                   </button>

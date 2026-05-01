@@ -8,6 +8,18 @@
   --a11y-font-size: 16px;
   --a11y-line-height: 1.5;
   --a11y-letter-spacing: 0em;
+
+  /* Teacher dashboard theme tokens — defaults match the 'default' theme.
+     Overridden at runtime by useTeacherTheme() on teacher-side routes. */
+  --vb-surface: #ffffff;
+  --vb-surface-alt: #f5f5f4;
+  --vb-border: #e7e5e4;
+  --vb-text-primary: #1c1917;
+  --vb-text-secondary: #57534e;
+  --vb-text-muted: #a8a29e;
+  --vb-accent: #6366f1;
+  --vb-accent-soft: #eef2ff;
+  --vb-accent-text: #ffffff;
 }
 
 /* =============================================================================

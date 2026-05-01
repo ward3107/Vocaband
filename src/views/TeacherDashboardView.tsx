@@ -6,7 +6,7 @@ import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
 import { supabase } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
-import { getTeacherDashboardTheme } from "../constants/teacherDashboardThemes";
+import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
@@ -123,8 +123,10 @@ export default function TeacherDashboardView({
 
   // Per-teacher dashboard theme.  Resolved from the stored id with a
   // safety fallback so an unknown / removed theme doesn't break render.
+  // The hook also writes the palette to CSS custom properties on
+  // document.documentElement so descendants can read var(--vb-*).
   const [showThemeMenu, setShowThemeMenu] = useState(false);
-  const dashboardTheme = getTeacherDashboardTheme(user?.teacherDashboardTheme);
+  const { theme: dashboardTheme } = useTeacherTheme(user?.teacherDashboardTheme);
 
   // ─── First-rating prompt gate ─────────────────────────────────────
   // Show the rating modal when the teacher has meaningfully USED the
@@ -172,13 +174,22 @@ export default function TeacherDashboardView({
               "Midnight" theme (slate-900 background) doesn't hide
               the headline behind near-black text. */}
           <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
-            <p className={`text-xs sm:text-sm font-bold uppercase tracking-widest mb-2 ${dashboardTheme.dark ? 'text-indigo-300' : 'text-indigo-500'}`}>
+            <p
+              className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--vb-accent)' }}
+            >
               {greeting}
             </p>
-            <h1 className={`text-2xl sm:text-4xl font-bold tracking-tight ${dashboardTheme.dark ? 'text-stone-50' : 'text-stone-900'}`}>
+            <h1
+              className="text-2xl sm:text-4xl font-bold tracking-tight"
+              style={{ color: 'var(--vb-text-primary)' }}
+            >
               {firstName}, here's your classroom.
             </h1>
-            <p className={`text-sm sm:text-base mt-2 ${dashboardTheme.dark ? 'text-stone-300' : 'text-stone-500'}`}>
+            <p
+              className="text-sm sm:text-base mt-2"
+              style={{ color: 'var(--vb-text-secondary)' }}
+            >
               Manage your classes, review student progress, and create new assignments in a few taps.
             </p>
           </div>
@@ -282,8 +293,14 @@ export default function TeacherDashboardView({
         onClick={() => setShowThemeMenu(true)}
         title="Change dashboard theme"
         aria-label="Change dashboard theme"
-        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full bg-white text-stone-700 ring-1 ring-stone-300 shadow-lg flex items-center justify-center hover:bg-stone-50 hover:scale-105 active:scale-95 transition-transform"
+        style={{
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          backgroundColor: 'var(--vb-surface)',
+          color: 'var(--vb-text-primary)',
+          borderColor: 'var(--vb-border)',
+        }}
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
       >
         <Palette size={20} />
       </button>

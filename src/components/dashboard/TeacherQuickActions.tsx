@@ -20,7 +20,10 @@ export default function TeacherQuickActions({
 }: TeacherQuickActionsProps) {
   return (
     <div className="mb-8 sm:mb-10">
-      <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-stone-400 mb-3 sm:mb-4 px-1">
+      <h2
+        style={{ color: 'var(--vb-text-muted)' }}
+        className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3 sm:mb-4 px-1"
+      >
         Quick actions
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
