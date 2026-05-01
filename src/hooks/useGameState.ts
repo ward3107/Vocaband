@@ -286,16 +286,17 @@ export function useGameState(params: UseGameStateParams) {
       !showModeSelection &&
       !showModeIntro &&
       gameMode !== "sentence-builder" &&
-      gameMode !== "matching"
+      gameMode !== "matching" &&
+      gameMode !== "memory-flip"
     ) {
       params.speakWord(currentWord.id, currentWord.english);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, isFinished, view, currentWord, showModeSelection, showModeIntro, gameMode]);
 
-  // Matching mode: build pairs when mode / game starts
+  // Matching + Memory Flip: build pairs when mode / game starts
   useEffect(() => {
-    if (view === "game" && !showModeSelection && gameMode === "matching") {
+    if (view === "game" && !showModeSelection && (gameMode === "matching" || gameMode === "memory-flip")) {
       const shuffled = shuffle(gameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map((w) => ({ id: w.id, text: w.english, type: "english" as const })),
