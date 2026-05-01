@@ -26,6 +26,7 @@ export type GameModeId =
   | "listening"
   | "spelling"
   | "matching"
+  | "memory-flip"
   | "true-false"
   | "scramble"
   | "reverse"
@@ -84,6 +85,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "Matching Mode",
         desc: "Match translations. Fun & fast!",
         tooltip: ["Match pairs together", "Connect your language to English", "Fast-paced and fun!"],
+      },
+      "memory-flip": {
+        name: "Memory Flip",
+        desc: "Flip cards face-down. Find the pairs!",
+        tooltip: ["Cards start face-down", "Flip two — same pair stays revealed", "Tests memory + meaning"],
       },
       "true-false": {
         name: "True / False",
@@ -150,6 +156,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "התאם בין תרגומים. כיף ומהיר!",
         tooltip: ["התאם זוגות יחד", "חבר בין השפה שלך לאנגלית", "מהיר וכיפי!"],
       },
+      "memory-flip": {
+        name: "זיכרון",
+        desc: "הפוך כרטיסיות. מצא זוגות!",
+        tooltip: ["הכרטיסיות מתחילות הפוכות", "הפוך שתיים — זוג נכון נשאר חשוף", "בוחן זיכרון + משמעות"],
+      },
       "true-false": {
         name: "נכון / לא נכון",
         desc: "האם התרגום נכון? חשיבה מהירה!",
@@ -214,6 +225,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "وضع المطابقة",
         desc: "طابق الترجمات. ممتع وسريع!",
         tooltip: ["طابق الأزواج معاً", "اربط بين لغتك والإنجليزية", "سريع ومرح!"],
+      },
+      "memory-flip": {
+        name: "الذاكرة",
+        desc: "اقلب البطاقات. ابحث عن الأزواج!",
+        tooltip: ["البطاقات تبدأ مقلوبة", "اقلب اثنتين — الزوج الصحيح يبقى مكشوفاً", "يختبر الذاكرة والمعنى"],
       },
       "true-false": {
         name: "صحيح / خطأ",

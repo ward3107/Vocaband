@@ -22,6 +22,10 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // themselves keep their rose↔emerald split (False=rose, True=emerald)
   // since binary judgement reads strongest with paired colours.
   "true-false": "rose",
+  // Memory Flip — pink.  Same matching-pairs state machine as
+  // Matching, but cards start face-down and the kid flips two at
+  // a time to find pairs.
+  "memory-flip": "pink",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -32,6 +36,7 @@ const MODE_LABEL: Record<string, string> = {
   reverse: "Reverse",
   spelling: "Spelling",
   matching: "Matching",
+  "memory-flip": "Memory Flip",
   "true-false": "True / False",
   flashcards: "Flashcards",
   scramble: "Scramble",
@@ -46,6 +51,7 @@ import GameHeader from "../components/game/GameHeader";
 import WordPromptCard from "../components/game/WordPromptCard";
 import PowerUpToolbar from "../components/game/PowerUpToolbar";
 import MatchingModeGame from "../components/game/MatchingModeGame";
+import MemoryFlipGame from "../components/game/MemoryFlipGame";
 import TrueFalseGame from "../components/game/TrueFalseGame";
 import FlashcardsGame from "../components/game/FlashcardsGame";
 import LetterSoundsGame from "../components/game/LetterSoundsGame";
@@ -274,11 +280,21 @@ export default function GameActiveView({
           mode's content vertically — matching keeps its
           slightly-larger min-h-[60vh] for the larger pair grid, the
           rest land at min-h-[55vh]. */}
-      <div className={`w-full max-w-4xl mx-auto ${gameMode === 'matching' ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
+      <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
         <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
               <MatchingModeGame
+                matchingPairs={matchingPairs}
+                matchedIds={matchedIds}
+                selectedMatch={selectedMatch}
+                isMatchingProcessing={isMatchingProcessing}
+                onMatchClick={handleMatchClick}
+                themeColor={modeTheme}
+                modeLabel={modeLabel}
+              />
+            ) : gameMode === "memory-flip" ? (
+              <MemoryFlipGame
                 matchingPairs={matchingPairs}
                 matchedIds={matchedIds}
                 selectedMatch={selectedMatch}
@@ -375,7 +391,7 @@ export default function GameActiveView({
         </div>
       </div>
 
-      {gameMode !== "matching" && (
+      {gameMode !== "matching" && gameMode !== "memory-flip" && (
         <div className="w-full max-w-5xl mt-12 flex justify-center">
           <div className="w-full max-w-md">
             <progress
