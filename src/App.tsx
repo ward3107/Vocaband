@@ -315,7 +315,22 @@ export default function App() {
   const qpCumulativeScoreRef = useRef(0);
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
-  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
+  // QP avatar — random by default, but if the student is resuming a
+  // recent session via QuickPlayResumeBanner we honour their previous
+  // avatar so identity stays stable across the close→reopen.
+  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => {
+    try {
+      const raw = localStorage.getItem('vocaband_qp_guest');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { avatar?: string; joinedAt?: number };
+        if (parsed?.avatar && typeof parsed.joinedAt === 'number'
+            && Date.now() - parsed.joinedAt < 90 * 60 * 1000) {
+          return parsed.avatar;
+        }
+      }
+    } catch { /* fall through to random */ }
+    return QUICK_PLAY_AVATARS[secureRandomInt(QUICK_PLAY_AVATARS.length)];
+  });
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
