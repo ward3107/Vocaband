@@ -22,6 +22,10 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // themselves keep their rose↔emerald split (False=rose, True=emerald)
   // since binary judgement reads strongest with paired colours.
   "true-false": "rose",
+  // Fill-in-the-Blank = lime.  Drives the sentence-card hero tint
+  // and the option button accents.  The dashed slot box stays
+  // lime regardless (it's the mode signature).
+  "fill-blank": "lime",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -214,6 +218,7 @@ export default function GameActiveView({
           feedback={feedback}
           gameWordsCount={gameWords.length}
           onAnswer={handleAnswer}
+          themeColor={modeTheme}
         />
       );
     }
