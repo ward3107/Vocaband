@@ -56,6 +56,7 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
+import { readQpResumeScore } from "./utils/qpResumeHint";
 import {
   readIntendedClassCode,
   clearIntendedClassCode,
@@ -312,7 +313,13 @@ export default function App() {
   // (server rejected with [QP SCORE regress] prev=15 new=10).
   // This ref accumulates each mode's finalScore so the QP socket
   // sees a monotonically-increasing total.
-  const qpCumulativeScoreRef = useRef(0);
+  // Cumulative QP score across all modes in a session.  Initialised
+  // from the resume hint so a kid who closed the tab and rescanned
+  // doesn't reset their server-side score (the server's monotonic
+  // score gate would otherwise reject every later updateScore as a
+  // regression — silent points loss for the kid).  Hint is 90-min
+  // TTL'd; falls through to 0 for fresh joins.
+  const qpCumulativeScoreRef = useRef(readQpResumeScore());
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   // QP avatar — random by default, but if the student is resuming a
@@ -523,7 +530,11 @@ export default function App() {
   const [showModeIntro, setShowModeIntro] = useState(false);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
+  // Score state; for QP resume kids we seed from the localStorage
+  // hint so the visible score doesn't snap back to 0 on rescan.
+  // (Server already preserves the cumulative — see qpCumulativeScoreRef
+  // initializer above.)
+  const [score, setScore] = useState(() => readQpResumeScore());
   const [mistakes, setMistakes] = useState<number[]>([]);
   // Per-word attempts accumulated during the current game.  Flushed to the
   // word_attempts table via save_student_progress when the student finishes.

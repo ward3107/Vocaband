@@ -8,6 +8,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
+import { readQpResumeHint } from "../utils/qpResumeHint";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -432,7 +433,25 @@ export default function QuickPlayStudentView({
                         sentenceDifficulty: 2,
                       });
                       setCurrentIndex(0);
-                      setScore(0);
+                      // Resume detection: if the localStorage hint
+                      // matches the session + nickname AND has a
+                      // non-zero score within the 90-min TTL, this
+                      // is a re-join after the kid closed the tab.
+                      // Carry the score forward locally so the kid's
+                      // visible score doesn't snap to 0 AND so future
+                      // updateScore emits stay above the server's
+                      // monotonic floor (server preserves the
+                      // cumulative on adopt; emitting 0+newScore
+                      // would be rejected as a regression).
+                      const resumeHint = readQpResumeHint();
+                      const isResume =
+                        resumeHint
+                        && resumeHint.sessionCode === quickPlayActiveSession.sessionCode
+                        && resumeHint.name === trimmedName
+                        && typeof resumeHint.lastScore === 'number'
+                        && resumeHint.lastScore > 0;
+                      const resumedScore = isResume ? (resumeHint!.lastScore as number) : 0;
+                      setScore(resumedScore);
                       setFeedback(null);
                       setIsFinished(false);
                       setMistakes([]);
@@ -445,13 +464,15 @@ export default function QuickPlayStudentView({
                       // joinedAt is the TTL anchor — refreshed on every score
                       // update via App.tsx's emitScoreUpdate so an active player
                       // never sees the banner; only kids who walked away see it.
+                      // On resume we preserve the existing lastScore so the
+                      // hint doesn't get zeroed mid-session.
                       try {
                         localStorage.setItem('vocaband_qp_guest', JSON.stringify({
                           sessionId: quickPlayActiveSession.id,
                           sessionCode: quickPlayActiveSession.sessionCode,
                           name: trimmedName,
                           avatar: quickPlayAvatar,
-                          lastScore: 0,
+                          lastScore: resumedScore,
                           joinedAt: Date.now(),
                         }));
                       } catch {}
