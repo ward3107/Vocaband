@@ -22,6 +22,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { teacherLoginT } from "../locales/student/teacher-login";
 import { useTeacherOtpAuth } from "../hooks/useTeacherOtpAuth";
 import { writeIntendedRole } from "../utils/oauthIntent";
+import { Turnstile, isTurnstileEnabled, turnstileSiteKey } from "./Turnstile";
 
 interface TeacherLoginCardProps {
   /** Optional close-button hook, e.g. to navigate back to the
@@ -38,6 +39,15 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+
+  // Cloudflare Turnstile token.  Only relevant when CAPTCHA protection
+  // is enabled in Supabase Auth (dashboard → Bot and Abuse Protection).
+  // The widget (rendered below in the email form) sets this on solve
+  // and clears it on expiry.  An empty string with the env key
+  // configured means "not yet solved" — submit is gated.  When the
+  // env key is absent (dev / local), the gate is skipped.
+  const captchaEnabled = isTurnstileEnabled();
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const handleGoogle = async () => {
     if (googleSubmitting) return;
@@ -68,11 +78,12 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   const onSubmitEmail = (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.stage === "sending") return;
+    if (captchaEnabled && !captchaToken) return; // wait for Turnstile solve
     // Same intended-role stamp as the Google OAuth path -- the post-
     // verifyOtp restoreSession check uses this to refuse a student
     // account that happens to share the email.
     writeIntendedRole("teacher");
-    void otp.sendCode(emailInput);
+    void otp.sendCode(emailInput, captchaEnabled ? captchaToken : undefined);
   };
 
   const onSubmitCode = (e: React.FormEvent) => {
@@ -186,9 +197,28 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 </div>
               )}
 
+              {/* Cloudflare Turnstile — only renders when VITE_TURNSTILE_SITE_KEY
+                  is set at build time.  The widget is invisible-by-default
+                  (managed mode) so most teachers never see a challenge,
+                  but bots / Tor / suspicious IPs do.  Solved token is
+                  forwarded to Supabase Auth via captchaToken. */}
+              {captchaEnabled && (
+                <div className="mt-4">
+                  <Turnstile
+                    siteKey={turnstileSiteKey()}
+                    onToken={(t) => setCaptchaToken(t)}
+                    onExpired={() => setCaptchaToken("")}
+                  />
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={otp.stage === "sending" || emailInput.trim().length === 0}
+                disabled={
+                  otp.stage === "sending" ||
+                  emailInput.trim().length === 0 ||
+                  (captchaEnabled && !captchaToken)
+                }
                 className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
               >
@@ -284,9 +314,9 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => void otp.resend()}
+                    onClick={() => void otp.resend(captchaEnabled ? captchaToken : undefined)}
                     className="text-primary hover:underline font-semibold"
-                    disabled={otp.stage === "verifying"}
+                    disabled={otp.stage === "verifying" || (captchaEnabled && !captchaToken)}
                   >
                     {tt.resendButton}
                   </button>

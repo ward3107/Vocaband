@@ -10,8 +10,11 @@
   --a11y-letter-spacing: 0em;
 
   /* Teacher dashboard theme tokens — defaults match the 'default' theme.
-     Overridden at runtime by useTeacherTheme() on teacher-side routes. */
-  --vb-surface: #ffffff;
+     Overridden at runtime by useTeacherTheme() on teacher-side routes.
+     `--vb-surface` is intentionally an off-white (stone-50, not pure
+     white) so cards don't glare on bright displays.  See header
+     comment in src/constants/teacherDashboardThemes.ts. */
+  --vb-surface: #fafaf9;
   --vb-surface-alt: #f5f5f4;
   --vb-border: #e7e5e4;
   --vb-text-primary: #1c1917;
