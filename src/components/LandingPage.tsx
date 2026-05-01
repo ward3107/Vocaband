@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
+import { useLanguage } from "../hooks/useLanguage";
+import { landingPageT } from "../locales/student/landing-page";
 import {
   Rocket,
   Gamepad2,
@@ -46,12 +48,14 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
-  // Floating 3D cards data for hero
+  const { language, dir } = useLanguage();
+  const t = landingPageT[language];
+  // Floating 3D cards data for hero — labels translated via locale.
   const floatingCards = [
-    { icon: <Gamepad2 size={24} />, name: "11 Game Modes", color: "from-violet-500 to-purple-600", delay: 0 },
-    { icon: <Trophy size={24} />, name: "Earn XP", color: "from-blue-500 to-cyan-500", delay: 0.2 },
-    { icon: <Flame size={24} />, name: "Daily Streaks", color: "from-amber-500 to-orange-500", delay: 0.4 },
-    { icon: <Gift size={24} />, name: "Mystery Eggs", color: "from-emerald-500 to-teal-500", delay: 0.6 },
+    { icon: <Gamepad2 size={24} />, name: t.floatingCardModes, color: "from-violet-500 to-purple-600", delay: 0 },
+    { icon: <Trophy size={24} />, name: t.floatingCardXp, color: "from-blue-500 to-cyan-500", delay: 0.2 },
+    { icon: <Flame size={24} />, name: t.floatingCardStreaks, color: "from-amber-500 to-orange-500", delay: 0.4 },
+    { icon: <Gift size={24} />, name: t.floatingCardEggs, color: "from-emerald-500 to-teal-500", delay: 0.6 },
   ];
 
   return (
@@ -110,11 +114,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight break-words mb-6"
                 >
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
-                    Level Up
+                    {t.heroTitleLine1}
                   </span>
                   <br />
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
-                    Your Vocabulary
+                    {t.heroTitleLine2}
                   </span>
                 </motion.h1>
 
@@ -124,8 +128,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
+                  dir={dir}
                 >
-                  The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.
+                  {t.heroSubtitle}
                 </motion.p>
 
                 {/* 3D CTA Buttons */}
@@ -141,7 +146,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
                     <Sparkles size={22} className="relative z-10" fill="currentColor" />
-                    <span className="relative z-10">Start Learning</span>
+                    <span className="relative z-10">{t.heroCtaStart}</span>
                     <Rocket size={22} className="relative z-10" />
                   </motion.button>
 
@@ -156,7 +161,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       <span className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
                       <GraduationCap size={20} className="relative z-10" />
-                      <span className="relative z-10">Teacher Login</span>
+                      <span className="relative z-10">{t.heroCtaTeacher}</span>
                     </motion.button>
                   )}
                 </div>
@@ -174,8 +179,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-lg">🐯</div>
                   </div>
                   <div className="text-left">
-                    <p className="text-white font-bold text-sm">10,000+ Students</p>
-                    <p className="text-white/60 text-xs">Learning English worldwide</p>
+                    <p className="text-white font-bold text-sm">{t.heroSocialProofCount}</p>
+                    <p className="text-white/60 text-xs">{t.heroSocialProofTagline}</p>
                   </div>
                 </motion.div>
               </div>
@@ -233,10 +238,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             className="max-w-7xl mx-auto mb-12 text-center"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              Why Students Love Vocaband
+              {t.studentsSectionH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold">
-              Everything you need to master vocabulary, gamified.
+            <p className="text-lg text-white/80 font-bold" dir={dir}>
+              {t.studentsSectionSubtitle}
             </p>
           </motion.div>
 
@@ -646,14 +651,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <GraduationCap size={16} className="text-sky-300" />
               <span className="text-sm font-black tracking-widest uppercase text-sky-200">
-                For Teachers
+                {t.teachersSectionPill}
               </span>
             </motion.div>
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              The Easiest Tool You'll Use All Year
+              {t.teachersSectionH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold">
-              Zero prep, zero paperwork, zero learning curve. Teach more, click less.
+            <p className="text-lg text-white/80 font-bold" dir={dir}>
+              {t.teachersSectionSubtitle}
             </p>
           </motion.div>
 
@@ -1011,10 +1016,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             className="max-w-4xl mx-auto text-center mb-16"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              Your Journey to Mastery
+              {t.curriculumSectionH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold">
-              Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 6,500+ words.
+            <p className="text-lg text-white/80 font-bold" dir={dir}>
+              {t.curriculumSectionSubtitle}
             </p>
           </motion.div>
 
@@ -1177,15 +1182,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <Compass size={16} className="text-amber-300" />
               <span className="text-sm font-black tracking-widest uppercase text-amber-200">
-                Coming Soon
+                {t.vocaFamilyPill}
               </span>
             </motion.div>
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              The Voca Family
+              {t.vocaFamilyH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold max-w-2xl mx-auto">
-              We're starting with English vocabulary — but the same gameplay engine teaches anything.
-              Subjects on the roadmap, by teacher demand:
+            <p className="text-lg text-white/80 font-bold max-w-2xl mx-auto" dir={dir}>
+              {t.vocaFamilySubtitle}
             </p>
           </motion.div>
 
@@ -1216,7 +1220,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {/* "Coming soon" pill so nobody mistakes this for a
                       shipped feature. */}
                   <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-[9px] font-black uppercase tracking-wider">
-                    Soon
+                    {t.vocaFamilyComingSoon}
                   </div>
                 </div>
               </motion.div>
@@ -1232,15 +1236,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             viewport={{ once: true }}
             className="max-w-2xl mx-auto mt-12 text-center"
           >
-            <p className="text-white/70 font-bold text-sm mb-3">
-              Teach a different subject? Tell us which Voca to build next:
+            <p className="text-white/70 font-bold text-sm mb-3" dir={dir}>
+              {t.vocaFamilyRequestLine}
             </p>
             <a
               href="mailto:contact@vocaband.com?subject=Voca%20Roadmap%20%E2%80%93%20Subject%20Request"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-black transition-colors"
             >
               <FileText size={18} />
-              Request a subject
+              {t.vocaFamilyRequestCta}
             </a>
           </motion.div>
         </section>
@@ -1287,14 +1291,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </motion.div>
 
                 <h2 className="text-4xl md:text-6xl lg:text-7xl font-black font-headline mb-6 tracking-tight">
-                  Ready to Become a
+                  {t.finalCtaH2Line1}
                   <span className="inline-block pr-4 pb-2 mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
-                    Vocabulary Legend?
+                    {t.finalCtaH2Line2}
                   </span>
                 </h2>
 
-                <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto">
-                  Join thousands of students leveling up their English — one word at a time.
+                <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto" dir={dir}>
+                  {t.finalCtaSubtitle}
                 </p>
 
                 {/* 3D Buttons */}
@@ -1307,7 +1311,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
                     <Rocket size={24} className="relative z-10" />
-                    <span className="relative z-10">Start Learning Free</span>
+                    <span className="relative z-10">{t.finalCtaStart}</span>
                     <Sparkles size={24} className="relative z-10" fill="currentColor" />
                   </motion.button>
 
@@ -1320,7 +1324,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       <span className="absolute inset-0 bg-gradient-to-b from-white to-gray-50" />
                       <GraduationCap size={22} className="relative z-10" />
-                      <span className="relative z-10">Teacher Login</span>
+                      <span className="relative z-10">{t.finalCtaTeacher}</span>
                     </motion.button>
                   )}
                 </div>
@@ -1517,8 +1521,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* ── Bottom bar: trust strip + copyright ───────────── */}
             <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
               {/* Copyright */}
-              <p className="text-white/50 text-xs font-medium order-2 md:order-1">
-                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for learners everywhere.
+              <p className="text-white/50 text-xs font-medium order-2 md:order-1" dir={dir}>
+                {t.footerCopyright(new Date().getFullYear())}
               </p>
 
               {/* Trust strip — three small badges showing the things

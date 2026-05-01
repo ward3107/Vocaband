@@ -1,6 +1,9 @@
 import React from "react";
 import { Gamepad2 } from "lucide-react";
 import { motion } from "motion/react";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useLanguage } from "../hooks/useLanguage";
+import { landingPageT } from "../locales/student/landing-page";
 
 interface PublicNavProps {
   currentPage: "home" | "terms" | "privacy";
@@ -15,6 +18,8 @@ const PublicNav: React.FC<PublicNavProps> = ({
   onGetStarted,
   onTryDemo,
 }) => {
+  const { language } = useLanguage();
+  const t = landingPageT[language];
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-stone-100/80 backdrop-blur-md flex justify-between items-center px-4 md:px-6 py-2 border-b border-stone-200/50">
       <button
@@ -28,11 +33,19 @@ const PublicNav: React.FC<PublicNavProps> = ({
           Vocaband
         </span>
         <span className="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-full">
-          CEFR A1–B2
+          {t.navCefrBadge}
         </span>
       </button>
 
       <div className="flex items-center gap-2 md:gap-3">
+        {/* Language switcher — visible on every public page so a
+            visitor whose auto-detected language was wrong can fix it
+            in one tap before signing up.  The picker writes to the
+            same global useLanguage state, so the choice immediately
+            propagates to Demo Mode, sign-up, login, and stays after
+            the user creates an account. */}
+        <LanguageSwitcher className="hidden sm:block" />
+
         {onTryDemo && (
           <motion.button
             onClick={onTryDemo}
@@ -85,8 +98,8 @@ const PublicNav: React.FC<PublicNavProps> = ({
               <Gamepad2 size={18} strokeWidth={3} />
             </motion.div>
 
-            <span className="hidden sm:inline relative z-10 text-sm md:text-base">TRY DEMO</span>
-            <span className="sm:hidden relative z-10 text-xs">DEMO</span>
+            <span className="hidden sm:inline relative z-10 text-sm md:text-base">{t.navTryDemo}</span>
+            <span className="sm:hidden relative z-10 text-xs">{t.navTryDemoShort}</span>
 
             {/* Sparkle effects */}
             <motion.span
