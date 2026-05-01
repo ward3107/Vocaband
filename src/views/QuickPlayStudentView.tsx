@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode } from "lucide-react";
 import { QUICK_PLAY_AVATARS } from "../constants/avatars";
 import { shuffle } from "../utils";
@@ -87,6 +87,12 @@ export default function QuickPlayStudentView({
     enabled: QUICKPLAY_V2,
   });
 
+  // Tracks whether the resume "Continue Playing" path is mid-rejoin.
+  // We re-emit STUDENT_JOIN before navigating so the server re-attaches
+  // the new socket to this nickname's slot; flip the button into a
+  // "Reconnecting…" state until the server's JOINED reply arrives.
+  const [resuming, setResuming] = useState(false);
+
   // Surface server-side join errors as toasts so the student isn't
   // stuck staring at the join screen. "nickname_taken" has its own
   // friendly copy to match the legacy behavior.
@@ -106,6 +112,9 @@ export default function QuickPlayStudentView({
     // useEffect doesn't fire when a LATER (successful) join arrives
     // with the same callback baked into the closure.
     pendingJoinRef.current = null;
+    // Also reset the "Continue Playing" button out of its
+    // "Reconnecting…" state so the student can retry.
+    setResuming(false);
   }, [quickPlaySocket.lastError, showToast]);
 
   // Pending-join intent: when the student clicks Join in V2, we emit
@@ -196,13 +205,43 @@ export default function QuickPlayStudentView({
                 Your Quick Play session is still active.
               </p>
               <button
+                disabled={resuming}
                 onClick={() => {
-                  setShowModeSelection(true);
-                  setView("game");
+                  // Resume = re-emit STUDENT_JOIN with the same nickname
+                  // so the server adopts this socket back into the
+                  // existing slot (server-side: same-nickname adoption,
+                  // see server.ts:810 + CLAUDE.md §12).  Without this
+                  // re-emit, the new socket has `<none>` ownership and
+                  // every subsequent score update fails with
+                  // [QP SCORE owner-mismatch socketOwnsClient=<none>].
+                  //
+                  // Defer the actual navigate until joinedSessionCode
+                  // confirms, using the same pendingJoinRef pattern as
+                  // the first-time join — otherwise we'd render the
+                  // game screen before the server knows we're back.
+                  const advance = () => {
+                    setResuming(false);
+                    setShowModeSelection(true);
+                    setView("game");
+                  };
+                  if (QUICKPLAY_V2 && quickPlayActiveSession && quickPlayStudentName) {
+                    setResuming(true);
+                    pendingJoinRef.current = advance;
+                    quickPlaySocket.joinAsStudent(quickPlayStudentName, quickPlayAvatar);
+                  } else {
+                    advance();
+                  }
                 }}
-                className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
+                className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Continue Playing →
+                {resuming ? (
+                  <>
+                    <Loader2 className="animate-spin w-5 h-5" />
+                    Reconnecting…
+                  </>
+                ) : (
+                  <>Continue Playing →</>
+                )}
               </button>
               <button
                 onClick={() => {
