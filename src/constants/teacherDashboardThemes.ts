@@ -10,6 +10,14 @@
  * `var(--vb-surface)`, `var(--vb-text-primary)`, etc. without prop
  * drilling.
  *
+ * Comfort note (2026-05-01): card surfaces are intentionally NOT pure
+ * `#ffffff`.  Pure-white cards on bright office lighting / phone screens
+ * are tiring on the eyes, especially with the screen sizes Vocaband
+ * runs on (classroom projectors, iPads, Chromebooks).  Each light
+ * theme uses a barely-tinted off-white that matches its hue family —
+ * still reads as "white", but ~5% warmer/cooler so the surface settles
+ * onto the page background instead of glaring against it.
+ *
  * Adding a new theme: append an entry below.  Keep `name` short,
  * `emoji` instantly recognisable, `bg` a Tailwind gradient string
  * (page root), `swatch` a Tailwind gradient (picker tile), and the
@@ -59,11 +67,11 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'default',
     name: 'Default',
     emoji: '🌿',
-    bg: 'bg-gradient-to-b from-stone-50 to-white',
-    swatch: 'bg-gradient-to-br from-stone-50 to-stone-200',
+    bg: 'bg-gradient-to-b from-stone-100 to-stone-50',
+    swatch: 'bg-gradient-to-br from-stone-100 to-stone-300',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fafaf9',
       surfaceAlt: '#f5f5f4',
       border: '#e7e5e4',
       textPrimary: '#1c1917',
@@ -78,11 +86,11 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'spring',
     name: 'Spring',
     emoji: '🌸',
-    bg: 'bg-gradient-to-b from-emerald-50 via-cyan-50 to-white',
+    bg: 'bg-gradient-to-b from-emerald-50 via-cyan-50 to-stone-50',
     swatch: 'bg-gradient-to-br from-emerald-200 to-cyan-200',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#f7fbf9',
       surfaceAlt: '#ecfdf5',
       border: '#a7f3d0',
       textPrimary: '#064e3b',
@@ -101,7 +109,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-amber-300 to-rose-400',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fffbf5',
       surfaceAlt: '#fff7ed',
       border: '#fed7aa',
       textPrimary: '#7c2d12',
@@ -116,11 +124,11 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'forest',
     name: 'Forest',
     emoji: '🌲',
-    bg: 'bg-gradient-to-b from-emerald-100 via-green-50 to-stone-50',
+    bg: 'bg-gradient-to-b from-emerald-100 via-green-50 to-stone-100',
     swatch: 'bg-gradient-to-br from-emerald-700 to-green-500',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#f8faf7',
       surfaceAlt: '#f0fdf4',
       border: '#bbf7d0',
       textPrimary: '#14532d',
@@ -154,11 +162,11 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'ocean',
     name: 'Ocean',
     emoji: '🌊',
-    bg: 'bg-gradient-to-b from-sky-50 via-cyan-50 to-blue-50',
+    bg: 'bg-gradient-to-b from-sky-100 via-cyan-50 to-blue-50',
     swatch: 'bg-gradient-to-br from-sky-300 to-blue-500',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#f7fbfd',
       surfaceAlt: '#f0f9ff',
       border: '#bae6fd',
       textPrimary: '#0c4a6e',
@@ -177,7 +185,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-violet-400 to-fuchsia-500',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fbf8fc',
       surfaceAlt: '#faf5ff',
       border: '#e9d5ff',
       textPrimary: '#581c87',
@@ -196,7 +204,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-orange-400 to-red-500',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fffbf3',
       surfaceAlt: '#fffbeb',
       border: '#fcd34d',
       textPrimary: '#7c2d12',
@@ -211,11 +219,11 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'mint',
     name: 'Mint',
     emoji: '🌱',
-    bg: 'bg-gradient-to-b from-teal-50 via-green-50 to-white',
+    bg: 'bg-gradient-to-b from-teal-50 via-green-50 to-emerald-50',
     swatch: 'bg-gradient-to-br from-teal-300 to-emerald-400',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#f7fbfa',
       surfaceAlt: '#f0fdfa',
       border: '#99f6e4',
       textPrimary: '#134e4a',
@@ -234,7 +242,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-rose-300 to-orange-400',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fdf8f8',
       surfaceAlt: '#fff1f2',
       border: '#fecdd3',
       textPrimary: '#881337',
@@ -249,12 +257,12 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'slate',
     name: 'Slate',
     emoji: '🪨',
-    bg: 'bg-gradient-to-b from-slate-100 via-gray-50 to-zinc-50',
+    bg: 'bg-gradient-to-b from-slate-200 via-gray-100 to-zinc-100',
     swatch: 'bg-gradient-to-br from-slate-400 to-gray-600',
     dark: false,
     palette: {
-      surface: '#ffffff',
-      surfaceAlt: '#f8fafc',
+      surface: '#f9fafb',
+      surfaceAlt: '#f1f5f9',
       border: '#cbd5e1',
       textPrimary: '#0f172a',
       textSecondary: '#334155',
@@ -272,7 +280,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-purple-300 to-indigo-400',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fbf9fc',
       surfaceAlt: '#f5f3ff',
       border: '#ddd6fe',
       textPrimary: '#4c1d95',
@@ -291,7 +299,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-red-500 to-rose-600',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fdf8f8',
       surfaceAlt: '#fef2f2',
       border: '#fecaca',
       textPrimary: '#7f1d1d',
@@ -310,7 +318,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     swatch: 'bg-gradient-to-br from-yellow-400 to-amber-500',
     dark: false,
     palette: {
-      surface: '#ffffff',
+      surface: '#fffcf2',
       surfaceAlt: '#fffbeb',
       border: '#fde68a',
       textPrimary: '#713f12',
@@ -318,6 +326,90 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
       textMuted: '#78716c',
       accent: '#d97706',
       accentSoft: '#fef3c7',
+      accentText: '#ffffff',
+    },
+  },
+
+  // ─── Dark variants ──────────────────────────────────────────────
+  // Same character as the light themes above, but with deep tinted
+  // surfaces and lighter text — for evening teaching, dim rooms, or
+  // teachers who simply prefer dark UIs.  Surfaces are NOT pure black:
+  // every dark theme uses a tinted near-black (#1a-#1f range) so cards
+  // separate visually from a slightly darker page background.
+
+  {
+    id: 'forest-dark',
+    name: 'Forest Dark',
+    emoji: '🌲',
+    bg: 'bg-gradient-to-b from-emerald-950 via-green-950 to-stone-950',
+    swatch: 'bg-gradient-to-br from-emerald-800 to-green-900',
+    dark: true,
+    palette: {
+      surface: '#0f1f1a',
+      surfaceAlt: '#15291f',
+      border: '#1f3a2c',
+      textPrimary: '#ecfdf5',
+      textSecondary: '#a7f3d0',
+      textMuted: '#6ee7b7',
+      accent: '#34d399',
+      accentSoft: '#14532d',
+      accentText: '#ffffff',
+    },
+  },
+  {
+    id: 'ocean-dark',
+    name: 'Ocean Dark',
+    emoji: '🌊',
+    bg: 'bg-gradient-to-b from-slate-950 via-blue-950 to-sky-950',
+    swatch: 'bg-gradient-to-br from-sky-800 to-blue-900',
+    dark: true,
+    palette: {
+      surface: '#0c1929',
+      surfaceAlt: '#11243b',
+      border: '#1e3a5f',
+      textPrimary: '#f0f9ff',
+      textSecondary: '#bae6fd',
+      textMuted: '#7dd3fc',
+      accent: '#38bdf8',
+      accentSoft: '#0c4a6e',
+      accentText: '#ffffff',
+    },
+  },
+  {
+    id: 'slate-dark',
+    name: 'Slate Dark',
+    emoji: '🪨',
+    bg: 'bg-gradient-to-b from-slate-950 via-gray-950 to-zinc-950',
+    swatch: 'bg-gradient-to-br from-slate-700 to-gray-800',
+    dark: true,
+    palette: {
+      surface: '#1c1f26',
+      surfaceAlt: '#25282f',
+      border: '#3a3f4a',
+      textPrimary: '#f1f5f9',
+      textSecondary: '#cbd5e1',
+      textMuted: '#94a3b8',
+      accent: '#60a5fa',
+      accentSoft: '#1e3a5f',
+      accentText: '#ffffff',
+    },
+  },
+  {
+    id: 'berry-dark',
+    name: 'Berry Dark',
+    emoji: '🍇',
+    bg: 'bg-gradient-to-b from-violet-950 via-fuchsia-950 to-purple-950',
+    swatch: 'bg-gradient-to-br from-violet-700 to-fuchsia-800',
+    dark: true,
+    palette: {
+      surface: '#1f1530',
+      surfaceAlt: '#2a1d3f',
+      border: '#3d2a55',
+      textPrimary: '#faf5ff',
+      textSecondary: '#e9d5ff',
+      textMuted: '#c084fc',
+      accent: '#c084fc',
+      accentSoft: '#4c1d95',
       accentText: '#ffffff',
     },
   },
