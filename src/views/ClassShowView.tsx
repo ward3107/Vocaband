@@ -20,7 +20,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
-import ClassShowSetup, { type ClassShowMode, type ClassShowWordSource } from '../components/classshow/ClassShowSetup';
+import ClassShowSetup, { type ClassShowMode, type ClassShowWordSource, type ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import ClassShowQuestion from '../components/classshow/ClassShowQuestion';
 import ClassShowControls from '../components/classshow/ClassShowControls';
 import ClassShowFinale from '../components/classshow/ClassShowFinale';
@@ -41,6 +41,11 @@ interface ClassShowViewProps {
    *  launched the show).  Defaults to 0 (the first source). */
   initialSourceIndex?: number;
   onExit: () => void;
+  /** Wiring for the embedded WordPicker so teachers can build a
+   *  custom word list using paste / OCR / topic packs / saved groups
+   *  — the same UX the assignment wizard uses.  Optional: when
+   *  omitted, only the pre-built sources are available. */
+  pickerWiring?: ClassShowWordPickerWiring;
 }
 
 type Phase =
@@ -65,7 +70,7 @@ function shuffleIndices(n: number): number[] {
   return arr;
 }
 
-export default function ClassShowView({ user, initialSources, initialSourceIndex = 0, onExit }: ClassShowViewProps) {
+export default function ClassShowView({ user, initialSources, initialSourceIndex = 0, onExit, pickerWiring }: ClassShowViewProps) {
   // Apply the teacher's chosen dashboard palette so the projector
   // surface keeps the same look + feel as the rest of their UI.
   useTeacherTheme(user?.teacherDashboardTheme);
@@ -117,6 +122,7 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
       <ClassShowSetup
         availableSources={initialSources}
         initialSourceIndex={initialSourceIndex}
+        pickerWiring={pickerWiring}
         onCancel={onExit}
         onStart={({ mode, source, questionCount }) => {
           const order = shuffleIndices(source.words.length).slice(0, questionCount);

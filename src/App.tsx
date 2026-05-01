@@ -2820,6 +2820,18 @@ export default function App() {
           user={user}
           initialSources={sources}
           initialSourceIndex={0}
+          pickerWiring={{
+            allWords: ALL_WORDS,
+            onTranslateWord: translateWord,
+            onTranslateBatch: translateWordsBatch,
+            onOcrUpload: handleOcrUpload,
+            topicPacks: TOPIC_PACKS,
+            // savedGroups: pass [] for now — wiring useSavedWordGroups
+            // through App-level state is a future PR.  WordPicker's
+            // SavedGroupsPanel renders an empty state cleanly when [].
+            savedGroups: [],
+            showToast,
+          }}
           onExit={() => {
             setClassShowAssignment(null);
             setView("teacher-dashboard");
@@ -2855,6 +2867,15 @@ export default function App() {
           initialSourceIndex={0}
           initialTitle={worksheetAssignment?.title}
           className={worksheetAssignment?.className ?? null}
+          pickerWiring={{
+            allWords: ALL_WORDS,
+            onTranslateWord: translateWord,
+            onTranslateBatch: translateWordsBatch,
+            onOcrUpload: handleOcrUpload,
+            topicPacks: TOPIC_PACKS,
+            savedGroups: [],
+            showToast,
+          }}
           onExit={() => {
             setWorksheetAssignment(null);
             setView("teacher-dashboard");

@@ -133,6 +133,11 @@ export interface WordInputStep2026Props {
   onDeleteSavedGroup?: (id: string) => Promise<boolean>;
   customWords?: Word[];
   onCustomWordsChange?: (words: Word[]) => void;
+  /** When true, the wizard-specific "Continue →" button at the
+   *  bottom is suppressed.  Used by the WordPicker wrapper so the
+   *  same picking UX can be embedded inside flows that have their
+   *  own next-step button (Class Show, Worksheet builder). */
+  hideContinueButton?: boolean;
 }
 
 type OcrState = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
@@ -1565,6 +1570,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   onDeleteSavedGroup,
   customWords = [],
   onCustomWordsChange,
+  hideContinueButton = false,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const selectedWordsRef = useRef<HTMLDivElement>(null);
@@ -2163,8 +2169,10 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       )}
       </div>
 
-      {/* Continue Button */}
-      {selectedWords.length > 0 && (
+      {/* Continue Button — suppressed when WordPicker wraps this
+          component for embedded use (Class Show / Worksheet builder
+          have their own next-step buttons). */}
+      {selectedWords.length > 0 && !hideContinueButton && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
