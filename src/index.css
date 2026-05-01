@@ -23,6 +23,44 @@
 }
 
 /* =============================================================================
+   Print mode — used by the Worksheet feature.  When printing, hide the
+   on-screen UI and show ONLY the .vb-print-only container.  The
+   teacher hits Cmd/Ctrl+P (or our "Print" button which calls
+   window.print()) and gets a clean page exported to PDF or paper.
+   ============================================================================= */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .vb-print-only,
+  .vb-print-only * {
+    visibility: visible;
+  }
+  .vb-print-only {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+  .vb-print-page-break {
+    page-break-before: always;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+/* The print-only container is hidden from screen rendering — only
+   becomes visible when the print dialog is active. */
+@media screen {
+  .vb-print-only {
+    display: none;
+  }
+}
+
+/* =============================================================================
    Material Design 3 Theme Configuration for Vocaband
    ============================================================================= */
 

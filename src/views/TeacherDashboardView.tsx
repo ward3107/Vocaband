@@ -75,6 +75,10 @@ interface TeacherDashboardViewProps {
   onClassShowClick: () => void;
   /** Project a specific assignment to the class via Class Show. */
   onProjectAssignmentToClass: (a: AssignmentData) => void;
+  /** Impromptu Worksheet builder — print word lists / scrambles / etc. */
+  onWorksheetClick: () => void;
+  /** Print a specific assignment as a worksheet. */
+  onPrintAssignmentWorksheet: (a: AssignmentData) => void;
 
   // Classes section handlers
   onNewClass: () => void;
@@ -114,6 +118,7 @@ export default function TeacherDashboardView({
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onLiveChallengeClick, onClassroomClick, onApprovalsClick,
   onClassShowClick, onProjectAssignmentToClass,
+  onWorksheetClick, onPrintAssignmentWorksheet,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
@@ -206,6 +211,7 @@ export default function TeacherDashboardView({
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
             onClassShowClick={onClassShowClick}
+            onWorksheetClick={onWorksheetClick}
           />
 
           <TeacherClassesSection
@@ -225,6 +231,7 @@ export default function TeacherDashboardView({
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}
             onProjectAssignmentToClass={onProjectAssignmentToClass}
+            onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
             isDark={dashboardTheme.dark}
           />
 

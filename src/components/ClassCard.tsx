@@ -38,6 +38,8 @@ interface ClassCardProps {
   onDeleteAssignment?: (assignment: Assignment) => void;
   /** Project this assignment to the classroom via Class Show. */
   onProjectAssignmentToClass?: (assignment: Assignment) => void;
+  /** Print this assignment as a worksheet. */
+  onPrintAssignmentWorksheet?: (assignment: Assignment) => void;
   openDropdownClassId?: string | null;
   onToggleDropdown?: (classId: string | null) => void;
 }
@@ -60,6 +62,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onDuplicateAssignment,
   onDeleteAssignment,
   onProjectAssignmentToClass,
+  onPrintAssignmentWorksheet,
   openDropdownClassId,
   onToggleDropdown,
 }) => {
@@ -530,6 +533,22 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   >
                     <Tv2 size={13} />
                     <span className="hidden sm:inline">Project</span>
+                  </button>
+                )}
+                {onPrintAssignmentWorksheet && (
+                  <button
+                    onClick={() => onPrintAssignmentWorksheet(assignment)}
+                    type="button"
+                    style={{
+                      backgroundColor: 'var(--vb-surface-alt)',
+                      color: 'var(--vb-text-secondary)',
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
+                    aria-label="Print worksheet"
+                    title="Print worksheet"
+                  >
+                    <Printer size={13} />
+                    <span className="hidden sm:inline">Print</span>
                   </button>
                 )}
                 {onDeleteAssignment && (

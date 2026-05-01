@@ -1,4 +1,4 @@
-import { QrCode, GraduationCap, UserCircle, Tv2 } from "lucide-react";
+import { QrCode, GraduationCap, UserCircle, Tv2, Printer } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import ActionCard from "../ActionCard";
 
@@ -15,11 +15,14 @@ interface TeacherQuickActionsProps {
   /** Class Show — projector mode for classrooms where students don't
    *  have phones.  Teacher's screen IS the entire experience. */
   onClassShowClick?: () => void;
+  /** Worksheet builder — print word lists / scrambles / fill-blank /
+   *  match-up sheets.  Works in classrooms with no projector at all. */
+  onWorksheetClick?: () => void;
 }
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick,
 }: TeacherQuickActionsProps) {
   return (
     <div className="mb-8 sm:mb-10">
@@ -57,6 +60,23 @@ export default function TeacherQuickActions({
                 description="Project to the classroom"
                 buttonText="Start"
                 onClick={onClassShowClick}
+              />
+            </div>
+          </HelpTooltip>
+        )}
+
+        {/* Worksheet — printable for classrooms with no projector */}
+        {onWorksheetClick && (
+          <HelpTooltip className="h-full" content="Generate a printable worksheet (word list, scramble, fill-in-the-blank, or match-up) and print or save as PDF. Works without any projector.">
+            <div className="h-full" data-tour="worksheet">
+              <ActionCard
+                icon={<Printer size={22} />}
+                iconBg="bg-emerald-50"
+                iconColor="text-emerald-600"
+                title="Worksheet"
+                description="Print a sheet for class"
+                buttonText="Build"
+                onClick={onWorksheetClick}
               />
             </div>
           </HelpTooltip>

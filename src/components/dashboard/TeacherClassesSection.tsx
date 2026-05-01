@@ -23,6 +23,8 @@ interface TeacherClassesSectionProps {
   onDeleteAssignment: (assignment: AssignmentData) => void;
   /** Project this assignment to the classroom via Class Show. */
   onProjectAssignmentToClass?: (assignment: AssignmentData) => void;
+  /** Print this assignment as a worksheet. */
+  onPrintAssignmentWorksheet?: (assignment: AssignmentData) => void;
   /** Kept for source-compat with the previous theme system; the
    *  component now reads colours from CSS custom properties (var(--vb-*))
    *  set by useTeacherTheme() so this prop is unused. */
@@ -35,7 +37,7 @@ export default function TeacherClassesSection({
   onNewClass, onAssign, onDeleteClass, onEditClass,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
-  onProjectAssignmentToClass,
+  onProjectAssignmentToClass, onPrintAssignmentWorksheet,
 }: TeacherClassesSectionProps) {
   return (
     <div data-tour="my-classes">
@@ -142,6 +144,7 @@ export default function TeacherClassesSection({
                 onDuplicateAssignment={(assignment) => onDuplicateAssignment(assignment, c)}
                 onDeleteAssignment={onDeleteAssignment}
                 onProjectAssignmentToClass={onProjectAssignmentToClass}
+                onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
               />
             );
           })}

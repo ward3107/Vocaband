@@ -45,6 +45,7 @@ const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginVi
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
 const LiveChallengeView = lazy(() => import("./views/LiveChallengeView"));
@@ -309,6 +310,8 @@ export default function App() {
   // launches from an assignment card, this stores the assignment's
   // word list so the setup panel pre-selects "From assignment".
   const [classShowAssignment, setClassShowAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[] } | null>(null);
+  // Worksheet — optional pre-fill from an assignment.
+  const [worksheetAssignment, setWorksheetAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>(null);
   // Cumulative score across all modes a guest has played in the
   // current Quick Play session.  The per-mode `score` state (in
   // useGameState) resets to 0 on every new mode, so emitting it
@@ -2300,6 +2303,11 @@ export default function App() {
             setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("class-show");
           }}
+          onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
+          onPrintAssignmentWorksheet={(a) => {
+            setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
+            setView("worksheet");
+          }}
           onNewClass={() => setShowCreateClassModal(true)}
           onAssignClass={(c) => {
             setSelectedClass(c);
@@ -2760,6 +2768,41 @@ export default function App() {
           initialSourceIndex={0}
           onExit={() => {
             setClassShowAssignment(null);
+            setView("teacher-dashboard");
+          }}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === "worksheet") {
+    const sources: { label: string; description?: string; words: Word[] }[] = [];
+    if (worksheetAssignment) {
+      const knownWords = ALL_WORDS.filter(w => worksheetAssignment.wordIds.includes(w.id));
+      const customs = worksheetAssignment.customWords ?? [];
+      const merged = [...knownWords, ...customs.filter(c => !knownWords.some(k => k.id === c.id))];
+      if (merged.length > 0) {
+        sources.push({
+          label: worksheetAssignment.title || "Assignment",
+          description: "From assignment",
+          words: merged,
+        });
+      }
+    }
+    if (SET_1_WORDS.length > 0) sources.push({ label: "Set 1", description: "Israeli MoE — beginners", words: SET_1_WORDS });
+    if (SET_2_WORDS.length > 0) sources.push({ label: "Set 2", description: "Israeli MoE — intermediate", words: SET_2_WORDS });
+    const set3w = ALL_WORDS.filter(w => w.level === "Set 3");
+    if (set3w.length > 0) sources.push({ label: "Set 3", description: "Israeli MoE — advanced", words: set3w });
+    return (
+      <LazyWrapper loadingMessage="Loading worksheet builder…">
+        <WorksheetView
+          user={user}
+          initialSources={sources}
+          initialSourceIndex={0}
+          initialTitle={worksheetAssignment?.title}
+          className={worksheetAssignment?.className ?? null}
+          onExit={() => {
+            setWorksheetAssignment(null);
             setView("teacher-dashboard");
           }}
         />

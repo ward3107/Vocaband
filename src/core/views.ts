@@ -32,7 +32,8 @@ export type View =
   | "quick-play-setup"
   | "quick-play-teacher-monitor"
   | "quick-play-student"
-  | "class-show";
+  | "class-show"
+  | "worksheet";
 
 export type ShopTab =
   // "hub" = the Arcade Lobby landing screen (portal tiles + hero +
