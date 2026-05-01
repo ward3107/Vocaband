@@ -22,6 +22,11 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // themselves keep their rose↔emerald split (False=rose, True=emerald)
   // since binary judgement reads strongest with paired colours.
   "true-false": "rose",
+  // Matching = amber (deeper redesign in Phase 3a-deep / drag-line):
+  // English column on the left, target column on the right; the kid
+  // either taps two tiles or drags a finger from left to right to
+  // draw a connecting line.
+  matching: "amber",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
