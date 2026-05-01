@@ -284,6 +284,8 @@ export default function GameActiveView({
                 selectedMatch={selectedMatch}
                 isMatchingProcessing={isMatchingProcessing}
                 onMatchClick={handleMatchClick}
+                themeColor={modeTheme}
+                modeLabel={modeLabel}
               />
             ) : (
               <motion.div
