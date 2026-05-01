@@ -13,7 +13,7 @@ interface FillBlankGameProps {
   feedback: "correct" | "wrong" | "show-answer" | null;
   gameWordsCount: number;
   onAnswer: (w: Word) => void;
-  /** Phase-3i theme — lime.  Drives the sentence-card hero tint
+  /** Phase-3i theme -- lime.  Drives the sentence-card hero tint
    *  and the AnswerOptionButton accents.  The blank slot is always
    *  lime-bordered regardless (it's the mode signature). */
   themeColor?: GameThemeColor;
@@ -23,8 +23,8 @@ interface FillBlankGameProps {
 // student has to recognise it from context.  Three-step fallback
 // because teacher-edited sentences (or unusual AI outputs) can
 // drift from the canonical form:
-//   1. Whole-word, case-insensitive regex — handles the common case.
-//   2. Substring replace — handles inflected forms ("ran"/"run").
+//   1. Whole-word, case-insensitive regex -- handles the common case.
+//   2. Substring replace -- handles inflected forms ("ran"/"run").
 //   3. Append the sentinel to the verbatim sentence so the round
 //      stays playable instead of giving the answer away.
 //
@@ -57,16 +57,16 @@ export function redactSentence(sentence: string, target: string): string {
  * _____ on the mat") which kids' eyes skipped right over.  Now the
  * redacted sentence is split around the sentinel and the blank
  * itself is rendered as a visible LIME-BORDERED SLOT BOX inline
- * with the text — same line-height as the surrounding text but
+ * with the text -- same line-height as the surrounding text but
  * visually distinct (white bg, dashed lime border, big "?" glyph).
  * The kid's eye lands on the slot instantly.
  *
  * Layout:
  *   - Small sentence counter pill at the top.
- *   - HERO sentence card — lime-tinted background + border,
+ *   - HERO sentence card -- lime-tinted background + border,
  *     generous padding, large readable text.  The blank inside is
  *     a real slot.
- *   - 2×2 OPTION GRID — AnswerOptionButton with the lime themeColor
+ *   - 2x2 OPTION GRID -- AnswerOptionButton with the lime themeColor
  *     so the resting border + hover state pick up the mode palette.
  *
  * No audio control: speaking the sentence aloud would expose the
@@ -93,7 +93,7 @@ const FillBlankGame = React.memo(({
   if (!currentWord) {
     return (
       <div className="text-center p-8 bg-red-50 rounded-2xl">
-        <p className="text-red-600 font-black">⚠️ Error: No word loaded</p>
+        <p className="text-red-600 font-black">[!] Error: No word loaded</p>
       </div>
     );
   }
@@ -101,20 +101,20 @@ const FillBlankGame = React.memo(({
   if (options.length === 0) {
     return (
       <div className="text-center p-8 bg-amber-50 rounded-2xl">
-        <p className="text-amber-600 font-black">⚠️ Error: No answer options available</p>
+        <p className="text-amber-600 font-black">[!] Error: No answer options available</p>
         <p className="text-sm text-amber-500 mt-2">You need at least 4 words in the assignment for this mode to work</p>
       </div>
     );
   }
 
-  // Match each round's word to its sentence by index — same word
-  // index drives the gameplay, so word i ↔ sentence i.  Wrap if
+  // Match each round's word to its sentence by index -- same word
+  // index drives the gameplay, so word i <-> sentence i.  Wrap if
   // there are fewer sentences than words (teacher deleted some).
   const sentence = sentences[currentIndex % sentences.length] || "";
   const redacted = redactSentence(sentence, currentWord.english);
 
   // Split around the sentinel so we can render the blank as a
-  // visible slot box.  Take the first occurrence only — multiple
+  // visible slot box.  Take the first occurrence only -- multiple
   // blanks are vanishingly rare and would just collapse to one
   // visual slot at position 0 (any leftover sentinels in the
   // before/after fragments are stripped out for safety).
@@ -128,7 +128,7 @@ const FillBlankGame = React.memo(({
         Sentence {currentIndex + 1} / {gameWordsCount}
       </p>
 
-      {/* Hero sentence card — generous padding, theme-tinted, big
+      {/* Hero sentence card -- generous padding, theme-tinted, big
           readable text.  The blank is rendered inline as a slot
           box that sits on the same line as the surrounding text. */}
       <div
@@ -150,7 +150,7 @@ const FillBlankGame = React.memo(({
         <span>{after}</span>
       </div>
 
-      {/* 2×2 option grid.  AnswerOptionButton owns its own theme-
+      {/* 2x2 option grid.  AnswerOptionButton owns its own theme-
           tinted resting border, hover state, and feedback colours. */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {options.filter(o => !hiddenOptions.includes(o.id)).map(option => (
