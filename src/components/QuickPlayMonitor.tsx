@@ -650,7 +650,7 @@ export default function QuickPlayMonitor({
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
             When qrCollapsed is true the QR shrinks to a small floating
             icon button anchored to the right of this row, leaving the
@@ -762,6 +762,32 @@ export default function QuickPlayMonitor({
               >
                 <Copy size={11} /> Copy link
               </button>
+              {/* Words + End Session — moved here from the old fixed
+                  footer per teacher request: keeps every action button
+                  in one place (the QR card) so the podium owns the
+                  whole vertical space below it.  Words = white outline
+                  reading affordance; End Session = red destructive
+                  affordance with confirm modal. */}
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWordsModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-xl transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <BookOpen size={14} />
+                  Words
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-red-500/90 hover:bg-red-600 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-xl shadow-md transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <X size={14} />
+                  End Session
+                </button>
+              </div>
               {/* Hide button — collapses to the chip strip above. */}
               <button
                 type="button"
@@ -961,27 +987,9 @@ export default function QuickPlayMonitor({
         )}
       </main>
 
-      {/* ─── Bottom Nav Bar ────────────────────────────────────────────────── */}
-      <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
-        <div className={`flex flex-col items-center p-2 ${t.accent}`}>
-          <Users size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Podium</span>
-        </div>
-        <button
-          onClick={() => setShowWordsModal(true)}
-          className={`flex flex-col items-center ${t.text} p-2 hover:opacity-60 transition-opacity`}
-        >
-          <BookOpen size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Words</span>
-        </button>
-        <button
-          onClick={() => setEndModal(true)}
-          className={`flex flex-col items-center ${t.accentBg} text-white rounded-full p-3 sm:p-4 scale-110 -translate-y-3 shadow-lg active:scale-95 transition-all`}
-        >
-          <X size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-0.5">Stop</span>
-        </button>
-      </footer>
+      {/* Bottom nav bar removed per teacher request — Words + End
+          Session moved into the QR card so every action lives in one
+          place and the podium owns the full vertical space. */}
 
       {/* ─── Enlarged QR Modal ───────────────────────────────────────────────
           Acts as the primary "show me the QR" surface when qrCollapsed
