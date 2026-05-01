@@ -17,9 +17,9 @@
  * everything except `.vb-print-only` is suppressed and the worksheet
  * is the only thing on the page.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import Worksheet, { type WorksheetSheetType } from '../components/worksheet/Worksheet';
@@ -27,6 +27,8 @@ import { WordListSheet } from '../components/worksheet/sheets/WordListSheet';
 import { ScrambleSheet } from '../components/worksheet/sheets/ScrambleSheet';
 import { FillBlankSheet } from '../components/worksheet/sheets/FillBlankSheet';
 import { MatchUpSheet } from '../components/worksheet/sheets/MatchUpSheet';
+import WordPicker from '../components/setup/WordPicker';
+import type { ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import type { Word } from '../data/vocabulary';
 import type { AppUser } from '../core/supabase';
 
@@ -39,6 +41,9 @@ interface WorksheetViewProps {
   /** Class name for the printed header (optional). */
   className?: string | null;
   onExit: () => void;
+  /** Wiring for the embedded WordPicker (paste / OCR / topic packs).
+   *  Reuses the same shape as Class Show — see ClassShowSetup. */
+  pickerWiring?: ClassShowWordPickerWiring;
 }
 
 const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string }> = [
@@ -49,20 +54,45 @@ const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: s
 ];
 
 export default function WorksheetView({
-  user, initialSources, initialSourceIndex = 0, initialTitle, className, onExit,
+  user, initialSources, initialSourceIndex = 0, initialTitle, className, onExit, pickerWiring,
 }: WorksheetViewProps) {
   useTeacherTheme(user?.teacherDashboardTheme);
   const { language } = useLanguage();
   const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
 
   const [sheetType, setSheetType] = useState<WorksheetSheetType>('word-list');
-  const [sourceIdx, setSourceIdx] = useState(Math.max(0, Math.min(initialSourceIndex, initialSources.length - 1)));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
   const [maxWords, setMaxWords] = useState(20);
 
-  const source = initialSources[sourceIdx];
+  // Custom-words state for the embedded WordPicker.  When non-empty,
+  // a synthetic "My custom selection" source is prepended.
+  const [customWords, setCustomWords] = useState<Word[]>([]);
+  const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const effectiveSources = useMemo(() => {
+    if (customWords.length === 0) return initialSources;
+    return [
+      { label: 'My custom selection', description: 'Built with paste / OCR / packs', words: customWords },
+      ...initialSources,
+    ];
+  }, [customWords, initialSources]);
+
+  const [sourceIdx, setSourceIdx] = useState(() =>
+    Math.max(0, Math.min(initialSourceIndex, initialSources.length - 1)),
+  );
+
+  const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
   const wordsForSheet = (source?.words ?? []).slice(0, maxWords);
+
+  const handleCustomWordsChange = (next: Word[]) => {
+    const wasEmpty = customWords.length === 0;
+    setCustomWords(next);
+    if (wasEmpty && next.length > 0) {
+      setSourceIdx(0); // jump to "My custom selection"
+    }
+  };
 
   return (
     <div className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
@@ -130,8 +160,9 @@ export default function WorksheetView({
             Word source
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {initialSources.map((s, idx) => {
+            {effectiveSources.map((s, idx) => {
               const selected = idx === sourceIdx;
+              const isCustom = customWords.length > 0 && idx === 0;
               return (
                 <button
                   key={`${s.label}-${idx}`}
@@ -144,7 +175,10 @@ export default function WorksheetView({
                   }}
                   className="text-left px-4 py-3 rounded-xl border-2 transition-colors"
                 >
-                  <div className="font-bold text-sm">{s.label}</div>
+                  <div className="font-bold text-sm flex items-center gap-2">
+                    {isCustom && <Wand2 size={14} style={{ color: 'var(--vb-accent)' }} />}
+                    {s.label}
+                  </div>
                   {s.description && (
                     <div className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
                       {s.description} · {s.words.length} words
@@ -154,6 +188,53 @@ export default function WorksheetView({
               );
             })}
           </div>
+
+          {/* Build custom list — embedded WordPicker. */}
+          {pickerWiring && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(o => !o)}
+                style={{
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-primary)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="w-full px-4 py-3 rounded-xl border-2 inline-flex items-center justify-between font-bold text-sm transition-colors hover:opacity-90"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Wand2 size={16} style={{ color: 'var(--vb-accent)' }} />
+                  Build a custom list (paste, OCR, topic packs, saved groups)
+                </span>
+                {pickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {pickerOpen && (
+                <div
+                  className="mt-3 p-4 rounded-xl border-2"
+                  style={{
+                    backgroundColor: 'var(--vb-surface-alt)',
+                    borderColor: 'var(--vb-border)',
+                  }}
+                >
+                  <WordPicker
+                    allWords={pickerWiring.allWords}
+                    selectedWords={customWords}
+                    onSelectedWordsChange={handleCustomWordsChange}
+                    onTranslateWord={pickerWiring.onTranslateWord}
+                    onTranslateBatch={pickerWiring.onTranslateBatch}
+                    onOcrUpload={pickerWiring.onOcrUpload}
+                    showToast={pickerWiring.showToast}
+                    topicPacks={pickerWiring.topicPacks}
+                    savedGroups={pickerWiring.savedGroups}
+                    onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
+                    onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
+                    customWords={customWordsCustomTier}
+                    onCustomWordsChange={setCustomWordsCustomTier}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Title + word count + answer key */}

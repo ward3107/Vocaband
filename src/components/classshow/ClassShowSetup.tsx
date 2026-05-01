@@ -1,17 +1,31 @@
 /**
  * ClassShowSetup — pre-show panel where the teacher picks the mode,
- * the word source (optionally pre-filled from an assignment), and
- * the question count.  Submits to the parent via onStart.
+ * the word source, and the question count.
+ *
+ * Word-source picker supports two paths:
+ *   1. Quick-pick a Set (1/2/3) or a pre-filled assignment.  Same as
+ *      before — radio-style buttons at the top.
+ *   2. Build a custom word list using the same picker the assignment
+ *      wizard uses (paste, OCR, topic packs, saved groups).  When the
+ *      teacher adds at least one word via the picker, a "My custom
+ *      selection (N words)" option appears at the top of the source
+ *      list and is auto-selected.
+ *
+ * The custom-list path runs through `WordPicker` (a thin wrapper
+ * around the assignment wizard's WordInputStep2026) so any feature
+ * added there — translation, OCR, AI batch, saved groups — is
+ * automatically available in Class Show too.
  */
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
-  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle,
+  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, ChevronDown, ChevronUp, Wand2,
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
+import WordPicker from '../setup/WordPicker';
 
 export type ClassShowMode =
   | 'classic'
@@ -35,11 +49,29 @@ export interface ClassShowWordSource {
   words: Word[];
 }
 
+/** Subset of WordPicker's props the parent must wire from App.tsx so
+ *  the embedded picker has the data + callbacks it needs. */
+export interface ClassShowWordPickerWiring {
+  allWords: Word[];
+  onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
+  onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
+  onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
+  topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
+  savedGroups?: Array<{ id: string; name: string; words: number[] }>;
+  onRenameSavedGroup?: (id: string, newName: string) => Promise<boolean>;
+  onDeleteSavedGroup?: (id: string) => Promise<boolean>;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+}
+
 interface ClassShowSetupProps {
   availableSources: ClassShowWordSource[];
   initialSourceIndex: number;
   onStart: (config: { mode: ClassShowMode; source: ClassShowWordSource; questionCount: number }) => void;
   onCancel: () => void;
+  /** Wiring for the embedded WordPicker.  When omitted, the Build
+   *  Custom List section is hidden and the teacher can only pick
+   *  from `availableSources` (legacy behavior). */
+  pickerWiring?: ClassShowWordPickerWiring;
 }
 
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
@@ -59,22 +91,52 @@ const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: R
 
 const COUNT_OPTIONS = [10, 20, 30, 50];
 
-export default function ClassShowSetup({ availableSources, initialSourceIndex, onStart, onCancel }: ClassShowSetupProps) {
+export default function ClassShowSetup({ availableSources, initialSourceIndex, onStart, onCancel, pickerWiring }: ClassShowSetupProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
 
   const [mode, setMode] = useState<ClassShowMode>('classic');
-  const [sourceIdx, setSourceIdx] = useState(Math.max(0, Math.min(initialSourceIndex, availableSources.length - 1)));
   const [count, setCount] = useState(20);
 
-  const selectedSource = availableSources[sourceIdx];
-  const maxCount = selectedSource?.words.length ?? 0;
+  // Custom-words state — built up by the embedded WordPicker.  When
+  // non-empty, a synthetic "My custom selection" source is prepended
+  // to the available-sources list and auto-selected.
+  const [customWords, setCustomWords] = useState<Word[]>([]);
+  const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Effective source list = (custom selection if any) + real sources.
+  const effectiveSources = useMemo<ClassShowWordSource[]>(() => {
+    if (customWords.length === 0) return availableSources;
+    const customSource: ClassShowWordSource = {
+      label: 'My custom selection',
+      description: 'Built with paste / OCR / packs',
+      words: customWords,
+    };
+    return [customSource, ...availableSources];
+  }, [availableSources, customWords]);
+
+  // sourceIdx is an index into effectiveSources (which shifts as the
+  // custom source appears/disappears at index 0).
+  const [sourceIdx, setSourceIdx] = useState(() =>
+    Math.max(0, Math.min(initialSourceIndex, availableSources.length - 1)),
+  );
+
+  const realSelectedSource =
+    effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)] ?? null;
+
+  const maxCount = realSelectedSource?.words.length ?? 0;
   const effectiveCount = Math.min(count, maxCount);
 
-  const canStart = useMemo(() => {
-    if (!selectedSource || selectedSource.words.length === 0) return false;
-    return true;
-  }, [selectedSource]);
+  const canStart = !!realSelectedSource && realSelectedSource.words.length > 0;
+
+  const handleCustomWordsChange = (next: Word[]) => {
+    const wasEmpty = customWords.length === 0;
+    setCustomWords(next);
+    if (wasEmpty && next.length > 0) {
+      setSourceIdx(0); // jump to "My custom selection"
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
@@ -126,8 +188,9 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
             {t.pickWordSource}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {availableSources.map((s, idx) => {
+            {effectiveSources.map((s, idx) => {
               const selected = idx === sourceIdx;
+              const isCustom = customWords.length > 0 && idx === 0;
               return (
                 <button
                   key={`${s.label}-${idx}`}
@@ -141,7 +204,10 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
                   }}
                   className="text-left px-4 py-3 rounded-xl border-2 transition-colors"
                 >
-                  <div className="font-bold text-sm">{s.label}</div>
+                  <div className="font-bold text-sm flex items-center gap-2">
+                    {isCustom && <Wand2 size={14} style={{ color: 'var(--vb-accent)' }} />}
+                    {s.label}
+                  </div>
                   {s.description && (
                     <div className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
                       {s.description} · {s.words.length} word{s.words.length === 1 ? '' : 's'}
@@ -151,6 +217,55 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
               );
             })}
           </div>
+
+          {/* Build custom list — embedded WordPicker.  Only available
+              when the parent provided picker wiring (allWords + callbacks). */}
+          {pickerWiring && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(o => !o)}
+                style={{
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-primary)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="w-full px-4 py-3 rounded-xl border-2 inline-flex items-center justify-between font-bold text-sm transition-colors hover:opacity-90"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Wand2 size={16} style={{ color: 'var(--vb-accent)' }} />
+                  Build a custom list (paste, OCR, topic packs, saved groups)
+                </span>
+                {pickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {pickerOpen && (
+                <div
+                  className="mt-3 p-4 rounded-xl border-2"
+                  style={{
+                    backgroundColor: 'var(--vb-surface-alt)',
+                    borderColor: 'var(--vb-border)',
+                  }}
+                >
+                  <WordPicker
+                    allWords={pickerWiring.allWords}
+                    selectedWords={customWords}
+                    onSelectedWordsChange={handleCustomWordsChange}
+                    onTranslateWord={pickerWiring.onTranslateWord}
+                    onTranslateBatch={pickerWiring.onTranslateBatch}
+                    onOcrUpload={pickerWiring.onOcrUpload}
+                    showToast={pickerWiring.showToast}
+                    topicPacks={pickerWiring.topicPacks}
+                    savedGroups={pickerWiring.savedGroups}
+                    onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
+                    onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
+                    customWords={customWordsCustomTier}
+                    onCustomWordsChange={setCustomWordsCustomTier}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Question count */}
@@ -208,7 +323,7 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
           </button>
           <button
             type="button"
-            onClick={() => canStart && selectedSource && onStart({ mode, source: selectedSource, questionCount: effectiveCount })}
+            onClick={() => canStart && realSelectedSource && onStart({ mode, source: realSelectedSource, questionCount: effectiveCount })}
             disabled={!canStart}
             style={{
               backgroundColor: canStart ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
