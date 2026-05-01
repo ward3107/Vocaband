@@ -652,37 +652,35 @@ export default function QuickPlayMonitor({
       {/* ─── Main content ──────────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
-            When qrCollapsed is true the whole QR card collapses to a
-            small chip-style bar (just the code + player count + Show
-            button) and the podium expands to the full row — keeps the
-            podium dominant once students have already scanned in.
-            Toggle via the chip itself or the QR-enlarge modal's "Hide"
-            button. */}
-        <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8`}>
+            When qrCollapsed is true the QR shrinks to a small floating
+            icon button anchored to the right of this row, leaving the
+            podium full-width — the teacher's primary visual is the
+            scoreboard.  Tapping the icon opens the enlarged QR modal
+            (qrEnlarged); the modal has Show-as-card to bring back the
+            inline expanded card view, plus Share / Copy / Close.
+            Tapping the inline expanded card's "Hide" button collapses
+            it back to the floating icon. */}
+        <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8 relative`}>
           {qrCollapsed ? (
+            // Compact floating QR icon — replaces the old long
+            // horizontal "Show QR" strip.  Click opens the enlarged
+            // modal directly; no inline expanded card unless the
+            // teacher chooses "Show as card" inside the modal.
             <button
               type="button"
-              onClick={toggleQrCollapsed}
-              aria-label="Show QR code and share link"
-              className={`w-full bg-gradient-to-r ${t.qrCard} rounded-xl px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 shadow-md text-white hover:shadow-lg active:scale-[0.99] transition-all`}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              onClick={() => setQrEnlarged(true)}
+              aria-label="Show QR code"
+              className={`absolute top-0 right-0 z-10 bg-gradient-to-br ${t.qrCard} rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all text-white flex flex-col items-center justify-center p-2.5 sm:p-3`}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any, minWidth: '64px', minHeight: '64px' }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                  <QrCode size={18} />
-                </div>
-                <div className="text-left min-w-0">
-                  <p className="font-label text-[10px] uppercase tracking-[0.2em] opacity-80 leading-tight">Join code</p>
-                  <p className="font-headline text-base sm:text-lg font-black tracking-tighter truncate">{session.sessionCode}</p>
-                </div>
-                <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium ml-2 opacity-90">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  {effectiveStudents.length > 0 ? `${effectiveStudents.length} joined` : 'Waiting…'}
+              <QrCode size={28} className="sm:hidden" />
+              <QrCode size={32} className="hidden sm:block" />
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">QR</span>
+              {effectiveStudents.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-green-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white/20">
+                  {effectiveStudents.length}
                 </span>
-              </div>
-              <span className="text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg shrink-0">
-                Show QR
-              </span>
+              )}
             </button>
           ) : (
           <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
@@ -985,7 +983,11 @@ export default function QuickPlayMonitor({
         </button>
       </footer>
 
-      {/* ─── Enlarged QR Modal ───────────────────────────────────────────────── */}
+      {/* ─── Enlarged QR Modal ───────────────────────────────────────────────
+          Acts as the primary "show me the QR" surface when qrCollapsed
+          is true (the icon-button route).  Includes Share / Copy /
+          Show-as-card / Close so the teacher can do everything from
+          inside the modal without re-tapping the small icon. */}
       <AnimatePresence>
         {qrEnlarged && (
           <motion.div
@@ -1019,12 +1021,76 @@ export default function QuickPlayMonitor({
                 {session.sessionCode}
               </p>
               <p className="text-center text-stone-400 text-sm mt-1">Scan to join</p>
-              <button
-                onClick={() => setQrEnlarged(false)}
-                className="mt-4 w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-2xl font-bold transition-colors"
-              >
-                Close
-              </button>
+
+              {/* Share row — Web Share API on mobile (AirDrop /
+                  Messages / WhatsApp), clipboard fallback elsewhere.
+                  Mirrors the inline expanded card's share affordances
+                  so kids can be invited via a copy/paste link too. */}
+              <div className="mt-5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const shareData = {
+                      title: 'Join my Vocaband game',
+                      text: `Join my Vocaband Quick Play (code ${session.sessionCode}):`,
+                      url: qrUrl,
+                    };
+                    if (typeof navigator.share === 'function') {
+                      try { await navigator.share(shareData); return; } catch { /* fall through */ }
+                    }
+                    try {
+                      await navigator.clipboard.writeText(qrUrl);
+                      showToast('Join link copied!', 'success');
+                    } catch {
+                      showToast('Could not copy link.', 'error');
+                    }
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white font-bold py-3 rounded-2xl shadow-md active:scale-[0.97] transition-all"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <Share2 size={16} /> Share
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(qrUrl);
+                      showToast('Join link copied!', 'success');
+                    } catch {
+                      showToast('Could not copy link.', 'error');
+                    }
+                  }}
+                  className="px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl font-bold transition-colors inline-flex items-center gap-2"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <Copy size={16} /> Copy
+                </button>
+              </div>
+
+              {/* Pin / Close row.  "Show as card" sets qrCollapsed=false
+                  and dismisses the modal so the inline expanded QR card
+                  is back on the page (for teachers who prefer the QR
+                  always visible to late joiners).  "Close" goes back to
+                  the small floating icon. */}
+              <div className="mt-3 flex items-center gap-2">
+                {qrCollapsed && (
+                  <button
+                    type="button"
+                    onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch {} setQrEnlarged(false); }}
+                    className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl font-bold transition-colors text-sm"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  >
+                    Pin to page
+                  </button>
+                )}
+                <button
+                  onClick={() => setQrEnlarged(false)}
+                  className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-2xl font-bold transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  Close
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
