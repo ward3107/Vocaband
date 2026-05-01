@@ -650,7 +650,7 @@ export default function QuickPlayMonitor({
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
             When qrCollapsed is true the whole QR card collapses to a
             small chip-style bar (just the code + player count + Show
@@ -660,14 +660,21 @@ export default function QuickPlayMonitor({
             button. */}
         <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8`}>
           {qrCollapsed ? (
-            <button
-              type="button"
-              onClick={toggleQrCollapsed}
-              aria-label="Show QR code and share link"
-              className={`w-full bg-gradient-to-r ${t.qrCard} rounded-xl px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 shadow-md text-white hover:shadow-lg active:scale-[0.99] transition-all`}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            // Collapsed strip with Words + End Session inline so the
+            // teacher always has access to those actions even when
+            // the QR card is minimized.  The strip itself (clicking
+            // anywhere except the inner action buttons) re-expands
+            // the QR card.
+            <div
+              className={`w-full bg-gradient-to-r ${t.qrCard} rounded-xl px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 shadow-md text-white`}
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={toggleQrCollapsed}
+                aria-label="Show QR code and share link"
+                className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-90 active:scale-[0.99] transition-all text-left"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
                 <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
                   <QrCode size={18} />
                 </div>
@@ -679,11 +686,30 @@ export default function QuickPlayMonitor({
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   {effectiveStudents.length > 0 ? `${effectiveStudents.length} joined` : 'Waiting…'}
                 </span>
+              </button>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowWordsModal(true)}
+                  aria-label="Show words"
+                  className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <BookOpen size={14} />
+                  <span className="hidden sm:inline">Words</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndModal(true)}
+                  aria-label="End session"
+                  className="inline-flex items-center justify-center gap-1.5 bg-red-500/90 hover:bg-red-600 text-white font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded-lg shadow-md transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <X size={14} />
+                  <span className="hidden sm:inline">End</span>
+                </button>
               </div>
-              <span className="text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg shrink-0">
-                Show QR
-              </span>
-            </button>
+            </div>
           ) : (
           <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
@@ -764,6 +790,32 @@ export default function QuickPlayMonitor({
               >
                 <Copy size={11} /> Copy link
               </button>
+              {/* Words + End Session — moved here from the old fixed
+                  footer per teacher request: keeps every action button
+                  in one place (the QR card) so the podium owns the
+                  whole vertical space below it.  Words = white outline
+                  reading affordance; End Session = red destructive
+                  affordance with confirm modal. */}
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWordsModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-xl transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <BookOpen size={14} />
+                  Words
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-red-500/90 hover:bg-red-600 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-xl shadow-md transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <X size={14} />
+                  End Session
+                </button>
+              </div>
               {/* Hide button — collapses to the chip strip above. */}
               <button
                 type="button"
@@ -963,27 +1015,9 @@ export default function QuickPlayMonitor({
         )}
       </main>
 
-      {/* ─── Bottom Nav Bar ────────────────────────────────────────────────── */}
-      <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
-        <div className={`flex flex-col items-center p-2 ${t.accent}`}>
-          <Users size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Podium</span>
-        </div>
-        <button
-          onClick={() => setShowWordsModal(true)}
-          className={`flex flex-col items-center ${t.text} p-2 hover:opacity-60 transition-opacity`}
-        >
-          <BookOpen size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">Words</span>
-        </button>
-        <button
-          onClick={() => setEndModal(true)}
-          className={`flex flex-col items-center ${t.accentBg} text-white rounded-full p-3 sm:p-4 scale-110 -translate-y-3 shadow-lg active:scale-95 transition-all`}
-        >
-          <X size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-0.5">Stop</span>
-        </button>
-      </footer>
+      {/* Bottom nav bar removed per teacher request — Words + End
+          Session moved into the QR card so every action lives in one
+          place and the podium owns the full vertical space. */}
 
       {/* ─── Enlarged QR Modal ───────────────────────────────────────────────── */}
       <AnimatePresence>
