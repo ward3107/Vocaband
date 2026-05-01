@@ -10,6 +10,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
 import { supabase } from '../core/supabase';
 import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
+import QPAvatar from './QPAvatar';
 
 // Match the flag in QuickPlayStudentView. When on, this monitor
 // observes the /quick-play socket.io namespace for leaderboard
@@ -514,7 +515,7 @@ export default function QuickPlayMonitor({
               transition={{ type: 'spring', stiffness: 320, damping: 22 }}
               className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white px-5 py-3 sm:px-6 sm:py-4 2xl:px-8 2xl:py-5 rounded-full shadow-2xl flex items-center gap-3 max-w-[90vw]"
             >
-              <span className="text-2xl sm:text-3xl 2xl:text-4xl">{j.avatar}</span>
+              <QPAvatar value={j.avatar} iconSize={32} className="text-2xl sm:text-3xl 2xl:text-4xl" />
               <div>
                 <p className="font-headline text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-widest opacity-90">Joined!</p>
                 <p className="font-headline text-base sm:text-lg 2xl:text-xl font-black truncate max-w-[60vw]">{j.name}</p>
@@ -795,7 +796,7 @@ export default function QuickPlayMonitor({
                   {top3[1] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg"><QPAvatar value={getStudentAvatar(top3[1])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>2nd</div>
                         {/* Teacher-only kick affordance — same hover-
                             reveal pattern as the rank-4+ tiles.  Top-3
@@ -825,7 +826,7 @@ export default function QuickPlayMonitor({
                   {top3[0] && (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
-                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
+                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}><QPAvatar value={getStudentAvatar(top3[0])} iconSize={56} className="text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl" /></div>
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
                         <button
                           onClick={() => setConfirmKick(top3[0].name)}
@@ -851,7 +852,7 @@ export default function QuickPlayMonitor({
                   {top3[2] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg"><QPAvatar value={getStudentAvatar(top3[2])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
                         <button
                           onClick={() => setConfirmKick(top3[2].name)}
@@ -942,7 +943,7 @@ export default function QuickPlayMonitor({
                       </span>
                       <div className="relative shrink-0">
                         <div className="w-11 h-11 sm:w-12 sm:h-12 2xl:w-16 2xl:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-2xl 2xl:text-3xl border-2 border-surface-container-highest">
-                          {getStudentAvatar(student)}
+                          <QPAvatar value={getStudentAvatar(student)} iconSize={28} className="text-2xl sm:text-2xl 2xl:text-3xl" />
                         </div>
                         <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                       </div>
