@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2 } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 
 interface Assignment {
@@ -36,6 +36,8 @@ interface ClassCardProps {
   onEditAssignment?: (assignment: Assignment) => void;
   onDuplicateAssignment?: (assignment: Assignment) => void;
   onDeleteAssignment?: (assignment: Assignment) => void;
+  /** Project this assignment to the classroom via Class Show. */
+  onProjectAssignmentToClass?: (assignment: Assignment) => void;
   openDropdownClassId?: string | null;
   onToggleDropdown?: (classId: string | null) => void;
 }
@@ -57,6 +59,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onEditAssignment,
   onDuplicateAssignment,
   onDeleteAssignment,
+  onProjectAssignmentToClass,
   openDropdownClassId,
   onToggleDropdown,
 }) => {
@@ -511,6 +514,22 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
                     Duplicate
+                  </button>
+                )}
+                {onProjectAssignmentToClass && (
+                  <button
+                    onClick={() => onProjectAssignmentToClass(assignment)}
+                    type="button"
+                    style={{
+                      backgroundColor: 'var(--vb-accent-soft)',
+                      color: 'var(--vb-accent)',
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
+                    aria-label="Project to class"
+                    title="Project to class"
+                  >
+                    <Tv2 size={13} />
+                    <span className="hidden sm:inline">Project</span>
                   </button>
                 )}
                 {onDeleteAssignment && (

@@ -71,6 +71,10 @@ interface TeacherDashboardViewProps {
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Impromptu Class Show — projector mode for phone-less classrooms. */
+  onClassShowClick: () => void;
+  /** Project a specific assignment to the class via Class Show. */
+  onProjectAssignmentToClass: (a: AssignmentData) => void;
 
   // Classes section handlers
   onNewClass: () => void;
@@ -109,6 +113,7 @@ export default function TeacherDashboardView({
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onLiveChallengeClick, onClassroomClick, onApprovalsClick,
+  onClassShowClick, onProjectAssignmentToClass,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
@@ -200,6 +205,7 @@ export default function TeacherDashboardView({
             onLiveChallengeClick={onLiveChallengeClick}
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
+            onClassShowClick={onClassShowClick}
           />
 
           <TeacherClassesSection
@@ -218,6 +224,7 @@ export default function TeacherDashboardView({
             onEditAssignment={onEditAssignment}
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}
+            onProjectAssignmentToClass={onProjectAssignmentToClass}
             isDark={dashboardTheme.dark}
           />
 

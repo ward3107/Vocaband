@@ -44,6 +44,7 @@ const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
+const ClassShowView = lazy(() => import("./views/ClassShowView"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
 const LiveChallengeView = lazy(() => import("./views/LiveChallengeView"));
@@ -304,6 +305,10 @@ export default function App() {
   const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
   const [quickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[], aiSentences?: string[]} | null>(null);
+  // Class Show — teacher-led projector mode.  When the teacher
+  // launches from an assignment card, this stores the assignment's
+  // word list so the setup panel pre-selects "From assignment".
+  const [classShowAssignment, setClassShowAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[] } | null>(null);
   // Cumulative score across all modes a guest has played in the
   // current Quick Play session.  The per-mode `score` state (in
   // useGameState) resets to 0 on every new mode, so emitting it
@@ -2290,6 +2295,11 @@ export default function App() {
           }}
           onClassroomClick={() => { fetchScores(); fetchTeacherAssignments(); setView("classroom"); }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
+          onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
+          onProjectAssignmentToClass={(a) => {
+            setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
+            setView("class-show");
+          }}
           onNewClass={() => setShowCreateClassModal(true)}
           onAssignClass={(c) => {
             setSelectedClass(c);
@@ -2720,6 +2730,42 @@ export default function App() {
     );
   }
 
+
+  if (view === "class-show") {
+    // Build the word-source list:  per-set defaults + (optional)
+    // pre-filled assignment.  The setup panel selects index 0
+    // automatically; if an assignment is pre-filled, it goes first.
+    const sources: { label: string; description?: string; words: Word[] }[] = [];
+    if (classShowAssignment) {
+      const knownWords = ALL_WORDS.filter(w => classShowAssignment.wordIds.includes(w.id));
+      const customs = classShowAssignment.customWords ?? [];
+      const merged = [...knownWords, ...customs.filter(c => !knownWords.some(k => k.id === c.id))];
+      if (merged.length > 0) {
+        sources.push({
+          label: classShowAssignment.title || "Assignment",
+          description: "From assignment",
+          words: merged,
+        });
+      }
+    }
+    if (SET_1_WORDS.length > 0) sources.push({ label: "Set 1", description: "Israeli MoE — beginners", words: SET_1_WORDS });
+    if (SET_2_WORDS.length > 0) sources.push({ label: "Set 2", description: "Israeli MoE — intermediate", words: SET_2_WORDS });
+    const set3 = ALL_WORDS.filter(w => w.level === "Set 3");
+    if (set3.length > 0) sources.push({ label: "Set 3", description: "Israeli MoE — advanced", words: set3 });
+    return (
+      <LazyWrapper loadingMessage="Loading class show…">
+        <ClassShowView
+          user={user}
+          initialSources={sources}
+          initialSourceIndex={0}
+          onExit={() => {
+            setClassShowAssignment(null);
+            setView("teacher-dashboard");
+          }}
+        />
+      </LazyWrapper>
+    );
+  }
 
   if (view === "quick-play-teacher-monitor") {
     if (!quickPlayActiveSession) {
