@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode } from "lucide-react";
-import { QUICK_PLAY_AVATARS } from "../constants/avatars";
+import AvatarPicker from "../components/QPAvatarPicker";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
@@ -448,25 +448,16 @@ export default function QuickPlayStudentView({
               </div>
 
               <div className="space-y-3 sm:space-y-4">
-                {/* Avatar picker */}
-                <div>
-                  <label className="block text-sm font-bold text-on-surface-variant mb-2 text-center">Choose your avatar</label>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {QUICK_PLAY_AVATARS.map(av => (
-                      <button
-                        key={av}
-                        onClick={() => setQuickPlayAvatar(av)}
-                        className={`text-2xl w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
-                          quickPlayAvatar === av
-                            ? 'bg-primary/20 ring-3 ring-primary scale-110'
-                            : 'bg-surface-container hover:bg-surface-container-high'
-                        }`}
-                      >
-                        {av}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* Tabbed avatar picker — group tabs across the top,
+                    grid below.  Avatars are emoji except the "Geometric"
+                    tab which uses lucide-react vector icons (see
+                    QPAvatar render helper).  Selected state persists
+                    across tab switches via quickPlayAvatar. */}
+                <AvatarPicker
+                  selected={quickPlayAvatar}
+                  onSelect={setQuickPlayAvatar}
+                />
+
 
                 <div className="relative">
                   <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
