@@ -99,6 +99,7 @@ export function useGameModeSetup(params: UseGameModeSetupParams): void {
       view === 'game' && !isFinished && currentWord &&
       !showModeSelection && !showModeIntro &&
       gameMode !== 'sentence-builder' && gameMode !== 'matching' &&
+      gameMode !== 'memory-flip' &&
       gameMode !== 'fill-blank' && gameMode !== 'letter-sounds'
     ) {
       // Only speak if this is a different word than the last one we spoke
@@ -124,9 +125,13 @@ export function useGameModeSetup(params: UseGameModeSetupParams): void {
     lastSpokenWordRef.current = null;
   }, [gameMode]);
 
-  // ─── 3. Matching mode: build pairs on entry ───────────────────────
+  // ─── 3. Matching + Memory Flip: build pairs on entry ──────────────
+  // Both modes share the same pair shape (12 cards from 6 words)
+  // and the same parent-side validation state machine.  Only the
+  // rendering differs (Matching shows all cards face-up in two
+  // columns; Memory Flip starts them face-down in a 4x3 grid).
   useEffect(() => {
-    if (view === 'game' && !showModeSelection && gameMode === 'matching') {
+    if (view === 'game' && !showModeSelection && (gameMode === 'matching' || gameMode === 'memory-flip')) {
       const shuffled = shuffle(gameWords).slice(0, 6);
       const pairs = shuffle([
         ...shuffled.map(w => ({ id: w.id, text: w.english, type: 'english' as const })),

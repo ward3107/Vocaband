@@ -35,6 +35,14 @@ export interface GameActiveStrings {
   clear: string;
   /** Trailing space for the ✓ glyph already kept inside the constant. */
   checkSentence: string;
+
+  // TrueFalseGame
+  /** Question label shown above the candidate translation card. */
+  isThisTrue: string;
+  trueLabel: string;
+  falseLabel: string;
+  /** Hint shown below the buttons telling students they can swipe. */
+  swipeHint: string;
 }
 
 export const gameActiveT: Record<Language, GameActiveStrings> = {
@@ -51,6 +59,10 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     showTranslation: "Show Translation",
     clear: "Clear",
     checkSentence: "Check ✓",
+    isThisTrue: "Is this the right translation?",
+    trueLabel: "True",
+    falseLabel: "False",
+    swipeHint: "Swipe right for True, left for False",
   },
   he: {
     wordOfTotal: (i, n) => `מילה ${i} מתוך ${n}`,
@@ -65,6 +77,10 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     showTranslation: "הצג תרגום",
     clear: "נקה",
     checkSentence: "בדוק ✓",
+    isThisTrue: "האם זה התרגום הנכון?",
+    trueLabel: "נכון",
+    falseLabel: "לא נכון",
+    swipeHint: "החליקו ימינה לנכון, שמאלה לא נכון",
   },
   ar: {
     wordOfTotal: (i, n) => `الكلمة ${i} من ${n}`,
@@ -79,5 +95,9 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     showTranslation: "إظهار الترجمة",
     clear: "مسح",
     checkSentence: "تحقق ✓",
+    isThisTrue: "هل هذه الترجمة الصحيحة؟",
+    trueLabel: "صحيح",
+    falseLabel: "خطأ",
+    swipeHint: "اسحب يمينًا لصحيح، يسارًا لخطأ",
   },
 };

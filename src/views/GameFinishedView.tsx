@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut } from "lucide-react";
+import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut, RefreshCw } from "lucide-react";
 import type { AppUser } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";

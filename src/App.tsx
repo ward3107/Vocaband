@@ -29,6 +29,7 @@ import { isAnswerCorrect } from './utils/answerMatch';
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
 import PwaInstallBanner from "./components/PwaInstallBanner";
+import QuickPlayResumeBanner from "./components/QuickPlayResumeBanner";
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
@@ -57,6 +58,7 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
+import { readQpResumeScore } from "./utils/qpResumeHint";
 import {
   readIntendedClassCode,
   clearIntendedClassCode,
@@ -319,10 +321,31 @@ export default function App() {
   // (server rejected with [QP SCORE regress] prev=15 new=10).
   // This ref accumulates each mode's finalScore so the QP socket
   // sees a monotonically-increasing total.
-  const qpCumulativeScoreRef = useRef(0);
+  // Cumulative QP score across all modes in a session.  Initialised
+  // from the resume hint so a kid who closed the tab and rescanned
+  // doesn't reset their server-side score (the server's monotonic
+  // score gate would otherwise reject every later updateScore as a
+  // regression — silent points loss for the kid).  Hint is 90-min
+  // TTL'd; falls through to 0 for fresh joins.
+  const qpCumulativeScoreRef = useRef(readQpResumeScore());
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
-  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => QUICK_PLAY_AVATARS[secureRandomInt( QUICK_PLAY_AVATARS.length)]);
+  // QP avatar — random by default, but if the student is resuming a
+  // recent session via QuickPlayResumeBanner we honour their previous
+  // avatar so identity stays stable across the close→reopen.
+  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => {
+    try {
+      const raw = localStorage.getItem('vocaband_qp_guest');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { avatar?: string; joinedAt?: number };
+        if (parsed?.avatar && typeof parsed.joinedAt === 'number'
+            && Date.now() - parsed.joinedAt < 90 * 60 * 1000) {
+          return parsed.avatar;
+        }
+      }
+    } catch { /* fall through to random */ }
+    return QUICK_PLAY_AVATARS[secureRandomInt(QUICK_PLAY_AVATARS.length)];
+  });
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
@@ -515,7 +538,11 @@ export default function App() {
   const [showModeIntro, setShowModeIntro] = useState(false);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
+  // Score state; for QP resume kids we seed from the localStorage
+  // hint so the visible score doesn't snap back to 0 on rescan.
+  // (Server already preserves the cumulative — see qpCumulativeScoreRef
+  // initializer above.)
+  const [score, setScore] = useState(() => readQpResumeScore());
   const [mistakes, setMistakes] = useState<number[]>([]);
   // Per-word attempts accumulated during the current game.  Flushed to the
   // word_attempts table via save_student_progress when the student finishes.
@@ -768,6 +795,22 @@ export default function App() {
       const cumulative = qpCumulativeScoreRef.current + newScore;
       console.log('[emitScoreUpdate] QP path → updateScore', { mode: newScore, cumulative });
       setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
+      // Also refresh the localStorage resume hint with the latest score
+      // and a fresh joinedAt timestamp.  This (a) lets the
+      // QuickPlayResumeBanner show the actual score the student has
+      // earned if they accidentally close the tab, and (b) extends the
+      // 90-minute TTL window for as long as the student is actively
+      // scoring — kids who walk away for 90 min see no banner; kids
+      // who scored 30 sec ago see "850 points".
+      try {
+        const raw = localStorage.getItem('vocaband_qp_guest');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.lastScore = cumulative;
+          parsed.joinedAt = Date.now();
+          localStorage.setItem('vocaband_qp_guest', JSON.stringify(parsed));
+        }
+      } catch { /* localStorage blocked / private mode — silent */ }
       return;
     }
 
@@ -1839,12 +1882,23 @@ export default function App() {
   // Also bundles the mobile PWA install banner — fully self-gated (mobile-only,
   // not-installed-only, not-recently-dismissed) so it costs nothing on
   // teacher desktops or already-installed PWAs.
+  // Suppress the QP resume banner when:
+  //   - the student is already on a QP URL (resume-in-progress)
+  //   - the student is actively in a game / mode-selection / dashboard
+  //     of a QP session (don't nag during play)
+  // Otherwise it surfaces on landing / login / public pages whenever
+  // there's a valid <90-min resume hint in localStorage.
+  const qpResumeSuppress =
+    !!quickPlaySessionParam ||
+    !!quickPlayActiveSession ||
+    view === "quick-play-student";
   const cookieBannerOverlay = (
     <>
       {showCookieBanner && !user && (
         <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
       )}
       <PwaInstallBanner />
+      <QuickPlayResumeBanner suppress={qpResumeSuppress} />
     </>
   );
 

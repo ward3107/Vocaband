@@ -18,6 +18,14 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   classic: "emerald",
   listening: "emerald",
   reverse: "emerald",
+  // True/False uses rose as the primary pill colour; the buttons
+  // themselves keep their rose↔emerald split (False=rose, True=emerald)
+  // since binary judgement reads strongest with paired colours.
+  "true-false": "rose",
+  // Fill-in-the-Blank = lime.  Drives the sentence-card hero tint
+  // and the option button accents.  The dashed slot box stays
+  // lime regardless (it's the mode signature).
+  "fill-blank": "lime",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -28,6 +36,7 @@ const MODE_LABEL: Record<string, string> = {
   reverse: "Reverse",
   spelling: "Spelling",
   matching: "Matching",
+  "memory-flip": "Memory Flip",
   "true-false": "True / False",
   flashcards: "Flashcards",
   scramble: "Scramble",
@@ -42,12 +51,14 @@ import GameHeader from "../components/game/GameHeader";
 import WordPromptCard from "../components/game/WordPromptCard";
 import PowerUpToolbar from "../components/game/PowerUpToolbar";
 import MatchingModeGame from "../components/game/MatchingModeGame";
+import MemoryFlipGame from "../components/game/MemoryFlipGame";
 import TrueFalseGame from "../components/game/TrueFalseGame";
 import FlashcardsGame from "../components/game/FlashcardsGame";
 import LetterSoundsGame from "../components/game/LetterSoundsGame";
 import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
 import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
+import ScrambleGame from "../components/game/ScrambleGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -152,10 +163,21 @@ export default function GameActiveView({
       );
     }
     if (gameMode === "true-false") {
-      return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} />;
+      return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} themeColor={modeTheme} />;
     }
     if (gameMode === "flashcards") {
-      return <FlashcardsGame isFlipped={isFlipped} setIsFlipped={setIsFlipped} isProcessingRef={isProcessingRef} onAnswer={handleFlashcardAnswer} />;
+      return (
+        <FlashcardsGame
+          currentWord={currentWord}
+          targetLanguage={targetLanguage}
+          isFlipped={isFlipped}
+          setIsFlipped={setIsFlipped}
+          isProcessingRef={isProcessingRef}
+          onAnswer={handleFlashcardAnswer}
+          speakWord={speakWord}
+          themeColor={modeTheme}
+        />
+      );
     }
     if (gameMode === "letter-sounds") {
       return (
@@ -167,6 +189,7 @@ export default function GameActiveView({
           setSpellingInput={setSpellingInput}
           feedback={feedback}
           onSpellingSubmit={handleSpellingSubmit}
+          themeColor={modeTheme}
         />
       );
     }
@@ -184,6 +207,7 @@ export default function GameActiveView({
           onSentenceCheck={handleSentenceCheck}
           speak={speak}
           shuffle={shuffle}
+          themeColor={modeTheme}
         />
       );
     }
@@ -198,10 +222,25 @@ export default function GameActiveView({
           feedback={feedback}
           gameWordsCount={gameWords.length}
           onAnswer={handleAnswer}
+          themeColor={modeTheme}
         />
       );
     }
-    // Default: spelling / scramble
+    if (gameMode === "scramble") {
+      return (
+        <ScrambleGame
+          currentWord={currentWord}
+          targetLanguage={targetLanguage}
+          scrambledWord={scrambledWord}
+          spellingInput={spellingInput}
+          setSpellingInput={setSpellingInput}
+          feedback={feedback}
+          onSpellingSubmit={handleSpellingSubmit}
+          themeColor={modeTheme}
+        />
+      );
+    }
+    // Default: spelling
     return (
       <SpellingGame
         currentWord={currentWord}
@@ -210,6 +249,7 @@ export default function GameActiveView({
         feedback={feedback}
         spellingInput={spellingInput}
         setSpellingInput={setSpellingInput}
+        themeColor={modeTheme}
         onSpellingSubmit={handleSpellingSubmit}
       />
     );
@@ -257,7 +297,7 @@ export default function GameActiveView({
           mode's content vertically — matching keeps its
           slightly-larger min-h-[60vh] for the larger pair grid, the
           rest land at min-h-[55vh]. */}
-      <div className={`w-full max-w-4xl mx-auto ${gameMode === 'matching' ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
+      <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
         <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
@@ -267,6 +307,18 @@ export default function GameActiveView({
                 selectedMatch={selectedMatch}
                 isMatchingProcessing={isMatchingProcessing}
                 onMatchClick={handleMatchClick}
+                themeColor={modeTheme}
+                modeLabel={modeLabel}
+              />
+            ) : gameMode === "memory-flip" ? (
+              <MemoryFlipGame
+                matchingPairs={matchingPairs}
+                matchedIds={matchedIds}
+                selectedMatch={selectedMatch}
+                isMatchingProcessing={isMatchingProcessing}
+                onMatchClick={handleMatchClick}
+                themeColor={modeTheme}
+                modeLabel={modeLabel}
               />
             ) : (
               <motion.div
@@ -312,7 +364,14 @@ export default function GameActiveView({
                   </div>
                 )}
 
-                {gameMode !== "fill-blank" && (
+                {/* Skip WordPromptCard for fill-blank (renders its own
+                    gapped sentence as the prompt), flashcards (the
+                    3D flip card BECOMES the prompt), and scramble
+                    (Phase 3g renders the scrambled letters as
+                    interactive TILES inside ScrambleGame, plus its
+                    own translation prompt — WordPromptCard would
+                    show the scramble as static text alongside).  */}
+                {gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && (
                   <WordPromptCard
                     currentIndex={currentIndex}
                     gameWordsLength={gameWords.length}
@@ -352,7 +411,7 @@ export default function GameActiveView({
         </div>
       </div>
 
-      {gameMode !== "matching" && (
+      {gameMode !== "matching" && gameMode !== "memory-flip" && (
         <div className="w-full max-w-5xl mt-12 flex justify-center">
           <div className="w-full max-w-md">
             <progress

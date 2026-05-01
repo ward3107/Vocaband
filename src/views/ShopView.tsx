@@ -882,6 +882,16 @@ interface ArcadeLobbyHubProps {
 }
 
 function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
+  // Resolve `t` LOCALLY.  This component is defined at module level
+  // (outside the parent ShopView function), so the parent's `t`
+  // closure isn't visible here -- previously every render hit
+  // `ReferenceError: t is not defined` once minified, surfacing as
+  // a "Lazy load error" the moment a kid landed on the shop tab
+  // (which the dashboard auto-mounts post-game for the shop CTA
+  // strip, hence the "errors after each game mode" report).
+  const { language } = useLanguage();
+  const t = shopT[language];
+
   // Trending rail — hand-picked items that feel like "drops" worth looking
   // at.  Mix a hero egg, a premium avatar, a frame, a title.
   const trending: { label: string; pill: string; pillBg: string; onClick: () => void; emoji: string; gradient: string }[] = [

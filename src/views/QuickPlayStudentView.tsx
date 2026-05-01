@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode } from "lucide-react";
-import { QUICK_PLAY_AVATARS } from "../constants/avatars";
+import AvatarPicker from "../components/QPAvatarPicker";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
@@ -8,6 +8,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
+import { useLanguage, type Language, languageNames, languageFlags } from "../hooks/useLanguage";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -87,11 +88,20 @@ export default function QuickPlayStudentView({
     enabled: QUICKPLAY_V2,
   });
 
-  // Tracks whether the resume "Continue Playing" path is mid-rejoin.
-  // We re-emit STUDENT_JOIN before navigating so the server re-attaches
-  // the new socket to this nickname's slot; flip the button into a
-  // "Reconnecting…" state until the server's JOINED reply arrives.
-  const [resuming, setResuming] = useState(false);
+  // Two-step join flow:
+  //   "form"     — student enters name + picks avatar
+  //   "language" — student picks the in-game UI language so mode
+  //                labels + buttons render in EN/HE/AR.  This step
+  //                runs after name validation passes but before
+  //                we hit the server JOIN (or the legacy progress
+  //                insert), so the language picked here is the one
+  //                the student sees the moment the game loads.
+  const [joinStep, setJoinStep] = useState<"form" | "language">("form");
+  // Validated name captured at form-submit time so the language
+  // picker can fire the join with it.  Defaults to empty string
+  // and is overwritten when the student clicks Continue on the form.
+  const stagedNameRef = useRef<string>("");
+  const { setLanguage: setAppLanguage } = useLanguage();
 
   // Surface server-side join errors as toasts so the student isn't
   // stuck staring at the join screen. "nickname_taken" has its own
@@ -133,6 +143,160 @@ export default function QuickPlayStudentView({
     pendingJoinRef.current = null;
     pending();
   }, [quickPlaySocket.joinedSessionCode]);
+
+  // Fire the actual server JOIN (or legacy progress insert) for the
+  // staged name.  Called from each language-picker button after we
+  // setAppLanguage(lang).  Async because the legacy path runs a
+  // duplicate-name check against the progress table; v2 path delegates
+  // that check to the server via STUDENT_JOIN.
+  const runJoin = async (trimmedName: string) => {
+    if (!quickPlayActiveSession) {
+      showToast("Session expired. Please scan QR code again.", "error");
+      return;
+    }
+    if (!QUICKPLAY_V2) {
+      // ─── Legacy path duplicate-name check ────────────────────────
+      const { data: { session: currentAuth } } = await supabase.auth.getSession();
+      const currentAuthUid = currentAuth?.user?.id;
+      // Clean up any stale progress for this student:
+      // 1. By uid (same device refresh)
+      // 2. By name (re-joining with same name from any device)
+      if (currentAuthUid) {
+        await supabase
+          .from('progress')
+          .delete()
+          .eq('assignment_id', quickPlayActiveSession.id)
+          .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
+      } else {
+        await supabase
+          .from('progress')
+          .delete()
+          .eq('assignment_id', quickPlayActiveSession.id)
+          .eq('student_name', trimmedName);
+      }
+      const { data: existingProgress } = await supabase
+        .from('progress')
+        .select('id')
+        .eq('assignment_id', quickPlayActiveSession.id)
+        .eq('student_name', trimmedName)
+        .limit(1);
+      if (existingProgress && existingProgress.length > 0) {
+        showToast("This name is already taken. Please choose a different one.", "error");
+        // Bounce back to form so they can fix the name.
+        setJoinStep("form");
+        return;
+      }
+    }
+
+    // Build the UI-advance callback once.  For QP V2 it runs only
+    // after the server confirms JOIN (deferred via pendingJoinRef +
+    // the useEffect on joinedSessionCode).  For legacy it runs
+    // immediately on next tick — no server confirmation flow exists.
+    const applyJoinedState = () => {
+      setQuickPlayStudentName(trimmedName);
+      const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
+      setUser(guestUser);
+
+      const words = shuffle(quickPlayActiveSession.words).map(w => ({
+        ...w,
+        hebrew: w.hebrew || "",
+        arabic: w.arabic || ""
+      }));
+
+      setAssignmentWords(words);
+      // AI sentences live on the qp_sessions row in the ORIGINAL
+      // word order from the teacher's wizard, but `words` above
+      // was shuffled.  Re-align by looking each shuffled word up
+      // in the original session.words array and pulling the matching
+      // sentence by that original index.  Template fallback is
+      // computed AFTER the shuffle so it's already aligned.
+      const aiFromSession = quickPlayActiveSession.aiSentences;
+      const haveValidAi = Array.isArray(aiFromSession)
+        && aiFromSession.length === quickPlayActiveSession.words.length;
+      const quickPlaySentences: string[] = haveValidAi
+        ? words.map(w => {
+            const originalIdx = quickPlayActiveSession.words.findIndex(o => o.id === w.id);
+            return originalIdx >= 0 ? aiFromSession![originalIdx] : `I like the word ${w.english}.`;
+          })
+        : generateSentencesForAssignment(words, 2);
+      setActiveAssignment({
+        id: "quickplay-" + quickPlayActiveSession.id,
+        classId: "",
+        wordIds: words.map(w => w.id),
+        words,
+        title: "Quick Play",
+        allowedModes: quickPlayActiveSession.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+        sentences: quickPlaySentences,
+        sentenceDifficulty: 2,
+      });
+      setCurrentIndex(0);
+      setScore(0);
+      setFeedback(null);
+      setIsFinished(false);
+      setMistakes([]);
+      setView("game");
+      setShowModeSelection(true);
+      try {
+        localStorage.setItem('vocaband_qp_guest', JSON.stringify({
+          sessionId: quickPlayActiveSession.id,
+          sessionCode: quickPlayActiveSession.sessionCode,
+          name: trimmedName,
+          avatar: quickPlayAvatar,
+          lastScore: 0,
+          joinedAt: Date.now(),
+        }));
+      } catch {}
+    };
+
+    setTimeout(async () => {
+      if (QUICKPLAY_V2) {
+        // v2 path: emit STUDENT_JOIN on the /quick-play socket and
+        // DEFER the UI advance until the server's JOINED reply
+        // arrives.  Without the defer, the optimistic UI raced ahead
+        // while the server was rejecting (nickname_taken, session
+        // inactive, kicked) and the student "played" a session they
+        // were never in.
+        pendingJoinRef.current = applyJoinedState;
+        quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
+      } else {
+        // Legacy doesn't have a server-confirmation flow — fire the
+        // UI advance immediately, same as the original behaviour.
+        applyJoinedState();
+        (async () => {
+          let authUid: string | null = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) {
+              authUid = session.user.id;
+              break;
+            }
+            await supabase.auth.signInAnonymously().catch(() => {});
+            await new Promise(r => setTimeout(r, 300));
+          }
+          if (!authUid) {
+            console.error('[Quick Play] No auth session after retries — cannot record join');
+            showToast('Could not connect to the session. Please refresh and try again.', 'error');
+            return;
+          }
+          const { error } = await supabase.from('progress').insert({
+            student_name: trimmedName,
+            student_uid: authUid,
+            assignment_id: quickPlayActiveSession.id,
+            class_code: "QUICK_PLAY",
+            score: 0,
+            mode: "joined",
+            completed_at: new Date().toISOString(),
+            mistakes: [],
+            avatar: quickPlayAvatar || "🦊",
+          });
+          if (error) {
+            console.error('[Quick Play] Failed to record join:', error);
+            showToast(`Couldn't join the leaderboard: ${error.message}`, 'error');
+          }
+        })();
+      }
+    }, 100);
+  };
 
   // KICKED + SESSION_ENDED — without these listeners the server emits
   // the events but the student's tab keeps the game running.  Symptom
@@ -257,6 +421,55 @@ export default function QuickPlayStudentView({
                 Leave Quick Play
               </button>
             </div>
+          ) : !quickPlayStudentName && joinStep === "language" ? (
+            // ─── Language picker step ─────────────────────────────────
+            // Runs after name+avatar are validated, before the actual
+            // server JOIN.  Picks the in-game UI language so mode
+            // labels + buttons render in EN / HE / AR for the rest
+            // of the session.
+            <div className="w-full max-w-md">
+              <div className="text-center mb-6 sm:mb-8">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white text-3xl sm:text-4xl font-black">Aa</span>
+                </div>
+                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Pick a language</h1>
+                <p className="text-sm sm:text-base text-on-surface-variant font-bold">
+                  Buttons + mode names will be in this language
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {(["en", "he", "ar"] as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setAppLanguage(lang);
+                      // Run the staged join.  stagedNameRef was set
+                      // by the form-button click.  If somehow it's
+                      // empty (refresh edge-case), bounce back.
+                      const name = stagedNameRef.current;
+                      if (!name) {
+                        setJoinStep("form");
+                        return;
+                      }
+                      runJoin(name);
+                    }}
+                    className="w-full py-4 sm:py-5 bg-surface-container hover:bg-surface-container-high active:scale-[0.98] rounded-2xl font-black text-lg sm:text-xl transition-all shadow-md flex items-center justify-center gap-3 border-2 border-surface-container-highest"
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+                  >
+                    <span className="text-3xl sm:text-4xl leading-none">{languageFlags[lang]}</span>
+                    <span className="text-on-surface">{languageNames[lang]}</span>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setJoinStep("form")}
+                className="mt-5 w-full py-2 text-sm text-on-surface-variant hover:text-on-surface font-bold"
+              >
+                ← Back
+              </button>
+            </div>
           ) : !quickPlayStudentName ? (
             <div className="w-full max-w-md">
               <div className="text-center mb-6 sm:mb-8">
@@ -268,25 +481,16 @@ export default function QuickPlayStudentView({
               </div>
 
               <div className="space-y-3 sm:space-y-4">
-                {/* Avatar picker */}
-                <div>
-                  <label className="block text-sm font-bold text-on-surface-variant mb-2 text-center">Choose your avatar</label>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {QUICK_PLAY_AVATARS.map(av => (
-                      <button
-                        key={av}
-                        onClick={() => setQuickPlayAvatar(av)}
-                        className={`text-2xl w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
-                          quickPlayAvatar === av
-                            ? 'bg-primary/20 ring-3 ring-primary scale-110'
-                            : 'bg-surface-container hover:bg-surface-container-high'
-                        }`}
-                      >
-                        {av}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* Tabbed avatar picker — group tabs across the top,
+                    grid below.  Avatars are emoji except the "Geometric"
+                    tab which uses lucide-react vector icons (see
+                    QPAvatar render helper).  Selected state persists
+                    across tab switches via quickPlayAvatar. */}
+                <AvatarPicker
+                  selected={quickPlayAvatar}
+                  onSelect={setQuickPlayAvatar}
+                />
+
 
                 <div className="relative">
                   <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
@@ -334,7 +538,7 @@ export default function QuickPlayStudentView({
 
                 <button
                   data-quick-play-join
-                  onClick={async () => {
+                  onClick={() => {
                     const input = document.getElementById('quick-play-name-input') as HTMLInputElement;
                     const trimmedName = input?.value.trim() || "";
 
@@ -342,7 +546,6 @@ export default function QuickPlayStudentView({
                       showToast("Please enter your name first", "error");
                       return;
                     }
-
                     // Profanity gate — best-effort filter for obvious
                     // slurs in EN/HE/AR.  Teachers asked because the
                     // nickname renders on the classroom projector and
@@ -353,12 +556,10 @@ export default function QuickPlayStudentView({
                       showToast("Please pick a different name.", "error");
                       return;
                     }
-
                     if (!quickPlayActiveSession) {
                       showToast("Session expired. Please scan QR code again.", "error");
                       return;
                     }
-
                     // Check if this name was kicked from this session
                     try {
                       const kickedKey = `vocaband_kicked_${quickPlayActiveSession.id}`;
@@ -368,193 +569,21 @@ export default function QuickPlayStudentView({
                         return;
                       }
                     } catch {}
-
                     if (!quickPlayActiveSession.words || quickPlayActiveSession.words.length === 0) {
                       showToast("This session has no words. Please contact your teacher.", "error");
                       return;
                     }
-
-                    if (!QUICKPLAY_V2) {
-                      // ─── Legacy path ────────────────────────────────
-                      // Check for duplicate name in this session via
-                      // progress-table snooping, clean up stale rows.
-                      const { data: { session: currentAuth } } = await supabase.auth.getSession();
-                      const currentAuthUid = currentAuth?.user?.id;
-
-                      // Clean up any stale progress for this student:
-                      // 1. By uid (same device refresh)
-                      // 2. By name (re-joining with same name from any device)
-                      if (currentAuthUid) {
-                        await supabase
-                          .from('progress')
-                          .delete()
-                          .eq('assignment_id', quickPlayActiveSession.id)
-                          .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
-                      } else {
-                        // No auth uid — clean up by name only
-                        await supabase
-                          .from('progress')
-                          .delete()
-                          .eq('assignment_id', quickPlayActiveSession.id)
-                          .eq('student_name', trimmedName);
-                      }
-
-                      const { data: existingProgress } = await supabase
-                        .from('progress')
-                        .select('id')
-                        .eq('assignment_id', quickPlayActiveSession.id)
-                        .eq('student_name', trimmedName)
-                        .limit(1);
-                      if (existingProgress && existingProgress.length > 0) {
-                        showToast("This name is already taken. Please choose a different one.", "error");
-                        return;
-                      }
-                    }
-                    // v2 path: name-uniqueness check happens server-side
-                    // when we emit STUDENT_JOIN. The hook's useEffect
-                    // above surfaces "nickname_taken" as a toast.
-
-                    // Build the UI-advance callback once.  For QP V2 it
-                    // runs only after the server confirms JOIN (deferred
-                    // via pendingJoinRef + the useEffect on
-                    // joinedSessionCode).  For legacy it runs immediately
-                    // on next tick — no server confirmation flow exists.
-                    const applyJoinedState = () => {
-                      setQuickPlayStudentName(trimmedName);
-                      const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
-                      setUser(guestUser);
-
-                      const words = shuffle(quickPlayActiveSession.words).map(w => ({
-                        ...w,
-                        hebrew: w.hebrew || "",
-                        arabic: w.arabic || ""
-                      }));
-
-                      setAssignmentWords(words);
-                      // Create a virtual assignment so all game modes (including
-                      // sentence-builder + fill-blank) work the same as in real
-                      // assignments.  Prefer AI-generated sentences populated on
-                      // the qp_sessions row at teacher-create time (see
-                      // generateAndStoreQuickPlayAiSentences) — they're context-
-                      // rich and Fill-in-the-Blank-friendly.  Fall back to the
-                      // POS-template library when the AI call hasn't completed
-                      // yet OR failed; templates are good enough for Sentence
-                      // Builder but lazier for Fill in the Blank.
-                      //
-                      // Important alignment detail: AI sentences are stored on
-                      // the qp_sessions row in the ORIGINAL word order from the
-                      // teacher's wizard, but `words` above was shuffled.  We
-                      // need the i-th sentence to match the i-th word, otherwise
-                      // Fill in the Blank shows a sentence about "run" but
-                      // expects the student to fill in "apple".  Re-align by
-                      // looking each shuffled word up in the original
-                      // session.words array and pulling the matching sentence
-                      // by that original index.  The template fallback is
-                      // computed AFTER the shuffle so it's already aligned.
-                      const aiFromSession = quickPlayActiveSession.aiSentences;
-                      const haveValidAi = Array.isArray(aiFromSession)
-                        && aiFromSession.length === quickPlayActiveSession.words.length;
-                      const quickPlaySentences: string[] = haveValidAi
-                        ? words.map(w => {
-                            const originalIdx = quickPlayActiveSession.words.findIndex(o => o.id === w.id);
-                            return originalIdx >= 0 ? aiFromSession![originalIdx] : `I like the word ${w.english}.`;
-                          })
-                        : generateSentencesForAssignment(words, 2);
-                      setActiveAssignment({
-                        id: "quickplay-" + quickPlayActiveSession.id,
-                        classId: "",
-                        wordIds: words.map(w => w.id),
-                        words,
-                        title: "Quick Play",
-                        allowedModes: quickPlayActiveSession.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
-                        sentences: quickPlaySentences,
-                        sentenceDifficulty: 2,
-                      });
-                      setCurrentIndex(0);
-                      setScore(0);
-                      setFeedback(null);
-                      setIsFinished(false);
-                      setMistakes([]);
-                      setView("game");
-                      setShowModeSelection(true);
-
-                      // Save guest session to localStorage for page refresh recovery
-                      try {
-                        localStorage.setItem('vocaband_qp_guest', JSON.stringify({
-                          sessionId: quickPlayActiveSession.id,
-                          sessionCode: quickPlayActiveSession.sessionCode,
-                          name: trimmedName,
-                          avatar: quickPlayAvatar,
-                        }));
-                      } catch {}
-                    };
-
-                    setTimeout(async () => {
-                      if (QUICKPLAY_V2) {
-                        // v2 path: emit STUDENT_JOIN on the /quick-play
-                        // socket and DEFER the UI advance until the
-                        // server's JOINED reply arrives.  Without the
-                        // defer, the optimistic UI raced ahead while the
-                        // server was rejecting (nickname_taken, session
-                        // inactive, kicked) and the student "played" a
-                        // session they were never in — scores were
-                        // emitted with a clientId the server never
-                        // registered, surfacing as silently-dropped
-                        // updates on the teacher's podium.  With the
-                        // defer, lastError → toast → user retries with a
-                        // different name.
-                        pendingJoinRef.current = applyJoinedState;
-                        quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
-                      } else {
-                        // ─── Legacy path ────────────────────────────
-                        // Legacy doesn't have a server-confirmation
-                        // flow — fire the UI advance immediately, same
-                        // as the original behaviour.  V2 is the only
-                        // path that defers via pendingJoinRef.
-                        applyJoinedState();
-                        // Record that student joined — so teacher sees them in live stats immediately.
-                        // Run with retries + surface failures via showToast: errors previously
-                        // only hit the console (invisible to the student) and on the teacher
-                        // side showed up as an empty monitor with no hint why.
-                        (async () => {
-                          let authUid: string | null = null;
-                          for (let attempt = 0; attempt < 3; attempt++) {
-                            const { data: { session } } = await supabase.auth.getSession();
-                            if (session?.user?.id) {
-                              authUid = session.user.id;
-                              break;
-                            }
-                            // Session not ready yet — sign in anonymously, wait, retry.
-                            await supabase.auth.signInAnonymously().catch(() => {});
-                            await new Promise(r => setTimeout(r, 300));
-                          }
-                          if (!authUid) {
-                            console.error('[Quick Play] No auth session after retries — cannot record join');
-                            showToast('Could not connect to the session. Please refresh and try again.', 'error');
-                            return;
-                          }
-                          const { error } = await supabase.from('progress').insert({
-                            student_name: trimmedName,
-                            student_uid: authUid,
-                            assignment_id: quickPlayActiveSession.id,
-                            class_code: "QUICK_PLAY",
-                            score: 0,
-                            mode: "joined",
-                            completed_at: new Date().toISOString(),
-                            mistakes: [],
-                            avatar: quickPlayAvatar || "🦊",
-                          });
-                          if (error) {
-                            console.error('[Quick Play] Failed to record join:', error);
-                            showToast(`Couldn't join the leaderboard: ${error.message}`, 'error');
-                          }
-                        })();
-                      }
-                    }, 100);
+                    // All synchronous validation passed — stage the
+                    // name and switch to the language picker step.
+                    // The actual server JOIN + UI advance fires only
+                    // when the language picker button is tapped, so
+                    // the language is set BEFORE the game loads.
+                    stagedNameRef.current = trimmedName;
+                    setJoinStep("language");
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
                 >
-                  Start Playing →
+                  Continue →
                 </button>
               </div>
 
