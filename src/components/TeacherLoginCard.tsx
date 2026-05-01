@@ -35,8 +35,29 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   const tt = teacherLoginT[language];
   const otp = useTeacherOtpAuth();
 
+  // "Remember my email on this device" — opt-in, OFF by default.
+  // The previous always-on browser-autofill behavior leaked the
+  // previous teacher's email on shared classroom PCs (reported
+  // 2026-04-30).  The opt-in checkbox lets teachers on personal
+  // devices benefit from the convenience while keeping shared PCs
+  // safe by default.
+  const REMEMBER_FLAG_KEY = "vocaband_teacher_remember_email";
+  const REMEMBER_EMAIL_KEY = "vocaband_teacher_saved_email";
+
+  const initialRemembered = (() => {
+    try {
+      if (typeof window === "undefined") return { remember: false, email: "" };
+      const remember = localStorage.getItem(REMEMBER_FLAG_KEY) === "true";
+      const email = remember ? (localStorage.getItem(REMEMBER_EMAIL_KEY) ?? "") : "";
+      return { remember, email };
+    } catch {
+      return { remember: false, email: "" };
+    }
+  })();
+
   // Local form state -- the hook owns auth state, this owns input state.
-  const [emailInput, setEmailInput] = useState("");
+  const [emailInput, setEmailInput] = useState(initialRemembered.email);
+  const [rememberEmail, setRememberEmail] = useState(initialRemembered.remember);
   const [codeInput, setCodeInput] = useState("");
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
@@ -79,6 +100,18 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
     e.preventDefault();
     if (otp.stage === "sending") return;
     if (captchaEnabled && !captchaToken) return; // wait for Turnstile solve
+    // Persist or clear the remembered email based on the checkbox.
+    // Done synchronously here (not in the OTP success path) so the
+    // teacher's choice sticks even if they back out before verifying.
+    try {
+      if (rememberEmail) {
+        localStorage.setItem(REMEMBER_FLAG_KEY, "true");
+        localStorage.setItem(REMEMBER_EMAIL_KEY, emailInput.trim().toLowerCase());
+      } else {
+        localStorage.removeItem(REMEMBER_FLAG_KEY);
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      }
+    } catch { /* ignore quota / private-mode errors */ }
     // Same intended-role stamp as the Google OAuth path -- the post-
     // verifyOtp restoreSession check uses this to refuse a student
     // account that happens to share the email.
@@ -196,6 +229,26 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                   <span>{otp.error.includes("not allow") ? tt.errorNotAllowlisted : tt.errorSendFailed}</span>
                 </div>
               )}
+
+              {/* Remember-me — opt-in convenience for teachers on personal
+                  devices.  When checked, the email is saved to localStorage
+                  and pre-filled on next visit.  Default OFF so shared
+                  classroom PCs keep their existing safety.  See header
+                  comment near REMEMBER_FLAG_KEY. */}
+              <div className="mt-3 flex items-start gap-2">
+                <input
+                  id="teacher-remember"
+                  type="checkbox"
+                  checked={rememberEmail}
+                  onChange={(e) => setRememberEmail(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-stone-300 accent-current cursor-pointer"
+                  style={{ accentColor: "var(--vb-accent, #6366f1)" }}
+                />
+                <label htmlFor="teacher-remember" className="text-sm text-stone-700 leading-snug cursor-pointer select-none">
+                  <span className="font-semibold">{tt.rememberMe}</span>
+                  <span className="block text-xs text-stone-500">{tt.rememberMeHint}</span>
+                </label>
+              </div>
 
               {/* Cloudflare Turnstile — only renders when VITE_TURNSTILE_SITE_KEY
                   is set at build time.  The widget is invisible-by-default
