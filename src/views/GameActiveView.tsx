@@ -56,6 +56,7 @@ import LetterSoundsGame from "../components/game/LetterSoundsGame";
 import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
 import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
+import ScrambleGame from "../components/game/ScrambleGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -223,7 +224,21 @@ export default function GameActiveView({
         />
       );
     }
-    // Default: spelling / scramble
+    if (gameMode === "scramble") {
+      return (
+        <ScrambleGame
+          currentWord={currentWord}
+          targetLanguage={targetLanguage}
+          scrambledWord={scrambledWord}
+          spellingInput={spellingInput}
+          setSpellingInput={setSpellingInput}
+          feedback={feedback}
+          onSpellingSubmit={handleSpellingSubmit}
+          themeColor={modeTheme}
+        />
+      );
+    }
+    // Default: spelling
     return (
       <SpellingGame
         currentWord={currentWord}
@@ -338,10 +353,13 @@ export default function GameActiveView({
                 )}
 
                 {/* Skip WordPromptCard for fill-blank (renders its own
-                    gapped sentence as the prompt) AND flashcards (the
-                    new 3D flip card BECOMES the prompt — rendering
-                    WordPromptCard above it would double-show the word). */}
-                {gameMode !== "fill-blank" && gameMode !== "flashcards" && (
+                    gapped sentence as the prompt), flashcards (the
+                    3D flip card BECOMES the prompt), and scramble
+                    (Phase 3g renders the scrambled letters as
+                    interactive TILES inside ScrambleGame, plus its
+                    own translation prompt — WordPromptCard would
+                    show the scramble as static text alongside).  */}
+                {gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && (
                   <WordPromptCard
                     currentIndex={currentIndex}
                     gameWordsLength={gameWords.length}
