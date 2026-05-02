@@ -47,6 +47,7 @@ const ICONS: Record<GameMode, string> = {
   "fill-blank": "✏️",
   "word-chains": "🔗",
   idiom: "💭",
+  relations: "🔀",
 };
 
 const withIcons = (m: Record<GameMode, { title: string; steps: string[] }>): Record<GameMode, ModeIntroEntry> => {
@@ -74,6 +75,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "fill-blank": { title: "Fill in the Blank", steps: ["A sentence appears with one word missing", "Read it carefully — there's no audio in this mode", "Tap the word that fills the blank"] },
       "word-chains": { title: "Word Chains", steps: ["See the highlighted last letter", "Type a word that starts with that letter", "Keep the chain going as long as you can!"] },
       idiom: { title: "Idiom Mode", steps: ["See an English idiom in big letters", "Pick the meaning that matches", "Read the example to learn how to use it!"] },
+      relations: { title: "Synonyms & Antonyms", steps: ["See a word and the question — synonym or antonym?", "Pick the matching word from 4 options", "Reveal shows ALL the matches so you learn more!"] },
     }),
     letsGo: "Let's Go! →",
     backToModes: "← Back to Modes",
@@ -94,6 +96,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "fill-blank": { title: "השלם את החסר", steps: ["מופיע משפט עם מילה חסרה", "קרא בעיון — אין שמע במצב זה", "לחץ על המילה שמשלימה את החסר"] },
       "word-chains": { title: "שרשרת מילים", steps: ["שים לב לאות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"] },
       idiom: { title: "מצב ביטויים", steps: ["ראה ביטוי באנגלית באותיות גדולות", "בחר את המשמעות המתאימה", "קרא את הדוגמה ולמד איך להשתמש בו!"] },
+      relations: { title: "נרדפות והפכים", steps: ["ראה מילה ושאלה — נרדפת או הפוכה?", "בחר את המילה המתאימה מ-4 אפשרויות", "החשיפה מציגה את כל ההתאמות לעוד למידה!"] },
     }),
     letsGo: "קדימה! →",
     backToModes: "← חזרה למצבים",
@@ -114,6 +117,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "fill-blank": { title: "املأ الفراغ", steps: ["تظهر جملة بكلمة مفقودة", "اقرأها بعناية — لا يوجد صوت في هذا الوضع", "اضغط على الكلمة التي تملأ الفراغ"] },
       "word-chains": { title: "سلسلة الكلمات", steps: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"] },
       idiom: { title: "وضع التعابير", steps: ["شاهد تعبيرًا إنجليزيًا بحروف كبيرة", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه!"] },
+      relations: { title: "المرادفات والمتضادات", steps: ["شاهد الكلمة والسؤال — مرادف أم متضاد؟", "اختر الكلمة المطابقة من 4 خيارات", "يعرض الكشف جميع المطابقات لتتعلم أكثر!"] },
     }),
     letsGo: "هيا بنا! →",
     backToModes: "← العودة إلى الأوضاع",

@@ -32,6 +32,9 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Idiom = sky.  Multi-choice mode where students pick the figurative
   // meaning of an English idiom from a hand-curated dataset.
   idiom: "sky",
+  // Relations = fuchsia.  Synonyms / antonyms practice — alternates
+  // question type each round.
+  relations: "fuchsia",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -51,6 +54,7 @@ const MODE_LABEL: Record<string, string> = {
   "fill-blank": "Fill in the Blank",
   "word-chains": "Word Chains",
   idiom: "Idiom",
+  relations: "Synonyms & Antonyms",
 };
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
@@ -69,6 +73,7 @@ import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
+import RelationsGame from "../components/game/RelationsGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -262,6 +267,18 @@ export default function GameActiveView({
       return (
         <IdiomGame
           themeColor={modeTheme ?? "sky"}
+          speak={speak}
+          onFinish={handleExitGame}
+        />
+      );
+    }
+    if (gameMode === "relations") {
+      // Synonyms & Antonyms — multi-choice question alternating
+      // between syn / ant per turn.  Question source is the curated
+      // RELATIONS dataset, not the assignment word pool.
+      return (
+        <RelationsGame
+          themeColor={modeTheme ?? "fuchsia"}
           speak={speak}
           onFinish={handleExitGame}
         />

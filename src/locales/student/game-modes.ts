@@ -33,7 +33,8 @@ export type GameModeId =
   | "letter-sounds"
   | "sentence-builder"
   | "word-chains"
-  | "idiom";
+  | "idiom"
+  | "relations";
 
 export interface GameModeStrings {
   name: string;
@@ -128,6 +129,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "Match English idioms with their real meaning. Learn how to use them!",
         tooltip: ["See an English idiom", "Pick the meaning that matches", "Read the example to learn how to use it"],
       },
+      relations: {
+        name: "Synonyms & Antonyms",
+        desc: "Pick the word that means the same — or the opposite. Build vocab depth.",
+        tooltip: ["See a word and the question type", "Pick the right match from 4 options", "Reveal shows all the matches"],
+      },
     },
   },
 
@@ -208,6 +214,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "התאם ביטויים באנגלית למשמעות האמיתית שלהם. למד איך להשתמש בהם!",
         tooltip: ["ראה ביטוי באנגלית", "בחר את המשמעות הנכונה", "קרא את הדוגמה ולמד איך להשתמש בו"],
       },
+      relations: {
+        name: "נרדפות והפכים",
+        desc: "בחר את המילה שמשמעותה זהה — או הפוכה. בנה עומק אוצר מילים.",
+        tooltip: ["ראה מילה וסוג שאלה", "בחר את ההתאמה מ-4 אפשרויות", "החשיפה מציגה את כל ההתאמות"],
+      },
     },
   },
 
@@ -287,6 +298,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "التعابير",
         desc: "طابق التعابير الإنجليزية مع معناها الحقيقي. تعلّم كيفية استخدامها!",
         tooltip: ["شاهد تعبيرًا إنجليزيًا", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه"],
+      },
+      relations: {
+        name: "المرادفات والمتضادات",
+        desc: "اختر الكلمة المرادفة — أو المعاكسة. ابنِ عمق المفردات.",
+        tooltip: ["شاهد الكلمة ونوع السؤال", "اختر المطابق من 4 خيارات", "يعرض الكشف جميع المطابقات"],
       },
     },
   },

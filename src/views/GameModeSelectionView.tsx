@@ -112,6 +112,7 @@ export default function GameModeSelectionView({
     { id: "sentence-builder",  color: "teal",    icon: <span className="text-2xl">🧩</span> },
     { id: "word-chains",       color: "orange",  icon: <span className="text-2xl">🔗</span> },
     { id: "idiom",             color: "sky",     icon: <span className="text-2xl">💭</span> },
+    { id: "relations",         color: "fuchsia", icon: <span className="text-2xl">🔀</span> },
   ];
 
   // Combined modes array — layout metadata + localised strings keyed

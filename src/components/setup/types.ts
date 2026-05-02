@@ -22,6 +22,7 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
     { id: 'listening', name: 'Listening', emoji: '👂', color: 'from-violet-400 to-violet-500' },
     { id: 'true-false', name: 'True/False', emoji: '✅', color: 'from-purple-400 to-purple-500' },
     { id: 'letter-sounds', name: 'Letter Sounds', emoji: '🔊', color: 'from-fuchsia-400 to-fuchsia-500' },
+    { id: 'relations', name: 'Syn / Ant', emoji: '🔀', color: 'from-fuchsia-400 to-pink-500' },
   ],
   advanced: [
     { id: 'spelling', name: 'Spelling', emoji: '✍️', color: 'from-orange-400 to-orange-500' },
@@ -68,6 +69,7 @@ export const MODE_DIFFICULTY: Record<string, ModeDifficulty> = {
   spelling:         'hard',      // Pure recall + exact spelling
   'sentence-builder': 'hard',    // Vocab + grammar + syntax
   'fill-blank':     'hard',      // Read sentence in L2, infer missing word from context
+  'relations':      'medium',    // Multi-choice on synonym / antonym
 };
 
 export const DIFFICULTY_META: Record<ModeDifficulty, {
