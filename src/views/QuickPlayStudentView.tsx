@@ -98,6 +98,12 @@ export default function QuickPlayStudentView({
   //                insert), so the language picked here is the one
   //                the student sees the moment the game loads.
   const [joinStep, setJoinStep] = useState<"form" | "language">("form");
+  // "Resuming" — true while the student is attempting to re-join an
+  // active session via the Continue Playing card.  Drives the button's
+  // disabled + loading-spinner state and the lastError-handler reset.
+  // State was missing — introduced in the v2 socket-only flow but
+  // never declared here, leaving 5 references dangling.
+  const [resuming, setResuming] = useState<boolean>(false);
   // Validated name captured at form-submit time so the language
   // picker can fire the join with it.  Defaults to empty string
   // and is overwritten when the student clicks Continue on the form.

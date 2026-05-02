@@ -2,7 +2,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
-import { cloudflare } from "@cloudflare/vite-plugin";
+// Cloudflare plugin is intentionally disabled (causes white screen
+// in dev) — kept as a comment so future edits don't re-import it.
+// import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(() => {
   const isTest = process.env.PLAYWRIGHT_TEST === 'true';

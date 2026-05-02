@@ -567,7 +567,7 @@ export default function GradebookView({
               <h3 className="text-base font-black text-stone-800 flex items-center gap-2">
                 <Calendar size={16} className="text-indigo-500" />
                 Class activity
-                <HelpTooltip id="activity-chart" content="Total XP earned by all students per day." />
+                <HelpTooltip content="Total XP earned by all students per day." />
               </h3>
               <p className="text-xs text-stone-500 font-medium mt-0.5">
                 Last {windowDays} days · {selectedClassName}

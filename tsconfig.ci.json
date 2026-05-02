@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Unused-vars rules are noisy in a fast-moving codebase — ESLint
+    // can flag them later in `npm run lint`.  CI's job is to catch
+    // REAL bugs that block production: missing imports (TS2304),
+    // type mismatches (TS2322 / 2345), JSX errors (TS17001),
+    // implicit any (TS7006), missing returns (TS7030).
+    //
+    // The Speed Round wiring loss in PR #415 would have been caught
+    // by TS2304 alone; that's the headline failure mode this CI
+    // gate prevents.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  // Frontend-only — the Fly.io server (server.ts) has its own deploy
+  // pipeline and a separate set of typecheck concerns; the migration
+  // scripts (scripts/) run via Node and don't ship to users; e2e
+  // tests have their own Playwright runner.  Scoping here keeps the
+  // CI gate focused on what a regular PR is changing.
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

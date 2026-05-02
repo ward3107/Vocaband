@@ -17,6 +17,10 @@ import StudentOverallProgress from "../components/dashboard/StudentOverallProgre
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import { useDailyMissions } from "../hooks/useDailyMissions";
+import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
+import { usePetEvolution } from "../hooks/usePetEvolution";
+import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
+import { useDueReviews } from "../hooks/useDueReviews";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
 import { IdentityHero } from "../components/structure/IdentityHero";
@@ -132,6 +136,20 @@ export default function StudentDashboardView({
   // shouldn't see the card (no schema-bound XP loop).
   const dailyMissions = useDailyMissions({
     enabled: Boolean(user?.role === 'student' && !user?.isGuest),
+  });
+
+  // Activity-driven pet — grows with distinct days played, decays
+  // after a 3-day grace period.  Same gating as missions.
+  const petEvolution = usePetEvolution({
+    enabled: Boolean(user?.role === 'student' && !user?.isGuest),
+  });
+
+  // Spaced repetition — surfaces today's due-for-review words.  Hook
+  // only activates when a parent supplied an onStartReview callback
+  // (so the card can route into the Review mode); without that the
+  // hook stays idle.
+  const dueReviews = useDueReviews({
+    enabled: Boolean(user?.role === 'student' && !user?.isGuest && onStartReview),
   });
 
   // The default theme now uses a soft gradient instead of flat stone-100 —
