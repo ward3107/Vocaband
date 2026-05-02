@@ -468,6 +468,22 @@ export function useGameFinish(params: UseGameFinishParams) {
       // key, so both systems can coexist while old keys drain.
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
+
+      // Pet Evolution — record this play as an active-day signal so the
+      // dashboard companion ages (and decay is applied for any
+      // inactivity beyond the 3-day grace period).  Idempotent within
+      // a local day, so re-fired saves don't double-count.  Wrapped in
+      // queueSaveOperation for the same retry semantics as the rest of
+      // the save queue — best-effort; a failure here doesn't block the
+      // assignment XP that already landed.
+      queueSaveOperation(async () => {
+        try {
+          const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
+          await supabase.rpc('record_pet_activity', { p_today_local: today });
+        } catch (err) {
+          console.error('[pet-evolution] record_pet_activity failed:', err);
+        }
+      });
     } catch (error) {
       // Silent.  Log for dev console but never surface a banner to the
       // student — the queue will retry in the background.

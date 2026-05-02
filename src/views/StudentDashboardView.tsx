@@ -15,6 +15,8 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
+import { usePetEvolution } from "../hooks/usePetEvolution";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
 import { IdentityHero } from "../components/structure/IdentityHero";
@@ -118,6 +120,13 @@ export default function StudentDashboardView({
   // structure prop is provided.
   const [showStructureDetail, setShowStructureDetail] = useState(false);
 
+  // Activity-driven pet companion — grows with distinct days played,
+  // decays past a 3-day grace period.  Distinct from the existing
+  // PetCompanion (which is XP-milestone based).  Real students only.
+  const petEvolution = usePetEvolution({
+    enabled: Boolean(user?.role === 'student' && !user?.isGuest),
+  });
+
   // The default theme now uses a soft gradient instead of flat stone-100 —
   // sets a warmer tone for the vibrant greeting hero that follows. Other
   // themes still pick their own bg from THEMES.
@@ -178,6 +187,17 @@ export default function StudentDashboardView({
               without clutter. */}
           <ActiveBoostersStrip {...boosters} />
           <PowerUpsStrip powerUps={user.powerUps} />
+
+          {/* ── Activity pet — grows with distinct days played, decays
+              past a 3-day grace period.  Sits above the structure +
+              shop pair so the student lands on the streak prompt
+              before exploring deeper widgets.  Real students only. */}
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <PetEvolutionCard
+              state={petEvolution.state}
+              isLoading={petEvolution.isLoading}
+            />
+          )}
 
           {/* ── Structure preview + Shop side-by-side ─────────────
               Garden / City / Rocket / Castle renders as a compact
