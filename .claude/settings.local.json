@@ -217,7 +217,10 @@
       "Bash(find *)",
       "Bash(git diff *)",
       "Bash(grep -E \"src/.*\\\\.tsx?$\")",
-      "Bash(xargs -I {} git show \"HEAD:{}\")"
+      "Bash(xargs -I {} git show \"HEAD:{}\")",
+      "Bash(dir /s /b *.tsx *.ts)",
+      "Bash(findstr /v \"node_modules\")",
+      "Bash(npx eslint *)"
     ]
   }
 }

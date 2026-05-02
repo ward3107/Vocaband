@@ -1713,26 +1713,15 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   // Analyze pasted text - NOW ACTUALLY ADDS THE WORDS
   const handleAnalyze = useCallback(async (text: string) => {
-    console.log('[WordInputStep2026] handleAnalyze START', { textLength: text.length, allWordsCount: allWords.length });
     setIsAnalyzing(true);
     try {
       const result = analyzePastedText(text, allWords);
-      console.log('[WordInputStep2026] analyzePastedText result', {
-        matchedWordsCount: result.matchedWords.length,
-        unmatchedTermsCount: result.unmatchedTerms.length,
-        stats: result.stats,
-      });
 
       // Add matched words to selection
       const existingIds = new Set(selectedWords.map(w => w.id));
       const newWords = result.matchedWords
         .map(m => m.word)
         .filter(w => !existingIds.has(w.id));
-
-      console.log('[WordInputStep2026] new words to add', {
-        newWordsCount: newWords.length,
-        newWordIds: newWords.map(w => w.id),
-      });
 
       if (newWords.length > 0) {
         onSelectedWordsChange([...selectedWords, ...newWords]);
@@ -1742,24 +1731,17 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       } else {
         showToast?.('No new words found', 'info');
       }
-
-      // Show unmatched words
-      if (result.unmatchedTerms.length > 0) {
-        console.log('[WordInputStep2026] Unmatched words:', result.unmatchedTerms.map(t => t.term));
-      }
     } catch (error) {
       console.error('[WordInputStep2026] handleAnalyze ERROR', error);
       showToast?.('Failed to analyze text', 'error');
     } finally {
       setIsAnalyzing(false);
-      console.log('[WordInputStep2026] handleAnalyze END');
     }
   }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
   // OCR Upload handler
   const handleOcrUpload = useCallback(async (file: File) => {
     if (!onOcrUpload) {
-      console.warn('[OCR] no onOcrUpload prop wired -- nothing will happen');
       showToast?.('OCR is not available right now', 'error');
       return;
     }
@@ -1767,7 +1749,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     setOcrState('uploading');
     setOcrProgress(0);
     setOcrErrorMessage(null);
-    console.log(`[OCR] starting upload: ${file.name} (${Math.round(file.size / 1024)} KB, ${file.type})`);
 
     let progressInterval: ReturnType<typeof setInterval> | null = null;
     try {
@@ -1779,8 +1760,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       const result = await onOcrUpload(file);
       if (progressInterval) clearInterval(progressInterval);
       setOcrProgress(100);
-
-      console.log(`[OCR] upload complete: ${result.words.length} words extracted`);
       setOcrDebugInfo(`Server returned ${result.words.length} words: [${result.words.slice(0, 3).join(', ')}...]`);
 
       if (result.words.length === 0) {
@@ -1945,26 +1924,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
     const totalAdded = newCurriculumWords.length + customWords.length;
     const newSelectedWords = [...selectedWords, ...newCurriculumWords, ...customWords];
-
-    console.log('[OCR confirm] BEFORE:', {
-      requestedAdd: words.length,
-      currentSelected: selectedWords.length,
-      curriculumMatches: newCurriculumWords.length,
-      customWords: customWords.length,
-      totalNew: totalAdded,
-      newTotal: newSelectedWords.length,
-      sampleWords: newSelectedWords.slice(-3).map(w => `${w.id}:${w.english}`),
-    });
-
-    // Surface the OCR add path on screen so the user can confirm it
-    // ran without needing remote DevTools.  Diagnostic only — to be
-    // removed once OCR is verified working.  Also stamp the URL hash
-    // so it survives even if the component unmounts or a stale render
-    // wipes state — user can read the URL to see if the path executed.
-    setOcrDebugInfo(`OCR add fired: in=${words.length}, curriculum=${newCurriculumWords.length}, custom=${customWords.length}, total=${newSelectedWords.length}`);
-    try {
-      window.location.hash = `ocr-${Date.now()}-in${words.length}-c${newCurriculumWords.length}-cu${customWords.length}-tot${newSelectedWords.length}`;
-    } catch { /* hash setting can throw in some sandboxed contexts */ }
 
     onSelectedWordsChange(newSelectedWords);
     // Reset everything so the next OCR run starts from a clean idle

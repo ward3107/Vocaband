@@ -166,24 +166,14 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 
   // ── Handle SetupWizard completion ───────────────────────────────────────────
   const handleWizardComplete = async (result: { words: Word[]; modes: string[] }) => {
-    console.log('[handleWizardComplete] START', {
-      wordsCount: result.words.length,
-      modesCount: result.modes.length,
-      words: result.words.map(w => w.id),
-      modes: result.modes,
-    });
-
     // Update parent state with the final selections
     const wordIds = result.words.map(w => w.id);
-    console.log('[handleWizardComplete] Updating state', { wordIds });
     setSelectedWords(wordIds);
     setAssignmentModes(result.modes);
 
-    console.log('[handleWizardComplete] Calling handleSaveAssignment with data');
     // Pass words and modes directly to avoid timing issues with async state updates
     await handleSaveAssignment(wordIds, result.modes);
 
-    console.log('[handleWizardComplete] Showing success screen');
     // Show success screen
     setShowSuccess(true);
   };

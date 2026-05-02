@@ -134,11 +134,9 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       try {
         const token = (await supabase.auth.getSession()).data.session?.access_token;
         if (!token) {
-          console.warn('[AI features] skipping /api/features call: no Supabase session token on mount');
           return;
         }
         const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
-        console.log('[AI features] checking /api/features at', apiUrl);
         // ?debug=1 makes the server include a `reason` field when aiSentences
         // is false, so we can log the exact rejection cause to the console
         // instead of the user staring at a missing button with no explanation.
@@ -146,12 +144,6 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        console.log('[AI features] response:', data);
-        if (data.aiSentences === true) {
-          console.log('[AI features] enabled for', data.email || 'current user');
-        } else {
-          console.warn('[AI features] disabled —', data.reason || 'no reason returned', data);
-        }
         setAiEnabled(data.aiSentences === true);
       } catch (err) {
         console.warn('[AI features] /api/features fetch threw — button will stay hidden', err);

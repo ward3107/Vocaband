@@ -344,15 +344,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         <button
           ref={launchButtonRef}
           onClick={() => {
-            console.log('[ReviewStep Launch Button] CLICKED', {
-              mode,
-              selectedWordsCount: selectedWords.length,
-              selectedModesCount: selectedModes.length,
-              assignmentTitle,
-              isAssignment,
-              isEditing,
-              saveAsTemplate,
-            });
             // Save BEFORE launching — `onLaunch` typically clears the
             // wizard state in the parent, so by the time it returns the
             // snapshot SetupWizard would build is empty.

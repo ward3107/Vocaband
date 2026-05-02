@@ -275,15 +275,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   };
 
   const handleLaunch = () => {
-    console.log('[SetupWizard handleLaunch] START', {
-      mode,
-      selectedWordsCount: selectedWords.length,
-      selectedModesCount: selectedModes.length,
-      selectedWords: selectedWords.map(w => ({ id: w.id, english: w.english })),
-      selectedModes,
-    });
     onComplete({ words: selectedWords, modes: selectedModes });
-    console.log('[SetupWizard handleLaunch] END - called onComplete');
   };
 
   const handleQuickStart = () => {
@@ -363,9 +355,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   allWords={allWords}
                   selectedWords={selectedWords}
                   onSelectedWordsChange={(words) => {
-                    console.log('[SetupWizard] setSelectedWords called with', words.length, 'words', {
-                      sample: words.slice(-3).map(w => w.english),
-                    });
                     setSelectedWords(words);
                   }}
                   onNext={handleNext}
