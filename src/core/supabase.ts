@@ -98,7 +98,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
@@ -142,6 +142,11 @@ export interface AppUser {
   ratingDismissedAt?: string | null;
   isGuest?: boolean;
   createdAt?: string;
+  /** Timestamp the teacher completed the first-class onboarding
+   *  wizard.  NULL = wizard hasn't shown yet (or was skipped without
+   *  completion).  Used by TeacherDashboardView to decide whether to
+   *  open the wizard on mount.  Students ignore this field. */
+  onboardedAt?: string | null;
 }
 
 export interface ClassData {
@@ -207,6 +212,7 @@ export function mapUser(row: any): AppUser {
     firstRating: row.first_rating ?? null,
     firstRatingAt: row.first_rating_at ?? null,
     ratingDismissedAt: row.rating_dismissed_at ?? null,
+    onboardedAt: row.onboarded_at ?? null,
   };
 }
 

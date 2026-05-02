@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Palette, Tv2 } from "lucide-react";
 import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
+import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
@@ -102,6 +103,14 @@ interface TeacherDashboardViewProps {
   onUseSavedTask?: (task: SavedTask) => void;
   onTogglePinSavedTask?: (id: string) => void;
   onRemoveSavedTask?: (id: string) => void;
+
+  /** First-class onboarding wizard handler.  When provided, the
+   *  dashboard renders the wizard if the teacher has never onboarded
+   *  AND has zero classes.  Returns the new class code for the
+   *  wizard's success step. */
+  onWizardComplete?: (result: import('../components/onboarding/TeacherOnboardingWizard').WizardResult) => Promise<{ classCode: string } | null>;
+  /** Mark the wizard skipped/dismissed so it doesn't reappear. */
+  onWizardSkip?: () => void;
 }
 
 export default function TeacherDashboardView({
@@ -124,6 +133,7 @@ export default function TeacherDashboardView({
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
+  onWizardComplete, onWizardSkip,
 }: TeacherDashboardViewProps) {
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.
@@ -173,6 +183,19 @@ export default function TeacherDashboardView({
             try { localStorage.setItem('vocaband_onboarding_done', 'true'); } catch { /* ignore */ }
             setShowOnboarding(false);
           }} />
+        )}
+
+        {/* First-class onboarding wizard — opens for brand-new
+            teachers (server-side flag + zero classes).  Server-backed
+            so it doesn't re-fire on a different device.  Skipping
+            also flips the flag so the wizard never re-appears for
+            this teacher; "Open my dashboard" on step 4 also dismisses. */}
+        {onWizardComplete && onWizardSkip && (
+          <TeacherOnboardingWizard
+            open={user?.onboardedAt == null && classes.length === 0}
+            onComplete={onWizardComplete}
+            onSkip={onWizardSkip}
+          />
         )}
 
         <TopAppBar

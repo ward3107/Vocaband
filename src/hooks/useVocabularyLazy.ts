@@ -33,6 +33,7 @@ export interface VocabularyModule {
   ALL_WORDS: Word[];
   SET_1_WORDS: Word[];
   SET_2_WORDS: Word[];
+  SET_3_WORDS: Word[];
   TOPIC_PACKS: { name: string; icon: string; ids: number[] }[];
 }
 
@@ -48,6 +49,7 @@ async function loadVocabulary(): Promise<VocabularyModule> {
       ALL_WORDS: mod.ALL_WORDS,
       SET_1_WORDS: mod.SET_1_WORDS,
       SET_2_WORDS: mod.SET_2_WORDS,
+      SET_3_WORDS: mod.SET_3_WORDS,
       TOPIC_PACKS: mod.TOPIC_PACKS,
     };
     return cached;
