@@ -1,8 +1,9 @@
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
+import { ALL_GAME_MODES } from "../../constants/game";
 
-const DEFAULT_MODES = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+const DEFAULT_MODES = ALL_GAME_MODES;
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 

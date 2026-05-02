@@ -234,21 +234,16 @@ export default function GameActiveView({
     if (gameMode === "word-chains") {
       // Self-contained free-text mode: student types a word starting
       // with the previous word's last letter.  Score = chain length.
-      // For v1, ending the round bounces back to mode selection
-      // without the standard finish-screen + XP write — those are
-      // a follow-up integration.  See docs/SELECTED-FEATURES-PLAN.md
-      // for the full spec.
+      // For v1, ending the round routes through handleExitGame which
+      // returns to the mode picker via App.tsx's view + showModeSelection
+      // flags (the rest of the app's exit path).  XP / progress write
+      // is a follow-up — see docs/SELECTED-FEATURES-PLAN.md.
       return (
         <WordChainsGame
           gameWords={gameWords}
           themeColor={modeTheme ?? "orange"}
           speak={speakWord}
-          onFinish={() => {
-            // Bounce back to mode-selection.  Future commit will
-            // wire this into the regular finish-screen + XP grant
-            // flow once the score-tracking integration is built.
-            window.history.back();
-          }}
+          onFinish={handleExitGame}
         />
       );
     }

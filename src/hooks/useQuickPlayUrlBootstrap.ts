@@ -34,6 +34,7 @@ import type { Word } from "../data/vocabulary";
 import { getCachedVocabulary } from "./useVocabularyLazy";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
+import { ALL_GAME_MODES } from "../constants/game";
 import type { View } from "../core/views";
 
 /** What this hook hydrates into App.tsx's quickPlayActiveSession state.
@@ -247,7 +248,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                   setActiveAssignment({
                     id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
                     title: "Quick Play",
-                    allowedModes: data.allowed_modes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    allowedModes: data.allowed_modes || ALL_GAME_MODES,
                     sentences: quickPlaySentences, sentenceDifficulty: 2,
                   });
                   gameDebug.logGameInit({
@@ -319,7 +320,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                   setActiveAssignment({
                     id: "quickplay-" + data.id, classId: "", wordIds: words.map(w => w.id), words,
                     title: "Quick Play",
-                    allowedModes: data.allowed_modes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+                    allowedModes: data.allowed_modes || ALL_GAME_MODES,
                     sentences: quickPlaySentences, sentenceDifficulty: 2,
                   });
                   gameDebug.logGameInit({
