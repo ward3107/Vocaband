@@ -468,6 +468,21 @@ export function useGameFinish(params: UseGameFinishParams) {
       // key, so both systems can coexist while old keys drain.
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
+
+      // Spaced repetition — queue every missed word for tomorrow's
+      // review session.  Only fires when the student actually missed
+      // something (zero-element array short-circuits in the RPC).
+      // Skipped for the Review mode itself, which manages its own
+      // schedule via record_review_result on each answer.
+      if (gameMode !== 'review' && Array.isArray(mistakes) && mistakes.length > 0) {
+        queueSaveOperation(async () => {
+          try {
+            await supabase.rpc('schedule_review_words', { p_word_ids: mistakes });
+          } catch (err) {
+            console.error('[srs] schedule_review_words failed:', err);
+          }
+        });
+      }
     } catch (error) {
       // Silent.  Log for dev console but never surface a banner to the
       // student — the queue will retry in the background.

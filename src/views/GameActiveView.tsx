@@ -32,6 +32,8 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Idiom = sky.  Multi-choice mode where students pick the figurative
   // meaning of an English idiom from a hand-curated dataset.
   idiom: "sky",
+  // Review = violet.  SRS session — pulls due words from review_schedule.
+  review: "violet",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -51,6 +53,7 @@ const MODE_LABEL: Record<string, string> = {
   "fill-blank": "Fill in the Blank",
   "word-chains": "Word Chains",
   idiom: "Idiom",
+  review: "Review",
 };
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
@@ -69,6 +72,7 @@ import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
+import ReviewGame from "../components/game/ReviewGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -263,6 +267,23 @@ export default function GameActiveView({
         <IdiomGame
           themeColor={modeTheme ?? "sky"}
           speak={speak}
+          onFinish={handleExitGame}
+        />
+      );
+    }
+    if (gameMode === "review") {
+      // Spaced-repetition review session.  Self-fetches the queue of
+      // due words on mount via get_due_reviews, runs Classic-style
+      // multi-choice on each, and updates the SRS interval per
+      // answer via record_review_result.  Word source is the FULL
+      // ALL_WORDS pool (not the assignment pool) since reviews span
+      // every word the student has ever missed across assignments.
+      return (
+        <ReviewGame
+          allWords={gameWords}
+          themeColor={modeTheme ?? "violet"}
+          targetLanguage={targetLanguage}
+          speak={speakWord}
           onFinish={handleExitGame}
         />
       );

@@ -15,6 +15,8 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
+import { useDueReviews } from "../hooks/useDueReviews";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
 import { IdentityHero } from "../components/structure/IdentityHero";
@@ -49,6 +51,12 @@ interface StudentDashboardViewProps {
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setShowModeSelection: (show: boolean) => void;
+  /** Optional handler for the spaced-repetition Review mode entry
+   *  point.  When provided, the dashboard renders a ReviewQueueCard
+   *  with a "Start review" button that calls this; absent, the
+   *  card hides itself.  Routes the student straight into the
+   *  Review game without going through the mode picker. */
+  onStartReview?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
@@ -108,6 +116,7 @@ export default function StudentDashboardView({
   onRenameDisplayName,
   structure,
   celebrateStructureKeys = [],
+  onStartReview,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -117,6 +126,13 @@ export default function StudentDashboardView({
   // order stays stable regardless of whether the flag is on or the
   // structure prop is provided.
   const [showStructureDetail, setShowStructureDetail] = useState(false);
+
+  // Spaced repetition — words queued for review after the student
+  // missed them in earlier games.  Hook only fires for authenticated
+  // students; guests + Quick-Play don't have a persistent SRS queue.
+  const dueReviews = useDueReviews({
+    enabled: Boolean(user?.role === 'student' && !user?.isGuest && onStartReview),
+  });
 
   // The default theme now uses a soft gradient instead of flat stone-100 —
   // sets a warmer tone for the vibrant greeting hero that follows. Other
@@ -199,6 +215,22 @@ export default function StudentDashboardView({
             )}
             <ShopSquare xp={xp} onOpen={() => { setShopTab('hub'); setView('shop'); }} />
           </div>
+
+          {/* ── Spaced Repetition queue card ──────────────────────
+              Surfaces today's due-for-review words and routes the
+              student straight into the Review mode (bypasses the
+              mode picker).  Only renders when the parent supplied
+              an onStartReview callback (gated to authenticated
+              real students above). */}
+          {onStartReview && (
+            <div className="mb-4">
+              <ReviewQueueCard
+                dueCount={dueReviews.dueCount}
+                isLoading={dueReviews.isLoading}
+                onStart={onStartReview}
+              />
+            </div>
+          )}
 
           <TodayStrip
             user={user}
