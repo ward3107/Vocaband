@@ -2111,7 +2111,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       </div>
 
       {/* Option Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl mx-auto">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 max-w-4xl mx-auto justify-items-center">
         <OptionCard
           emoji="🧩"
           title={TEXT.topicPacks}
