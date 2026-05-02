@@ -115,6 +115,27 @@ import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQu
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
+// ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
+// Defined at module level to avoid re-creating arrays on every auth restore.
+const PUBLIC_VIEWS = new Set<View>([
+  "public-landing", "public-terms", "public-privacy", "public-security", "accessibility-statement"
+]);
+const TEACHER_VIEWS = new Set<View>([
+  "worksheet", "classroom", "class-show", "teacher-approvals",
+  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment"
+]);
+const STUDENT_VIEWS = new Set<View>([
+  "student-dashboard", "game-mode-intro", "game-mode-selection",
+  "game-active", "game-finished", "live-challenge"
+]);
+
+/** Check if current view should be preserved during auth restore. */
+const shouldPreserveView = (role: string, currentView: View): boolean => {
+  if (PUBLIC_VIEWS.has(currentView)) return false;
+  return role === "teacher"
+    ? TEACHER_VIEWS.has(currentView)
+    : STUDENT_VIEWS.has(currentView);
+};
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -991,23 +1012,6 @@ export default function App() {
       if (quickPlaySessionParam) return;
       restoreInProgress.current = true;
 
-      // Helper: should we preserve the current view instead of redirecting?
-      // Uses currentViewRef so we always read the latest view, even when
-      // called asynchronously from auth events like TOKEN_REFRESHED.
-      const shouldPreserveView = (role: string): boolean => {
-        const v = currentViewRef.current;
-        if (!v) return false;
-        // Public views always redirect to dashboard on auth restore
-        const publicViews: View[] = ["public-landing", "public-terms", "public-privacy", "public-security", "accessibility-statement"];
-        if (publicViews.includes(v)) return false;
-        // Teacher views: preserve if on worksheet, classroom, class-show, approvals, etc.
-        const teacherViews: View[] = ["worksheet", "classroom", "class-show", "teacher-approvals", "quick-play-teacher-monitor", "quick-play-setup", "create-assignment"];
-        const studentViews: View[] = ["student-dashboard", "game-mode-intro", "game-mode-selection", "game-active", "game-finished", "live-challenge"];
-        if (role === "teacher" && teacherViews.includes(v)) return true;
-        if (role === "student" && studentViews.includes(v)) return true;
-        return false;
-      };
-
       try {
         // For anonymous students: RLS blocks SELECT on users table
         // (is_anonymous IS FALSE). Instead of querying the DB, restore
@@ -1102,7 +1106,7 @@ export default function App() {
               sessionStorage.removeItem('vocaband_skip_restore');
               try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
               // Only redirect to dashboard if not already on a valid teacher view
-              if (!shouldPreserveView("teacher")) {
+              if (!shouldPreserveView("teacher", currentViewRef.current)) {
                 setView("teacher-dashboard");
               }
             } else {
@@ -1152,19 +1156,19 @@ export default function App() {
                   } else {
                     localStorage.removeItem('vocaband_quick_play_session');
                     // Preserve current view if on a valid teacher page
-                    if (!shouldPreserveView("teacher")) {
+                    if (!shouldPreserveView("teacher", currentViewRef.current)) {
                       setView("teacher-dashboard");
                     }
                   }
                 } else {
                   // Preserve current view if on a valid teacher page
-                  if (!shouldPreserveView("teacher")) {
+                  if (!shouldPreserveView("teacher", currentViewRef.current)) {
                     setView("teacher-dashboard");
                   }
                 }
               } catch {
                 // Preserve current view if on a valid teacher page
-                if (!shouldPreserveView("teacher")) {
+                if (!shouldPreserveView("teacher", currentViewRef.current)) {
                   setView("teacher-dashboard");
                 }
               }
@@ -1244,7 +1248,7 @@ export default function App() {
             setXp(userData.xp ?? 0);
             setStreak(userData.streak ?? 0);
             // Preserve current view if on a valid student page
-            if (!shouldPreserveView("student")) {
+            if (!shouldPreserveView("student", currentViewRef.current)) {
               setView("student-dashboard");
             }
           } else {
@@ -1294,7 +1298,7 @@ export default function App() {
                 }
               }
               // Preserve current view if on a valid student page
-              if (!shouldPreserveView("student")) {
+              if (!shouldPreserveView("student", currentViewRef.current)) {
                 setView("student-dashboard");
               }
               return;
@@ -1407,7 +1411,7 @@ export default function App() {
                 }
               }
               // Preserve current view if on a valid student page
-              if (!shouldPreserveView("student")) {
+              if (!shouldPreserveView("student", currentViewRef.current)) {
                 setView("student-dashboard");
               }
               return;
@@ -1726,8 +1730,15 @@ export default function App() {
   // between teacher pages without flashing or clearing.
   // - For teachers: applies their dashboard theme CSS variables
   // - For students/public: clears any teacher theme variables
+  // Extract theme ID separately to avoid re-running effect on unrelated user updates.
+  const teacherThemeId = user?.role === 'teacher' ? (user as any).teacherDashboardTheme : null;
+  const lastThemeRef = useRef<string | null>(null);
+
   useEffect(() => {
-    const teacherThemeId = user?.role === 'teacher' ? (user as any).teacherDashboardTheme : null;
+    // Only apply if theme actually changed (avoid unnecessary DOM writes)
+    if (lastThemeRef.current === teacherThemeId) return;
+    lastThemeRef.current = teacherThemeId;
+
     if (teacherThemeId) {
       const theme = getTeacherDashboardTheme(teacherThemeId);
       applyThemePalette(theme.palette);
@@ -1737,7 +1748,7 @@ export default function App() {
       clearThemePalette();
       delete document.documentElement.dataset.themeDark;
     }
-  }, [user?.uid, user?.role, (user as any)?.teacherDashboardTheme]);
+  }, [teacherThemeId]);
 
 
   // View-state guards: redirect the user out of orphaned / broken

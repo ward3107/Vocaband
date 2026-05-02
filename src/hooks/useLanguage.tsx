@@ -151,3 +151,22 @@ export const languageFlags: Record<Language, string> = {
   he: '🇮🇱',
   ar: '🇸🇦',
 };
+
+/** Short labels for UI toggles (2-3 chars). */
+export const languageShortLabels: Record<Language, string> = {
+  en: 'EN',
+  he: 'עב',
+  ar: 'ع',
+};
+
+/** All supported languages - use this instead of hardcoding ['en', 'he', 'ar']. */
+export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar'];
+
+/** Language options for dropdowns/toggles with code, label, and flag. */
+export const languageOptions: { code: Language; label: string; flag: string }[] = ALL_LANGUAGES.map(
+  (code) => ({
+    code,
+    label: languageShortLabels[code],
+    flag: languageFlags[code],
+  })
+);

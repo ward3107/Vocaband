@@ -10,6 +10,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
 import { supabase } from '../core/supabase';
 import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
+import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
 import QPAvatar from './QPAvatar';
 
 // Match the flag in QuickPlayStudentView. When on, this monitor
@@ -268,31 +269,17 @@ export default function QuickPlayMonitor({
   };
   const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
 
-  // ─── Copy link feedback state ─────────────────────────────────────────────
-  const [copiedLink, setCopiedLink] = useState(false);
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Clear the "copied" reset timer on unmount
-  useEffect(() => {
-    return () => {
-      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-    };
-  }, []);
+  // ─── Copy link feedback ───────────────────────────────────────────────────────
+  const { copied: copiedLink, copyToClipboard } = useClipboardFeedback(2000);
 
   const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(qrUrl);
-      setCopiedLink(true);
-      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-      copiedTimerRef.current = setTimeout(() => {
-        setCopiedLink(false);
-        copiedTimerRef.current = null;
-      }, 2000);
+    const success = await copyToClipboard(qrUrl);
+    if (success) {
       showToast('Join link copied!', 'success');
-    } catch {
+    } else {
       showToast('Could not copy link.', 'error');
     }
-  }, [qrUrl, showToast]);
+  }, [qrUrl, showToast, copyToClipboard]);
 
   // ─── Join sound effect ────────────────────────────────────────────────────
   // Detect newly-joined students by name diff against the previous render
