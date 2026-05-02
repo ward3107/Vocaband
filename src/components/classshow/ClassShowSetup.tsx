@@ -20,7 +20,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
-  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, ChevronDown, ChevronUp, Wand2,
+  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2, ArrowLeft,
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
@@ -75,35 +75,31 @@ interface ClassShowSetupProps {
 }
 
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
-  { id: 'classic',          nameKey: 'modeClassic',         icon: <Layers size={26} />,         gradient: 'from-indigo-500 to-violet-600' },
-  { id: 'listening',        nameKey: 'modeListening',       icon: <Headphones size={26} />,     gradient: 'from-sky-500 to-cyan-600' },
-  { id: 'reverse',          nameKey: 'modeReverse',         icon: <ArrowLeftRight size={26} />, gradient: 'from-amber-500 to-orange-600' },
-  { id: 'fill-blank',       nameKey: 'modeFillBlank',       icon: <FileText size={26} />,       gradient: 'from-emerald-500 to-teal-600' },
-  { id: 'true-false',       nameKey: 'modeTrueFalse',       icon: <CheckCircle size={26} />,    gradient: 'from-rose-500 to-pink-600' },
-  { id: 'flashcards',       nameKey: 'modeFlashcards',      icon: <Sparkles size={26} />,       gradient: 'from-fuchsia-500 to-purple-600' },
-  { id: 'spelling',         nameKey: 'modeSpelling',        icon: <Keyboard size={26} />,       gradient: 'from-blue-500 to-indigo-600' },
-  { id: 'scramble',         nameKey: 'modeScramble',        icon: <Shuffle size={26} />,        gradient: 'from-orange-500 to-red-600' },
-  { id: 'letter-sounds',    nameKey: 'modeLetterSounds',    icon: <AudioLines size={26} />,     gradient: 'from-cyan-500 to-blue-600' },
-  { id: 'matching',         nameKey: 'modeMatching',        icon: <Link2 size={26} />,          gradient: 'from-pink-500 to-rose-600' },
-  { id: 'memory-flip',      nameKey: 'modeMemoryFlip',      icon: <Grid3x3 size={26} />,        gradient: 'from-violet-500 to-purple-600' },
-  { id: 'sentence-builder', nameKey: 'modeSentenceBuilder', icon: <Puzzle size={26} />,         gradient: 'from-teal-500 to-emerald-600' },
+  { id: 'classic',          nameKey: 'modeClassic',         icon: <Layers size={26} />,         gradient: 'from-indigo-300 to-violet-400' },
+  { id: 'listening',        nameKey: 'modeListening',       icon: <Headphones size={26} />,     gradient: 'from-sky-300 to-cyan-400' },
+  { id: 'reverse',          nameKey: 'modeReverse',         icon: <ArrowLeftRight size={26} />, gradient: 'from-amber-300 to-orange-400' },
+  { id: 'fill-blank',       nameKey: 'modeFillBlank',       icon: <FileText size={26} />,       gradient: 'from-emerald-300 to-teal-400' },
+  { id: 'true-false',       nameKey: 'modeTrueFalse',       icon: <CheckCircle size={26} />,    gradient: 'from-rose-300 to-pink-400' },
+  { id: 'flashcards',       nameKey: 'modeFlashcards',      icon: <Sparkles size={26} />,       gradient: 'from-fuchsia-300 to-purple-400' },
+  { id: 'spelling',         nameKey: 'modeSpelling',        icon: <Keyboard size={26} />,       gradient: 'from-blue-300 to-indigo-400' },
+  { id: 'scramble',         nameKey: 'modeScramble',        icon: <Shuffle size={26} />,        gradient: 'from-orange-300 to-red-400' },
+  { id: 'letter-sounds',    nameKey: 'modeLetterSounds',    icon: <AudioLines size={26} />,     gradient: 'from-cyan-300 to-blue-400' },
+  { id: 'matching',         nameKey: 'modeMatching',        icon: <Link2 size={26} />,          gradient: 'from-pink-300 to-rose-400' },
+  { id: 'memory-flip',      nameKey: 'modeMemoryFlip',      icon: <Grid3x3 size={26} />,        gradient: 'from-violet-300 to-purple-400' },
+  { id: 'sentence-builder', nameKey: 'modeSentenceBuilder', icon: <Puzzle size={26} />,         gradient: 'from-teal-300 to-emerald-400' },
 ];
-
-const COUNT_OPTIONS = [10, 20, 30, 50];
 
 export default function ClassShowSetup({ availableSources, initialSourceIndex, onStart, onCancel, pickerWiring }: ClassShowSetupProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
 
   const [mode, setMode] = useState<ClassShowMode>('classic');
-  const [count, setCount] = useState(20);
 
   // Custom-words state — built up by the embedded WordPicker.  When
   // non-empty, a synthetic "My custom selection" source is prepended
   // to the available-sources list and auto-selected.
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Effective source list = (custom selection if any) + real sources.
   const effectiveSources = useMemo<ClassShowWordSource[]>(() => {
@@ -125,9 +121,6 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
   const realSelectedSource =
     effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)] ?? null;
 
-  const maxCount = realSelectedSource?.words.length ?? 0;
-  const effectiveCount = Math.min(count, maxCount);
-
   const canStart = !!realSelectedSource && realSelectedSource.words.length > 0;
 
   const handleCustomWordsChange = (next: Word[]) => {
@@ -139,47 +132,36 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="w-full max-w-3xl rounded-3xl border shadow-2xl p-6 sm:p-10"
+        className="w-full max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
       >
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-            {t.classShow}
-          </h1>
-          <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
-            {t.projectToClass}
-          </p>
-        </div>
-
-        {/* Mode picker */}
-        <div className="mb-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            {t.pickMode}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {MODES.map(m => {
-              const selected = mode === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMode(m.id)}
-                  style={{
-                    touchAction: 'manipulation',
-                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
-                  }}
-                  className={`relative bg-gradient-to-br ${m.gradient} text-white rounded-2xl p-4 flex flex-col items-center gap-2 border-2 transition-transform ${selected ? 'scale-[1.03] shadow-lg' : 'hover:scale-[1.02]'}`}
-                >
-                  {m.icon}
-                  <span className="text-sm font-black">{t[m.nameKey] as string}</span>
-                </button>
-              );
-            })}
+        {/* Header with back button */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
+              {t.classShow}
+            </h1>
+            <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
+              {t.projectToClass}
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              borderColor: 'var(--vb-border)',
+              color: 'var(--vb-text-secondary)',
+              backgroundColor: 'var(--vb-surface)',
+            }}
+            className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">Back</span>
+          </button>
         </div>
 
         {/* Word source picker */}
@@ -221,115 +203,64 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
           {/* Build custom list — embedded WordPicker.  Only available
               when the parent provided picker wiring (allWords + callbacks). */}
           {pickerWiring && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setPickerOpen(o => !o)}
-                style={{
-                  touchAction: 'manipulation',
-                  backgroundColor: 'var(--vb-surface-alt)',
-                  color: 'var(--vb-text-primary)',
-                  borderColor: 'var(--vb-border)',
-                }}
-                className="w-full px-4 py-3 rounded-xl border-2 inline-flex items-center justify-between font-bold text-sm transition-colors hover:opacity-90"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Wand2 size={16} style={{ color: 'var(--vb-accent)' }} />
-                  Build a custom list (paste, OCR, topic packs, saved groups)
-                </span>
-                {pickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-              {pickerOpen && (
-                <div
-                  className="mt-3 p-4 rounded-xl border-2"
-                  style={{
-                    backgroundColor: 'var(--vb-surface-alt)',
-                    borderColor: 'var(--vb-border)',
-                  }}
-                >
-                  <WordPicker
-                    allWords={pickerWiring.allWords}
-                    selectedWords={customWords}
-                    onSelectedWordsChange={handleCustomWordsChange}
-                    onTranslateWord={pickerWiring.onTranslateWord}
-                    onTranslateBatch={pickerWiring.onTranslateBatch}
-                    onOcrUpload={pickerWiring.onOcrUpload}
-                    showToast={pickerWiring.showToast}
-                    topicPacks={pickerWiring.topicPacks}
-                    savedGroups={pickerWiring.savedGroups}
-                    onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
-                    onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
-                    customWords={customWordsCustomTier}
-                    onCustomWordsChange={setCustomWordsCustomTier}
-                  />
-                </div>
-              )}
+            <div className="mt-4 p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+              <WordPicker
+                allWords={pickerWiring.allWords}
+                selectedWords={customWords}
+                onSelectedWordsChange={handleCustomWordsChange}
+                onTranslateWord={pickerWiring.onTranslateWord}
+                onTranslateBatch={pickerWiring.onTranslateBatch}
+                onOcrUpload={pickerWiring.onOcrUpload}
+                showToast={pickerWiring.showToast}
+                topicPacks={pickerWiring.topicPacks}
+                savedGroups={pickerWiring.savedGroups}
+                onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
+                onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
+                customWords={customWordsCustomTier}
+                onCustomWordsChange={setCustomWordsCustomTier}
+              />
             </div>
           )}
         </div>
 
-        {/* Question count */}
-        <div className="mb-10">
+        {/* Mode picker */}
+        <div className="mb-8">
           <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            {t.questionCount}
+            {t.pickMode}
           </h2>
-          <div className="flex flex-wrap gap-2">
-            {COUNT_OPTIONS.map(c => {
-              const selected = count === c;
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {MODES.map(m => {
+              const selected = mode === m.id;
               return (
                 <button
-                  key={c}
+                  key={m.id}
                   type="button"
-                  onClick={() => setCount(c)}
+                  onClick={() => setMode(m.id)}
                   style={{
-                    backgroundColor: selected ? 'var(--vb-accent)' : 'var(--vb-surface)',
-                    color: selected ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
-                    borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
+                    touchAction: 'manipulation',
+                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
                   }}
-                  className="px-5 py-2.5 rounded-xl border-2 font-bold text-sm transition-colors"
+                  className={`relative bg-gradient-to-br ${m.gradient} text-white rounded-2xl p-4 flex flex-col items-center gap-2 border-2 transition-transform ${selected ? 'scale-[1.03] shadow-lg' : 'hover:scale-[1.02]'}`}
                 >
-                  {c}
+                  {m.icon}
+                  <span className="text-sm font-black">{t[m.nameKey] as string}</span>
                 </button>
               );
             })}
-            <button
-              type="button"
-              onClick={() => setCount(Number.MAX_SAFE_INTEGER)}
-              style={{
-                backgroundColor: count >= maxCount ? 'var(--vb-accent)' : 'var(--vb-surface)',
-                color: count >= maxCount ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
-                borderColor: count >= maxCount ? 'var(--vb-accent)' : 'var(--vb-border)',
-              }}
-              className="px-5 py-2.5 rounded-xl border-2 font-bold text-sm transition-colors"
-            >
-              {t.questionCountAll}
-            </button>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex justify-end">
           <button
             type="button"
-            onClick={onCancel}
-            style={{
-              borderColor: 'var(--vb-border)',
-              color: 'var(--vb-text-secondary)',
-              backgroundColor: 'var(--vb-surface)',
-            }}
-            className="flex-1 sm:flex-none px-6 py-4 rounded-2xl font-bold border-2 transition-colors hover:opacity-90"
-          >
-            {t.backToDashboard}
-          </button>
-          <button
-            type="button"
-            onClick={() => canStart && realSelectedSource && onStart({ mode, source: realSelectedSource, questionCount: effectiveCount })}
+            onClick={() => canStart && realSelectedSource && onStart({ mode, source: realSelectedSource, questionCount: realSelectedSource.words.length })}
             disabled={!canStart}
             style={{
               backgroundColor: canStart ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
               color: canStart ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
             }}
-            className="flex-1 px-6 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed"
+            className="px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed"
           >
             <Play size={20} />
             {t.startShow}

@@ -56,7 +56,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
             type="checkbox"
             checked={consentChecked}
             onChange={(e) => onToggleChecked(e.target.checked)}
-            className="mt-0.5 w-4 h-4 rounded border-outline text-primary focus:ring-primary"
+            className="mt-0.5 w-8 h-8 rounded border-outline text-primary focus:ring-primary focus:ring-2 focus:ring-offset-0"
           />
           <span className="text-xs sm:text-sm text-on-surface">
             I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Terms of Service</a>.

@@ -66,8 +66,8 @@ interface ClassroomViewProps {
 }
 
 const LEGACY_TABS: Array<{ id: LegacyTab; label: string; icon: React.ReactNode; gradient: string }> = [
-  { id: "pulse",   label: "Pulse",   icon: <Activity size={16} />, gradient: "from-emerald-500 to-teal-600" },
-  { id: "mastery", label: "Mastery", icon: <Brain size={16} />,    gradient: "from-violet-500 to-fuchsia-600" },
+  { id: "pulse",   label: "Pulse",   icon: <Activity size={16} />, gradient: "from-emerald-300 to-teal-400" },
+  { id: "mastery", label: "Mastery", icon: <Brain size={16} />,    gradient: "from-violet-300 to-fuchsia-400" },
 ];
 
 const V2_TABS: Array<{
@@ -77,10 +77,10 @@ const V2_TABS: Array<{
   gradient: string;
   blurb: string;
 }> = [
-  { id: "today",       emoji: "🌡️", label: "Today",       gradient: "from-indigo-500 to-violet-600",  blurb: "Who needs my attention today?" },
-  { id: "students",    emoji: "👥", label: "Students",    gradient: "from-violet-500 to-fuchsia-600", blurb: "Deep-dive on one kid" },
-  { id: "assignments", emoji: "📝", label: "Assignments", gradient: "from-amber-500 to-orange-600",   blurb: "How did my class do on this?" },
-  { id: "reports",     emoji: "📊", label: "Reports",     gradient: "from-emerald-500 to-teal-600",   blurb: "Plan my next lesson" },
+  { id: "today",       emoji: "🌡️", label: "Today",       gradient: "from-indigo-300 to-violet-400",  blurb: "Who needs my attention today?" },
+  { id: "students",    emoji: "👥", label: "Students",    gradient: "from-violet-300 to-fuchsia-400", blurb: "Deep-dive on one kid" },
+  { id: "assignments", emoji: "📝", label: "Assignments", gradient: "from-amber-300 to-orange-400",   blurb: "How did my class do on this?" },
+  { id: "reports",     emoji: "📊", label: "Reports",     gradient: "from-emerald-300 to-teal-400",   blurb: "Plan my next lesson" },
 ];
 
 const legacyToV2: Record<LegacyTab, V2Tab> = {

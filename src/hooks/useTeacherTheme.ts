@@ -1,21 +1,18 @@
 /**
- * useTeacherTheme — resolves the active teacher dashboard theme and
- * applies its palette to CSS custom properties on document.documentElement.
+ * useTeacherTheme — resolves the active teacher dashboard theme.
  *
- * Mount this hook once at the top of every teacher-side route
- * (TeacherDashboardView, classroom drawers, the Class Show view).
- * Any descendant component can then consume the palette via
- * `var(--vb-surface)`, `var(--vb-accent)`, etc. — no prop drilling.
+ * CSS custom properties are now applied globally in App.tsx, so this
+ * hook only returns the theme object for components that need direct
+ * access to theme properties (bg class, dark mode flag, etc.).
  *
- * On unmount the palette is cleared so non-teacher routes (student
- * dashboard, public landing, etc.) don't inherit teacher theming.
+ * Previously this hook managed CSS variables and cleared them on unmount,
+ * which caused theme flashes when navigating between teacher pages.
+ * The global App.tsx effect eliminated that issue.
  */
-import { useEffect } from 'react';
 import {
   getTeacherDashboardTheme,
   type TeacherDashboardTheme,
 } from '../constants/teacherDashboardThemes';
-import { applyThemePalette, clearThemePalette } from '../utils/applyThemePalette';
 
 export interface UseTeacherThemeResult {
   theme: TeacherDashboardTheme;
@@ -24,13 +21,5 @@ export interface UseTeacherThemeResult {
 
 export function useTeacherTheme(themeId: string | null | undefined): UseTeacherThemeResult {
   const theme = getTeacherDashboardTheme(themeId);
-
-  useEffect(() => {
-    applyThemePalette(theme.palette);
-    return () => {
-      clearThemePalette();
-    };
-  }, [theme]);
-
   return { theme, isDark: theme.dark };
 }

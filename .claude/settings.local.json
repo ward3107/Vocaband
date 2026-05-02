@@ -211,7 +211,11 @@
       "Bash(set PORT=3001)",
       "Bash(findstr :3001)",
       "Bash(findstr node *)",
-      "Bash(findstr :3002)"
+      "Bash(findstr :3002)",
+      "Bash(npm update *)",
+      "Bash(claude *)",
+      "Bash(find *)",
+      "Bash(git diff *)"
     ]
   }
 }

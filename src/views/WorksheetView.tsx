@@ -19,7 +19,7 @@
  */
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2 } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import Worksheet, { type WorksheetSheetType } from '../components/worksheet/Worksheet';
@@ -47,10 +47,10 @@ interface WorksheetViewProps {
 }
 
 const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string }> = [
-  { id: 'word-list',  label: 'Word list',         description: 'Bilingual reference sheet',         icon: <BookOpen size={26} />, gradient: 'from-emerald-500 to-teal-600' },
-  { id: 'scramble',   label: 'Scramble',          description: 'Unscramble each word',              icon: <Shuffle size={26} />,  gradient: 'from-orange-500 to-red-600' },
-  { id: 'fill-blank', label: 'Fill in the blank', description: 'Sentences with missing words',     icon: <FileText size={26} />, gradient: 'from-indigo-500 to-violet-600' },
-  { id: 'match-up',   label: 'Match-up',          description: 'Draw lines between English + translation', icon: <Link2 size={26} />, gradient: 'from-pink-500 to-rose-600' },
+  { id: 'word-list',  label: 'Word list',         description: 'Bilingual reference sheet',         icon: <BookOpen size={26} />, gradient: 'from-emerald-300 to-teal-400' },
+  { id: 'scramble',   label: 'Scramble',          description: 'Unscramble each word',              icon: <Shuffle size={26} />,  gradient: 'from-orange-300 to-red-400' },
+  { id: 'fill-blank', label: 'Fill in the blank', description: 'Sentences with missing words',     icon: <FileText size={26} />, gradient: 'from-indigo-300 to-violet-400' },
+  { id: 'match-up',   label: 'Match-up',          description: 'Draw lines between English + translation', icon: <Link2 size={26} />, gradient: 'from-pink-300 to-rose-400' },
 ];
 
 export default function WorksheetView({
@@ -63,13 +63,11 @@ export default function WorksheetView({
   const [sheetType, setSheetType] = useState<WorksheetSheetType>('word-list');
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
-  const [maxWords, setMaxWords] = useState(20);
 
   // Custom-words state for the embedded WordPicker.  When non-empty,
   // a synthetic "My custom selection" source is prepended.
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   const effectiveSources = useMemo(() => {
     if (customWords.length === 0) return initialSources;
@@ -84,7 +82,7 @@ export default function WorksheetView({
   );
 
   const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
-  const wordsForSheet = (source?.words ?? []).slice(0, maxWords);
+  const wordsForSheet = source?.words ?? [];
 
   const handleCustomWordsChange = (next: Word[]) => {
     const wasEmpty = customWords.length === 0;
@@ -109,7 +107,7 @@ export default function WorksheetView({
               Print worksheet
             </h1>
             <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
-              Pick a sheet, set the title, hit Print.
+              Pick words, choose a sheet type, hit Print.
             </p>
           </div>
           <button
@@ -125,33 +123,6 @@ export default function WorksheetView({
             <ArrowLeft size={16} />
             Back
           </button>
-        </div>
-
-        {/* Sheet type picker */}
-        <div className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            Sheet type
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {SHEET_TYPES.map(s => {
-              const selected = sheetType === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSheetType(s.id)}
-                  style={{
-                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
-                  }}
-                  className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-2xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
-                >
-                  {s.icon}
-                  <div className="font-black">{s.label}</div>
-                  <div className="text-xs opacity-90">{s.description}</div>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Word source */}
@@ -191,93 +162,70 @@ export default function WorksheetView({
 
           {/* Build custom list — embedded WordPicker. */}
           {pickerWiring && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setPickerOpen(o => !o)}
-                style={{
-                  backgroundColor: 'var(--vb-surface-alt)',
-                  color: 'var(--vb-text-primary)',
-                  borderColor: 'var(--vb-border)',
-                }}
-                className="w-full px-4 py-3 rounded-xl border-2 inline-flex items-center justify-between font-bold text-sm transition-colors hover:opacity-90"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Wand2 size={16} style={{ color: 'var(--vb-accent)' }} />
-                  Build a custom list (paste, OCR, topic packs, saved groups)
-                </span>
-                {pickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-              {pickerOpen && (
-                <div
-                  className="mt-3 p-4 rounded-xl border-2"
-                  style={{
-                    backgroundColor: 'var(--vb-surface-alt)',
-                    borderColor: 'var(--vb-border)',
-                  }}
-                >
-                  <WordPicker
-                    allWords={pickerWiring.allWords}
-                    selectedWords={customWords}
-                    onSelectedWordsChange={handleCustomWordsChange}
-                    onTranslateWord={pickerWiring.onTranslateWord}
-                    onTranslateBatch={pickerWiring.onTranslateBatch}
-                    onOcrUpload={pickerWiring.onOcrUpload}
-                    showToast={pickerWiring.showToast}
-                    topicPacks={pickerWiring.topicPacks}
-                    savedGroups={pickerWiring.savedGroups}
-                    onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
-                    onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
-                    customWords={customWordsCustomTier}
-                    onCustomWordsChange={setCustomWordsCustomTier}
-                  />
-                </div>
-              )}
+            <div className="mt-4 p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+              <WordPicker
+                allWords={pickerWiring.allWords}
+                selectedWords={customWords}
+                onSelectedWordsChange={handleCustomWordsChange}
+                onTranslateWord={pickerWiring.onTranslateWord}
+                onTranslateBatch={pickerWiring.onTranslateBatch}
+                onOcrUpload={pickerWiring.onOcrUpload}
+                showToast={pickerWiring.showToast}
+                topicPacks={pickerWiring.topicPacks}
+                savedGroups={pickerWiring.savedGroups}
+                onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
+                onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
+                customWords={customWordsCustomTier}
+                onCustomWordsChange={setCustomWordsCustomTier}
+              />
             </div>
           )}
         </div>
 
-        {/* Title + word count + answer key */}
-        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-              Worksheet title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={60}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-primary)',
-                backgroundColor: 'var(--vb-surface)',
-              }}
-              className="w-full px-4 py-3 rounded-xl border-2 outline-none font-bold"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-              Words on sheet
-            </label>
-            <div className="flex gap-2">
-              {[10, 20, 30, 50].map(n => (
+        {/* Sheet type picker */}
+        <div className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
+            Sheet type
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {SHEET_TYPES.map(s => {
+              const selected = sheetType === s.id;
+              return (
                 <button
-                  key={n}
+                  key={s.id}
                   type="button"
-                  onClick={() => setMaxWords(n)}
+                  onClick={() => setSheetType(s.id)}
                   style={{
-                    backgroundColor: maxWords === n ? 'var(--vb-accent)' : 'var(--vb-surface)',
-                    color: maxWords === n ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
-                    borderColor: maxWords === n ? 'var(--vb-accent)' : 'var(--vb-border)',
+                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
                   }}
-                  className="flex-1 px-3 py-3 rounded-xl border-2 font-bold transition-colors"
+                  className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-2xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
                 >
-                  {n}
+                  {s.icon}
+                  <div className="font-black">{s.label}</div>
+                  <div className="text-xs opacity-90">{s.description}</div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
+        </div>
+
+        {/* Title */}
+        <div className="mb-8">
+          <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+            Worksheet title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={60}
+            style={{
+              borderColor: 'var(--vb-border)',
+              color: 'var(--vb-text-primary)',
+              backgroundColor: 'var(--vb-surface)',
+            }}
+            className="w-full px-4 py-3 rounded-xl border-2 outline-none font-bold"
+          />
         </div>
 
         {sheetType !== 'word-list' && (
