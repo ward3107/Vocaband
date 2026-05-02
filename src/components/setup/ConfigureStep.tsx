@@ -365,7 +365,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               </span>
             )}
           </button>
-          {onGenerateLesson && selectedWords.length > 0 && (
+          {/* AI Text Generator tab - assignments only */}
+          {isAssignment && onGenerateLesson && selectedWords.length > 0 && (
             <button
               onClick={() => {
                 setActivityType('ai-generator');
@@ -547,8 +548,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         )}
         </>)}
 
-        {/* Tab Content: AI Text Generator */}
-        {activityType === 'ai-generator' && onGenerateLesson && selectedWords.length > 0 && (
+        {/* Tab Content: AI Text Generator — assignments only */}
+        {isAssignment && activityType === 'ai-generator' && onGenerateLesson && selectedWords.length > 0 && (
           <motion.div
             key="ai-tab"
             initial={{ opacity: 0, y: 10 }}
