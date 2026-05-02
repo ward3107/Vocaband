@@ -15,6 +15,8 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
 import { IdentityHero } from "../components/structure/IdentityHero";
@@ -118,6 +120,13 @@ export default function StudentDashboardView({
   // structure prop is provided.
   const [showStructureDetail, setShowStructureDetail] = useState(false);
 
+  // Daily missions — three rotating tasks per user-local calendar day.
+  // Hook only fires for authenticated students; guests + Quick-Play
+  // shouldn't see the card (no schema-bound XP loop).
+  const dailyMissions = useDailyMissions({
+    enabled: Boolean(user?.role === 'student' && !user?.isGuest),
+  });
+
   // The default theme now uses a soft gradient instead of flat stone-100 —
   // sets a warmer tone for the vibrant greeting hero that follows. Other
   // themes still pick their own bg from THEMES.
@@ -217,6 +226,16 @@ export default function StudentDashboardView({
               setView('shop');
             }}
           />
+
+          {/* ── Daily missions — three rotating mission types that
+              refresh once per user-local calendar day.  Renders only
+              for authenticated students (the hook is gated above). */}
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <DailyMissionsCard
+              missions={dailyMissions.missions}
+              isLoading={dailyMissions.isLoading}
+            />
+          )}
 
           {/* ── Earned badges ──────────────────────────────────────
               Collection of achievements (auto-awarded + teacher-

@@ -468,6 +468,30 @@ export function useGameFinish(params: UseGameFinishParams) {
       // key, so both systems can coexist while old keys drain.
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
+
+      // Daily missions — fire-and-forget after the progress row lands.
+      // The RPC re-derives every mission's progress from progress +
+      // word_attempts (already up-to-date thanks to the save above),
+      // marks newly-completed missions, and grants their fixed XP.
+      // Only fires for real students — Quick Play guests already
+      // returned at the top of saveScore.  Wrapped in queueSaveOperation
+      // so a transient network blip retries with the rest of the save
+      // queue rather than dropping the call silently.
+      queueSaveOperation(async () => {
+        try {
+          const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
+          await supabase.rpc('record_mission_progress', {
+            p_mission_date: today,
+            p_mode: gameMode,
+            p_score: cappedScore,
+          });
+        } catch (err) {
+          // Silent — daily-missions XP is a bonus on top of the
+          // assignment XP that already landed; failing here doesn't
+          // break the student's main progress.
+          console.error('[daily-missions] record on save failed:', err);
+        }
+      });
     } catch (error) {
       // Silent.  Log for dev console but never surface a banner to the
       // student — the queue will retry in the background.
