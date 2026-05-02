@@ -93,7 +93,7 @@ export interface UseGameModeActionsParams {
   /** Throttled socket emit — passes the new score to the live monitor. */
   emitScoreUpdate: (newScore: number) => void;
   /** Persist the score / final progress row. */
-  saveScore: (scoreOverride?: number) => void | Promise<void>;
+  saveScore: (scoreOverride?: number, maxScoreOverride?: number) => void | Promise<void>;
   /** TTS for full-text speech (window.speechSynthesis path). */
   speak: (text: string) => void;
   /** TTS for individual words (Neural2 path via useAudio). */

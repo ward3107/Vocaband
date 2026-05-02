@@ -2348,6 +2348,18 @@ export default function App() {
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
+          onStartReview={() => {
+            // Spaced repetition entry point — bypasses the mode
+            // picker.  ReviewGame self-fetches its queue + the
+            // ALL_WORDS distractor pool, so we don't need to seed
+            // gameWords or activeAssignment.  Set isFinished off so
+            // the finish-screen overlay doesn't show stale state
+            // from a previous round.
+            setGameMode("review");
+            setIsFinished(false);
+            setShowModeSelection(false);
+            setView("game");
+          }}
           retention={retention}
           boosters={{
             isXpBoosterActive: boosters.isXpBoosterActive,
@@ -3244,6 +3256,7 @@ export default function App() {
         leaderboard={leaderboard}
         isFinished={isFinished}
         handleExitGame={handleExitGame}
+        saveScore={saveScore}
         handleAnswer={handleAnswer}
         handleMatchClick={handleMatchClick}
         handleTFAnswer={handleTFAnswer}
