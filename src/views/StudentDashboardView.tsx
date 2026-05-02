@@ -188,6 +188,17 @@ export default function StudentDashboardView({
           <ActiveBoostersStrip {...boosters} />
           <PowerUpsStrip powerUps={user.powerUps} />
 
+          {/* ── Activity pet — grows with distinct days played, decays
+              past a 3-day grace period.  Sits above the structure +
+              shop pair so the student lands on the streak prompt
+              before exploring deeper widgets.  Real students only. */}
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <PetEvolutionCard
+              state={petEvolution.state}
+              isLoading={petEvolution.isLoading}
+            />
+          )}
+
           {/* ── Structure preview + Shop side-by-side ─────────────
               Garden / City / Rocket / Castle renders as a compact
               tappable preview on the left (opens the fullscreen
