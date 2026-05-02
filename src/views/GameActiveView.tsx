@@ -339,6 +339,18 @@ export default function GameActiveView({
         />
       );
     }
+    if (gameMode === "relations") {
+      // Synonyms & Antonyms — multi-choice question alternating
+      // between syn / ant per turn.  Question source is the curated
+      // RELATIONS dataset, not the assignment word pool.
+      return (
+        <RelationsGame
+          themeColor={modeTheme ?? "fuchsia"}
+          speak={speak}
+          onFinish={handleExitGame}
+        />
+      );
+    }
     if (gameMode === "scramble") {
       return (
         <ScrambleGame
