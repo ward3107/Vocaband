@@ -190,17 +190,17 @@ export default function DashboardOnboarding({ onComplete }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="absolute bg-white rounded-2xl shadow-2xl p-5 border border-stone-200 max-w-[calc(100vw-24px)]"
+          className="absolute bg-[var(--vb-surface)] rounded-2xl shadow-2xl p-5 border border-[var(--vb-border)] max-w-[calc(100vw-24px)]"
           style={getTooltipStyle()}
         >
           {/* Step counter */}
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-[var(--vb-text-muted)] uppercase tracking-wider">
               Step {step + 1} of {STEPS.length}
             </span>
             <button
               onClick={onComplete}
-              className="text-stone-400 hover:text-stone-600 transition-colors"
+              className="text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
               title="Skip tour"
             >
               <X size={16} />
@@ -213,7 +213,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
               <div
                 key={i}
                 className={`h-1 flex-1 rounded-full transition-all ${
-                  i <= step ? 'bg-blue-500' : 'bg-stone-200'
+                  i <= step ? 'bg-blue-500' : 'bg-[var(--vb-surface-alt)]'
                 }`}
               />
             ))}
@@ -223,8 +223,8 @@ export default function DashboardOnboarding({ onComplete }: Props) {
           <div className="flex items-start gap-3 mb-4">
             <span className="text-2xl">{current.icon}</span>
             <div>
-              <h3 className="font-black text-stone-900 text-base">{current.title}</h3>
-              <p className="text-stone-600 text-sm mt-1 leading-relaxed">{current.description}</p>
+              <h3 className="font-black text-[var(--vb-text-primary)] text-base">{current.title}</h3>
+              <p className="text-[var(--vb-text-secondary)] text-sm mt-1 leading-relaxed">{current.description}</p>
             </div>
           </div>
 
@@ -232,7 +232,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
           <div className="flex items-center gap-2">
             <button
               onClick={onComplete}
-              className="px-3 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 transition-colors"
+              className="px-3 py-2 text-xs font-bold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
             >
               Skip All
             </button>

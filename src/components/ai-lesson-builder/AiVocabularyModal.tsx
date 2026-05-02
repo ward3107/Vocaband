@@ -164,7 +164,7 @@ export default function AiVocabularyModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-fuchsia-400 to-violet-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -189,7 +189,7 @@ export default function AiVocabularyModal({
             <div className="space-y-6">
               {/* Topic Input with Dropdown */}
               <div>
-                <label htmlFor="ai-topic" className="block text-sm font-bold text-stone-700 mb-2">
+                <label htmlFor="ai-topic" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                   📚 Topic <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -200,14 +200,14 @@ export default function AiVocabularyModal({
                     onChange={(e) => setTopic(e.target.value)}
                     onFocus={() => setShowTopicDropdown(true)}
                     placeholder="e.g. weather, food, feelings, school subjects..."
-                    className="w-full px-4 py-3 pr-10 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-stone-800"
+                    className="w-full px-4 py-3 pr-10 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-[var(--vb-text-primary)]"
                     dir="ltr"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={() => setShowTopicDropdown(!showTopicDropdown)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]"
                   >
                     <Search className="w-5 h-5" />
                   </button>
@@ -219,11 +219,11 @@ export default function AiVocabularyModal({
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute z-10 w-full mt-2 bg-white border-2 border-stone-200 rounded-xl shadow-xl max-h-64 overflow-y-auto"
+                        className="absolute z-10 w-full mt-2 bg-[var(--vb-surface)] border-2 border-[var(--vb-border)] rounded-xl shadow-xl max-h-64 overflow-y-auto"
                       >
                         {Object.entries(TOPIC_SUGGESTIONS).map(([category, topics]) => (
                           <div key={category}>
-                            <div className="px-4 py-2 bg-stone-100 text-xs font-bold text-stone-600 uppercase tracking-wider sticky top-0">
+                            <div className="px-4 py-2 bg-[var(--vb-surface-alt)] text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wider sticky top-0">
                               {category}
                             </div>
                             {topics.map((suggestion) => (
@@ -234,7 +234,7 @@ export default function AiVocabularyModal({
                                   setTopic(suggestion);
                                   setShowTopicDropdown(false);
                                 }}
-                                className="w-full px-4 py-2.5 text-left hover:bg-fuchsia-50 transition-colors text-stone-700 hover:text-fuchsia-700"
+                                className="w-full px-4 py-2.5 text-left hover:bg-fuchsia-50 transition-colors text-[var(--vb-text-secondary)] hover:text-fuchsia-700"
                               >
                                 {suggestion}
                               </button>
@@ -245,14 +245,14 @@ export default function AiVocabularyModal({
                     )}
                   </AnimatePresence>
                 </div>
-                <p className="mt-1 text-xs text-stone-500">
+                <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
                   Type a topic or choose from suggestions above
                 </p>
               </div>
 
               {/* Level Selection */}
               <div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">
+                <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                   📊 Level <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -264,12 +264,12 @@ export default function AiVocabularyModal({
                       className={`p-3 rounded-xl text-left transition-all ${
                         level === lvl.value
                           ? 'bg-gradient-to-r from-fuchsia-400 to-violet-500 text-white shadow-md'
-                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                          : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)]'
                       }`}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                     >
                       <p className="font-bold">{lvl.label}</p>
-                      <p className={`text-xs ${level === lvl.value ? 'text-white/80' : 'text-stone-500'}`}>
+                      <p className={`text-xs ${level === lvl.value ? 'text-white/80' : 'text-[var(--vb-text-muted)]'}`}>
                         {lvl.description}
                       </p>
                     </button>
@@ -279,7 +279,7 @@ export default function AiVocabularyModal({
 
               {/* Examples to Anchor */}
               <div>
-                <label htmlFor="ai-examples" className="block text-sm font-bold text-stone-700 mb-2">
+                <label htmlFor="ai-examples" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                   💡 Example words to guide style (optional)
                 </label>
                 <input
@@ -288,28 +288,28 @@ export default function AiVocabularyModal({
                   value={examplesToAnchor}
                   onChange={(e) => setExamplesToAnchor(e.target.value)}
                   placeholder="e.g. sunny, cloudy, windy..."
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-stone-800"
+                  className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-[var(--vb-text-primary)]"
                   dir="ltr"
                 />
-                <p className="mt-1 text-xs text-stone-500">
+                <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
                   Helps AI match your preferred vocabulary style
                 </p>
               </div>
 
               {/* Skip Curriculum Duplicates */}
-              <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl">
+              <div className="flex items-center gap-3 p-4 bg-[var(--vb-surface)] rounded-xl">
                 <input
                   id="skip-duplicates"
                   type="checkbox"
                   checked={skipCurriculumDuplicates}
                   onChange={(e) => setSkipCurriculumDuplicates(e.target.checked)}
-                  className="w-5 h-5 rounded border-stone-300 text-fuchsia-500 focus:ring-fuchsia-300"
+                  className="w-5 h-5 rounded border-[var(--vb-text-muted)] text-fuchsia-500 focus:ring-fuchsia-300"
                 />
                 <div className="flex-1">
-                  <label htmlFor="skip-duplicates" className="text-sm font-bold text-stone-700 cursor-pointer">
+                  <label htmlFor="skip-duplicates" className="text-sm font-bold text-[var(--vb-text-secondary)] cursor-pointer">
                     Skip words already in the curriculum
                   </label>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-[var(--vb-text-muted)]">
                     Don't suggest words from Set 1, Set 2, or Set 3
                   </p>
                 </div>
@@ -342,10 +342,10 @@ export default function AiVocabularyModal({
               {/* Results Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-stone-800">
+                  <p className="font-bold text-[var(--vb-text-primary)]">
                     {generatedWords.length} words for "{topic}"
                   </p>
-                  <p className="text-sm text-stone-500">
+                  <p className="text-sm text-[var(--vb-text-muted)]">
                     {selectedForAdd.size} selected to add
                   </p>
                 </div>
@@ -355,7 +355,7 @@ export default function AiVocabularyModal({
                     setSelectedForAdd(new Set());
                   }}
                   type="button"
-                  className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 text-sm font-semibold rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-sm font-semibold rounded-lg transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -376,7 +376,7 @@ export default function AiVocabularyModal({
                 <button
                   onClick={() => setSelectedForAdd(new Set())}
                   type="button"
-                  className="flex-1 py-2 bg-stone-100 text-stone-600 text-sm font-semibold rounded-lg hover:bg-stone-200 transition-colors"
+                  className="flex-1 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-sm font-semibold rounded-lg hover:bg-[var(--vb-surface-alt)] transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   Deselect All
@@ -400,25 +400,25 @@ export default function AiVocabularyModal({
                         className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                           isSelected
                             ? 'bg-fuchsia-50 border-fuchsia-400'
-                            : 'bg-white border-stone-200 hover:border-fuchsia-300'
+                            : 'bg-[var(--vb-surface)] border-[var(--vb-border)] hover:border-fuchsia-300'
                         }`}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-stone-800">{word.english}</p>
+                              <p className="font-bold text-[var(--vb-text-primary)]">{word.english}</p>
                               {word.isFromCurriculum && (
                                 <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
                                   Curriculum
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-sm text-stone-600" dir="auto">
+                            <p className="mt-1 text-sm text-[var(--vb-text-secondary)]" dir="auto">
                               {word.hebrew} • {word.arabic}
                             </p>
                             {word.example && (
-                              <p className="mt-1 text-xs text-stone-500 italic">
+                              <p className="mt-1 text-xs text-[var(--vb-text-muted)] italic">
                                 "{word.example}"
                               </p>
                             )}
@@ -428,7 +428,7 @@ export default function AiVocabularyModal({
                               <Check className="w-5 h-5 text-emerald-500" />
                             ) : (
                               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                                isSelected ? 'border-fuchsia-500 bg-fuchsia-500' : 'border-stone-300'
+                                isSelected ? 'border-fuchsia-500 bg-fuchsia-500' : 'border-[var(--vb-text-muted)]'
                               }`}>
                                 {isSelected && <Check className="w-4 h-4 text-white" />}
                               </div>
@@ -442,7 +442,7 @@ export default function AiVocabularyModal({
               </div>
 
               {/* Add Selected Button */}
-              <div className="pt-4 border-t border-stone-200">
+              <div className="pt-4 border-t border-[var(--vb-border)]">
                 <button
                   onClick={handleAddWords}
                   disabled={selectedForAdd.size === 0}

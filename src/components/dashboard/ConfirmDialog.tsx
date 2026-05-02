@@ -26,17 +26,17 @@ export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: Confi
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+            className="bg-[var(--vb-surface)] rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
           >
             <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
-            <h3 className="text-2xl font-black mb-3 text-stone-900">Confirm Action</h3>
-            <p className="text-stone-600 mb-8">{confirmDialog.message}</p>
+            <h3 className="text-2xl font-black mb-3 text-[var(--vb-text-primary)]">Confirm Action</h3>
+            <p className="text-[var(--vb-text-secondary)] mb-8">{confirmDialog.message}</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
+                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-border)] transition-all border-2 border-blue-200"
               >
                 Cancel
               </button>

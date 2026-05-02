@@ -99,8 +99,8 @@ const Stepper: React.FC<StepperProps> = ({ value, onChange, min = 0, max = 50, l
       disabled={value <= min}
       className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all ${
         value <= min
-          ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
-          : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+          ? 'bg-[var(--vb-surface-alt)] text-[var(--vb-border)] cursor-not-allowed'
+          : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-border)]'
       }`}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
     >
@@ -115,8 +115,8 @@ const Stepper: React.FC<StepperProps> = ({ value, onChange, min = 0, max = 50, l
       disabled={value >= max}
       className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all ${
         value >= max
-          ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
-          : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+          ? 'bg-[var(--vb-surface-alt)] text-[var(--vb-border)] cursor-not-allowed'
+          : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-border)]'
       }`}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
     >
@@ -235,7 +235,7 @@ export default function AiLessonBuilder({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between shrink-0">
@@ -260,7 +260,7 @@ export default function AiLessonBuilder({
             /* Config Form */
             <div className="space-y-6">
               {/* Reading Text Section */}
-              <div className="border-2 border-stone-200 rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
                 <button
                   type="button"
                   onClick={() => setExpandedSection(expandedSection === 'text' ? null : 'text')}
@@ -269,9 +269,9 @@ export default function AiLessonBuilder({
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-violet-600" />
-                    <h3 className="font-bold text-stone-800">Reading Text</h3>
+                    <h3 className="font-bold text-[var(--vb-text-primary)]">Reading Text</h3>
                   </div>
-                  {expandedSection === 'text' ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+                  {expandedSection === 'text' ? <ChevronUp className="w-5 h-5 text-[var(--vb-text-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--vb-text-muted)]" />}
                 </button>
 
                 {expandedSection === 'text' && (
@@ -282,7 +282,7 @@ export default function AiLessonBuilder({
                   >
                     {/* Difficulty/Description */}
                     <div>
-                      <label className="block text-sm font-bold text-stone-700 mb-2">
+                      <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                         Student Level / Difficulty
                       </label>
                       <input
@@ -290,32 +290,32 @@ export default function AiLessonBuilder({
                         value={textDifficulty}
                         onChange={(e) => setTextDifficulty(e.target.value)}
                         placeholder="e.g., Grade 7, mixed abilities, ESL learners..."
-                        className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-stone-800"
+                        className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)]"
                       />
-                      <p className="mt-1 text-xs text-stone-500">
+                      <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
                         Describe your students — no need for CEFR codes
                       </p>
                     </div>
 
                     {/* Text Type */}
                     <div>
-                      <label className="block text-sm font-bold text-stone-700 mb-2">
+                      <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                         What kind of text do you want?
                       </label>
                       <textarea
                         value={textType}
                         onChange={(e) => setTextType(e.target.value)}
                         placeholder="e.g., A story about friendship that uses these words in context, or An informational text about environmental issues..."
-                        className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-stone-800 resize-none h-24"
+                        className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)] resize-none h-24"
                       />
-                      <p className="mt-1 text-xs text-stone-500">
+                      <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
                         Leave empty for AI to decide based on the vocabulary
                       </p>
                     </div>
 
                     {/* Word Count */}
                     <div>
-                      <label className="block text-sm font-bold text-stone-700 mb-2">
+                      <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                         Text Length: {wordCount} words
                       </label>
                       <input
@@ -327,7 +327,7 @@ export default function AiLessonBuilder({
                         onChange={(e) => setWordCount(Number(e.target.value))}
                         className="w-full accent-violet-600"
                       />
-                      <div className="flex justify-between text-xs text-stone-500 mt-1">
+                      <div className="flex justify-between text-xs text-[var(--vb-text-muted)] mt-1">
                         <span>50</span>
                         <span>500</span>
                         <span>1000</span>
@@ -338,7 +338,7 @@ export default function AiLessonBuilder({
               </div>
 
               {/* Questions Section */}
-              <div className="border-2 border-stone-200 rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
                 <button
                   type="button"
                   onClick={() => setExpandedSection(expandedSection === 'questions' ? null : 'questions')}
@@ -347,7 +347,7 @@ export default function AiLessonBuilder({
                 >
                   <div className="flex items-center gap-2">
                     <HelpCircle className="w-5 h-5 text-violet-600" />
-                    <h3 className="font-bold text-stone-800">Questions</h3>
+                    <h3 className="font-bold text-[var(--vb-text-primary)]">Questions</h3>
                     <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full text-sm font-semibold">
                       {totalQuestions}
                     </span>
@@ -356,12 +356,12 @@ export default function AiLessonBuilder({
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); autoBalance(); }}
-                      className="text-xs px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition-colors"
+                      className="text-xs px-3 py-1 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-lg transition-colors"
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                     >
                       Auto-balance
                     </button>
-                    {expandedSection === 'questions' ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+                    {expandedSection === 'questions' ? <ChevronUp className="w-5 h-5 text-[var(--vb-text-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--vb-text-muted)]" />}
                   </div>
                 </button>
 
@@ -373,15 +373,15 @@ export default function AiLessonBuilder({
                   >
                     {/* Comprehension Types */}
                     <div>
-                      <h4 className="text-sm font-bold text-stone-600 mb-3">Comprehension Questions</h4>
+                      <h4 className="text-sm font-bold text-[var(--vb-text-secondary)] mb-3">Comprehension Questions</h4>
                       <div className="space-y-2">
                         {COMPREHENSION_TYPES.map((type) => (
-                          <div key={type.key} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                          <div key={type.key} className="flex items-center justify-between p-3 bg-[var(--vb-surface)] rounded-lg">
                             <div className="flex items-center gap-3">
                               <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${type.color}`}>
                                 {type.icon}
                               </span>
-                              <span className="font-medium text-stone-700">{type.label}</span>
+                              <span className="font-medium text-[var(--vb-text-secondary)]">{type.label}</span>
                             </div>
                             <Stepper
                               value={questionTypes[type.key]}
@@ -395,15 +395,15 @@ export default function AiLessonBuilder({
 
                     {/* Exercise Types */}
                     <div>
-                      <h4 className="text-sm font-bold text-stone-600 mb-3">Exercise Types</h4>
+                      <h4 className="text-sm font-bold text-[var(--vb-text-secondary)] mb-3">Exercise Types</h4>
                       <div className="space-y-2">
                         {EXERCISE_TYPES.map((type) => (
-                          <div key={type.key} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                          <div key={type.key} className="flex items-center justify-between p-3 bg-[var(--vb-surface)] rounded-lg">
                             <div className="flex items-center gap-3">
                               <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${type.color}`}>
                                 {type.icon}
                               </span>
-                              <span className="font-medium text-stone-700">{type.label}</span>
+                              <span className="font-medium text-[var(--vb-text-secondary)]">{type.label}</span>
                             </div>
                             <Stepper
                               value={questionTypes[type.key]}
@@ -421,11 +421,11 @@ export default function AiLessonBuilder({
                         type="checkbox"
                         checked={includeAnswers}
                         onChange={(e) => setIncludeAnswers(e.target.checked)}
-                        className="w-5 h-5 rounded border-stone-300 text-violet-600 focus:ring-violet-300"
+                        className="w-5 h-5 rounded border-[var(--vb-text-muted)] text-violet-600 focus:ring-violet-300"
                       />
                       <div>
-                        <p className="text-sm font-bold text-stone-700">Include answer key</p>
-                        <p className="text-xs text-stone-500">Add answers to all generated questions</p>
+                        <p className="text-sm font-bold text-[var(--vb-text-secondary)]">Include answer key</p>
+                        <p className="text-xs text-[var(--vb-text-muted)]">Add answers to all generated questions</p>
                       </div>
                     </label>
                   </motion.div>
@@ -459,8 +459,8 @@ export default function AiLessonBuilder({
               {/* Preview Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-stone-800">Lesson Generated!</p>
-                  <p className="text-sm text-stone-500">
+                  <p className="font-bold text-[var(--vb-text-primary)]">Lesson Generated!</p>
+                  <p className="text-sm text-[var(--vb-text-muted)]">
                     {generatedLesson.wordCount} words • {generatedLesson.questions.length} questions
                   </p>
                 </div>
@@ -470,7 +470,7 @@ export default function AiLessonBuilder({
                     setShowPreview(true);
                   }}
                   type="button"
-                  className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 text-sm font-semibold rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-sm font-semibold rounded-lg transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -479,24 +479,24 @@ export default function AiLessonBuilder({
               </div>
 
               {/* Reading Text */}
-              <div className="border-2 border-stone-200 rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
                 <button
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
                   className="flex items-center justify-between w-full text-left mb-3"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
-                  <h3 className="font-bold text-stone-800 flex items-center gap-2">
+                  <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-violet-600" />
                     Reading Text
                   </h3>
-                  <span className={`text-stone-400 transition-transform ${showPreview ? 'rotate-180' : ''}`}>
+                  <span className={`text-[var(--vb-text-muted)] transition-transform ${showPreview ? 'rotate-180' : ''}`}>
                     ▼
                   </span>
                 </button>
                 {showPreview && (
                   <div className="prose prose-stone max-w-none">
-                    <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-[var(--vb-text-secondary)] whitespace-pre-wrap leading-relaxed">
                       {generatedLesson.text}
                     </p>
                   </div>
@@ -504,8 +504,8 @@ export default function AiLessonBuilder({
               </div>
 
               {/* Questions */}
-              <div className="border-2 border-stone-200 rounded-xl p-4">
-                <h3 className="font-bold text-stone-800 flex items-center gap-2 mb-3">
+              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
+                <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2 mb-3">
                   <HelpCircle className="w-5 h-5 text-violet-600" />
                   Questions ({generatedLesson.questions.length})
                 </h3>
@@ -513,24 +513,24 @@ export default function AiLessonBuilder({
                   {generatedLesson.questions.map((q, i) => {
                     const typeConfig = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(t => t.key === q.type);
                     return (
-                      <div key={i} className="p-3 bg-stone-50 rounded-lg">
+                      <div key={i} className="p-3 bg-[var(--vb-surface)] rounded-lg">
                         <div className="flex items-start gap-2 mb-2">
                           {typeConfig && (
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${typeConfig.color}`}>
                               {typeConfig.label}
                             </span>
                           )}
-                          <p className="font-medium text-stone-800">Q{i + 1}: {q.question}</p>
+                          <p className="font-medium text-[var(--vb-text-primary)]">Q{i + 1}: {q.question}</p>
                         </div>
                         {includeAnswers && (
-                          <p className="text-sm text-stone-600 ml-1">
+                          <p className="text-sm text-[var(--vb-text-secondary)] ml-1">
                             <span className="font-semibold">Answer:</span> {q.answer}
                           </p>
                         )}
                         {q.options && (
                           <div className="mt-2 ml-1 space-y-1">
                             {q.options.map((opt, j) => (
-                              <p key={j} className="text-sm text-stone-600">
+                              <p key={j} className="text-sm text-[var(--vb-text-secondary)]">
                                 {String.fromCharCode(65 + j)}. {opt}
                               </p>
                             ))}
@@ -561,7 +561,7 @@ export default function AiLessonBuilder({
                 <button
                   onClick={handleClose}
                   type="button"
-                  className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all"
+                  className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   Done

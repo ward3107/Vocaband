@@ -50,7 +50,7 @@ export function ErrorTrackingPanel() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-xl border border-gray-200 p-4 max-w-md max-h-96 overflow-hidden z-[9999] font-mono text-xs">
+    <div className="fixed bottom-4 right-4 bg-[var(--vb-surface)] rounded-lg shadow-xl border border-gray-200 p-4 max-w-md max-h-96 overflow-hidden z-[9999] font-mono text-xs">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-bold text-lg">Error Tracking</h3>
         <button

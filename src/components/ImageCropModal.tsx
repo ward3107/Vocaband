@@ -325,7 +325,7 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
                 <div
                   key={corner}
                   onPointerDown={(e) => handlePointerDown(e, corner)}
-                  className="absolute bg-white rounded-full shadow-lg border-2 border-emerald-500"
+                  className="absolute bg-[var(--vb-surface)] rounded-full shadow-lg border-2 border-emerald-500"
                   style={{
                     width: HANDLE_SIZE,
                     height: HANDLE_SIZE,
