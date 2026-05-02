@@ -428,6 +428,12 @@ export type GameMode = "classic" | "listening" | "spelling" | "matching" | "memo
 // allowed_modes, quick-play without a saved set, dashboard defaults,
 // etc).  Adding a new mode to GameMode means appending it here too —
 // otherwise the new mode silently gets filtered out of fallback lists.
+//
+// Note: 'review' is intentionally NOT in ALL_GAME_MODES — Review is
+// a student-initiated SRS session entered from the dashboard
+// widget, not something assignments can opt into.  Surfacing it as a
+// regular mode tile would let teachers tick it on assignments where
+// it has no meaning.
 export const ALL_GAME_MODES: GameMode[] = [
   "classic",
   "listening",

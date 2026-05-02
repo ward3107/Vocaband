@@ -51,6 +51,12 @@ interface StudentDashboardViewProps {
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setShowModeSelection: (show: boolean) => void;
+  /** Optional handler for the spaced-repetition Review mode entry
+   *  point.  When provided, the dashboard renders a ReviewQueueCard
+   *  with a "Start review" button that calls this; absent, the
+   *  card hides itself.  Routes the student straight into the
+   *  Review game without going through the mode picker. */
+  onStartReview?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
@@ -110,6 +116,7 @@ export default function StudentDashboardView({
   onRenameDisplayName,
   structure,
   celebrateStructureKeys = [],
+  onStartReview,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -219,6 +226,22 @@ export default function StudentDashboardView({
             )}
             <ShopSquare xp={xp} onOpen={() => { setShopTab('hub'); setView('shop'); }} />
           </div>
+
+          {/* ── Spaced Repetition queue card ──────────────────────
+              Surfaces today's due-for-review words and routes the
+              student straight into the Review mode (bypasses the
+              mode picker).  Only renders when the parent supplied
+              an onStartReview callback (gated to authenticated
+              real students above). */}
+          {onStartReview && (
+            <div className="mb-4">
+              <ReviewQueueCard
+                dueCount={dueReviews.dueCount}
+                isLoading={dueReviews.isLoading}
+                onStart={onStartReview}
+              />
+            </div>
+          )}
 
           <TodayStrip
             user={user}

@@ -322,6 +322,23 @@ export default function GameActiveView({
         />
       );
     }
+    if (gameMode === "review") {
+      // Spaced-repetition review session.  Self-fetches the queue of
+      // due words on mount via get_due_reviews, runs Classic-style
+      // multi-choice on each, and updates the SRS interval per
+      // answer via record_review_result.  Word source is the FULL
+      // ALL_WORDS pool (not the assignment pool) since reviews span
+      // every word the student has ever missed across assignments.
+      return (
+        <ReviewGame
+          allWords={gameWords}
+          themeColor={modeTheme ?? "violet"}
+          targetLanguage={targetLanguage}
+          speak={speakWord}
+          onFinish={handleExitGame}
+        />
+      );
+    }
     if (gameMode === "scramble") {
       return (
         <ScrambleGame
