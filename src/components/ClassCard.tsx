@@ -198,8 +198,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
               <button
                 onClick={() => setAvatarPickerOpen(v => !v)}
                 type="button"
-                style={{ touchAction: 'manipulation' }}
-                style={avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : undefined}
+                style={{
+                  touchAction: 'manipulation',
+                  ...(avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : {}),
+                }}
                 className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
                 title="Change avatar"
               >

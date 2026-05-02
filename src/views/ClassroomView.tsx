@@ -459,9 +459,9 @@ export default function ClassroomView(props: ClassroomViewProps) {
                   key={t.id}
                   type="button"
                   onClick={() => setV2Tab(t.id)}
-                  style={{ color: active ? 'var(--vb-text-primary)' : 'var(--vb-text-muted)' }}
                   className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
                   style={{
+                    color: active ? 'var(--vb-text-primary)' : 'var(--vb-text-muted)',
                     touchAction: "manipulation",
                     WebkitTapHighlightColor: "transparent" as never,
                     minHeight: 56,

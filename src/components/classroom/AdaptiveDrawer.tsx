@@ -87,9 +87,12 @@ export default function AdaptiveDrawer({
                 type="button"
                 onClick={onClose}
                 aria-label="Close details"
-                style={{ color: 'var(--vb-text-secondary)' }}
                 className="w-10 h-10 rounded-xl hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                style={{
+                  color: 'var(--vb-text-secondary)',
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent" as never,
+                }}
               >
                 {/* Back-arrow feels right on mobile; on desktop it still
                     reads as "close panel". */}

@@ -137,7 +137,9 @@ export default function StudentAccountLoginView({
       const normalized = normalizeClassCode(raw).slice(0, 20);
       if (normalized.length >= 3) {
         setStudentLoginClassCode(normalized);
-        loadStudentsInClass(normalized);
+        // (loadStudentsInClass removed — the student picker now
+        // fetches lazily on focus; the URL-param flow only seeds
+        // the class-code input.)
       }
     } catch { /* URLSearchParams unavailable — noop */ }
     // Only runs once on mount; subsequent code typing is user-driven.

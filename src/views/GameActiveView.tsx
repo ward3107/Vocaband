@@ -74,6 +74,7 @@ import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
+import ReviewGame from "../components/game/ReviewGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 

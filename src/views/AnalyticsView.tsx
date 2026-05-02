@@ -31,9 +31,13 @@ interface AnalyticsViewProps {
   allScores: ProgressData[];
   teacherAssignments: AssignmentData[];
   setView: React.Dispatch<React.SetStateAction<View>>;
-  // Assignment creation state from App.tsx
-  selectedClass: { name: string; code: string; studentCount?: number; id?: string } | null;
-  setSelectedClass: React.Dispatch<React.SetStateAction<{ name: string; code: string; studentCount?: number; id?: string } | null>>;
+  // Assignment creation state from App.tsx — accept the full ClassData
+  // shape (includes teacherUid + avatar) since callers (ClassroomView,
+  // App.tsx) pass it in directly.  We only read name/code/id, so the
+  // wider type is functionally inert but the setter must accept what
+  // the parent passes.
+  selectedClass: ClassData | null;
+  setSelectedClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
   selectedWords: number[];
   setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
   /** When true, render without the page-level TopAppBar / outer min-h-screen
@@ -324,13 +328,13 @@ export default function AnalyticsView({
     const targetClass = classes.find(c => c.code === targetClassCode);
     if (!targetClass) return;
 
-    // Set the selected class and words in App.tsx state
-    setAppSelectedClass({
-      name: targetClass.name,
-      code: targetClass.code,
-      studentCount: currentAnalytics?.studentCount,
-      id: targetClass.id,
-    });
+    // Set the selected class and words in App.tsx state.  Spread
+    // targetClass so the full ClassData shape (incl. teacherUid +
+    // avatar) survives — App.tsx state is typed ClassData and would
+    // reject a narrowed object literal that misses teacherUid.
+    // studentCount is a display-only enrichment that doesn't belong
+    // on the App-level state.
+    setAppSelectedClass({ ...targetClass });
 
     setAppSelectedWords(Array.from(reteachWords));
 
