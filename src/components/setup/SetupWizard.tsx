@@ -35,24 +35,32 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
           <React.Fragment key={step}>
             <div className="flex flex-col items-center">
               <div
+                style={
+                  isCompleted
+                    ? undefined
+                    : isCurrent
+                    ? undefined
+                    : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)', borderColor: 'var(--vb-border)' }
+                }
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   isCompleted
                     ? 'bg-emerald-500 text-white'
                     : isCurrent
                     ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
-                    : 'bg-stone-100 text-stone-600 border border-stone-300'
+                    : 'border'
                 }`}
               >
                 {isCompleted ? '✓' : step}
               </div>
               {isOptional && !isCompleted && !isCurrent && (
-                <span className="text-[10px] font-semibold text-stone-400 mt-1.5">Optional</span>
+                <span className="text-[10px] font-semibold mt-1.5" style={{ color: 'var(--vb-text-muted)' }}>Optional</span>
               )}
             </div>
             {step < 3 && (
               <div
+                style={step < currentStep ? undefined : { backgroundColor: 'var(--vb-border)' }}
                 className={`w-8 sm:w-14 h-0.5 rounded-full ${
-                  step < currentStep ? 'bg-emerald-500' : 'bg-stone-200'
+                  step < currentStep ? 'bg-emerald-500' : ''
                 }`}
               />
             )}

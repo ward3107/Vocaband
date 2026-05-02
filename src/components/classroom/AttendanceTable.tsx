@@ -79,41 +79,47 @@ export default function AttendanceTable({
   }, [classScores, classStudents]);
 
   return (
-    <section className="bg-white rounded-2xl border-2 border-stone-200 shadow-sm p-4 sm:p-5">
+    <section
+      className="rounded-2xl border-2 shadow-sm p-4 sm:p-5"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
       <header className="flex items-start gap-2 mb-3">
         <div className="mt-0.5"><CalendarCheck size={18} className="text-sky-600" /></div>
         <div>
-          <h3 className="font-bold text-stone-900">Who needs help</h3>
-          <p className="text-xs text-stone-500 mt-0.5">
+          <h3 className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>Who needs help</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
             Last 14 days · ✓ = played at least once that day · students at the bottom are drifting.
           </p>
         </div>
       </header>
 
       {attendance.rows.length === 0 ? (
-        <div className="text-center text-sm text-stone-500 py-6">Add a class to see attendance.</div>
+        <div className="text-center text-sm py-6" style={{ color: 'var(--vb-text-muted)' }}>Add a class to see attendance.</div>
       ) : (
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="text-xs">
             <thead>
               <tr>
-                <th className="px-3 py-2 text-left font-bold text-stone-700 sticky left-0 bg-white">Student</th>
+                <th className="px-3 py-2 text-left font-bold sticky left-0" style={{ color: 'var(--vb-text-secondary)', backgroundColor: 'var(--vb-surface)' }}>Student</th>
                 {attendance.days.map(d => (
-                  <th key={d.iso} className="px-2 py-2 text-stone-500 font-semibold whitespace-nowrap">{d.label}</th>
+                  <th key={d.iso} className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: 'var(--vb-text-muted)' }}>{d.label}</th>
                 ))}
-                <th className="px-3 py-2 text-right font-bold text-stone-700 whitespace-nowrap">Days</th>
+                <th className="px-3 py-2 text-right font-bold whitespace-nowrap" style={{ color: 'var(--vb-text-secondary)' }}>Days</th>
               </tr>
             </thead>
             <tbody>
               {attendance.rows.map(row => (
-                <tr key={row.name} className="border-t border-stone-100">
-                  <td className="px-3 py-2 font-bold text-stone-900 sticky left-0 bg-white whitespace-nowrap">{row.name}</td>
+                <tr key={row.name} className="border-t" style={{ borderColor: 'var(--vb-border)' }}>
+                  <td className="px-3 py-2 font-bold sticky left-0 whitespace-nowrap" style={{ color: 'var(--vb-text-primary)', backgroundColor: 'var(--vb-surface)' }}>{row.name}</td>
                   {row.presence.map((p, idx) => (
                     <td key={idx} className="px-2 py-2 text-center">
                       {p ? (
                         <span className="inline-block w-5 h-5 rounded-full bg-emerald-500 text-white text-[11px] font-bold leading-5">✓</span>
                       ) : (
-                        <span className="inline-block w-5 h-5 rounded-full bg-stone-100 text-stone-300 text-[11px] leading-5">·</span>
+                        <span
+                          className="inline-block w-5 h-5 rounded-full text-[11px] leading-5"
+                          style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}
+                        >·</span>
                       )}
                     </td>
                   ))}

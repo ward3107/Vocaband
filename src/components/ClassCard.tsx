@@ -199,7 +199,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 onClick={() => setAvatarPickerOpen(v => !v)}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'bg-gradient-to-br from-stone-50 to-white border border-stone-200' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
+                style={avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : undefined}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
                 title="Change avatar"
               >
                 {avatar ? (
@@ -211,15 +212,18 @@ const ClassCard: React.FC<ClassCardProps> = ({
 
               {/* Avatar picker popover */}
               {avatarPickerOpen && onAvatarChange && (
-                <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl border border-stone-200 shadow-2xl z-30 p-4">
+                <div
+                  className="absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl z-30 p-4"
+                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+                >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Pick avatar</span>
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>Pick avatar</span>
                     <button
                       onClick={() => setAvatarPickerOpen(false)}
                       type="button"
-                      className="w-6 h-6 rounded-full hover:bg-stone-100 flex items-center justify-center"
+                      className="w-6 h-6 rounded-full hover:bg-[var(--vb-surface-alt)] flex items-center justify-center"
                     >
-                      <X size={14} className="text-stone-400" />
+                      <X size={14} style={{ color: 'var(--vb-text-muted)' }} />
                     </button>
                   </div>
 
@@ -231,15 +235,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => handleAvatarPick(null)}
                     type="button"
-                    style={{ touchAction: 'manipulation' }}
+                    style={{
+                      touchAction: 'manipulation',
+                      backgroundColor: avatar === null ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
+                      borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
+                      color: avatar === null ? 'var(--vb-accent)' : 'var(--vb-text-secondary)',
+                    }}
                     className={`w-full mb-3 px-3 py-2 rounded-xl flex items-center gap-2 transition-all border-2 ${
-                      avatar === null
-                        ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200 text-indigo-700'
-                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700'
+                      avatar === null ? 'ring-2 ring-[var(--vb-accent-soft)]' : 'hover:border-[var(--vb-text-muted)]'
                     }`}
                   >
-                    <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
-                      <GraduationCap size={18} className="text-stone-600" />
+                    <span
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+                    >
+                      <GraduationCap size={18} style={{ color: 'var(--vb-text-secondary)' }} />
                     </span>
                     <span className="text-sm font-bold">Default</span>
                   </button>
@@ -248,7 +258,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {CLASS_AVATAR_GROUPS.map(group => (
                       <div key={group.label}>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">{group.label}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--vb-text-muted)' }}>{group.label}</p>
                         <div className="grid grid-cols-8 gap-1">
                           {group.emojis.map(em => {
                             const selected = avatar === em;
@@ -257,17 +267,22 @@ const ClassCard: React.FC<ClassCardProps> = ({
                                 key={em}
                                 onClick={() => handleAvatarPick(em)}
                                 type="button"
-                                style={{ touchAction: 'manipulation' }}
+                                style={{
+                                  touchAction: 'manipulation',
+                                  backgroundColor: selected ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
+                                  borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
+                                }}
                                 className={`aspect-square rounded-lg flex items-center justify-center text-xl transition-all border-2 ${
-                                  selected
-                                    ? 'bg-indigo-50 border-indigo-500 scale-105'
-                                    : 'bg-white border-stone-200 hover:border-stone-300 hover:scale-105'
+                                  selected ? 'scale-105' : 'hover:scale-105 hover:border-[var(--vb-text-muted)]'
                                 }`}
                               >
                                 {em}
                                 {selected && (
-                                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-indigo-500 flex items-center justify-center">
-                                    <CheckCircle2 size={8} className="text-white" />
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center"
+                                    style={{ backgroundColor: 'var(--vb-accent)' }}
+                                  >
+                                    <CheckCircle2 size={8} style={{ color: 'var(--vb-accent-text)' }} />
                                   </span>
                                 )}
                               </button>
@@ -297,10 +312,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onBlur={handleNameSave}
                     maxLength={60}
                     placeholder="Class name"
-                    className="flex-1 text-lg sm:text-xl font-bold text-stone-900 leading-tight bg-stone-50 border-2 border-indigo-400 rounded-lg px-2 py-1 outline-none"
+                    style={{ color: 'var(--vb-text-primary)', backgroundColor: 'var(--vb-surface-alt)' }}
+                    className="flex-1 text-lg sm:text-xl font-bold leading-tight border-2 border-[var(--vb-accent)] rounded-lg px-2 py-1 outline-none"
                     disabled={savingName}
                   />
-                  {savingName && <span className="text-xs text-stone-400">Saving...</span>}
+                  {savingName && <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>Saving...</span>}
                 </div>
               ) : (
                 <button
@@ -383,7 +399,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   style={{ color: 'var(--vb-text-secondary)' }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
-                  <Copy size={14} className="text-stone-500" />
+                  <Copy size={14} style={{ color: 'var(--vb-text-muted)' }} />
                   Copy class code
                 </button>
                 <button
