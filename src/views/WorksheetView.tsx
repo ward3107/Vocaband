@@ -506,7 +506,7 @@ export default function WorksheetView({
           materialised so window.print() has something to lay out. */}
       {Array.from(selectedSheetTypes).map((type, idx) => (
         <Worksheet
-          key={type}
+          key={`worksheet-${idx}-${type}`}
           sheetType={type}
           title={idx === 0 ? title : undefined}
           words={wordsForSheet}
