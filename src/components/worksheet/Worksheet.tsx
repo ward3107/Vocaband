@@ -39,7 +39,7 @@ export type WorksheetSheetType =
 
 interface WorksheetProps {
   sheetType: WorksheetSheetType;
-  title: string;
+  title?: string; // Optional for subsequent sheets when printing multiple
   words: Word[];
   className: string | null;
   includeAnswerKey: boolean;
@@ -47,23 +47,27 @@ interface WorksheetProps {
   translationLang: 'he' | 'ar' | 'en';
   /** AI-generated sentences keyed by word ID — for Fill-in-the-blank and Sentence Builder sheets */
   aiSentences?: Record<number, string>;
+  /** Add page break before this worksheet (for multi-sheet printouts) */
+  pageBreakBefore?: boolean;
 }
 
 export default function Worksheet({
-  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences,
+  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences, pageBreakBefore = false,
 }: WorksheetProps) {
   const date = new Date().toLocaleDateString();
 
   return (
-    <div className="vb-print-only" lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
-      <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
-        <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>{title}</h1>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '11pt' }}>
-          {className && <span><strong>Class:</strong> {className}</span>}
-          <span><strong>Date:</strong> {date}</span>
-          <span><strong>Name:</strong> ____________________</span>
-        </div>
-      </header>
+    <div className={`vb-print-only ${pageBreakBefore ? 'vb-print-page-break-before' : ''}`} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
+      {title && (
+        <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
+          <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>{title}</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '11pt' }}>
+            {className && <span><strong>Class:</strong> {className}</span>}
+            <span><strong>Date:</strong> {date}</span>
+            <span><strong>Name:</strong> ____________________</span>
+          </div>
+        </header>
+      )}
 
       {sheetType === 'word-list' && <WordListSheet words={words} translationLang={translationLang} />}
       {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} />}

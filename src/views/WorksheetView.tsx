@@ -75,9 +75,25 @@ export default function WorksheetView({
   const { language } = useLanguage();
   const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
 
-  const [sheetType, setSheetType] = useState<WorksheetSheetType>('word-list');
+  const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+
+  // Toggle sheet type selection
+  const toggleSheetType = (type: WorksheetSheetType) => {
+    setSelectedSheetTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        // Don't allow deselecting if it's the only one
+        if (next.size > 1) {
+          next.delete(type);
+        }
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
 
   // AI sentence generation state
   const [aiSentences, setAiSentences] = useState<Record<number, string>>({});
@@ -130,7 +146,7 @@ export default function WorksheetView({
 
   // Auto-generate sentences when fill-blank or sentence-builder is selected
   useEffect(() => {
-    const needsSentences = sheetType === 'fill-blank' || sheetType === 'sentence-builder';
+    const needsSentences = Array.from(selectedSheetTypes).some(type => type === 'fill-blank' || type === 'sentence-builder');
     if (!needsSentences || wordsForSheet.length === 0 || !aiEnabled) return;
 
     // Only auto-generate if we haven't already generated for this word set
@@ -166,7 +182,7 @@ export default function WorksheetView({
     };
 
     autoGenerate();
-  }, [sheetType, sourceIdx, aiEnabled]);
+  }, [selectedSheetTypes, sourceIdx, aiEnabled]);
 
   // Generate AI sentences for selected words (defined after wordsForSheet is available)
   const generateSentences = async () => {
@@ -299,22 +315,28 @@ export default function WorksheetView({
 
         {/* Sheet type picker */}
         <div className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            Sheet type
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center justify-between" style={{ color: 'var(--vb-text-muted)' }}>
+            <span>Sheet types</span>
+            <span className="font-normal">{selectedSheetTypes.size} selected</span>
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {SHEET_TYPES.map(s => {
-              const selected = sheetType === s.id;
+              const selected = selectedSheetTypes.has(s.id);
               return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setSheetType(s.id)}
+                  onClick={() => toggleSheetType(s.id)}
                   style={{
                     borderColor: selected ? 'var(--vb-accent)' : 'transparent',
                   }}
                   className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-2xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
                 >
+                  <div className="absolute top-2 right-2">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-white bg-white/30' : 'border-white/50'}`}>
+                      {selected && <Check size={12} className="text-white" />}
+                    </div>
+                  </div>
                   {s.icon}
                   <div className="font-black">{s.label}</div>
                   <div className="text-xs opacity-90">{s.description}</div>
@@ -324,8 +346,8 @@ export default function WorksheetView({
           </div>
         </div>
 
-        {/* AI Sentence Generation — shown only for sentence-based sheets */}
-        {(sheetType === 'fill-blank' || sheetType === 'sentence-builder') && (
+        {/* AI Sentence Generation — shown only when sentence-based sheets are selected */}
+        {Array.from(selectedSheetTypes).some(type => type === 'fill-blank' || type === 'sentence-builder') && (
           <div className="mb-8">
             <div className="flex items-center justify-between p-4 rounded-2xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
               <div className="flex items-center gap-3">
@@ -404,7 +426,7 @@ export default function WorksheetView({
           />
         </div>
 
-        {sheetType !== 'word-list' && (
+        {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
           <label className="flex items-center gap-3 mb-8 cursor-pointer">
             <input
               type="checkbox"
@@ -432,19 +454,33 @@ export default function WorksheetView({
               color: '#000',
             }}
           >
-            <h3 style={{ fontSize: '20pt', fontWeight: 900, margin: 0, marginBottom: '0.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
-              {title}
-            </h3>
-            {sheetType === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
-            {sheetType === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
+            {Array.from(selectedSheetTypes).map((type, idx) => {
+              const sheetInfo = SHEET_TYPES.find(s => s.id === type);
+              return (
+                <div key={type} className={idx > 0 ? 'mt-8 pt-8 border-t-2 border-dashed border-gray-300' : ''}>
+                  {selectedSheetTypes.size > 1 && (
+                    <div className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                      {sheetInfo?.label}
+                    </div>
+                  )}
+                  {idx === 0 && (
+                    <h3 style={{ fontSize: '20pt', fontWeight: 900, margin: 0, marginBottom: '0.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
+                      {title}
+                    </h3>
+                  )}
+                  {type === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
+                  {type === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'reverse-translation' && <ReverseTranslationSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -466,17 +502,21 @@ export default function WorksheetView({
         </div>
       </motion.div>
 
-      {/* The actual print-only worksheet — invisible on screen but
+      {/* The actual print-only worksheets — invisible on screen but
           materialised so window.print() has something to lay out. */}
-      <Worksheet
-        sheetType={sheetType}
-        title={title}
-        words={wordsForSheet}
-        className={className ?? null}
-        includeAnswerKey={includeAnswerKey}
-        translationLang={translationLang}
-        aiSentences={aiSentences}
-      />
+      {Array.from(selectedSheetTypes).map((type, idx) => (
+        <Worksheet
+          key={type}
+          sheetType={type}
+          title={idx === 0 ? title : undefined}
+          words={wordsForSheet}
+          className={className ?? null}
+          includeAnswerKey={includeAnswerKey}
+          translationLang={translationLang}
+          aiSentences={aiSentences}
+          pageBreakBefore={idx > 0}
+        />
+      ))}
     </div>
   );
 }
