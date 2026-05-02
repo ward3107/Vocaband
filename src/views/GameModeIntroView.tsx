@@ -23,6 +23,8 @@ const modeThemes: Record<GameMode, {
   "letter-sounds":   { gradient: "from-violet-50 via-white to-purple-50",      card: "from-violet-400 to-purple-500",      stepBg: "bg-violet-50 border-violet-100",      stepNum: "bg-violet-500",       cta: "from-violet-500 to-purple-500",       accent: "text-violet-700" },
   "sentence-builder":{ gradient: "from-teal-50 via-white to-emerald-50",       card: "from-teal-400 to-emerald-500",       stepBg: "bg-teal-50 border-teal-100",          stepNum: "bg-teal-500",         cta: "from-teal-500 to-emerald-500",        accent: "text-teal-700" },
   "fill-blank":      { gradient: "from-lime-50 via-white to-emerald-50",       card: "from-lime-400 to-emerald-500",       stepBg: "bg-lime-50 border-lime-100",          stepNum: "bg-lime-500",         cta: "from-lime-500 to-emerald-500",        accent: "text-lime-700" },
+  "memory-flip":     { gradient: "from-pink-50 via-white to-rose-50",          card: "from-pink-400 to-rose-500",          stepBg: "bg-pink-50 border-pink-100",          stepNum: "bg-pink-500",         cta: "from-pink-500 to-rose-500",           accent: "text-pink-700" },
+  "word-chains":     { gradient: "from-orange-50 via-white to-amber-50",       card: "from-orange-400 to-amber-500",       stepBg: "bg-orange-50 border-orange-100",      stepNum: "bg-orange-500",       cta: "from-orange-500 to-amber-500",        accent: "text-orange-700" },
 };
 
 interface GameModeIntroViewProps {
