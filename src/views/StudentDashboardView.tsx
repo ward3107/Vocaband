@@ -15,8 +15,8 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
-import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
-import { usePetEvolution } from "../hooks/usePetEvolution";
+import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
 import { IdentityHero } from "../components/structure/IdentityHero";
@@ -120,10 +120,10 @@ export default function StudentDashboardView({
   // structure prop is provided.
   const [showStructureDetail, setShowStructureDetail] = useState(false);
 
-  // Activity-driven pet companion — grows with distinct days played,
-  // decays past a 3-day grace period.  Distinct from the existing
-  // PetCompanion (which is XP-milestone based).  Real students only.
-  const petEvolution = usePetEvolution({
+  // Daily missions — three rotating tasks per user-local calendar day.
+  // Hook only fires for authenticated students; guests + Quick-Play
+  // shouldn't see the card (no schema-bound XP loop).
+  const dailyMissions = useDailyMissions({
     enabled: Boolean(user?.role === 'student' && !user?.isGuest),
   });
 
@@ -237,6 +237,16 @@ export default function StudentDashboardView({
               setView('shop');
             }}
           />
+
+          {/* ── Daily missions — three rotating mission types that
+              refresh once per user-local calendar day.  Renders only
+              for authenticated students (the hook is gated above). */}
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <DailyMissionsCard
+              missions={dailyMissions.missions}
+              isLoading={dailyMissions.isLoading}
+            />
+          )}
 
           {/* ── Earned badges ──────────────────────────────────────
               Collection of achievements (auto-awarded + teacher-

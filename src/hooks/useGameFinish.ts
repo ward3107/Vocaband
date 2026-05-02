@@ -208,7 +208,7 @@ export function useGameFinish(params: UseGameFinishParams) {
     }
   };
 
-  const saveScore = async (scoreOverride?: number) => {
+  const saveScore = async (scoreOverride?: number, maxScoreOverride?: number) => {
     const finalScore = scoreOverride !== undefined ? scoreOverride : score;
     if (!user) return;
     setIsSaving(true);
@@ -294,8 +294,14 @@ export function useGameFinish(params: UseGameFinishParams) {
     const playsForThis = resolveAssignmentPlays(user?.uid, activeAssignment.id, studentProgress);
     const replayLocked = isAssignmentLocked(playsForThis, allowedModesCount);
 
-    // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = gameWords.length * 10;
+    // Cap score to the maximum possible for this assignment.  Default cap
+    // is 10 pts per word (Classic-style), which matches the per-question
+    // scoring path the standard modes go through.  Self-contained modes
+    // (Word Chains, Idiom, Speed Round) call saveScore directly with a
+    // pre-normalized 0-100 score and pass `maxScoreOverride: 100` so the
+    // per-word cap doesn't trim them when the assignment has fewer than
+    // 10 words.
+    const maxPossible = maxScoreOverride !== undefined ? maxScoreOverride : gameWords.length * 10;
     let cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
 
     // Lucky Charm: forgive the student's first wrong answer (= +10
@@ -469,19 +475,27 @@ export function useGameFinish(params: UseGameFinishParams) {
       const retryKey = `vocaband_retry_${activeAssignment.id}_${gameMode}`;
       localStorage.removeItem(retryKey);
 
-      // Pet Evolution — record this play as an active-day signal so the
-      // dashboard companion ages (and decay is applied for any
-      // inactivity beyond the 3-day grace period).  Idempotent within
-      // a local day, so re-fired saves don't double-count.  Wrapped in
-      // queueSaveOperation for the same retry semantics as the rest of
-      // the save queue — best-effort; a failure here doesn't block the
-      // assignment XP that already landed.
+      // Daily missions — fire-and-forget after the progress row lands.
+      // The RPC re-derives every mission's progress from progress +
+      // word_attempts (already up-to-date thanks to the save above),
+      // marks newly-completed missions, and grants their fixed XP.
+      // Only fires for real students — Quick Play guests already
+      // returned at the top of saveScore.  Wrapped in queueSaveOperation
+      // so a transient network blip retries with the rest of the save
+      // queue rather than dropping the call silently.
       queueSaveOperation(async () => {
         try {
           const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
-          await supabase.rpc('record_pet_activity', { p_today_local: today });
+          await supabase.rpc('record_mission_progress', {
+            p_mission_date: today,
+            p_mode: gameMode,
+            p_score: cappedScore,
+          });
         } catch (err) {
-          console.error('[pet-evolution] record_pet_activity failed:', err);
+          // Silent — daily-missions XP is a bonus on top of the
+          // assignment XP that already landed; failing here doesn't
+          // break the student's main progress.
+          console.error('[daily-missions] record on save failed:', err);
         }
       });
     } catch (error) {
