@@ -1,9 +1,8 @@
 /**
  * Worksheet — the print-only container that holds the chosen sheet
- * (Word list / Scramble / Fill-in-blank / Match-up) plus an optional
- * answer key.  It's hidden from screen rendering via .vb-print-only +
- * the @media rules in index.css, and only becomes visible during the
- * browser's print preview / PDF export.
+ * plus an optional answer key.  It's hidden from screen rendering via
+ * .vb-print-only + the @media rules in index.css, and only becomes
+ * visible during the browser's print preview / PDF export.
  *
  * The teacher's on-screen flow is:
  *   1. Click "Print worksheet" on the dashboard or an assignment
@@ -18,9 +17,29 @@ import { WordListSheet } from './sheets/WordListSheet';
 import { ScrambleSheet } from './sheets/ScrambleSheet';
 import { FillBlankSheet } from './sheets/FillBlankSheet';
 import { MatchUpSheet } from './sheets/MatchUpSheet';
+import { MultipleChoiceSheet } from './sheets/MultipleChoiceSheet';
+import { ReverseTranslationSheet } from './sheets/ReverseTranslationSheet';
+import { TrueFalseSheet } from './sheets/TrueFalseSheet';
+import { FlashcardsSheet } from './sheets/FlashcardsSheet';
+import { LetterSoundsSheet } from './sheets/LetterSoundsSheet';
+import { MatchingSheet } from './sheets/MatchingSheet';
+import { SentenceBuilderSheet } from './sheets/SentenceBuilderSheet';
+import { ListeningSheet } from './sheets/ListeningSheet';
 import type { Word } from '../../data/vocabulary';
 
-export type WorksheetSheetType = 'word-list' | 'scramble' | 'fill-blank' | 'match-up';
+export type WorksheetSheetType =
+  | 'word-list'
+  | 'scramble'
+  | 'fill-blank'
+  | 'match-up'
+  | 'multiple-choice'
+  | 'listening'
+  | 'reverse-translation'
+  | 'true-false'
+  | 'flashcards'
+  | 'letter-sounds'
+  | 'matching'
+  | 'sentence-builder';
 
 interface WorksheetProps {
   sheetType: WorksheetSheetType;
@@ -30,7 +49,7 @@ interface WorksheetProps {
   includeAnswerKey: boolean;
   /** Translation language for the answer column / hint column. */
   translationLang: 'he' | 'ar' | 'en';
-  /** AI-generated sentences keyed by word ID — for Fill-in-the-blank sheets */
+  /** AI-generated sentences keyed by word ID — for Fill-in-the-blank and Sentence Builder sheets */
   aiSentences?: Record<number, string>;
 }
 
@@ -54,13 +73,28 @@ export default function Worksheet({
       {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} />}
       {sheetType === 'fill-blank' && <FillBlankSheet words={words} aiSentences={aiSentences} />}
       {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'listening' && <ListeningSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'flashcards' && <FlashcardsSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'letter-sounds' && <LetterSoundsSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
 
-      {includeAnswerKey && sheetType !== 'word-list' && (
+      {includeAnswerKey && sheetType !== 'word-list' && sheetType !== 'flashcards' && (
         <div className="vb-print-page-break">
           <h2 style={{ fontSize: '20pt', fontWeight: 900, marginBottom: '1rem' }}>Answer key</h2>
           {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} answerKey />}
           {sheetType === 'fill-blank' && <FillBlankSheet words={words} answerKey aiSentences={aiSentences} />}
           {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'listening' && <ListeningSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'letter-sounds' && <LetterSoundsSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} answerKey />}
+          {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} answerKey aiSentences={aiSentences} />}
         </div>
       )}
 
