@@ -45,7 +45,7 @@ export default function TeacherApprovalsView({
   showToast,
 }: TeacherApprovalsViewProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-20 sm:pt-24 pb-12 px-4 sm:px-6">
+    <div className="min-h-screen pt-20 sm:pt-24 pb-12 px-4 sm:px-6" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       {consentModal}
       {exitConfirmModal}
 
@@ -64,19 +64,22 @@ export default function TeacherApprovalsView({
         {pendingStudents.length === 0 ? (
           /* Empty state — calm, friendly, matches the dashboard's
              dashed-border empty state rather than the old peach card. */
-          <div className="bg-white border border-dashed border-stone-300 rounded-2xl py-16 px-6 text-center">
+          <div
+            className="border border-dashed rounded-2xl py-16 px-6 text-center"
+            style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+          >
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={28} className="text-emerald-500" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 mb-1">All caught up!</h2>
-            <p className="text-sm text-stone-500 mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: 'var(--vb-text-primary)' }}>All caught up!</h2>
+            <p className="text-sm mb-6" style={{ color: 'var(--vb-text-muted)' }}>
               No students are waiting for approval right now.
             </p>
             <button
               onClick={() => setView("teacher-dashboard")}
               type="button"
-              style={{ touchAction: 'manipulation' }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
+              style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-accent)', color: 'var(--vb-accent-text)' }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 hover:opacity-90 rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
             >
               Back to dashboard
             </button>
@@ -86,10 +89,10 @@ export default function TeacherApprovalsView({
             {/* Header with count + actions */}
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-1">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: 'var(--vb-text-primary)' }}>
                   Pending approvals
                 </h1>
-                <p className="text-sm text-stone-500 mt-1">
+                <p className="text-sm mt-1" style={{ color: 'var(--vb-text-muted)' }}>
                   {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting for you to approve or reject.
                 </p>
               </div>
@@ -97,8 +100,8 @@ export default function TeacherApprovalsView({
                 <button
                   onClick={loadPendingStudents}
                   type="button"
-                  style={{ touchAction: 'manipulation' }}
-                  className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-semibold text-sm text-stone-700 active:scale-95 transition-all"
+                  style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 hover:bg-[var(--vb-surface-alt)] border rounded-xl font-semibold text-sm active:scale-95 transition-all"
                   title="Refresh list"
                 >
                   <RefreshCw size={15} />
@@ -137,7 +140,8 @@ export default function TeacherApprovalsView({
                   key={student.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow p-4 sm:p-5"
+                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+                  className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow p-4 sm:p-5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     {/* Student identity */}
@@ -146,11 +150,11 @@ export default function TeacherApprovalsView({
                         <GraduationCap size={20} className="text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-base sm:text-lg font-bold text-stone-900 truncate">
+                        <h3 className="text-base sm:text-lg font-bold truncate" style={{ color: 'var(--vb-text-primary)' }}>
                           {student.displayName}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-stone-500">
-                          <span className="font-mono font-semibold text-stone-700">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                          <span className="font-mono font-semibold" style={{ color: 'var(--vb-text-secondary)' }}>
                             {student.classCode}
                           </span>
                           <span>·</span>
@@ -166,8 +170,8 @@ export default function TeacherApprovalsView({
                       <button
                         onClick={() => handleRejectStudent(student.id, student.displayName)}
                         type="button"
-                        style={{ touchAction: 'manipulation' }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                         title="Reject this student — they'll need to sign up again"
                       >
                         <X size={16} />
@@ -190,9 +194,12 @@ export default function TeacherApprovalsView({
             </div>
 
             {/* Bottom helper */}
-            <div className="mt-6 p-4 bg-stone-50 border border-stone-200 rounded-xl flex gap-3">
-              <Info size={16} className="text-stone-400 shrink-0 mt-0.5" />
-              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+            <div
+              className="mt-6 p-4 border rounded-xl flex gap-3"
+              style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
+            >
+              <Info size={16} className="shrink-0 mt-0.5" style={{ color: 'var(--vb-text-muted)' }} />
+              <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--vb-text-secondary)' }}>
                 After approval, students can log in immediately with their class code and start earning XP.
                 Their progress is saved automatically.
               </p>

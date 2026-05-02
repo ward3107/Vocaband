@@ -316,16 +316,16 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           <ArrowLeft size={18} />
           Back
         </button>
-        <div className="text-sm font-bold text-stone-600">
+        <div className="text-sm font-bold text-[var(--vb-text-secondary)]">
           Step 2 of 3
         </div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-black text-stone-900 mb-2">
+        <h2 className="text-2xl font-black text-[var(--vb-text-primary)] mb-2">
           {isAssignment ? 'Configure assignment' : 'Configure Quick Play'}
         </h2>
-        <p className="text-stone-600">
+        <p className="text-[var(--vb-text-secondary)]">
           {isAssignment ? 'Pick game modes first — we’ll suggest the rest' : 'Pick modes, then add an optional title'}
         </p>
       </div>
@@ -340,7 +340,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         className="space-y-4"
       >
         {/* Activity Type Toggle */}
-        <div className="flex items-center justify-center gap-2 p-1 bg-stone-100 rounded-2xl">
+        <div className="flex items-center justify-center gap-2 p-1 bg-[var(--vb-surface-alt)] rounded-2xl">
           <button
             onClick={() => {
               setActivityType('game-modes');
@@ -353,7 +353,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
               activityType === 'game-modes'
                 ? 'bg-white text-indigo-700 shadow-md'
-                : 'text-stone-600 hover:text-stone-800 hover:bg-stone-200/50'
+                : 'text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)] hover:bg-[var(--vb-surface-alt)]'
             }`}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
@@ -379,7 +379,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                 activityType === 'ai-generator'
                   ? 'bg-white text-fuchsia-700 shadow-md'
-                  : 'text-stone-600 hover:text-stone-800 hover:bg-stone-200/50'
+                  : 'text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)] hover:bg-[var(--vb-surface-alt)]'
               }`}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
@@ -398,7 +398,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm shadow-md">1</span>
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+            <label className="flex items-center gap-2 text-sm font-bold text-[var(--vb-text-secondary)]">
               <span>🎮</span> Game modes
             </label>
           </div>
@@ -425,7 +425,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 <span className="inline-flex items-center gap-0.5">
                   {[0, 1, 2].map(i => (
                     <Star key={i} size={10} strokeWidth={2}
-                      className={i < m.stars ? m.starColor : 'text-stone-300'}
+                      className={i < m.stars ? m.starColor : 'text-[var(--vb-border)]'}
                       fill={i < m.stars ? 'currentColor' : 'none'}
                     />
                   ))}
@@ -449,7 +449,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center ${
                   isSelected
                     ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
-                    : 'border-outline/20 bg-stone-200 hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
+                    : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
                 }`}
               >
                 {/* Animated emoji with float animation */}
@@ -460,7 +460,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 >
                   {gameMode.emoji}
                 </motion.div>
-                <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-stone-600'}`}>
+                <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-[var(--vb-text-secondary)]'}`}>
                   {gameMode.name}
                 </div>
                 {/* Star rating under the name — same 1/2/3 scale the
@@ -472,7 +472,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     <span className="inline-flex items-center gap-0.5 mt-1">
                       {[0, 1, 2].map(i => (
                         <Star key={i} size={10} strokeWidth={2}
-                          className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-stone-300')}
+                          className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-[var(--vb-border)]')}
                           fill={i < meta.stars ? 'currentColor' : 'none'}
                         />
                       ))}
@@ -506,7 +506,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </div>
 
         {/* Difficulty indicators (compact legend) */}
-        <div className="flex flex-wrap gap-4 text-xs text-stone-600 pt-1">
+        <div className="flex flex-wrap gap-4 text-xs text-[var(--vb-text-secondary)] pt-1">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
             <span>Beginner</span>
@@ -538,12 +538,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <motion.span
               animate={{ y: [0, 4, 0] }}
               transition={{ repeat: Infinity, duration: 1.8 }}
-              className="text-stone-400 text-xl leading-none"
+              className="text-[var(--vb-text-muted)] text-xl leading-none"
               aria-hidden
             >
               ↓
             </motion.span>
-            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">next: name it</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">next: name it</span>
           </motion.div>
         )}
         </>)}
@@ -571,8 +571,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                         Reading Text Generated ({aiGeneratedLesson.wordCount} words)
                       </h3>
                     </div>
-                    <p className="text-sm text-stone-700 mb-2 line-clamp-3">{aiGeneratedLesson.text}</p>
-                    <div className="flex items-center gap-2 text-xs text-stone-500">
+                    <p className="text-sm text-[var(--vb-text-secondary)] mb-2 line-clamp-3">{aiGeneratedLesson.text}</p>
+                    <div className="flex items-center gap-2 text-xs text-[var(--vb-text-muted)]">
                       <span className="px-2 py-0.5 bg-white rounded-full font-semibold">
                         {aiGeneratedLesson.questions.length} questions
                       </span>
@@ -585,7 +585,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                       onAiLessonChange?.(null);
                     }}
                     type="button"
-                    className="px-3 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold rounded-lg transition-colors"
+                    className="px-3 py-1.5 bg-[var(--vb-surface-alt)] hover:opacity-80 text-[var(--vb-text-secondary)] text-xs font-bold rounded-lg transition-colors"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   >
                     Clear
@@ -608,7 +608,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             )}
 
             {/* Helper text */}
-            <p className="text-center text-xs text-stone-500">
+            <p className="text-center text-xs text-[var(--vb-text-muted)]">
               AI will create a reading passage using your selected words ({selectedWords.length} words)
               {selectedModes.length > 0 && (
                 <span className="text-amber-600 block mt-1">💡 Game modes will be disabled — AI questions become the activity</span>
@@ -633,16 +633,16 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="flex items-center gap-2.5">
           <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-black text-sm shadow-md transition-colors ${
             selectedModes.length === 0
-              ? 'bg-stone-300 text-stone-500'
+              ? 'bg-[var(--vb-border)] text-[var(--vb-text-muted)]'
               : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white'
           }`}>2</span>
-          <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+          <label className="flex items-center gap-2 text-sm font-bold text-[var(--vb-text-secondary)]">
             <span>✏️</span> {isAssignment ? 'Name and instruct' : 'Label this session'}
           </label>
         </div>
 
         {isAssignment && selectedModes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-4 text-center text-xs text-stone-500">
+          <div className="rounded-2xl border border-dashed border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-4 text-center text-xs text-[var(--vb-text-muted)]">
             <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
             Pick one or more game modes above and we'll suggest a title
             automatically. You can always edit it.
@@ -651,12 +651,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           <div className="grid grid-cols-1 gap-3">
             {/* Title */}
             <div>
-              <label htmlFor="assignment-title" className="block text-xs font-bold text-stone-600 mb-1.5">
+              <label htmlFor="assignment-title" className="block text-xs font-bold text-[var(--vb-text-secondary)] mb-1.5">
                 {isAssignment ? 'Assignment title ' : 'Session title '}
                 {isAssignment ? (
                   <span className="text-red-500">*</span>
                 ) : (
-                  <span className="text-stone-400 font-normal">(optional)</span>
+                  <span className="text-[var(--vb-text-muted)] font-normal">(optional)</span>
                 )}
               </label>
               <input
@@ -672,13 +672,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 placeholder={isAssignment
                   ? 'e.g., Fruits Vocabulary - Unit 5'
                   : 'e.g., Period 3 warm-up'}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all"
               />
             </div>
 
             {/* Instructions */}
             <div>
-              <label htmlFor="assignment-instructions" className="block text-xs font-bold text-stone-600 mb-1.5">
+              <label htmlFor="assignment-instructions" className="block text-xs font-bold text-[var(--vb-text-secondary)] mb-1.5">
                 {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
               </label>
               <textarea
@@ -694,7 +694,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   ? 'Add a note for your students...'
                   : 'e.g., Remember to use headphones'}
                 rows={2}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all resize-none"
               />
             </div>
           </div>
@@ -706,11 +706,11 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white font-black text-sm shadow-md">3</span>
-            <label className="block text-sm font-bold text-stone-900">
+            <label className="block text-sm font-bold text-[var(--vb-text-primary)]">
               {selectedModes.includes('sentence-builder') ? 'Sentence Builder Setup' : 'Fill-in-the-Blank Setup'}
             </label>
           </div>
-          <label className="block text-xs font-bold text-stone-600 mt-2">
+          <label className="block text-xs font-bold text-[var(--vb-text-secondary)] mt-2">
             Sentence Difficulty Level
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -725,12 +725,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   className={`relative p-3 rounded-lg border-2 transition-all duration-300 text-center ${
                     isSelected
                       ? 'border-primary bg-primary shadow-md scale-105'
-                      : 'border-outline/20 bg-stone-200 hover:border-outline/40 hover:bg-stone-200-high'
+                      : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-outline/40 hover:bg-stone-200-high'
                   }`}
                 >
                   <div className="text-lg mb-1">{config.emoji}</div>
-                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-stone-600'}`}>{config.label}</div>
-                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-stone-600'}`}>{config.description}</div>
+                  <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-[var(--vb-text-secondary)]'}`}>{config.label}</div>
+                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-[var(--vb-text-secondary)]'}`}>{config.description}</div>
                   {isSelected && (
                     <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-white flex items-center justify-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
@@ -765,7 +765,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
 
           {/* Add Custom Sentence */}
           <div className="mt-4 space-y-2">
-            <label className="block text-xs font-bold text-stone-600">
+            <label className="block text-xs font-bold text-[var(--vb-text-secondary)]">
               Add Your Own Sentences
             </label>
             <div className="flex gap-2">
@@ -774,7 +774,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
                 placeholder="Write or paste your sentence here..."
                 rows={2}
-                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-stone-900 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
               />
               <button
                 onClick={() => {
@@ -795,7 +795,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {/* Sentence Preview & Editor */}
           {assignmentSentences.length > 0 && (
             <div className="mt-3">
-              <label className="block text-xs font-bold text-stone-600 mb-2">
+              <label className="block text-xs font-bold text-[var(--vb-text-secondary)] mb-2">
                 Generated Sentences ({assignmentSentences.length}) — hover to preview, click to edit
               </label>
               <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
@@ -807,15 +807,15 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                       onClick={() => setEditingSentenceIndex(idx)}
                       className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-300/30 bg-stone-200-lowest hover:border-primary/50 hover:bg-stone-200-high cursor-pointer transition-all group"
                     >
-                      <span className="text-xs text-stone-600 font-mono w-5 shrink-0">{idx + 1}</span>
-                      <span className="flex-1 text-sm text-stone-900 truncate group-hover:text-primary transition-colors">
+                      <span className="text-xs text-[var(--vb-text-secondary)] font-mono w-5 shrink-0">{idx + 1}</span>
+                      <span className="flex-1 text-sm text-[var(--vb-text-primary)] truncate group-hover:text-primary transition-colors">
                         {sentence}
                       </span>
                       {/* Hover preview tooltip — smart positioning */}
-                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-stone-100 rounded-xl shadow-xl border-2 border-stone-300/30 p-3 pointer-events-none ${
+                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-[var(--vb-surface-alt)] rounded-xl shadow-xl border-2 border-stone-300/30 p-3 pointer-events-none ${
                         isInFirstHalf ? 'absolute top-full left-0 mt-2' : 'absolute bottom-full left-0 mb-2'
                       }`}>
-                        <div className="text-sm text-stone-900 break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <div className="text-sm text-[var(--vb-text-primary)] break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                           {sentence}
                         </div>
                         <div className={`absolute ${isInFirstHalf ? 'bottom-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-surface -mt-px' : 'top-full left-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-surface -mt-px'}`} />
@@ -827,7 +827,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                           const updated = assignmentSentences.filter((_, i) => i !== idx);
                           onSentencesChange?.(updated);
                         }}
-                        className="text-stone-600 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        className="text-[var(--vb-text-secondary)] hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         title="Remove sentence"
                       >
                         <X size={14} />
@@ -842,8 +842,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {/* Sentence Edit Modal */}
           {editingSentenceIndex !== null && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingSentenceIndex(null)}>
-              <div className="bg-stone-100 rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-bold text-stone-900 mb-4">
+              <div className="bg-[var(--vb-surface-alt)] rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-[var(--vb-text-primary)] mb-4">
                   Edit Sentence #{editingSentenceIndex + 1}
                 </h3>
                 <textarea
@@ -855,7 +855,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onSentencesChange?.(updated);
                   }}
                   rows={3}
-                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-stone-900 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3 mt-4">
@@ -889,13 +889,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white font-black text-sm shadow-md">
               {(selectedModes.includes('sentence-builder') || selectedModes.includes('fill-blank')) ? '4' : '3'}
             </span>
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+            <label className="flex items-center gap-2 text-sm font-bold text-[var(--vb-text-secondary)]">
               <Calendar size={14} className="text-indigo-500" />
               Schedule (optional)
             </label>
           </div>
           <div>
-            <label className="block text-xs text-stone-500 mb-1.5">Deadline</label>
+            <label className="block text-xs text-[var(--vb-text-muted)] mb-1.5">Deadline</label>
             <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
