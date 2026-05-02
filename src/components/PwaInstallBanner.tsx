@@ -6,7 +6,9 @@
  *   1. Mobile viewport (max-width 768px)
  *   2. Not already running as a standalone PWA
  *   3. Not dismissed within the last 14 days
- *   4. After a 20s warm-up so we don't pop the moment the user lands
+ *   4. After a 1.5s warm-up so the hero animations settle before the
+ *      banner slides in.  Long enough to feel intentional, short
+ *      enough to catch attention while interest is high.
  *
  * Two paths:
  *   * Android (Chrome / Edge / Samsung) — captures the
@@ -34,7 +36,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 const STORAGE_KEY = "pwa_dismissed_at";
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
-const WARMUP_MS = 20 * 1000;
+const WARMUP_MS = 1500;
 
 const COPY: Record<Language, {
   androidTitle: string;
