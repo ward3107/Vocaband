@@ -110,6 +110,7 @@ export default function GameModeSelectionView({
     { id: "reverse",           color: "fuchsia", icon: <Repeat size={24} /> },
     { id: "letter-sounds",     color: "violet",  icon: <span className="text-2xl">🔡</span> },
     { id: "sentence-builder",  color: "teal",    icon: <span className="text-2xl">🧩</span> },
+    { id: "word-chains",       color: "orange",  icon: <span className="text-2xl">🔗</span> },
   ];
 
   // Combined modes array — layout metadata + localised strings keyed

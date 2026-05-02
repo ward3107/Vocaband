@@ -3,6 +3,7 @@ import { Loader2, QrCode } from "lucide-react";
 import AvatarPicker from "../components/QPAvatarPicker";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
+import { ALL_GAME_MODES } from "../constants/game";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -225,7 +226,7 @@ export default function QuickPlayStudentView({
         wordIds: words.map(w => w.id),
         words,
         title: "Quick Play",
-        allowedModes: quickPlayActiveSession.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+        allowedModes: quickPlayActiveSession.allowedModes || ALL_GAME_MODES,
         sentences: quickPlaySentences,
         sentenceDifficulty: 2,
       });

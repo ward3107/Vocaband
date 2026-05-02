@@ -26,6 +26,9 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // and the option button accents.  The dashed slot box stays
   // lime regardless (it's the mode signature).
   "fill-blank": "lime",
+  // Word Chains = orange.  Free-text typing mode where the student
+  // types a word starting with the previous word's last letter.
+  "word-chains": "orange",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -43,6 +46,7 @@ const MODE_LABEL: Record<string, string> = {
   "letter-sounds": "Letter Sounds",
   "sentence-builder": "Sentence Builder",
   "fill-blank": "Fill in the Blank",
+  "word-chains": "Word Chains",
 };
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
@@ -59,6 +63,7 @@ import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
 import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
+import WordChainsGame from "../components/game/WordChainsGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -223,6 +228,22 @@ export default function GameActiveView({
           gameWordsCount={gameWords.length}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
+        />
+      );
+    }
+    if (gameMode === "word-chains") {
+      // Self-contained free-text mode: student types a word starting
+      // with the previous word's last letter.  Score = chain length.
+      // For v1, ending the round routes through handleExitGame which
+      // returns to the mode picker via App.tsx's view + showModeSelection
+      // flags (the rest of the app's exit path).  XP / progress write
+      // is a follow-up — see docs/SELECTED-FEATURES-PLAN.md.
+      return (
+        <WordChainsGame
+          gameWords={gameWords}
+          themeColor={modeTheme ?? "orange"}
+          speak={speakWord}
+          onFinish={handleExitGame}
         />
       );
     }
