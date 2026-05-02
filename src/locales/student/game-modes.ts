@@ -31,7 +31,8 @@ export type GameModeId =
   | "scramble"
   | "reverse"
   | "letter-sounds"
-  | "sentence-builder";
+  | "sentence-builder"
+  | "word-chains";
 
 export interface GameModeStrings {
   name: string;
@@ -116,6 +117,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "Tap words in the right order to build the sentence.",
         tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"],
       },
+      "word-chains": {
+        name: "Word Chains",
+        desc: "Type a word that starts with the last letter of the previous word.",
+        tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
+      },
     },
   },
 
@@ -186,6 +192,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "הקש על המילים בסדר הנכון לבניית המשפט.",
         tooltip: ["המילים מעורבבות", "הקש עליהן בסדר הנכון", "בנה את המשפט נכון!"],
       },
+      "word-chains": {
+        name: "שרשרת מילים",
+        desc: "הקלד מילה שמתחילה באות האחרונה של המילה הקודמת.",
+        tooltip: ["הסתכל על האות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"],
+      },
     },
   },
 
@@ -255,6 +266,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "بناء الجمل",
         desc: "اضغط على الكلمات بالترتيب الصحيح لبناء الجملة.",
         tooltip: ["الكلمات مختلطة", "اضغط عليها بالترتيب الصحيح", "ابن الجملة بشكل صحيح!"],
+      },
+      "word-chains": {
+        name: "سلسلة الكلمات",
+        desc: "اكتب كلمة تبدأ بآخر حرف من الكلمة السابقة.",
+        tooltip: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"],
       },
     },
   },

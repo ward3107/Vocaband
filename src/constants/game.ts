@@ -421,7 +421,28 @@ export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
   4: { label: 'Advanced', description: '10-15 words, complex structures', minWords: 10, maxWords: 15, emoji: '🏔️' },
 };
 
-export type GameMode = "classic" | "listening" | "spelling" | "matching" | "memory-flip" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder" | "fill-blank";
+export type GameMode = "classic" | "listening" | "spelling" | "matching" | "memory-flip" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder" | "fill-blank" | "word-chains";
+
+// Single source of truth for the full mode catalog.  Used wherever we
+// need an "everything available" fallback (assignment without
+// allowed_modes, quick-play without a saved set, dashboard defaults,
+// etc).  Adding a new mode to GameMode means appending it here too —
+// otherwise the new mode silently gets filtered out of fallback lists.
+export const ALL_GAME_MODES: GameMode[] = [
+  "classic",
+  "listening",
+  "spelling",
+  "matching",
+  "memory-flip",
+  "true-false",
+  "flashcards",
+  "scramble",
+  "reverse",
+  "letter-sounds",
+  "sentence-builder",
+  "fill-blank",
+  "word-chains",
+];
 
 // ═════════════════════════════════════════════════════════════════════════
 // STRUCTURE PROGRESSION — "build something meaningful" system

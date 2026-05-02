@@ -158,59 +158,44 @@ Future: AI-generate more via the AI Lesson Builder pipeline.
 
 ### Mechanics
 
-Three rotating mission types, refreshed once per **user-local calendar day** (see "Reset boundary" below for the timezone strategy — every mission row is keyed by the user's local date so resets are deterministic across devices):
+Three rotating mission types, refreshed at midnight (local time):
 
 | Mission | Target | Reward |
 |---|---|---|
-| **Master N new words** | 5 / 10 / 15 words depending on level | **+50 XP fixed** when target is hit (not per-word) |
-| **Play N modes** | 3 / 5 different modes | **+100 XP fixed** when target is hit |
-| **Beat your record** | Beat any previous high score | **+200 XP fixed** |
-| **All-missions bonus** | Complete all 3 daily missions | **+50 XP fixed** on top |
-
-All rewards are **fixed bonuses paid once on completion** — never per-unit-of-progress. Backend grant logic and the celebration animation must read from the same `xp_reward` column on the `daily_missions` row to stay consistent.
+| **Master N new words** | 5 / 10 / 15 words depending on level | +50 XP per word |
+| **Play N modes** | 3 / 5 different modes | +100 XP bonus |
+| **Beat your record** | Beat any previous high score | +200 XP bonus |
 
 Show in the student dashboard as a "Today's Missions" card with progress bars per mission.
 
 ### Storage
 
-- New table: `daily_missions` keyed by `(user_uid, mission_date, mission_type)` where `mission_date` is the **user's local-timezone calendar date** (not UTC).
+- New table: `daily_missions` keyed by (user_uid, date)
   ```sql
   CREATE TABLE public.daily_missions (
     user_uid UUID REFERENCES public.users(uid),
-    mission_date DATE,           -- user's local date (see Reset boundary)
-    mission_type TEXT,           -- 'master_words' | 'play_modes' | 'beat_record'
+    mission_date DATE,
+    mission_type TEXT, -- 'master_words' | 'play_modes' | 'beat_record'
     target INT,
     progress INT DEFAULT 0,
     completed BOOLEAN DEFAULT false,
-    xp_reward INT,               -- fixed; granted once on completed=true
+    xp_reward INT,
     PRIMARY KEY (user_uid, mission_date, mission_type)
   );
   ```
 - RLS: student sees only their own missions
 
-### Reset boundary (timezone strategy)
-
-`mission_date` is the student's **local calendar date at the moment of the action**, not the server's UTC date. To avoid the cross-device duplicate / missed-reset problem the reviewer flagged, we pick **one** of the following before building (decide at implementation time, not split per call site):
-
-- **Option A (preferred): persist a per-user IANA timezone**
-  - Add `users.timezone TEXT` (e.g. `"Asia/Jerusalem"`)
-  - On first sign-in / dashboard mount, capture `Intl.DateTimeFormat().resolvedOptions().timeZone` and write it back if missing
-  - All client + server code derives `mission_date` via that stored zone, so a kid switching from phone (UTC+3 traveling) to laptop (UTC+2 home) still sees the same day's missions
-- **Option B (fallback if migration is too costly):** server normalizes `mission_date` from the request's `Intl`-derived offset header per call. Simpler but less robust for kids on dual devices in different timezones.
-
-Whichever path we pick, the rule is: **`mission_date` is computed once per write, in the user's stored zone, and matches the boundary used by the cron / refresh that creates the next day's rows**. No mixing UTC date with local date inside the same flow.
-
 ### Push notifications (Phase 2, optional)
 
 - "🎯 Missions reset!  Play 5 minutes today to keep your streak."
-- Sent at 4 PM local time (after school, before evening homework) — same timezone source as the reset boundary above
+- Sent at 4 PM local time (after school, before evening homework)
 
 ### UI
 
 - New `DailyMissionsCard` on the student dashboard
 - Each mission as a row with: emoji icon + title + progress bar + XP reward badge
-- Completed missions get a green checkmark + "+{xp_reward} XP" celebration animation, where `xp_reward` is read from the row (so per-mission copy never desyncs from the actual grant)
-- "All missions done!" state shows a confetti burst + the fixed all-missions bonus
+- Completed missions get a green checkmark + "+50 XP" celebration animation
+- "All missions done!" state shows a confetti burst + "+50 XP bonus"
 
 ### Files to create
 
