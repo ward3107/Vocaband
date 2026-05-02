@@ -53,6 +53,15 @@ export default defineConfig(() => {
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,
+          // Activate new SW immediately on the next page load instead
+          // of waiting for every tab to close.  Combined with
+          // clientsClaim, this means a fresh deploy reaches users
+          // within ONE navigation rather than days later.  Teachers
+          // were having to "clear cache" after every deploy because
+          // the old SW kept serving cached HTML — these two flags
+          // are the proper fix.
+          skipWaiting: true,
+          clientsClaim: true,
           // Treat navigation requests network-first (see runtimeCaching
           // below); the fallback is the last-cached shell so offline
           // students can still open the app.
@@ -83,6 +92,24 @@ export default defineConfig(() => {
             // entire page fails to load. Denylisting + NetworkOnly
             // (below) keeps the SW out of this path entirely.
             /^\/quick-play(\?|$)/,
+            // OAuth + magic-link callbacks — Google OAuth, Supabase
+            // OTP / magic link, etc. all return the user to
+            // `vocaband.com/?code=...` (or with token_hash /
+            // access_token / refresh_token query params).  Same SW +
+            // redirect bug bites these: Cloudflare may redirect
+            // apex→www, the SW caches the redirect, and the next
+            // top-level navigation refuses to consume the cached
+            // redirect.  Symptom in the wild: signing in with Google
+            // hits a Chrome error page with "a redirected response
+            // was used for a request whose redirect mode is not
+            // 'follow'".  Denylisting these patterns means the SW
+            // never sees the navigation in the first place — the
+            // browser handles it directly, redirect follows cleanly,
+            // Supabase JS picks up the session.
+            /\?.*\bcode=/,
+            /\?.*\btoken_hash=/,
+            /\?.*\baccess_token=/,
+            /\?.*\brefresh_token=/,
           ],
           runtimeCaching: [
             {
