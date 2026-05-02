@@ -2,9 +2,10 @@
  * WorksheetView — full-screen "build a printable worksheet" UI.
  *
  * On-screen the teacher sees:
- *   - Sheet type picker (4 cards: Word list / Scramble / Fill-blank / Match-up)
+ *   - Sheet type picker (multiple worksheet types in a grid)
  *   - Word source picker (same shape as Class Show)
  *   - Title input + answer-key toggle
+ *   - AI sentence generation for sentence-based sheets
  *   - "Print" button → calls window.print()
  *
  * Below the controls, a live preview of the selected sheet renders
@@ -17,11 +18,12 @@
  * everything except `.vb-print-only` is suppressed and the worksheet
  * is the only thing on the page.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2 } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
+import { supabase } from '../core/supabase';
 import Worksheet, { type WorksheetSheetType } from '../components/worksheet/Worksheet';
 import { WordListSheet } from '../components/worksheet/sheets/WordListSheet';
 import { ScrambleSheet } from '../components/worksheet/sheets/ScrambleSheet';
@@ -46,11 +48,12 @@ interface WorksheetViewProps {
   pickerWiring?: ClassShowWordPickerWiring;
 }
 
-const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string }> = [
-  { id: 'word-list',  label: 'Word list',         description: 'Bilingual reference sheet',         icon: <BookOpen size={26} />, gradient: 'from-emerald-300 to-teal-400' },
-  { id: 'scramble',   label: 'Scramble',          description: 'Unscramble each word',              icon: <Shuffle size={26} />,  gradient: 'from-orange-300 to-red-400' },
-  { id: 'fill-blank', label: 'Fill in the blank', description: 'Sentences with missing words',     icon: <FileText size={26} />, gradient: 'from-indigo-300 to-violet-400' },
-  { id: 'match-up',   label: 'Match-up',          description: 'Draw lines between English + translation', icon: <Link2 size={26} />, gradient: 'from-pink-300 to-rose-400' },
+// Enhanced worksheet types with more options
+const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> = [
+  { id: 'word-list',  label: 'Word List',        description: 'Bilingual reference sheet',        icon: <BookOpen size={26} />,    gradient: 'from-emerald-300 to-teal-400', needsSentences: false },
+  { id: 'scramble',   label: 'Scramble',         description: 'Unscramble each word',            icon: <Shuffle size={26} />,     gradient: 'from-orange-300 to-red-400', needsSentences: false },
+  { id: 'fill-blank', label: 'Fill in the Blank', description: 'Sentences with missing words',   icon: <FileText size={26} />,     gradient: 'from-indigo-300 to-violet-400', needsSentences: true },
+  { id: 'match-up',   label: 'Match-up',         description: 'Connect word to translation',    icon: <Link2 size={26} />,       gradient: 'from-pink-300 to-rose-400', needsSentences: false },
 ];
 
 export default function WorksheetView({
@@ -63,6 +66,30 @@ export default function WorksheetView({
   const [sheetType, setSheetType] = useState<WorksheetSheetType>('word-list');
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+
+  // AI sentence generation state
+  const [aiSentences, setAiSentences] = useState<Record<number, string>>({});
+  const [isGeneratingSentences, setIsGeneratingSentences] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+
+  // Check AI availability
+  useEffect(() => {
+    const checkAI = async () => {
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/features`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setAiEnabled(data.aiSentences === true);
+      } catch {
+        setAiEnabled(false);
+      }
+    };
+    checkAI();
+  }, []);
 
   // Custom-words state for the embedded WordPicker.  When non-empty,
   // a synthetic "My custom selection" source is prepended.
@@ -83,6 +110,42 @@ export default function WorksheetView({
 
   const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
   const wordsForSheet = source?.words ?? [];
+
+  // Clear AI sentences when word source changes
+  useEffect(() => {
+    setAiSentences({});
+  }, [sourceIdx]);
+
+  // Generate AI sentences for selected words (defined after wordsForSheet is available)
+  const generateSentences = async () => {
+    if (wordsForSheet.length === 0) return;
+    setIsGeneratingSentences(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error('No auth token');
+      const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+      const words = wordsForSheet.map(w => w.english).filter(Boolean);
+      const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ words, difficulty: 2 }),
+      });
+      if (!res.ok) throw new Error('Failed to generate sentences');
+      const { sentences } = await res.json();
+      // Map sentences back to words by index
+      const newSentences: Record<number, string> = {};
+      wordsForSheet.forEach((word, idx) => {
+        if (sentences[idx]) {
+          newSentences[word.id] = sentences[idx];
+        }
+      });
+      setAiSentences(newSentences);
+    } catch (err) {
+      console.error('[Worksheet] AI sentence generation failed:', err);
+    } finally {
+      setIsGeneratingSentences(false);
+    }
+  };
 
   const handleCustomWordsChange = (next: Word[]) => {
     const wasEmpty = customWords.length === 0;
@@ -209,6 +272,67 @@ export default function WorksheetView({
           </div>
         </div>
 
+        {/* AI Sentence Generation — shown only for sentence-based sheets */}
+        {sheetType !== 'word-list' && sheetType !== 'scramble' && sheetType !== 'match-up' && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between p-4 rounded-2xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+              <div className="flex items-center gap-3">
+                {isGeneratingSentences ? (
+                  <Loader2 size={20} className="animate-spin" style={{ color: 'var(--vb-accent)' }} />
+                ) : Object.keys(aiSentences).length > 0 ? (
+                  <Check size={20} style={{ color: '#10b981' }} />
+                ) : (
+                  <Sparkles size={20} style={{ color: 'var(--vb-accent)' }} />
+                )}
+                <div>
+                  <div className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
+                    AI Sentence Generation
+                  </div>
+                  <div className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                    {isGeneratingSentences
+                      ? 'Generating sentences...'
+                      : Object.keys(aiSentences).length > 0
+                      ? `${Object.keys(aiSentences).length} sentences generated`
+                      : 'Generate example sentences for your worksheet'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={generateSentences}
+                disabled={!aiEnabled || isGeneratingSentences || wordsForSheet.length === 0}
+                style={{
+                  backgroundColor: aiEnabled ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
+                  color: aiEnabled ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
+                }}
+                className="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              >
+                {isGeneratingSentences ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : Object.keys(aiSentences).length > 0 ? (
+                  <>
+                    <Sparkles size={16} />
+                    Regenerate
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    Generate Sentences
+                  </>
+                )}
+              </button>
+            </div>
+            {!aiEnabled && (
+              <div className="mt-2 text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                AI features are not available. Please contact support to enable.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Title */}
         <div className="mb-8">
           <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
@@ -261,7 +385,7 @@ export default function WorksheetView({
             </h3>
             {sheetType === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'fill-blank' && <FillBlankSheet words={wordsForSheet} />}
+            {sheetType === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
             {sheetType === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
           </div>
         </div>
@@ -293,6 +417,7 @@ export default function WorksheetView({
         className={className ?? null}
         includeAnswerKey={includeAnswerKey}
         translationLang={translationLang}
+        aiSentences={aiSentences}
       />
     </div>
   );

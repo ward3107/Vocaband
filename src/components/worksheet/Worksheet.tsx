@@ -30,10 +30,12 @@ interface WorksheetProps {
   includeAnswerKey: boolean;
   /** Translation language for the answer column / hint column. */
   translationLang: 'he' | 'ar' | 'en';
+  /** AI-generated sentences keyed by word ID — for Fill-in-the-blank sheets */
+  aiSentences?: Record<number, string>;
 }
 
 export default function Worksheet({
-  sheetType, title, words, className, includeAnswerKey, translationLang,
+  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences,
 }: WorksheetProps) {
   const date = new Date().toLocaleDateString();
 
@@ -50,14 +52,14 @@ export default function Worksheet({
 
       {sheetType === 'word-list' && <WordListSheet words={words} translationLang={translationLang} />}
       {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'fill-blank' && <FillBlankSheet words={words} />}
+      {sheetType === 'fill-blank' && <FillBlankSheet words={words} aiSentences={aiSentences} />}
       {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} />}
 
       {includeAnswerKey && sheetType !== 'word-list' && (
         <div className="vb-print-page-break">
           <h2 style={{ fontSize: '20pt', fontWeight: 900, marginBottom: '1rem' }}>Answer key</h2>
           {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'fill-blank' && <FillBlankSheet words={words} answerKey />}
+          {sheetType === 'fill-blank' && <FillBlankSheet words={words} answerKey aiSentences={aiSentences} />}
           {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} answerKey />}
         </div>
       )}
