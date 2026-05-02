@@ -9,20 +9,88 @@
   --a11y-line-height: 1.5;
   --a11y-letter-spacing: 0em;
 
-  /* Teacher dashboard theme tokens — defaults match the 'default' theme.
-     Overridden at runtime by useTeacherTheme() on teacher-side routes.
-     `--vb-surface` is intentionally an off-white (stone-50, not pure
-     white) so cards don't glare on bright displays.  See header
-     comment in src/constants/teacherDashboardThemes.ts. */
+  /* =====================================================================
+     Vocaband design tokens — single source of truth for every surface.
+     Defaults match the 'default' theme; overridden at runtime by
+     useTeacherTheme() on teacher-side routes and (when the
+     `adaptiveTheme` feature flag is on) by the AdaptiveThemeProvider.
+     Components MUST consume these via var(--vb-*) — no hardcoded
+     colors in src/components/**.
+     ===================================================================== */
+
+  /* ── Surfaces (off-white, not pure #fff — see comment in
+        teacherDashboardThemes.ts; pure white glares on phones).      */
   --vb-surface: #fafaf9;
   --vb-surface-alt: #f5f5f4;
-  --vb-border: #e7e5e4;
+  --vb-surface-elevated: #ffffff; /* modals, popovers — slightly higher */
+  --vb-bg-primary: #fafaf9;
+  --vb-bg-secondary: #f5f5f4;
+
+  /* ── Text tiers                                                    */
   --vb-text-primary: #1c1917;
   --vb-text-secondary: #57534e;
   --vb-text-muted: #a8a29e;
+  --vb-text-on-accent: #ffffff;
+
+  /* ── Accent (theme-driven)                                         */
   --vb-accent: #6366f1;
+  --vb-accent-hover: #4f46e5;
+  --vb-accent-active: #4338ca;
   --vb-accent-soft: #eef2ff;
   --vb-accent-text: #ffffff;
+  --vb-accent-contrast: #ffffff;
+
+  /* ── Structural                                                    */
+  --vb-border: #e7e5e4;
+  --vb-border-strong: #d6d3d1;
+  --vb-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --vb-shadow-elevated: 0 4px 12px 0 rgba(0,0,0,0.08);
+
+  /* ── Status — same across themes (semantic meaning > theme tint)  */
+  --vb-success: #16a34a;
+  --vb-success-soft: #dcfce7;
+  --vb-warning: #d97706;
+  --vb-warning-soft: #fef3c7;
+  --vb-error: #dc2626;
+  --vb-error-soft: #fee2e2;
+  --vb-info: #0ea5e9;
+  --vb-info-soft: #e0f2fe;
+
+  /* ── Typography scale (multiplier; 1.0 = near, 1.15 = mid, 1.4 = far) */
+  --vb-font-scale: 1;
+  --vb-font-weight-body: 400;
+  --vb-font-weight-strong: 600;
+
+  /* ── Spacing scale                                                 */
+  --vb-space-scale: 1;
+
+  /* ── Focus ring (always visible, contrast-checked at design time) */
+  --vb-focus-ring: #6366f1;
+  --vb-focus-ring-offset: 2px;
+}
+
+/* =============================================================================
+   Presentation Mode — applied by adding `.vb-presentation` to the
+   document root.  Boosts font scale, increases contrast, simplifies
+   visual noise so the UI is legible on a classroom projector at 8m.
+   Toggle via the teacher dashboard's Presentation Mode button.
+   ============================================================================= */
+:root.vb-presentation {
+  --vb-font-scale: 1.4;
+  --vb-font-weight-body: 500;
+  --vb-font-weight-strong: 700;
+  --vb-shadow: none; /* drop decorative shadows for projector clarity */
+  --vb-shadow-elevated: none;
+}
+
+/* When prefers-reduced-motion is set, disable theme transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* =============================================================================
