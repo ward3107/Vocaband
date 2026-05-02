@@ -32,8 +32,9 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Idiom = sky.  Multi-choice mode where students pick the figurative
   // meaning of an English idiom from a hand-curated dataset.
   idiom: "sky",
-  // Review = violet.  SRS session — pulls due words from review_schedule.
-  review: "violet",
+  // Speed Round = red.  60-second timer mode; red signals urgency
+  // and pairs visually with the pulsing low-time-left timer.
+  "speed-round": "red",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -53,7 +54,7 @@ const MODE_LABEL: Record<string, string> = {
   "fill-blank": "Fill in the Blank",
   "word-chains": "Word Chains",
   idiom: "Idiom",
-  review: "Review",
+  "speed-round": "Speed Round",
 };
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
@@ -72,7 +73,7 @@ import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
-import ReviewGame from "../components/game/ReviewGame";
+import SpeedRoundGame from "../components/game/SpeedRoundGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -123,6 +124,12 @@ interface GameActiveViewProps {
   leaderboard: Record<string, LeaderboardEntry>;
   isFinished: boolean;
   handleExitGame: () => void;
+  /** Persist a final score for self-contained modes (Word Chains, Idiom,
+   *  Speed Round) that don't go through the per-question saveScore path
+   *  that Classic / Listening / etc. trigger from their answer handlers.
+   *  Pass the second arg to bypass the per-word cap when the mode's
+   *  scoring isn't tied to gameWords.length. */
+  saveScore: (scoreOverride?: number, maxScoreOverride?: number) => void | Promise<void>;
   handleAnswer: (word: Word) => void;
   handleMatchClick: (item: MatchSelection) => void;
   handleTFAnswer: (isTrue: boolean) => void;
@@ -149,10 +156,39 @@ export default function GameActiveView({
   activeAssignment, sentenceIndex, sentenceFeedback,
   builtSentence, setBuiltSentence, availableWords, setAvailableWords,
   leaderboard: _leaderboard, isFinished,
-  handleExitGame, handleAnswer, handleMatchClick, handleTFAnswer,
+  handleExitGame, saveScore,
+  handleAnswer, handleMatchClick, handleTFAnswer,
   handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
   handleSentenceCheck, speakWord, speak, shuffle,
 }: GameActiveViewProps) {
+  // Self-contained modes (Word Chains, Idiom, Speed Round) don't go
+  // through the per-question scoring path that Classic / Listening /
+  // etc. use to trigger saveScore on the last correct answer.  Each
+  // mode emits its own raw round score on End, and this helper
+  // normalizes it to the 0-100 scale the progress + XP infrastructure
+  // expects, then runs saveScore (with maxScoreOverride: 100 to bypass
+  // the per-word cap) before bouncing back to mode selection.
+  //
+  // Per-mode normalization:
+  //   - Idiom: correctCount × 10 (10 questions, 10 points each = 0-100)
+  //   - Word Chains: chainLength × 10, capped at 100 (10-chain = perfect)
+  //   - Speed Round: rawPoints × 5, capped at 100 (20 points = perfect)
+  // These mappings are intentionally generous so a strong run reads as
+  // ≥80 and triggers a streak day; tunable in a follow-up once we have
+  // pilot data on average scores.
+  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'word-chains' | 'speed-round') => {
+    let normalized: number;
+    if (mode === 'idiom') normalized = Math.min(100, Math.max(0, rawScore) * 10);
+    else if (mode === 'word-chains') normalized = Math.min(100, Math.max(0, rawScore) * 10);
+    else /* speed-round */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
+    try {
+      await saveScore(normalized, 100);
+    } catch {
+      // saveScore is already optimistic + queue-backed; swallow any
+      // unexpected throw so the exit transition still runs.
+    }
+    handleExitGame();
+  };
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -243,16 +279,14 @@ export default function GameActiveView({
     if (gameMode === "word-chains") {
       // Self-contained free-text mode: student types a word starting
       // with the previous word's last letter.  Score = chain length.
-      // For v1, ending the round routes through handleExitGame which
-      // returns to the mode picker via App.tsx's view + showModeSelection
-      // flags (the rest of the app's exit path).  XP / progress write
-      // is a follow-up — see docs/SELECTED-FEATURES-PLAN.md.
+      // finishSelfContainedMode normalizes (chain × 10, cap 100), runs
+      // saveScore, then bounces back to mode selection.
       return (
         <WordChainsGame
           gameWords={gameWords}
           themeColor={modeTheme ?? "orange"}
           speak={speakWord}
-          onFinish={handleExitGame}
+          onFinish={(score) => { finishSelfContainedMode(score, 'word-chains'); }}
         />
       );
     }
@@ -261,13 +295,30 @@ export default function GameActiveView({
       // of an English idiom.  Question source is the curated dataset
       // in src/data/idioms.ts, NOT the assignment word pool, so this
       // mode runs independently of the per-question orchestration.
-      // Same exit pattern as Word Chains: handleExitGame routes back
-      // to mode selection.  XP / progress write is a follow-up.
+      // finishSelfContainedMode normalizes (correct × 10) and saves
+      // before exit — the per-word cap is bypassed so a perfect run
+      // on a small assignment still reads as 100.
       return (
         <IdiomGame
           themeColor={modeTheme ?? "sky"}
           speak={speak}
-          onFinish={handleExitGame}
+          onFinish={(score) => { finishSelfContainedMode(score, 'idiom'); }}
+        />
+      );
+    }
+    if (gameMode === "speed-round") {
+      // Self-contained 60-second timer mode.  Generates its own
+      // question stream from gameWords (Classic-style — English
+      // word + 4 translation options) and runs its own timer +
+      // combo logic.  finishSelfContainedMode normalizes (raw × 5)
+      // and saves before exit.
+      return (
+        <SpeedRoundGame
+          gameWords={gameWords}
+          themeColor={modeTheme ?? "red"}
+          targetLanguage={targetLanguage}
+          speak={speakWord}
+          onFinish={(score) => { finishSelfContainedMode(score, 'speed-round'); }}
         />
       );
     }

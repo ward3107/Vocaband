@@ -17,17 +17,21 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
     { id: 'flashcards', name: 'Flashcards', emoji: '📇', color: 'from-emerald-400 to-emerald-500' },
     { id: 'matching', name: 'Matching', emoji: '🃏', color: 'from-teal-400 to-teal-500' },
     { id: 'classic', name: 'Classic', emoji: '🎯', color: 'from-blue-400 to-blue-500' },
+    { id: 'memory-flip', name: 'Memory Flip', emoji: '🧠', color: 'from-pink-400 to-pink-500' },
   ],
   intermediate: [
     { id: 'listening', name: 'Listening', emoji: '👂', color: 'from-violet-400 to-violet-500' },
     { id: 'true-false', name: 'True/False', emoji: '✅', color: 'from-purple-400 to-purple-500' },
     { id: 'letter-sounds', name: 'Letter Sounds', emoji: '🔊', color: 'from-fuchsia-400 to-fuchsia-500' },
+    { id: 'idiom', name: 'Idioms', emoji: '💭', color: 'from-sky-400 to-sky-500' },
+    { id: 'speed-round', name: 'Speed Round', emoji: '⚡', color: 'from-red-400 to-red-500' },
   ],
   advanced: [
     { id: 'spelling', name: 'Spelling', emoji: '✍️', color: 'from-orange-400 to-orange-500' },
     { id: 'reverse', name: 'Reverse', emoji: '🔁', color: 'from-amber-400 to-amber-500' },
     { id: 'scramble', name: 'Scramble', emoji: '🔤', color: 'from-yellow-400 to-yellow-500' },
     { id: 'fill-blank', name: 'Fill in the Blank', emoji: '✏️', color: 'from-lime-400 to-lime-500' },
+    { id: 'word-chains', name: 'Word Chains', emoji: '🔗', color: 'from-orange-400 to-amber-500' },
   ],
   mastery: [
     { id: 'sentence-builder', name: 'Sentence Builder', emoji: '📝', color: 'from-rose-400 to-rose-500' },
@@ -60,14 +64,18 @@ export const MODE_DIFFICULTY: Record<string, ModeDifficulty> = {
   flashcards:       'easy',      // Learning mode, no testing
   matching:         'easy',      // Pairs visible on screen, pure recognition
   classic:          'easy',      // Multi-choice with audio help
+  'memory-flip':    'easy',      // Recognition + short-term memory load
   'true-false':     'easy',      // Binary decision
   listening:        'medium',    // Audio-only recognition
   reverse:          'medium',    // Translation-to-English recognition
+  idiom:            'medium',    // Multi-choice on figurative meaning
+  'speed-round':    'medium',    // Recognition under 60s timer (penalty for wrong)
   scramble:         'hard',      // Recall with letter hints
   'letter-sounds':  'hard',      // Phonics + spelling
   spelling:         'hard',      // Pure recall + exact spelling
   'sentence-builder': 'hard',    // Vocab + grammar + syntax
   'fill-blank':     'hard',      // Read sentence in L2, infer missing word from context
+  'word-chains':    'hard',      // Free-text typing chained on previous letter
 };
 
 export const DIFFICULTY_META: Record<ModeDifficulty, {

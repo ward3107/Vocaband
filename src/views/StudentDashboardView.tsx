@@ -15,8 +15,8 @@ import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
-import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
-import { useDueReviews } from "../hooks/useDueReviews";
+import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
 import { IdentityHero } from "../components/structure/IdentityHero";
@@ -127,11 +127,11 @@ export default function StudentDashboardView({
   // structure prop is provided.
   const [showStructureDetail, setShowStructureDetail] = useState(false);
 
-  // Spaced repetition — words queued for review after the student
-  // missed them in earlier games.  Hook only fires for authenticated
-  // students; guests + Quick-Play don't have a persistent SRS queue.
-  const dueReviews = useDueReviews({
-    enabled: Boolean(user?.role === 'student' && !user?.isGuest && onStartReview),
+  // Daily missions — three rotating tasks per user-local calendar day.
+  // Hook only fires for authenticated students; guests + Quick-Play
+  // shouldn't see the card (no schema-bound XP loop).
+  const dailyMissions = useDailyMissions({
+    enabled: Boolean(user?.role === 'student' && !user?.isGuest),
   });
 
   // The default theme now uses a soft gradient instead of flat stone-100 —
@@ -195,6 +195,17 @@ export default function StudentDashboardView({
           <ActiveBoostersStrip {...boosters} />
           <PowerUpsStrip powerUps={user.powerUps} />
 
+          {/* ── Activity pet — grows with distinct days played, decays
+              past a 3-day grace period.  Sits above the structure +
+              shop pair so the student lands on the streak prompt
+              before exploring deeper widgets.  Real students only. */}
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <PetEvolutionCard
+              state={petEvolution.state}
+              isLoading={petEvolution.isLoading}
+            />
+          )}
+
           {/* ── Structure preview + Shop side-by-side ─────────────
               Garden / City / Rocket / Castle renders as a compact
               tappable preview on the left (opens the fullscreen
@@ -249,6 +260,16 @@ export default function StudentDashboardView({
               setView('shop');
             }}
           />
+
+          {/* ── Daily missions — three rotating mission types that
+              refresh once per user-local calendar day.  Renders only
+              for authenticated students (the hook is gated above). */}
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <DailyMissionsCard
+              missions={dailyMissions.missions}
+              isLoading={dailyMissions.isLoading}
+            />
+          )}
 
           {/* ── Earned badges ──────────────────────────────────────
               Collection of achievements (auto-awarded + teacher-

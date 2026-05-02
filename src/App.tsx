@@ -3256,6 +3256,7 @@ export default function App() {
         leaderboard={leaderboard}
         isFinished={isFinished}
         handleExitGame={handleExitGame}
+        saveScore={saveScore}
         handleAnswer={handleAnswer}
         handleMatchClick={handleMatchClick}
         handleTFAnswer={handleTFAnswer}
