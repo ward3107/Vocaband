@@ -56,6 +56,19 @@ export interface ClassShowWordPickerWiring {
   onTranslateWord?: (word: string) => Promise<{ hebrew: string; arabic: string; russian?: string; match: number } | null>;
   onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
   onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
+  onAiGenerateWords?: (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => Promise<Array<{
+    english: string;
+    hebrew: string;
+    arabic: string;
+    example?: string;
+    isFromCurriculum?: boolean;
+    curriculumId?: number;
+  }>>;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
   savedGroups?: Array<{ id: string; name: string; words: number[] }>;
   onRenameSavedGroup?: (id: string, newName: string) => Promise<boolean>;
@@ -211,6 +224,7 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
                 onTranslateWord={pickerWiring.onTranslateWord}
                 onTranslateBatch={pickerWiring.onTranslateBatch}
                 onOcrUpload={pickerWiring.onOcrUpload}
+                onAiGenerateWords={pickerWiring.onAiGenerateWords}
                 showToast={pickerWiring.showToast}
                 topicPacks={pickerWiring.topicPacks}
                 savedGroups={pickerWiring.savedGroups}

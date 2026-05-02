@@ -517,6 +517,107 @@ export default function App() {
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
   const { translateWord, translateWordsBatch } = useTranslate();
 
+  // AI Vocabulary Generator — calls /api/ai-generate-words endpoint
+  const handleAiGenerateWords = async (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      showToast?.('Authentication required', 'error');
+      throw new Error('No auth token');
+    }
+
+    const response = await fetch('/api/ai-generate-words', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'AI generation failed');
+    }
+
+    const data = await response.json();
+
+    // Mark curriculum words by checking against ALL_WORDS
+    const curriculumWords = new Map(
+      ALL_WORDS.map(w => [w.english.toLowerCase(), w])
+    );
+
+    return data.words.map((w: {
+      english: string;
+      hebrew: string;
+      arabic: string;
+      example?: string;
+    }) => {
+      const curriculumMatch = curriculumWords.get(w.english.toLowerCase());
+      if (curriculumMatch) {
+        return {
+          ...w,
+          isFromCurriculum: true,
+          curriculumId: curriculumMatch.id,
+        };
+      }
+      return {
+        ...w,
+        isFromCurriculum: false,
+      };
+    });
+  };
+
+  // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
+  const handleGenerateLesson = async (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      showToast?.('Authentication required', 'error');
+      throw new Error('No auth token');
+    }
+
+    const response = await fetch('/api/ai-generate-lesson', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'AI lesson generation failed');
+    }
+
+    return await response.json();
+  };
+
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
@@ -2643,6 +2744,8 @@ export default function App() {
         setEditingAssignment={setEditingAssignment}
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
+        onAiGenerateWords={handleAiGenerateWords}
+        onGenerateLesson={handleGenerateLesson}
       />
       </LazyWrapper>
     );
@@ -2843,6 +2946,8 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         onTranslateWord={translateWord}
+        onAiGenerateWords={handleAiGenerateWords}
+        onGenerateLesson={handleGenerateLesson}
         topicPacks={TOPIC_PACKS}
         user={user}
         onLogout={() => supabase.auth.signOut()}
@@ -2892,6 +2997,7 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: handleOcrUpload,
+            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             // savedGroups: pass [] for now — wiring useSavedWordGroups
             // through App-level state is a future PR.  WordPicker's
@@ -2935,6 +3041,7 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: handleOcrUpload,
+            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             savedGroups: [],
             showToast,

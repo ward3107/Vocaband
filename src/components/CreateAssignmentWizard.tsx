@@ -76,6 +76,50 @@ export interface CreateAssignmentWizardProps {
   setEditingAssignment: (assignment: AssignmentData | null) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
+  /** AI vocabulary generation — used by the AI Lesson Builder in SetupWizard. */
+  onAiGenerateWords?: (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => Promise<Array<{
+    english: string;
+    hebrew: string;
+    arabic: string;
+    example?: string;
+    isFromCurriculum?: boolean;
+    curriculumId?: number;
+  }>>;
+  /** AI lesson generator — generates reading text + questions from selected words. */
+  onGenerateLesson?: (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => Promise<{
+    text: string;
+    wordCount: number;
+    questions: Array<{
+      type: string;
+      question: string;
+      answer: string;
+      options?: string[];
+    }>;
+  }>;
   /** Save the current wizard state as a reusable template.  Forwarded
    *  to SetupWizard, which renders a "Save as template" toggle in the
    *  Review step. */
@@ -139,6 +183,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setEditingAssignment,
   showToast,
   onPlayWord,
+  onAiGenerateWords,
+  onGenerateLesson,
   onSaveTemplate,
 }) => {
   // ── Local State ─────────────────────────────────────────────────────────────
@@ -391,6 +437,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         return result;
       }}
       onTranslateBatch={translateWordsBatch}
+      onAiGenerateWords={onAiGenerateWords}
+      onGenerateLesson={onGenerateLesson}
       topicPacks={TOPIC_PACKS}
       onOcrUpload={handleOcrUpload}
       isOcrProcessing={isOcrProcessing}

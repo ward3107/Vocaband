@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar, Star,
+  ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, Loader2, Calendar, Star, Wand2,
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
 import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
 import { DateTimePicker } from '../DateTimePicker';
+import AiLessonBuilder from '../ai-lesson-builder/AiLessonBuilder';
+import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
 
 // ── Derive assignment meta from selected modes ───────────────────────────────
 // The old "Quick template" UI forced teachers to pick a preset before
@@ -81,6 +83,31 @@ interface ConfigureStepProps {
   onSentenceDifficultyChange?: (level: SentenceDifficulty) => void;
   selectedWords?: Word[];
   editingAssignment?: AssignmentData | null;
+  /** AI lesson generator — generates reading text + questions from selected words. */
+  onGenerateLesson?: (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => Promise<GeneratedLesson>;
+  /** Called when an AI lesson is generated — passes the lesson data up. */
+  onAiLessonChange?: (lesson: GeneratedLesson | null) => void;
+  /** Show toast notifications. */
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -104,8 +131,23 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   onSentenceDifficultyChange,
   selectedWords = [],
   editingAssignment: _editingAssignment = null,
+  onGenerateLesson,
+  onAiLessonChange,
+  showToast,
 }) => {
   void _editingAssignment;
+
+  // AI Lesson Builder state
+  const [showAiLessonBuilder, setShowAiLessonBuilder] = useState(false);
+  const [aiGeneratedLesson, setAiGeneratedLesson] = useState<GeneratedLesson | null>(null);
+
+  // When AI lesson is generated, clear game modes and notify parent
+  const handleAiLessonGenerated = (lesson: GeneratedLesson) => {
+    setAiGeneratedLesson(lesson);
+    onAiLessonChange?.(lesson);
+    // Clear game modes - AI lesson becomes the activity
+    onModesChange([]);
+  };
 
   // Ref on the Next button is kept for programmatic focus only (e.g.
   // accessibility announce on step mount), never for auto-scrolling.
@@ -337,7 +379,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </div>
 
         {/* Compact grid layout — 5 columns for all modes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 ${aiGeneratedLesson ? 'opacity-50 pointer-events-none' : ''}`}>
           {Object.values(GAME_MODE_LEVELS).flat().map((gameMode) => {
             const isSelected = selectedModes.includes(gameMode.id);
             return (
@@ -447,6 +489,89 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           </motion.div>
         )}
       </motion.div>
+
+      {/* ── AI LESSON BUILDER ─────────────────────────────────────────────────────
+          Alternative to game modes: teacher can generate a reading text with
+          questions. When used, game modes are disabled — the AI-generated
+          questions BECOME the activity. Mutually exclusive with modes. */}
+      {onGenerateLesson && selectedWords.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          {/* Divider with "OR" */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-stone-200"></div>
+            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">or generate a lesson</span>
+            <div className="flex-1 h-px bg-stone-200"></div>
+          </div>
+
+          {/* AI Generated Lesson Preview (if any) */}
+          {aiGeneratedLesson ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 border-2 border-fuchsia-200"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📖</span>
+                    <h3 className="text-sm font-bold text-fuchsia-900">
+                      Reading Text Generated ({aiGeneratedLesson.wordCount} words)
+                    </h3>
+                  </div>
+                  <p className="text-sm text-stone-700 mb-2 line-clamp-3">{aiGeneratedLesson.text}</p>
+                  <div className="flex items-center gap-2 text-xs text-stone-500">
+                    <span className="px-2 py-0.5 bg-white rounded-full font-semibold">
+                      {aiGeneratedLesson.questions.length} questions
+                    </span>
+                    <span>• Game modes disabled</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setAiGeneratedLesson(null);
+                    onAiLessonChange?.(null);
+                  }}
+                  type="button"
+                  className="px-3 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold rounded-lg transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                >
+                  Clear
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            /* Generate button */
+            <button
+              onClick={() => {
+                // Auto-clear game modes when using AI generator
+                if (selectedModes.length > 0) {
+                  onModesChange([]);
+                }
+                setShowAiLessonBuilder(true);
+              }}
+              type="button"
+              className="w-full py-4 bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            >
+              <Wand2 size={20} />
+              <span>🪄 Generate Reading Text + Questions</span>
+            </button>
+          )}
+        </motion.div>
+      )}
+
+      {/* Disable game modes when AI lesson is active */}
+      {aiGeneratedLesson && (
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center">
+          <p className="text-sm font-bold text-amber-800">
+            📖 Game modes disabled — AI-generated questions are the activity
+          </p>
+        </div>
+      )}
 
       {/* ── STEP 2 — Details (title + instructions) ─────────────────────────
           Revealed once Step 1 has at least one mode picked.  Before the
@@ -766,6 +891,33 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           )}
         </button>
       </div>
+
+      {/* AI Lesson Builder Modal */}
+      {onGenerateLesson && (
+        <AiLessonBuilder
+          isOpen={showAiLessonBuilder}
+          onClose={() => setShowAiLessonBuilder(false)}
+          selectedWords={selectedWords.map(w => ({
+            english: w.english,
+            hebrew: w.hebrew,
+            arabic: w.arabic,
+          }))}
+          onGenerate={async (config) => {
+            const result = await onGenerateLesson({ words: selectedWords.map(w => ({
+              english: w.english,
+              hebrew: w.hebrew,
+              arabic: w.arabic,
+            })), config });
+            return result;
+          }}
+          onSaveLesson={(lesson) => {
+            handleAiLessonGenerated(lesson);
+            showToast?.('Lesson generated! Game modes are now disabled.', 'success');
+            setShowAiLessonBuilder(false);
+          }}
+          showToast={showToast}
+        />
+      )}
     </motion.div>
   );
 };
