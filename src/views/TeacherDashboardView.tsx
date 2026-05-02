@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Palette } from "lucide-react";
+import { Palette, Tv2 } from "lucide-react";
+import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
@@ -136,6 +137,12 @@ export default function TeacherDashboardView({
   // document.documentElement so descendants can read var(--vb-*).
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const { theme: dashboardTheme } = useTeacherTheme(user?.teacherDashboardTheme);
+
+  // Adaptive theme — Presentation Mode toggle.  Behind a feature flag
+  // (VITE_ADAPTIVE_THEME=true at build time, or `?adaptive=1` in URL).
+  // When the flag is OFF, `adaptiveEnabled` is false and the toggle
+  // button is hidden so existing teachers see no UI change.
+  const adaptiveTheme = useAdaptiveTheme();
 
   // ─── First-rating prompt gate ─────────────────────────────────────
   // Show the rating modal when the teacher has meaningfully USED the
@@ -316,6 +323,33 @@ export default function TeacherDashboardView({
       >
         <Palette size={20} />
       </button>
+
+      {/* Presentation Mode toggle — feature-flagged.  Sits just left
+          of the theme picker button so the teacher can flip the
+          screen into projector-friendly typography (1.4× font scale,
+          stronger weight, no decorative shadows) before walking to
+          the projector and back.  Hidden entirely when the
+          `adaptiveTheme` feature flag is OFF — existing teachers see
+          no UI change. */}
+      {adaptiveTheme.adaptiveEnabled && (
+        <button
+          type="button"
+          onClick={adaptiveTheme.togglePresentationMode}
+          title={adaptiveTheme.presentationMode ? 'Exit presentation mode' : 'Presentation mode (bigger text for projecting)'}
+          aria-label="Toggle presentation mode"
+          aria-pressed={adaptiveTheme.presentationMode}
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            backgroundColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-surface)',
+            color: adaptiveTheme.presentationMode ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
+            borderColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-border)',
+          }}
+          className="fixed bottom-5 right-20 sm:bottom-6 sm:right-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        >
+          <Tv2 size={20} />
+        </button>
+      )}
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
       )}
