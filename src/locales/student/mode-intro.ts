@@ -46,6 +46,7 @@ const ICONS: Record<GameMode, string> = {
   "sentence-builder": "🧩",
   "fill-blank": "✏️",
   "word-chains": "🔗",
+  "speed-round": "⚡",
 };
 
 const withIcons = (m: Record<GameMode, { title: string; steps: string[] }>): Record<GameMode, ModeIntroEntry> => {
@@ -72,6 +73,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "sentence-builder": { title: "Sentence Builder", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
       "fill-blank": { title: "Fill in the Blank", steps: ["A sentence appears with one word missing", "Read it carefully — there's no audio in this mode", "Tap the word that fills the blank"] },
       "word-chains": { title: "Word Chains", steps: ["See the highlighted last letter", "Type a word that starts with that letter", "Keep the chain going as long as you can!"] },
+      "speed-round": { title: "Speed Round", steps: ["You have 60 seconds — answer fast!", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"] },
     }),
     letsGo: "Let's Go! →",
     backToModes: "← Back to Modes",
@@ -91,6 +93,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "sentence-builder": { title: "בניית משפטים", steps: ["המילים מעורבבות למטה", "לחץ על מילים בסדר הנכון", "בנה את המשפט!"] },
       "fill-blank": { title: "השלם את החסר", steps: ["מופיע משפט עם מילה חסרה", "קרא בעיון — אין שמע במצב זה", "לחץ על המילה שמשלימה את החסר"] },
       "word-chains": { title: "שרשרת מילים", steps: ["שים לב לאות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"] },
+      "speed-round": { title: "סבב מהיר", steps: ["יש לך 60 שניות — ענה מהר!", "תשובה שגויה מורידה שנייה", "3 ברצף מזכים בבונוס קומבו"] },
     }),
     letsGo: "קדימה! →",
     backToModes: "← חזרה למצבים",
@@ -110,6 +113,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "sentence-builder": { title: "بناء الجمل", steps: ["الكلمات مخلوطة في الأسفل", "اضغط الكلمات بالترتيب الصحيح", "ابنِ الجملة لتنتهي!"] },
       "fill-blank": { title: "املأ الفراغ", steps: ["تظهر جملة بكلمة مفقودة", "اقرأها بعناية — لا يوجد صوت في هذا الوضع", "اضغط على الكلمة التي تملأ الفراغ"] },
       "word-chains": { title: "سلسلة الكلمات", steps: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"] },
+      "speed-round": { title: "جولة سريعة", steps: ["لديك 60 ثانية — أجب بسرعة!", "الإجابة الخاطئة تخصم ثانية", "3 إجابات متتالية تمنحك نقاط مكافأة"] },
     }),
     letsGo: "هيا بنا! →",
     backToModes: "← العودة إلى الأوضاع",

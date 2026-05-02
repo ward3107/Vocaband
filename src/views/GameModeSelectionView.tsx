@@ -111,6 +111,7 @@ export default function GameModeSelectionView({
     { id: "letter-sounds",     color: "violet",  icon: <span className="text-2xl">🔡</span> },
     { id: "sentence-builder",  color: "teal",    icon: <span className="text-2xl">🧩</span> },
     { id: "word-chains",       color: "orange",  icon: <span className="text-2xl">🔗</span> },
+    { id: "speed-round",       color: "red",     icon: <span className="text-2xl">⚡</span> },
   ];
 
   // Combined modes array — layout metadata + localised strings keyed
@@ -153,6 +154,8 @@ export default function GameModeSelectionView({
     teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
     lime: "bg-lime-50 border-lime-100 hover:bg-lime-100 text-lime-700",
     pink: "bg-pink-50 border-pink-100 hover:bg-pink-100 text-pink-700",
+    orange: "bg-orange-50 border-orange-100 hover:bg-orange-100 text-orange-700",
+    red: "bg-red-50 border-red-100 hover:bg-red-100 text-red-700",
   };
 
   const iconColorClasses: Record<string, string> = {
@@ -168,6 +171,8 @@ export default function GameModeSelectionView({
     teal: "text-teal-600",
     lime: "text-lime-600",
     pink: "text-pink-600",
+    orange: "text-orange-600",
+    red: "text-red-600",
   };
 
   return (

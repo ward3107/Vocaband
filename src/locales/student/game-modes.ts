@@ -32,7 +32,8 @@ export type GameModeId =
   | "reverse"
   | "letter-sounds"
   | "sentence-builder"
-  | "word-chains";
+  | "word-chains"
+  | "speed-round";
 
 export interface GameModeStrings {
   name: string;
@@ -122,6 +123,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "Type a word that starts with the last letter of the previous word.",
         tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
       },
+      "speed-round": {
+        name: "Speed Round",
+        desc: "60 seconds, as many words as you can. Wrong answers cost 1 second!",
+        tooltip: ["60-second timer", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"],
+      },
     },
   },
 
@@ -197,6 +203,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "הקלד מילה שמתחילה באות האחרונה של המילה הקודמת.",
         tooltip: ["הסתכל על האות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"],
       },
+      "speed-round": {
+        name: "סבב מהיר",
+        desc: "60 שניות, כמה שיותר מילים. תשובה שגויה עולה שנייה!",
+        tooltip: ["טיימר של 60 שניות", "תשובה שגויה מורידה שנייה", "3 ברצף — בונוס נקודות"],
+      },
     },
   },
 
@@ -271,6 +282,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "سلسلة الكلمات",
         desc: "اكتب كلمة تبدأ بآخر حرف من الكلمة السابقة.",
         tooltip: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"],
+      },
+      "speed-round": {
+        name: "جولة سريعة",
+        desc: "60 ثانية، أكبر عدد ممكن من الكلمات. الإجابة الخاطئة تكلفك ثانية!",
+        tooltip: ["مؤقت 60 ثانية", "الإجابة الخاطئة تخصم ثانية", "3 إجابات متتالية تمنحك مكافأة"],
       },
     },
   },

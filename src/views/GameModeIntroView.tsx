@@ -25,6 +25,7 @@ const modeThemes: Record<GameMode, {
   "fill-blank":      { gradient: "from-lime-50 via-white to-emerald-50",       card: "from-lime-400 to-emerald-500",       stepBg: "bg-lime-50 border-lime-100",          stepNum: "bg-lime-500",         cta: "from-lime-500 to-emerald-500",        accent: "text-lime-700" },
   "memory-flip":     { gradient: "from-pink-50 via-white to-rose-50",          card: "from-pink-400 to-rose-500",          stepBg: "bg-pink-50 border-pink-100",          stepNum: "bg-pink-500",         cta: "from-pink-500 to-rose-500",           accent: "text-pink-700" },
   "word-chains":     { gradient: "from-orange-50 via-white to-amber-50",       card: "from-orange-400 to-amber-500",       stepBg: "bg-orange-50 border-orange-100",      stepNum: "bg-orange-500",       cta: "from-orange-500 to-amber-500",        accent: "text-orange-700" },
+  "speed-round":     { gradient: "from-red-50 via-white to-rose-50",            card: "from-red-400 to-rose-500",           stepBg: "bg-red-50 border-red-100",            stepNum: "bg-red-500",          cta: "from-red-500 to-rose-500",            accent: "text-red-700" },
 };
 
 interface GameModeIntroViewProps {

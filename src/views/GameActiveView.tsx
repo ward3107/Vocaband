@@ -29,6 +29,9 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Word Chains = orange.  Free-text typing mode where the student
   // types a word starting with the previous word's last letter.
   "word-chains": "orange",
+  // Speed Round = red.  60-second timer mode; red signals urgency
+  // and pairs visually with the pulsing low-time-left timer.
+  "speed-round": "red",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -47,6 +50,7 @@ const MODE_LABEL: Record<string, string> = {
   "sentence-builder": "Sentence Builder",
   "fill-blank": "Fill in the Blank",
   "word-chains": "Word Chains",
+  "speed-round": "Speed Round",
 };
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
@@ -64,6 +68,7 @@ import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
+import SpeedRoundGame from "../components/game/SpeedRoundGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -242,6 +247,23 @@ export default function GameActiveView({
         <WordChainsGame
           gameWords={gameWords}
           themeColor={modeTheme ?? "orange"}
+          speak={speakWord}
+          onFinish={handleExitGame}
+        />
+      );
+    }
+    if (gameMode === "speed-round") {
+      // Self-contained 60-second timer mode.  Generates its own
+      // question stream from gameWords (Classic-style — English
+      // word + 4 translation options) and runs its own timer +
+      // combo logic.  Same exit pattern as Word Chains: handleExitGame
+      // routes back to mode selection.  XP / progress write is a
+      // follow-up.
+      return (
+        <SpeedRoundGame
+          gameWords={gameWords}
+          themeColor={modeTheme ?? "red"}
+          targetLanguage={targetLanguage}
           speak={speakWord}
           onFinish={handleExitGame}
         />
