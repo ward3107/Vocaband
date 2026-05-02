@@ -141,6 +141,11 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   const [showAiLessonBuilder, setShowAiLessonBuilder] = useState(false);
   const [aiGeneratedLesson, setAiGeneratedLesson] = useState<GeneratedLesson | null>(null);
 
+  // Activity type toggle: game modes vs AI text generator
+  // Both options shown as tabs for discoverability — no scrolling required
+  type ActivityType = 'game-modes' | 'ai-generator';
+  const [activityType, setActivityType] = useState<ActivityType>('game-modes');
+
   // When AI lesson is generated, clear game modes and notify parent
   const handleAiLessonGenerated = (lesson: GeneratedLesson) => {
     setAiGeneratedLesson(lesson);
@@ -325,18 +330,70 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </p>
       </div>
 
-      {/* ── STEP 1 — Game modes ─────────────────────────────────────────────
-          Progressive flow redesign (2026-04-24): mode selection now comes
-          FIRST so teachers see the game catalogue immediately, not a set
-          of empty text fields.  Title + instructions auto-fill from the
-          selection and appear in Step 2 below.  Numeric step badges make
-          the flow obvious without forcing a multi-screen wizard inside
-          the already-wizarded Setup step. */}
+      {/* ── STEP 1 — Activity selection ─────────────────────────────────────
+          Tab toggle UI for discoverability: teachers can immediately see
+          both options (Game Modes OR AI Text Generator) without scrolling.
+          Both tabs are always visible — the "OR" relationship is now explicit. */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-4"
       >
+        {/* Activity Type Toggle */}
+        <div className="flex items-center justify-center gap-2 p-1 bg-stone-100 rounded-2xl">
+          <button
+            onClick={() => {
+              setActivityType('game-modes');
+              // If switching back to game modes, re-enable them if they were cleared
+              if (selectedModes.length === 0 && !aiGeneratedLesson) {
+                onModesChange([...DEFAULT_ASSIGNMENT_MODE_IDS]);
+              }
+            }}
+            type="button"
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              activityType === 'game-modes'
+                ? 'bg-white text-indigo-700 shadow-md'
+                : 'text-stone-600 hover:text-stone-800 hover:bg-stone-200/50'
+            }`}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <span>🎮</span>
+            <span>Game Modes</span>
+            {selectedModes.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs">
+                {selectedModes.length}
+              </span>
+            )}
+          </button>
+          {onGenerateLesson && selectedWords.length > 0 && (
+            <button
+              onClick={() => {
+                setActivityType('ai-generator');
+                // Auto-clear game modes when switching to AI generator
+                if (selectedModes.length > 0) {
+                  onModesChange([]);
+                }
+              }}
+              type="button"
+              className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                activityType === 'ai-generator'
+                  ? 'bg-white text-fuchsia-700 shadow-md'
+                  : 'text-stone-600 hover:text-stone-800 hover:bg-stone-200/50'
+              }`}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            >
+              <span>🪄</span>
+              <span>AI Text Generator</span>
+              {aiGeneratedLesson && (
+                <span className="ml-1 px-2 py-0.5 bg-fuchsia-100 text-fuchsia-700 rounded-full text-xs">✓</span>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Tab Content: Game Modes */}
+        {activityType === 'game-modes' && (
+        <>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm shadow-md">1</span>
@@ -488,90 +545,77 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">next: name it</span>
           </motion.div>
         )}
-      </motion.div>
+        </>)}
 
-      {/* ── AI LESSON BUILDER ─────────────────────────────────────────────────────
-          Alternative to game modes: teacher can generate a reading text with
-          questions. When used, game modes are disabled — the AI-generated
-          questions BECOME the activity. Mutually exclusive with modes. */}
-      {onGenerateLesson && selectedWords.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-3"
-        >
-          {/* Divider with "OR" */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-stone-200"></div>
-            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">or generate a lesson</span>
-            <div className="flex-1 h-px bg-stone-200"></div>
-          </div>
-
-          {/* AI Generated Lesson Preview (if any) */}
-          {aiGeneratedLesson ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 border-2 border-fuchsia-200"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">📖</span>
-                    <h3 className="text-sm font-bold text-fuchsia-900">
-                      Reading Text Generated ({aiGeneratedLesson.wordCount} words)
-                    </h3>
+        {/* Tab Content: AI Text Generator */}
+        {activityType === 'ai-generator' && onGenerateLesson && selectedWords.length > 0 && (
+          <motion.div
+            key="ai-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            {/* AI Generated Lesson Preview (if any) */}
+            {aiGeneratedLesson ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 border-2 border-fuchsia-200"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">📖</span>
+                      <h3 className="text-sm font-bold text-fuchsia-900">
+                        Reading Text Generated ({aiGeneratedLesson.wordCount} words)
+                      </h3>
+                    </div>
+                    <p className="text-sm text-stone-700 mb-2 line-clamp-3">{aiGeneratedLesson.text}</p>
+                    <div className="flex items-center gap-2 text-xs text-stone-500">
+                      <span className="px-2 py-0.5 bg-white rounded-full font-semibold">
+                        {aiGeneratedLesson.questions.length} questions
+                      </span>
+                      <span>• Ready to assign</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-stone-700 mb-2 line-clamp-3">{aiGeneratedLesson.text}</p>
-                  <div className="flex items-center gap-2 text-xs text-stone-500">
-                    <span className="px-2 py-0.5 bg-white rounded-full font-semibold">
-                      {aiGeneratedLesson.questions.length} questions
-                    </span>
-                    <span>• Game modes disabled</span>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setAiGeneratedLesson(null);
+                      onAiLessonChange?.(null);
+                    }}
+                    type="button"
+                    className="px-3 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold rounded-lg transition-colors"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    Clear
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setAiGeneratedLesson(null);
-                    onAiLessonChange?.(null);
-                  }}
-                  type="button"
-                  className="px-3 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold rounded-lg transition-colors"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                >
-                  Clear
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            /* Generate button */
-            <button
-              onClick={() => {
-                // Auto-clear game modes when using AI generator
-                if (selectedModes.length > 0) {
-                  onModesChange([]);
-                }
-                setShowAiLessonBuilder(true);
-              }}
-              type="button"
-              className="w-full py-4 bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >
-              <Wand2 size={20} />
-              <span>🪄 Generate Reading Text + Questions</span>
-            </button>
-          )}
-        </motion.div>
-      )}
+              </motion.div>
+            ) : (
+              /* Generate button */
+              <motion.button
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setShowAiLessonBuilder(true)}
+                type="button"
+                className="w-full py-5 bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              >
+                <Wand2 size={22} className="animate-pulse" />
+                <span className="text-lg">Generate Reading Text + Questions</span>
+              </motion.button>
+            )}
 
-      {/* Disable game modes when AI lesson is active */}
-      {aiGeneratedLesson && (
-        <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center">
-          <p className="text-sm font-bold text-amber-800">
-            📖 Game modes disabled — AI-generated questions are the activity
-          </p>
-        </div>
-      )}
+            {/* Helper text */}
+            <p className="text-center text-xs text-stone-500">
+              AI will create a reading passage using your selected words ({selectedWords.length} words)
+              {selectedModes.length > 0 && (
+                <span className="text-amber-600 block mt-1">💡 Game modes will be disabled — AI questions become the activity</span>
+              )}
+            </p>
+          </motion.div>
+        )}
+      </motion.div>
 
       {/* ── STEP 2 — Details (title + instructions) ─────────────────────────
           Revealed once Step 1 has at least one mode picked.  Before the
