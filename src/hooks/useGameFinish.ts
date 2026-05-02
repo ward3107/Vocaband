@@ -208,7 +208,7 @@ export function useGameFinish(params: UseGameFinishParams) {
     }
   };
 
-  const saveScore = async (scoreOverride?: number) => {
+  const saveScore = async (scoreOverride?: number, maxScoreOverride?: number) => {
     const finalScore = scoreOverride !== undefined ? scoreOverride : score;
     if (!user) return;
     setIsSaving(true);
@@ -294,8 +294,14 @@ export function useGameFinish(params: UseGameFinishParams) {
     const playsForThis = resolveAssignmentPlays(user?.uid, activeAssignment.id, studentProgress);
     const replayLocked = isAssignmentLocked(playsForThis, allowedModesCount);
 
-    // Cap score to the maximum possible for this assignment (10 pts per word)
-    const maxPossible = gameWords.length * 10;
+    // Cap score to the maximum possible for this assignment.  Default cap
+    // is 10 pts per word (Classic-style), which matches the per-question
+    // scoring path the standard modes go through.  Self-contained modes
+    // (Word Chains, Idiom, Speed Round) call saveScore directly with a
+    // pre-normalized 0-100 score and pass `maxScoreOverride: 100` so the
+    // per-word cap doesn't trim them when the assignment has fewer than
+    // 10 words.
+    const maxPossible = maxScoreOverride !== undefined ? maxScoreOverride : gameWords.length * 10;
     let cappedScore = Math.min(Math.max(0, finalScore), maxPossible);
 
     // Lucky Charm: forgive the student's first wrong answer (= +10

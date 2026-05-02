@@ -421,7 +421,7 @@ export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
   4: { label: 'Advanced', description: '10-15 words, complex structures', minWords: 10, maxWords: 15, emoji: '🏔️' },
 };
 
-export type GameMode = "classic" | "listening" | "spelling" | "matching" | "memory-flip" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder" | "fill-blank" | "word-chains" | "idiom";
+export type GameMode = "classic" | "listening" | "spelling" | "matching" | "memory-flip" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder" | "fill-blank" | "word-chains" | "idiom" | "speed-round";
 
 // Single source of truth for the full mode catalog.  Used wherever we
 // need an "everything available" fallback (assignment without
@@ -443,6 +443,7 @@ export const ALL_GAME_MODES: GameMode[] = [
   "fill-blank",
   "word-chains",
   "idiom",
+  "speed-round",
 ];
 
 // ═════════════════════════════════════════════════════════════════════════
