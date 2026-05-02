@@ -85,6 +85,12 @@ interface ClassShowSetupProps {
    *  Custom List section is hidden and the teacher can only pick
    *  from `availableSources` (legacy behavior). */
   pickerWiring?: ClassShowWordPickerWiring;
+  /** Lifted state from parent so custom words persist across phase
+   *  changes (e.g., when switching modes or returning from playing). */
+  customWords: Word[];
+  onCustomWordsChange: (words: Word[]) => void;
+  customWordsCustomTier: Word[];
+  onCustomWordsCustomTierChange: (words: Word[]) => void;
 }
 
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
@@ -102,17 +108,26 @@ const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: R
   { id: 'sentence-builder', nameKey: 'modeSentenceBuilder', icon: <Puzzle size={26} />,         gradient: 'from-teal-300 to-emerald-400' },
 ];
 
-export default function ClassShowSetup({ availableSources, initialSourceIndex, onStart, onCancel, pickerWiring }: ClassShowSetupProps) {
+export default function ClassShowSetup({
+  availableSources,
+  initialSourceIndex,
+  onStart,
+  onCancel,
+  pickerWiring,
+  customWords,
+  onCustomWordsChange,
+  customWordsCustomTier,
+  onCustomWordsCustomTierChange,
+}: ClassShowSetupProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
 
   const [mode, setMode] = useState<ClassShowMode>('classic');
 
-  // Custom-words state — built up by the embedded WordPicker.  When
-  // non-empty, a synthetic "My custom selection" source is prepended
-  // to the available-sources list and auto-selected.
-  const [customWords, setCustomWords] = useState<Word[]>([]);
-  const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
+  // Custom-words state is now lifted to parent (ClassShowView) so it
+  // persists across phase changes.  When non-empty, a synthetic "My
+  // custom selection" source is prepended to the available-sources
+  // list and auto-selected.
 
   // Effective source list = (custom selection if any) + real sources.
   const effectiveSources = useMemo<ClassShowWordSource[]>(() => {
@@ -138,10 +153,14 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
 
   const handleCustomWordsChange = (next: Word[]) => {
     const wasEmpty = customWords.length === 0;
-    setCustomWords(next);
+    onCustomWordsChange(next);
     if (wasEmpty && next.length > 0) {
       setSourceIdx(0); // jump to "My custom selection"
     }
+  };
+
+  const handleCustomWordsCustomTierChange = (next: Word[]) => {
+    onCustomWordsCustomTierChange(next);
   };
 
   return (
@@ -231,7 +250,7 @@ export default function ClassShowSetup({ availableSources, initialSourceIndex, o
                 onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
                 onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
                 customWords={customWordsCustomTier}
-                onCustomWordsChange={setCustomWordsCustomTier}
+                onCustomWordsChange={handleCustomWordsCustomTierChange}
               />
             </div>
           )}
