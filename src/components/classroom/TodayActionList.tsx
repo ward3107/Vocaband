@@ -158,10 +158,13 @@ export default function TodayActionList({
   if (items.length === 0) return null;
 
   return (
-    <section className="bg-white rounded-2xl p-4 border border-stone-100">
+    <section
+      className="rounded-2xl p-4 border"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
       <header className="flex items-center gap-2 mb-3">
-        <h3 className="text-sm font-black text-stone-800">Suggestions for today</h3>
-        <span className="text-[11px] text-stone-400 font-bold">
+        <h3 className="text-sm font-black" style={{ color: 'var(--vb-text-primary)' }}>Suggestions for today</h3>
+        <span className="text-[11px] font-bold" style={{ color: 'var(--vb-text-muted)' }}>
           · {items.length} thing{items.length === 1 ? "" : "s"} worth a minute
         </span>
       </header>
@@ -189,7 +192,7 @@ export default function TodayActionList({
             }`}>
               {item.icon}
             </div>
-            <p className="flex-1 text-sm font-bold text-stone-800 leading-snug">
+            <p className="flex-1 text-sm font-bold leading-snug" style={{ color: 'var(--vb-text-primary)' }}>
               {item.title}
             </p>
             <div className={`hidden sm:flex items-center gap-1 text-xs font-black shrink-0 ${
@@ -202,7 +205,7 @@ export default function TodayActionList({
               {item.cta}
               <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
             </div>
-            <ArrowRight size={16} className="sm:hidden text-stone-300 shrink-0" aria-hidden />
+            <ArrowRight size={16} className="sm:hidden text-[var(--vb-text-muted)] shrink-0" aria-hidden />
           </button>
         ))}
       </div>

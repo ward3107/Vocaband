@@ -192,9 +192,12 @@ export default function ReportsDashboard({
 // ── Tiny presentational helpers (kept inline to avoid a new file) ────
 function KpiChip({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white rounded-2xl p-3 border-2 border-stone-200 shadow-sm">
-      <div className="text-xs font-bold text-stone-500 uppercase tracking-wider">{label}</div>
-      <div className="text-2xl font-black text-stone-900 mt-1 tabular-nums">{value}</div>
+    <div
+      className="rounded-2xl p-3 border-2 shadow-sm"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
+      <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-muted)' }}>{label}</div>
+      <div className="text-2xl font-black mt-1 tabular-nums" style={{ color: 'var(--vb-text-primary)' }}>{value}</div>
     </div>
   );
 }
@@ -203,12 +206,15 @@ function Section({
   icon, title, sub, children,
 }: { icon: React.ReactNode; title: string; sub: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white rounded-2xl border-2 border-stone-200 shadow-sm p-4 sm:p-5">
+    <section
+      className="rounded-2xl border-2 shadow-sm p-4 sm:p-5"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
       <header className="flex items-start gap-2 mb-3">
         <div className="mt-0.5">{icon}</div>
         <div>
-          <h3 className="font-bold text-stone-900">{title}</h3>
-          <p className="text-xs text-stone-500 mt-0.5">{sub}</p>
+          <h3 className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>{title}</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>{sub}</p>
         </div>
       </header>
       {children}
