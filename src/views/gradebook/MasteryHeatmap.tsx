@@ -44,7 +44,7 @@ function classifyAccuracy(correct: number, total: number): 'none' | 'rose' | 'am
 }
 
 const DOT_CLASSES: Record<'none' | 'rose' | 'amber' | 'green', string> = {
-  none:  'bg-stone-200 border-stone-300',
+  none:  'bg-[var(--vb-surface-alt)] border-[var(--vb-text-muted)]',
   rose:  'bg-gradient-to-br from-rose-400 to-rose-600 border-rose-700 shadow-rose-300/40',
   amber: 'bg-gradient-to-br from-amber-300 to-amber-500 border-amber-600 shadow-amber-300/40',
   green: 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-700 shadow-emerald-300/40',
@@ -68,7 +68,7 @@ export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapPro
 
   if (byWord.size === 0) {
     return (
-      <div className="text-sm text-stone-500 italic text-center py-4">
+      <div className="text-sm text-[var(--vb-text-muted)] italic text-center py-4">
         No word-level data yet — student hasn't completed any modes.
       </div>
     );
@@ -92,15 +92,15 @@ export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapPro
   });
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-stone-100">
+    <div className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
       {title && (
-        <h4 className="text-xs font-black uppercase tracking-widest text-stone-500 mb-3">
+        <h4 className="text-xs font-black uppercase tracking-widest text-[var(--vb-text-muted)] mb-3">
           {title}
         </h4>
       )}
 
       {/* Legend + quick totals */}
-      <div className="flex flex-wrap items-center gap-3 mb-3 text-xs font-semibold text-stone-600">
+      <div className="flex flex-wrap items-center gap-3 mb-3 text-xs font-semibold text-[var(--vb-text-secondary)]">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
           Mastered <span className="text-emerald-700 font-black">{counts.green}</span>
@@ -146,11 +146,11 @@ export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapPro
       {/* Struggling words callout — actionable list of the three worst
           offenders so teachers can re-assign without reading every dot. */}
       {counts.rose > 0 && (
-        <div className="mt-4 pt-3 border-t border-stone-100">
+        <div className="mt-4 pt-3 border-t border-[var(--vb-border)]">
           <p className="text-[11px] font-black uppercase tracking-wide text-rose-600 mb-1.5">
             Needs practice
           </p>
-          <p className="text-sm text-stone-700 leading-relaxed">
+          <p className="text-sm text-[var(--vb-text-secondary)] leading-relaxed">
             {entries
               .filter(([, s]) => classifyAccuracy(s.correct, s.total) === 'rose')
               .slice(0, 5)

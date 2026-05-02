@@ -141,8 +141,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         >
           {/* Animated background decoration */}
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+            <div className="absolute top-0 left-0 w-32 h-32 bg-[var(--vb-surface)] rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-40 h-40 bg-[var(--vb-surface)] rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
           </div>
 
           {/* Floating particles */}
@@ -200,7 +200,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </motion.div>
       )}
 
-      <div className="bg-stone-200-lowest rounded-3xl shadow-xl border-2 border-surface-container-highest overflow-hidden">
+      <div className="bg-[var(--vb-surface-alt)]-lowest rounded-3xl shadow-xl border-2 border-surface-container-highest overflow-hidden">
         <div className="flex items-center justify-around p-4 sm:p-6 bg-[var(--vb-surface-alt)] border-b border-surface-container-highest">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
@@ -210,7 +210,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <p className="text-xs sm:text-sm font-bold text-[var(--vb-text-secondary)]">Word{selectedWords.length !== 1 ? 's' : ''}</p>
           </div>
 
-          <div className="w-px h-12 bg-stone-200-highest"></div>
+          <div className="w-px h-12 bg-[var(--vb-surface-alt)]-highest"></div>
 
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
@@ -284,7 +284,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             {modeBadges.map(badge => (
               <span
                 key={badge!.id}
-                className="px-3 py-1.5 bg-stone-200-high rounded-xl text-sm font-bold text-[var(--vb-text-secondary)] flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-[var(--vb-surface-alt)]-high rounded-xl text-sm font-bold text-[var(--vb-text-secondary)] flex items-center gap-1.5"
               >
                 <span>{badge!.emoji}</span>
                 <span>{badge!.name}</span>

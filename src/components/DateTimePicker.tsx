@@ -194,13 +194,13 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all cursor-pointer outline-none bg-white ${
-          open ? "border-primary ring-4 ring-primary/10" : "border-stone-300/60 hover:border-primary/40"
+        className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all cursor-pointer outline-none bg-[var(--vb-surface)] ${
+          open ? "border-primary ring-4 ring-primary/10" : "border-[var(--vb-text-muted)]/60 hover:border-primary/40"
         }`}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
         <CalendarIcon size={18} className="text-primary shrink-0" />
-        <span className={`flex-1 text-sm font-bold ${parsed ? "text-stone-900" : "text-stone-400"}`}>
+        <span className={`flex-1 text-sm font-bold ${parsed ? "text-[var(--vb-text-primary)]" : "text-[var(--vb-text-muted)]"}`}>
           {displayText}
         </span>
         {parsed && (
@@ -211,7 +211,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); clear(); }
             }}
-            className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+            className="p-1 rounded-full hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
             aria-label="Clear date"
           >
             <X size={14} />
@@ -221,24 +221,24 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
 
       {/* Popover - opens upward to avoid going off-screen on mobile */}
       {open && (
-        <div className="absolute z-50 bottom-full left-0 mb-2 bg-white rounded-2xl shadow-2xl border border-stone-200 w-80 overflow-hidden">
+        <div className="absolute z-50 bottom-full left-0 mb-2 bg-[var(--vb-surface)] rounded-2xl shadow-2xl border border-[var(--vb-border)] w-80 overflow-hidden">
           {/* Month nav */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--vb-border)]">
             <button
               type="button"
               onClick={prevMonth}
-              className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-stone-600 transition-colors"
+              className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-[var(--vb-text-secondary)] transition-colors"
               aria-label="Previous month"
             >
               <ChevronLeft size={18} />
             </button>
-            <span className="font-black text-stone-900 text-base">
+            <span className="font-black text-[var(--vb-text-primary)] text-base">
               {MONTH_LABELS[viewMonth]} {viewYear}
             </span>
             <button
               type="button"
               onClick={nextMonth}
-              className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-stone-600 transition-colors"
+              className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-[var(--vb-text-secondary)] transition-colors"
               aria-label="Next month"
             >
               <ChevronRight size={18} />
@@ -248,7 +248,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
           {/* Weekday header */}
           <div className="grid grid-cols-7 px-2 pt-2">
             {WEEKDAY_LABELS.map((w) => (
-              <div key={w} className="h-7 flex items-center justify-center text-[10px] font-bold text-stone-400 uppercase">
+              <div key={w} className="h-7 flex items-center justify-center text-[10px] font-bold text-[var(--vb-text-muted)] uppercase">
                 {w.slice(0, 2)}
               </div>
             ))}
@@ -271,10 +271,10 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
                     isSelected
                       ? "bg-primary text-white shadow-md hover:bg-primary/90"
                       : disabled
-                      ? "text-stone-300 cursor-not-allowed"
+                      ? "text-[var(--vb-border)] cursor-not-allowed"
                       : inMonth
-                      ? "text-stone-900 hover:bg-primary/10 hover:text-primary"
-                      : "text-stone-300 hover:bg-stone-50"
+                      ? "text-[var(--vb-text-primary)] hover:bg-primary/10 hover:text-primary"
+                      : "text-[var(--vb-border)] hover:bg-[var(--vb-surface)]"
                   } ${isToday && !isSelected ? "ring-2 ring-primary/40" : ""}`}
                 >
                   {day.getDate()}
@@ -284,29 +284,29 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
           </div>
 
           {/* Time row */}
-          <div className="border-t border-stone-100 px-4 py-3 flex items-center gap-3">
+          <div className="border-t border-[var(--vb-border)] px-4 py-3 flex items-center gap-3">
             <Clock size={16} className="text-primary shrink-0" />
-            <span className="text-xs font-bold text-stone-600 uppercase tracking-wide">Time</span>
+            <span className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">Time</span>
             <select
               id="deadline-hour"
               name="hour"
               aria-label="Hour"
               value={draftHour}
               onChange={(e) => setHour(parseInt(e.target.value, 10))}
-              className="flex-1 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm font-bold text-stone-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
+              className="flex-1 px-2 py-1.5 rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] text-sm font-bold text-[var(--vb-text-primary)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
             >
               {Array.from({ length: 24 }, (_, h) => (
                 <option key={h} value={h}>{String(h).padStart(2, "0")}</option>
               ))}
             </select>
-            <span className="text-stone-400 font-black">:</span>
+            <span className="text-[var(--vb-text-muted)] font-black">:</span>
             <select
               id="deadline-minute"
               name="minute"
               aria-label="Minute"
               value={draftMinute}
               onChange={(e) => setMinute(parseInt(e.target.value, 10))}
-              className="flex-1 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm font-bold text-stone-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
+              className="flex-1 px-2 py-1.5 rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] text-sm font-bold text-[var(--vb-text-primary)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
             >
               {MINUTES_OPTIONS.map((m) => (
                 <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
@@ -315,11 +315,11 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
           </div>
 
           {/* Done / Clear footer */}
-          <div className="border-t border-stone-100 px-4 py-3 flex gap-2">
+          <div className="border-t border-[var(--vb-border)] px-4 py-3 flex gap-2">
             <button
               type="button"
               onClick={clear}
-              className="flex-1 py-2 rounded-lg text-sm font-bold text-stone-600 hover:bg-stone-100 transition-colors"
+              className="flex-1 py-2 rounded-lg text-sm font-bold text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] transition-colors"
             >
               Clear
             </button>

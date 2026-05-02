@@ -1236,18 +1236,18 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           onClick={onBack}
           type="button"
           style={{ touchAction: 'manipulation' }}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-stone-500 hover:text-stone-900 transition-colors"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-primary)] transition-colors"
         >
           <ArrowLeft size={15} /> Back
         </button>
-        <h2 className="text-base sm:text-lg font-bold text-stone-900">
+        <h2 className="text-base sm:text-lg font-bold text-[var(--vb-text-primary)]">
           {isQuickPlay ? 'Add words' : editingAssignment ? 'Edit words' : 'Add words'}
         </h2>
-        <div className="text-xs font-semibold text-stone-400">Step 1 / 3</div>
+        <div className="text-xs font-semibold text-[var(--vb-text-muted)]">Step 1 / 3</div>
       </div>
 
       {/* Tab strip — segmented pill group, coherent with the mode-intro design */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5" style={{ scrollSnapType: 'x mandatory' }}>
+      <div className="bg-[var(--vb-surface)] rounded-2xl border border-[var(--vb-border)] shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5" style={{ scrollSnapType: 'x mandatory' }}>
         {tabs.map(tab => {
           const isActive = subStep === tab.id;
           return (
@@ -1258,15 +1258,15 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', scrollSnapAlign: 'center' }}
               className={`relative flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2.5 px-1.5 sm:px-3 rounded-xl text-center transition-all ${
                 isActive
-                  ? 'bg-stone-900 text-white shadow-sm'
-                  : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'
+                  ? 'bg-[var(--vb-text-primary)] text-[var(--vb-surface)] shadow-sm'
+                  : 'text-[var(--vb-text-muted)] hover:bg-[var(--vb-surface)] hover:text-[var(--vb-text-primary)]'
               }`}
             >
               <span className="text-base sm:text-lg leading-none">{tab.emoji}</span>
               <span className={`text-[10px] sm:text-xs font-bold leading-tight truncate w-full ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
               {tab.badge !== undefined && (
                 <span className={`absolute -top-1.5 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ${
-                  isActive ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'
+                  isActive ? 'bg-[var(--vb-surface)] text-[var(--vb-text-primary)]' : 'bg-[var(--vb-text-primary)] text-[var(--vb-surface)]'
                 }`}>
                   {tab.badge}
                 </span>
@@ -1298,15 +1298,15 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       exit={{ opacity: 0 }}
       className="space-y-4"
     >
-      <div className="bg-white rounded-3xl p-8 shadow-sm text-center">
+      <div className="bg-[var(--vb-surface)] rounded-3xl p-8 shadow-sm text-center">
         <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-200">
           <span className="text-4xl">📷</span>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-black mb-3 border border-amber-200">
           ⏳ Coming Soon
         </div>
-        <h3 className="text-xl font-black text-stone-900 mb-2">Scan with Camera</h3>
-        <p className="text-stone-500 text-sm mb-5 max-w-xs mx-auto leading-relaxed">
+        <h3 className="text-xl font-black text-[var(--vb-text-primary)] mb-2">Scan with Camera</h3>
+        <p className="text-[var(--vb-text-muted)] text-sm mb-5 max-w-xs mx-auto leading-relaxed">
           Take a photo of a textbook page and automatically extract English words.
           We're working on making this feature reliable.
         </p>
@@ -1398,10 +1398,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               <Clipboard size={18} className="text-amber-600" />
             </div>
             <div>
-              <p className="text-sm font-bold text-stone-900">
+              <p className="text-sm font-bold text-[var(--vb-text-primary)]">
                 📋 Clipboard has {clipboardBanner.wordCount} words — paste them all?
               </p>
-              <p className="text-xs text-stone-500 mt-0.5">Found in your clipboard</p>
+              <p className="text-xs text-[var(--vb-text-muted)] mt-0.5">Found in your clipboard</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -1428,10 +1428,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
       {/* Recently Used Words */}
       {recentlyUsedWords.length > 0 && (
-        <div className="bg-stone-50 rounded-2xl border border-stone-200 p-3">
+        <div className="bg-[var(--vb-surface)] rounded-2xl border border-[var(--vb-border)] p-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Recently used</span>
-            <span className="text-[10px] text-stone-400">Click words one by one to add</span>
+            <span className="text-xs font-bold text-[var(--vb-text-muted)] uppercase tracking-wider">Recently used</span>
+            <span className="text-[10px] text-[var(--vb-text-muted)]">Click words one by one to add</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {recentlyUsedWords.slice(0, 12).map(word => {
@@ -1443,8 +1443,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   disabled={isDup}
                   className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                     isDup
-                      ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                      : 'bg-white text-stone-700 hover:bg-primary hover:text-white border border-stone-200 shadow-sm'
+                      ? 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-muted)] cursor-not-allowed'
+                      : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-primary hover:text-white border border-[var(--vb-border)] shadow-sm'
                   }`}
                 >
                   {word.english}
@@ -1494,13 +1494,13 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   <span className={`flex items-center gap-1.5 ${
                     isDup
                       ? 'bg-rose-200 text-rose-400 cursor-not-allowed px-2.5 py-1'
-                      : 'bg-white text-rose-700 hover:bg-rose-100 border border-rose-300 px-2.5 py-1 shadow-sm'
+                      : 'bg-[var(--vb-surface)] text-rose-700 hover:bg-rose-100 border border-rose-300 px-2.5 py-1 shadow-sm'
                   }`}>
                     {isDup && <Check size={10} />}
                     +{word.english}
                   </span>
                   {perf && !isDup && (
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-stone-800 text-[8px] text-white px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[var(--vb-text-primary)] text-[8px] text-[var(--vb-surface)] px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                       {Math.round(perf.accuracy * 100)}%
                     </span>
                   )}
@@ -1518,7 +1518,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       {/* Search Bar */}
       <div className="relative">
         <div className="relative">
-        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-[var(--vb-text-muted)]" size={18} />
         <input
           type="text"
           ref={autocompleteRef}
@@ -1532,7 +1532,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           onPaste={handlePaste}
           onFocus={() => setShowAutocomplete(true)}
           placeholder={selectedWords.length > 0 ? "Add more words..." : "Type words... (space or comma separated)"}
-          className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 rounded-2xl border-2 border-stone-200 text-base sm:text-lg focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white text-stone-900 placeholder:text-stone-400 transition-all shadow-sm"
+          className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 rounded-2xl border-2 border-[var(--vb-border)] text-base sm:text-lg focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 bg-[var(--vb-surface)] text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all shadow-sm"
         />
         {searchQuery && (
           <button
@@ -1540,9 +1540,9 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               setSearchQuery('');
               setShowAutocomplete(false);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-stone-100 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-[var(--vb-surface-alt)] transition-colors"
           >
-            <X size={16} className="text-stone-400" />
+            <X size={16} className="text-[var(--vb-text-muted)]" />
           </button>
         )}
 
@@ -1567,7 +1567,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   onClick={() => {
                     setContextChoices(prev => new Map(prev).set(detectedAmbiguity.word.toLowerCase(), meaning));
                   }}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 transition-all"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--vb-surface)] text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 transition-all"
                 >
                   {meaning}
                 </button>
@@ -1576,7 +1576,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 onClick={() => {
                   setContextChoices(prev => new Map(prev).set(detectedAmbiguity.word.toLowerCase(), ''));
                 }}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold text-stone-400 hover:text-stone-600 transition-all"
+                className="px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-all"
               >
                 Skip
               </button>
@@ -1586,7 +1586,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
         {/* Real-time Match Preview (for multi-word input) */}
         {matchPreview && matchPreview.length >= 2 && (
-          <div className="mt-2 bg-white rounded-xl border border-stone-200 p-3 shadow-sm">
+          <div className="mt-2 bg-[var(--vb-surface)] rounded-xl border border-[var(--vb-border)] p-3 shadow-sm">
             <div className="flex flex-wrap gap-2 items-center">
               {matchPreview.map((item, i) => (
                 <span
@@ -1602,7 +1602,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 </span>
               ))}
             </div>
-            <p className="text-[11px] text-stone-400 mt-1.5">
+            <p className="text-[11px] text-[var(--vb-text-muted)] mt-1.5">
               {matchPreview.filter(p => p.matched).length} of {matchPreview.length} found — press Enter to add
             </p>
           </div>
@@ -1618,7 +1618,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
             />
 
             {/* Dropdown */}
-            <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[320px] overflow-y-auto">
+            <div className="absolute z-50 w-full mt-2 bg-[var(--vb-surface)] rounded-2xl shadow-2xl border border-[var(--vb-border)] overflow-hidden max-h-[320px] overflow-y-auto">
               {autocompleteSuggestions.map((word, index) => {
                 const isSelected = index === autocompleteIndex;
                 const isDuplicate = isDuplicateWord(word);
@@ -1629,11 +1629,11 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                     key={word.id}
                     onClick={() => !isDuplicate && addSuggestion(word)}
                     onMouseEnter={() => setAutocompleteIndex(index)}
-                    className={`w-full text-left p-4 border-b border-stone-100 last:border-b-0 transition-all ${
+                    className={`w-full text-left p-4 border-b border-[var(--vb-border)] last:border-b-0 transition-all ${
                       isSelected
                         ? 'bg-blue-50'
-                        : 'hover:bg-stone-50'
-                    } ${isDuplicate ? 'opacity-40 cursor-not-allowed bg-stone-50' : 'cursor-pointer'}`}
+                        : 'hover:bg-[var(--vb-surface)]'
+                    } ${isDuplicate ? 'opacity-40 cursor-not-allowed bg-[var(--vb-surface)]' : 'cursor-pointer'}`}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -1646,8 +1646,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
-                          <span className={`font-semibold text-stone-900 ${
-                            isSelected ? 'text-primary' : isDuplicate ? 'text-stone-400' : ''
+                          <span className={`font-semibold text-[var(--vb-text-primary)] ${
+                            isSelected ? 'text-primary' : isDuplicate ? 'text-[var(--vb-text-muted)]' : ''
                           }`}>
                             {word.english}
                           </span>
@@ -1658,13 +1658,13 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                               ? 'bg-purple-100 text-purple-700'
                               : level === 'Set 3'
                               ? 'bg-pink-100 text-pink-700'
-                              : 'bg-stone-100 text-stone-600'
+                              : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)]'
                           }`}>
                             {level}
                           </span>
                         </div>
                         {(word.hebrew || word.arabic) && (
-                          <div className="text-sm text-stone-500 mt-1 truncate">
+                          <div className="text-sm text-[var(--vb-text-muted)] mt-1 truncate">
                             {word.hebrew && <span>{word.hebrew}</span>}
                             {word.hebrew && word.arabic && <span> • </span>}
                             {word.arabic && <span>{word.arabic}</span>}
@@ -1678,10 +1678,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                             e.stopPropagation();
                             onPlayWord(word.id, word.english);
                           }}
-                          className="p-2 rounded-full hover:bg-stone-100 transition-colors ml-2"
+                          className="p-2 rounded-full hover:bg-[var(--vb-surface-alt)] transition-colors ml-2"
                           aria-label="Play pronunciation"
                         >
-                          <Volume2 size={18} className="text-stone-500" />
+                          <Volume2 size={18} className="text-[var(--vb-text-muted)]" />
                         </button>
                       )}
                     </div>
@@ -1690,7 +1690,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               })}
 
               {/* Footer hint */}
-              <div className="px-4 py-2 bg-stone-50 border-t border-stone-200 text-xs text-stone-500 flex items-center justify-between">
+              <div className="px-4 py-2 bg-[var(--vb-surface)] border-t border-[var(--vb-border)] text-xs text-[var(--vb-text-muted)] flex items-center justify-between">
                 <span>Click or Enter to add • Esc to close</span>
                 <span>{autocompleteSuggestions.length} results</span>
               </div>
@@ -1721,7 +1721,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               <button
                 key={word.id}
                 onClick={() => addSuggestion(word)}
-                className="px-3 py-1 rounded-full text-xs font-semibold bg-white text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 transition-all"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-[var(--vb-surface)] text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 transition-all"
               >
                 + {word.english}
               </button>
@@ -1784,19 +1784,19 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               if (text) setSearchQuery(text);
             } catch {}
           }}
-          className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-stone-300 hover:border-primary hover:bg-blue-50/50 transition-all group bg-white"
+          className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-[var(--vb-text-muted)] hover:border-primary hover:bg-blue-50/50 transition-all group bg-[var(--vb-surface)]"
         >
-          <Clipboard size={20} className="text-stone-400 group-hover:text-primary transition-colors" />
-          <span className="font-semibold text-stone-600 group-hover:text-stone-900">Paste from clipboard</span>
+          <Clipboard size={20} className="text-[var(--vb-text-muted)] group-hover:text-primary transition-colors" />
+          <span className="font-semibold text-[var(--vb-text-secondary)] group-hover:text-[var(--vb-text-primary)]">Paste from clipboard</span>
         </button>
 
         <button
           disabled
-          className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-stone-200 bg-stone-100 cursor-not-allowed opacity-60"
+          className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-[var(--vb-border)] bg-[var(--vb-surface-alt)] cursor-not-allowed opacity-60"
           title="Pro feature - Coming soon"
         >
-          <Lock size={18} className="text-stone-400" />
-          <span className="font-semibold text-stone-400">Browse library</span>
+          <Lock size={18} className="text-[var(--vb-text-muted)]" />
+          <span className="font-semibold text-[var(--vb-text-muted)]">Browse library</span>
         </button>
       </div>
 
@@ -1811,11 +1811,11 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-bold text-stone-900 flex items-center gap-2">
+                <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2">
                   <FileText size={18} className="text-indigo-600" />
                   Paste Analysis Results
                 </h3>
-                <p className="text-xs text-stone-500 mt-1">
+                <p className="text-xs text-[var(--vb-text-muted)] mt-1">
                   {previewAnalysis.stats.matchedCount} found • {previewAnalysis.stats.unmatchedCount} new • {previewAnalysis.stats.totalTerms} total
                 </p>
               </div>
@@ -1824,7 +1824,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 className="p-1 rounded-full hover:bg-white/50 transition-colors"
                 title="Close"
               >
-                <X size={18} className="text-stone-500" />
+                <X size={18} className="text-[var(--vb-text-muted)]" />
               </button>
             </div>
 
@@ -1847,7 +1847,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                       className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                         selectedWords.some(w => w.id === mw.word.id)
                           ? 'bg-emerald-100 text-emerald-600 border border-emerald-300'
-                          : 'bg-white text-stone-700 hover:bg-emerald-50 border border-stone-200'
+                          : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-emerald-50 border border-[var(--vb-border)]'
                       }`}
                       title={`${mw.word.hebrew || ''} ${mw.word.arabic || ''}`}
                     >
@@ -1882,7 +1882,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                       className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                         selectedWords.some(w => w.english.toLowerCase() === term.term.toLowerCase())
                           ? 'bg-amber-100 text-amber-600 border border-amber-300'
-                          : 'bg-white text-stone-700 hover:bg-amber-50 border border-stone-200'
+                          : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-amber-50 border border-[var(--vb-border)]'
                       }`}
                     >
                       + {term.term}
@@ -1917,7 +1917,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               </button>
               <button
                 onClick={handlePreviewCancel}
-                className="px-3 py-2 bg-white text-stone-600 rounded-xl text-xs font-bold hover:bg-stone-50 border border-stone-200 transition-all"
+                className="px-3 py-2 bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] rounded-xl text-xs font-bold hover:bg-[var(--vb-surface)] border border-[var(--vb-border)] transition-all"
               >
                 Cancel
               </button>
@@ -1933,7 +1933,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           <div className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <h3 className="font-bold text-stone-900">Selected ({selectedWords.length})</h3>
+                <h3 className="font-bold text-[var(--vb-text-primary)]">Selected ({selectedWords.length})</h3>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -1972,7 +1972,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
             {/* Language toggle + Batch translate */}
             <div className="flex items-center justify-between mt-2 mb-2">
-              <div className="flex items-center gap-1 bg-white rounded-full p-0.5 shadow-sm border border-stone-200">
+              <div className="flex items-center gap-1 bg-[var(--vb-surface)] rounded-full p-0.5 shadow-sm border border-[var(--vb-border)]">
                 {(['both', 'hebrew', 'arabic'] as const).map(pref => (
                   <button
                     key={pref}
@@ -1980,7 +1980,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                     className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
                       languagePref === pref
                         ? 'bg-primary text-white shadow-sm'
-                        : 'text-stone-500 hover:text-stone-700'
+                        : 'text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]'
                     }`}
                   >
                     {pref === 'both' ? 'HE+AR' : pref === 'hebrew' ? 'HE' : 'AR'}
@@ -2013,7 +2013,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
             {/* Level distribution bar */}
             {selectedWords.length > 0 && (
               <div className="mt-3 mb-2">
-                <div className="flex items-center gap-0.5 h-2 rounded-full overflow-hidden bg-stone-100">
+                <div className="flex items-center gap-0.5 h-2 rounded-full overflow-hidden bg-[var(--vb-surface-alt)]">
                   {['Set 1', 'Set 2', 'Set 3', 'Custom'].map(level => {
                     const count = levelDistribution[level];
                     const pct = count / selectedWords.length;
@@ -2022,7 +2022,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                       'Set 1': 'bg-teal-500',
                       'Set 2': 'bg-blue-500',
                       'Set 3': 'bg-amber-500',
-                      'Custom': 'bg-stone-400'
+                      'Custom': 'bg-[var(--vb-text-muted)]'
                     };
                     return (
                       <button
@@ -2042,29 +2042,29 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                     );
                   })}
                 </div>
-                <div className="flex items-center gap-3 mt-1.5 text-[9px] font-medium text-stone-500">
+                <div className="flex items-center gap-3 mt-1.5 text-[9px] font-medium text-[var(--vb-text-muted)]">
                   <button
                     onClick={() => {
                       setLevelDistFilter('all');
                       if (chipFilter !== 'all') setChipFilter('all');
                     }}
-                    className={`flex items-center gap-1 ${levelDistFilter === 'all' ? 'text-stone-900 font-bold' : ''}`}
+                    className={`flex items-center gap-1 ${levelDistFilter === 'all' ? 'text-[var(--vb-text-primary)] font-bold' : ''}`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-stone-400"></span>All: {selectedWords.length}
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--vb-text-muted)]"></span>All: {selectedWords.length}
                   </button>
                   <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>Set 1: {levelDistribution['Set 1']}</span>
                   <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Set 2: {levelDistribution['Set 2']}</span>
                   <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Set 3: {levelDistribution['Set 3']}</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-stone-300"></span>Custom: {levelDistribution['Custom']}</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[var(--vb-border)]"></span>Custom: {levelDistribution['Custom']}</span>
                 </div>
               </div>
             )}
 
             {/* Game Word Count Guidance */}
             {gameType && GAME_WORD_COUNTS[gameType] && (
-              <div className="mt-3 p-3 bg-white rounded-xl border border-stone-200">
+              <div className="mt-3 p-3 bg-[var(--vb-surface)] rounded-xl border border-[var(--vb-border)]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-[var(--vb-text-muted)] uppercase tracking-wider">
                     {GAME_WORD_COUNTS[gameType].label} requires {GAME_WORD_COUNTS[gameType].min}-{GAME_WORD_COUNTS[gameType].max} words
                   </span>
                   <span className={`text-xs font-bold ${
@@ -2076,7 +2076,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-[var(--vb-surface-alt)] rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{
@@ -2108,14 +2108,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
             {/* Sort + Filter toolbar */}
             {!selectedWordsCollapsed && selectedWords.length > 1 && (
               <div className="flex items-center gap-2 mt-2 mb-1 flex-wrap">
-                <div className="flex items-center gap-1 bg-white rounded-lg px-2 py-1 border border-stone-200 text-xs">
-                  <span className="text-stone-500 font-bold shrink-0">Sort:</span>
+                <div className="flex items-center gap-1 bg-[var(--vb-surface)] rounded-lg px-2 py-1 border border-[var(--vb-border)] text-xs">
+                  <span className="text-[var(--vb-text-muted)] font-bold shrink-0">Sort:</span>
                   {([['default', 'Added'], ['az', 'A–Z'], ['level', 'Level'], ['date', 'Newest']] as const).map(([key, label]) => (
                     <button
                       key={key}
                       onClick={() => setChipSortBy(key as typeof chipSortBy)}
                       className={`px-1.5 py-0.5 rounded font-bold transition-all ${
-                        chipSortBy === key ? 'bg-primary text-white' : 'text-stone-500 hover:text-stone-700'
+                        chipSortBy === key ? 'bg-primary text-white' : 'text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]'
                       }`}
                     >
                       {label}
@@ -2133,7 +2133,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                       className={`px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all ${
                         chipFilter === key
                           ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-stone-500 border-stone-200 hover:border-stone-400'
+                          : 'bg-[var(--vb-surface)] text-[var(--vb-text-muted)] border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
                       }`}
                     >
                       {label}
@@ -2177,7 +2177,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                         onTouchStart={() => handleChipTouchStart(word.id)}
                         onTouchEnd={handleChipTouchEnd}
                         onTouchMove={handleChipTouchEnd}
-                        className={`relative flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-xl shadow-sm border-2 transition-all ${
+                        className={`relative flex items-center gap-1.5 px-3 py-1.5 bg-[var(--vb-surface)] rounded-xl shadow-sm border-2 transition-all ${
                           isMultiSelected
                             ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
                             : isEditing ? 'border-primary/50 ring-2 ring-primary/10'
@@ -2188,7 +2188,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                         {/* Multi-select checkbox overlay */}
                         {multiSelectMode && (
                           <div className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shadow-sm transition-all ${
-                            isMultiSelected ? 'bg-primary border-primary' : 'bg-white border-stone-300'
+                            isMultiSelected ? 'bg-primary border-primary' : 'bg-[var(--vb-surface)] border-[var(--vb-text-muted)]'
                           }`}>
                             {isMultiSelected && <Check size={12} className="text-white" />}
                           </div>
@@ -2203,9 +2203,9 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                           {matchScore !== undefined && matchScore < 0.6 && (
                             <span className="text-[9px] text-amber-500 font-bold">{Math.round(matchScore * 100)}%</span>
                           )}
-                          <span className="text-sm font-bold text-stone-900 truncate">{word.english}</span>
+                          <span className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{word.english}</span>
                           {hasTranslation && (
-                            <span className="text-[11px] text-stone-400 truncate">
+                            <span className="text-[11px] text-[var(--vb-text-muted)] truncate">
                               {languagePref !== 'arabic' && word.hebrew && <span>{word.hebrew}</span>}
                               {languagePref === 'both' && word.hebrew && word.arabic && <span> • </span>}
                               {languagePref !== 'hebrew' && word.arabic && <span>{word.arabic}</span>}
@@ -2232,10 +2232,10 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="mt-1 ml-4 bg-white rounded-xl border-2 border-primary/20 p-3 shadow-sm"
+                          className="mt-1 ml-4 bg-[var(--vb-surface)] rounded-xl border-2 border-primary/20 p-3 shadow-sm"
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-black text-stone-900">{word.english}</span>
+                            <span className="text-xs font-black text-[var(--vb-text-primary)]">{word.english}</span>
                             <button
                               onClick={() => autoTranslateInline(word)}
                               disabled={autoTranslating === word.id || !onTranslateWord}
@@ -2251,49 +2251,49 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                           <div className="grid gap-2" style={{ gridTemplateColumns: languagePref === 'both' ? '1fr 1fr' : '1fr' }}>
                             {languagePref !== 'arabic' && (
                               <div>
-                                <label className="block text-[10px] font-bold text-stone-500 mb-1">Hebrew</label>
+                                <label className="block text-[10px] font-bold text-[var(--vb-text-muted)] mb-1">Hebrew</label>
                                 <input
                                   type="text"
                                   value={editHebrew}
                                   onChange={e => setEditHebrew(e.target.value)}
                                   placeholder="Hebrew translation..."
-                                  className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-stone-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                  className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-[var(--vb-border)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                                   dir="rtl"
                                 />
                               </div>
                             )}
                             {languagePref !== 'hebrew' && (
                               <div>
-                                <label className="block text-[10px] font-bold text-stone-500 mb-1">Arabic</label>
+                                <label className="block text-[10px] font-bold text-[var(--vb-text-muted)] mb-1">Arabic</label>
                                 <input
                                   type="text"
                                   value={editArabic}
                                   onChange={e => setEditArabic(e.target.value)}
                                   placeholder="Arabic translation..."
-                                  className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-stone-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                  className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-[var(--vb-border)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                                   dir="rtl"
                                 />
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-stone-100">
+                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--vb-border)]">
                             <button
                               onClick={() => setEditIsCore(!editIsCore)}
                               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                                 editIsCore
                                   ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                  : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                                  : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-muted)] hover:bg-[var(--vb-surface-alt)]'
                               }`}
                             >
                               <Star size={12} className={editIsCore ? 'fill-amber-500 text-amber-500' : ''} />
                               {editIsCore ? 'Core word' : 'Mark as core'}
                             </button>
-                            <span className="text-[9px] text-stone-400 ml-auto">Core words appear first</span>
+                            <span className="text-[9px] text-[var(--vb-text-muted)] ml-auto">Core words appear first</span>
                           </div>
                           <div className="flex justify-end gap-2 mt-2">
                             <button
                               onClick={() => setEditingWordId(null)}
-                              className="text-xs px-3 py-1 rounded-lg text-stone-500 hover:bg-stone-100"
+                              className="text-xs px-3 py-1 rounded-lg text-[var(--vb-text-muted)] hover:bg-[var(--vb-surface-alt)]"
                             >
                               Cancel
                             </button>
@@ -2316,9 +2316,9 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 flex items-center gap-2 bg-white rounded-xl border-2 border-primary/30 shadow-lg px-3 py-2"
+                  className="mt-2 flex items-center gap-2 bg-[var(--vb-surface)] rounded-xl border-2 border-primary/30 shadow-lg px-3 py-2"
                 >
-                  <span className="text-xs font-bold text-stone-600">{multiSelectedIds.size} selected</span>
+                  <span className="text-xs font-bold text-[var(--vb-text-secondary)]">{multiSelectedIds.size} selected</span>
                   <div className="flex items-center gap-1.5 ml-auto">
                     <button
                       onClick={deleteMultiSelected}
@@ -2340,12 +2340,12 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                         Set level ▾
                       </button>
                       {showLevelDropdown && (
-                        <div className="absolute bottom-full mb-1 right-0 bg-white rounded-lg shadow-xl border border-stone-200 py-1 z-10 min-w-[80px]">
+                        <div className="absolute bottom-full mb-1 right-0 bg-[var(--vb-surface)] rounded-lg shadow-xl border border-[var(--vb-border)] py-1 z-10 min-w-[80px]">
                           {(['Set 1', 'Set 2', 'Set 3', 'Custom'] as const).map(level => (
                             <button
                               key={level}
                               onClick={() => { setMultiLevel(level); setShowLevelDropdown(false); }}
-                              className="w-full px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-100 text-left"
+                              className="w-full px-3 py-1.5 text-xs font-bold text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] text-left"
                             >
                               {level}
                             </button>
@@ -2364,7 +2364,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
 
       {/* Analyze button */}
       {searchQuery.trim() && (
-        <div className="pt-4 border-t border-stone-200">
+        <div className="pt-4 border-t border-[var(--vb-border)]">
           <button
             onClick={handlePasteAndAnalyze}
             className="w-full px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
@@ -2385,7 +2385,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-4"
     >
       <div className="text-center">
-        <p className="text-stone-500 text-sm">Search and select words from the database</p>
+        <p className="text-[var(--vb-text-muted)] text-sm">Search and select words from the database</p>
       </div>
 
       {showLevelFilter && (
@@ -2397,7 +2397,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               className={`px-4 py-2 rounded-xl font-bold transition-all ${
                 selectedLevel === level
                   ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                  : 'bg-stone-200 text-stone-600 hover:bg-stone-200-high border-2 border-stone-300/20'
+                  : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)]-high border-2 border-[var(--vb-text-muted)]/20'
               }`}
             >
               {level}
@@ -2407,13 +2407,13 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       )}
 
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-600" size={20} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--vb-text-secondary)]" size={20} />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search words..."
-          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-stone-300/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-stone-200-lowest text-stone-900 placeholder:text-stone-600/50 transition-all"
+          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-[var(--vb-text-muted)]/30 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-secondary)]/50 transition-all"
         />
       </div>
 
@@ -2427,17 +2427,17 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               className={`w-full flex items-center gap-2 p-2 rounded-xl border-2 text-left transition-all ${
                 isSelected
                   ? 'border-primary bg-blue-100/10'
-                  : 'border-stone-300/20 bg-stone-200-lowest hover:border-primary/30'
+                  : 'border-[var(--vb-text-muted)]/20 bg-[var(--vb-surface-alt)]-lowest hover:border-primary/30'
               }`}
             >
               <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center ${
-                isSelected ? 'border-primary bg-primary' : 'border-stone-300/40'
+                isSelected ? 'border-primary bg-primary' : 'border-[var(--vb-text-muted)]/40'
               }`}>
                 {isSelected && <Check size={12} className="text-white" />}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-stone-900 truncate">{word.english}</div>
-                <div className="text-xs text-stone-600 truncate">
+                <div className="font-bold text-sm text-[var(--vb-text-primary)] truncate">{word.english}</div>
+                <div className="text-xs text-[var(--vb-text-secondary)] truncate">
                   {word.hebrew && <span>{word.hebrew}</span>}
                   {word.hebrew && word.arabic && <span> • </span>}
                   {word.arabic && <span>{word.arabic}</span>}
@@ -2446,9 +2446,9 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               {onPlayWord && (
                 <div
                   onClick={(e) => { e.stopPropagation(); onPlayWord(word.id, word.english); }}
-                  className="p-1.5 rounded-full hover:bg-stone-200-highest transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full hover:bg-[var(--vb-surface-alt)]-highest transition-colors cursor-pointer"
                 >
-                  <Volume2 size={14} className="text-stone-600" />
+                  <Volume2 size={14} className="text-[var(--vb-text-secondary)]" />
                 </div>
               )}
             </button>
@@ -2467,7 +2467,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-4"
     >
       <div className="text-center">
-        <p className="text-stone-500 text-sm">Select a themed pack to add words instantly</p>
+        <p className="text-[var(--vb-text-muted)] text-sm">Select a themed pack to add words instantly</p>
       </div>
 
       <div className="space-y-1.5 max-h-[450px] overflow-y-auto pr-1">
@@ -2477,14 +2477,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           const alreadySelected = pack.ids.filter(id => selectedWords.some(w => w.id === id)).length;
 
           return (
-            <div key={pack.name} className="rounded-xl border-2 border-stone-300/20 bg-stone-200-lowest overflow-hidden transition-all">
+            <div key={pack.name} className="rounded-xl border-2 border-[var(--vb-text-muted)]/20 bg-[var(--vb-surface-alt)]-lowest overflow-hidden transition-all">
               <div className="w-full flex items-center gap-2 p-2 hover:bg-blue-100/5 transition-all cursor-pointer"
                 onClick={() => setExpandedPack(isExpanded ? null : pack.name)}
               >
                 <span className="text-xl sm:text-2xl">{pack.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm sm:text-base text-stone-900">{pack.name}</div>
-                  <div className="text-[10px] sm:text-xs text-stone-600">
+                  <div className="font-bold text-sm sm:text-base text-[var(--vb-text-primary)]">{pack.name}</div>
+                  <div className="text-[10px] sm:text-xs text-[var(--vb-text-secondary)]">
                     {wordCount} word{wordCount !== 1 ? 's' : ''}
                     {alreadySelected > 0 && <span className="ml-1 text-primary font-bold">({alreadySelected} selected)</span>}
                   </div>
@@ -2517,8 +2517,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   >
                     {alreadySelected === wordCount && wordCount > 0 ? 'Remove' : alreadySelected > 0 ? `+ Add ${wordCount - alreadySelected} more` : '+ Add All'}
                   </button>
-                  <span className="text-[10px] text-stone-400 font-medium">Preview</span>
-                  <ChevronRight className="text-stone-600" size={16} />
+                  <span className="text-[10px] text-[var(--vb-text-muted)] font-medium">Preview</span>
+                  <ChevronRight className="text-[var(--vb-text-secondary)]" size={16} />
                 </div>
               </div>
             </div>
@@ -2539,7 +2539,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col"
+              className="bg-[var(--vb-surface)] rounded-3xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -2559,7 +2559,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               </div>
 
               {/* Actions bar */}
-              <div className="px-6 py-3 border-b border-stone-200 flex items-center justify-between bg-stone-50">
+              <div className="px-6 py-3 border-b border-[var(--vb-border)] flex items-center justify-between bg-[var(--vb-surface)]">
                 <button
                   onClick={() => {
                     const allPackIds = pack.ids;
@@ -2579,7 +2579,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 >
                   {packWords.every(w => selectedWords.some(sw => sw.id === w.id)) ? 'Remove All' : 'Select All'}
                 </button>
-                <span className="text-xs text-stone-500">Click words to select/deselect</span>
+                <span className="text-xs text-[var(--vb-text-muted)]">Click words to select/deselect</span>
               </div>
 
               {/* Word grid */}
@@ -2594,7 +2594,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                         className={`px-4 py-3 rounded-xl text-base font-bold transition-all shadow-sm ${
                           isSelected
                             ? 'bg-primary text-white scale-105 shadow-md ring-2 ring-primary/30'
-                            : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border-2 border-stone-300'
+                            : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] border-2 border-[var(--vb-text-muted)]'
                         }`}
                       >
                         {word.english}
@@ -2605,8 +2605,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-stone-200 flex justify-between items-center">
-                <span className="text-sm text-stone-500">{selectedInPack} word{selectedInPack !== 1 ? 's' : ''} selected</span>
+              <div className="px-6 py-4 border-t border-[var(--vb-border)] flex justify-between items-center">
+                <span className="text-sm text-[var(--vb-text-muted)]">{selectedInPack} word{selectedInPack !== 1 ? 's' : ''} selected</span>
                 <button
                   onClick={() => setExpandedPack(null)}
                   className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
@@ -2632,13 +2632,13 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       className="space-y-4"
     >
       <div className="text-center">
-        <p className="text-stone-500 text-sm">Quick access to your previous word lists</p>
+        <p className="text-[var(--vb-text-muted)] text-sm">Quick access to your previous word lists</p>
       </div>
 
       {savedGroups.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-4xl mb-3">💾</div>
-          <p className="text-stone-600 mb-4">No saved groups yet. Create your first one!</p>
+          <p className="text-[var(--vb-text-secondary)] mb-4">No saved groups yet. Create your first one!</p>
           <button onClick={() => setSubStep('paste')} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20">
             Create Word Group
           </button>
@@ -2655,14 +2655,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                 onSelectedWordsChange([...selectedWords, ...groupWords.filter(w => !selectedWords.some(sw => sw.id === w.id))]);
                 showToast?.(`Added ${group.words.length} words from ${group.name}`, 'success');
               }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-stone-300/20 bg-stone-200-lowest hover:border-primary/50 hover:bg-blue-100/5 transition-all text-left"
+              className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-[var(--vb-text-muted)]/20 bg-[var(--vb-surface-alt)]-lowest hover:border-primary/50 hover:bg-blue-100/5 transition-all text-left"
             >
               <div className="text-3xl">📁</div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-stone-900 truncate">{group.name}</div>
-                <div className="text-sm text-stone-600">{group.words.length} word{group.words.length !== 1 ? 's' : ''}</div>
+                <div className="font-bold text-[var(--vb-text-primary)] truncate">{group.name}</div>
+                <div className="text-sm text-[var(--vb-text-secondary)]">{group.words.length} word{group.words.length !== 1 ? 's' : ''}</div>
               </div>
-              <ChevronRight className="text-stone-600" size={20} />
+              <ChevronRight className="text-[var(--vb-text-secondary)]" size={20} />
             </motion.button>
           ))}
         </div>
@@ -2676,18 +2676,18 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const renderWordEditorModal = () => (
     wordEditorOpen && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-        <div className="bg-stone-100 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col">
+        <div className="bg-[var(--vb-surface-alt)] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col">
           <div className="p-4 sm:p-6 border-b border-surface-container-highest">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg sm:text-xl font-black text-stone-900 flex items-center gap-1.5 sm:gap-2">
+              <h2 className="text-lg sm:text-xl font-black text-[var(--vb-text-primary)] flex items-center gap-1.5 sm:gap-2">
                 <Search className="text-primary" size={16} />
                 <span className="text-base sm:text-lg">Add Your Words</span>
               </h2>
-              <button onClick={() => setWordEditorOpen(false)} className="text-stone-600 hover:text-stone-900">
+              <button onClick={() => setWordEditorOpen(false)} className="text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)]">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs sm:text-sm text-stone-600 mt-1.5 sm:mt-2">
+            <p className="text-xs sm:text-sm text-[var(--vb-text-secondary)] mt-1.5 sm:mt-2">
               Type or paste words below. Use <span className="font-bold">commas</span> to separate words, or put each word on a <span className="font-bold">new line</span>.
             </p>
           </div>
@@ -2697,14 +2697,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
               placeholder="Examples:\\napple, ice cream, house, book\\n\\nOr each word on a new line:\\napple\\nice cream\\nhouse\\nbook"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-20 sm:h-24 px-3 sm:px-4 py-2 sm:py-3 bg-stone-200 border-2 border-surface-container-highest text-stone-900 placeholder:text-stone-600 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none text-sm sm:text-base"
+              className="w-full h-20 sm:h-24 px-3 sm:px-4 py-2 sm:py-3 bg-[var(--vb-surface-alt)] border-2 border-surface-container-highest text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-secondary)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium resize-none text-sm sm:text-base"
               autoFocus
             />
 
             {searchTerms.length > 0 && (
               <div className="mt-3 sm:mt-4">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                  <p className="text-xs sm:text-sm font-bold text-stone-900">
+                  <p className="text-xs sm:text-sm font-bold text-[var(--vb-text-primary)]">
                     {searchTerms.length} word{searchTerms.length !== 1 ? 's' : ''} detected
                   </p>
                   <button onClick={() => setSearchQuery('')} className="text-[10px] sm:text-xs text-rose-600 font-bold hover:text-rose-700">
@@ -2728,14 +2728,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                           setDraggedWord(null);
                         }
                       }}
-                      className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white rounded-full border transition-all cursor-move ${
+                      className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[var(--vb-surface)] rounded-full border transition-all cursor-move ${
                         draggedWord === term ? 'opacity-50' : ''
                       } ${
                         draggedWord && draggedWord !== term ? 'border-primary bg-primary/10 ring-2 ring-primary/30' : 'border-surface-container-highest hover:border-rose-300'
                       }`}
                       title={draggedWord && draggedWord !== term ? `Drop "${draggedWord}" here to make "${draggedWord} ${term}"` : term}
                     >
-                      <span className="text-xs sm:text-sm font-bold text-stone-900">{term}</span>
+                      <span className="text-xs sm:text-sm font-bold text-[var(--vb-text-primary)]">{term}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -2750,7 +2750,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   ))}
                 </div>
                 {searchTerms.length > 1 && (
-                  <p className="text-[10px] sm:text-xs text-stone-600 mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
+                  <p className="text-[10px] sm:text-xs text-[var(--vb-text-secondary)] mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
                     <Info size={10} />
                     <span className="hidden sm:inline">Tip: Drag one word onto another to combine them into a phrase!</span>
                     <span className="sm:hidden">Drag words together to make phrases!</span>
@@ -2761,7 +2761,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           </div>
 
           <div className="p-4 sm:p-6 border-t border-surface-container-highest flex items-center justify-between gap-2">
-            <button onClick={() => setWordEditorOpen(false)} className="px-4 sm:px-6 py-2.5 sm:py-3 bg-stone-200 text-stone-900 rounded-xl font-bold hover:bg-stone-200-highest transition-colors text-sm sm:text-base">
+            <button onClick={() => setWordEditorOpen(false)} className="px-4 sm:px-6 py-2.5 sm:py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-primary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)]-highest transition-colors text-sm sm:text-base">
               Cancel
             </button>
             <div className="flex gap-2">
@@ -2802,37 +2802,37 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+          className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-md w-full p-6"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-lg font-black text-[var(--vb-text-primary)] flex items-center gap-2">
               <AlertTriangle size={18} className="text-amber-500" />
               Review Translation
             </h3>
-            <button onClick={() => setReviewModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+            <button onClick={() => setReviewModalOpen(false)} className="text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]">
               <X size={20} />
             </button>
           </div>
 
           <div className="text-center mb-4">
-            <span className="text-2xl font-black text-stone-900">{word.english}</span>
+            <span className="text-2xl font-black text-[var(--vb-text-primary)]">{word.english}</span>
           </div>
 
           <div className="space-y-2 mb-4">
-            <div className="flex items-center gap-2 bg-stone-50 rounded-xl p-3">
-              <span className="text-xs font-bold text-stone-500 shrink-0">HE</span>
+            <div className="flex items-center gap-2 bg-[var(--vb-surface)] rounded-xl p-3">
+              <span className="text-xs font-bold text-[var(--vb-text-muted)] shrink-0">HE</span>
               <span className="text-sm flex-1" dir="rtl">{word.hebrew || '—'}</span>
             </div>
-            <div className="flex items-center gap-2 bg-stone-50 rounded-xl p-3">
-              <span className="text-xs font-bold text-stone-500 shrink-0">AR</span>
+            <div className="flex items-center gap-2 bg-[var(--vb-surface)] rounded-xl p-3">
+              <span className="text-xs font-bold text-[var(--vb-text-muted)] shrink-0">AR</span>
               <span className="text-sm flex-1" dir="rtl">{word.arabic || '—'}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 mb-4 bg-amber-50 rounded-xl px-3 py-2">
             <span className={`w-3 h-3 rounded-full ${score === 0 ? 'bg-red-500' : 'bg-amber-500'}`} />
-            <span className="text-sm font-semibold text-stone-600">
+            <span className="text-sm font-semibold text-[var(--vb-text-secondary)]">
               Match score: {score !== undefined ? `${Math.round(score * 100)}%` : 'Unknown'}
             </span>
           </div>
@@ -2855,14 +2855,14 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                   setReviewIndex(prev => prev + 1);
                 }
               }}
-              className="flex-1 px-4 py-2 bg-stone-200 text-stone-700 rounded-xl font-bold text-sm hover:bg-stone-300 transition-all"
+              className="flex-1 px-4 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold text-sm hover:opacity-80 transition-all"
             >
               {reviewIndex < flaggedWords.length - 1 ? 'Next →' : 'Done'}
             </button>
           </div>
 
           <div className="text-center mt-3">
-            <span className="text-xs text-stone-400">{reviewIndex + 1} of {flaggedWords.length}</span>
+            <span className="text-xs text-[var(--vb-text-muted)]">{reviewIndex + 1} of {flaggedWords.length}</span>
           </div>
         </motion.div>
       </div>

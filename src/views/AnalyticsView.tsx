@@ -398,7 +398,7 @@ export default function AnalyticsView({
             state is persisted via setSelectedClass, same as before —
             only the presentation changed. */}
         <div className="mb-6">
-          <div className="text-[11px] font-black uppercase tracking-wider text-stone-500 mb-2">
+          <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)] mb-2">
             Filter by class
           </div>
           <div className="flex flex-wrap gap-2">
@@ -407,7 +407,7 @@ export default function AnalyticsView({
               className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
                 selectedClass === null
                   ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                  : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
+                  : "bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] border border-[var(--vb-border)]"
               }`}
             >
               All classes
@@ -419,7 +419,7 @@ export default function AnalyticsView({
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
                   selectedClass === c.code
                     ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                    : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
+                    : "bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] border border-[var(--vb-border)]"
                 }`}
               >
                 {c.name}
@@ -429,9 +429,9 @@ export default function AnalyticsView({
         </div>
 
         {allScores.length === 0 ? (
-          <div className="bg-white p-12 rounded-3xl shadow-xl text-center">
-            <Sparkles className="mx-auto text-stone-300 mb-4" size={48} />
-            <p className="text-stone-400 font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
+          <div className="bg-[var(--vb-surface)] p-12 rounded-3xl shadow-xl text-center">
+            <Sparkles className="mx-auto text-[var(--vb-border)] mb-4" size={48} />
+            <p className="text-[var(--vb-text-muted)] font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
           </div>
         ) : (
           <>
@@ -446,31 +446,31 @@ export default function AnalyticsView({
                     <button
                       key={c.code}
                       onClick={() => setSelectedClass(c.code)}
-                      className="bg-white p-6 rounded-3xl shadow-xl hover:shadow-2xl transition-all text-left group border-2 border-transparent hover:border-indigo-200"
+                      className="bg-[var(--vb-surface)] p-6 rounded-3xl shadow-xl hover:shadow-2xl transition-all text-left group border-2 border-transparent hover:border-indigo-200"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-4xl">{c.avatar || '📖'}</span>
-                        <ChevronRight className="text-stone-300 group-hover:text-indigo-500 transition-colors" size={24} />
+                        <ChevronRight className="text-[var(--vb-border)] group-hover:text-indigo-500 transition-colors" size={24} />
                       </div>
-                      <h3 className="font-bold text-lg text-stone-900 mb-3">{c.name}</h3>
+                      <h3 className="font-bold text-lg text-[var(--vb-text-primary)] mb-3">{c.name}</h3>
 
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-stone-500 text-sm">Students</span>
-                          <span className="font-bold text-stone-900">{analytics.studentCount}</span>
+                          <span className="text-[var(--vb-text-muted)] text-sm">Students</span>
+                          <span className="font-bold text-[var(--vb-text-primary)]">{analytics.studentCount}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-stone-500 text-sm">Average Score</span>
+                          <span className="text-[var(--vb-text-muted)] text-sm">Average Score</span>
                           <span className={`font-bold ${analytics.avgScore >= 80 ? 'text-emerald-600' : analytics.avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                             {analytics.avgScore}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-stone-500 text-sm">Total Attempts</span>
-                          <span className="font-bold text-stone-900">{analytics.totalAttempts}</span>
+                          <span className="text-[var(--vb-text-muted)] text-sm">Total Attempts</span>
+                          <span className="font-bold text-[var(--vb-text-primary)]">{analytics.totalAttempts}</span>
                         </div>
                         {analytics.strugglingCount > 0 && (
-                          <div className="pt-2 border-t border-stone-100">
+                          <div className="pt-2 border-t border-[var(--vb-border)]">
                             <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-sm">
                               <AlertTriangle size={14} />
                               {analytics.strugglingCount} need help
@@ -490,17 +490,17 @@ export default function AnalyticsView({
                 {/* Back header */}
                 <button
                   onClick={() => { setSelectedClass(null); setReteachWords(new Set()); }}
-                  className="mb-6 flex items-center gap-2 text-stone-500 hover:text-stone-900 font-medium transition-colors"
+                  className="mb-6 flex items-center gap-2 text-[var(--vb-text-muted)] hover:text-[var(--vb-text-primary)] font-medium transition-colors"
                 >
                   ← Back to all classes
                 </button>
 
                 {/* Class Title */}
                 <div className="mb-8">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-900">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-[var(--vb-text-primary)]">
                     {selectedClassData?.name || 'All Classes'}
                   </h1>
-                  <p className="text-stone-500 mt-1">
+                  <p className="text-[var(--vb-text-muted)] mt-1">
                     {currentAnalytics.studentCount} students • {currentAnalytics.totalAttempts} total attempts
                   </p>
                 </div>
@@ -509,7 +509,7 @@ export default function AnalyticsView({
                 <div className="space-y-6">
                   {/* CARD 1: WHO NEEDS HELP */}
                   <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-3xl shadow-xl border-2 border-amber-200">
-                    <h2 className="font-black text-lg text-stone-900 mb-4 flex items-center gap-2">
+                    <h2 className="font-black text-lg text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
                       <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                         <Users className="text-amber-700" size={20} />
                       </div>
@@ -517,7 +517,7 @@ export default function AnalyticsView({
                     </h2>
 
                     {currentAnalytics.strugglingStudents.length === 0 ? (
-                      <p className="text-stone-500 italic">All students are doing well! 🎉</p>
+                      <p className="text-[var(--vb-text-muted)] italic">All students are doing well! 🎉</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentAnalytics.strugglingStudents.slice(0, 6).map(s => {
@@ -525,7 +525,7 @@ export default function AnalyticsView({
                           return (
                             <div
                               key={s.name}
-                              className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-all border-2 border-amber-100 hover:border-amber-300"
+                              className="bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm hover:shadow-md transition-all border-2 border-amber-100 hover:border-amber-300"
                             >
                               <button
                                 onClick={() => setSelectedStudent(s.name)}
@@ -533,8 +533,8 @@ export default function AnalyticsView({
                               >
                                 <span className="text-2xl">{s.avatar}</span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-stone-900 truncate">{s.name}</p>
-                                  <p className="text-stone-500 text-sm">{s.attempts} attempts</p>
+                                  <p className="font-bold text-[var(--vb-text-primary)] truncate">{s.name}</p>
+                                  <p className="text-[var(--vb-text-muted)] text-sm">{s.attempts} attempts</p>
                                 </div>
                                 <span className={`font-black text-xl ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>
                                   {s.avg}%
@@ -573,7 +573,7 @@ export default function AnalyticsView({
                     )}
 
                     {currentAnalytics.strugglingStudents.length > 6 && (
-                      <p className="text-stone-500 text-sm mt-3">
+                      <p className="text-[var(--vb-text-muted)] text-sm mt-3">
                         +{currentAnalytics.strugglingStudents.length - 6} more students need attention
                       </p>
                     )}
@@ -582,7 +582,7 @@ export default function AnalyticsView({
                   {/* CARD 2: WHAT TO RETEACH (with selection) */}
                   <div className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-3xl shadow-xl border-2 border-rose-200">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="font-black text-lg text-stone-900 flex items-center gap-2">
+                      <h2 className="font-black text-lg text-[var(--vb-text-primary)] flex items-center gap-2">
                         <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
                           <BookOpen className="text-rose-700" size={20} />
                         </div>
@@ -598,7 +598,7 @@ export default function AnalyticsView({
                         {reteachWords.size > 0 && (
                           <button
                             onClick={clearReteachWords}
-                            className="text-xs font-bold text-stone-500 hover:text-stone-700 px-3 py-1 bg-stone-100 rounded-full"
+                            className="text-xs font-bold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] px-3 py-1 bg-[var(--vb-surface-alt)] rounded-full"
                           >
                             Clear
                           </button>
@@ -607,7 +607,7 @@ export default function AnalyticsView({
                     </div>
 
                     {currentAnalytics.topMistakes.length === 0 ? (
-                      <p className="text-stone-500 italic">No mistakes recorded yet — students are doing great!</p>
+                      <p className="text-[var(--vb-text-muted)] italic">No mistakes recorded yet — students are doing great!</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {currentAnalytics.topMistakes.map(({ word, count }) => {
@@ -619,20 +619,20 @@ export default function AnalyticsView({
                               className={`relative p-4 rounded-2xl border-2 transition-all text-left ${
                                 isSelected
                                   ? 'bg-rose-500 border-rose-600 shadow-lg'
-                                  : 'bg-white border-rose-100 hover:border-rose-300 shadow-sm'
+                                  : 'bg-[var(--vb-surface)] border-rose-100 hover:border-rose-300 shadow-sm'
                               }`}
                             >
                               {/* Selection indicator */}
                               <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                                 isSelected
-                                  ? 'bg-white'
+                                  ? 'bg-[var(--vb-surface)]'
                                   : 'bg-rose-100'
                               }`}>
                                 {isSelected && <Check className="text-rose-600" size={14} />}
                               </div>
 
                               <div className="flex justify-between items-start mb-2 pr-6">
-                                <p className={`font-bold ${isSelected ? 'text-white' : 'text-stone-900'}`}>{word.english}</p>
+                                <p className={`font-bold ${isSelected ? 'text-white' : 'text-[var(--vb-text-primary)]'}`}>{word.english}</p>
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                   isSelected
                                     ? 'bg-rose-600 text-white'
@@ -641,7 +641,7 @@ export default function AnalyticsView({
                                   {count}×
                                 </span>
                               </div>
-                              <div className={`flex gap-2 text-sm ${isSelected ? 'text-rose-100' : 'text-stone-500'}`}>
+                              <div className={`flex gap-2 text-sm ${isSelected ? 'text-rose-100' : 'text-[var(--vb-text-muted)]'}`}>
                                 {word.hebrew && <span dir="rtl">{word.hebrew}</span>}
                                 {word.hebrew && word.arabic && <span>•</span>}
                                 {word.arabic && <span dir="rtl">{word.arabic}</span>}
@@ -664,7 +664,7 @@ export default function AnalyticsView({
 
                   {/* CARD 3: CLASS HEALTH */}
                   <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-3xl shadow-xl border-2 border-emerald-200">
-                    <h2 className="font-black text-lg text-stone-900 mb-4 flex items-center gap-2">
+                    <h2 className="font-black text-lg text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
                       <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
                         <TrendingUp className="text-emerald-700" size={20} />
                       </div>
@@ -675,12 +675,12 @@ export default function AnalyticsView({
                       {/* Average Score Bar */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-stone-600 font-medium">Average Score</span>
+                          <span className="text-[var(--vb-text-secondary)] font-medium">Average Score</span>
                           <span className={`font-black text-xl ${currentAnalytics.avgScore >= 80 ? 'text-emerald-600' : currentAnalytics.avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                             {currentAnalytics.avgScore}%
                           </span>
                         </div>
-                        <div className="h-4 bg-white rounded-full overflow-hidden shadow-inner">
+                        <div className="h-4 bg-[var(--vb-surface)] rounded-full overflow-hidden shadow-inner">
                           <div
                             className={`h-full rounded-full transition-all ${
                               currentAnalytics.avgScore >= 80 ? 'bg-emerald-500' :
@@ -692,14 +692,14 @@ export default function AnalyticsView({
                       </div>
 
                       {/* Best Mode */}
-                      <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm">
+                      <div className="flex items-center justify-between bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
                             <Gamepad2 className="text-indigo-600" size={20} />
                           </div>
                           <div>
-                            <p className="text-stone-500 text-sm">Most Played Mode</p>
-                            <p className="font-black text-stone-900 capitalize">
+                            <p className="text-[var(--vb-text-muted)] text-sm">Most Played Mode</p>
+                            <p className="font-black text-[var(--vb-text-primary)] capitalize">
                               {currentAnalytics.bestMode.replace(/-/g, ' ')}
                             </p>
                           </div>
@@ -711,13 +711,13 @@ export default function AnalyticsView({
 
                       {/* Engagement Summary */}
                       <div className="flex items-center gap-4">
-                        <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm text-center">
+                        <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm text-center">
                           <p className="text-3xl font-black text-indigo-600">{currentAnalytics.studentCount}</p>
-                          <p className="text-stone-500 text-sm">Active Students</p>
+                          <p className="text-[var(--vb-text-muted)] text-sm">Active Students</p>
                         </div>
-                        <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm text-center">
+                        <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm text-center">
                           <p className="text-3xl font-black text-indigo-600">{currentAnalytics.totalAttempts}</p>
-                          <p className="text-stone-500 text-sm">Total Attempts</p>
+                          <p className="text-[var(--vb-text-muted)] text-sm">Total Attempts</p>
                         </div>
                       </div>
                     </div>
@@ -779,16 +779,16 @@ export default function AnalyticsView({
 
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedStudent(null)}>
-            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-[var(--vb-surface)] rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">{avatar}</span>
                   <div>
-                    <h2 className="text-2xl font-black text-stone-900">{selectedStudent}</h2>
-                    <p className="text-stone-500">{studentScores.length} {studentScores.length === 1 ? 'attempt' : 'attempts'}</p>
+                    <h2 className="text-2xl font-black text-[var(--vb-text-primary)]">{selectedStudent}</h2>
+                    <p className="text-[var(--vb-text-muted)]">{studentScores.length} {studentScores.length === 1 ? 'attempt' : 'attempts'}</p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedStudent(null)} className="text-stone-400 hover:text-stone-600">
+                <button onClick={() => setSelectedStudent(null)} className="text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]">
                   <X size={24} />
                 </button>
               </div>
@@ -797,7 +797,7 @@ export default function AnalyticsView({
               <div className={`p-6 rounded-2xl mb-6 ${
                 avgScore >= 80 ? 'bg-emerald-50' : avgScore >= 70 ? 'bg-amber-50' : 'bg-rose-50'
               }`}>
-                <p className="text-stone-500 text-sm font-bold uppercase mb-1">Average Score</p>
+                <p className="text-[var(--vb-text-muted)] text-sm font-bold uppercase mb-1">Average Score</p>
                 <p className={`text-4xl font-black ${avgScore >= 80 ? 'text-emerald-600' : avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                   {avgScore}%
                 </p>
@@ -806,16 +806,16 @@ export default function AnalyticsView({
               {/* Top Mistakes */}
               {topMistakes.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                  <h3 className="font-bold text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
                     <AlertTriangle className="text-rose-500" size={18} />
                     Most Challenging Words
                   </h3>
                   <div className="space-y-2">
                     {topMistakes.map(({ word, count }) => (
-                      <div key={word.id} className="bg-stone-50 p-3 rounded-xl flex justify-between items-center">
+                      <div key={word.id} className="bg-[var(--vb-surface)] p-3 rounded-xl flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-stone-800">{word.english}</p>
-                          <p className="text-stone-500 text-sm">{word.hebrew || ''}</p>
+                          <p className="font-bold text-[var(--vb-text-primary)]">{word.english}</p>
+                          <p className="text-[var(--vb-text-muted)] text-sm">{word.hebrew || ''}</p>
                         </div>
                         <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-sm font-bold">{count}×</span>
                       </div>
@@ -826,7 +826,7 @@ export default function AnalyticsView({
 
               {/* Recent Attempts */}
               <div>
-                <h3 className="font-bold text-stone-800 mb-3">Recent Attempts</h3>
+                <h3 className="font-bold text-[var(--vb-text-primary)] mb-3">Recent Attempts</h3>
                 <div className="space-y-2">
                   {studentScores
                     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
@@ -841,8 +841,8 @@ export default function AnalyticsView({
                       >
                         <div className="flex justify-between items-center">
                           <div>
-                            <p className="font-bold text-stone-800">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
-                            <p className="text-stone-500 text-sm capitalize">{s.mode.replace(/-/g, ' ')} • {new Date(s.completedAt).toLocaleDateString()}</p>
+                            <p className="font-bold text-[var(--vb-text-primary)]">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
+                            <p className="text-[var(--vb-text-muted)] text-sm capitalize">{s.mode.replace(/-/g, ' ')} • {new Date(s.completedAt).toLocaleDateString()}</p>
                           </div>
                           <span className={`font-black text-lg ${s.score >= 80 ? 'text-emerald-600' : s.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                             {s.score}%
@@ -860,13 +860,13 @@ export default function AnalyticsView({
       {/* SCORE DETAIL MODAL */}
       {selectedScore && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedScore(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--vb-surface)] rounded-3xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-xl font-black text-stone-900">{selectedScore.studentName}</h2>
-                <p className="text-stone-500">{matrixData.getAssignmentTitle(selectedScore.assignmentId)}</p>
+                <h2 className="text-xl font-black text-[var(--vb-text-primary)]">{selectedScore.studentName}</h2>
+                <p className="text-[var(--vb-text-muted)]">{matrixData.getAssignmentTitle(selectedScore.assignmentId)}</p>
               </div>
-              <button onClick={() => setSelectedScore(null)} className="text-stone-400 hover:text-stone-600">
+              <button onClick={() => setSelectedScore(null)} className="text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]">
                 <X size={24} />
               </button>
             </div>
@@ -877,12 +877,12 @@ export default function AnalyticsView({
               <p className={`text-5xl font-black ${selectedScore.score >= 80 ? 'text-emerald-600' : selectedScore.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                 {selectedScore.score}%
               </p>
-              <p className="text-stone-500 mt-1 capitalize">{selectedScore.mode.replace(/-/g, ' ')}</p>
+              <p className="text-[var(--vb-text-muted)] mt-1 capitalize">{selectedScore.mode.replace(/-/g, ' ')}</p>
             </div>
 
             {selectedScore.mistakes && selectedScore.mistakes.length > 0 && (
               <div>
-                <h3 className="font-bold text-stone-800 mb-3 flex items-center gap-2">
+                <h3 className="font-bold text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
                   <AlertTriangle className="text-rose-500" size={18} />
                   Words Missed
                 </h3>
@@ -891,8 +891,8 @@ export default function AnalyticsView({
                     const word = ALL_WORDS.find(w => w.id === wordId);
                     return (
                       <div key={idx} className="bg-rose-50 p-3 rounded-xl border border-rose-200">
-                        <p className="font-bold text-stone-800">{word?.english || 'Unknown'}</p>
-                        <p className="text-stone-500 text-sm">{word?.hebrew || ''}</p>
+                        <p className="font-bold text-[var(--vb-text-primary)]">{word?.english || 'Unknown'}</p>
+                        <p className="text-[var(--vb-text-muted)] text-sm">{word?.hebrew || ''}</p>
                       </div>
                     );
                   })}

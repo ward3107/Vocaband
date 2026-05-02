@@ -135,7 +135,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
           onClick={handleDismiss}
           role="dialog"
           aria-modal="true"
@@ -147,13 +147,13 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
             exit={{ scale: 0.92, opacity: 0, y: 12 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8"
+            className="relative w-full max-w-md bg-[var(--vb-surface)] rounded-3xl shadow-2xl p-6 sm:p-8"
           >
             <button
               type="button"
               onClick={handleDismiss}
               aria-label="Close"
-              className="absolute top-3 right-3 w-9 h-9 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-500"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full hover:bg-[var(--vb-surface-alt)] flex items-center justify-center text-[var(--vb-text-muted)]"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
             >
               <X size={18} />
@@ -162,10 +162,10 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
             {kind === "teacher" ? (
               <>
                 <div className="text-5xl text-center mb-3" aria-hidden>👩‍🏫</div>
-                <h2 id="rating-prompt-title" className="text-xl sm:text-2xl font-black text-stone-900 text-center mb-2">
+                <h2 id="rating-prompt-title" className="text-xl sm:text-2xl font-black text-[var(--vb-text-primary)] text-center mb-2">
                   How's Vocaband working for your class?
                 </h2>
-                <p className="text-sm text-stone-600 text-center mb-6">
+                <p className="text-sm text-[var(--vb-text-secondary)] text-center mb-6">
                   Quick rating — helps us know what to build next.
                 </p>
                 <div className="flex justify-center gap-2 sm:gap-3 mb-2" role="group" aria-label="Rating">
@@ -186,17 +186,17 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-stone-400 text-center">
+                <p className="text-xs text-[var(--vb-text-muted)] text-center">
                   Tap a star · 1 = needs work, 5 = great
                 </p>
               </>
             ) : (
               <>
                 <div className="text-5xl text-center mb-3" aria-hidden>🎉</div>
-                <h2 id="rating-prompt-title" className="text-xl sm:text-2xl font-black text-stone-900 text-center mb-2">
+                <h2 id="rating-prompt-title" className="text-xl sm:text-2xl font-black text-[var(--vb-text-primary)] text-center mb-2">
                   How was that game?
                 </h2>
-                <p className="text-sm text-stone-600 text-center mb-6">
+                <p className="text-sm text-[var(--vb-text-secondary)] text-center mb-6">
                   Tap a face — your teacher will see the average for the class.
                 </p>
                 <div className="flex justify-center gap-1 sm:gap-2 mb-2" role="group" aria-label="Rating">
@@ -207,7 +207,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                       onClick={() => handleSubmit(idx + 1)}
                       disabled={submitting}
                       aria-label={`Rating ${idx + 1} of 5`}
-                      className="text-4xl sm:text-5xl p-2 rounded-2xl hover:bg-stone-100 hover:scale-110 active:scale-95 transition-transform disabled:opacity-60"
+                      className="text-4xl sm:text-5xl p-2 rounded-2xl hover:bg-[var(--vb-surface-alt)] hover:scale-110 active:scale-95 transition-transform disabled:opacity-60"
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                     >
                       {emoji}
