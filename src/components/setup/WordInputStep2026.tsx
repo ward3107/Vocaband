@@ -18,6 +18,7 @@ import {
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
 import InPageCamera from '../InPageCamera';
+import { AiVocabularyModal, type GeneratedWord } from '../ai-lesson-builder';
 
 // English-only text constants for the word input step
 // Build marker bumped each diagnostic deploy — lets us confirm the
@@ -86,6 +87,10 @@ const TEXT = {
   allWords: 'All words',
   addSelected: 'Add selected words',
   alreadyAdded: 'Already added',
+  // AI Lesson Builder
+  aiGenerate: 'AI Generate',
+  aiGenerateSubtitle: 'Topic to words',
+  aiGenerateCard: '✨ Generate',
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,6 +127,15 @@ export interface WordInputStep2026Props {
    *  with empty hebrew/arabic. */
   onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
   onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
+  /** AI vocabulary generation — takes topic + level, returns
+   *  generated words with translations.  Used by the AI Lesson Builder
+   *  to create vocabulary lists from any topic. */
+  onAiGenerateWords?: (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => Promise<GeneratedWord[]>;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
   savedGroups?: Array<{ id: string; name: string; words: number[] }>;
@@ -179,7 +193,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
     >
       <div className="bg-white rounded-2xl shadow-lg border-2 border-indigo-100 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4">
+        <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4">
           <div className="flex items-center gap-2 text-white">
             <Sparkles className="w-5 h-5" />
             <span className="font-bold text-lg">✨ {TEXT.pasteTitle}</span>
@@ -209,7 +223,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
             onClick={() => text.trim() && onAnalyze(text)}
             disabled={!text.trim() || isAnalyzing}
             type="button"
-            className="mt-4 w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold py-3 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+            className="mt-4 w-full bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold py-3 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {isAnalyzing ? (
@@ -355,7 +369,7 @@ const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, o
               onClick={onFixClick}
               type="button"
               disabled={isTranslating}
-              className="mt-3 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:shadow-md transition-shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="mt-3 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:shadow-md transition-shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
               {isTranslating ? (
@@ -380,9 +394,26 @@ interface WordCardProps {
   translationLang: TranslationLang;
   onRemove?: () => void;
   onEdit?: () => void;
+  /** Optional quick-translate handler — called when the user taps the
+   *  magic wand icon on words missing translations.  If provided, a
+   *  quick-translate button appears on cards that need work. */
+  onQuickTranslate?: (word: WordWithStatus) => Promise<{ hebrew: string; arabic: string; russian?: string } | null>;
+  /** Whether this specific word is currently being translated.  Used
+   *  to show a loading spinner while the AI request is in flight. */
+  isTranslating?: boolean;
 }
 
-const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, onEdit }) => {
+const WordCard: React.FC<WordCardProps> = ({
+  word,
+  translationLang,
+  onRemove,
+  onEdit,
+  onQuickTranslate,
+  isTranslating = false
+}) => {
+  const [localTranslating, setLocalTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
   // Check if word has the required translation(s) based on preference
   const hasRequiredTranslation = (() => {
     if (translationLang === 'both') return word.hebrew && word.arabic;
@@ -403,12 +434,28 @@ const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, on
     return '';
   };
 
+  const handleQuickTranslate = async () => {
+    if (!onQuickTranslate) return;
+    setLocalTranslating(true);
+    setTranslateError(null);
+    try {
+      const result = await onQuickTranslate(word);
+      if (!result) {
+        setTranslateError('Translation failed');
+      }
+    } catch {
+      setTranslateError('Translation failed');
+    } finally {
+      setLocalTranslating(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="bg-white rounded-lg shadow-sm border border-stone-100 p-2 pr-1 relative overflow-hidden group hover:shadow-md transition-shadow"
+      className="bg-white rounded-lg shadow-sm border border-stone-100 p-2.5 pr-2 relative overflow-hidden group hover:shadow-md transition-shadow"
     >
       {/* Status stripe */}
       <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${hasRequiredTranslation ? 'bg-emerald-400' : 'bg-amber-400'}`} />
@@ -417,11 +464,11 @@ const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, on
         {/* Word info */}
         <div className="flex-1 min-w-0">
           {/* English */}
-          <p className="font-semibold text-stone-800 text-sm truncate leading-tight">{word.english}</p>
+          <p className="font-semibold text-stone-800 text-base truncate leading-tight">{word.english}</p>
 
           {/* Translations */}
           {hasRequiredTranslation ? (
-            <p className="mt-0.5 text-xs text-stone-500 truncate" dir="auto">
+            <p className="mt-1 text-sm text-stone-600 truncate" dir="auto">
               {getTranslationText()}
             </p>
           ) : (
@@ -431,7 +478,7 @@ const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, on
                 onEdit?.();
               }}
               type="button"
-              className="mt-0.5 text-xs text-amber-600 font-medium hover:text-amber-700 flex items-center gap-0.5"
+              className="mt-1 text-xs text-amber-600 font-medium hover:text-amber-700 flex items-center gap-0.5"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
               <AlertTriangle className="w-2.5 h-2.5" />
@@ -441,7 +488,30 @@ const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, on
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Quick-translate button — only shown when word is missing translations
+              AND the parent passed an onQuickTranslate handler.  This gives
+              teachers a fast path for AI translation without opening the modal. */}
+          {!hasRequiredTranslation && onQuickTranslate && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleQuickTranslate();
+              }}
+              type="button"
+              disabled={localTranslating || isTranslating}
+              className="p-2 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 text-amber-700 hover:text-amber-800 transition-all min-w-[36px] min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              title="Quick translate with AI"
+            >
+              {localTranslating || isTranslating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           {/* Edit button */}
           <button
             onClick={(e) => {
@@ -449,11 +519,11 @@ const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, on
               onEdit?.();
             }}
             type="button"
-            className="p-1 rounded-md bg-stone-100 hover:bg-indigo-100 text-stone-600 hover:text-indigo-600 transition-colors"
+            className="p-2 rounded-md bg-stone-100 hover:bg-indigo-100 text-stone-600 hover:text-indigo-600 transition-colors min-w-[36px] min-h-[36px]"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             title="Edit translations"
           >
-            <span className="text-xs">✏️</span>
+            <span className="text-sm">✏️</span>
           </button>
 
           {/* Remove button */}
@@ -463,11 +533,11 @@ const WordCard: React.FC<WordCardProps> = ({ word, translationLang, onRemove, on
               onRemove?.();
             }}
             type="button"
-            className="p-1 rounded-md bg-stone-100 hover:bg-red-100 text-stone-600 hover:text-red-600 transition-colors"
+            className="p-2 rounded-md bg-stone-100 hover:bg-red-100 text-stone-600 hover:text-red-600 transition-colors min-w-[36px] min-h-[36px]"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             title="Remove word"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -548,7 +618,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <span className="text-2xl">✏️</span>
             <span className="font-bold">Edit Translations</span>
@@ -686,7 +756,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 onClose();
               }}
               type="button"
-              className="flex-1 py-3 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold rounded-xl hover:shadow-lg transition-shadow"
+              className="flex-1 py-3 bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold rounded-xl hover:shadow-lg transition-shadow"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
               Save Changes
@@ -736,7 +806,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-rose-500 to-fuchsia-500 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-rose-300 to-fuchsia-400 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Camera className="w-5 h-5" />
             <span className="font-bold">{TEXT.ocr}</span>
@@ -775,7 +845,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 <button
                   onClick={onOpenCamera}
                   type="button"
-                  className="flex-1 bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+                  className="flex-1 bg-gradient-to-r from-rose-300 to-fuchsia-400 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <Camera className="w-5 h-5" />
@@ -809,7 +879,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    className="bg-gradient-to-r from-rose-500 to-fuchsia-500 h-2 rounded-full"
+                    className="bg-gradient-to-r from-rose-300 to-fuchsia-400 h-2 rounded-full"
                   />
                 </div>
               )}
@@ -860,7 +930,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 <button
                   onClick={() => onConfirm(extractedWords.filter(w => w.trim()))}
                   type="button"
-                  className="flex-1 bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold py-3 px-4 rounded-xl"
+                  className="flex-1 bg-gradient-to-r from-rose-300 to-fuchsia-400 text-white font-bold py-3 px-4 rounded-xl"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   {TEXT.addWords}
@@ -962,7 +1032,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
         className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-white">
             <span className="text-2xl">{pack.icon}</span>
             <span className="font-bold">{pack.name}</span>
@@ -1012,7 +1082,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                   onClick={() => !isAlreadyAdded && toggleWord(word.id)}
                   disabled={isAlreadyAdded}
                   type="button"
-                  className={`w-full p-3 rounded-lg text-left transition-all ${
+                  className={`w-full p-3 rounded-lg text-center transition-all ${
                     isAlreadyAdded
                       ? 'bg-stone-100 border border-stone-200 opacity-60 cursor-not-allowed'
                       : isSelected
@@ -1057,7 +1127,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
             <button
               onClick={handleAddSelected}
               type="button"
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-3 px-6 rounded-xl"
+              className="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-bold py-3 px-6 rounded-xl"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
               {TEXT.addSelected} ({selectedForAdd.size})
@@ -1111,7 +1181,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
           className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 text-white">
               <Package className="w-5 h-5" />
               <span className="font-bold">{TEXT.topicPacks}</span>
@@ -1136,7 +1206,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handlePackClick(pack)}
                   type="button"
-                  className="p-4 rounded-xl border-2 border-stone-200 bg-white hover:border-emerald-300 text-left transition-all"
+                  className="p-4 rounded-xl border-2 border-stone-200 bg-white hover:border-emerald-300 text-center transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1222,7 +1292,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
         className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-white">
             <FolderOpen className="w-5 h-5" />
             <span className="font-bold">{TEXT.savedGroups}</span>
@@ -1416,7 +1486,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
         className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-white">
             <BookOpen className="w-5 h-5" />
             <span className="font-bold">{TEXT.browseLibrary}</span>
@@ -1496,7 +1566,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                     }
                   }}
                   type="button"
-                  className={`w-full p-3 rounded-lg text-left transition-all ${
+                  className={`w-full p-3 rounded-lg text-center transition-all ${
                     isSelected
                       ? 'bg-emerald-50 border-2 border-emerald-300'
                       : isPending
@@ -1540,7 +1610,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
             <button
               onClick={handleAddSelected}
               type="button"
-              className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold py-3 px-6 rounded-xl"
+              className="w-full bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold py-3 px-6 rounded-xl"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
               {TEXT.addSelectedWords} ({selectedForAdd.size})
@@ -1563,6 +1633,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   onTranslateWord,
   onTranslateBatch,
   onOcrUpload,
+  onAiGenerateWords,
   showToast,
   topicPacks = [],
   savedGroups = [],
@@ -1600,6 +1671,9 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   // Panel State
   const [openPanel, setOpenPanel] = useState<PanelType>(null);
+
+  // AI Lesson Builder State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // Saved Groups from localStorage
   // Saved groups now flow through props (backed by Supabase via
@@ -1657,26 +1731,15 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   // Analyze pasted text - NOW ACTUALLY ADDS THE WORDS
   const handleAnalyze = useCallback(async (text: string) => {
-    console.log('[WordInputStep2026] handleAnalyze START', { textLength: text.length, allWordsCount: allWords.length });
     setIsAnalyzing(true);
     try {
       const result = analyzePastedText(text, allWords);
-      console.log('[WordInputStep2026] analyzePastedText result', {
-        matchedWordsCount: result.matchedWords.length,
-        unmatchedTermsCount: result.unmatchedTerms.length,
-        stats: result.stats,
-      });
 
       // Add matched words to selection
       const existingIds = new Set(selectedWords.map(w => w.id));
       const newWords = result.matchedWords
         .map(m => m.word)
         .filter(w => !existingIds.has(w.id));
-
-      console.log('[WordInputStep2026] new words to add', {
-        newWordsCount: newWords.length,
-        newWordIds: newWords.map(w => w.id),
-      });
 
       if (newWords.length > 0) {
         onSelectedWordsChange([...selectedWords, ...newWords]);
@@ -1686,24 +1749,17 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       } else {
         showToast?.('No new words found', 'info');
       }
-
-      // Show unmatched words
-      if (result.unmatchedTerms.length > 0) {
-        console.log('[WordInputStep2026] Unmatched words:', result.unmatchedTerms.map(t => t.term));
-      }
     } catch (error) {
       console.error('[WordInputStep2026] handleAnalyze ERROR', error);
       showToast?.('Failed to analyze text', 'error');
     } finally {
       setIsAnalyzing(false);
-      console.log('[WordInputStep2026] handleAnalyze END');
     }
   }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
   // OCR Upload handler
   const handleOcrUpload = useCallback(async (file: File) => {
     if (!onOcrUpload) {
-      console.warn('[OCR] no onOcrUpload prop wired -- nothing will happen');
       showToast?.('OCR is not available right now', 'error');
       return;
     }
@@ -1711,7 +1767,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     setOcrState('uploading');
     setOcrProgress(0);
     setOcrErrorMessage(null);
-    console.log(`[OCR] starting upload: ${file.name} (${Math.round(file.size / 1024)} KB, ${file.type})`);
 
     let progressInterval: ReturnType<typeof setInterval> | null = null;
     try {
@@ -1723,8 +1778,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       const result = await onOcrUpload(file);
       if (progressInterval) clearInterval(progressInterval);
       setOcrProgress(100);
-
-      console.log(`[OCR] upload complete: ${result.words.length} words extracted`);
       setOcrDebugInfo(`Server returned ${result.words.length} words: [${result.words.slice(0, 3).join(', ')}...]`);
 
       if (result.words.length === 0) {
@@ -1890,26 +1943,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     const totalAdded = newCurriculumWords.length + customWords.length;
     const newSelectedWords = [...selectedWords, ...newCurriculumWords, ...customWords];
 
-    console.log('[OCR confirm] BEFORE:', {
-      requestedAdd: words.length,
-      currentSelected: selectedWords.length,
-      curriculumMatches: newCurriculumWords.length,
-      customWords: customWords.length,
-      totalNew: totalAdded,
-      newTotal: newSelectedWords.length,
-      sampleWords: newSelectedWords.slice(-3).map(w => `${w.id}:${w.english}`),
-    });
-
-    // Surface the OCR add path on screen so the user can confirm it
-    // ran without needing remote DevTools.  Diagnostic only — to be
-    // removed once OCR is verified working.  Also stamp the URL hash
-    // so it survives even if the component unmounts or a stale render
-    // wipes state — user can read the URL to see if the path executed.
-    setOcrDebugInfo(`OCR add fired: in=${words.length}, curriculum=${newCurriculumWords.length}, custom=${customWords.length}, total=${newSelectedWords.length}`);
-    try {
-      window.location.hash = `ocr-${Date.now()}-in${words.length}-c${newCurriculumWords.length}-cu${customWords.length}-tot${newSelectedWords.length}`;
-    } catch { /* hash setting can throw in some sandboxed contexts */ }
-
     onSelectedWordsChange(newSelectedWords);
     // Reset everything so the next OCR run starts from a clean idle
     // state — was previously left in 'success' so reopening the modal
@@ -1976,10 +2009,64 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       // Same trick as handleConfirmOcr — flag-based scroll via the
       // useEffect that waits for the section to mount.
       setShouldScrollToSelected(true);
+
+      // Auto-translate any newly added custom words that are missing translations
+      const customNeedingTranslation = newWords.filter(w =>
+        w.level === 'Custom' && (!w.hebrew?.trim() || !w.arabic?.trim())
+      );
+      if (customNeedingTranslation.length > 0 && onTranslateBatch) {
+        void runBatchTranslate(customNeedingTranslation).then(filled => {
+          const filledById = new Map(filled.map(w => [w.id, w]));
+          const latest = selectedWordsRefForBatch.current;
+          const merged = latest.map(w => filledById.get(w.id) ?? w);
+          onSelectedWordsChange(merged);
+          const filledCount = filled.filter(w => w.hebrew && w.arabic).length;
+          if (filledCount > 0) {
+            showToast?.(`Auto-translated ${filledCount} word${filledCount === 1 ? '' : 's'}`, 'success');
+          }
+        });
+      }
     } else {
       showToast?.('Those words are already selected', 'info');
     }
-  }, [selectedWords, onSelectedWordsChange, showToast]);
+  }, [selectedWords, onSelectedWordsChange, showToast, onTranslateBatch, runBatchTranslate]);
+
+  // Add AI-generated words
+  const handleAddAiWords = useCallback((words: GeneratedWord[]) => {
+    const existingIds = new Set(selectedWords.map(w => w.id));
+    const existingEnglish = new Set(selectedWords.map(w => w.english.toLowerCase()));
+
+    // Convert GeneratedWord[] to Word[]
+    const now = Date.now();
+    const wordsToAdd: Word[] = words
+      .filter(w => !existingEnglish.has(w.english.toLowerCase()))
+      .map((gw, i) => {
+        // If it's a curriculum word, find the matching Word from allWords
+        if (gw.isFromCurriculum && gw.curriculumId) {
+          const curriculumWord = allWords.find(w => w.id === gw.curriculumId);
+          if (curriculumWord) {
+            return curriculumWord;
+          }
+        }
+        // Otherwise create a custom word
+        return {
+          id: -(now + i),
+          english: gw.english,
+          hebrew: gw.hebrew,
+          arabic: gw.arabic,
+          level: 'Custom' as const,
+        };
+      })
+      .filter(w => !existingIds.has(w.id));
+
+    if (wordsToAdd.length > 0) {
+      onSelectedWordsChange([...selectedWords, ...wordsToAdd]);
+      showToast?.(`Added ${wordsToAdd.length} AI-generated words`, 'success');
+      setShouldScrollToSelected(true);
+    } else {
+      showToast?.('All generated words are already in your list', 'info');
+    }
+  }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
 
   // Remove a single word
   const handleRemoveWord = useCallback((wordId: number) => {
@@ -2024,13 +2111,13 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       </div>
 
       {/* Option Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 max-w-4xl mx-auto justify-items-center">
         <OptionCard
           emoji="🧩"
           title={TEXT.topicPacks}
           subtitle={`${topicPacks.length} ${TEXT.packs}`}
           ctaText={TEXT.view}
-          gradient="from-emerald-500 to-teal-500"
+          gradient="from-emerald-300 to-teal-400"
           onClick={() => setOpenPanel('topic-packs')}
           delay={0}
         />
@@ -2039,7 +2126,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           title={TEXT.savedGroups}
           subtitle={`${savedGroups.length} ${TEXT.groups}`}
           ctaText={TEXT.view}
-          gradient="from-amber-500 to-orange-500"
+          gradient="from-amber-300 to-orange-400"
           onClick={() => setOpenPanel('saved-groups')}
           delay={0.1}
         />
@@ -2053,11 +2140,24 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           title={TEXT.ocr}
           subtitle={TEXT.ocrSubtitle}
           ctaText={TEXT.upload}
-          gradient="from-rose-500 to-fuchsia-500"
+          gradient="from-rose-300 to-fuchsia-400"
           onClick={() => setOcrModalOpen(true)}
-          delay={0.3}
+          delay={0.2}
           isNew
         />
+        {/* AI Lesson Builder — Phase 1: Vocabulary Generator */}
+        {onAiGenerateWords && (
+          <OptionCard
+            emoji="✨"
+            title={TEXT.aiGenerate}
+            subtitle={TEXT.aiGenerateSubtitle}
+            ctaText={TEXT.aiGenerateCard}
+            gradient="from-violet-400 to-purple-500"
+            onClick={() => setAiModalOpen(true)}
+            delay={0.3}
+            isNew
+          />
+        )}
       </div>
 
       {/* Selected Words Section.  The ref-wrapper div is rendered
@@ -2160,6 +2260,21 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                   translationLang={translationLang}
                   onRemove={() => handleRemoveWord(word.id)}
                   onEdit={() => handleEditWord(word)}
+                  onQuickTranslate={async (w) => {
+                    const result = await onTranslateWord?.(w.english);
+                    if (result) {
+                      // Update the selected words with the new translation
+                      const updatedWords = selectedWords.map(sw =>
+                        sw.id === w.id
+                          ? { ...sw, hebrew: sw.hebrew || result.hebrew, arabic: sw.arabic || result.arabic, russian: result.russian }
+                          : sw
+                      );
+                      onSelectedWordsChange(updatedWords);
+                      showToast?.(`Translated "${w.english}"`, 'success');
+                    }
+                    return result;
+                  }}
+                  isTranslating={false}
                 />
               ))}
             </AnimatePresence>
@@ -2181,7 +2296,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           <button
             onClick={onNext}
             type="button"
-            className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            className="w-full bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {TEXT.continue} →
@@ -2285,6 +2400,20 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         selectedWords={selectedWords}
         onAddWords={handleAddWords}
         onRemoveWord={handleRemoveWord}
+      />
+
+      {/* AI Vocabulary Modal */}
+      <AiVocabularyModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onAddWords={handleAddAiWords}
+        onGenerate={async (params) => {
+          if (!onAiGenerateWords) {
+            throw new Error('AI generation is not available');
+          }
+          return onAiGenerateWords(params);
+        }}
+        showToast={showToast}
       />
     </div>
   );

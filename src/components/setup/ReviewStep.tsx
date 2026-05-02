@@ -7,11 +7,12 @@
  * - Assignment: "Assign to Class" or "Update Assignment" (blue gradient)
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { WizardMode, AssignmentData, getGameModeConfig } from './types';
+import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
 
 export interface ReviewStepProps {
   mode: WizardMode;
@@ -32,6 +33,8 @@ export interface ReviewStepProps {
   assignmentInstructions?: string;
   selectedClassName?: string;
   editingAssignment?: AssignmentData | null;
+  /** AI-generated lesson data (if any) — generated in ConfigureStep */
+  aiGeneratedLesson?: GeneratedLesson | null;
 }
 
 export const ReviewStep: React.FC<ReviewStepProps> = ({
@@ -49,6 +52,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   assignmentInstructions = '',
   selectedClassName = '',
   editingAssignment = null,
+  aiGeneratedLesson,
 }) => {
   // Ref for launch button (auto-scroll)
   const launchButtonRef = useRef<HTMLButtonElement>(null);
@@ -70,7 +74,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   const isAssignment = mode === 'assignment';
   const isEditing = !!editingAssignment;
 
-  const dbWordCount = selectedWords.filter(w => w.id >= 0).length;
   const customWordCount = selectedWords.filter(w => w.id < 0).length;
 
   const modeBadges = selectedModes.map(modeId => {
@@ -344,15 +347,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         <button
           ref={launchButtonRef}
           onClick={() => {
-            console.log('[ReviewStep Launch Button] CLICKED', {
-              mode,
-              selectedWordsCount: selectedWords.length,
-              selectedModesCount: selectedModes.length,
-              assignmentTitle,
-              isAssignment,
-              isEditing,
-              saveAsTemplate,
-            });
             // Save BEFORE launching — `onLaunch` typically clears the
             // wizard state in the parent, so by the time it returns the
             // snapshot SetupWizard would build is empty.
@@ -380,6 +374,36 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           )}
         </button>
       </div>
+
+      {/* AI Generated Lesson Preview */}
+      {aiGeneratedLesson && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 sm:p-6 border-2 border-fuchsia-200"
+        >
+          <h3 className="text-sm font-bold text-fuchsia-900 mb-3 flex items-center gap-2">
+            <span>📖</span> Reading Text ({aiGeneratedLesson.wordCount} words)
+          </h3>
+          <p className="text-sm text-stone-700 mb-4 line-clamp-4">{aiGeneratedLesson.text}</p>
+
+          {aiGeneratedLesson.questions.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold text-stone-600 mb-2">Questions ({aiGeneratedLesson.questions.length})</h4>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {aiGeneratedLesson.questions.slice(0, 5).map((q, i) => (
+                  <div key={i} className="text-xs text-stone-600">
+                    <span className="font-semibold">Q{i + 1}:</span> {q.question}
+                  </div>
+                ))}
+                {aiGeneratedLesson.questions.length > 5 && (
+                  <p className="text-xs text-stone-500">...and {aiGeneratedLesson.questions.length - 5} more</p>
+                )}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   );
 };

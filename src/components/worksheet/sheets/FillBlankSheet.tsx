@@ -9,6 +9,8 @@ import type { Word } from '../../../data/vocabulary';
 interface FillBlankSheetProps {
   words: Word[];
   answerKey?: boolean;
+  /** AI-generated sentences keyed by word ID — overrides word.sentence/example */
+  aiSentences?: Record<number, string>;
 }
 
 function blankSentence(sentence: string, target: string): string {
@@ -21,11 +23,11 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function FillBlankSheet({ words, answerKey }: FillBlankSheetProps) {
+export function FillBlankSheet({ words, answerKey, aiSentences }: FillBlankSheetProps) {
   return (
     <ol style={{ paddingLeft: '1.5rem', fontSize: '13pt', lineHeight: 1.9 }}>
       {words.map(w => {
-        const raw = w.sentence ?? w.example;
+        const raw = aiSentences?.[w.id] ?? w.sentence ?? w.example;
         if (!raw) {
           return (
             <li key={w.id} style={{ marginBottom: '0.6rem' }}>

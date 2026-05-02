@@ -33,6 +33,7 @@ import {
 } from '../utils/buildQuestion';
 import { useLanguage } from '../hooks/useLanguage';
 import type { AppUser } from '../core/supabase';
+import type { Word } from '../data/vocabulary';
 
 interface ClassShowViewProps {
   user: AppUser | null;
@@ -80,6 +81,11 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
 
   const [phase, setPhase] = useState<Phase>({ kind: 'setup' });
 
+  // Lift custom-words state here so it persists across phase changes
+  // (e.g., when switching modes or returning from playing → setup)
+  const [customWords, setCustomWords] = useState<Word[]>([]);
+  const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
+
   // Build the current question (memoised so distractor randomisation
   // stays stable while the teacher is on the same word).
   const { multiChoice, trueFalse } = useMemo(() => {
@@ -124,6 +130,10 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
         initialSourceIndex={initialSourceIndex}
         pickerWiring={pickerWiring}
         onCancel={onExit}
+        customWords={customWords}
+        onCustomWordsChange={setCustomWords}
+        customWordsCustomTier={customWordsCustomTier}
+        onCustomWordsCustomTierChange={setCustomWordsCustomTier}
         onStart={({ mode, source, questionCount }) => {
           const order = shuffleIndices(source.words.length).slice(0, questionCount);
           setPhase({

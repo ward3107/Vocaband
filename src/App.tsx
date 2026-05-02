@@ -13,6 +13,8 @@ import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, 
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
+import { getTeacherDashboardTheme } from "./constants/teacherDashboardThemes";
+import { applyThemePalette, clearThemePalette } from "./utils/applyThemePalette";
 import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
@@ -113,6 +115,27 @@ import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQu
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
+// ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
+// Defined at module level to avoid re-creating arrays on every auth restore.
+const PUBLIC_VIEWS = new Set<View>([
+  "public-landing", "public-terms", "public-privacy", "public-security", "accessibility-statement"
+]);
+const TEACHER_VIEWS = new Set<View>([
+  "worksheet", "classroom", "class-show", "teacher-approvals",
+  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment"
+]);
+const STUDENT_VIEWS = new Set<View>([
+  "student-dashboard", "game-mode-intro", "game-mode-selection",
+  "game-active", "game-finished", "live-challenge"
+]);
+
+/** Check if current view should be preserved during auth restore. */
+const shouldPreserveView = (role: string, currentView: View): boolean => {
+  if (PUBLIC_VIEWS.has(currentView)) return false;
+  return role === "teacher"
+    ? TEACHER_VIEWS.has(currentView)
+    : STUDENT_VIEWS.has(currentView);
+};
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -154,6 +177,9 @@ export default function App() {
     return "public-landing";
   });
   const previousViewRef = useRef<string>("public-landing");
+  // Track current view for auth state changes — using a ref so restoreSession
+  // can read the latest view even when called asynchronously from auth events.
+  const currentViewRef = useRef<View>(view);
 
   const goBack = () => {
     setView(previousViewRef.current as any);
@@ -490,6 +516,107 @@ export default function App() {
   // cache. Two callable shapes: batch (paste/OCR/imports) and single-
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
   const { translateWord, translateWordsBatch } = useTranslate();
+
+  // AI Vocabulary Generator — calls /api/ai-generate-words endpoint
+  const handleAiGenerateWords = async (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      showToast?.('Authentication required', 'error');
+      throw new Error('No auth token');
+    }
+
+    const response = await fetch('/api/ai-generate-words', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'AI generation failed');
+    }
+
+    const data = await response.json();
+
+    // Mark curriculum words by checking against ALL_WORDS
+    const curriculumWords = new Map(
+      ALL_WORDS.map(w => [w.english.toLowerCase(), w])
+    );
+
+    return data.words.map((w: {
+      english: string;
+      hebrew: string;
+      arabic: string;
+      example?: string;
+    }) => {
+      const curriculumMatch = curriculumWords.get(w.english.toLowerCase());
+      if (curriculumMatch) {
+        return {
+          ...w,
+          isFromCurriculum: true,
+          curriculumId: curriculumMatch.id,
+        };
+      }
+      return {
+        ...w,
+        isFromCurriculum: false,
+      };
+    });
+  };
+
+  // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
+  const handleGenerateLesson = async (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      showToast?.('Authentication required', 'error');
+      throw new Error('No auth token');
+    }
+
+    const response = await fetch('/api/ai-generate-lesson', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'AI lesson generation failed');
+    }
+
+    return await response.json();
+  };
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -968,7 +1095,10 @@ export default function App() {
 
     // Restore session from a Supabase user.  Called OUTSIDE the auth lock
     // (fire-and-forget from the non-async onAuthStateChange callback).
-    const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
+    // Uses currentViewRef to read the latest view and preserve navigation.
+    const restoreSession = async (
+      supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
+    ) => {
       if (restoreInProgress.current) return;
       // QR-scan Live Play: if the URL carries `?session=…` the user
       // scanned a teacher's Quick Play QR and the initial-view setter
@@ -982,6 +1112,7 @@ export default function App() {
       // the QR view and the student never sees the join form.
       if (quickPlaySessionParam) return;
       restoreInProgress.current = true;
+
       try {
         // For anonymous students: RLS blocks SELECT on users table
         // (is_anonymous IS FALSE). Instead of querying the DB, restore
@@ -1075,7 +1206,10 @@ export default function App() {
             if (skipRestore) {
               sessionStorage.removeItem('vocaband_skip_restore');
               try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
-              setView("teacher-dashboard");
+              // Only redirect to dashboard if not already on a valid teacher view
+              if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                setView("teacher-dashboard");
+              }
             } else {
               try {
                 const savedSession = localStorage.getItem('vocaband_quick_play_session');
@@ -1122,13 +1256,22 @@ export default function App() {
                     setView("quick-play-teacher-monitor");
                   } else {
                     localStorage.removeItem('vocaband_quick_play_session');
-                    setView("teacher-dashboard");
+                    // Preserve current view if on a valid teacher page
+                    if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                      setView("teacher-dashboard");
+                    }
                   }
                 } else {
-                  setView("teacher-dashboard");
+                  // Preserve current view if on a valid teacher page
+                  if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                    setView("teacher-dashboard");
+                  }
                 }
               } catch {
-                setView("teacher-dashboard");
+                // Preserve current view if on a valid teacher page
+                if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                  setView("teacher-dashboard");
+                }
               }
             }
           } else if (userData.role === "student" && userData.classCode) {
@@ -1205,7 +1348,10 @@ export default function App() {
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
             setStreak(userData.streak ?? 0);
-            setView("student-dashboard");
+            // Preserve current view if on a valid student page
+            if (!shouldPreserveView("student", currentViewRef.current)) {
+              setView("student-dashboard");
+            }
           } else {
             // users row exists but is in a broken state — most commonly an
             // OAuth student whose previous sign-in didn't complete class-code
@@ -1252,7 +1398,10 @@ export default function App() {
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
                 }
               }
-              setView("student-dashboard");
+              // Preserve current view if on a valid student page
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
               return;
             }
             if (studentProfile && studentProfile.status === 'pending_approval') {
@@ -1362,7 +1511,10 @@ export default function App() {
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
                 }
               }
-              setView("student-dashboard");
+              // Preserve current view if on a valid student page
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
               return;
             } else if (studentProfile && studentProfile.status === 'pending_approval') {
               showPendingApproval({
@@ -1488,6 +1640,11 @@ export default function App() {
           setLoading(false);
           return;
         }
+        // Preserve the current view when auth state changes (e.g., token refresh
+        // when user switches tabs). Only redirect to dashboard if currently on a
+        // public view. This prevents teachers from being kicked out of
+        // worksheet, classroom, class-show, etc. when they switch tabs.
+        // Uses currentViewRef internally to check the latest view.
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
@@ -1663,8 +1820,36 @@ export default function App() {
   // trigger should only appear on public/landing pages, not while a
   // student is mid-game or a teacher is in their dashboard.
   useEffect(() => {
+    currentViewRef.current = view;
     window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
   }, [view]);
+
+
+  // ─── GLOBAL TEACHER DASHBOARD THEME ────────────────────────────────────
+  // Apply teacher's selected theme globally across all pages. This runs
+  // at the App level (not per-view) so the theme persists when navigating
+  // between teacher pages without flashing or clearing.
+  // - For teachers: applies their dashboard theme CSS variables
+  // - For students/public: clears any teacher theme variables
+  // Extract theme ID separately to avoid re-running effect on unrelated user updates.
+  const teacherThemeId = user?.role === 'teacher' ? (user as any).teacherDashboardTheme : null;
+  const lastThemeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Only apply if theme actually changed (avoid unnecessary DOM writes)
+    if (lastThemeRef.current === teacherThemeId) return;
+    lastThemeRef.current = teacherThemeId;
+
+    if (teacherThemeId) {
+      const theme = getTeacherDashboardTheme(teacherThemeId);
+      applyThemePalette(theme.palette);
+      // Update data attribute for dark mode scrollbar styles
+      document.documentElement.dataset.themeDark = theme.dark.toString();
+    } else {
+      clearThemePalette();
+      delete document.documentElement.dataset.themeDark;
+    }
+  }, [teacherThemeId]);
 
 
   // View-state guards: redirect the user out of orphaned / broken
@@ -2337,19 +2522,6 @@ export default function App() {
             setQuickPlaySessionCode(null);
             setView("quick-play-setup");
           }}
-          onLiveChallengeClick={() => {
-            if (classes.length === 0) showToast("Create a class first!", "error");
-            else if (classes.length === 1) {
-              setSelectedClass(classes[0]);
-              setView("live-challenge");
-              setIsLiveChallenge(true);
-              if (socket) {
-                socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
-              }
-            } else {
-              setView("live-challenge-class-select");
-            }
-          }}
           onClassroomClick={() => { fetchScores(); fetchTeacherAssignments(); setView("classroom"); }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
@@ -2572,6 +2744,8 @@ export default function App() {
         setEditingAssignment={setEditingAssignment}
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
+        onAiGenerateWords={handleAiGenerateWords}
+        onGenerateLesson={handleGenerateLesson}
       />
       </LazyWrapper>
     );
@@ -2772,6 +2946,8 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         onTranslateWord={translateWord}
+        onAiGenerateWords={handleAiGenerateWords}
+        onGenerateLesson={handleGenerateLesson}
         topicPacks={TOPIC_PACKS}
         user={user}
         onLogout={() => supabase.auth.signOut()}
@@ -2794,9 +2970,9 @@ export default function App() {
 
 
   if (view === "class-show") {
-    // Build the word-source list:  per-set defaults + (optional)
-    // pre-filled assignment.  The setup panel selects index 0
-    // automatically; if an assignment is pre-filled, it goes first.
+    // Build the word-source list: optional pre-filled assignment.
+    // The setup panel selects index 0 automatically; if an assignment
+    // is pre-filled, it goes first.
     const sources: { label: string; description?: string; words: Word[] }[] = [];
     if (classShowAssignment) {
       const knownWords = ALL_WORDS.filter(w => classShowAssignment.wordIds.includes(w.id));
@@ -2810,10 +2986,6 @@ export default function App() {
         });
       }
     }
-    if (SET_1_WORDS.length > 0) sources.push({ label: "Set 1", description: "Israeli MoE — beginners", words: SET_1_WORDS });
-    if (SET_2_WORDS.length > 0) sources.push({ label: "Set 2", description: "Israeli MoE — intermediate", words: SET_2_WORDS });
-    const set3 = ALL_WORDS.filter(w => w.level === "Set 3");
-    if (set3.length > 0) sources.push({ label: "Set 3", description: "Israeli MoE — advanced", words: set3 });
     return (
       <LazyWrapper loadingMessage="Loading class show…">
         <ClassShowView
@@ -2825,6 +2997,7 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: handleOcrUpload,
+            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             // savedGroups: pass [] for now — wiring useSavedWordGroups
             // through App-level state is a future PR.  WordPicker's
@@ -2855,10 +3028,6 @@ export default function App() {
         });
       }
     }
-    if (SET_1_WORDS.length > 0) sources.push({ label: "Set 1", description: "Israeli MoE — beginners", words: SET_1_WORDS });
-    if (SET_2_WORDS.length > 0) sources.push({ label: "Set 2", description: "Israeli MoE — intermediate", words: SET_2_WORDS });
-    const set3w = ALL_WORDS.filter(w => w.level === "Set 3");
-    if (set3w.length > 0) sources.push({ label: "Set 3", description: "Israeli MoE — advanced", words: set3w });
     return (
       <LazyWrapper loadingMessage="Loading worksheet builder…">
         <WorksheetView
@@ -2872,6 +3041,7 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: handleOcrUpload,
+            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             savedGroups: [],
             showToast,

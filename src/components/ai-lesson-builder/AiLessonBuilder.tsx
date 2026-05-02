@@ -1,0 +1,576 @@
+/**
+ * AiLessonBuilder — Unified AI Lesson Generator
+ *
+ * Teacher can:
+ * 1. Generate reading text from selected words (no artificial limits)
+ * 2. Generate various question types using steppers
+ * 3. Auto-balance question distribution
+ * 4. Preview and regenerate as needed
+ *
+ * Appears in Review step (Step 3) after words are selected.
+ */
+
+import { useState, useCallback } from 'react';
+import { motion } from 'motion/react';
+import {
+  Sparkles, X, Loader2, Check, ChevronDown, ChevronUp,
+  RefreshCw, BookOpen, HelpCircle, FileText, Plus, Minus
+} from 'lucide-react';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface QuestionTypeConfig {
+  yesNo: number;
+  wh: number;
+  literal: number;
+  inferential: number;
+  fillBlank: number;
+  trueFalse: number;
+  matching: number;
+  multipleChoice: number;
+  sentenceComplete: number;
+}
+
+export interface LessonConfig {
+  // Text generation
+  textDifficulty: string; // Open description, not just CEFR
+  textType: string; // Open description of what teacher wants
+  wordCount: number; // 50-5000 words, no presets
+
+  // Question generation
+  questionTypes: QuestionTypeConfig;
+  includeAnswers: boolean;
+}
+
+export interface GeneratedLesson {
+  text: string;
+  wordCount: number;
+  questions: GeneratedQuestion[];
+}
+
+export interface GeneratedQuestion {
+  type: string;
+  question: string;
+  answer: string;
+  options?: string[]; // For multiple choice, matching, etc.
+}
+
+export interface AiLessonBuilderProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedWords: Array<{ english: string; hebrew: string; arabic: string }>;
+  onGenerate: (config: LessonConfig) => Promise<GeneratedLesson>;
+  onSaveLesson?: (lesson: GeneratedLesson) => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+}
+
+// ── Question Type Definitions ───────────────────────────────────────────────────
+
+const COMPREHENSION_TYPES: Array<{ key: keyof QuestionTypeConfig; label: string; icon: string; color: string }> = [
+  { key: 'yesNo', label: 'Yes/No', icon: '✓', color: 'bg-blue-100 text-blue-700' },
+  { key: 'wh', label: 'WH- Questions', icon: '?', color: 'bg-purple-100 text-purple-700' },
+  { key: 'literal', label: 'Literal (Facts)', icon: '📖', color: 'bg-green-100 text-green-700' },
+  { key: 'inferential', label: 'Thinking', icon: '🧠', color: 'bg-amber-100 text-amber-700' },
+];
+
+const EXERCISE_TYPES: Array<{ key: keyof QuestionTypeConfig; label: string; icon: string; color: string }> = [
+  { key: 'fillBlank', label: 'Fill-in-blank', icon: '___', color: 'bg-cyan-100 text-cyan-700' },
+  { key: 'trueFalse', label: 'True/False', icon: 'T/F', color: 'bg-rose-100 text-rose-700' },
+  { key: 'matching', label: 'Matching', icon: '🔗', color: 'bg-indigo-100 text-indigo-700' },
+  { key: 'multipleChoice', label: 'Multiple Choice', icon: 'ABC', color: 'bg-fuchsia-100 text-fuchsia-700' },
+  { key: 'sentenceComplete', label: 'Sentence Complete', icon: '...', color: 'bg-teal-100 text-teal-700' },
+];
+
+// ── Stepper Component ─────────────────────────────────────────────────────────────
+
+interface StepperProps {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  label?: string;
+}
+
+const Stepper: React.FC<StepperProps> = ({ value, onChange, min = 0, max = 50, label }) => (
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={() => onChange(Math.max(min, value - 1))}
+      disabled={value <= min}
+      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all ${
+        value <= min
+          ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
+          : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+      }`}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+    >
+      <Minus size={14} />
+    </button>
+    <span className={`w-10 text-center font-bold ${label ? 'text-lg' : 'text-base'}`}>
+      {value}
+    </span>
+    <button
+      type="button"
+      onClick={() => onChange(Math.min(max, value + 1))}
+      disabled={value >= max}
+      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all ${
+        value >= max
+          ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
+          : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+      }`}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+    >
+      <Plus size={14} />
+    </button>
+  </div>
+);
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+export default function AiLessonBuilder({
+  isOpen,
+  onClose,
+  selectedWords,
+  onGenerate,
+  onSaveLesson,
+  showToast,
+}: AiLessonBuilderProps) {
+  // Text generation config
+  const [textDifficulty, setTextDifficulty] = useState('A2 (Grade 6-7, comfortable with everyday topics)');
+  const [textType, setTextType] = useState('');
+  const [wordCount, setWordCount] = useState(200);
+
+  // Question types config
+  const [questionTypes, setQuestionTypes] = useState<QuestionTypeConfig>({
+    yesNo: 5,
+    wh: 8,
+    literal: 4,
+    inferential: 3,
+    fillBlank: 2,
+    trueFalse: 2,
+    matching: 0,
+    multipleChoice: 0,
+    sentenceComplete: 0,
+  });
+  const [includeAnswers, setIncludeAnswers] = useState(true);
+
+  // Generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedLesson, setGeneratedLesson] = useState<GeneratedLesson | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
+  const [expandedSection, setExpandedSection] = useState<'text' | 'questions' | null>(null);
+
+  // Calculate total questions
+  const totalQuestions = Object.values(questionTypes).reduce((sum, count) => sum + count, 0);
+
+  // Update question type count
+  const updateQuestionType = useCallback((key: keyof QuestionTypeConfig, delta: number) => {
+    setQuestionTypes(prev => ({
+      ...prev,
+      [key]: Math.max(0, Math.min(50, prev[key] + delta)),
+    }));
+  }, []);
+
+  // Auto-balance questions
+  const autoBalance = useCallback(() => {
+    const total = totalQuestions || 20; // Default to 20 if none set
+    const types: (keyof QuestionTypeConfig)[] = ['yesNo', 'wh', 'literal', 'inferential', 'fillBlank', 'trueFalse'];
+    const perType = Math.floor(total / types.length);
+    const remainder = total % types.length;
+
+    const balanced: QuestionTypeConfig = {
+      yesNo: 0, wh: 0, literal: 0, inferential: 0,
+      fillBlank: 0, trueFalse: 0, matching: 0, multipleChoice: 0, sentenceComplete: 0,
+    };
+
+    types.forEach((type, i) => {
+      balanced[type] = perType + (i < remainder ? 1 : 0);
+    });
+
+    setQuestionTypes(balanced);
+    showToast?.(`Balanced ${total} questions across ${types.length} types`, 'success');
+  }, [totalQuestions, showToast]);
+
+  // Generate lesson
+  const handleGenerate = useCallback(async () => {
+    if (selectedWords.length === 0) {
+      showToast?.('Please select some words first', 'error');
+      return;
+    }
+    if (totalQuestions === 0) {
+      showToast?.('Please select at least one question type', 'error');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const lesson = await onGenerate({
+        textDifficulty,
+        textType: textType || `Create a coherent text using these ${selectedWords.length} vocabulary words`,
+        wordCount,
+        questionTypes,
+        includeAnswers,
+      });
+      setGeneratedLesson(lesson);
+      setShowPreview(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate lesson';
+      showToast?.(message, 'error');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [selectedWords, textDifficulty, textType, wordCount, questionTypes, includeAnswers, totalQuestions, onGenerate, showToast]);
+
+  // Reset when modal closes
+  const handleClose = useCallback(() => {
+    setGeneratedLesson(null);
+    setShowPreview(true);
+    onClose();
+  }, [onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 text-white">
+            <Sparkles className="w-5 h-5" />
+            <span className="font-bold text-lg">🤖 AI Lesson Builder</span>
+            <span className="text-sm text-white/80">({selectedWords.length} words)</span>
+          </div>
+          <button
+            onClick={handleClose}
+            type="button"
+            className="text-white/80 hover:text-white"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {!generatedLesson ? (
+            /* Config Form */
+            <div className="space-y-6">
+              {/* Reading Text Section */}
+              <div className="border-2 border-stone-200 rounded-xl p-4">
+                <button
+                  type="button"
+                  onClick={() => setExpandedSection(expandedSection === 'text' ? null : 'text')}
+                  className="flex items-center justify-between w-full text-left"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-violet-600" />
+                    <h3 className="font-bold text-stone-800">Reading Text</h3>
+                  </div>
+                  {expandedSection === 'text' ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+                </button>
+
+                {expandedSection === 'text' && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="mt-4 space-y-4"
+                  >
+                    {/* Difficulty/Description */}
+                    <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-2">
+                        Student Level / Difficulty
+                      </label>
+                      <input
+                        type="text"
+                        value={textDifficulty}
+                        onChange={(e) => setTextDifficulty(e.target.value)}
+                        placeholder="e.g., Grade 7, mixed abilities, ESL learners..."
+                        className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-stone-800"
+                      />
+                      <p className="mt-1 text-xs text-stone-500">
+                        Describe your students — no need for CEFR codes
+                      </p>
+                    </div>
+
+                    {/* Text Type */}
+                    <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-2">
+                        What kind of text do you want?
+                      </label>
+                      <textarea
+                        value={textType}
+                        onChange={(e) => setTextType(e.target.value)}
+                        placeholder="e.g., A story about friendship that uses these words in context, or An informational text about environmental issues..."
+                        className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-stone-800 resize-none h-24"
+                      />
+                      <p className="mt-1 text-xs text-stone-500">
+                        Leave empty for AI to decide based on the vocabulary
+                      </p>
+                    </div>
+
+                    {/* Word Count */}
+                    <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-2">
+                        Text Length: {wordCount} words
+                      </label>
+                      <input
+                        type="range"
+                        min="50"
+                        max="1000"
+                        step="50"
+                        value={wordCount}
+                        onChange={(e) => setWordCount(Number(e.target.value))}
+                        className="w-full accent-violet-600"
+                      />
+                      <div className="flex justify-between text-xs text-stone-500 mt-1">
+                        <span>50</span>
+                        <span>500</span>
+                        <span>1000</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Questions Section */}
+              <div className="border-2 border-stone-200 rounded-xl p-4">
+                <button
+                  type="button"
+                  onClick={() => setExpandedSection(expandedSection === 'questions' ? null : 'questions')}
+                  className="flex items-center justify-between w-full text-left"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-violet-600" />
+                    <h3 className="font-bold text-stone-800">Questions</h3>
+                    <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full text-sm font-semibold">
+                      {totalQuestions}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); autoBalance(); }}
+                      className="text-xs px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition-colors"
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                    >
+                      Auto-balance
+                    </button>
+                    {expandedSection === 'questions' ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+                  </div>
+                </button>
+
+                {expandedSection === 'questions' && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="mt-4 space-y-4"
+                  >
+                    {/* Comprehension Types */}
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-600 mb-3">Comprehension Questions</h4>
+                      <div className="space-y-2">
+                        {COMPREHENSION_TYPES.map((type) => (
+                          <div key={type.key} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${type.color}`}>
+                                {type.icon}
+                              </span>
+                              <span className="font-medium text-stone-700">{type.label}</span>
+                            </div>
+                            <Stepper
+                              value={questionTypes[type.key]}
+                              onChange={(val) => updateQuestionType(type.key, val - questionTypes[type.key])}
+                              max={30}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Exercise Types */}
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-600 mb-3">Exercise Types</h4>
+                      <div className="space-y-2">
+                        {EXERCISE_TYPES.map((type) => (
+                          <div key={type.key} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${type.color}`}>
+                                {type.icon}
+                              </span>
+                              <span className="font-medium text-stone-700">{type.label}</span>
+                            </div>
+                            <Stepper
+                              value={questionTypes[type.key]}
+                              onChange={(val) => updateQuestionType(type.key, val - questionTypes[type.key])}
+                              max={20}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Include Answers */}
+                    <label className="flex items-center gap-3 p-3 bg-violet-50 rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeAnswers}
+                        onChange={(e) => setIncludeAnswers(e.target.checked)}
+                        className="w-5 h-5 rounded border-stone-300 text-violet-600 focus:ring-violet-300"
+                      />
+                      <div>
+                        <p className="text-sm font-bold text-stone-700">Include answer key</p>
+                        <p className="text-xs text-stone-500">Add answers to all generated questions</p>
+                      </div>
+                    </label>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || selectedWords.length === 0 || totalQuestions === 0}
+                type="button"
+                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-shadow"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Generating lesson...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    <span>✨ Generate Lesson</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            /* Preview */
+            <div className="space-y-6">
+              {/* Preview Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-stone-800">Lesson Generated!</p>
+                  <p className="text-sm text-stone-500">
+                    {generatedLesson.wordCount} words • {generatedLesson.questions.length} questions
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setGeneratedLesson(null);
+                    setShowPreview(true);
+                  }}
+                  type="button"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 text-sm font-semibold rounded-lg transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Regenerate</span>
+                </button>
+              </div>
+
+              {/* Reading Text */}
+              <div className="border-2 border-stone-200 rounded-xl p-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="flex items-center justify-between w-full text-left mb-3"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <h3 className="font-bold text-stone-800 flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-violet-600" />
+                    Reading Text
+                  </h3>
+                  <span className={`text-stone-400 transition-transform ${showPreview ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+                {showPreview && (
+                  <div className="prose prose-stone max-w-none">
+                    <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">
+                      {generatedLesson.text}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Questions */}
+              <div className="border-2 border-stone-200 rounded-xl p-4">
+                <h3 className="font-bold text-stone-800 flex items-center gap-2 mb-3">
+                  <HelpCircle className="w-5 h-5 text-violet-600" />
+                  Questions ({generatedLesson.questions.length})
+                </h3>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {generatedLesson.questions.map((q, i) => {
+                    const typeConfig = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(t => t.key === q.type);
+                    return (
+                      <div key={i} className="p-3 bg-stone-50 rounded-lg">
+                        <div className="flex items-start gap-2 mb-2">
+                          {typeConfig && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${typeConfig.color}`}>
+                              {typeConfig.label}
+                            </span>
+                          )}
+                          <p className="font-medium text-stone-800">Q{i + 1}: {q.question}</p>
+                        </div>
+                        {includeAnswers && (
+                          <p className="text-sm text-stone-600 ml-1">
+                            <span className="font-semibold">Answer:</span> {q.answer}
+                          </p>
+                        )}
+                        {q.options && (
+                          <div className="mt-2 ml-1 space-y-1">
+                            {q.options.map((opt, j) => (
+                              <p key={j} className="text-sm text-stone-600">
+                                {String.fromCharCode(65 + j)}. {opt}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Save/Close Buttons */}
+              <div className="flex gap-3">
+                {onSaveLesson && (
+                  <button
+                    onClick={() => {
+                      onSaveLesson(generatedLesson);
+                      handleClose();
+                    }}
+                    type="button"
+                    className="flex-1 py-3 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 transition-all"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  >
+                    <Check className="w-5 h-5 inline mr-2" />
+                    Save & Print
+                  </button>
+                )}
+                <button
+                  onClick={handleClose}
+                  type="button"
+                  className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}

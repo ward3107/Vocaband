@@ -64,7 +64,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         currentPage="home"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
-        onTryDemo={onTryDemo}
       />
 
       <main>
@@ -186,7 +185,79 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </div>
 
               {/* Right - Floating 3D Cards Grid */}
-              <div className="hidden lg:grid grid-cols-2 gap-4 relative">
+              <div className="hidden lg:flex flex-col gap-6 relative">
+                {/* Try Demo Button - Above cards */}
+                {onTryDemo && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.5 }}
+                    className="flex justify-center"
+                  >
+                    <motion.button
+                      onClick={onTryDemo}
+                      animate={{
+                        y: [0, -4, 0],
+                        scale: [1, 1.02, 1],
+                      }}
+                      transition={{
+                        y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                        scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                      }}
+                      whileHover={{
+                        scale: 1.08,
+                        boxShadow: "0 0 30px rgba(139, 92, 246, 0.6), 0 0 60px rgba(244, 114, 182, 0.4)"
+                      }}
+                      whileTap={{ scale: 0.95 }}
+                      className="group relative px-6 py-3 rounded-full text-sm font-black text-white shadow-2xl shadow-primary/40 flex items-center gap-2 border-2 border-white/40 overflow-hidden bg-gradient-to-r from-primary via-violet-600 to-fuchsia-600"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      {/* Pulsing glow ring */}
+                      <motion.div
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-fuchsia-600"
+                      />
+
+                      {/* Animated shine sweep */}
+                      <motion.div
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                      />
+
+                      {/* Rotating gamepad icon */}
+                      <motion.div
+                        animate={{ rotateY: [0, 360], rotateZ: [0, 10, 0, -10, 0] }}
+                        transition={{
+                          rotateY: { duration: 3, repeat: Infinity, ease: "linear" },
+                          rotateZ: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="relative z-10"
+                        style={{ transformStyle: 'preserve-3d' }}
+                      >
+                        <Gamepad2 size={16} strokeWidth={3} />
+                      </motion.div>
+
+                      <span className="relative z-10">{t.navTryDemo}</span>
+
+                      {/* Sparkle effects */}
+                      <motion.span
+                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
+                        className="absolute -top-0.5 -right-0.5 text-yellow-300 text-sm"
+                      >✨</motion.span>
+                      <motion.span
+                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
+                        className="absolute -bottom-0.5 -left-0.5 text-yellow-300 text-xs"
+                      >✨</motion.span>
+                    </motion.button>
+                  </motion.div>
+                )}
+
+                {/* Cards Grid */}
+                <div className="grid grid-cols-2 gap-4 relative">
                 {floatingCards.map((card, i) => (
                   <motion.div
                     key={i}
@@ -224,6 +295,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
                 {/* Center Glow */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gradient-to-br from-violet-500/40 to-fuchsia-500/40 rounded-full blur-3xl -z-10" />
+                </div>
               </div>
             </div>
           </div>

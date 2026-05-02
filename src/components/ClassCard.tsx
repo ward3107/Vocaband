@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2 } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
+import type { Word } from "../data/vocabulary";
 
 interface Assignment {
   id: string;
@@ -8,7 +9,7 @@ interface Assignment {
   title: string;
   wordIds: number[];
   deadline?: string | null;
-  words?: any[];
+  words?: Word[];
   sentences?: string[];
   allowedModes?: string[];
   sentenceDifficulty?: number;
@@ -198,7 +199,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 onClick={() => setAvatarPickerOpen(v => !v)}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'bg-gradient-to-br from-stone-50 to-white border border-stone-200' : 'bg-gradient-to-br from-indigo-500 to-violet-600'}`}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'bg-gradient-to-br from-stone-50 to-white border border-stone-200' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
                 title="Change avatar"
               >
                 {avatar ? (

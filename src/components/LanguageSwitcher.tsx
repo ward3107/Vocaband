@@ -1,80 +1,90 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Globe, Check } from "lucide-react";
+import React from "react";
+import { motion } from "motion/react";
 import { useLanguage, languageNames, languageFlags, Language } from "../hooks/useLanguage";
 
 interface LanguageSwitcherProps {
   className?: string;
+  variant?: "pill" | "compact";
 }
 
-const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = "" }) => {
-  const { language, setLanguage } = useLanguage();
-  const [isOpen, setIsOpen] = useState(false);
-
+const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = "", variant = "pill" }) => {
+  const { language, setLanguage, isRTL } = useLanguage();
   const languages: Language[] = ["en", "he", "ar"];
+  const currentIndex = languages.indexOf(language);
 
+  // Compact dropdown variant (for tight spaces like mobile nav)
+  if (variant === "compact") {
+    return (
+      <div className={`relative inline-flex ${className}`}>
+        {languages.map((lang, idx) => (
+          <button
+            key={lang}
+            onClick={() => setLanguage(lang)}
+            className={`relative px-3 py-2 text-sm font-medium transition-all ${
+              idx === 0 ? "rounded-s-lg" : ""
+            } ${idx === languages.length - 1 ? "rounded-e-lg" : ""}
+            } ${language === lang
+              ? "bg-primary text-on-primary"
+              : "bg-surface-container-low text-on-surface hover:bg-surface-container"
+            }`}
+            type="button"
+          >
+            {languageFlags[lang]}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // Modern pill variant (default)
   return (
-    <div className={`relative ${className}`}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all border border-surface-container-high"
-      >
-        <Globe size={18} className="text-primary" />
-        <span className="font-medium text-on-surface">
-          {languageFlags[language]} {languageNames[language]}
-        </span>
-        <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="text-on-surface-variant"
-        >
-          ▾
-        </motion.span>
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setIsOpen(false)}
-            />
-
-            {/* Dropdown */}
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              className="absolute top-full mt-2 right-0 z-50 bg-surface-container-lowest rounded-xl shadow-2xl border border-surface-container-high overflow-hidden min-w-[160px]"
+    <div className={`inline-flex ${className}`}>
+      <div className="flex items-center gap-1 p-1 rounded-2xl bg-surface-container-low/80 backdrop-blur-sm border border-surface-container-high/50">
+        {languages.map((lang) => (
+          <motion.button
+            key={lang}
+            onClick={() => setLanguage(lang)}
+            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all ${
+              language === lang
+                ? "bg-gradient-to-br from-primary to-primary/90 text-on-primary shadow-lg shadow-primary/20"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50"
+            }`}
+            whileHover={{ scale: language === lang ? 1.02 : 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="button"
+          >
+            {/* Flag with bounce on selection */}
+            <motion.span
+              className="text-lg"
+              animate={{
+                scale: language === lang ? [1, 1.15, 1] : 1,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 15,
+              }}
             >
-              {languages.map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => {
-                    setLanguage(lang);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container transition-all ${
-                    language === lang ? "bg-primary/10" : ""
-                  }`}
-                >
-                  <span className="text-xl">{languageFlags[lang]}</span>
-                  <span className={`flex-1 text-left font-medium ${
-                    language === lang ? "text-primary" : "text-on-surface"
-                  }`}>
-                    {languageNames[lang]}
-                  </span>
-                  {language === lang && (
-                    <Check size={16} className="text-primary" />
-                  )}
-                </button>
-              ))}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              {languageFlags[lang]}
+            </motion.span>
+
+            {/* Language name - hide on mobile */}
+            <span className="hidden sm:inline text-sm">
+              {languageNames[lang]}
+            </span>
+
+            {/* Active checkmark */}
+            {language === lang && (
+              <motion.span
+                className="w-1 h-1 rounded-full bg-white/90"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              />
+            )}
+          </motion.button>
+        ))}
+      </div>
     </div>
   );
 };

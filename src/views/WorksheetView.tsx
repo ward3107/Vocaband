@@ -2,9 +2,10 @@
  * WorksheetView — full-screen "build a printable worksheet" UI.
  *
  * On-screen the teacher sees:
- *   - Sheet type picker (4 cards: Word list / Scramble / Fill-blank / Match-up)
+ *   - Sheet type picker (multiple worksheet types in a grid)
  *   - Word source picker (same shape as Class Show)
  *   - Title input + answer-key toggle
+ *   - AI sentence generation for sentence-based sheets
  *   - "Print" button → calls window.print()
  *
  * Below the controls, a live preview of the selected sheet renders
@@ -17,16 +18,23 @@
  * everything except `.vb-print-only` is suppressed and the worksheet
  * is the only thing on the page.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
+import { supabase } from '../core/supabase';
 import Worksheet, { type WorksheetSheetType } from '../components/worksheet/Worksheet';
 import { WordListSheet } from '../components/worksheet/sheets/WordListSheet';
 import { ScrambleSheet } from '../components/worksheet/sheets/ScrambleSheet';
 import { FillBlankSheet } from '../components/worksheet/sheets/FillBlankSheet';
 import { MatchUpSheet } from '../components/worksheet/sheets/MatchUpSheet';
+import { MultipleChoiceSheet } from '../components/worksheet/sheets/MultipleChoiceSheet';
+import { ReverseTranslationSheet } from '../components/worksheet/sheets/ReverseTranslationSheet';
+import { TrueFalseSheet } from '../components/worksheet/sheets/TrueFalseSheet';
+import { FlashcardsSheet } from '../components/worksheet/sheets/FlashcardsSheet';
+import { MatchingSheet } from '../components/worksheet/sheets/MatchingSheet';
+import { SentenceBuilderSheet } from '../components/worksheet/sheets/SentenceBuilderSheet';
 import WordPicker from '../components/setup/WordPicker';
 import type { ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import type { Word } from '../data/vocabulary';
@@ -46,11 +54,18 @@ interface WorksheetViewProps {
   pickerWiring?: ClassShowWordPickerWiring;
 }
 
-const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string }> = [
-  { id: 'word-list',  label: 'Word list',         description: 'Bilingual reference sheet',         icon: <BookOpen size={26} />, gradient: 'from-emerald-500 to-teal-600' },
-  { id: 'scramble',   label: 'Scramble',          description: 'Unscramble each word',              icon: <Shuffle size={26} />,  gradient: 'from-orange-500 to-red-600' },
-  { id: 'fill-blank', label: 'Fill in the blank', description: 'Sentences with missing words',     icon: <FileText size={26} />, gradient: 'from-indigo-500 to-violet-600' },
-  { id: 'match-up',   label: 'Match-up',          description: 'Draw lines between English + translation', icon: <Link2 size={26} />, gradient: 'from-pink-500 to-rose-600' },
+// All worksheet types matching the game modes (sound-based modes excluded)
+const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> = [
+  { id: 'word-list',           label: 'Word List',           description: 'Bilingual reference sheet',           icon: <BookOpen size={26} />,         gradient: 'from-emerald-300 to-teal-400', needsSentences: false },
+  { id: 'scramble',            label: 'Scramble',            description: 'Unscramble each word',               icon: <Shuffle size={26} />,          gradient: 'from-orange-300 to-red-400', needsSentences: false },
+  { id: 'fill-blank',          label: 'Fill in the Blank',   description: 'Sentences with missing words',      icon: <FileText size={26} />,          gradient: 'from-indigo-300 to-violet-400', needsSentences: true },
+  { id: 'match-up',            label: 'Match-up',            description: 'Connect word to translation',       icon: <Link2 size={26} />,            gradient: 'from-pink-300 to-rose-400', needsSentences: false },
+  { id: 'multiple-choice',     label: 'Multiple Choice',     description: 'Choose the correct answer',         icon: <Layers size={26} />,            gradient: 'from-indigo-300 to-violet-400', needsSentences: false },
+  { id: 'reverse-translation', label: 'Reverse Translation', description: 'Write English from translation',    icon: <ArrowLeftRight size={26} />,    gradient: 'from-amber-300 to-orange-400', needsSentences: false },
+  { id: 'true-false',          label: 'True/False',          description: 'Is the translation correct?',       icon: <CheckCircle size={26} />,       gradient: 'from-rose-300 to-pink-400', needsSentences: false },
+  { id: 'flashcards',          label: 'Flashcards',          description: 'Cut and fold study cards',           icon: <Sparkles size={26} />,          gradient: 'from-fuchsia-300 to-purple-400', needsSentences: false },
+  { id: 'matching',            label: 'Matching',            description: 'Draw lines to match pairs',         icon: <Grid3x3 size={26} />,           gradient: 'from-violet-300 to-purple-400', needsSentences: false },
+  { id: 'sentence-builder',    label: 'Sentence Builder',    description: 'Unscramble sentences',               icon: <Puzzle size={26} />,            gradient: 'from-teal-300 to-emerald-400', needsSentences: true },
 ];
 
 export default function WorksheetView({
@@ -60,16 +75,54 @@ export default function WorksheetView({
   const { language } = useLanguage();
   const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
 
-  const [sheetType, setSheetType] = useState<WorksheetSheetType>('word-list');
+  const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
-  const [maxWords, setMaxWords] = useState(20);
+
+  // Toggle sheet type selection
+  const toggleSheetType = (type: WorksheetSheetType) => {
+    setSelectedSheetTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        // Don't allow deselecting if it's the only one
+        if (next.size > 1) {
+          next.delete(type);
+        }
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
+
+  // AI sentence generation state
+  const [aiSentences, setAiSentences] = useState<Record<number, string>>({});
+  const [isGeneratingSentences, setIsGeneratingSentences] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+
+  // Check AI availability
+  useEffect(() => {
+    const checkAI = async () => {
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/features`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setAiEnabled(data.aiSentences === true);
+      } catch {
+        setAiEnabled(false);
+      }
+    };
+    checkAI();
+  }, []);
 
   // Custom-words state for the embedded WordPicker.  When non-empty,
   // a synthetic "My custom selection" source is prepended.
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   const effectiveSources = useMemo(() => {
     if (customWords.length === 0) return initialSources;
@@ -84,7 +137,83 @@ export default function WorksheetView({
   );
 
   const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
-  const wordsForSheet = (source?.words ?? []).slice(0, maxWords);
+  const wordsForSheet = source?.words ?? [];
+
+  // Clear AI sentences when word source changes
+  useEffect(() => {
+    setAiSentences({});
+  }, [sourceIdx]);
+
+  // Auto-generate sentences when fill-blank or sentence-builder is selected
+  useEffect(() => {
+    const needsSentences = Array.from(selectedSheetTypes).some(type => type === 'fill-blank' || type === 'sentence-builder');
+    if (!needsSentences || wordsForSheet.length === 0 || !aiEnabled) return;
+
+    // Only auto-generate if we haven't already generated for this word set
+    const hasSentencesForAllWords = wordsForSheet.every(w => aiSentences[w.id]);
+    if (hasSentencesForAllWords) return;
+
+    const autoGenerate = async () => {
+      setIsGeneratingSentences(true);
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+        const words = wordsForSheet.map(w => w.english).filter(Boolean);
+        const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ words, difficulty: 2 }),
+        });
+        if (!res.ok) return;
+        const { sentences } = await res.json();
+        const newSentences: Record<number, string> = {};
+        wordsForSheet.forEach((word, idx) => {
+          if (sentences[idx]) {
+            newSentences[word.id] = sentences[idx];
+          }
+        });
+        setAiSentences(newSentences);
+      } catch {
+        // Silently fail on auto-generation
+      } finally {
+        setIsGeneratingSentences(false);
+      }
+    };
+
+    autoGenerate();
+  }, [selectedSheetTypes, sourceIdx, aiEnabled]);
+
+  // Generate AI sentences for selected words (defined after wordsForSheet is available)
+  const generateSentences = async () => {
+    if (wordsForSheet.length === 0) return;
+    setIsGeneratingSentences(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error('No auth token');
+      const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+      const words = wordsForSheet.map(w => w.english).filter(Boolean);
+      const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ words, difficulty: 2 }),
+      });
+      if (!res.ok) throw new Error('Failed to generate sentences');
+      const { sentences } = await res.json();
+      // Map sentences back to words by index
+      const newSentences: Record<number, string> = {};
+      wordsForSheet.forEach((word, idx) => {
+        if (sentences[idx]) {
+          newSentences[word.id] = sentences[idx];
+        }
+      });
+      setAiSentences(newSentences);
+    } catch (err) {
+      console.error('[Worksheet] AI sentence generation failed:', err);
+    } finally {
+      setIsGeneratingSentences(false);
+    }
+  };
 
   const handleCustomWordsChange = (next: Word[]) => {
     const wasEmpty = customWords.length === 0;
@@ -109,7 +238,7 @@ export default function WorksheetView({
               Print worksheet
             </h1>
             <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
-              Pick a sheet, set the title, hit Print.
+              Pick words, choose a sheet type, hit Print.
             </p>
           </div>
           <button
@@ -125,33 +254,6 @@ export default function WorksheetView({
             <ArrowLeft size={16} />
             Back
           </button>
-        </div>
-
-        {/* Sheet type picker */}
-        <div className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            Sheet type
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {SHEET_TYPES.map(s => {
-              const selected = sheetType === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSheetType(s.id)}
-                  style={{
-                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
-                  }}
-                  className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-2xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
-                >
-                  {s.icon}
-                  <div className="font-black">{s.label}</div>
-                  <div className="text-xs opacity-90">{s.description}</div>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Word source */}
@@ -191,96 +293,140 @@ export default function WorksheetView({
 
           {/* Build custom list — embedded WordPicker. */}
           {pickerWiring && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setPickerOpen(o => !o)}
-                style={{
-                  backgroundColor: 'var(--vb-surface-alt)',
-                  color: 'var(--vb-text-primary)',
-                  borderColor: 'var(--vb-border)',
-                }}
-                className="w-full px-4 py-3 rounded-xl border-2 inline-flex items-center justify-between font-bold text-sm transition-colors hover:opacity-90"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Wand2 size={16} style={{ color: 'var(--vb-accent)' }} />
-                  Build a custom list (paste, OCR, topic packs, saved groups)
-                </span>
-                {pickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-              {pickerOpen && (
-                <div
-                  className="mt-3 p-4 rounded-xl border-2"
-                  style={{
-                    backgroundColor: 'var(--vb-surface-alt)',
-                    borderColor: 'var(--vb-border)',
-                  }}
-                >
-                  <WordPicker
-                    allWords={pickerWiring.allWords}
-                    selectedWords={customWords}
-                    onSelectedWordsChange={handleCustomWordsChange}
-                    onTranslateWord={pickerWiring.onTranslateWord}
-                    onTranslateBatch={pickerWiring.onTranslateBatch}
-                    onOcrUpload={pickerWiring.onOcrUpload}
-                    showToast={pickerWiring.showToast}
-                    topicPacks={pickerWiring.topicPacks}
-                    savedGroups={pickerWiring.savedGroups}
-                    onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
-                    onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
-                    customWords={customWordsCustomTier}
-                    onCustomWordsChange={setCustomWordsCustomTier}
-                  />
-                </div>
-              )}
+            <div className="mt-4 p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+              <WordPicker
+                allWords={pickerWiring.allWords}
+                selectedWords={customWords}
+                onSelectedWordsChange={handleCustomWordsChange}
+                onTranslateWord={pickerWiring.onTranslateWord}
+                onTranslateBatch={pickerWiring.onTranslateBatch}
+                onOcrUpload={pickerWiring.onOcrUpload}
+                showToast={pickerWiring.showToast}
+                topicPacks={pickerWiring.topicPacks}
+                savedGroups={pickerWiring.savedGroups}
+                onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
+                onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
+                customWords={customWordsCustomTier}
+                onCustomWordsChange={setCustomWordsCustomTier}
+              />
             </div>
           )}
         </div>
 
-        {/* Title + word count + answer key */}
-        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-              Worksheet title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={60}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-primary)',
-                backgroundColor: 'var(--vb-surface)',
-              }}
-              className="w-full px-4 py-3 rounded-xl border-2 outline-none font-bold"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-              Words on sheet
-            </label>
-            <div className="flex gap-2">
-              {[10, 20, 30, 50].map(n => (
+        {/* Sheet type picker */}
+        <div className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center justify-between" style={{ color: 'var(--vb-text-muted)' }}>
+            <span>Sheet types</span>
+            <span className="font-normal">{selectedSheetTypes.size} selected</span>
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {SHEET_TYPES.map(s => {
+              const selected = selectedSheetTypes.has(s.id);
+              return (
                 <button
-                  key={n}
+                  key={s.id}
                   type="button"
-                  onClick={() => setMaxWords(n)}
+                  onClick={() => toggleSheetType(s.id)}
                   style={{
-                    backgroundColor: maxWords === n ? 'var(--vb-accent)' : 'var(--vb-surface)',
-                    color: maxWords === n ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
-                    borderColor: maxWords === n ? 'var(--vb-accent)' : 'var(--vb-border)',
+                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
                   }}
-                  className="flex-1 px-3 py-3 rounded-xl border-2 font-bold transition-colors"
+                  className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-2xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
                 >
-                  {n}
+                  <div className="absolute top-2 right-2">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-white bg-white/30' : 'border-white/50'}`}>
+                      {selected && <Check size={12} className="text-white" />}
+                    </div>
+                  </div>
+                  {s.icon}
+                  <div className="font-black">{s.label}</div>
+                  <div className="text-xs opacity-90">{s.description}</div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {sheetType !== 'word-list' && (
+        {/* AI Sentence Generation — shown only when sentence-based sheets are selected */}
+        {Array.from(selectedSheetTypes).some(type => type === 'fill-blank' || type === 'sentence-builder') && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between p-4 rounded-2xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+              <div className="flex items-center gap-3">
+                {isGeneratingSentences ? (
+                  <Loader2 size={20} className="animate-spin" style={{ color: 'var(--vb-accent)' }} />
+                ) : Object.keys(aiSentences).length > 0 ? (
+                  <Check size={20} style={{ color: '#10b981' }} />
+                ) : (
+                  <Sparkles size={20} style={{ color: 'var(--vb-accent)' }} />
+                )}
+                <div>
+                  <div className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
+                    AI Sentence Generation
+                  </div>
+                  <div className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                    {isGeneratingSentences
+                      ? 'Generating sentences...'
+                      : Object.keys(aiSentences).length > 0
+                      ? `${Object.keys(aiSentences).length} sentences generated`
+                      : 'Generate example sentences for your worksheet'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={generateSentences}
+                disabled={!aiEnabled || isGeneratingSentences || wordsForSheet.length === 0}
+                style={{
+                  backgroundColor: aiEnabled ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
+                  color: aiEnabled ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
+                }}
+                className="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              >
+                {isGeneratingSentences ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : Object.keys(aiSentences).length > 0 ? (
+                  <>
+                    <Sparkles size={16} />
+                    Regenerate
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    Generate Sentences
+                  </>
+                )}
+              </button>
+            </div>
+            {!aiEnabled && (
+              <div className="mt-2 text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                AI features are not available. Please contact support to enable.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Title */}
+        <div className="mb-8">
+          <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+            Worksheet title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={60}
+            style={{
+              borderColor: 'var(--vb-border)',
+              color: 'var(--vb-text-primary)',
+              backgroundColor: 'var(--vb-surface)',
+            }}
+            className="w-full px-4 py-3 rounded-xl border-2 outline-none font-bold"
+          />
+        </div>
+
+        {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
           <label className="flex items-center gap-3 mb-8 cursor-pointer">
             <input
               type="checkbox"
@@ -308,13 +454,33 @@ export default function WorksheetView({
               color: '#000',
             }}
           >
-            <h3 style={{ fontSize: '20pt', fontWeight: 900, margin: 0, marginBottom: '0.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
-              {title}
-            </h3>
-            {sheetType === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'fill-blank' && <FillBlankSheet words={wordsForSheet} />}
-            {sheetType === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
+            {Array.from(selectedSheetTypes).map((type, idx) => {
+              const sheetInfo = SHEET_TYPES.find(s => s.id === type);
+              return (
+                <div key={type} className={idx > 0 ? 'mt-8 pt-8 border-t-2 border-dashed border-gray-300' : ''}>
+                  {selectedSheetTypes.size > 1 && (
+                    <div className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                      {sheetInfo?.label}
+                    </div>
+                  )}
+                  {idx === 0 && (
+                    <h3 style={{ fontSize: '20pt', fontWeight: 900, margin: 0, marginBottom: '0.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
+                      {title}
+                    </h3>
+                  )}
+                  {type === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
+                  {type === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'reverse-translation' && <ReverseTranslationSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -336,16 +502,21 @@ export default function WorksheetView({
         </div>
       </motion.div>
 
-      {/* The actual print-only worksheet — invisible on screen but
+      {/* The actual print-only worksheets — invisible on screen but
           materialised so window.print() has something to lay out. */}
-      <Worksheet
-        sheetType={sheetType}
-        title={title}
-        words={wordsForSheet}
-        className={className ?? null}
-        includeAnswerKey={includeAnswerKey}
-        translationLang={translationLang}
-      />
+      {Array.from(selectedSheetTypes).map((type, idx) => (
+        <Worksheet
+          key={type}
+          sheetType={type}
+          title={idx === 0 ? title : undefined}
+          words={wordsForSheet}
+          className={className ?? null}
+          includeAnswerKey={includeAnswerKey}
+          translationLang={translationLang}
+          aiSentences={aiSentences}
+          pageBreakBefore={idx > 0}
+        />
+      ))}
     </div>
   );
 }

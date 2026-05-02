@@ -56,7 +56,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
           backgroundColor: 'var(--vb-surface)',
           borderColor: 'var(--vb-border)',
         }}
-        className="rounded-3xl p-6 max-w-md w-full shadow-2xl border"
+        className="rounded-3xl p-6 max-w-2xl w-full shadow-2xl border"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -78,8 +78,12 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
           Pick a look for your teacher dashboard.  Only you see this — students keep their own theme from the shop.
         </p>
 
-        <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-          {TEACHER_DASHBOARD_THEMES.map(theme => {
+        {/* Light themes */}
+        <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+          Light themes
+        </p>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {TEACHER_DASHBOARD_THEMES.filter(t => !t.dark).map(theme => {
             const selected = theme.id === currentId;
             return (
               <button
@@ -87,15 +91,43 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                 type="button"
                 onClick={() => pick(theme.id)}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`relative ${theme.swatch} rounded-2xl p-4 h-28 flex flex-col items-center justify-center gap-2 ring-2 transition-all
+                className={`relative ${theme.swatch} rounded-xl p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
                   ${selected ? 'ring-stone-900 shadow-lg scale-[1.02]' : 'ring-transparent hover:ring-stone-300 hover:scale-[1.02]'}`}
               >
-                <span className="text-3xl">{theme.emoji}</span>
-                <span className={`text-sm font-black ${theme.dark ? 'text-white' : 'text-stone-900'}`}>
+                <span className="text-2xl">{theme.emoji}</span>
+                <span className={`text-xs font-black ${theme.dark ? 'text-white' : 'text-stone-900'}`}>
                   {theme.name}
                 </span>
                 {selected && (
-                  <span className="absolute top-2 right-2 w-3 h-3 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dark themes */}
+        <p className="text-xs font-black uppercase tracking-wider mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+          Dark themes
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          {TEACHER_DASHBOARD_THEMES.filter(t => t.dark).map(theme => {
+            const selected = theme.id === currentId;
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => pick(theme.id)}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className={`relative ${theme.swatch} rounded-xl p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
+                  ${selected ? 'ring-stone-900 shadow-lg scale-[1.02]' : 'ring-transparent hover:ring-stone-300 hover:scale-[1.02]'}`}
+              >
+                <span className="text-2xl">{theme.emoji}</span>
+                <span className={`text-xs font-black ${theme.dark ? 'text-white' : 'text-stone-900'}`}>
+                  {theme.name}
+                </span>
+                {selected && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
                 )}
               </button>
             );
