@@ -21,10 +21,8 @@ import { MultipleChoiceSheet } from './sheets/MultipleChoiceSheet';
 import { ReverseTranslationSheet } from './sheets/ReverseTranslationSheet';
 import { TrueFalseSheet } from './sheets/TrueFalseSheet';
 import { FlashcardsSheet } from './sheets/FlashcardsSheet';
-import { LetterSoundsSheet } from './sheets/LetterSoundsSheet';
 import { MatchingSheet } from './sheets/MatchingSheet';
 import { SentenceBuilderSheet } from './sheets/SentenceBuilderSheet';
-import { ListeningSheet } from './sheets/ListeningSheet';
 import type { Word } from '../../data/vocabulary';
 
 export type WorksheetSheetType =
@@ -33,11 +31,9 @@ export type WorksheetSheetType =
   | 'fill-blank'
   | 'match-up'
   | 'multiple-choice'
-  | 'listening'
   | 'reverse-translation'
   | 'true-false'
   | 'flashcards'
-  | 'letter-sounds'
   | 'matching'
   | 'sentence-builder';
 
@@ -74,11 +70,9 @@ export default function Worksheet({
       {sheetType === 'fill-blank' && <FillBlankSheet words={words} aiSentences={aiSentences} />}
       {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} />}
       {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'listening' && <ListeningSheet words={words} translationLang={translationLang} />}
       {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} />}
       {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} />}
       {sheetType === 'flashcards' && <FlashcardsSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'letter-sounds' && <LetterSoundsSheet words={words} translationLang={translationLang} />}
       {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
       {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
 
@@ -89,10 +83,8 @@ export default function Worksheet({
           {sheetType === 'fill-blank' && <FillBlankSheet words={words} answerKey aiSentences={aiSentences} />}
           {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} answerKey />}
           {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'listening' && <ListeningSheet words={words} translationLang={translationLang} answerKey />}
           {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} answerKey />}
           {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'letter-sounds' && <LetterSoundsSheet words={words} translationLang={translationLang} answerKey />}
           {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} answerKey />}
           {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} answerKey aiSentences={aiSentences} />}
         </div>

@@ -8,7 +8,7 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles, X, Loader2, Check, ChevronRight, RefreshCw
+  Sparkles, X, Loader2, Check, ChevronRight, RefreshCw, Search
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -48,6 +48,34 @@ const LEVELS: { value: ProficiencyLevel; label: string; description: string }[] 
   { value: 'B2', label: 'Upper-Intermediate', description: 'Grades 8-9, complex topics' },
 ];
 
+// Suggested topics organized by category
+const TOPIC_SUGGESTIONS = {
+  'School & Classroom': [
+    'School subjects', 'Classroom objects', 'Stationery', 'School activities',
+  ],
+  'Food & Drinks': [
+    'Fruits', 'Vegetables', 'Fast food', 'Drinks', 'Desserts', 'Breakfast',
+  ],
+  'Animals & Nature': [
+    'Farm animals', 'Wild animals', 'Sea creatures', 'Birds', 'Weather', 'Seasons',
+  ],
+  'People & Family': [
+    'Family members', 'Feelings', 'Body parts', 'Clothing', 'Jobs & professions',
+  ],
+  'Places & Directions': [
+    'Rooms in a house', 'Places in town', 'Prepositions', 'Transportation',
+  ],
+  'Hobbies & Activities': [
+    'Sports', 'Musical instruments', 'Hobbies', 'Daily routines',
+  ],
+  'Time & Numbers': [
+    'Days of the week', 'Months', 'Numbers', 'Time expressions',
+  ],
+  'Other': [
+    'Colors', 'Shapes', 'Adjectives', 'Verbs',
+  ],
+};
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function AiVocabularyModal({
@@ -58,6 +86,7 @@ export default function AiVocabularyModal({
   const [level, setLevel] = useState<ProficiencyLevel>('A2');
   const [examplesToAnchor, setExamplesToAnchor] = useState('');
   const [skipCurriculumDuplicates, setSkipCurriculumDuplicates] = useState(true);
+  const [showTopicDropdown, setShowTopicDropdown] = useState(false);
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -158,23 +187,66 @@ export default function AiVocabularyModal({
           {!hasGenerated ? (
             /* Form Stage */
             <div className="space-y-6">
-              {/* Topic Input */}
+              {/* Topic Input with Dropdown */}
               <div>
                 <label htmlFor="ai-topic" className="block text-sm font-bold text-stone-700 mb-2">
                   📚 Topic <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  id="ai-topic"
-                  type="text"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. weather, food, feelings, school subjects..."
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-stone-800"
-                  dir="ltr"
-                  autoFocus
-                />
+                <div className="relative">
+                  <input
+                    id="ai-topic"
+                    type="text"
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    onFocus={() => setShowTopicDropdown(true)}
+                    placeholder="e.g. weather, food, feelings, school subjects..."
+                    className="w-full px-4 py-3 pr-10 border-2 border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-stone-800"
+                    dir="ltr"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTopicDropdown(!showTopicDropdown)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  >
+                    <Search className="w-5 h-5" />
+                  </button>
+
+                  {/* Topic Suggestions Dropdown */}
+                  <AnimatePresence>
+                    {showTopicDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute z-10 w-full mt-2 bg-white border-2 border-stone-200 rounded-xl shadow-xl max-h-64 overflow-y-auto"
+                      >
+                        {Object.entries(TOPIC_SUGGESTIONS).map(([category, topics]) => (
+                          <div key={category}>
+                            <div className="px-4 py-2 bg-stone-100 text-xs font-bold text-stone-600 uppercase tracking-wider sticky top-0">
+                              {category}
+                            </div>
+                            {topics.map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => {
+                                  setTopic(suggestion);
+                                  setShowTopicDropdown(false);
+                                }}
+                                className="w-full px-4 py-2.5 text-left hover:bg-fuchsia-50 transition-colors text-stone-700 hover:text-fuchsia-700"
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <p className="mt-1 text-xs text-stone-500">
-                  Any topic — specific themes, curriculum units, or student interests
+                  Type a topic or choose from suggestions above
                 </p>
               </div>
 

@@ -20,7 +20,7 @@
  */
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, Headphones, ArrowLeftRight, CheckCircle, Layers, AudioLines, Grid3x3, Puzzle } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../core/supabase';
@@ -30,11 +30,9 @@ import { ScrambleSheet } from '../components/worksheet/sheets/ScrambleSheet';
 import { FillBlankSheet } from '../components/worksheet/sheets/FillBlankSheet';
 import { MatchUpSheet } from '../components/worksheet/sheets/MatchUpSheet';
 import { MultipleChoiceSheet } from '../components/worksheet/sheets/MultipleChoiceSheet';
-import { ListeningSheet } from '../components/worksheet/sheets/ListeningSheet';
 import { ReverseTranslationSheet } from '../components/worksheet/sheets/ReverseTranslationSheet';
 import { TrueFalseSheet } from '../components/worksheet/sheets/TrueFalseSheet';
 import { FlashcardsSheet } from '../components/worksheet/sheets/FlashcardsSheet';
-import { LetterSoundsSheet } from '../components/worksheet/sheets/LetterSoundsSheet';
 import { MatchingSheet } from '../components/worksheet/sheets/MatchingSheet';
 import { SentenceBuilderSheet } from '../components/worksheet/sheets/SentenceBuilderSheet';
 import WordPicker from '../components/setup/WordPicker';
@@ -56,18 +54,16 @@ interface WorksheetViewProps {
   pickerWiring?: ClassShowWordPickerWiring;
 }
 
-// All worksheet types matching the game modes
+// All worksheet types matching the game modes (sound-based modes excluded)
 const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> = [
   { id: 'word-list',           label: 'Word List',           description: 'Bilingual reference sheet',           icon: <BookOpen size={26} />,         gradient: 'from-emerald-300 to-teal-400', needsSentences: false },
   { id: 'scramble',            label: 'Scramble',            description: 'Unscramble each word',               icon: <Shuffle size={26} />,          gradient: 'from-orange-300 to-red-400', needsSentences: false },
   { id: 'fill-blank',          label: 'Fill in the Blank',   description: 'Sentences with missing words',      icon: <FileText size={26} />,          gradient: 'from-indigo-300 to-violet-400', needsSentences: true },
   { id: 'match-up',            label: 'Match-up',            description: 'Connect word to translation',       icon: <Link2 size={26} />,            gradient: 'from-pink-300 to-rose-400', needsSentences: false },
   { id: 'multiple-choice',     label: 'Multiple Choice',     description: 'Choose the correct answer',         icon: <Layers size={26} />,            gradient: 'from-indigo-300 to-violet-400', needsSentences: false },
-  { id: 'listening',           label: 'Listening',           description: 'Listen and spell the word',          icon: <Headphones size={26} />,        gradient: 'from-sky-300 to-cyan-400', needsSentences: false },
   { id: 'reverse-translation', label: 'Reverse Translation', description: 'Write English from translation',    icon: <ArrowLeftRight size={26} />,    gradient: 'from-amber-300 to-orange-400', needsSentences: false },
   { id: 'true-false',          label: 'True/False',          description: 'Is the translation correct?',       icon: <CheckCircle size={26} />,       gradient: 'from-rose-300 to-pink-400', needsSentences: false },
   { id: 'flashcards',          label: 'Flashcards',          description: 'Cut and fold study cards',           icon: <Sparkles size={26} />,          gradient: 'from-fuchsia-300 to-purple-400', needsSentences: false },
-  { id: 'letter-sounds',       label: 'Letter Sounds',       description: 'Letter-by-letter breakdown',        icon: <AudioLines size={26} />,        gradient: 'from-cyan-300 to-blue-400', needsSentences: false },
   { id: 'matching',            label: 'Matching',            description: 'Draw lines to match pairs',         icon: <Grid3x3 size={26} />,           gradient: 'from-violet-300 to-purple-400', needsSentences: false },
   { id: 'sentence-builder',    label: 'Sentence Builder',    description: 'Unscramble sentences',               icon: <Puzzle size={26} />,            gradient: 'from-teal-300 to-emerald-400', needsSentences: true },
 ];
@@ -131,6 +127,46 @@ export default function WorksheetView({
   useEffect(() => {
     setAiSentences({});
   }, [sourceIdx]);
+
+  // Auto-generate sentences when fill-blank or sentence-builder is selected
+  useEffect(() => {
+    const needsSentences = sheetType === 'fill-blank' || sheetType === 'sentence-builder';
+    if (!needsSentences || wordsForSheet.length === 0 || !aiEnabled) return;
+
+    // Only auto-generate if we haven't already generated for this word set
+    const hasSentencesForAllWords = wordsForSheet.every(w => aiSentences[w.id]);
+    if (hasSentencesForAllWords) return;
+
+    const autoGenerate = async () => {
+      setIsGeneratingSentences(true);
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+        const words = wordsForSheet.map(w => w.english).filter(Boolean);
+        const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ words, difficulty: 2 }),
+        });
+        if (!res.ok) return;
+        const { sentences } = await res.json();
+        const newSentences: Record<number, string> = {};
+        wordsForSheet.forEach((word, idx) => {
+          if (sentences[idx]) {
+            newSentences[word.id] = sentences[idx];
+          }
+        });
+        setAiSentences(newSentences);
+      } catch {
+        // Silently fail on auto-generation
+      } finally {
+        setIsGeneratingSentences(false);
+      }
+    };
+
+    autoGenerate();
+  }, [sheetType, sourceIdx, aiEnabled]);
 
   // Generate AI sentences for selected words (defined after wordsForSheet is available)
   const generateSentences = async () => {
@@ -404,11 +440,9 @@ export default function WorksheetView({
             {sheetType === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
             {sheetType === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'listening' && <ListeningSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
-            {sheetType === 'letter-sounds' && <LetterSoundsSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
             {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
           </div>
