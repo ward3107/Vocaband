@@ -32,7 +32,8 @@ export type GameModeId =
   | "reverse"
   | "letter-sounds"
   | "sentence-builder"
-  | "word-chains";
+  | "word-chains"
+  | "idiom";
 
 export interface GameModeStrings {
   name: string;
@@ -122,6 +123,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "Type a word that starts with the last letter of the previous word.",
         tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
       },
+      idiom: {
+        name: "Idioms",
+        desc: "Match English idioms with their real meaning. Learn how to use them!",
+        tooltip: ["See an English idiom", "Pick the meaning that matches", "Read the example to learn how to use it"],
+      },
     },
   },
 
@@ -197,6 +203,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "הקלד מילה שמתחילה באות האחרונה של המילה הקודמת.",
         tooltip: ["הסתכל על האות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"],
       },
+      idiom: {
+        name: "ביטויים",
+        desc: "התאם ביטויים באנגלית למשמעות האמיתית שלהם. למד איך להשתמש בהם!",
+        tooltip: ["ראה ביטוי באנגלית", "בחר את המשמעות הנכונה", "קרא את הדוגמה ולמד איך להשתמש בו"],
+      },
     },
   },
 
@@ -271,6 +282,11 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "سلسلة الكلمات",
         desc: "اكتب كلمة تبدأ بآخر حرف من الكلمة السابقة.",
         tooltip: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"],
+      },
+      idiom: {
+        name: "التعابير",
+        desc: "طابق التعابير الإنجليزية مع معناها الحقيقي. تعلّم كيفية استخدامها!",
+        tooltip: ["شاهد تعبيرًا إنجليزيًا", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه"],
       },
     },
   },

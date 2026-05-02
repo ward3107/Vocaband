@@ -29,6 +29,9 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Word Chains = orange.  Free-text typing mode where the student
   // types a word starting with the previous word's last letter.
   "word-chains": "orange",
+  // Idiom = sky.  Multi-choice mode where students pick the figurative
+  // meaning of an English idiom from a hand-curated dataset.
+  idiom: "sky",
 };
 
 /** Short uppercase label shown in the top pill of every game.  Falls
@@ -47,6 +50,7 @@ const MODE_LABEL: Record<string, string> = {
   "sentence-builder": "Sentence Builder",
   "fill-blank": "Fill in the Blank",
   "word-chains": "Word Chains",
+  idiom: "Idiom",
 };
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
@@ -64,6 +68,7 @@ import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
+import IdiomGame from "../components/game/IdiomGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -243,6 +248,21 @@ export default function GameActiveView({
           gameWords={gameWords}
           themeColor={modeTheme ?? "orange"}
           speak={speakWord}
+          onFinish={handleExitGame}
+        />
+      );
+    }
+    if (gameMode === "idiom") {
+      // Self-contained multi-choice mode: pick the figurative meaning
+      // of an English idiom.  Question source is the curated dataset
+      // in src/data/idioms.ts, NOT the assignment word pool, so this
+      // mode runs independently of the per-question orchestration.
+      // Same exit pattern as Word Chains: handleExitGame routes back
+      // to mode selection.  XP / progress write is a follow-up.
+      return (
+        <IdiomGame
+          themeColor={modeTheme ?? "sky"}
+          speak={speak}
           onFinish={handleExitGame}
         />
       );

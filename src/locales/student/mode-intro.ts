@@ -46,6 +46,7 @@ const ICONS: Record<GameMode, string> = {
   "sentence-builder": "🧩",
   "fill-blank": "✏️",
   "word-chains": "🔗",
+  idiom: "💭",
 };
 
 const withIcons = (m: Record<GameMode, { title: string; steps: string[] }>): Record<GameMode, ModeIntroEntry> => {
@@ -72,6 +73,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "sentence-builder": { title: "Sentence Builder", steps: ["Words are shuffled below", "Tap words in the correct order", "Build the sentence to finish!"] },
       "fill-blank": { title: "Fill in the Blank", steps: ["A sentence appears with one word missing", "Read it carefully — there's no audio in this mode", "Tap the word that fills the blank"] },
       "word-chains": { title: "Word Chains", steps: ["See the highlighted last letter", "Type a word that starts with that letter", "Keep the chain going as long as you can!"] },
+      idiom: { title: "Idiom Mode", steps: ["See an English idiom in big letters", "Pick the meaning that matches", "Read the example to learn how to use it!"] },
     }),
     letsGo: "Let's Go! →",
     backToModes: "← Back to Modes",
@@ -91,6 +93,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "sentence-builder": { title: "בניית משפטים", steps: ["המילים מעורבבות למטה", "לחץ על מילים בסדר הנכון", "בנה את המשפט!"] },
       "fill-blank": { title: "השלם את החסר", steps: ["מופיע משפט עם מילה חסרה", "קרא בעיון — אין שמע במצב זה", "לחץ על המילה שמשלימה את החסר"] },
       "word-chains": { title: "שרשרת מילים", steps: ["שים לב לאות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"] },
+      idiom: { title: "מצב ביטויים", steps: ["ראה ביטוי באנגלית באותיות גדולות", "בחר את המשמעות המתאימה", "קרא את הדוגמה ולמד איך להשתמש בו!"] },
     }),
     letsGo: "קדימה! →",
     backToModes: "← חזרה למצבים",
@@ -110,6 +113,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       "sentence-builder": { title: "بناء الجمل", steps: ["الكلمات مخلوطة في الأسفل", "اضغط الكلمات بالترتيب الصحيح", "ابنِ الجملة لتنتهي!"] },
       "fill-blank": { title: "املأ الفراغ", steps: ["تظهر جملة بكلمة مفقودة", "اقرأها بعناية — لا يوجد صوت في هذا الوضع", "اضغط على الكلمة التي تملأ الفراغ"] },
       "word-chains": { title: "سلسلة الكلمات", steps: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"] },
+      idiom: { title: "وضع التعابير", steps: ["شاهد تعبيرًا إنجليزيًا بحروف كبيرة", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه!"] },
     }),
     letsGo: "هيا بنا! →",
     backToModes: "← العودة إلى الأوضاع",
