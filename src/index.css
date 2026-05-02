@@ -126,6 +126,10 @@
   --font-body: "Be Vietnam Pro", system-ui, sans-serif;
   --font-label: "Plus Jakarta Sans", system-ui, sans-serif;
 
+  /* --- Hebrew/Arabic Font Families (Fredoka + Heebo hybrid) --- */
+  --font-headline-he: "Fredoka", "Heebo", system-ui, sans-serif;
+  --font-body-he: "Heebo", "Fredoka", system-ui, sans-serif;
+
   /* --- Border Radius --- */
   --radius-DEFAULT: 1rem;
   --radius-lg: 2rem;
@@ -147,6 +151,113 @@ body {
 /* Headline font for headings */
 h1, h2, h3, h4, h5, h6, .font-headline {
   font-family: var(--font-headline);
+}
+
+/* Hebrew/Arabic font hybrid: Fredoka for headings, Heebo for body */
+[lang="he"], [lang="ar"] {
+  --font-headline: var(--font-headline-he);
+  --font-body: var(--font-body-he);
+}
+
+[lang="he"] h1, [lang="he"] h2, [lang="he"] h3, [lang="he"] h4,
+[lang="he"] h5, [lang="he"] h6, [lang="he"] .font-headline,
+[lang="ar"] h1, [lang="ar"] h2, [lang="ar"] h3, [lang="ar"] h4,
+[lang="ar"] h5, [lang="ar"] h6, [lang="ar"] .font-headline {
+  font-family: var(--font-headline-he);
+}
+
+[lang="he"] body, [lang="he"] p, [lang="he"] span,
+[lang="he"] li, [lang="he"] td, [lang="he"] th,
+[lang="he"] label, [lang="he"] input, [lang="he"] textarea,
+[lang="he"] button, [lang="he"] div,
+[lang="ar"] body, [lang="ar"] p, [lang="ar"] span,
+[lang="ar"] li, [lang="ar"] td, [lang="ar"] th,
+[lang="ar"] label, [lang="ar"] input, [lang="ar"] textarea,
+[lang="ar"] button, [lang="ar"] div {
+  font-family: var(--font-body-he);
+}
+
+/* =============================================================================
+   RTL (Right-to-Left) Support for Hebrew and Arabic
+   ============================================================================= */
+
+/* When dir="rtl" is set, ensure proper text alignment and layout */
+html[dir="rtl"] {
+  /* Text aligns right by default in RTL */
+  text-align: right;
+}
+
+/* Ensure body inherits the direction */
+html[dir="rtl"] body {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Logical margins/paddings for RTL - flex and grid */
+html[dir="rtl"] .flex-row {
+  /* No changes needed - flex respects dir automatically */
+}
+
+/* Flip margin/padding utilities that use left/right */
+html[dir="rtl"] .ml-auto { margin-right: auto; margin-left: 0; }
+html[dir="rtl"] .mr-auto { margin-left: auto; margin-right: 0; }
+
+html[dir="rtl"] .space-x-1 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html[dir="rtl"] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html[dir="rtl"] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html[dir="rtl"] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html[dir="rtl"] .gap-x-2 { column-gap: 0.5rem; row-gap: 0.5rem; }
+html[dir="rtl"] .gap-x-3 { column-gap: 0.75rem; row-gap: 0.75rem; }
+html[dir="rtl"] .gap-x-4 { column-gap: 1rem; row-gap: 1rem; }
+
+/* Ensure text alignment classes respect RTL */
+html[dir="rtl"] .text-left { text-align: right !important; }
+html[dir="rtl"] .text-right { text-align: left !important; }
+
+/* Responsive text alignment variants - all must respect RTL */
+html[dir="rtl"] .sm\:text-left { text-align: right !important; }
+html[dir="rtl"] .sm\:text-right { text-align: left !important; }
+html[dir="rtl"] .md\:text-left { text-align: right !important; }
+html[dir="rtl"] .md\:text-right { text-align: left !important; }
+html[dir="rtl"] .lg\:text-left { text-align: right !important; }
+html[dir="rtl"] .lg\:text-right { text-align: left !important; }
+html[dir="rtl"] .xl\:text-left { text-align: right !important; }
+html[dir="rtl"] .xl\:text-right { text-align: left !important; }
+
+/* Force RTL alignment for key text containers */
+html[dir="rtl"] p,
+html[dir="rtl"] span,
+html[dir="rtl"] li,
+html[dir="rtl"] td,
+html[dir="rtl"] th,
+html[dir="rtl"] label,
+html[dir="rtl"] input,
+html[dir="rtl"] textarea {
+  text-align: right;
+}
+
+/* Numbers and LTR text should remain LTR even in RTL context */
+html[dir="rtl"] .number-ltr,
+html[dir="rtl"] [data-ltr="true"] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Icon flips for RTL */
+html[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
 }
 
 /* =============================================================================
@@ -393,5 +504,15 @@ h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, label, input, textarea, button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Landing page emoji bounce animation */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
   }
 }

@@ -2,25 +2,17 @@
  * Locale file for the public landing page (vocaband.com root) and
  * the public-nav chrome shared across all logged-out surfaces.
  *
- * Coverage in this initial commit (the high-impact above-the-fold
- * surface a first-time visitor sees and judges):
+ * Coverage includes:
  *   - Hero headline + subtitle + primary CTAs
  *   - Floating-card labels in the hero
  *   - Social proof line
  *   - Section H2 headings + section subtitles
+ *   - Feature card titles and descriptions (student + teacher features)
+ *   - Curriculum section content
+ *   - Voca Family roadmap tags
  *   - Final CTA + its supporting copy
  *   - PublicNav chrome (Try Demo button + CEFR badge)
- *   - Footer copyright line
- *
- * Out-of-scope follow-up (still hardcoded English in LandingPage):
- *   - Feature card BODY copy (game-mode descriptions, teacher-feature
- *     blurbs, curriculum-set descriptions, Voca-family roadmap tags)
- *   - Section pills ("For Teachers", "Coming Soon")
- *   - Detailed footer link labels
- *
- * Those are scoped per-card and will be added in a follow-up commit
- * once we've shipped + tested the hero translation end-to-end with
- * a real teacher.
+ *   - Footer content
  */
 import type { Language } from "../../hooks/useLanguage";
 
@@ -49,14 +41,98 @@ export interface LandingPageT {
   studentsSectionH2: string;
   studentsSectionSubtitle: string;
 
+  // ─── Student Feature Cards ──────────────────────────────────────
+  // 11 Game Modes
+  gameModesTitle: string;
+  gameModesDesc: string;
+  modeNames: {
+    classic: string;
+    listen: string;
+    spell: string;
+    match: string;
+    tf: string;
+    flash: string;
+    scramble: string;
+    reverse: string;
+    letters: string;
+    sentence: string;
+    fillBlank: string;
+  };
+
+  // Live Challenges
+  liveChallengesTitle: string;
+  liveChallengesDesc: string;
+
+  // XP Shop
+  xpShopTitle: string;
+  xpShopDesc: string;
+
+  // Mystery Eggs
+  mysteryEggsTitle: string;
+  mysteryEggsDesc: string;
+
+  // Power Boosters
+  powerBoostersTitle: string;
+  powerBoostersDesc: string;
+
+  // Pet Friends
+  petFriendsTitle: string;
+  petFriendsDesc: string;
+
+  // Daily Streaks
+  dailyStreaksTitle: string;
+  dailyStreaksDesc: string;
+
   // ─── Section: The Easiest Tool You'll Use All Year (teachers) ──
   teachersSectionPill: string;
   teachersSectionH2: string;
   teachersSectionSubtitle: string;
 
+  // ─── Teacher Feature Cards ─────────────────────────────────────
+  autoGradingTitle: string;
+  autoGradingDesc: string;
+
+  useYourOwnWordsTitle: string;
+  useYourOwnWordsDesc: string;
+
+  spotStrugglingTitle: string;
+  spotStrugglingDesc: string;
+
+  quickSetupTitle: string;
+  quickSetupDesc: string;
+
+  studentEngagementTitle: string;
+  studentEngagementDesc: string;
+
+  aiSentenceBuilderTitle: string;
+  aiSentenceBuilderDesc: string;
+
+  snapWordlistTitle: string;
+  snapWordlistDesc: string;
+
+  quickPlayTitle: string;
+  quickPlayDesc: string;
+  quickPlayScanPlay: string;
+
+  hebrewArabicTitle: string;
+  hebrewArabicDesc: string;
+
   // ─── Section: Curriculum (Sets 1/2/3) ──────────────────────────
   curriculumSectionH2: string;
   curriculumSectionSubtitle: string;
+  curriculumProgress: string;
+
+  set1Title: string;
+  set1Desc: string;
+  set1Words: string;
+
+  set2Title: string;
+  set2Desc: string;
+  set2Words: string;
+
+  set3Title: string;
+  set3Desc: string;
+  set3Words: string;
 
   // ─── Section: The Voca Family (roadmap) ────────────────────────
   vocaFamilyPill: string;
@@ -66,6 +142,17 @@ export interface LandingPageT {
   vocaFamilyRequestLine: string;
   vocaFamilyRequestCta: string;
 
+  vocaHistoryName: string;
+  vocaHistoryTag: string;
+  vocaScienceName: string;
+  vocaScienceTag: string;
+  vocaHebrewName: string;
+  vocaHebrewTag: string;
+  vocaArabicName: string;
+  vocaArabicTag: string;
+  vocaMathName: string;
+  vocaMathTag: string;
+
   // ─── Final CTA section ─────────────────────────────────────────
   finalCtaH2Line1: string;
   finalCtaH2Line2: string;
@@ -74,13 +161,29 @@ export interface LandingPageT {
   finalCtaTeacher: string;
 
   // ─── Footer ─────────────────────────────────────────────────────
+  footerTagline: string;
+  footerSchoolPlans: string;
+  footerIndividualTeacher: string;
+  footerProduct: string;
+  footerResources: string;
+  footerLegal: string;
+  footerStartLearning: string;
+  footerTryDemo: string;
+  footerTeacherLogin: string;
+  footerCefrVocab: string;
+  footerCefrExplained: string;
+  footerBestEsl: string;
+  footerTerms: string;
+  footerPrivacy: string;
+  footerSecurity: string;
+  footerAccessibility: string;
   footerCopyright: (year: number) => string;
 }
 
 export const landingPageT: Record<Language, LandingPageT> = {
   en: {
-    navTryDemo: "TRY DEMO",
-    navTryDemoShort: "DEMO",
+    navTryDemo: "PLAY NOW",
+    navTryDemoShort: "PLAY",
     navCefrBadge: "CEFR A1–B2",
 
     heroTitleLine1: "Level Up",
@@ -92,23 +195,86 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSocialProofCount: "10,000+ Students",
     heroSocialProofTagline: "Learning English worldwide",
 
-    floatingCardModes: "11 Game Modes",
-    floatingCardXp: "Earn XP",
-    floatingCardStreaks: "Daily Streaks",
-    floatingCardEggs: "Mystery Eggs",
+    floatingCardModes: "⚔️ EPIC BATTLES",
+    floatingCardXp: "🏆 LEVEL UP",
+    floatingCardStreaks: "🔥 ON FIRE!",
+    floatingCardEggs: "💎 LEGENDARY LOOT",
 
     studentsSectionH2: "Why Students Love Vocaband",
     studentsSectionSubtitle: "Everything you need to master vocabulary, gamified.",
 
+    // Student Features
+    gameModesTitle: "11 Game Modes",
+    gameModesDesc: "From Classic to Sentence Builder — every mode teaches differently. Find your favorite!",
+    modeNames: {
+      classic: "Classic",
+      listen: "Listen",
+      spell: "Spell",
+      match: "Match",
+      tf: "T/F",
+      flash: "Flash",
+      scramble: "Scramble",
+      reverse: "Reverse",
+      letters: "Letters",
+      sentence: "Sentence",
+      fillBlank: "Fill Blank",
+    },
+    liveChallengesTitle: "Live Challenges",
+    liveChallengesDesc: "Battle classmates in real-time podiums!",
+    xpShopTitle: "XP Shop",
+    xpShopDesc: "Earn XP, spend on avatars, frames & power-ups!",
+    mysteryEggsTitle: "Mystery Eggs",
+    mysteryEggsDesc: "Crack eggs to unlock legendary avatars!",
+    powerBoostersTitle: "Power Boosters",
+    powerBoostersDesc: "XP multipliers, streak freeze & more!",
+    petFriendsTitle: "Pet Friends",
+    petFriendsDesc: "Unlock cute pets that cheer you on!",
+    dailyStreaksTitle: "Daily Streaks",
+    dailyStreaksDesc: "Keep the flame burning! Earn rewards.",
+
+    // Teacher Section
     teachersSectionPill: "For Teachers",
     teachersSectionH2: "The Easiest Tool You'll Use All Year",
     teachersSectionSubtitle:
       "Zero prep, zero paperwork, zero learning curve. Teach more, click less.",
 
+    // Teacher Features
+    autoGradingTitle: "Auto-Grading",
+    autoGradingDesc: "Every practice session graded instantly. No worksheets to collect, no stacks to review. Focus on teaching, not paperwork.",
+    useYourOwnWordsTitle: "Use Your Own Words",
+    useYourOwnWordsDesc: "Upload your custom vocabulary lists. Assign any words you need.",
+    spotStrugglingTitle: "Spot Who's Struggling",
+    spotStrugglingDesc: "Real-time analytics show exactly who needs help — before the test.",
+    quickSetupTitle: "Setup in 30 Seconds",
+    quickSetupDesc: "Create class → Share code → Students join. That's it.",
+    studentEngagementTitle: "They Actually Want to Practice",
+    studentEngagementDesc: "Game modes, XP, streaks — students voluntarily study at home.",
+    aiSentenceBuilderTitle: "AI Sentence Builder",
+    aiSentenceBuilderDesc: "One click, 10 example sentences per word — at the right level for your grade.",
+    snapWordlistTitle: "Snap a Wordlist",
+    snapWordlistDesc: "Take a photo of any printed list — handwriting, textbook page, board — words extracted in seconds.",
+    quickPlayTitle: "Quick Play — No-Signup Live Game",
+    quickPlayDesc: "Project a QR on the board, students join with their phones — no accounts, no class code typing, no setup. Live podium, real-time scores, ready in 10 seconds.",
+    quickPlayScanPlay: "scan & play",
+    hebrewArabicTitle: "Hebrew + Arabic, built in",
+    hebrewArabicDesc: "Every word ships with native Hebrew AND Arabic translations — no second app, no copy-paste. RTL layouts handled automatically. More languages on the roadmap.",
+
+    // Curriculum
     curriculumSectionH2: "Your Journey to Mastery",
     curriculumSectionSubtitle:
       "Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 6,500+ words.",
+    curriculumProgress: "Progress",
+    set1Title: "Set 1 — Foundation",
+    set1Desc: "Beginner vocabulary",
+    set1Words: "~2000 words",
+    set2Title: "Set 2 — Intermediate",
+    set2Desc: "Building complexity",
+    set2Words: "~2500 words",
+    set3Title: "Set 3 — Academic",
+    set3Desc: "Advanced mastery",
+    set3Words: "~3000 words",
 
+    // Voca Family
     vocaFamilyPill: "Coming Soon",
     vocaFamilyH2: "The Voca Family",
     vocaFamilySubtitle:
@@ -116,7 +282,18 @@ export const landingPageT: Record<Language, LandingPageT> = {
     vocaFamilyComingSoon: "Soon",
     vocaFamilyRequestLine: "Teach a different subject? Tell us which Voca to build next:",
     vocaFamilyRequestCta: "Request a subject",
+    vocaHistoryName: "VocaHistory",
+    vocaHistoryTag: "Dates · figures · events",
+    vocaScienceName: "VocaScience",
+    vocaScienceTag: "Terms · concepts · diagrams",
+    vocaHebrewName: "VocaHebrew",
+    vocaHebrewTag: "Hebrew vocabulary",
+    vocaArabicName: "VocaArabic",
+    vocaArabicTag: "Arabic vocabulary",
+    vocaMathName: "VocaMath",
+    vocaMathTag: "Definitions · formulas",
 
+    // Final CTA
     finalCtaH2Line1: "Ready to Become a",
     finalCtaH2Line2: "Vocabulary Legend?",
     finalCtaSubtitle:
@@ -124,13 +301,30 @@ export const landingPageT: Record<Language, LandingPageT> = {
     finalCtaStart: "Start Learning Free",
     finalCtaTeacher: "Teacher Login",
 
+    // Footer
+    footerTagline: "The vocabulary platform students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
+    footerSchoolPlans: "School plans",
+    footerIndividualTeacher: "Individual teacher",
+    footerProduct: "Product",
+    footerResources: "Resources",
+    footerLegal: "Legal & Trust",
+    footerStartLearning: "Start Learning",
+    footerTryDemo: "Try the Demo",
+    footerTeacherLogin: "Teacher Login",
+    footerCefrVocab: "CEFR A1 vocabulary",
+    footerCefrExplained: "A1 vs A2 explained",
+    footerBestEsl: "Best ESL app — Grades 1-12",
+    footerTerms: "Terms of Service",
+    footerPrivacy: "Privacy Policy",
+    footerSecurity: "Security & Trust",
+    footerAccessibility: "Accessibility",
     footerCopyright: (year) =>
       `© ${year} Vocaband. Made with 💙 for learners everywhere.`,
   },
 
   he: {
-    navTryDemo: "נסה דמו",
-    navTryDemoShort: "דמו",
+    navTryDemo: "שחקו עכשיו",
+    navTryDemoShort: "שחקו",
     navCefrBadge: "CEFR A1–B2",
 
     heroTitleLine1: "שדרגו",
@@ -142,23 +336,86 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSocialProofCount: "+10,000 תלמידים",
     heroSocialProofTagline: "לומדים אנגלית בכל העולם",
 
-    floatingCardModes: "11 מצבי משחק",
-    floatingCardXp: "צברו XP",
-    floatingCardStreaks: "רצפים יומיים",
-    floatingCardEggs: "ביצי הפתעה",
+    floatingCardModes: "⚔️ קרבות אפיים",
+    floatingCardXp: "🏆 עלה רמות!",
+    floatingCardStreaks: "🔥 בוער!",
+    floatingCardEggs: "💎 שלל אגדי",
 
     studentsSectionH2: "למה תלמידים אוהבים את Vocaband",
     studentsSectionSubtitle: "כל מה שצריך כדי לשלוט באוצר מילים — בצורה משחקית.",
 
+    // Student Features
+    gameModesTitle: "11 מצבי משחק",
+    gameModesDesc: "מקלאסי עד בונה משפטים — כל מצב מלמד אחרת. מצאו את המועדף!",
+    modeNames: {
+      classic: "קלאסי",
+      listen: "הקשבה",
+      spell: "איות",
+      match: "התאמה",
+      tf: "נ/ל",
+      flash: "כרטיסיות",
+      scramble: "ערבוב",
+      reverse: "הפוך",
+      letters: "אותיות",
+      sentence: "משפטים",
+      fillBlank: "מלא חסר",
+    },
+    liveChallengesTitle: "אתגרים חיים",
+    liveChallengesDesc: "התחרו בחברי לכיתה בפודיום בזמן אמת!",
+    xpShopTitle: "חנות XP",
+    xpShopDesc: "צברו XP, הוציאו על אווטארים, מסגרות וחיזוקים!",
+    mysteryEggsTitle: "ביצי הפתעה",
+    mysteryEggsDesc: "שברו ביצים כדי לפתוח אווטארים אגדיים!",
+    powerBoostersTitle: "חיזוקי כוח",
+    powerBoostersDesc: "מכפילי XP, הקפאת רצפים ועוד!",
+    petFriendsTitle: "חיות מחמד",
+    petFriendsDesc: "פתחו חיות מחמד חמודות שמעודדות אתכם!",
+    dailyStreaksTitle: "רצפים יומיים",
+    dailyStreaksDesc: "שמרו על ההשפעה! קבלו פרסים.",
+
+    // Teacher Section
     teachersSectionPill: "למורים",
     teachersSectionH2: "הכלי הכי קל שתשתמשו בו השנה",
     teachersSectionSubtitle:
       "אפס הכנה, אפס ניירת, אפס עקומת למידה. ללמד יותר, ללחוץ פחות.",
 
+    // Teacher Features
+    autoGradingTitle: "דירוג אוטומטי",
+    autoGradingDesc: "כל אימון מדורג באופן מיידי. בלי לאסוף דפי עבודה, בלי ערימות לבדיקה. התמקדו בהוראה, לא בניירת.",
+    useYourOwnWordsTitle: "השתמשו במילים שלכם",
+    useYourOwnWordsDesc: "העלו רשימות אוצר מילים מותאמות אישית. הקצו כל מילה שאתם צריכים.",
+    spotStrugglingTitle: "זיהוי תלמידים שצריכים עזרה",
+    spotStrugglingDesc: "ניתוח בזמן אמת מראה בדיוק מי צריך עזרה — לפני המבחן.",
+    quickSetupTitle: "הקמה ב-30 שניות",
+    quickSetupDesc: "צרו כיתה → שתפו קוד → תלמידים מצטרפים. זה הכל.",
+    studentEngagementTitle: "הם באמת רוצים להתאמן",
+    studentEngagementDesc: "מצבי משחק, XP, רצפים — תלמידים מתאמנים מרצון בבית.",
+    aiSentenceBuilderTitle: "בונה משפטים בבינה מלאכותית",
+    aiSentenceBuilderDesc: "לחיצה אחת, 10 משפטים לדוגמה לכל מילה — ברמה המתאימה לכיתה שלכם.",
+    snapWordlistTitle: "צלמו רשימת מילים",
+    snapWordlistDesc: "צלמו כל רשימה מודפסת — כתב יד, דף בספר לימוד, לוח — מילים חולצות תוך שניות.",
+    quickPlayTitle: "משחק מהיר — משחק חי בלי הרשמה",
+    quickPlayDesc: "הקרינו QR על הלוח, תלמידים מצטרפים עם הטלפונים — בלי חשבונות, בלי להקליד קוד כיתה, בלי התקנה. פודיום חי, ניקוד בזמן אמת, מוכן ב-10 שניות.",
+    quickPlayScanPlay: "סרקו ושחקו",
+    hebrewArabicTitle: "עברית + ערבית, מובנה",
+    hebrewArabicDesc: "כל מילה מגיעה עם תרגומים מקוריים בעברית וערבית — בלי אפליקציה שנייה, בלי העתקה והדבקה. פריסות RTL מטופלות אוטומטית. שפות נוספות בתכנון.",
+
+    // Curriculum
     curriculumSectionH2: "המסע שלך לשליטה",
     curriculumSectionSubtitle:
       "מותאם ל-CEFR מ-A1 עד B2 — שלוש סטים מקיפים של אוצר מילים עם +6,500 מילים.",
+    curriculumProgress: "התקדמות",
+    set1Title: "סט 1 — יסודות",
+    set1Desc: "אוצר מילים למתחילים",
+    set1Words: "~2000 מילים",
+    set2Title: "סט 2 — בינוני",
+    set2Desc: "בניית מורכבות",
+    set2Words: "~2500 מילים",
+    set3Title: "סט 3 — אקדמי",
+    set3Desc: "שליטה מתקדמת",
+    set3Words: "~3000 מילים",
 
+    // Voca Family
     vocaFamilyPill: "בקרוב",
     vocaFamilyH2: "משפחת Voca",
     vocaFamilySubtitle:
@@ -166,7 +423,18 @@ export const landingPageT: Record<Language, LandingPageT> = {
     vocaFamilyComingSoon: "בקרוב",
     vocaFamilyRequestLine: "מלמדים מקצוע אחר? ספרו לנו איזה Voca לבנות הבא:",
     vocaFamilyRequestCta: "בקשו מקצוע",
+    vocaHistoryName: "VocaHistory",
+    vocaHistoryTag: "תאריכים · אישים · אירועים",
+    vocaScienceName: "VocaScience",
+    vocaScienceTag: "מונחים · מושגים · דיאגרמות",
+    vocaHebrewName: "VocaHebrew",
+    vocaHebrewTag: "אוצר מילים בעברית",
+    vocaArabicName: "VocaArabic",
+    vocaArabicTag: "אוצר מילים בערבית",
+    vocaMathName: "VocaMath",
+    vocaMathTag: "הגדרות · נוסחאות",
 
+    // Final CTA
     finalCtaH2Line1: "מוכנים להפוך ל",
     finalCtaH2Line2: "אגדת אוצר מילים?",
     finalCtaSubtitle:
@@ -174,13 +442,30 @@ export const landingPageT: Record<Language, LandingPageT> = {
     finalCtaStart: "התחילו ללמוד חינם",
     finalCtaTeacher: "כניסת מורים",
 
+    // Footer
+    footerTagline: "פלטפורמת אוצר המילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
+    footerSchoolPlans: "תכניות בתי ספר",
+    footerIndividualTeacher: "מורה פרטי",
+    footerProduct: "מוצר",
+    footerResources: "משאבים",
+    footerLegal: "משפטי ואמון",
+    footerStartLearning: "התחילו ללמוד",
+    footerTryDemo: "נסו את הדמו",
+    footerTeacherLogin: "כניסת מורים",
+    footerCefrVocab: "אוצר מילים CEFR A1",
+    footerCefrExplained: "ההבדל בין A1 ל-A2",
+    footerBestEsl: "האפליקציה הטובה ביותר לאנגלית — כיתות א-יב",
+    footerTerms: "תנאי שימוש",
+    footerPrivacy: "מדיניות פרטיות",
+    footerSecurity: "אבטחה ואמון",
+    footerAccessibility: "נגישות",
     footerCopyright: (year) =>
       `© ${year} Vocaband. נוצר עם 💙 ללומדים בכל העולם.`,
   },
 
   ar: {
-    navTryDemo: "جرّب العرض",
-    navTryDemoShort: "عرض",
+    navTryDemo: "العب الآن",
+    navTryDemoShort: "العب",
     navCefrBadge: "CEFR A1–B2",
 
     heroTitleLine1: "ارتقِ",
@@ -192,31 +477,105 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSocialProofCount: "+10,000 طالب",
     heroSocialProofTagline: "يتعلمون الإنجليزية حول العالم",
 
-    floatingCardModes: "11 وضع لعب",
-    floatingCardXp: "اكسب XP",
-    floatingCardStreaks: "سلاسل يومية",
-    floatingCardEggs: "بيوض المفاجآت",
+    floatingCardModes: "⚔️ معارك ملحمية",
+    floatingCardXp: "🏆 اارتقِ مستواك!",
+    floatingCardStreaks: "🔥 مشتعل!",
+    floatingCardEggs: "💎 غنائم أسطورية",
 
     studentsSectionH2: "لماذا يحب الطلاب Vocaband",
     studentsSectionSubtitle: "كل ما تحتاجه لإتقان المفردات، بأسلوب لعبة.",
 
+    // Student Features
+    gameModesTitle: "11 وضع لعب",
+    gameModesDesc: "من الكلاسيكي إلى بناء الجمل — كل وضع يعلّم بشكل مختلف. اعثر على المفضّل!",
+    modeNames: {
+      classic: "كلاسيكي",
+      listen: "استماع",
+      spell: "تهجئة",
+      match: "تطابق",
+      tf: "ص/خ",
+      flash: "بطاقات",
+      scramble: "خلط",
+      reverse: "عكسي",
+      letters: "حروف",
+      sentence: "جمل",
+      fillBlank: "املأ الفراغ",
+    },
+    liveChallengesTitle: "التحديات المباشرة",
+    liveChallengesDesc: "نافس زملاء الصف في منصات مباشرة!",
+    xpShopTitle: "متجر XP",
+    xpShopDesc: "اكسب XP، أنفقها على صور رمزية وإطارات وقوّات!",
+    mysteryEggsTitle: "بيوض المفاجآت",
+    mysteryEggsDesc: "افتح البيوض لتكشف صورًا رمزية أسطورية!",
+    powerBoostersTitle: "قوّات تعزيز",
+    powerBoostersDesc: "مضاعفات XP، تجميد السلاسل والمزيد!",
+    petFriendsTitle: "رفاق الحيوانات",
+    petFriendsDesc: "اكتشف حيوانات أليفة لطيفة تشجّعك!",
+    dailyStreaksTitle: "سلاسل يومية",
+    dailyStreaksDesc: "أبقِ الشعلة مشتعلة! اكسب جوائز.",
+
+    // Teacher Section
     teachersSectionPill: "للمعلمين",
     teachersSectionH2: "أسهل أداة ستستخدمها طوال العام",
     teachersSectionSubtitle:
       "بلا تحضير، بلا أوراق، بلا منحنى تعلّم. علّم أكثر، انقر أقل.",
 
+    // Teacher Features
+    autoGradingTitle: "تصحيح تلقائي",
+    autoGradingDesc: "كل جلسة ممارسة تصحَّح فورًا. بلا أوراق عمل لجمعها، بلا أكوام لمراجعتها. ركّز على التدريس لا على الأوراق.",
+    useYourOwnWordsTitle: "استخدم كلماتك الخاصة",
+    useYourOwnWordsDesc: "حمّل قوائم مفردات مخصصة. عيّن أي كلمات تحتاجها.",
+    spotStrugglingTitle: "تحديد من يحتاج مساعدة",
+    spotStrugglingDesc: "التحليلات الفورية تظهر بدقة من يحتاج مساعدة — قبل الاختبار.",
+    quickSetupTitle: "الإعداد في 30 ثانية",
+    quickSetupDesc: "أنشئ فصلًا → شارِك الرمز → الطلاب ينضمون. هذا كل شيء.",
+    studentEngagementTitle: "يريدون فعلًا الممارسة",
+    studentEngagementDesc: "أوضاع اللعب وXP والسلاسل — الطلاب يدرسون طوعًا في المنزل.",
+    aiSentenceBuilderTitle: "باني الجمل بالذكاء الاصطناعي",
+    aiSentenceBuilderDesc: "نقرة واحدة، 10 جمل مثال لكل كلمة — بالمستوى المناسب لصفّك.",
+    snapWordlistTitle: "التقط صورة لقائمة",
+    snapWordlistDesc: "التقط صورة لأي قائمة مطبوعة — خط اليد، صفحة كتاب، سبورة — كلمات مستخرجة في ثوانٍ.",
+    quickPlayTitle: "اللعب السريع — لعبة مباشرة بلا تسجيل",
+    quickPlayDesc: "اعرض QR على السبورة، الطلاب ينضمون بهواتفهم — بلا حسابات، بلا كتابة رمز الفصل، بلا إعداد. منصة مباشرة، نقاط فورية، جاهز في 10 ثوانٍ.",
+    quickPlayScanPlay: "امسح والعب",
+    hebrewArabicTitle: "العبرية والعربية، مدمجة",
+    hebrewArabicDesc: "كل كلمة تأتي مع ترجمات أصلية بالعبرية والعربية — بلا تطبيق ثاني، بلا نسخ ولصق. تخطيطات RTL تُعالَج تلقائيًا. لغات أخرى قادمة.",
+
+    // Curriculum
     curriculumSectionH2: "رحلتك نحو الإتقان",
     curriculumSectionSubtitle:
       "متوافق مع CEFR من A1 إلى B2 — ثلاث مجموعات شاملة من المفردات تغطي +6,500 كلمة.",
+    curriculumProgress: "التقدم",
+    set1Title: "المجموعة 1 — الأساسيات",
+    set1Desc: "مفردات للمبتدئين",
+    set1Words: "~2000 كلمة",
+    set2Title: "المجموعة 2 — المتوسط",
+    set2Desc: "بناء التعقيد",
+    set2Words: "~2500 كلمة",
+    set3Title: "المجموعة 3 — الأكاديمي",
+    set3Desc: "إتقان متقدم",
+    set3Words: "~3000 كلمة",
 
+    // Voca Family
     vocaFamilyPill: "قريباً",
     vocaFamilyH2: "عائلة Voca",
     vocaFamilySubtitle:
-      "نبدأ بالمفردات الإنجليزية — لكن المحرك نفسه يعلّم أي مادة. المواد المخططة، بحسب طلب المعلمين:",
+      "نبدأ بمفردات الإنجليزية — لكن المحرك نفسه يعلّم أي مادة. المواد المخططة، بحسب طلب المعلمين:",
     vocaFamilyComingSoon: "قريباً",
     vocaFamilyRequestLine: "تعلّم مادة مختلفة؟ أخبرنا أيّ Voca نبني تالياً:",
     vocaFamilyRequestCta: "اطلب مادة",
+    vocaHistoryName: "VocaHistory",
+    vocaHistoryTag: "تواريخ · شخصيات · أحداث",
+    vocaScienceName: "VocaScience",
+    vocaScienceTag: "مصطلحات · مفاهيم · رسوم",
+    vocaHebrewName: "VocaHebrew",
+    vocaHebrewTag: "مفردات العبرية",
+    vocaArabicName: "VocaArabic",
+    vocaArabicTag: "مفردات العربية",
+    vocaMathName: "VocaMath",
+    vocaMathTag: "تعريفات · معادلات",
 
+    // Final CTA
     finalCtaH2Line1: "جاهز لتصبح",
     finalCtaH2Line2: "أسطورة مفردات؟",
     finalCtaSubtitle:
@@ -224,6 +583,23 @@ export const landingPageT: Record<Language, LandingPageT> = {
     finalCtaStart: "ابدأ التعلم مجاناً",
     finalCtaTeacher: "دخول المعلمين",
 
+    // Footer
+    footerTagline: "منصة المفردات التي يريد الطلاب حول العالم لعبها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
+    footerSchoolPlans: "خطط المدارس",
+    footerIndividualTeacher: "معلم فردي",
+    footerProduct: "المنتج",
+    footerResources: "الموارد",
+    footerLegal: "قانوني والثقة",
+    footerStartLearning: "ابدأ التعلم",
+    footerTryDemo: "جرّب العرض",
+    footerTeacherLogin: "دخول المعلمين",
+    footerCefrVocab: "مفردات CEFR A1",
+    footerCefrExplained: "الفرق بين A1 و A2",
+    footerBestEsl: "أفضل تطبيق ESL — الصفوف 1-12",
+    footerTerms: "شروط الخدمة",
+    footerPrivacy: "سياسة الخصوصية",
+    footerSecurity: "الأمان والثقة",
+    footerAccessibility: "إمكانية الوصول",
     footerCopyright: (year) =>
       `© ${year} Vocaband. صُنع بحب 💙 للمتعلمين في كل مكان.`,
   },

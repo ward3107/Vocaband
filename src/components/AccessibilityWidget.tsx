@@ -412,7 +412,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
           aria-expanded={isOpen}
           aria-controls="a11y-panel"
           onClick={() => setIsOpen(!isOpen)}
-          className="fixed bottom-6 left-6 z-[69] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          className="fixed bottom-6 left-6 z-[110] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
           style={{ touchAction: 'manipulation' }}
         >
           <Accessibility size={24} strokeWidth={2.2} />
@@ -433,7 +433,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 left-6 z-[70] w-[320px] max-h-[75vh] bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+            className="fixed bottom-24 left-6 z-[120] w-[320px] max-h-[75vh] bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b border-stone-200 shrink-0">
               <h2 className="text-lg font-bold text-stone-800" id="a11y-title">{t.title}</h2>

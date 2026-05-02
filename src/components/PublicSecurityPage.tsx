@@ -1,7 +1,6 @@
 import React from "react";
 import { Shield, Lock, Globe, Server, KeyRound, FileText, ExternalLink, CheckCircle2 } from "lucide-react";
 import PublicNav from "./PublicNav";
-import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
 import BackButton from "./BackButton";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -268,10 +267,6 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
         </nav>
       </main>
 
-      <MobileNav
-        currentPage="privacy"
-        onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy")}
-      />
       <FloatingButtons />
     </div>
   );
