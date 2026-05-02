@@ -334,7 +334,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 <div className="flex gap-2">
                   <button
                     onClick={copyClassCode}
-                    className="flex-1 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all flex items-center justify-center gap-2"
                   >
                     <Copy size={18} />
                     {copiedCode === selectedClass.code ? 'Copied!' : 'Copy code'}
@@ -365,7 +365,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               </button>
               <button
                 onClick={onBack}
-                className="flex-1 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all"
+                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all"
               >
                 Back to dashboard
               </button>

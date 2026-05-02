@@ -352,7 +352,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             type="button"
             className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
               activityType === 'game-modes'
-                ? 'bg-white text-indigo-700 shadow-md'
+                ? 'bg-[var(--vb-surface)] text-indigo-700 shadow-md'
                 : 'text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)] hover:bg-[var(--vb-surface-alt)]'
             }`}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
@@ -378,7 +378,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               type="button"
               className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                 activityType === 'ai-generator'
-                  ? 'bg-white text-fuchsia-700 shadow-md'
+                  ? 'bg-[var(--vb-surface)] text-fuchsia-700 shadow-md'
                   : 'text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)] hover:bg-[var(--vb-surface-alt)]'
               }`}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
@@ -484,7 +484,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-                    className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-primary"
+                    className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--vb-surface)] flex items-center justify-center shadow-lg border-2 border-primary"
                   >
                     <Check size={14} className="text-primary" strokeWidth={3} />
                   </motion.div>
@@ -573,7 +573,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     </div>
                     <p className="text-sm text-[var(--vb-text-secondary)] mb-2 line-clamp-3">{aiGeneratedLesson.text}</p>
                     <div className="flex items-center gap-2 text-xs text-[var(--vb-text-muted)]">
-                      <span className="px-2 py-0.5 bg-white rounded-full font-semibold">
+                      <span className="px-2 py-0.5 bg-[var(--vb-surface)] rounded-full font-semibold">
                         {aiGeneratedLesson.questions.length} questions
                       </span>
                       <span>• Ready to assign</span>
@@ -725,14 +725,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   className={`relative p-3 rounded-lg border-2 transition-all duration-300 text-center ${
                     isSelected
                       ? 'border-primary bg-primary shadow-md scale-105'
-                      : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-outline/40 hover:bg-stone-200-high'
+                      : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-outline/40 hover:bg-[var(--vb-surface-alt)]-high'
                   }`}
                 >
                   <div className="text-lg mb-1">{config.emoji}</div>
                   <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-[var(--vb-text-secondary)]'}`}>{config.label}</div>
                   <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-[var(--vb-text-secondary)]'}`}>{config.description}</div>
                   {isSelected && (
-                    <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-white flex items-center justify-center">
+                    <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-[var(--vb-surface)] flex items-center justify-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
                     </div>
                   )}
@@ -774,7 +774,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
                 placeholder="Write or paste your sentence here..."
                 rows={2}
-                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
               />
               <button
                 onClick={() => {
@@ -805,14 +805,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     <div
                       key={idx}
                       onClick={() => setEditingSentenceIndex(idx)}
-                      className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-300/30 bg-stone-200-lowest hover:border-primary/50 hover:bg-stone-200-high cursor-pointer transition-all group"
+                      className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest hover:border-primary/50 hover:bg-[var(--vb-surface-alt)]-high cursor-pointer transition-all group"
                     >
                       <span className="text-xs text-[var(--vb-text-secondary)] font-mono w-5 shrink-0">{idx + 1}</span>
                       <span className="flex-1 text-sm text-[var(--vb-text-primary)] truncate group-hover:text-primary transition-colors">
                         {sentence}
                       </span>
                       {/* Hover preview tooltip — smart positioning */}
-                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-[var(--vb-surface-alt)] rounded-xl shadow-xl border-2 border-stone-300/30 p-3 pointer-events-none ${
+                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-[var(--vb-surface-alt)] rounded-xl shadow-xl border-2 border-[var(--vb-text-muted)]/30 p-3 pointer-events-none ${
                         isInFirstHalf ? 'absolute top-full left-0 mt-2' : 'absolute bottom-full left-0 mb-2'
                       }`}>
                         <div className="text-sm text-[var(--vb-text-primary)] break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -855,7 +855,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onSentencesChange?.(updated);
                   }}
                   rows={3}
-                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3 mt-4">
