@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { Globe } from "lucide-react";
 import { useLanguage, Language } from "../hooks/useLanguage";
 
 interface NavLanguageToggleProps {
@@ -70,6 +71,11 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
         {/* Inner shadow for depth */}
         <div className="absolute inset-0 bg-black/10 rounded-full" />
 
+        {/* Globe icon — restored 2026-05.  Earlier UI polish swapped
+            the globe for plain letters but teachers were missing the
+            universal "language" affordance the icon provides.  Globe +
+            current code keeps the language unambiguous in any locale. */}
+        <Globe size={16} className="relative z-10" strokeWidth={2.5} aria-hidden />
         <span className="relative z-10">{currentLabel}</span>
 
         {/* Dropdown arrow */}
