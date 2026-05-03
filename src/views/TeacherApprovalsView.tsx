@@ -4,6 +4,10 @@ import { supabase } from "../core/supabase";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherViewsT } from "../locales/teacher/views";
+import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
+import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
+import GuideTriggerButton from "../components/onboarding/GuideTriggerButton";
+import { teacherGuidesT } from "../locales/teacher/guides";
 
 interface PendingStudent {
   id: string;
@@ -53,6 +57,8 @@ export default function TeacherApprovalsView({
 }: TeacherApprovalsViewProps) {
   const { language, dir } = useLanguage();
   const t = teacherViewsT[language];
+  const guide = useFirstTimeGuide("approvals");
+  const guideStrings = teacherGuidesT[language].approvals;
   // user is unused on the page itself now that TopAppBar is gone, but
   // we still accept it from the parent so adding the avatar back later
   // is a one-liner.  Reference it to silence the unused-prop warning.
@@ -79,21 +85,24 @@ export default function TeacherApprovalsView({
               {t.approvalsSubtitle}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setView("teacher-dashboard")}
-            style={{
-              borderColor: 'var(--vb-border)',
-              color: 'var(--vb-text-secondary)',
-              backgroundColor: 'var(--vb-surface)',
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent' as never,
-            }}
-            className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90 shrink-0"
-          >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">{t.backToDashboard}</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <GuideTriggerButton onClick={guide.open} />
+            <button
+              type="button"
+              onClick={() => setView("teacher-dashboard")}
+              style={{
+                borderColor: 'var(--vb-border)',
+                color: 'var(--vb-text-secondary)',
+                backgroundColor: 'var(--vb-surface)',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent' as never,
+              }}
+              className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">{t.backToDashboard}</span>
+            </button>
+          </div>
         </div>
 
         {pendingStudents.length === 0 ? (
@@ -266,6 +275,14 @@ export default function TeacherApprovalsView({
           ))}
         </AnimatePresence>
       </div>
+
+      <FirstTimeGuide
+        isOpen={guide.isOpen}
+        onDone={guide.dismiss}
+        heading={guideStrings.heading}
+        subheading={guideStrings.subheading}
+        steps={guideStrings.steps}
+      />
     </div>
   );
 }

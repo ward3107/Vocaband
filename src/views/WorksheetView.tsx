@@ -26,6 +26,10 @@ import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../core/supabase';
 import { worksheetStrings, type WorksheetStrings } from '../locales/student/worksheet';
+import { useFirstTimeGuide } from '../hooks/useFirstTimeGuide';
+import FirstTimeGuide from '../components/onboarding/FirstTimeGuide';
+import GuideTriggerButton from '../components/onboarding/GuideTriggerButton';
+import { teacherGuidesT } from '../locales/teacher/guides';
 import Worksheet, { type WorksheetSheetType } from '../components/worksheet/Worksheet';
 import { WordListSheet } from '../components/worksheet/sheets/WordListSheet';
 import { ScrambleSheet } from '../components/worksheet/sheets/ScrambleSheet';
@@ -82,6 +86,8 @@ export default function WorksheetView({
   useTeacherTheme(user?.teacherDashboardTheme);
   const { language } = useLanguage();
   const t: WorksheetStrings = worksheetStrings[language];
+  const guide = useFirstTimeGuide('worksheet');
+  const guideStrings = teacherGuidesT[language].worksheet;
   const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
   const SHEET_TYPES = buildSheetTypes(t);
 
@@ -261,19 +267,22 @@ export default function WorksheetView({
               {t.subtitle}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onExit}
-            style={{
-              borderColor: 'var(--vb-border)',
-              color: 'var(--vb-text-secondary)',
-              backgroundColor: 'var(--vb-surface)',
-            }}
-            className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
-          >
-            <ArrowLeft size={16} />
-            {t.backButton}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <GuideTriggerButton onClick={guide.open} />
+            <button
+              type="button"
+              onClick={onExit}
+              style={{
+                borderColor: 'var(--vb-border)',
+                color: 'var(--vb-text-secondary)',
+                backgroundColor: 'var(--vb-surface)',
+              }}
+              className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+            >
+              <ArrowLeft size={16} />
+              {t.backButton}
+            </button>
+          </div>
         </div>
 
         {/* Word source */}
@@ -609,6 +618,14 @@ export default function WorksheetView({
         </div>,
         document.body,
       )}
+
+      <FirstTimeGuide
+        isOpen={guide.isOpen}
+        onDone={guide.dismiss}
+        heading={guideStrings.heading}
+        subheading={guideStrings.subheading}
+        steps={guideStrings.steps}
+      />
     </div>
   );
 }

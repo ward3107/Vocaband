@@ -14,6 +14,10 @@ import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
 import QPAvatar from './QPAvatar';
 import { useLanguage } from '../hooks/useLanguage';
 import { teacherViewsT } from '../locales/teacher/views';
+import { useFirstTimeGuide } from '../hooks/useFirstTimeGuide';
+import FirstTimeGuide from './onboarding/FirstTimeGuide';
+import GuideTriggerButton from './onboarding/GuideTriggerButton';
+import { teacherGuidesT } from '../locales/teacher/guides';
 
 // Match the flag in QuickPlayStudentView. When on, this monitor
 // observes the /quick-play socket.io namespace for leaderboard
@@ -154,6 +158,8 @@ export default function QuickPlayMonitor({
 }: QuickPlayMonitorProps) {
   const { language } = useLanguage();
   const tT = teacherViewsT[language];
+  const guide = useFirstTimeGuide('quick-play-monitor');
+  const guideStrings = teacherGuidesT[language].quickPlayMonitor;
   const [qrEnlarged, setQrEnlarged] = useState(false);
   // Collapsed-by-default QR card.  Per teacher request the inline
   // QR/code/share strip eats too much podium real estate after the
@@ -591,6 +597,8 @@ export default function QuickPlayMonitor({
               podium is getting instant pushes or leaning on the polling
               fallback (up to ~5s delayed).  Silent for the happy path;
               loud only when degraded. */}
+          <div className="flex items-center gap-2">
+            <GuideTriggerButton onClick={guide.open} className="bg-white/10 text-current hover:bg-white/20" />
           <div
             title={
               realtimeStatus === 'live'
@@ -613,6 +621,7 @@ export default function QuickPlayMonitor({
             <span className={t.headerText}>
               {realtimeStatus === 'live' ? 'Live' : realtimeStatus === 'polling' ? 'Polling' : 'Connecting'}
             </span>
+          </div>
           </div>
 
           {/* Theme color dots */}
@@ -1288,6 +1297,14 @@ export default function QuickPlayMonitor({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <FirstTimeGuide
+        isOpen={guide.isOpen}
+        onDone={guide.dismiss}
+        heading={guideStrings.heading}
+        subheading={guideStrings.subheading}
+        steps={guideStrings.steps}
+      />
     </div>
   );
 }

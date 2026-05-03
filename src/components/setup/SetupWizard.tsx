@@ -17,6 +17,10 @@ import { ConfigureStep } from './ConfigureStep';
 import { ReviewStep } from './ReviewStep';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
+import { useFirstTimeGuide } from '../../hooks/useFirstTimeGuide';
+import FirstTimeGuide from '../onboarding/FirstTimeGuide';
+import GuideTriggerButton from '../onboarding/GuideTriggerButton';
+import { teacherGuidesT } from '../../locales/teacher/guides';
 
 // Memoized Stepper component (defined outside to prevent re-creation)
 interface StepperProps {
@@ -261,6 +265,12 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherWizardsT[language];
+  // First-time guide — only relevant for the Assignment flow.  Quick
+  // Play has its own micro-flow on the dashboard tile, so we don't
+  // pop a second walkthrough at teachers who already saw that one.
+  const isAssignmentMode = mode === 'assignment';
+  const guide = useFirstTimeGuide('create-assignment');
+  const guideStrings = teacherGuidesT[language].createAssignment;
   // ── Step State ─────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
@@ -567,7 +577,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
             bars; safe-area padding keeps it above the iOS home
             indicator. */}
         <div
-          className="mt-10 mb-6 flex justify-center"
+          className="mt-10 mb-6 flex justify-center items-center gap-3"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <button
@@ -578,8 +588,21 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           >
             {t.cancel}
           </button>
+          {isAssignmentMode && (
+            <GuideTriggerButton onClick={guide.open} />
+          )}
         </div>
       </div>
+
+      {isAssignmentMode && (
+        <FirstTimeGuide
+          isOpen={guide.isOpen}
+          onDone={guide.dismiss}
+          heading={guideStrings.heading}
+          subheading={guideStrings.subheading}
+          steps={guideStrings.steps}
+        />
+      )}
     </div>
   );
 };
