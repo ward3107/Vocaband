@@ -18,7 +18,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Volume2, RotateCcw, Check, X } from 'lucide-react';
+import { Volume2, RotateCcw, Check, X, ArrowRight } from 'lucide-react';
 import type { Word } from '../../data/vocabulary';
 import { useAudio } from '../../hooks/useAudio';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -544,6 +544,185 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
           <X size={18} className="inline mr-1" /> Tap reveal to compare
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Speed Round — huge word + 3-second countdown ─────────────────
+
+const SPEED_ROUND_DURATION_MS = 3000;
+
+export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
+  const { language } = useLanguage();
+  const audio = useAudio();
+  const translation = language === 'he' ? word.hebrew : language === 'ar' ? word.arabic : word.hebrew;
+
+  // Track elapsed time for the progress bar.  Resets when the word
+  // changes or once `revealed` is set (driver advances on its own).
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    setElapsed(0);
+    if (revealed) return;
+    const start = Date.now();
+    const id = setInterval(() => {
+      const e = Date.now() - start;
+      setElapsed(e);
+      if (e >= SPEED_ROUND_DURATION_MS) clearInterval(id);
+    }, 50);
+    return () => clearInterval(id);
+  }, [word.id, revealed]);
+
+  const pct = Math.min(100, (elapsed / SPEED_ROUND_DURATION_MS) * 100);
+  const remaining = Math.max(0, Math.ceil((SPEED_ROUND_DURATION_MS - elapsed) / 1000));
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8 w-full">
+      <button
+        type="button"
+        onClick={() => audio.speak(word.id, word.english)}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
+        style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+        aria-label="Play audio"
+      >
+        <Volume2 size={20} />
+      </button>
+      <motion.div
+        key={word.id}
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        className="text-6xl sm:text-8xl md:text-9xl font-black tracking-tight text-center"
+        style={{ color: 'var(--vb-text-primary)' }}
+      >
+        {word.english}
+      </motion.div>
+      {revealed && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl sm:text-5xl font-bold"
+          style={{ color: 'var(--vb-accent)' }}
+          dir="auto"
+        >
+          {translation}
+        </motion.div>
+      )}
+      {!revealed && (
+        <div className="text-7xl font-black tabular-nums" style={{ color: 'var(--vb-text-muted)' }}>
+          {remaining}
+        </div>
+      )}
+      <div className="w-full max-w-3xl h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+        <motion.div
+          className="h-full bg-gradient-to-r from-red-400 to-rose-500"
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.05, ease: 'linear' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Idiom — flip card from phrase to figurative meaning ──────────
+
+export function IdiomProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
+  const { language } = useLanguage();
+  const meaning = language === 'he' ? word.hebrew : language === 'ar' ? word.arabic : word.hebrew;
+  const example = word.example ?? word.sentence;
+
+  return (
+    <div className="flex-1 flex items-center justify-center px-6">
+      <motion.div
+        key={`${word.id}-${revealed ? 'back' : 'front'}`}
+        initial={{ rotateY: -20, opacity: 0 }}
+        animate={{ rotateY: 0, opacity: 1 }}
+        transition={{ duration: 0.35 }}
+        className="relative w-full max-w-4xl aspect-[5/3] rounded-[40px] bg-gradient-to-br from-sky-500 to-cyan-600 shadow-2xl flex items-center justify-center text-white px-8"
+      >
+        {!revealed ? (
+          <div className="text-center">
+            <div className="text-7xl sm:text-8xl mb-4">💭</div>
+            <div className="text-5xl sm:text-7xl font-black tracking-tight" dir="auto">
+              {word.english}
+            </div>
+            <div className="mt-6 text-xl sm:text-2xl opacity-80">
+              What does this mean?
+            </div>
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="text-4xl sm:text-6xl font-black mb-4" dir="auto">
+              {meaning}
+            </div>
+            {example && (
+              <div className="mt-4 text-xl sm:text-2xl opacity-90 italic" dir="auto">
+                “{example}”
+              </div>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Word Chains — neighbours on either side of the current word ───
+
+export function WordChainsProjector({ word, pool, revealed }: BaseProps) {
+  // Pick stable prev / next pulls from the pool so the chain doesn't
+  // re-shuffle on every render.  Falls back gracefully when pool is
+  // smaller than 3 words.
+  const { prev, next } = useMemo(() => {
+    const others = pool.filter(w => w.id !== word.id);
+    const shuffled = [...others];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return { prev: shuffled[0] ?? null, next: shuffled[1] ?? null };
+  }, [word.id, pool]);
+
+  const Tile = ({ w, dim }: { w: Word; dim: boolean }) => (
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: dim ? 0.45 : 1 }}
+      className="px-6 py-6 sm:px-10 sm:py-10 rounded-3xl border-2 shadow-xl text-3xl sm:text-5xl font-black"
+      style={{
+        backgroundColor: dim ? 'var(--vb-surface-alt)' : 'var(--vb-surface)',
+        color: 'var(--vb-text-primary)',
+        borderColor: 'var(--vb-border)',
+      }}
+    >
+      {w.english}
+    </motion.div>
+  );
+
+  const Arrow = ({ visible }: { visible: boolean }) => (
+    <motion.div
+      animate={{ opacity: visible ? 1 : 0.15 }}
+      style={{ color: 'var(--vb-accent)' }}
+      className="flex items-center"
+    >
+      <ArrowRight size={48} />
+    </motion.div>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+      <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 max-w-6xl">
+        {prev && <Tile w={prev} dim={!revealed} />}
+        {prev && <Arrow visible={revealed} />}
+        <motion.div
+          initial={{ scale: 0.85 }}
+          animate={{ scale: 1 }}
+          className="px-8 py-8 sm:px-14 sm:py-12 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-2xl text-4xl sm:text-6xl font-black"
+        >
+          {word.english}
+        </motion.div>
+        {next && <Arrow visible={revealed} />}
+        {next && <Tile w={next} dim={!revealed} />}
+      </div>
     </div>
   );
 }

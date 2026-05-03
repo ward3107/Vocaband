@@ -20,6 +20,9 @@ import {
   MatchingProjector,
   MemoryFlipProjector,
   SentenceBuilderProjector,
+  SpeedRoundProjector,
+  IdiomProjector,
+  WordChainsProjector,
 } from './AdaptedModes';
 
 interface ClassShowQuestionProps {
@@ -53,6 +56,9 @@ export default function ClassShowQuestion(props: ClassShowQuestionProps) {
   if (mode === 'matching') return <MatchingProjector pool={pool} words={batch} revealed={revealed} />;
   if (mode === 'memory-flip') return <MemoryFlipProjector words={batch} revealed={revealed} />;
   if (mode === 'sentence-builder') return <SentenceBuilderProjector word={word} revealed={revealed} />;
+  if (mode === 'speed-round') return <SpeedRoundProjector word={word} revealed={revealed} />;
+  if (mode === 'idiom') return <IdiomProjector word={word} revealed={revealed} />;
+  if (mode === 'word-chains') return <WordChainsProjector word={word} pool={pool} revealed={revealed} />;
 
   // Flashcards: just show the front (English) → tap → back (translation).
   if (mode === 'flashcards') {
