@@ -15,12 +15,12 @@ import {
   Star,
   Edit3,
   Brain,
-  Globe,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
-import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
+import { useLanguage } from "../hooks/useLanguage";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 
 // Small star-rating component — 3 stars with N filled. Same visual
@@ -92,7 +92,7 @@ export default function GameModeSelectionView({
   // src/locales/student/game-modes.ts (EN / HE / AR). Adding a new
   // language = add it to the union in useLanguage + drop a new key
   // in that file. See docs/I18N-MIGRATION.md for the pattern.
-  const { language, setLanguage, dir } = useLanguage();
+  const { language, dir } = useLanguage();
   const t = gameModesT[language];
 
   // Layout-only metadata (id, color, icon, learn-mode flag) stays in
@@ -192,34 +192,14 @@ export default function GameModeSelectionView({
           <X size={28} />
         </button>
 
-        {/* Inline language picker — duplicates the dashboard top-bar
-            switcher but at the moment-of-decision (about to start a
-            game).  Mode names + tooltips re-render in the chosen
-            language because each tile reads `t.modes[id].name` from
-            gameModesT[language].  Available for both real-assignment
-            and Quick Play students.  Persists via useLanguage's
-            localStorage. */}
-        <div className="mb-5 sm:mb-7 flex items-center justify-center gap-2 flex-wrap">
-          {(["en", "he", "ar"] as Language[]).map((lang) => {
-            const isActive = language === lang;
-            return (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => setLanguage(lang)}
-                aria-pressed={isActive}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black transition-all ${
-                  isActive
-                    ? "bg-stone-900 text-white shadow-md scale-105"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                }`}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
-              >
-                <Globe size={16} strokeWidth={2.25} aria-hidden />
-                <span>{languageNames[lang]}</span>
-              </button>
-            );
-          })}
+        {/* Inline language picker — single Globe button with a
+            dropdown of the three languages.  Mode names + tooltips
+            re-render in the chosen language because each tile reads
+            `t.modes[id].name` from gameModesT[language].  Available
+            for both real-assignment and Quick Play students.
+            Persists via useLanguage's localStorage. */}
+        <div className="mb-5 sm:mb-7 flex items-center justify-center">
+          <LanguageSwitcher variant="compact" />
         </div>
 
         <motion.div
