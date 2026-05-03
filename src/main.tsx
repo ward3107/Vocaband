@@ -65,9 +65,9 @@ async function manageServiceWorker() {
 }
 
 const App = lazy(() => import('./App.tsx'));
-const AccessibilityWidget = lazy(() =>
-  import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget }))
-);
+// Don't lazy-load the a11y widget - it needs to mount immediately
+// to catch the vocaband-view-change event and show the trigger on landing
+import { AccessibilityWidget } from './components/AccessibilityWidget';
 
 const Loading = () => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>

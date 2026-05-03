@@ -207,10 +207,19 @@ export default function ReviewGame({
     // network round-trip; if the call fails the student can still
     // play through, and the same word will resurface in tomorrow's
     // queue (worst case = the interval doesn't advance).
-    void supabase.rpc('record_review_result', {
-      p_word_id: question.word.id,
-      p_is_correct: isCorrect,
-    }).catch(err => console.error('[srs] record_review_result failed:', err));
+    // Wrap in an async IIFE — supabase.rpc returns a PostgrestBuilder
+    // which is thenable but not a true Promise (no .catch).  The IIFE
+    // gives us a real Promise we can attach error handling to.
+    void (async () => {
+      try {
+        await supabase.rpc('record_review_result', {
+          p_word_id: question.word.id,
+          p_is_correct: isCorrect,
+        });
+      } catch (err) {
+        console.error('[srs] record_review_result failed:', err);
+      }
+    })();
 
     // Reveal flash for 700ms then advance.
     window.setTimeout(() => {

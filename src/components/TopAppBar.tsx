@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 interface TopAppBarProps {
   title: string;
@@ -68,7 +69,8 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
 
   return (
     <header
-      className={`fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-100 transition-transform duration-300 ${
+      style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 90%, transparent)' }}
+      className={`fixed top-0 left-0 w-full z-50 backdrop-blur-md flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--vb-border)] transition-transform duration-300 ${
         isVisible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
@@ -93,8 +95,16 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {showScaleControl && <UiScaleControl />}
+        {/* Language switcher - compact variant for tight header space */}
+        <div className="hidden md:block">
+          <LanguageSwitcher variant="compact" className="scale-90 origin-right" />
+        </div>
+        {/* Mobile language dropdown - simpler button */}
+        <div className="md:hidden">
+          <LanguageSwitcher variant="compact" className="scale-85 origin-right" />
+        </div>
         {userName && (
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>

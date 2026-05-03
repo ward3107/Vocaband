@@ -74,6 +74,7 @@ import ScrambleGame from "../components/game/ScrambleGame";
 import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
+import ReviewGame from "../components/game/ReviewGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -335,6 +336,18 @@ export default function GameActiveView({
           themeColor={modeTheme ?? "violet"}
           targetLanguage={targetLanguage}
           speak={speakWord}
+          onFinish={handleExitGame}
+        />
+      );
+    }
+    if (gameMode === "relations") {
+      // Synonyms & Antonyms — multi-choice question alternating
+      // between syn / ant per turn.  Question source is the curated
+      // RELATIONS dataset, not the assignment word pool.
+      return (
+        <RelationsGame
+          themeColor={modeTheme ?? "fuchsia"}
+          speak={speak}
           onFinish={handleExitGame}
         />
       );

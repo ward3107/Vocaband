@@ -165,8 +165,8 @@ export default function StudentProfile({
       {!student ? null : scores.length === 0 ? (
         <div className="p-8 text-center">
           <div className="text-5xl mb-3" aria-hidden>🌱</div>
-          <p className="text-stone-700 font-bold">No plays yet</p>
-          <p className="text-stone-500 text-sm mt-1">
+          <p className="text-[var(--vb-text-secondary)] font-bold">No plays yet</p>
+          <p className="text-[var(--vb-text-muted)] text-sm mt-1">
             {student.name} hasn't played any assignments yet. Their stats
             will appear here as soon as they start.
           </p>
@@ -213,11 +213,11 @@ export default function StudentProfile({
           </div>
 
           {/* ── Per-mode breakdown ─────────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-4 border border-stone-100">
-            <h3 className="text-sm font-black text-stone-800 mb-3 flex items-center gap-2">
+          <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
+            <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
               <ChartBar size={16} className="text-violet-500" />
               Per mode
-              <span className="text-xs font-bold text-stone-400">
+              <span className="text-xs font-bold text-[var(--vb-text-muted)]">
                 · where they're strong vs. weak
               </span>
             </h3>
@@ -227,10 +227,10 @@ export default function StudentProfile({
                   <span className="w-6 text-base shrink-0" aria-hidden>
                     {MODE_EMOJI[m.mode] ?? "🎯"}
                   </span>
-                  <span className="w-24 font-bold text-stone-700 capitalize truncate">
+                  <span className="w-24 font-bold text-[var(--vb-text-secondary)] capitalize truncate">
                     {m.mode.replace(/-/g, " ")}
                   </span>
-                  <div className="flex-1 h-3 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-3 bg-[var(--vb-surface-alt)] rounded-full overflow-hidden">
                     <div
                       className={`h-full bg-gradient-to-r ${scoreColor(m.avg)}`}
                       style={{ width: `${Math.min(100, m.avg)}%` }}
@@ -239,7 +239,7 @@ export default function StudentProfile({
                   <span className={`w-10 text-right font-black ${textColor(m.avg)}`}>
                     {m.avg}
                   </span>
-                  <span className="w-10 text-right text-stone-400 tabular-nums">
+                  <span className="w-10 text-right text-[var(--vb-text-muted)] tabular-nums">
                     ×{m.attempts}
                   </span>
                 </div>
@@ -248,11 +248,11 @@ export default function StudentProfile({
           </section>
 
           {/* ── Word mastery heatmap ───────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-4 border border-stone-100">
-            <h3 className="text-sm font-black text-stone-800 mb-3 flex items-center gap-2">
+          <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
+            <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
               <Trophy size={16} className="text-emerald-500" />
               Word mastery
-              <span className="text-xs font-bold text-stone-400">
+              <span className="text-xs font-bold text-[var(--vb-text-muted)]">
                 · green = solid, amber = shaky, rose = struggling
               </span>
             </h3>
@@ -270,11 +270,11 @@ export default function StudentProfile({
               fine for these words, but their FIRST-attempt accuracy
               is what this list reflects. */}
           {topMisses.length > 0 && (
-            <section className="bg-white rounded-2xl p-4 border border-stone-100">
-              <h3 className="text-sm font-black text-stone-800 mb-3 flex items-center gap-2">
+            <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
+              <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
                 <AlertTriangle size={16} className="text-rose-500" />
                 Struggled with
-                <span className="text-xs font-bold text-stone-400">
+                <span className="text-xs font-bold text-[var(--vb-text-muted)]">
                   · words missed on first try (any game)
                 </span>
               </h3>
@@ -296,10 +296,10 @@ export default function StudentProfile({
           )}
 
           {/* ── Recent attempts ────────────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-4 border border-stone-100">
-            <h3 className="text-sm font-black text-stone-800 mb-3">
+          <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
+            <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3">
               Recent plays
-              <span className="text-xs font-bold text-stone-400 ml-2">
+              <span className="text-xs font-bold text-[var(--vb-text-muted)] ml-2">
                 · last {recentAttempts.length}
               </span>
             </h3>
@@ -307,16 +307,16 @@ export default function StudentProfile({
               {recentAttempts.map(s => (
                 <div
                   key={s.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-stone-50/60"
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60"
                 >
                   <span className="text-lg shrink-0" aria-hidden>
                     {MODE_EMOJI[s.mode] ?? "🎯"}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-stone-800 truncate">
+                    <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">
                       {assignmentTitle(s.assignmentId)}
                     </p>
-                    <p className="text-[11px] text-stone-500 capitalize">
+                    <p className="text-[11px] text-[var(--vb-text-muted)] capitalize">
                       {s.mode.replace(/-/g, " ")} ·{" "}
                       {new Date(s.completedAt).toLocaleDateString()}
                     </p>
@@ -354,21 +354,21 @@ function StatTile({
     rose:    "text-rose-600",
     indigo:  "text-indigo-600",
     violet:  "text-violet-600",
-    stone:   "text-stone-700",
+    stone:   "text-[var(--vb-text-secondary)]",
   };
   return (
     <div
-      className="bg-white rounded-2xl p-3 border border-stone-100"
+      className="bg-[var(--vb-surface)] rounded-2xl p-3 border border-[var(--vb-border)]"
       title={tooltip}
     >
       <div className={`text-2xl font-black leading-none ${toneClass[tone]} flex items-center gap-1`}>
         {icon}
         {value}
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 mt-1.5">
+      <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--vb-text-muted)] mt-1.5">
         {label}
       </div>
-      <div className="text-[10px] text-stone-400 mt-0.5">{caption}</div>
+      <div className="text-[10px] text-[var(--vb-text-muted)] mt-0.5">{caption}</div>
     </div>
   );
 }

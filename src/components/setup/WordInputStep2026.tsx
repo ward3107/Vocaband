@@ -191,7 +191,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
       animate={{ opacity: 1, y: 0 }}
       className="mb-8"
     >
-      <div className="bg-white rounded-2xl shadow-lg border-2 border-indigo-100 overflow-hidden">
+      <div className="bg-[var(--vb-surface)] rounded-2xl shadow-lg border-2 border-indigo-100 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4">
           <div className="flex items-center gap-2 text-white">
@@ -268,7 +268,7 @@ const OptionCard: React.FC<OptionCardProps> = ({
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       type="button"
-      className="bg-white rounded-2xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-6 flex flex-col items-center text-center min-h-[180px] transition-shadow"
+      className="bg-[var(--vb-surface)] rounded-2xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-6 flex flex-col items-center text-center min-h-[180px] transition-shadow"
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
     >
       {/* Icon with optional sparkle */}
@@ -455,7 +455,7 @@ const WordCard: React.FC<WordCardProps> = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="bg-white rounded-lg shadow-sm border border-[var(--vb-border)] p-2.5 pr-2 relative overflow-hidden group hover:shadow-md transition-shadow"
+      className="bg-[var(--vb-surface)] rounded-lg shadow-sm border border-[var(--vb-border)] p-2.5 pr-2 relative overflow-hidden group hover:shadow-md transition-shadow"
     >
       {/* Status stripe */}
       <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${hasRequiredTranslation ? 'bg-emerald-400' : 'bg-amber-400'}`} />
@@ -615,7 +615,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full"
+        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-md w-full"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between">
@@ -803,7 +803,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-rose-300 to-fuchsia-400 px-6 py-4 flex items-center justify-between">
@@ -1029,7 +1029,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1087,7 +1087,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                       ? 'bg-[var(--vb-surface-alt)] border border-[var(--vb-border)] opacity-60 cursor-not-allowed'
                       : isSelected
                       ? 'bg-emerald-50 border-2 border-emerald-400'
-                      : 'bg-white border border-[var(--vb-border)] hover:border-emerald-300'
+                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-emerald-300'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
@@ -1178,7 +1178,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+          className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1206,7 +1206,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handlePackClick(pack)}
                   type="button"
-                  className="p-4 rounded-xl border-2 border-[var(--vb-border)] bg-white hover:border-emerald-300 text-center transition-all"
+                  className="p-4 rounded-xl border-2 border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-emerald-300 text-center transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1289,7 +1289,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1324,7 +1324,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                 return (
                   <div
                     key={group.id}
-                    className="w-full p-4 rounded-xl border border-[var(--vb-border)] bg-white hover:border-amber-300 transition-colors"
+                    className="w-full p-4 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-amber-300 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -1483,7 +1483,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1571,7 +1571,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                       ? 'bg-emerald-50 border-2 border-emerald-300'
                       : isPending
                       ? 'bg-indigo-50 border-2 border-indigo-300'
-                      : 'bg-white border border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
+                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >

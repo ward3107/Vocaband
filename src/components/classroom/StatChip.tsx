@@ -128,9 +128,13 @@ export default function StatChip({
             onMouseLeave={() => setTipOpen(false)}
             aria-label={`What "${label}" means`}
             aria-expanded={tipOpen}
-            style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}
             className="w-3.5 h-3.5 shrink-0 rounded-full hover:opacity-80 flex items-center justify-center transition-colors"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+            style={{
+              backgroundColor: 'var(--vb-surface-alt)',
+              color: 'var(--vb-text-muted)',
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent" as never,
+            }}
           >
             <Info size={9} />
           </button>

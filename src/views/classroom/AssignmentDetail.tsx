@@ -144,19 +144,19 @@ export default function AssignmentDetail({
           <div className="rounded-2xl p-4 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <div className="text-[11px] font-black uppercase tracking-wider text-stone-500">
+                <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">
                   Completion
                 </div>
                 <div className="text-3xl font-black text-indigo-600 mt-1">
                   {done.length + stuck.length}
-                  <span className="text-stone-400 text-xl"> / {totalExpected}</span>
+                  <span className="text-[var(--vb-text-muted)] text-xl"> / {totalExpected}</span>
                 </div>
-                <div className="text-[10px] text-stone-500 mt-1">
+                <div className="text-[10px] text-[var(--vb-text-muted)] mt-1">
                   students who've played at least once
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[11px] font-black uppercase tracking-wider text-stone-500">
+                <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">
                   Class avg
                 </div>
                 <div className={`text-3xl font-black mt-1 ${
@@ -165,12 +165,12 @@ export default function AssignmentDetail({
                 }`}>
                   {classAvg}%
                 </div>
-                <div className="text-[10px] text-stone-500 mt-1">
+                <div className="text-[10px] text-[var(--vb-text-muted)] mt-1">
                   average across every play
                 </div>
               </div>
             </div>
-            <div className="h-2 bg-white rounded-full overflow-hidden mt-2">
+            <div className="h-2 bg-[var(--vb-surface)] rounded-full overflow-hidden mt-2">
               <div
                 className="h-full bg-gradient-to-r from-indigo-500 to-violet-500"
                 style={{ width: `${completionPct}%` }}
@@ -212,7 +212,7 @@ export default function AssignmentDetail({
           </Bucket>
 
           <Bucket
-            icon={<Moon size={18} className="text-stone-600" />}
+            icon={<Moon size={18} className="text-[var(--vb-text-secondary)]" />}
             title="Not started"
             subtitle="Zero plays on this assignment"
             count={notStarted.length}
@@ -224,12 +224,12 @@ export default function AssignmentDetail({
               notStarted.slice(0, 20).map(name => (
                 <div
                   key={name}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-stone-50/60"
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60"
                 >
                   <span className="text-lg" aria-hidden>🦊</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-stone-800 truncate">{name}</p>
-                    <p className="text-[11px] text-stone-500">Hasn't opened it</p>
+                    <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{name}</p>
+                    <p className="text-[11px] text-[var(--vb-text-muted)]">Hasn't opened it</p>
                   </div>
                 </div>
               ))
@@ -241,7 +241,7 @@ export default function AssignmentDetail({
       {/* Sticky footer CTA — the plan's headline action. Only shows
           when there's someone to nudge. */}
       {assignment && strugglerNames.length > 0 && (
-        <div className="sticky bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-stone-100 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="sticky bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-[var(--vb-border)] pb-[calc(env(safe-area-inset-bottom)+12px)]">
           <button
             type="button"
             onClick={() => onReassign?.(strugglerNames)}
@@ -272,15 +272,15 @@ function Bucket({
   const toneRing: Record<string, string> = {
     emerald: "border-emerald-100",
     amber:   "border-amber-100",
-    stone:   "border-stone-100",
+    stone:   "border-[var(--vb-border)]",
   };
   return (
-    <section className={`bg-white rounded-2xl p-4 border ${toneRing[tone]}`}>
+    <section className={`bg-[var(--vb-surface)] rounded-2xl p-4 border ${toneRing[tone]}`}>
       <header className="flex items-center gap-2 mb-3">
         {icon}
-        <h3 className="text-sm font-black text-stone-800">{title}</h3>
-        <span className="text-xs font-bold text-stone-400">· {count}</span>
-        <span className="text-[11px] text-stone-400 ml-auto truncate">{subtitle}</span>
+        <h3 className="text-sm font-black text-[var(--vb-text-primary)]">{title}</h3>
+        <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {count}</span>
+        <span className="text-[11px] text-[var(--vb-text-muted)] ml-auto truncate">{subtitle}</span>
       </header>
       <div className="space-y-1.5">{children}</div>
     </section>
@@ -289,11 +289,11 @@ function Bucket({
 
 function StudentRow({ student, showScore }: { student: StudentScore; showScore?: boolean }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-stone-50/60">
+    <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60">
       <span className="text-lg shrink-0" aria-hidden>{student.avatar}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-stone-800 truncate">{student.name}</p>
-        <p className="text-[11px] text-stone-500">
+        <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{student.name}</p>
+        <p className="text-[11px] text-[var(--vb-text-muted)]">
           {student.attempts} {student.attempts === 1 ? "play" : "plays"} · best {student.bestScore}
         </p>
       </div>
@@ -308,7 +308,7 @@ function StudentRow({ student, showScore }: { student: StudentScore; showScore?:
 
 function Empty({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-3 text-stone-400 text-sm">
+    <div className="flex items-center gap-2 px-3 py-3 text-[var(--vb-text-muted)] text-sm">
       <Users size={14} />
       <span>{text}</span>
     </div>

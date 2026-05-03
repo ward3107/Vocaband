@@ -91,7 +91,7 @@ export default function GameModeSelectionView({
   // src/locales/student/game-modes.ts (EN / HE / AR). Adding a new
   // language = add it to the union in useLanguage + drop a new key
   // in that file. See docs/I18N-MIGRATION.md for the pattern.
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, dir } = useLanguage();
   const t = gameModesT[language];
 
   // Layout-only metadata (id, color, icon, learn-mode flag) stays in
@@ -254,6 +254,7 @@ export default function GameModeSelectionView({
               }}
               className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
               style={{ touchAction: 'manipulation' }}
+              dir={dir}
             >
               <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
               <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
@@ -284,7 +285,7 @@ export default function GameModeSelectionView({
         })()}
 
         {practiceModes.length > 0 && (
-          <div className="mb-3 text-left">
+          <div className="mb-3 text-left" dir={dir}>
             <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">{t.thenPractiseWith}</p>
           </div>
         )}
