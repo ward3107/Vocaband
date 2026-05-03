@@ -1,8 +1,22 @@
 import { Page, expect } from '@playwright/test';
 
-/** Wait for the app to finish loading (all Suspense fallbacks resolved) */
+/** Wait for the app to finish loading (all Suspense fallbacks resolved).
+ *  IMPORTANT: this MUST first wait for the React tree to mount
+ *  (i.e. #root has children), then for any "Loading..." Suspense
+ *  fallback to disappear.  An earlier version only checked the
+ *  negation of "Loading Vocaband" in body text — which trivially
+ *  passes on a blank HTML page (no text means no "Loading" text),
+ *  so the helper "succeeded" before React had even started.  That
+ *  hid real boot failures behind a meaningless green tick. */
 export async function waitForAppLoad(page: Page) {
-  // Wait for all loading states to disappear
+  // 1. React tree must have mounted at least one node into #root.
+  await page.waitForFunction(() => {
+    const root = document.querySelector('#root');
+    return !!root && root.children.length > 0;
+  }, { timeout: 20_000 });
+
+  // 2. The Suspense fallback (or other Loading... placeholders) must
+  // have been replaced by the actual app content.
   await page.waitForFunction(() => {
     const body = document.body.textContent || '';
     return !body.includes('Loading Vocaband') && !body.includes('Loading landing') && !body.includes('Loading...');
