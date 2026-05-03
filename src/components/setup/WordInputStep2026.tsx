@@ -1839,9 +1839,18 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   // via vocabulary.ts and are skipped — we only spend AI tokens on
   // words the teacher actually typed/pasted/OCR'd that aren't in our
   // dictionary.
+  // Returns every selected word that is missing hebrew OR arabic,
+  // regardless of level.  Earlier this was scoped to `level === 'Custom'`
+  // on the assumption that curriculum words always ship with both
+  // translations — but stale / incomplete curriculum rows do exist
+  // in production, and the visible "Translate N missing" button counts
+  // them in `needsWorkCount` (line ~1730), so the previous filter let
+  // teachers click a button that exited immediately without translating
+  // anything.  Now both the counter and the action operate on the same
+  // pool.
   const customNeedingTranslation = useCallback(() => {
     return selectedWords.filter(w =>
-      w.level === 'Custom' && (!w.hebrew?.trim() || !w.arabic?.trim())
+      !w.hebrew?.trim() || !w.arabic?.trim()
     );
   }, [selectedWords]);
 
