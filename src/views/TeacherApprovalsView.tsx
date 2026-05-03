@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap } from "lucide-react";
-import TopAppBar from "../components/TopAppBar";
+import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap, ArrowLeft } from "lucide-react";
 import { supabase } from "../core/supabase";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
@@ -34,6 +33,12 @@ interface TeacherApprovalsViewProps {
   showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 
+/**
+ * 2026-05 redesign — drops the page-level TopAppBar in favour of the
+ * Worksheet/Class Show "card chrome" pattern. Title + Back live inside
+ * the card header; per-student rows become a subtle inset (surface-alt)
+ * since they're already nested inside the white surface card.
+ */
 export default function TeacherApprovalsView({
   user,
   pendingStudents,
@@ -48,36 +53,62 @@ export default function TeacherApprovalsView({
 }: TeacherApprovalsViewProps) {
   const { language, dir } = useLanguage();
   const t = teacherViewsT[language];
+  // user is unused on the page itself now that TopAppBar is gone, but
+  // we still accept it from the parent so adding the avatar back later
+  // is a one-liner.  Reference it to silence the unused-prop warning.
+  void user;
+
   return (
-    <div className="min-h-screen pt-20 sm:pt-24 pb-12 px-4 sm:px-6" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div dir={dir} className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       {consentModal}
       {exitConfirmModal}
 
-      {/* Top App Bar */}
-      <TopAppBar
-        title={t.approvalsTitle}
-        subtitle={t.approvalsSubtitle}
-        userName={user?.displayName}
-        userAvatar={user?.avatar}
-        onLogout={() => supabase.auth.signOut()}
-        showBack
-        onBack={() => setView("teacher-dashboard")}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+        className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
+      >
+        {/* Header — title + Back button, identical chrome to Worksheet. */}
+        <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3">
+          <div className="min-w-0">
+            <h1 className="text-3xl sm:text-4xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>
+              {t.approvalsTitle}
+            </h1>
+            <p className="text-sm sm:text-base truncate" style={{ color: 'var(--vb-text-secondary)' }}>
+              {t.approvalsSubtitle}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setView("teacher-dashboard")}
+            style={{
+              borderColor: 'var(--vb-border)',
+              color: 'var(--vb-text-secondary)',
+              backgroundColor: 'var(--vb-surface)',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent' as never,
+            }}
+            className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90 shrink-0"
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">{t.backToDashboard}</span>
+          </button>
+        </div>
 
-      <div className="max-w-4xl mx-auto pt-2 sm:pt-4">
         {pendingStudents.length === 0 ? (
-          /* Empty state — calm, friendly, matches the dashboard's
-             dashed-border empty state rather than the old peach card. */
+          /* Empty state — calm, friendly, dashed border treatment now
+             sits naturally inside the white surface card. */
           <div
             className="border border-dashed rounded-2xl py-16 px-6 text-center"
-            style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+            style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
           >
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={28} className="text-emerald-500" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: 'var(--vb-text-primary)' }}>All caught up!</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: 'var(--vb-text-primary)' }}>{t.allCaughtUp}</h2>
             <p className="text-sm mb-6" style={{ color: 'var(--vb-text-muted)' }}>
-              No students are waiting for approval right now.
+              {t.allCaughtUpBlurb}
             </p>
             <button
               onClick={() => setView("teacher-dashboard")}
@@ -90,14 +121,14 @@ export default function TeacherApprovalsView({
           </div>
         ) : (
           <>
-            {/* Header with count + actions */}
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-1">
+            {/* Section sub-header + count + actions */}
+            <div className="mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: 'var(--vb-text-primary)' }}>
-                  Pending approvals
-                </h1>
-                <p className="text-sm mt-1" style={{ color: 'var(--vb-text-muted)' }}>
-                  {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting for you to approve or reject.
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+                  {t.pendingApprovals}
+                </h2>
+                <p className="text-sm" style={{ color: 'var(--vb-text-muted)' }}>
+                  {t.pendingSummary(pendingStudents.length)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -106,7 +137,7 @@ export default function TeacherApprovalsView({
                   type="button"
                   style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
                   className="inline-flex items-center gap-2 px-3.5 py-2.5 hover:bg-[var(--vb-surface-alt)] border rounded-xl font-semibold text-sm active:scale-95 transition-all"
-                  title="Refresh list"
+                  title={t.refreshTitle}
                 >
                   <RefreshCw size={15} />
                   <span className="hidden sm:inline">{t.refresh}</span>
@@ -137,15 +168,16 @@ export default function TeacherApprovalsView({
               </div>
             </div>
 
-            {/* Student cards */}
+            {/* Student cards — surface-alt + border-2 so they read as
+                inset rows inside the outer white card, not a card-in-card. */}
             <div className="space-y-3">
               {pendingStudents.map((student) => (
                 <motion.div
                   key={student.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-                  className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow p-4 sm:p-5"
+                  style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
+                  className="rounded-2xl border-2 transition-shadow p-4 sm:p-5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     {/* Student identity */}
@@ -176,7 +208,7 @@ export default function TeacherApprovalsView({
                         type="button"
                         style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                        title="Reject this student — they'll need to sign up again"
+                        title={t.rejectTitle}
                       >
                         <X size={16} />
                         <span className="hidden sm:inline">{t.rejectShort}</span>
@@ -197,20 +229,19 @@ export default function TeacherApprovalsView({
               ))}
             </div>
 
-            {/* Bottom helper */}
+            {/* Bottom helper — surface-alt inset to match the row cards. */}
             <div
               className="mt-6 p-4 border rounded-xl flex gap-3"
               style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
             >
               <Info size={16} className="shrink-0 mt-0.5" style={{ color: 'var(--vb-text-muted)' }} />
               <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--vb-text-secondary)' }}>
-                After approval, students can log in immediately with their class code and start earning XP.
-                Their progress is saved automatically.
+                {t.approvalsHelper}
               </p>
             </div>
           </>
         )}
-      </div>
+      </motion.div>
 
       {/* Toast Notifications */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 px-4 w-full max-w-md">
