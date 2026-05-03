@@ -28,10 +28,10 @@ export default function RejectStudentModal({ modal, onCancel, onConfirm }: Rejec
               <AlertTriangle size={32} />
             </div>
             <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              Reject Student?
+              {t.rejectTitle}
             </h2>
             <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              You're about to reject <strong>"{modal.displayName}"</strong>. They will need to sign up again with a new class code to join your class.
+              {t.rejectBody(modal.displayName)}
             </p>
             <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
               {t.rejectWarn}

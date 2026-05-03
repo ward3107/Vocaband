@@ -15,10 +15,18 @@
  *   white screen.  Redirect is role-aware.
  *
  * Guard 3: `quick-play-student` without an active session — would
- *   render the infinite "Loading Quick Play session…" spinner.  If
- *   the URL still has `?session=CODE`, strip it so refresh doesn't
- *   re-trigger the stale state; send the user home so they can
- *   re-scan the QR.
+ *   render the infinite "Loading Quick Play session…" spinner.  Only
+ *   fires when the URL has NO `?session=` param (orphan view from
+ *   popstate / cleared state).  If `?session=CODE` is still in the
+ *   URL the bootstrap hook (`useQuickPlayUrlBootstrap`) is either
+ *   in-flight or about to fire — and OWNS the failure path (it
+ *   strips the URL + redirects on its own when the lookup fails).
+ *   Racing the bootstrap from here used to bump fresh QR-scan
+ *   students straight to public-landing on a cold load: anon-auth
+ *   `INITIAL_SESSION` fires with null, App sets `loading=false`,
+ *   this guard saw `view='quick-play-student' && !session && !loading`
+ *   and redirected before the bootstrap's anon-auth + RLS-protected
+ *   `quick_play_sessions` SELECT had a chance to land state.
  */
 import { useEffect } from 'react';
 import type { AppUser, AssignmentData } from '../core/supabase';
@@ -70,13 +78,15 @@ export function useViewGuards(params: UseViewGuardsParams): void {
   useEffect(() => {
     if (view !== 'quick-play-student' || quickPlayActiveSession || loading) return;
     const code = new URLSearchParams(window.location.search).get('session');
-    if (!code) {
-      setView('public-landing');
-      return;
-    }
-    // URL still has ?session= but our state doesn't — stale history entry.
-    // Clear the param and send home; the user can re-scan to rejoin.
-    window.history.replaceState({}, '', window.location.pathname);
+    // URL still has ?session=CODE — the bootstrap hook is loading the
+    // session (or about to). Bail and let it own the success/failure
+    // path (on failure it strips the URL + redirects). Without this
+    // bail, fresh QR-scan students were bumped to public-landing
+    // BEFORE the bootstrap finished its anon-auth + RLS-protected
+    // SELECT — see hook docstring for the full race description.
+    if (code) return;
+    // No URL param and no active session — orphan view from popstate
+    // or a state clear. Send the user somewhere they can act.
     setView('public-landing');
   }, [view, quickPlayActiveSession, loading, setView]);
 }

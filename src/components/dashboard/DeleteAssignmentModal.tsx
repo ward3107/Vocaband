@@ -28,10 +28,10 @@ export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: De
               <AlertTriangle size={32} />
             </div>
             <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              Delete Assignment?
+              {t.delAssignTitle}
             </h2>
             <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              You're about to delete <strong>"{modal.title}"</strong>. This action cannot be undone — all student progress and data for this assignment will be permanently removed.
+              {t.delAssignBody(modal.title)}
             </p>
             <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
               {t.delAssignWarn}
