@@ -119,37 +119,42 @@
    by the @media screen rules at the bottom.
    ============================================================================= */
 @media print {
-  /* Hide every direct body child by default.  This kills the
-     hidden-but-still-occupying-space layout problem that was
-     producing 5+ empty pages before the actual worksheet content.
-     The print stack opts back in via the rule below. */
-  body > * {
+  /* Hide every body-level child by default EXCEPT the print stack
+     and any standalone .vb-print-only banner (legacy Class Show
+     etc.).  Earlier this rule applied unconditionally and a sibling
+     `body > .vb-print-stack { display: revert }` rule re-enabled the
+     stack — that worked, but the matching `body > .vb-print-stack *
+     { display: revert !important }` rule reverted EVERY descendant's
+     display to UA defaults, which broke the inline `display: flex /
+     table / grid` styles inside the worksheet sheets and produced
+     the recurring "first N pages blank" symptom.
+     Negating the targets in :not() keeps the print content's natural
+     layout intact. */
+  body > *:not(.vb-print-stack):not(.vb-print-only) {
     display: none !important;
   }
 
-  /* Show the print stack and everything inside it.  When
-     WorksheetView mounts, it portals (or renders) a single
-     `.vb-print-stack` direct-body-child holding all worksheets. */
-  body > .vb-print-stack,
-  body > .vb-print-stack * {
-    display: revert !important;
-  }
+  /* The worksheet stack — direct child of body, portaled there from
+     WorksheetView. */
   body > .vb-print-stack {
     display: block !important;
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
   }
 
-  /* Legacy support — anywhere else in the app that uses
-     `.vb-print-only` as a sibling of regular UI (Class Show banners,
-     etc.) keeps working via the original visibility-based reveal. */
-  .vb-print-only {
+  /* Legacy support — Class Show banners, etc. that tag themselves
+     `vb-print-only` directly on a body-level wrapper.  We still need
+     to guarantee they render, but only when they're a body direct
+     child (otherwise an inner-tree `.vb-print-only` would also flip
+     to visible and could leak duplicates into print). */
+  body > .vb-print-only {
+    display: block !important;
     visibility: visible;
     background: white !important;
     color: black !important;
-  }
-  .vb-print-only * {
-    visibility: visible;
   }
 
   .vb-print-page-break {
