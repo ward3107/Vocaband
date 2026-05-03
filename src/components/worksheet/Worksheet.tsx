@@ -141,7 +141,7 @@ export default function Worksheet({
   const showDivider = !pageBreakBefore && sheetIndex > 0 && !title;
 
   return (
-    <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
+    <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'rtl'}>
       {showDivider && (
         <div style={{ marginTop: '2rem', marginBottom: '1.25rem', borderTop: '1.5px dashed #888' }} />
       )}
