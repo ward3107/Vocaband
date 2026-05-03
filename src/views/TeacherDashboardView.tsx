@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { Palette } from "lucide-react";
+import { Palette, Tv2 } from "lucide-react";
+import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
+import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
@@ -17,8 +19,12 @@ import DeleteAssignmentModal from "../components/dashboard/DeleteAssignmentModal
 import RejectStudentModal from "../components/dashboard/RejectStudentModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { SavedTask } from "../hooks/useSavedTasks";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -101,6 +107,14 @@ interface TeacherDashboardViewProps {
   onUseSavedTask?: (task: SavedTask) => void;
   onTogglePinSavedTask?: (id: string) => void;
   onRemoveSavedTask?: (id: string) => void;
+
+  /** First-class onboarding wizard handler.  When provided, the
+   *  dashboard renders the wizard if the teacher has never onboarded
+   *  AND has zero classes.  Returns the new class code for the
+   *  wizard's success step. */
+  onWizardComplete?: (result: import('../components/onboarding/TeacherOnboardingWizard').WizardResult) => Promise<{ classCode: string } | null>;
+  /** Mark the wizard skipped/dismissed so it doesn't reappear. */
+  onWizardSkip?: () => void;
 }
 
 export default function TeacherDashboardView({
@@ -123,12 +137,16 @@ export default function TeacherDashboardView({
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
+  onWizardComplete, onWizardSkip,
 }: TeacherDashboardViewProps) {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
+
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const firstName = (user?.displayName || "").split(" ")[0] || "Teacher";
+  const greeting = hour < 12 ? t.greetingMorning : hour < 18 ? t.greetingAfternoon : t.greetingEvening;
+  const firstName = (user?.displayName || "").split(" ")[0] || t.defaultFirstName;
 
   // Per-teacher dashboard theme.  Resolved from the stored id with a
   // safety fallback so an unknown / removed theme doesn't break render.
@@ -136,6 +154,12 @@ export default function TeacherDashboardView({
   // document.documentElement so descendants can read var(--vb-*).
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const { theme: dashboardTheme } = useTeacherTheme(user?.teacherDashboardTheme);
+
+  // Adaptive theme — Presentation Mode toggle.  Behind a feature flag
+  // (VITE_ADAPTIVE_THEME=true at build time, or `?adaptive=1` in URL).
+  // When the flag is OFF, `adaptiveEnabled` is false and the toggle
+  // button is hidden so existing teachers see no UI change.
+  const adaptiveTheme = useAdaptiveTheme();
 
   // ─── First-rating prompt gate ─────────────────────────────────────
   // Show the rating modal when the teacher has meaningfully USED the
@@ -156,7 +180,7 @@ export default function TeacherDashboardView({
 
   return (
     <>
-      <div className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
+      <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
         {consentModal}
         {exitConfirmModal}
 
@@ -166,6 +190,19 @@ export default function TeacherDashboardView({
             try { localStorage.setItem('vocaband_onboarding_done', 'true'); } catch { /* ignore */ }
             setShowOnboarding(false);
           }} />
+        )}
+
+        {/* First-class onboarding wizard — opens for brand-new
+            teachers (server-side flag + zero classes).  Server-backed
+            so it doesn't re-fire on a different device.  Skipping
+            also flips the flag so the wizard never re-appears for
+            this teacher; "Open my dashboard" on step 4 also dismisses. */}
+        {onWizardComplete && onWizardSkip && (
+          <TeacherOnboardingWizard
+            open={user?.onboardedAt == null && classes.length === 0}
+            onComplete={onWizardComplete}
+            onSkip={onWizardSkip}
+          />
         )}
 
         <TopAppBar
@@ -193,13 +230,13 @@ export default function TeacherDashboardView({
               className="text-2xl sm:text-4xl font-bold tracking-tight"
               style={{ color: 'var(--vb-text-primary)' }}
             >
-              {firstName}, here's your classroom.
+              {t.heroLine(firstName)}
             </h1>
             <p
               className="text-sm sm:text-base mt-2"
               style={{ color: 'var(--vb-text-secondary)' }}
             >
-              Manage your classes, review student progress, and create new assignments in a few taps.
+              {t.heroSubtitle}
             </p>
           </div>
 
@@ -303,8 +340,8 @@ export default function TeacherDashboardView({
       <button
         type="button"
         onClick={() => setShowThemeMenu(true)}
-        title="Change dashboard theme"
-        aria-label="Change dashboard theme"
+        title={t.changeThemeTitle}
+        aria-label={t.changeThemeTitle}
         style={{
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
@@ -316,6 +353,33 @@ export default function TeacherDashboardView({
       >
         <Palette size={20} />
       </button>
+
+      {/* Presentation Mode toggle — feature-flagged.  Sits just left
+          of the theme picker button so the teacher can flip the
+          screen into projector-friendly typography (1.4× font scale,
+          stronger weight, no decorative shadows) before walking to
+          the projector and back.  Hidden entirely when the
+          `adaptiveTheme` feature flag is OFF — existing teachers see
+          no UI change. */}
+      {adaptiveTheme.adaptiveEnabled && (
+        <button
+          type="button"
+          onClick={adaptiveTheme.togglePresentationMode}
+          title={adaptiveTheme.presentationMode ? 'Exit presentation mode' : 'Presentation mode (bigger text for projecting)'}
+          aria-label="Toggle presentation mode"
+          aria-pressed={adaptiveTheme.presentationMode}
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            backgroundColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-surface)',
+            color: adaptiveTheme.presentationMode ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
+            borderColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-border)',
+          }}
+          className="fixed bottom-5 right-20 sm:bottom-6 sm:right-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        >
+          <Tv2 size={20} />
+        </button>
+      )}
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
       )}

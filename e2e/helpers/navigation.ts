@@ -1,17 +1,49 @@
 import { Page, expect } from '@playwright/test';
 
-/** Wait for the app to finish loading (all Suspense fallbacks resolved) */
+/** Wait for the app to finish loading (all Suspense fallbacks resolved).
+ *
+ *  Two failure modes this guards against:
+ *
+ *  1. The shipped index.html ALREADY contains
+ *     `<div id="boot-debug">Loading Vocaband...</div>` inside #root,
+ *     so a naive "#root has children" check passes the moment HTML
+ *     arrives — even if React never mounted.  We instead wait for
+ *     `#boot-debug` to be gone, which only happens after React has
+ *     called createRoot().render() and replaced the static fallback.
+ *
+ *  2. An earlier version only checked the negation of "Loading
+ *     Vocaband" in body text, which trivially passes on a blank
+ *     page (no text means no "Loading" text).  Same false-green
+ *     failure mode in a different shape.
+ *
+ *  The helper polls every 100ms and bails after 25s, which is more
+ *  than enough for any healthy preview-server first navigation. */
 export async function waitForAppLoad(page: Page) {
-  // Wait for all loading states to disappear
+  // Wait for React to have *replaced* the static HTML fallback.
+  // `#boot-debug` is the placeholder shipped in index.html; once
+  // createRoot().render() runs it's gone.
+  await page.waitForFunction(() => {
+    return !document.getElementById('boot-debug');
+  }, { timeout: 25_000 });
+
+  // Belt-and-braces: any other "Loading..." Suspense fallbacks
+  // (lazy App, lazy children) must also have resolved.
   await page.waitForFunction(() => {
     const body = document.body.textContent || '';
     return !body.includes('Loading Vocaband') && !body.includes('Loading landing') && !body.includes('Loading...');
   }, { timeout: 15_000 });
 }
 
-/** Navigate to the landing page and wait for it to render */
+/** Navigate to the landing page and wait for it to render.
+ *  Uses `domcontentloaded` instead of the default `load` because
+ *  the page imports Google Fonts via <link rel=stylesheet>, and on
+ *  CI runners with restricted egress the fonts request can hang
+ *  indefinitely — preventing the `load` event from ever firing
+ *  and blocking page.goto.  React only needs the DOM parsed plus
+ *  the JS bundle, both of which are local to vite preview, so
+ *  domcontentloaded is the right gate. */
 export async function goToLanding(page: Page) {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForAppLoad(page);
 }
 

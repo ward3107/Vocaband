@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { Globe } from "lucide-react";
 import { useLanguage, languageFlags, Language } from "../hooks/useLanguage";
 
 interface LandingLanguageToggleProps {
@@ -82,15 +83,20 @@ const LandingLanguageToggle: React.FC<LandingLanguageToggleProps> = ({ className
               className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-500/10 to-transparent"
             />
 
-            {/* Current flag */}
+            {/* Globe icon — restored 2026-05 to match the in-app
+                LanguageSwitcher.  The earlier flag-only collapsed
+                state read as "country selector", which confused
+                Arabic and Hebrew speakers who expected language
+                semantics, not flag semantics. */}
             <motion.span
               key={language}
               initial={{ scale: 0, rotate: -90 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 350, damping: 18 }}
-              className="text-xl relative z-10"
+              className="relative z-10 text-violet-600"
+              aria-hidden
             >
-              {languageFlags[language]}
+              <Globe size={22} strokeWidth={2.25} />
             </motion.span>
 
             {/* Small chevron indicator */}

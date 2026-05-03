@@ -497,12 +497,12 @@ export default function GradebookView({
                 }}
               >
                 {classes.map(c => (
-                  <option key={c.code} value={c.code} className="text-stone-900">{c.name} · {c.code}</option>
+                  <option key={c.code} value={c.code} className="text-[var(--vb-text-primary)]">{c.name} · {c.code}</option>
                 ))}
               </select>
             </div>
           </label>
-          <div className="flex items-center gap-1 bg-white rounded-xl px-1 py-1 shadow-sm border border-stone-100">
+          <div className="flex items-center gap-1 bg-[var(--vb-surface)] rounded-xl px-1 py-1 shadow-sm border border-[var(--vb-border)]">
             {[7, 14, 30].map(n => (
               <button
                 key={n}
@@ -511,7 +511,7 @@ export default function GradebookView({
                 className={`px-3 py-1.5 rounded-lg text-xs font-black transition-colors ${
                   windowDays === n
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-stone-500 hover:bg-stone-50'
+                    : 'text-[var(--vb-text-muted)] hover:bg-[var(--vb-surface)]'
                 }`}
               >
                 {n}d
@@ -523,7 +523,8 @@ export default function GradebookView({
               <button
                 onClick={handleExportCsv}
                 type="button"
-                className="px-4 py-2 bg-stone-900 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-stone-800 transition-colors shadow-sm"
+                style={{ backgroundColor: 'var(--vb-accent)', color: 'var(--vb-accent-text)' }}
+                className="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-colors shadow-sm"
               >
                 <Download size={14} />
                 Export CSV
@@ -561,15 +562,15 @@ export default function GradebookView({
 
         {/* ── 2. ACTIVITY CHART ──────────────────────────────────────────── */}
         {showActivity && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 mb-6">
+        <div className="bg-[var(--vb-surface)] rounded-2xl p-5 shadow-sm border border-[var(--vb-border)] mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-black text-stone-800 flex items-center gap-2">
+              <h3 className="text-base font-black text-[var(--vb-text-primary)] flex items-center gap-2">
                 <Calendar size={16} className="text-indigo-500" />
                 Class activity
-                <HelpTooltip id="activity-chart" content="Total XP earned by all students per day." />
+                <HelpTooltip content="Total XP earned by all students per day." />
               </h3>
-              <p className="text-xs text-stone-500 font-medium mt-0.5">
+              <p className="text-xs text-[var(--vb-text-muted)] font-medium mt-0.5">
                 Last {windowDays} days · {selectedClassName}
                 {loadingActivity && ' · loading…'}
               </p>
@@ -589,13 +590,13 @@ export default function GradebookView({
                     title={`${d.toLocaleDateString()} · ${xp} XP`}
                     className={`w-full rounded-t ${
                       xp === 0
-                        ? 'bg-stone-200'
+                        ? 'bg-[var(--vb-surface-alt)]'
                         : isToday
                           ? 'bg-gradient-to-t from-indigo-500 to-violet-400'
                           : 'bg-gradient-to-t from-emerald-400 to-emerald-300'
                     }`}
                   />
-                  <span className="text-[9px] text-stone-400 font-bold">{d.getDate()}</span>
+                  <span className="text-[9px] text-[var(--vb-text-muted)] font-bold">{d.getDate()}</span>
                 </div>
               );
             })}
@@ -605,14 +606,14 @@ export default function GradebookView({
 
         {/* ── 3. STUDENT LIST ────────────────────────────────────────────── */}
         {showStudents && (
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-stone-100 mb-6">
-          <h3 className="text-base font-black text-stone-800 mb-4 flex items-center gap-2">
+        <div className="bg-[var(--vb-surface)] rounded-2xl p-4 sm:p-5 shadow-sm border border-[var(--vb-border)] mb-6">
+          <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
             <Users size={16} className="text-violet-500" />
             Students
-            <span className="text-xs font-bold text-stone-500">· {studentRollups.length}</span>
+            <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {studentRollups.length}</span>
           </h3>
           {studentRollups.length === 0 ? (
-            <div className="text-center py-10 text-stone-500 text-sm">
+            <div className="text-center py-10 text-[var(--vb-text-muted)] text-sm">
               No students have played yet in this class.
             </div>
           ) : (
@@ -630,7 +631,7 @@ export default function GradebookView({
                 return (
                   <div
                     key={r.key}
-                    className="rounded-xl border border-stone-100 bg-stone-50/40 hover:bg-stone-50 transition-colors overflow-hidden"
+                    className="rounded-xl border border-[var(--vb-border)] bg-white/40 hover:bg-[var(--vb-surface)] transition-colors overflow-hidden"
                   >
                     <div className="flex items-center gap-3 p-3 sm:p-4">
                       <button
@@ -646,8 +647,8 @@ export default function GradebookView({
                       >
                         <span className="text-2xl shrink-0">{r.avatar}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-black text-stone-800 truncate">{r.studentName}</p>
-                          <p className="text-xs text-stone-500 font-medium">
+                          <p className="font-black text-[var(--vb-text-primary)] truncate">{r.studentName}</p>
+                          <p className="text-xs text-[var(--vb-text-muted)] font-medium">
                             {r.attempts} {r.attempts === 1 ? 'play' : 'plays'}
                             {r.lastDate && ` · last ${new Date(r.lastDate).toLocaleDateString()}`}
                           </p>
@@ -679,7 +680,7 @@ export default function GradebookView({
                       >
                         <ChevronDown
                           size={18}
-                          className={`text-stone-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`text-[var(--vb-text-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         />
                       </button>
                     </div>
@@ -693,13 +694,13 @@ export default function GradebookView({
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-3 sm:px-4 pb-4 space-y-4 border-t border-stone-100 pt-3">
+                          <div className="px-3 sm:px-4 pb-4 space-y-4 border-t border-[var(--vb-border)] pt-3">
                             <div>
-                              <h4 className="text-xs font-black uppercase tracking-widest text-stone-500 mb-2">
+                              <h4 className="text-xs font-black uppercase tracking-widest text-[var(--vb-text-muted)] mb-2">
                                 Per mode
                               </h4>
                               {r.modeBreakdown.size === 0 ? (
-                                <p className="text-sm text-stone-500 italic">No mode data yet.</p>
+                                <p className="text-sm text-[var(--vb-text-muted)] italic">No mode data yet.</p>
                               ) : (
                                 <div className="space-y-1.5">
                                   {Array.from(r.modeBreakdown.entries())
@@ -707,15 +708,15 @@ export default function GradebookView({
                                     .map(([mode, stats]) => (
                                       <div key={mode} className="flex items-center gap-2 text-xs">
                                         <span className="w-6">{MODE_ICON[mode] ?? '🎯'}</span>
-                                        <span className="w-24 font-semibold text-stone-700 capitalize truncate">{mode}</span>
-                                        <div className="flex-1 h-3 bg-stone-100 rounded-full overflow-hidden">
+                                        <span className="w-24 font-semibold text-[var(--vb-text-secondary)] capitalize truncate">{mode}</span>
+                                        <div className="flex-1 h-3 bg-[var(--vb-surface-alt)] rounded-full overflow-hidden">
                                           <div
                                             className={`h-full bg-gradient-to-r ${scoreColor(stats.avgScore)}`}
                                             style={{ width: `${Math.min(100, stats.avgScore)}%` }}
                                           />
                                         </div>
-                                        <span className="w-14 text-right font-black text-stone-700">{stats.avgScore}</span>
-                                        <span className="w-12 text-right text-stone-400">×{stats.attempts}</span>
+                                        <span className="w-14 text-right font-black text-[var(--vb-text-secondary)]">{stats.avgScore}</span>
+                                        <span className="w-12 text-right text-[var(--vb-text-muted)]">×{stats.attempts}</span>
                                       </div>
                                     ))}
                                 </div>
@@ -723,7 +724,7 @@ export default function GradebookView({
                             </div>
 
                             <div>
-                              <h4 className="text-xs font-black uppercase tracking-widest text-stone-500 mb-2">
+                              <h4 className="text-xs font-black uppercase tracking-widest text-[var(--vb-text-muted)] mb-2">
                                 Word mastery
                                 {loadingMastery && ' · loading…'}
                               </h4>
@@ -743,19 +744,19 @@ export default function GradebookView({
 
         {/* ── 4. PER-ASSIGNMENT rollup ───────────────────────────────────── */}
         {showAssignments && assignmentRollups.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
-            <h3 className="text-base font-black text-stone-800 mb-4 flex items-center gap-2">
+          <div className="bg-[var(--vb-surface)] rounded-2xl p-5 shadow-sm border border-[var(--vb-border)]">
+            <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
               <Trophy size={16} className="text-amber-500" />
               Assignments
-              <span className="text-xs font-bold text-stone-500">· {assignmentRollups.length}</span>
+              <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {assignmentRollups.length}</span>
             </h3>
             <div className="space-y-2">
               {assignmentRollups.map(a => {
                 const RowInner = (
                   <>
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="font-bold text-stone-800 truncate">{a.title}</p>
-                      <p className="text-xs text-stone-500">
+                      <p className="font-bold text-[var(--vb-text-primary)] truncate">{a.title}</p>
+                      <p className="text-xs text-[var(--vb-text-muted)]">
                         {a.uniqueStudents.size} student{a.uniqueStudents.size === 1 ? '' : 's'} · {a.attempts} play{a.attempts === 1 ? '' : 's'}
                       </p>
                     </div>
@@ -769,16 +770,16 @@ export default function GradebookView({
                     key={a.assignmentId}
                     type="button"
                     onClick={() => setDrillAssignmentId(a.assignmentId)}
-                    className="w-full flex items-center gap-3 p-3 bg-stone-50/40 hover:bg-stone-100/60 rounded-xl transition-colors"
+                    className="w-full flex items-center gap-3 p-3 bg-white/40 hover:bg-[var(--vb-surface-alt)]/60 rounded-xl transition-colors"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                   >
                     {RowInner}
-                    <ChevronDown size={16} className="text-stone-300 -rotate-90 shrink-0" aria-hidden />
+                    <ChevronDown size={16} className="text-[var(--vb-border)] -rotate-90 shrink-0" aria-hidden />
                   </button>
                 ) : (
                   <div
                     key={a.assignmentId}
-                    className="flex items-center gap-3 p-3 bg-stone-50/40 rounded-xl"
+                    className="flex items-center gap-3 p-3 bg-white/40 rounded-xl"
                   >
                     {RowInner}
                   </div>

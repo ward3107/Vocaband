@@ -4,6 +4,25 @@
  * .vb-print-only + the @media rules in index.css, and only becomes
  * visible during the browser's print preview / PDF export.
  *
+ * Page-flow philosophy (changed 2026-05):
+ * Earlier versions forced `page-break-before: always` between every
+ * sheet AND before every answer key.  Result: a teacher who picked
+ * 5 modes for 2 words got a 10-page PDF — every sheet pinned to its
+ * own page even when 3 of them would have fit comfortably together.
+ *
+ * The current behaviour is "let the browser flow naturally":
+ *   - Sheets stack on the same page until they don't fit
+ *   - Each sheet body is `break-inside: avoid` so a sheet doesn't
+ *     get torn in half
+ *   - A visible separator (top border + spacing) between sheets so
+ *     the teacher / student can still see where one ends
+ *   - Answer key flows below the sheet by default; opt-in
+ *     `answerKeyOnNewPage` prop forces it to a separate page for
+ *     teachers who want to hand out questions without the answers
+ *
+ * The teacher can still force per-sheet pages via the
+ * `forcePageBreak` prop — wired to a checkbox in WorksheetView.
+ *
  * The teacher's on-screen flow is:
  *   1. Click "Print worksheet" on the dashboard or an assignment
  *   2. WorksheetSetup modal opens — pick sheet type + source + answer key
@@ -41,6 +60,15 @@ export type WorksheetSheetType =
 interface WorksheetProps {
   sheetType: WorksheetSheetType;
   title?: string; // Optional for subsequent sheets when printing multiple
+  /** Short label printed above each sheet when multiple sheets share
+   *  a page (e.g. "Scramble", "Fill in the Blank"), so the student
+   *  / teacher can tell where one exercise ends and the next begins.
+   *  Omit when the sheet stands alone. */
+  sectionLabel?: string;
+  /** True for any sheet other than the first, so we render a small
+   *  divider above it.  Doesn't force a page break — that's the
+   *  whole point of the compact layout. */
+  showSeparator?: boolean;
   words: Word[];
   className: string | null;
   includeAnswerKey: boolean;
@@ -48,8 +76,16 @@ interface WorksheetProps {
   translationLang: 'he' | 'ar' | 'en';
   /** AI-generated sentences keyed by word ID — for Fill-in-the-blank and Sentence Builder sheets */
   aiSentences?: Record<number, string>;
-  /** Add page break before this worksheet (for multi-sheet printouts) */
+  /** Add page break before this worksheet (for multi-sheet printouts).
+   *  Default false — sheets flow naturally and only break when they
+   *  don't fit on the current page.  WorksheetView sets this true
+   *  per-sheet only when the teacher unchecks the "compact" toggle. */
   pageBreakBefore?: boolean;
+  /** Force the consolidated answer key onto a new page.  Default
+   *  false — answers ride after the last sheet's questions inline.
+   *  Set true when the teacher wants to hand out the worksheet
+   *  without the answer page attached. */
+  answerKeyOnNewPage?: boolean;
   /** Worksheet index for title display */
   sheetIndex?: number;
   /** Total number of sheets */
@@ -81,19 +117,35 @@ function getSheetLabel(type: WorksheetSheetType, t: any): string {
 }
 
 export default function Worksheet({
-  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences, pageBreakBefore = false,
+  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences,
+  pageBreakBefore = false, answerKeyOnNewPage = false,
   sheetIndex = 0, totalSheets = 1, allSelectedSheetTypes,
 }: WorksheetProps) {
   const t = worksheetStrings[translationLang === 'he' ? 'he' : translationLang === 'ar' ? 'ar' : 'en'];
   const date = new Date().toLocaleDateString();
 
+  // Outer wrapper — only forces a page break when the caller
+  // explicitly asks.  `vb-print-avoid-break` keeps a single sheet
+  // from being torn in half across two pages (questions stay
+  // together with their numbering).
+  const outerClass = [
+    'vb-print-only',
+    'vb-print-avoid-break',
+    pageBreakBefore ? 'vb-print-page-break-before' : '',
+  ].filter(Boolean).join(' ');
+
+  // Render a small dashed divider between sheets when they share a
+  // page (i.e. when no forced page break and not the very first
+  // sheet).  Gives the reader a clear "next exercise starts here"
+  // signal without consuming a whole page.
+  const showDivider = !pageBreakBefore && sheetIndex > 0 && !title;
+
   return (
-    <div
-      className={`vb-print-only ${pageBreakBefore ? 'vb-print-page-break' : ''}`}
-      lang={translationLang}
-      dir={translationLang === 'en' ? 'ltr' : 'auto'}
-      style={{ pageBreakInside: 'avoid' }}
-    >
+    <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
+      {showDivider && (
+        <div style={{ marginTop: '2rem', marginBottom: '1.25rem', borderTop: '1.5px dashed #888' }} />
+      )}
+
       {title && (
         <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
           <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>{title}</h1>
@@ -123,10 +175,16 @@ export default function Worksheet({
       {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
       {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
 
-      {/* Compact Consolidated Answer Key - only on the last worksheet */}
+      {/* Compact Consolidated Answer Key - only on the last worksheet.
+          Defaults to flowing inline below the questions; when
+          `answerKeyOnNewPage` is set, the page-break class kicks in so
+          teachers can hand out the questions without the answers. */}
       {includeAnswerKey && sheetIndex === totalSheets - 1 && (
-        <div className="vb-print-page-break" style={{ pageBreakBefore: totalSheets > 1 ? 'always' : 'auto' }}>
-          <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem', pageBreakAfter: 'avoid' }}>{t.answerKey}</h2>
+        <div
+          className={['vb-print-avoid-break', answerKeyOnNewPage ? 'vb-print-page-break' : ''].filter(Boolean).join(' ')}
+          style={{ marginTop: answerKeyOnNewPage ? 0 : '2rem' }}
+        >
+          <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>{t.answerKey}</h2>
 
           {allSelectedSheetTypes && allSelectedSheetTypes.length > 0 ? (
             <div>

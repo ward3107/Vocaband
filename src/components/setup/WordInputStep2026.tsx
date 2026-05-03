@@ -191,7 +191,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
       animate={{ opacity: 1, y: 0 }}
       className="mb-8"
     >
-      <div className="bg-white rounded-2xl shadow-lg border-2 border-indigo-100 overflow-hidden">
+      <div className="bg-[var(--vb-surface)] rounded-2xl shadow-lg border-2 border-indigo-100 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4">
           <div className="flex items-center gap-2 text-white">
@@ -208,12 +208,12 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
             onChange={(e) => setText(e.target.value)}
             placeholder={TEXT.pastePlaceholder}
             dir="ltr"
-            className="w-full min-h-32 p-4 border border-stone-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-stone-700 placeholder:text-stone-400 leading-relaxed"
+            className="w-full min-h-32 p-4 border border-[var(--vb-border)] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-[var(--vb-text-secondary)] placeholder:text-[var(--vb-text-muted)] leading-relaxed"
             style={{ textAlign: 'left' }}
           />
 
           {/* Tip */}
-          <p className="mt-3 text-sm text-stone-500 flex items-center gap-2">
+          <p className="mt-3 text-sm text-[var(--vb-text-muted)] flex items-center gap-2">
             <span>💡</span>
             <span>{TEXT.pasteTip}</span>
           </p>
@@ -268,7 +268,7 @@ const OptionCard: React.FC<OptionCardProps> = ({
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       type="button"
-      className="bg-white rounded-2xl shadow-md hover:shadow-xl border border-stone-100 p-6 flex flex-col items-center text-center min-h-[180px] transition-shadow"
+      className="bg-[var(--vb-surface)] rounded-2xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-6 flex flex-col items-center text-center min-h-[180px] transition-shadow"
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
     >
       {/* Icon with optional sparkle */}
@@ -286,10 +286,10 @@ const OptionCard: React.FC<OptionCardProps> = ({
       </div>
 
       {/* Title */}
-      <h3 className="mt-3 font-bold text-stone-800">{title}</h3>
+      <h3 className="mt-3 font-bold text-[var(--vb-text-primary)]">{title}</h3>
 
       {/* Subtitle */}
-      <p className="mt-1 text-sm text-stone-500">{subtitle}</p>
+      <p className="mt-1 text-sm text-[var(--vb-text-muted)]">{subtitle}</p>
 
       {/* CTA Button */}
       <div className="mt-auto pt-4 self-start">
@@ -455,7 +455,7 @@ const WordCard: React.FC<WordCardProps> = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="bg-white rounded-lg shadow-sm border border-stone-100 p-2.5 pr-2 relative overflow-hidden group hover:shadow-md transition-shadow"
+      className="bg-[var(--vb-surface)] rounded-lg shadow-sm border border-[var(--vb-border)] p-2.5 pr-2 relative overflow-hidden group hover:shadow-md transition-shadow"
     >
       {/* Status stripe */}
       <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${hasRequiredTranslation ? 'bg-emerald-400' : 'bg-amber-400'}`} />
@@ -464,11 +464,11 @@ const WordCard: React.FC<WordCardProps> = ({
         {/* Word info */}
         <div className="flex-1 min-w-0">
           {/* English */}
-          <p className="font-semibold text-stone-800 text-base truncate leading-tight">{word.english}</p>
+          <p className="font-semibold text-[var(--vb-text-primary)] text-base truncate leading-tight">{word.english}</p>
 
           {/* Translations */}
           {hasRequiredTranslation ? (
-            <p className="mt-1 text-sm text-stone-600 truncate" dir="auto">
+            <p className="mt-1 text-sm text-[var(--vb-text-secondary)] truncate" dir="auto">
               {getTranslationText()}
             </p>
           ) : (
@@ -519,7 +519,7 @@ const WordCard: React.FC<WordCardProps> = ({
               onEdit?.();
             }}
             type="button"
-            className="p-2 rounded-md bg-stone-100 hover:bg-indigo-100 text-stone-600 hover:text-indigo-600 transition-colors min-w-[36px] min-h-[36px]"
+            className="p-2 rounded-md bg-[var(--vb-surface-alt)] hover:bg-indigo-100 text-[var(--vb-text-secondary)] hover:text-indigo-600 transition-colors min-w-[36px] min-h-[36px]"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             title="Edit translations"
           >
@@ -533,7 +533,7 @@ const WordCard: React.FC<WordCardProps> = ({
               onRemove?.();
             }}
             type="button"
-            className="p-2 rounded-md bg-stone-100 hover:bg-red-100 text-stone-600 hover:text-red-600 transition-colors min-w-[36px] min-h-[36px]"
+            className="p-2 rounded-md bg-[var(--vb-surface-alt)] hover:bg-red-100 text-[var(--vb-text-secondary)] hover:text-red-600 transition-colors min-w-[36px] min-h-[36px]"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             title="Remove word"
           >
@@ -615,7 +615,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full"
+        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-md w-full"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between">
@@ -636,10 +636,10 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
         <div className="p-6 space-y-4">
           {/* English word (read-only) */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-1">
+            <label className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1">
               English
             </label>
-            <div className="w-full px-4 py-3 bg-stone-100 rounded-xl text-stone-800 font-bold">
+            <div className="w-full px-4 py-3 bg-[var(--vb-surface-alt)] rounded-xl text-[var(--vb-text-primary)] font-bold">
               {word.english}
             </div>
           </div>
@@ -672,7 +672,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 <p className="mt-2 text-xs text-rose-600 font-semibold text-center">{translateError}</p>
               )}
               {word.id > 0 && (
-                <p className="mt-1 text-[11px] text-stone-500 text-center">
+                <p className="mt-1 text-[11px] text-[var(--vb-text-muted)] text-center">
                   Saved to your account — this word stays translated in future assignments.
                 </p>
               )}
@@ -682,7 +682,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Hebrew translation */}
           {(translationLang === 'both' || translationLang === 'hebrew') && (
             <div>
-              <label htmlFor="custom-word-hebrew" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <label htmlFor="custom-word-hebrew" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 flex items-center gap-2">
                 <span>🇮🇱</span> Hebrew {translationLang === 'hebrew' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
@@ -693,7 +693,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 value={hebrew}
                 onChange={(e) => setHebrew(e.target.value)}
                 placeholder="Enter Hebrew translation"
-                className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full px-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 dir="rtl"
               />
             </div>
@@ -702,7 +702,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Arabic translation */}
           {(translationLang === 'both' || translationLang === 'arabic') && (
             <div>
-              <label htmlFor="custom-word-arabic" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+              <label htmlFor="custom-word-arabic" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 flex items-center gap-2">
                 <span>🇸🇦</span> Arabic {translationLang === 'arabic' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
@@ -713,7 +713,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 value={arabic}
                 onChange={(e) => setArabic(e.target.value)}
                 placeholder="Enter Arabic translation"
-                className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full px-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 dir="rtl"
               />
             </div>
@@ -724,7 +724,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               separate audience from the Hebrew/Arabic split.  A blank
               value is fine; no classroom requires it. */}
           <div>
-            <label htmlFor="custom-word-russian" className="block text-sm font-semibold text-stone-700 mb-1 flex items-center gap-2">
+            <label htmlFor="custom-word-russian" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 flex items-center gap-2">
               <span>🇷🇺</span> Russian
             </label>
             <input
@@ -735,7 +735,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               value={russian}
               onChange={(e) => setRussian(e.target.value)}
               placeholder="Enter Russian translation"
-              className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
               dir="ltr"
             />
           </div>
@@ -745,7 +745,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
             <button
               onClick={onClose}
               type="button"
-              className="flex-1 py-3 bg-stone-100 text-stone-700 font-bold rounded-xl hover:bg-stone-200 transition-colors"
+              className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold rounded-xl hover:opacity-80 transition-colors"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
               {TEXT.cancel}
@@ -803,7 +803,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-rose-300 to-fuchsia-400 px-6 py-4 flex items-center justify-between">
@@ -828,7 +828,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-rose-100 to-fuchsia-100 flex items-center justify-center">
                 <Camera className="w-10 h-10 text-rose-500" />
               </div>
-              <p className="text-stone-700 font-medium mb-4">
+              <p className="text-[var(--vb-text-secondary)] font-medium mb-4">
                 {TEXT.ocrSubtitle}
               </p>
 
@@ -854,7 +854,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 <button
                   onClick={onOpenGallery}
                   type="button"
-                  className="flex-1 bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+                  className="flex-1 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <Upload className="w-5 h-5" />
@@ -868,14 +868,14 @@ const OcrModal: React.FC<OcrModalProps> = ({
           {(state === 'uploading' || state === 'processing') && (
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 text-rose-500 animate-spin mx-auto mb-4" />
-              <p className="text-stone-700 font-medium">
+              <p className="text-[var(--vb-text-secondary)] font-medium">
                 {state === 'uploading'
                   ? TEXT.uploading
                   : TEXT.extracting
                 }
               </p>
               {progress > 0 && (
-                <div className="mt-4 w-full bg-stone-200 rounded-full h-2">
+                <div className="mt-4 w-full bg-[var(--vb-surface-alt)] rounded-full h-2">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
@@ -898,7 +898,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
               </div>
 
               {/* Words List */}
-              <p className="text-sm text-stone-500 mb-2">
+              <p className="text-sm text-[var(--vb-text-muted)] mb-2">
                 {TEXT.reviewWords}
               </p>
               <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
@@ -911,7 +911,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                     autoComplete="off"
                     value={word}
                     onChange={(e) => onEditWord(i, e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    className="w-full px-3 py-2 border border-[var(--vb-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
                     dir="ltr"
                   />
                 ))}
@@ -922,7 +922,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 <button
                   onClick={onClose}
                   type="button"
-                  className="flex-1 bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl"
+                  className="flex-1 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold py-3 px-4 rounded-xl"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   {TEXT.cancel}
@@ -948,16 +948,16 @@ const OcrModal: React.FC<OcrModalProps> = ({
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-100 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-rose-500" />
               </div>
-              <p className="text-stone-700 font-medium mb-2">
+              <p className="text-[var(--vb-text-secondary)] font-medium mb-2">
                 {errorMessage ? 'Something went wrong' : TEXT.ocrError}
               </p>
-              <p className="text-sm text-stone-500 mb-4 max-w-xs mx-auto break-words">
+              <p className="text-sm text-[var(--vb-text-muted)] mb-4 max-w-xs mx-auto break-words">
                 {errorMessage || TEXT.ocrErrorDesc}
               </p>
               <button
                 onClick={onClose}
                 type="button"
-                className="bg-stone-100 text-stone-700 font-bold py-3 px-6 rounded-xl"
+                className="bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold py-3 px-6 rounded-xl"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
                 {TEXT.tryAgain}
@@ -1029,7 +1029,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1048,7 +1048,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
         </div>
 
         {/* Select All / Deselect All */}
-        <div className="px-4 py-3 border-b border-stone-200 flex gap-2">
+        <div className="px-4 py-3 border-b border-[var(--vb-border)] flex gap-2">
           <button
             onClick={selectAll}
             type="button"
@@ -1060,7 +1060,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
           <button
             onClick={deselectAll}
             type="button"
-            className="flex-1 py-2 bg-stone-100 text-stone-600 text-sm font-semibold rounded-lg hover:bg-stone-200 transition-colors"
+            className="flex-1 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-sm font-semibold rounded-lg hover:opacity-80 transition-colors"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {TEXT.cancel}
@@ -1084,28 +1084,28 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                   type="button"
                   className={`w-full p-3 rounded-lg text-center transition-all ${
                     isAlreadyAdded
-                      ? 'bg-stone-100 border border-stone-200 opacity-60 cursor-not-allowed'
+                      ? 'bg-[var(--vb-surface-alt)] border border-[var(--vb-border)] opacity-60 cursor-not-allowed'
                       : isSelected
                       ? 'bg-emerald-50 border-2 border-emerald-400'
-                      : 'bg-white border border-stone-200 hover:border-emerald-300'
+                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-emerald-300'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-stone-800 truncate">{word.english}</p>
-                      <p className="text-sm text-stone-500 truncate" dir="auto">
+                      <p className="font-medium text-[var(--vb-text-primary)] truncate">{word.english}</p>
+                      <p className="text-sm text-[var(--vb-text-muted)] truncate" dir="auto">
                         {word.hebrew} • {word.arabic}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {isAlreadyAdded && (
-                        <span className="text-xs font-semibold text-stone-500">
+                        <span className="text-xs font-semibold text-[var(--vb-text-muted)]">
                           {TEXT.alreadyAdded}
                         </span>
                       )}
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-stone-300'
+                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-[var(--vb-text-muted)]'
                       }`}>
                         {isSelected && <Check className="w-3 h-3 text-white" />}
                       </div>
@@ -1122,7 +1122,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 border-t border-stone-200 shrink-0"
+            className="p-4 border-t border-[var(--vb-border)] shrink-0"
           >
             <button
               onClick={handleAddSelected}
@@ -1178,7 +1178,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+          className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1206,16 +1206,16 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handlePackClick(pack)}
                   type="button"
-                  className="p-4 rounded-xl border-2 border-stone-200 bg-white hover:border-emerald-300 text-center transition-all"
+                  className="p-4 rounded-xl border-2 border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-emerald-300 text-center transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{pack.icon}</span>
-                        <span className="font-bold text-stone-800">{pack.name}</span>
+                        <span className="font-bold text-[var(--vb-text-primary)]">{pack.name}</span>
                       </div>
-                      <p className="mt-1 text-sm text-stone-500">
+                      <p className="mt-1 text-sm text-[var(--vb-text-muted)]">
                         {pack.words.length} {TEXT.words}
                         {pack.newCount > 0 && (
                           <span className="text-emerald-600 ml-2">
@@ -1224,7 +1224,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
                         )}
                       </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-stone-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--vb-text-muted)] shrink-0" />
                   </div>
                 </motion.button>
               ))}
@@ -1289,7 +1289,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1311,9 +1311,9 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
         <div className="p-4 overflow-y-auto flex-1">
           {groupsWithCounts.length === 0 ? (
             <div className="text-center py-12">
-              <FolderOpen className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-              <p className="text-stone-500">{TEXT.noSavedGroups}</p>
-              <p className="text-sm text-stone-400 mt-1">
+              <FolderOpen className="w-16 h-16 text-[var(--vb-border)] mx-auto mb-4" />
+              <p className="text-[var(--vb-text-muted)]">{TEXT.noSavedGroups}</p>
+              <p className="text-sm text-[var(--vb-text-muted)] mt-1">
                 {TEXT.saveGroupHint}
               </p>
             </div>
@@ -1324,7 +1324,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                 return (
                   <div
                     key={group.id}
-                    className="w-full p-4 rounded-xl border border-stone-200 bg-white hover:border-amber-300 transition-colors"
+                    className="w-full p-4 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-amber-300 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -1359,7 +1359,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => setEditingId(null)}
-                              className="px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 text-xs font-bold"
+                              className="px-3 py-1.5 rounded-lg bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-xs font-bold"
                               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                             >
                               Cancel
@@ -1376,8 +1376,8 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                             className="text-left w-full"
                             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                           >
-                            <p className="font-bold text-stone-800 truncate">{group.name}</p>
-                            <p className="mt-1 text-sm text-stone-500">
+                            <p className="font-bold text-[var(--vb-text-primary)] truncate">{group.name}</p>
+                            <p className="mt-1 text-sm text-[var(--vb-text-muted)]">
                               {group.words.length} {TEXT.words}
                               {group.newCount > 0 && (
                                 <span className="text-emerald-600 ml-2">
@@ -1400,7 +1400,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                                 setEditingId(group.id);
                                 setEditingName(group.name);
                               }}
-                              className="p-2 rounded-lg text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                              className="p-2 rounded-lg text-[var(--vb-text-muted)] hover:text-amber-600 hover:bg-amber-50 transition-colors"
                               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                             >
                               <Pencil className="w-4 h-4" />
@@ -1417,13 +1417,13 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                                   await onDeleteGroup(group.id);
                                 }
                               }}
-                              className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              className="p-2 rounded-lg text-[var(--vb-text-muted)] hover:text-rose-600 hover:bg-rose-50 transition-colors"
                               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
-                          <ChevronRight className="w-5 h-5 text-stone-300" />
+                          <ChevronRight className="w-5 h-5 text-[var(--vb-border)]" />
                         </div>
                       )}
                     </div>
@@ -1483,7 +1483,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between shrink-0">
@@ -1502,10 +1502,10 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
         </div>
 
         {/* Search and Filter */}
-        <div className="p-4 border-b border-stone-200 shrink-0 space-y-3">
+        <div className="p-4 border-b border-[var(--vb-border)] shrink-0 space-y-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--vb-text-muted)]" />
             <input
               type="text"
               id="word-library-search"
@@ -1514,7 +1514,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={TEXT.searchPlaceholder}
-              className="w-full pl-10 pr-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full pl-10 pr-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
               dir="ltr"
             />
           </div>
@@ -1529,7 +1529,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   selectedLevel === level
                     ? 'bg-indigo-500 text-white'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
@@ -1539,7 +1539,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
           </div>
 
           {/* Results count - removed the number display */}
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[var(--vb-text-muted)]">
             {searchQuery ? `Matching "${searchQuery}"` : 'All words'}
           </p>
         </div>
@@ -1571,14 +1571,14 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                       ? 'bg-emerald-50 border-2 border-emerald-300'
                       : isPending
                       ? 'bg-indigo-50 border-2 border-indigo-300'
-                      : 'bg-white border border-stone-200 hover:border-stone-300'
+                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-stone-800 truncate">{word.english}</p>
-                      <p className="text-sm text-stone-500 truncate" dir="auto">
+                      <p className="font-medium text-[var(--vb-text-primary)] truncate">{word.english}</p>
+                      <p className="text-sm text-[var(--vb-text-muted)] truncate" dir="auto">
                         {word.hebrew} • {word.arabic}
                       </p>
                     </div>
@@ -1593,7 +1593,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
               );
             })}
             {filteredWords.length > 100 && (
-              <p className="text-center text-sm text-stone-400 py-2">
+              <p className="text-center text-sm text-[var(--vb-text-muted)] py-2">
                 {TEXT.showingFirst} — {TEXT.refineSearch}
               </p>
             )}
@@ -1605,7 +1605,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 border-t border-stone-200 shrink-0"
+            className="p-4 border-t border-[var(--vb-border)] shrink-0"
           >
             <button
               onClick={handleAddSelected}
@@ -2103,11 +2103,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
       {/* OR Separator */}
       <div className="flex items-center gap-4 my-8">
-        <div className="flex-1 h-px bg-stone-200" />
-        <span className="text-sm font-semibold text-stone-400 uppercase tracking-wider">
+        <div className="flex-1 h-px bg-[var(--vb-border)]" />
+        <span className="text-sm font-semibold text-[var(--vb-text-muted)] uppercase tracking-wider">
           {TEXT.or}
         </span>
-        <div className="flex-1 h-px bg-stone-200" />
+        <div className="flex-1 h-px bg-[var(--vb-border)]" />
       </div>
 
       {/* Option Cards Grid */}
@@ -2178,7 +2178,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           <div className="mb-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-emerald-500" />
-              <span className="font-semibold text-stone-700">
+              <span className="font-semibold text-[var(--vb-text-secondary)]">
                 {selectedWords.length} {TEXT.wordsSelected}
               </span>
             </div>
@@ -2199,17 +2199,17 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 flex items-center justify-center gap-4 flex-wrap"
           >
-            <span className="text-sm font-semibold text-stone-600 flex items-center gap-2">
+            <span className="text-sm font-semibold text-[var(--vb-text-secondary)] flex items-center gap-2">
               <span>🌐</span> {TEXT.translationLang}:
             </span>
-            <div className="flex gap-2 bg-stone-100 rounded-xl p-1">
+            <div className="flex gap-2 bg-[var(--vb-surface-alt)] rounded-xl p-1">
               <button
                 onClick={() => setTranslationLang('both')}
                 type="button"
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                   translationLang === 'both'
                     ? 'bg-indigo-500 text-white shadow-sm'
-                    : 'text-stone-600 hover:bg-stone-200'
+                    : 'text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
@@ -2221,7 +2221,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                   translationLang === 'hebrew'
                     ? 'bg-indigo-500 text-white shadow-sm'
-                    : 'text-stone-600 hover:bg-stone-200'
+                    : 'text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
@@ -2233,7 +2233,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                   translationLang === 'arabic'
                     ? 'bg-indigo-500 text-white shadow-sm'
-                    : 'text-stone-600 hover:bg-stone-200'
+                    : 'text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >

@@ -3,6 +3,7 @@ import { Loader2, QrCode } from "lucide-react";
 import AvatarPicker from "../components/QPAvatarPicker";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
+import { ALL_GAME_MODES } from "../constants/game";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -97,6 +98,12 @@ export default function QuickPlayStudentView({
   //                insert), so the language picked here is the one
   //                the student sees the moment the game loads.
   const [joinStep, setJoinStep] = useState<"form" | "language">("form");
+  // "Resuming" — true while the student is attempting to re-join an
+  // active session via the Continue Playing card.  Drives the button's
+  // disabled + loading-spinner state and the lastError-handler reset.
+  // State was missing — introduced in the v2 socket-only flow but
+  // never declared here, leaving 5 references dangling.
+  const [resuming, setResuming] = useState<boolean>(false);
   // Validated name captured at form-submit time so the language
   // picker can fire the join with it.  Defaults to empty string
   // and is overwritten when the student clicks Continue on the form.
@@ -225,7 +232,7 @@ export default function QuickPlayStudentView({
         wordIds: words.map(w => w.id),
         words,
         title: "Quick Play",
-        allowedModes: quickPlayActiveSession.allowedModes || ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse", "letter-sounds", "sentence-builder"],
+        allowedModes: quickPlayActiveSession.allowedModes || ALL_GAME_MODES,
         sentences: quickPlaySentences,
         sentenceDifficulty: 2,
       });

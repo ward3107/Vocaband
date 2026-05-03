@@ -74,8 +74,41 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
         type="button"
         aria-label="Change language"
       >
-        <Globe size={18} className="text-violet-600" />
-        <span className="text-sm font-bold">{currentLang.flag}</span>
+        {/* Animated shine sweep */}
+        <motion.div
+          animate={{ x: ['-100%', '200%'] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+        />
+
+        {/* Inner shadow for depth */}
+        <div className="absolute inset-0 bg-black/10 rounded-full" />
+
+        {/* Globe icon — restored 2026-05.  Earlier UI polish swapped
+            the globe for plain letters but teachers were missing the
+            universal "language" affordance the icon provides.  Globe +
+            current code keeps the language unambiguous in any locale. */}
+        <Globe size={16} className="relative z-10" strokeWidth={2.5} aria-hidden />
+        <span className="relative z-10">{currentLabel}</span>
+
+        {/* Dropdown arrow */}
+        <motion.svg
+          width="8"
+          height="8"
+          viewBox="0 0 8 8"
+          className="relative z-10"
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <path
+            d="M1.5 2.5L4 5L6.5 2.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </motion.svg>
       </motion.button>
     </div>
   );

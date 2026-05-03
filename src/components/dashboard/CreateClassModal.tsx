@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface CreateClassModalProps {
   show: boolean;
@@ -11,11 +13,15 @@ interface CreateClassModalProps {
 export default function CreateClassModal({
   show, newClassName, setNewClassName, onCancel, onCreate,
 }: CreateClassModalProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
+
   return (
     <AnimatePresence>
       {show && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
           <motion.div
+            dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -36,7 +42,7 @@ export default function CreateClassModal({
               autoComplete="off"
               value={newClassName}
               onChange={(e) => setNewClassName(e.target.value)}
-              placeholder="Class Name"
+              placeholder={t.classNamePlaceholder}
               maxLength={50}
               style={{
                 borderColor: 'var(--vb-border)',
@@ -55,7 +61,7 @@ export default function CreateClassModal({
                 }}
                 className="flex-1 py-4 rounded-2xl font-bold transition-colors border-2 hover:opacity-90"
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 onClick={onCreate}
@@ -65,7 +71,7 @@ export default function CreateClassModal({
                 }}
                 className="flex-1 py-4 rounded-2xl font-bold hover:opacity-90 transition-colors shadow-lg"
               >
-                Create
+                {t.createBtn}
               </button>
             </div>
           </motion.div>

@@ -56,6 +56,10 @@ export interface WorksheetStrings {
   // Title and options
   worksheetTitle: string;
   includeAnswerKey: string;
+  eachSheetOnItsOwnPage: string;
+  eachSheetOnItsOwnPageHint: string;
+  answerKeyOnNewPage: string;
+  answerKeyOnNewPageHint: string;
 
   // Preview and print
   preview: string;
@@ -119,7 +123,11 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     generating: 'Generating...',
     aiNotAvailable: 'AI features are not available. Please contact support to enable.',
     worksheetTitle: 'Worksheet title',
-    includeAnswerKey: 'Include answer key (separate page)',
+    includeAnswerKey: 'Include answer key',
+    eachSheetOnItsOwnPage: 'Each sheet on its own page',
+    eachSheetOnItsOwnPageHint: 'Off (default) packs sheets together to save paper.',
+    answerKeyOnNewPage: 'Put answer key on a separate page',
+    answerKeyOnNewPageHint: 'Hand out the worksheet without revealing the answers.',
     preview: 'Preview',
     print: 'Print',
     classLabel: 'Class:',
@@ -175,7 +183,11 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     generating: 'יוצר...',
     aiNotAvailable: 'תכונות הבינה המלאכותית אינן זמינות. פנה לתמיכה להפעלה.',
     worksheetTitle: 'כותרת דף עבודה',
-    includeAnswerKey: 'כלול מפתח תשובות (עמוד נפרד)',
+    includeAnswerKey: 'כלול מפתח תשובות',
+    eachSheetOnItsOwnPage: 'כל דף בעמוד נפרד',
+    eachSheetOnItsOwnPageHint: 'כבוי (ברירת מחדל) דוחס מספר דפים יחד כדי לחסוך בנייר.',
+    answerKeyOnNewPage: 'הצב את מפתח התשובות בעמוד נפרד',
+    answerKeyOnNewPageHint: 'חלק את דף העבודה מבלי לחשוף את התשובות.',
     preview: 'תצוגה מקדימה',
     print: 'הדפס',
     classLabel: 'כיתה:',
@@ -231,7 +243,11 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     generating: 'جارٍ الإنشاء...',
     aiNotAvailable: 'ميزات الذكاء الاصطناعي غير متاحة. اتصل بالدعم لتفعيلها.',
     worksheetTitle: 'عنوان ورقة العمل',
-    includeAnswerKey: 'تضمين مفتاح الإجابة (صفحة منفصلة)',
+    includeAnswerKey: 'تضمين مفتاح الإجابة',
+    eachSheetOnItsOwnPage: 'كل ورقة في صفحة منفصلة',
+    eachSheetOnItsOwnPageHint: 'إيقاف (افتراضي) يضغط الأوراق معًا لتوفير الورق.',
+    answerKeyOnNewPage: 'ضع مفتاح الإجابة في صفحة منفصلة',
+    answerKeyOnNewPageHint: 'وزّع ورقة العمل دون كشف الإجابات.',
     preview: 'معاينة',
     print: 'طباعة',
     classLabel: 'الصف:',

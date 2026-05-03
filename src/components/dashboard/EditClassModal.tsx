@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, GraduationCap } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../../constants/game";
 import type { ClassData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface EditClassModalProps {
   /** The class being edited; null = modal hidden. */
@@ -25,6 +27,8 @@ interface EditClassModalProps {
  * gestures / national flags) — see CLASS_AVATAR_GROUPS in constants.
  */
 export default function EditClassModal({ klass, onClose, onSave }: EditClassModalProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   const [name, setName] = useState(klass?.name ?? "");
   const [avatar, setAvatar] = useState<string | null>(klass?.avatar ?? null);
   const [saving, setSaving] = useState(false);
@@ -57,6 +61,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
       {klass && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
           <motion.div
+            dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -89,7 +94,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Grade 8-B"
+              placeholder={t.classNameInputPlaceholder}
               maxLength={60}
               style={{
                 borderColor: 'var(--vb-border)',
@@ -195,7 +200,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 }}
                 className="flex-1 py-3 rounded-2xl font-bold transition-colors border-2 disabled:opacity-50 hover:opacity-90"
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 onClick={handleSave}
@@ -208,7 +213,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 }}
                 className="flex-1 py-3 rounded-2xl font-black hover:opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t.saving : t.saveChanges}
               </button>
             </div>
           </motion.div>

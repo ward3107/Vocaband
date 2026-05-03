@@ -22,6 +22,8 @@ import { motion } from 'motion/react';
 import { Copy, Share2, Check, BookOpen, Target, QrCode, ExternalLink } from 'lucide-react';
 import SetupWizard, { type SetupWizardProps } from '../components/setup/SetupWizard';
 import type { Word } from '../data/vocabulary';
+import { useLanguage } from '../hooks/useLanguage';
+import { teacherDrilldownsT } from '../locales/teacher/drilldowns';
 
 type WizardCompleteResult = { words: Word[]; modes: string[] };
 
@@ -42,6 +44,8 @@ export default function QuickPlaySetupView({
   onBack,
   ...rest
 }: QuickPlaySetupViewProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherDrilldownsT[language];
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [sessionCode, setSessionCode] = useState<string | null>(null);
@@ -75,9 +79,7 @@ export default function QuickPlaySetupView({
 
   const handleWhatsApp = () => {
     if (!joinUrl) return;
-    const msg = title
-      ? `Join "${title}" on Vocaband! ${joinUrl}`
-      : `Join my Vocaband Quick Play session: ${joinUrl}`;
+    const msg = t.qpJoinMessage(title, joinUrl);
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -95,6 +97,7 @@ export default function QuickPlaySetupView({
   if (sessionCode) {
     return (
       <motion.div
+        dir={dir}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="min-h-screen bg-background p-4 sm:p-6 flex items-center justify-center"
@@ -121,10 +124,10 @@ export default function QuickPlaySetupView({
               transition={{ delay: 0.3 }}
             >
               <h2 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
-                Quick Play is live!
+                {t.qpLiveTitle}
               </h2>
               <p className="text-on-surface-variant">
-                Share the code with your students — they can join instantly from any phone.
+                {t.qpLiveSubtitle}
               </p>
             </motion.div>
 
@@ -140,11 +143,11 @@ export default function QuickPlaySetupView({
                 <div className="flex items-center justify-center gap-3 text-sm text-on-surface-variant">
                   <div className="flex items-center gap-1">
                     <BookOpen size={14} />
-                    <span>live session</span>
+                    <span>{t.qpLiveSession}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Target size={14} />
-                    <span>any mode</span>
+                    <span>{t.qpAnyMode}</span>
                   </div>
                 </div>
               </motion.div>
@@ -158,7 +161,7 @@ export default function QuickPlaySetupView({
               transition={{ delay: 0.5 }}
               className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-100"
             >
-              <div className="text-sm text-blue-700 mb-2 font-bold">Session code</div>
+              <div className="text-sm text-blue-700 mb-2 font-bold">{t.sessionCodeLabel}</div>
               <div className="text-3xl font-black text-blue-900 mb-4 tracking-wider">
                 {sessionCode}
               </div>
@@ -169,7 +172,7 @@ export default function QuickPlaySetupView({
                   type="button"
                 >
                   <Copy size={18} />
-                  {copied ? 'Copied!' : 'Copy link'}
+                  {copied ? t.copiedShort : t.copyLink}
                 </button>
                 <button
                   onClick={handleWhatsApp}
@@ -177,7 +180,7 @@ export default function QuickPlaySetupView({
                   type="button"
                 >
                   <Share2 size={18} />
-                  WhatsApp
+                  {t.whatsAppLabel}
                 </button>
               </div>
             </motion.div>
@@ -195,14 +198,14 @@ export default function QuickPlaySetupView({
                 type="button"
               >
                 <QrCode size={18} />
-                Open live podium
+                {t.openLivePodium}
               </button>
               <button
                 onClick={handlePlayAnother}
                 className="flex-1 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all"
                 type="button"
               >
-                Play another
+                {t.playAnother}
               </button>
             </motion.div>
 
@@ -212,7 +215,7 @@ export default function QuickPlaySetupView({
               type="button"
             >
               <ExternalLink size={12} />
-              Back to dashboard
+              {t.backToDashboardSmall}
             </button>
           </motion.div>
         </div>

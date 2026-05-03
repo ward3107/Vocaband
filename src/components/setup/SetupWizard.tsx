@@ -15,6 +15,8 @@ import { WordInputStep } from './WordInputStep';
 import { WordInputStep2026 } from './WordInputStep2026';
 import { ConfigureStep } from './ConfigureStep';
 import { ReviewStep } from './ReviewStep';
+import { useLanguage } from '../../hooks/useLanguage';
+import { teacherWizardsT } from '../../locales/teacher/wizards';
 
 // Memoized Stepper component (defined outside to prevent re-creation)
 interface StepperProps {
@@ -23,6 +25,8 @@ interface StepperProps {
 }
 
 const Stepper = memo(({ currentStep, mode }: StepperProps) => {
+  const { language } = useLanguage();
+  const t = teacherWizardsT[language];
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-3 mb-7 sm:mb-8">
       {[1, 2, 3].map((step) => {
@@ -35,24 +39,32 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
           <React.Fragment key={step}>
             <div className="flex flex-col items-center">
               <div
+                style={
+                  isCompleted
+                    ? undefined
+                    : isCurrent
+                    ? undefined
+                    : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)', borderColor: 'var(--vb-border)' }
+                }
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   isCompleted
                     ? 'bg-emerald-500 text-white'
                     : isCurrent
                     ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
-                    : 'bg-stone-100 text-stone-600 border border-stone-300'
+                    : 'border'
                 }`}
               >
                 {isCompleted ? '✓' : step}
               </div>
               {isOptional && !isCompleted && !isCurrent && (
-                <span className="text-[10px] font-semibold text-stone-400 mt-1.5">Optional</span>
+                <span className="text-[10px] font-semibold mt-1.5" style={{ color: 'var(--vb-text-muted)' }}>Optional</span>
               )}
             </div>
             {step < 3 && (
               <div
+                style={step < currentStep ? undefined : { backgroundColor: 'var(--vb-border)' }}
                 className={`w-8 sm:w-14 h-0.5 rounded-full ${
-                  step < currentStep ? 'bg-emerald-500' : 'bg-stone-200'
+                  step < currentStep ? 'bg-emerald-500' : ''
                 }`}
               />
             )}
@@ -247,6 +259,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   user,
   onLogout,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = teacherWizardsT[language];
   // ── Step State ─────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
@@ -373,22 +387,27 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
 
   // Memoize step labels to prevent re-creation
   const stepLabels = useMemo<Record<1 | 2 | 3, string>>(() => ({
-    1: 'Select Words',
-    2: mode === 'quick-play' ? 'Choose Modes (Optional)' : 'Configure',
-    3: 'Review',
-  }), [mode]);
+    1: t.stepLabelWords,
+    2: mode === 'quick-play' ? t.stepLabelChooseModesOptional : t.stepLabelConfigure,
+    3: t.stepLabelReview,
+  }), [mode, t]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   const isQuickPlay = mode === 'quick-play';
   const isAssignment = mode === 'assignment';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-36 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
+    <div dir={dir} className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-36 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
       <TopAppBar
-        title={isQuickPlay ? 'Quick Play Setup' : editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
-        subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}
+        title={isQuickPlay ? t.qpSetupTitle : editingAssignment ? t.editAssignmentTitle : t.createAssignmentTitle}
+        subtitle={isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle}
         showBack
         onBack={handleBack}
+        // Single-click escape from any step.  Back is still
+        // step-by-step; Cancel always returns to the dashboard so
+        // a teacher on step 3 doesn't have to tap Back three times.
+        onExit={onBack}
+        exitLabel="Cancel"
         userName={user?.displayName}
         userAvatar={user?.avatar}
         onLogout={onLogout}
@@ -425,7 +444,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                     const { data: { session } } = await sb.auth.getSession();
                     const token = session?.access_token;
                     if (!token) {
-                      showToast?.('Authentication required', 'error');
+                      showToast?.(t.authRequired, 'error');
                       throw new Error('No auth token');
                     }
 

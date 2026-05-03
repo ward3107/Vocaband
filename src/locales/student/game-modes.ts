@@ -31,7 +31,10 @@ export type GameModeId =
   | "scramble"
   | "reverse"
   | "letter-sounds"
-  | "sentence-builder";
+  | "sentence-builder"
+  | "word-chains"
+  | "idiom"
+  | "speed-round";
 
 export interface GameModeStrings {
   name: string;
@@ -116,6 +119,21 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "Tap words in the right order to build the sentence.",
         tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"],
       },
+      "word-chains": {
+        name: "Word Chains",
+        desc: "Type a word that starts with the last letter of the previous word.",
+        tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
+      },
+      idiom: {
+        name: "Idioms",
+        desc: "Match English idioms with their real meaning. Learn how to use them!",
+        tooltip: ["See an English idiom", "Pick the meaning that matches", "Read the example to learn how to use it"],
+      },
+      "speed-round": {
+        name: "Speed Round",
+        desc: "60 seconds, as many words as you can. Wrong answers cost 1 second!",
+        tooltip: ["60-second timer", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"],
+      },
     },
   },
 
@@ -186,6 +204,21 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "הקש על המילים בסדר הנכון לבניית המשפט.",
         tooltip: ["המילים מעורבבות", "הקש עליהן בסדר הנכון", "בנה את המשפט נכון!"],
       },
+      "word-chains": {
+        name: "שרשרת מילים",
+        desc: "הקלד מילה שמתחילה באות האחרונה של המילה הקודמת.",
+        tooltip: ["הסתכל על האות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"],
+      },
+      idiom: {
+        name: "ביטויים",
+        desc: "התאם ביטויים באנגלית למשמעות האמיתית שלהם. למד איך להשתמש בהם!",
+        tooltip: ["ראה ביטוי באנגלית", "בחר את המשמעות הנכונה", "קרא את הדוגמה ולמד איך להשתמש בו"],
+      },
+      "speed-round": {
+        name: "סבב מהיר",
+        desc: "60 שניות, כמה שיותר מילים. תשובה שגויה עולה שנייה!",
+        tooltip: ["טיימר של 60 שניות", "תשובה שגויה מורידה שנייה", "3 ברצף — בונוס נקודות"],
+      },
     },
   },
 
@@ -255,6 +288,21 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "بناء الجمل",
         desc: "اضغط على الكلمات بالترتيب الصحيح لبناء الجملة.",
         tooltip: ["الكلمات مختلطة", "اضغط عليها بالترتيب الصحيح", "ابن الجملة بشكل صحيح!"],
+      },
+      "word-chains": {
+        name: "سلسلة الكلمات",
+        desc: "اكتب كلمة تبدأ بآخر حرف من الكلمة السابقة.",
+        tooltip: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"],
+      },
+      idiom: {
+        name: "التعابير",
+        desc: "طابق التعابير الإنجليزية مع معناها الحقيقي. تعلّم كيفية استخدامها!",
+        tooltip: ["شاهد تعبيرًا إنجليزيًا", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه"],
+      },
+      "speed-round": {
+        name: "جولة سريعة",
+        desc: "60 ثانية، أكبر عدد ممكن من الكلمات. الإجابة الخاطئة تكلفك ثانية!",
+        tooltip: ["مؤقت 60 ثانية", "الإجابة الخاطئة تخصم ثانية", "3 إجابات متتالية تمنحك مكافأة"],
       },
     },
   },

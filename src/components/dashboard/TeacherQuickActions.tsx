@@ -14,6 +14,9 @@ export default function TeacherQuickActions({
   pendingStudentsCount,
   onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick,
 }: TeacherQuickActionsProps) {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
+
   return (
     <div className="mb-8 sm:mb-10">
       {/* ───────────────────────────────────────────── */}
@@ -56,7 +59,7 @@ export default function TeacherQuickActions({
 
             {/* CTA Button */}
             <div className="shrink-0 self-center sm:self-auto">
-              <div className="flex items-center gap-2 px-6 py-3 bg-white text-violet-600 rounded-xl font-bold shadow-lg group-hover:shadow-xl group-hover:bg-white/95 transition-all">
+              <div className="flex items-center gap-2 px-6 py-3 bg-[var(--vb-surface)] text-violet-600 rounded-xl font-bold shadow-lg group-hover:shadow-xl group-hover:bg-white/95 transition-all">
                 <span>Start</span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -136,8 +139,8 @@ export default function TeacherQuickActions({
             <div className="h-full" data-tour="approvals">
               <CompactActionCard
                 icon={<UserCircle size={20} />}
-                iconBg={pendingStudentsCount > 0 ? "bg-rose-100" : "bg-stone-100"}
-                iconColor={pendingStudentsCount > 0 ? "text-rose-600" : "text-stone-500"}
+                iconBg={pendingStudentsCount > 0 ? "bg-rose-100" : "bg-[var(--vb-surface-alt)]"}
+                iconColor={pendingStudentsCount > 0 ? "text-rose-600" : "text-[var(--vb-text-muted)]"}
                 title="Approvals"
                 description={pendingStudentsCount > 0 ? `${pendingStudentsCount} student${pendingStudentsCount === 1 ? '' : 's'} waiting` : "No pending approvals"}
                 onClick={onApprovalsClick}

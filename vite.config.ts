@@ -2,7 +2,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
-import { cloudflare } from "@cloudflare/vite-plugin";
+// Cloudflare plugin is intentionally disabled (causes white screen
+// in dev) — kept as a comment so future edits don't re-import it.
+// import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(() => {
   const isTest = process.env.PLAYWRIGHT_TEST === 'true';
@@ -53,6 +55,15 @@ export default defineConfig(() => {
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,
+          // Activate new SW immediately on the next page load instead
+          // of waiting for every tab to close.  Combined with
+          // clientsClaim, this means a fresh deploy reaches users
+          // within ONE navigation rather than days later.  Teachers
+          // were having to "clear cache" after every deploy because
+          // the old SW kept serving cached HTML — these two flags
+          // are the proper fix.
+          skipWaiting: true,
+          clientsClaim: true,
           // Treat navigation requests network-first (see runtimeCaching
           // below); the fallback is the last-cached shell so offline
           // students can still open the app.
@@ -83,6 +94,24 @@ export default defineConfig(() => {
             // entire page fails to load. Denylisting + NetworkOnly
             // (below) keeps the SW out of this path entirely.
             /^\/quick-play(\?|$)/,
+            // OAuth + magic-link callbacks — Google OAuth, Supabase
+            // OTP / magic link, etc. all return the user to
+            // `vocaband.com/?code=...` (or with token_hash /
+            // access_token / refresh_token query params).  Same SW +
+            // redirect bug bites these: Cloudflare may redirect
+            // apex→www, the SW caches the redirect, and the next
+            // top-level navigation refuses to consume the cached
+            // redirect.  Symptom in the wild: signing in with Google
+            // hits a Chrome error page with "a redirected response
+            // was used for a request whose redirect mode is not
+            // 'follow'".  Denylisting these patterns means the SW
+            // never sees the navigation in the first place — the
+            // browser handles it directly, redirect follows cleanly,
+            // Supabase JS picks up the session.
+            /\?.*\bcode=/,
+            /\?.*\btoken_hash=/,
+            /\?.*\baccess_token=/,
+            /\?.*\brefresh_token=/,
           ],
           runtimeCaching: [
             {
@@ -130,6 +159,37 @@ export default defineConfig(() => {
                 cacheName: 'vocaband-html',
                 networkTimeoutSeconds: 3,
                 expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 },
+                // Last-resort fallback when BOTH network and runtime
+                // cache miss.  Without this plugin, NetworkFirst
+                // throws "TypeError: Failed to fetch" on transient
+                // connectivity blips (network errored AND we hadn't
+                // cached the page yet, e.g. right after a fresh
+                // install or after cleanupOutdatedCaches), and the
+                // browser surfaces the rejected promise as a broken
+                // page.  Searching all Cache Storage buckets pulls
+                // the precached /index.html that vite-plugin-pwa
+                // ships in its precache manifest — that's the SPA
+                // shell, which is enough to bootstrap the app and
+                // re-fetch dynamic data.  If even the precache is
+                // empty (very rare — install failed?) we synthesize
+                // a tiny HTML page with a recovery link so the user
+                // is never left with a broken navigation.
+                plugins: [
+                  {
+                    handlerDidError: async () => {
+                      const cached = await caches.match('/index.html', { ignoreSearch: true });
+                      if (cached) return cached;
+                      return new Response(
+                        '<!doctype html><meta charset="utf-8"><title>Vocaband — connection issue</title>' +
+                          '<style>body{font-family:system-ui;padding:2rem;color:#1c1917;background:#fafaf9}a{color:#4f46e5}</style>' +
+                          '<h1>Connection issue</h1>' +
+                          '<p>Vocaband couldn\'t reach the network and there\'s no cached copy on this device yet. ' +
+                          'Check your connection and reload, or <a href="/?unregisterSW=1">reset the app</a>.</p>',
+                        { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+                      );
+                    },
+                  },
+                ],
               },
             },
             {

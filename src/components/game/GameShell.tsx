@@ -31,7 +31,10 @@ export type GameThemeColor =
   | "indigo"  // scramble
   | "teal"    // sentence-builder
   | "lime"    // fill-blank
-  | "pink";   // memory-flip
+  | "pink"    // memory-flip
+  | "orange"  // word-chains
+  | "sky"     // idiom — chosen for "blue sky thinking" / abstract figurative meaning
+  | "red";    // speed-round — high-energy timer mode
 
 interface ThemeColors {
   /** Page background gradient — applied ONLY if `gradient` prop is true. */
@@ -64,6 +67,9 @@ const THEME_TABLE: Record<GameThemeColor, ThemeColors> = {
   teal:    { gradient: "from-teal-50 via-white to-emerald-50",     pillBg: "bg-teal-100",    pillText: "text-teal-700",    border: "border-teal-200",    hoverBg: "hover:bg-teal-50",    fill: "bg-teal-500",    cardBg: "bg-teal-50"    },
   lime:    { gradient: "from-lime-50 via-white to-emerald-50",     pillBg: "bg-lime-100",    pillText: "text-lime-700",    border: "border-lime-200",    hoverBg: "hover:bg-lime-50",    fill: "bg-lime-500",    cardBg: "bg-lime-50"    },
   pink:    { gradient: "from-pink-50 via-white to-rose-50",        pillBg: "bg-pink-100",    pillText: "text-pink-700",    border: "border-pink-200",    hoverBg: "hover:bg-pink-50",    fill: "bg-pink-500",    cardBg: "bg-pink-50"    },
+  orange:  { gradient: "from-orange-50 via-white to-amber-50",     pillBg: "bg-orange-100",  pillText: "text-orange-700",  border: "border-orange-200",  hoverBg: "hover:bg-orange-50",  fill: "bg-orange-500",  cardBg: "bg-orange-50"  },
+  sky:     { gradient: "from-sky-50 via-white to-blue-50",         pillBg: "bg-sky-100",     pillText: "text-sky-700",     border: "border-sky-200",     hoverBg: "hover:bg-sky-50",     fill: "bg-sky-500",     cardBg: "bg-sky-50"     },
+  red:     { gradient: "from-red-50 via-white to-rose-50",         pillBg: "bg-red-100",     pillText: "text-red-700",     border: "border-red-200",     hoverBg: "hover:bg-red-50",     fill: "bg-red-500",     cardBg: "bg-red-50"     },
 };
 
 export function getThemeColors(color: GameThemeColor): ThemeColors {

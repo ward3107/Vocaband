@@ -252,12 +252,12 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
               onClick={handleCapture}
               disabled={capturing}
               aria-label="Capture photo"
-              className="relative w-20 h-20 rounded-full bg-white border-4 border-white/40 active:scale-95 transition-transform disabled:opacity-60"
+              className="relative w-20 h-20 rounded-full bg-[var(--vb-surface)] border-4 border-white/40 active:scale-95 transition-transform disabled:opacity-60"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
-              <span className="absolute inset-2 rounded-full bg-white" />
+              <span className="absolute inset-2 rounded-full bg-[var(--vb-surface)]" />
               <span className="absolute inset-0 flex items-center justify-center">
-                <Camera className="w-7 h-7 text-stone-900 relative z-10" />
+                <Camera className="w-7 h-7 text-[var(--vb-text-primary)] relative z-10" />
               </span>
             </button>
           </div>

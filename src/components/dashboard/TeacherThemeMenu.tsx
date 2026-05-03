@@ -15,6 +15,8 @@ import { motion } from "motion/react";
 import { X } from "lucide-react";
 import { TEACHER_DASHBOARD_THEMES } from "../../constants/teacherDashboardThemes";
 import { supabase, type AppUser } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface TeacherThemeMenuProps {
   user: AppUser | null;
@@ -23,6 +25,8 @@ interface TeacherThemeMenuProps {
 }
 
 export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThemeMenuProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   const currentId = user?.teacherDashboardTheme ?? 'default';
 
   const pick = async (themeId: string) => {
@@ -48,6 +52,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
       onClick={onClose}
     >
       <motion.div
+        dir={dir}
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.92, opacity: 0 }}

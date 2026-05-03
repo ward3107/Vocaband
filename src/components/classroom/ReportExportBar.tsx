@@ -21,6 +21,8 @@
 import { useMemo, useState } from 'react';
 import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import type { ProgressData, AssignmentData, ClassData } from '../../core/supabase';
+import { useLanguage } from '../../hooks/useLanguage';
+import { teacherClassroomT } from '../../locales/teacher/classroom';
 // jspdf + jspdf-autotable add ~300 KB gzipped — too expensive to pull
 // into the initial Classroom bundle when most teachers never tap the
 // PDF button in a given session.  Lazy-import on first click.
@@ -126,6 +128,7 @@ function buildRows(
   scores: ProgressData[],
   assignments: AssignmentData[],
   classCode: string,
+  quickPlayLabel: string,
 ): { plays: PlayRow[]; students: StudentSummaryRow[] } {
   const filtered = classCode
     ? scores.filter(s => s.classCode === classCode)
@@ -136,7 +139,7 @@ function buildRows(
   const plays: PlayRow[] = filtered.map(s => ({
     studentName: s.studentName,
     classCode: s.classCode,
-    assignment: assignmentTitle.get(s.assignmentId) ?? (s.assignmentId?.startsWith('quickplay-') ? 'Quick Play' : '—'),
+    assignment: assignmentTitle.get(s.assignmentId) ?? (s.assignmentId?.startsWith('quickplay-') ? quickPlayLabel : '—'),
     mode: s.mode,
     score: s.score,
     mistakes: s.mistakes?.length ?? 0,
@@ -193,13 +196,15 @@ export default function ReportExportBar({
   classStudents,
   showToast,
 }: ReportExportBarProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   const [busy, setBusy] = useState<'csv' | 'pdf' | null>(null);
 
   const { plays, students } = useMemo(
-    () => buildRows(scores, assignments, classCode),
-    [scores, assignments, classCode],
+    () => buildRows(scores, assignments, classCode, t.quickPlayLabel),
+    [scores, assignments, classCode, t.quickPlayLabel],
   );
-  const className = classes.find(c => c.code === classCode)?.name ?? classCode ?? 'All classes';
+  const className = classes.find(c => c.code === classCode)?.name ?? classCode ?? t.allClasses;
   const rosterSize = classCode
     ? classStudents.filter(cs => cs.classCode === classCode).length
     : classStudents.length;
@@ -208,23 +213,23 @@ export default function ReportExportBar({
 
   const handleCsv = () => {
     if (disabled) {
-      showToast('Nothing to export yet — no gameplay in this class.', 'info');
+      showToast(t.exportNothingToast, 'info');
       return;
     }
     setBusy('csv');
     try {
       const lines: string[] = [];
-      lines.push(`"Vocaband gradebook — ${className}"`);
-      lines.push(`"Exported ${new Date().toLocaleString()}"`);
+      lines.push(`"${t.csvHeaderTitle(className)}"`);
+      lines.push(`"${t.csvHeaderExportedAt(new Date().toLocaleString())}"`);
       lines.push('');
-      lines.push(['Student', 'Class', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date']
+      lines.push([t.pdfColStudent, t.pdfClassLabel, t.pdfColAssignment, t.pdfColMode, t.pdfColScore, t.pdfColMistakes, t.pdfColDate]
         .map(escapeCsvCell).join(','));
       plays.forEach(p => {
         lines.push([p.studentName, p.classCode, p.assignment, p.mode, p.score, p.mistakes, p.date]
           .map(escapeCsvCell).join(','));
       });
       lines.push('');
-      lines.push(['Student', 'Plays', 'Avg score', 'Best score', 'Total mistakes', 'Last active']
+      lines.push([t.pdfColStudent, t.pdfColPlays, t.statAvgScoreLabel, t.pdfColBest, t.pdfColMistakes, t.pdfColLastActive]
         .map(escapeCsvCell).join(','));
       students.forEach(s => {
         lines.push([s.studentName, s.plays, s.avgScore, s.bestScore, s.totalMistakes, s.lastActive]
@@ -237,10 +242,10 @@ export default function ReportExportBar({
       // every locale at once.
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, `vocaband-${classCode || 'all'}-${today()}.csv`);
-      showToast('CSV exported', 'success');
+      showToast(t.exportCsvSuccess, 'success');
     } catch (err) {
       console.error('[export] CSV failed', err);
-      showToast('CSV export failed — try again.', 'error');
+      showToast(t.exportCsvFailed, 'error');
     } finally {
       setBusy(null);
     }
@@ -248,7 +253,7 @@ export default function ReportExportBar({
 
   const handlePdf = async () => {
     if (disabled) {
-      showToast('Nothing to export yet — no gameplay in this class.', 'info');
+      showToast(t.exportNothingToast, 'info');
       return;
     }
     setBusy('pdf');
@@ -307,11 +312,11 @@ export default function ReportExportBar({
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(22);
-      doc.text('Vocaband Gradebook', 40, 38);
+      doc.text(t.pdfCoverTitle, 40, 38);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
-      doc.text(`Class: ${className}`, 40, 58);
-      doc.text(`Exported ${new Date().toLocaleString()}`, 40, 74);
+      doc.text(`${t.pdfClassLabel}: ${className}`, 40, 58);
+      doc.text(`${t.pdfExportedAt} ${new Date().toLocaleString()}`, 40, 74);
 
       // Headline stats block
       const avgAll = students.length === 0
@@ -320,15 +325,15 @@ export default function ReportExportBar({
       doc.setTextColor(28, 25, 23);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
-      doc.text(`${students.length} students  ·  ${plays.length} plays  ·  avg ${avgAll}%  ·  roster ${rosterSize}`, 40, 108);
+      doc.text(t.pdfHeadlineStats(students.length, plays.length, avgAll, rosterSize), 40, 108);
 
       // Per-student summary table
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
-      doc.text('Student summary', 40, 140);
+      doc.text(t.pdfStudentSummaryHeading, 40, 140);
       autoTable(doc, {
         startY: 150,
-        head: [['Student', 'Plays', 'Avg', 'Best', 'Mistakes', 'Last active']],
+        head: [[t.pdfColStudent, t.pdfColPlays, t.pdfColAvg, t.pdfColBest, t.pdfColMistakes, t.pdfColLastActive]],
         body: students.map(s => [
           s.studentName,
           s.plays,
@@ -349,10 +354,10 @@ export default function ReportExportBar({
       doc.addPage();
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
-      doc.text('All plays (newest first)', 40, 44);
+      doc.text(t.pdfAllPlaysHeading, 40, 44);
       autoTable(doc, {
         startY: 54,
-        head: [['Student', 'Assignment', 'Mode', 'Score', 'Mistakes', 'Date']],
+        head: [[t.pdfColStudent, t.pdfColAssignment, t.pdfColMode, t.pdfColScore, t.pdfColMistakes, t.pdfColDate]],
         body: plays.map(p => [
           p.studentName,
           p.assignment,
@@ -376,31 +381,34 @@ export default function ReportExportBar({
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(120, 113, 108);
-        doc.text(`Page ${i} of ${pageCount}`, pageW - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
+        doc.text(t.pdfPageOf(i, pageCount), pageW - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
         doc.text('vocaband.com', 40, doc.internal.pageSize.getHeight() - 20);
       }
 
       doc.save(`vocaband-${classCode || 'all'}-${today()}.pdf`);
-      showToast('PDF exported', 'success');
+      showToast(t.exportPdfSuccess, 'success');
     } catch (err) {
       console.error('[export] PDF failed', err);
-      showToast('PDF export failed — try again.', 'error');
+      showToast(t.exportPdfFailed, 'error');
     } finally {
       setBusy(null);
     }
   };
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div
+      className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
       <div className="min-w-0">
-        <div className="flex items-center gap-2 text-stone-900">
+        <div className="flex items-center gap-2" style={{ color: 'var(--vb-text-primary)' }}>
           <Download size={16} className="text-indigo-500" />
-          <span className="font-bold text-sm">Export this class</span>
+          <span className="font-bold text-sm">{t.exportThisClass}</span>
         </div>
-        <p className="text-xs text-stone-500 mt-0.5 truncate">
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--vb-text-muted)' }}>
           {plays.length === 0
-            ? 'No gameplay in this class yet — exports unlock once students start playing.'
-            : `${students.length} students · ${plays.length} plays · ${className}`}
+            ? t.exportEmpty
+            : t.exportSummary(students.length, plays.length, className)}
         </p>
       </div>
       <div className="flex gap-2 shrink-0">
@@ -408,11 +416,16 @@ export default function ReportExportBar({
           type="button"
           onClick={handleCsv}
           disabled={disabled || busy !== null}
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent' as never,
+            backgroundColor: 'var(--vb-accent)',
+            color: 'var(--vb-accent-text)',
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold hover:opacity-90 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {busy === 'csv' ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
-          CSV
+          {t.csvButton}
         </button>
         <button
           type="button"
@@ -422,7 +435,7 @@ export default function ReportExportBar({
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-bold hover:shadow-md active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {busy === 'pdf' ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-          PDF
+          {t.pdfButton}
         </button>
       </div>
     </div>

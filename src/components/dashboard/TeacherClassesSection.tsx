@@ -1,6 +1,8 @@
 import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
 interface TeacherClassesSectionProps {
   classes: ClassData[];
@@ -39,6 +41,8 @@ export default function TeacherClassesSection({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   onProjectAssignmentToClass, onPrintAssignmentWorksheet,
 }: TeacherClassesSectionProps) {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
   return (
     <div data-tour="my-classes">
       <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
@@ -52,8 +56,8 @@ export default function TeacherClassesSection({
           </h2>
           <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--vb-text-secondary)' }}>
             {classes.length === 0
-              ? "You haven't created any classes yet."
-              : `${classes.length} class${classes.length === 1 ? '' : 'es'}`}
+              ? t.noClassesYetSubtitle
+              : t.classCount(classes.length)}
           </p>
         </div>
         <button
@@ -69,8 +73,8 @@ export default function TeacherClassesSection({
           aria-label="Create new class"
         >
           <Plus size={16} />
-          <span className="hidden sm:inline">New class</span>
-          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">{t.newClassFull}</span>
+          <span className="sm:hidden">{t.newClassShort}</span>
         </button>
       </div>
 
@@ -105,7 +109,7 @@ export default function TeacherClassesSection({
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
           >
             <Plus size={16} />
-            Create first class
+            {t.emptyCta}
           </button>
         </div>
       ) : (

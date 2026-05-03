@@ -1,0 +1,102 @@
+# CI — runs on every pull request + every push to main.
+#
+# Goals:
+#   - Catch type errors before they hit main (vite build doesn't fail
+#     on TS errors in dev mode; tsc --noEmit does)
+#   - Catch broken unit tests before merge
+#   - Catch broken builds before merge — the Speed Round PR (#415)
+#     accidentally dropped its wiring during merge resolution and
+#     the loss only surfaced when the next branch was being built.
+#     A passing build here would have caught it.
+#
+# What this does NOT do (intentionally, for v1):
+#   - Run Playwright e2e on every PR (~3 min, requires browser deps,
+#     better as a separate optional job).  See ci-e2e.yml for the
+#     dedicated e2e workflow that runs on a different cadence.
+#   - Lint as a hard gate (eslint warnings are noisy enough that
+#     blocking PRs would slow the team without a curated rule set).
+#     `npm run lint` is in scripts and easy to run locally.
+
+name: CI
+
+# Least-privilege permissions — workflow only checks out code and
+# runs tests, no need to write to issues / PRs / packages / etc.
+# CodeQL flags missing top-level permissions as a security warning;
+# this block is the recommended fix.
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  # Allow manual runs from the Actions tab — useful when re-running a
+  # failed job after a flaky network blip without waiting for a new
+  # commit.
+  workflow_dispatch:
+
+# Cancel any in-flight CI run for the same branch when a new push
+# arrives — saves CI minutes on rapid push-rebase loops without
+# hiding the latest result.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Single combined job — install once, then run every check against
+  # that install.  Splitting into multiple jobs would re-install
+  # dependencies for each, which is the slowest part of the pipeline.
+  build-test:
+    name: Typecheck + tests + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # tsc --noEmit catches TS errors that vite build silently lets
+      # through (esbuild is more lenient than tsc on missing names
+      # and type mismatches).
+      #
+      # Currently NON-BLOCKING (continue-on-error) because main
+      # carries ~68 pre-existing typecheck failures inherited from
+      # PRs merged before CI existed.  Cleaning those is a separate
+      # sweep — once that lands, flip continue-on-error to false so
+      # this becomes a hard gate.  In the meantime the step still
+      # runs so every PR sees its own delta in the logs and reviewers
+      # can spot fresh regressions before they merge.
+      - name: Typecheck (warn-only for now)
+        continue-on-error: true
+        run: npm run typecheck:ci
+
+      # Vitest runs all unit tests in src/__tests__/.  No watch mode,
+      # CI-only flags handled by `npm run test` (= `vitest run`).
+      - name: Unit tests
+        run: npm test
+
+      # Production build — catches anything tsc + tests miss
+      # (manifest issues, unresolvable imports, broken dynamic chunks).
+      - name: Build
+        run: npm run build
+
+      # Surface the build artifact size so PRs that bloat the bundle
+      # are visible at review time.  Output appears in the GH Actions
+      # log; failure threshold isn't enforced (warning only).
+      - name: Bundle size
+        if: always()
+        run: |
+          if [ -d dist/assets ]; then
+            echo "## Bundle size" >> $GITHUB_STEP_SUMMARY
+            du -sh dist/assets/*.js | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+          fi

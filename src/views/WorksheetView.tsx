@@ -19,6 +19,7 @@
  * is the only thing on the page.
  */
 import { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
@@ -83,6 +84,16 @@ export default function WorksheetView({
   const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+  // Compact layout — sheets flow together on the same page when they
+  // fit, instead of forcing a new page before each one.  Default ON
+  // because teachers were getting 9-10 page PDFs for 2 words across
+  // 5 modes; the natural-flow path packs the same content into 1-3.
+  // Teachers who want the old "per-page" output can toggle this off.
+  const [compactLayout, setCompactLayout] = useState(true);
+  // Force the answer key onto its own page.  Default OFF so the key
+  // flows below the questions inline (compact); ON for teachers
+  // handing out paper worksheets without the answer page attached.
+  const [answerKeyOnNewPage, setAnswerKeyOnNewPage] = useState(false);
 
   // Toggle sheet type selection
   const toggleSheetType = (type: WorksheetSheetType) => {
@@ -431,20 +442,69 @@ export default function WorksheetView({
           />
         </div>
 
-        {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
-          <label className="flex items-center gap-3 mb-8 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeAnswerKey}
-              onChange={(e) => setIncludeAnswerKey(e.target.checked)}
-              className="w-5 h-5 accent-current"
-              style={{ accentColor: 'var(--vb-accent)' }}
-            />
-            <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.includeAnswerKey}
-            </span>
-          </label>
-        )}
+        {/* Print layout toggles — these directly drive how page breaks
+            land in the printed PDF.  Both default to the more compact
+            choice (sheets share pages, answer key flows inline) which
+            gets a 2-word x 5-mode worksheet down to ~1-2 pages
+            instead of the 9-10 the old per-sheet-page output gave. */}
+        <div className="mb-8 space-y-3">
+          {selectedSheetTypes.size > 1 && (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!compactLayout}
+                onChange={(e) => setCompactLayout(!e.target.checked)}
+                className="w-5 h-5 accent-current mt-0.5"
+                style={{ accentColor: 'var(--vb-accent)' }}
+              />
+              <span>
+                <span className="font-bold block" style={{ color: 'var(--vb-text-primary)' }}>
+                  {t.eachSheetOnItsOwnPage}
+                </span>
+                <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                  {t.eachSheetOnItsOwnPageHint}
+                </span>
+              </span>
+            </label>
+          )}
+
+          {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
+            <>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeAnswerKey}
+                  onChange={(e) => setIncludeAnswerKey(e.target.checked)}
+                  className="w-5 h-5 accent-current"
+                  style={{ accentColor: 'var(--vb-accent)' }}
+                />
+                <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
+                  {t.includeAnswerKey}
+                </span>
+              </label>
+
+              {includeAnswerKey && (
+                <label className="flex items-start gap-3 cursor-pointer ml-8">
+                  <input
+                    type="checkbox"
+                    checked={answerKeyOnNewPage}
+                    onChange={(e) => setAnswerKeyOnNewPage(e.target.checked)}
+                    className="w-5 h-5 accent-current mt-0.5"
+                    style={{ accentColor: 'var(--vb-accent)' }}
+                  />
+                  <span>
+                    <span className="font-bold block" style={{ color: 'var(--vb-text-primary)' }}>
+                      {t.answerKeyOnNewPage}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                      {t.answerKeyOnNewPageHint}
+                    </span>
+                  </span>
+                </label>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Preview */}
         <div className="mb-8">
@@ -507,23 +567,42 @@ export default function WorksheetView({
         </div>
       </motion.div>
 
-      {/* The actual print-only worksheets — invisible on screen but
-          materialised so window.print() has something to lay out. */}
-      {Array.from(selectedSheetTypes).map((type, idx) => (
-        <Worksheet
-          key={`worksheet-${idx}-${type}`}
-          sheetType={type}
-          title={idx === 0 ? title : undefined}
-          words={wordsForSheet}
-          className={className ?? null}
-          includeAnswerKey={includeAnswerKey}
-          translationLang={translationLang}
-          aiSentences={aiSentences}
-          pageBreakBefore={idx > 0}
-          sheetIndex={idx}
-          totalSheets={selectedSheetTypes.size}
-        />
-      ))}
+      {/* Portal the print stack to document.body so it becomes a
+          DIRECT body child.  The print CSS uses `body > * { display:
+          none }` to suppress the visible app chrome (avoiding the
+          "visibility: hidden still reserves space" bug that pushed
+          worksheets past 5+ blank pages), then re-enables only
+          `body > .vb-print-stack`.  Without the portal, the stack
+          would sit inside the WorksheetView wrapper and get hidden
+          along with everything else.
+
+          Worksheet itself reads `sheetIndex` + `totalSheets` to
+          render the consolidated answer key only on the LAST sheet
+          (so all answers ride together at the end), and
+          `pageBreakBefore` to honor the "Each sheet on its own page"
+          toggle. */}
+      {typeof document !== 'undefined' && createPortal(
+        <div className="vb-print-stack">
+          {Array.from(selectedSheetTypes).map((type, idx) => (
+            <Worksheet
+              key={`worksheet-${idx}-${type}`}
+              sheetType={type}
+              title={idx === 0 ? title : undefined}
+              words={wordsForSheet}
+              className={className ?? null}
+              includeAnswerKey={includeAnswerKey}
+              translationLang={translationLang}
+              aiSentences={aiSentences}
+              pageBreakBefore={!compactLayout && idx > 0}
+              answerKeyOnNewPage={answerKeyOnNewPage}
+              sheetIndex={idx}
+              totalSheets={selectedSheetTypes.size}
+              allSelectedSheetTypes={Array.from(selectedSheetTypes)}
+            />
+          ))}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

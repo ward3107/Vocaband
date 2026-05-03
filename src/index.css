@@ -9,20 +9,88 @@
   --a11y-line-height: 1.5;
   --a11y-letter-spacing: 0em;
 
-  /* Teacher dashboard theme tokens — defaults match the 'default' theme.
-     Overridden at runtime by useTeacherTheme() on teacher-side routes.
-     `--vb-surface` is intentionally an off-white (stone-50, not pure
-     white) so cards don't glare on bright displays.  See header
-     comment in src/constants/teacherDashboardThemes.ts. */
+  /* =====================================================================
+     Vocaband design tokens — single source of truth for every surface.
+     Defaults match the 'default' theme; overridden at runtime by
+     useTeacherTheme() on teacher-side routes and (when the
+     `adaptiveTheme` feature flag is on) by the AdaptiveThemeProvider.
+     Components MUST consume these via var(--vb-*) — no hardcoded
+     colors in src/components/**.
+     ===================================================================== */
+
+  /* ── Surfaces (off-white, not pure #fff — see comment in
+        teacherDashboardThemes.ts; pure white glares on phones).      */
   --vb-surface: #fafaf9;
   --vb-surface-alt: #f5f5f4;
-  --vb-border: #e7e5e4;
+  --vb-surface-elevated: #ffffff; /* modals, popovers — slightly higher */
+  --vb-bg-primary: #fafaf9;
+  --vb-bg-secondary: #f5f5f4;
+
+  /* ── Text tiers                                                    */
   --vb-text-primary: #1c1917;
   --vb-text-secondary: #57534e;
   --vb-text-muted: #a8a29e;
+  --vb-text-on-accent: #ffffff;
+
+  /* ── Accent (theme-driven)                                         */
   --vb-accent: #6366f1;
+  --vb-accent-hover: #4f46e5;
+  --vb-accent-active: #4338ca;
   --vb-accent-soft: #eef2ff;
   --vb-accent-text: #ffffff;
+  --vb-accent-contrast: #ffffff;
+
+  /* ── Structural                                                    */
+  --vb-border: #e7e5e4;
+  --vb-border-strong: #d6d3d1;
+  --vb-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --vb-shadow-elevated: 0 4px 12px 0 rgba(0,0,0,0.08);
+
+  /* ── Status — same across themes (semantic meaning > theme tint)  */
+  --vb-success: #16a34a;
+  --vb-success-soft: #dcfce7;
+  --vb-warning: #d97706;
+  --vb-warning-soft: #fef3c7;
+  --vb-error: #dc2626;
+  --vb-error-soft: #fee2e2;
+  --vb-info: #0ea5e9;
+  --vb-info-soft: #e0f2fe;
+
+  /* ── Typography scale (multiplier; 1.0 = near, 1.15 = mid, 1.4 = far) */
+  --vb-font-scale: 1;
+  --vb-font-weight-body: 400;
+  --vb-font-weight-strong: 600;
+
+  /* ── Spacing scale                                                 */
+  --vb-space-scale: 1;
+
+  /* ── Focus ring (always visible, contrast-checked at design time) */
+  --vb-focus-ring: #6366f1;
+  --vb-focus-ring-offset: 2px;
+}
+
+/* =============================================================================
+   Presentation Mode — applied by adding `.vb-presentation` to the
+   document root.  Boosts font scale, increases contrast, simplifies
+   visual noise so the UI is legible on a classroom projector at 8m.
+   Toggle via the teacher dashboard's Presentation Mode button.
+   ============================================================================= */
+:root.vb-presentation {
+  --vb-font-scale: 1.4;
+  --vb-font-weight-body: 500;
+  --vb-font-weight-strong: 700;
+  --vb-shadow: none; /* drop decorative shadows for projector clarity */
+  --vb-shadow-elevated: none;
+}
+
+/* When prefers-reduced-motion is set, disable theme transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* =============================================================================
@@ -31,21 +99,59 @@
    teacher hits Cmd/Ctrl+P (or our "Print" button which calls
    window.print()) and gets a clean page exported to PDF or paper.
    ============================================================================= */
+/* =============================================================================
+   Print-only worksheet system
+
+   Pattern: any node tagged with `.vb-print-only` is hidden on screen
+   and visible during print.  Print mode uses a TWO-LAYER approach
+   so we don't hit the classic "visibility: hidden still reserves
+   space" trap that pushes the print content past several blank pages:
+
+   1. Hide all on-screen UI by SUPPRESSING ITS LAYOUT entirely
+      (display: none on the visible chrome).  This is enforced by
+      tagging the print-only stack with `.vb-print-stack` and using
+      a sibling-negation selector below.
+   2. The print-only content lives inside `.vb-print-stack` which is
+      shown at the document origin.  All `.vb-print-only` descendants
+      cascade to visible.
+
+   On screen, both `.vb-print-only` and `.vb-print-stack` are hidden
+   by the @media screen rules at the bottom.
+   ============================================================================= */
 @media print {
-  body * {
-    visibility: hidden;
+  /* Hide every direct body child by default.  This kills the
+     hidden-but-still-occupying-space layout problem that was
+     producing 5+ empty pages before the actual worksheet content.
+     The print stack opts back in via the rule below. */
+  body > * {
+    display: none !important;
   }
-  .vb-print-only,
-  .vb-print-only * {
-    visibility: visible;
+
+  /* Show the print stack and everything inside it.  When
+     WorksheetView mounts, it portals (or renders) a single
+     `.vb-print-stack` direct-body-child holding all worksheets. */
+  body > .vb-print-stack,
+  body > .vb-print-stack * {
+    display: revert !important;
   }
-  .vb-print-only {
-    position: relative;
+  body > .vb-print-stack {
+    display: block !important;
     background: white !important;
     color: black !important;
   }
 
-  /* Smart page breaks - avoid blank pages */
+  /* Legacy support — anywhere else in the app that uses
+     `.vb-print-only` as a sibling of regular UI (Class Show banners,
+     etc.) keeps working via the original visibility-based reveal. */
+  .vb-print-only {
+    visibility: visible;
+    background: white !important;
+    color: black !important;
+  }
+  .vb-print-only * {
+    visibility: visible;
+  }
+
   .vb-print-page-break {
     page-break-after: always;
     page-break-before: auto;
@@ -53,44 +159,24 @@
   .vb-print-page-break-before {
     page-break-before: always;
   }
-
-  /* Keep worksheets together when possible */
-  .vb-print-only > div {
+  /* Don't tear a sheet across pages mid-content.  Each worksheet body
+     gets this so the browser tries to keep it intact, but allows
+     multiple short sheets to share a page when they fit naturally. */
+  .vb-print-avoid-break {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
-
-  /* Prevent tables from splitting across pages */
-  .vb-print-only table {
-    page-break-inside: avoid;
-  }
-
-  /* Prevent orphan/widow lines */
-  .vb-print-only p,
-  .vb-print-only td {
-    orphans: 2;
-    widows: 2;
-  }
-
-  /* Avoid page break right after headers */
-  .vb-print-only header {
-    page-break-after: avoid;
-  }
-
-  /* Avoid page break before answer key heading */
-  .vb-print-only h2 {
-    page-break-after: avoid;
-  }
-
   @page {
     margin: 1cm;
     size: A4;
   }
 }
 
-/* The print-only container is hidden from screen rendering — only
-   becomes visible when the print dialog is active. */
+/* The print-only containers are hidden from screen rendering — only
+   visible during the print dialog. */
 @media screen {
-  .vb-print-only {
+  .vb-print-only,
+  .vb-print-stack {
     display: none;
   }
 }
@@ -296,27 +382,36 @@ html[dir="rtl"] .rtl-flip {
    Utility Classes
    ============================================================================= */
 
-/* Stone-200 variant utilities for word selection UI */
-.bg-stone-200-lowest { background-color: #ffffff; }
+/* Stone-200 variant utilities for word selection UI.
+   Re-mapped onto the teacher-theme tokens so the wizard surfaces
+   pick up whichever palette the teacher selected. The original
+   hard-coded hex values lived under hard-coded names; the
+   utilities still exist (legacy callers can keep using them) but
+   now resolve to the active theme. */
+.bg-stone-200-lowest { background-color: var(--vb-surface, #ffffff); }
+/* `bg-stone-200` is Tailwind's built-in class — leave its default value
+   intact so student-side surfaces (which deliberately don't follow the
+   teacher theme) still render with the original neutral grey. */
 .bg-stone-200 { background-color: #f5f5f4; }
-.bg-stone-200-high { background-color: #e7e5e4; }
-.bg-stone-200-highest { background-color: #d6d3d1; }
+.bg-stone-200-high { background-color: var(--vb-surface-alt, #e7e5e4); }
+.bg-stone-200-highest { background-color: var(--vb-border, #d6d3d1); }
 .bg-blue-100\/10 { background-color: rgba(219, 234, 254, 0.1); }
 .bg-blue-100\/5 { background-color: rgba(219, 234, 254, 0.05); }
 .bg-blue-100\/20 { background-color: rgba(219, 234, 254, 0.2); }
 
 /* Hover variants for stone-200 utilities */
-.hover\:bg-stone-200-high:hover { background-color: #e7e5e4; }
-.hover\:bg-stone-200-highest:hover { background-color: #d6d3d1; }
+.hover\:bg-stone-200-high:hover { background-color: var(--vb-surface-alt, #e7e5e4); }
+.hover\:bg-stone-200-highest:hover { background-color: var(--vb-border, #d6d3d1); }
 
 /* Text color utilities */
 .text-primary-dim { color: #0046bb; }
 .hover\:text-primary-dim:hover { color: #0046bb; }
 
 /* Border color utilities */
-.border-surface-container-highest { border-color: #e6dbd3; }
+.border-surface-container-highest { border-color: var(--vb-border, #e6dbd3); }
 .border-stone-300\/10 { border-color: rgba(214, 211, 209, 0.1); }
 .border-stone-300\/20 { border-color: rgba(214, 211, 209, 0.2); }
+.border-stone-300\/30 { border-color: var(--vb-border, rgba(214, 211, 209, 0.3)); }
 .border-stone-300\/30 { border-color: rgba(214, 211, 209, 0.3); }
 .border-stone-300\/40 { border-color: rgba(214, 211, 209, 0.4); }
 .hover\:border-stone-300:hover { border-color: #d6d3d1; }
