@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
@@ -39,24 +39,32 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
           <React.Fragment key={step}>
             <div className="flex flex-col items-center">
               <div
+                style={
+                  isCompleted
+                    ? undefined
+                    : isCurrent
+                    ? undefined
+                    : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)', borderColor: 'var(--vb-border)' }
+                }
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   isCompleted
                     ? 'bg-emerald-500 text-white'
                     : isCurrent
                     ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
-                    : 'bg-stone-100 text-stone-600 border border-stone-300'
+                    : 'border'
                 }`}
               >
                 {isCompleted ? '✓' : step}
               </div>
               {isOptional && !isCompleted && !isCurrent && (
-                <span className="text-[10px] font-semibold text-stone-400 mt-1.5">{t.optional}</span>
+                <span className="text-[10px] font-semibold mt-1.5" style={{ color: 'var(--vb-text-muted)' }}>Optional</span>
               )}
             </div>
             {step < 3 && (
               <div
+                style={step < currentStep ? undefined : { backgroundColor: 'var(--vb-border)' }}
                 className={`w-8 sm:w-14 h-0.5 rounded-full ${
-                  step < currentStep ? 'bg-emerald-500' : 'bg-stone-200'
+                  step < currentStep ? 'bg-emerald-500' : ''
                 }`}
               />
             )}
@@ -109,6 +117,50 @@ export interface SetupWizardProps {
    *  never sent through this — only synthesized customs that lack
    *  hebrew/arabic. */
   onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
+  /** AI vocabulary generation — used by WordInputStep2026's AI Lesson Builder. */
+  onAiGenerateWords?: (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => Promise<Array<{
+    english: string;
+    hebrew: string;
+    arabic: string;
+    example?: string;
+    isFromCurriculum?: boolean;
+    curriculumId?: number;
+  }>>;
+  /** AI lesson generator — generates reading text + questions from selected words. Used by ReviewStep. */
+  onGenerateLesson?: (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => Promise<{
+    text: string;
+    wordCount: number;
+    questions: Array<{
+      type: string;
+      question: string;
+      answer: string;
+      options?: string[];
+    }>;
+  }>;
 
   // Feature flags
   use2026WordInput?: boolean; // Use new 2026 word input design
@@ -116,6 +168,7 @@ export interface SetupWizardProps {
   onOcrUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isOcrProcessing?: boolean;
   ocrProgress?: number;
+  ocrStatus?: string;
   onDocxUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 
   // Custom words
@@ -185,11 +238,14 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   onPlayWord,
   onTranslateWord,
   onTranslateBatch,
+  onAiGenerateWords,
+  onGenerateLesson,
   use2026WordInput = false,
   topicPacks = [],
   onOcrUpload,
   isOcrProcessing = false,
   ocrProgress = 0,
+  ocrStatus = "",
   onDocxUpload,
   customWords = [],
   onCustomWordsChange,
@@ -237,6 +293,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
       : [...DEFAULT_ASSIGNMENT_MODE_IDS]
   );
 
+  // AI-generated lesson state (when teacher uses AI Lesson Builder)
+  const [aiGeneratedLesson, setAiGeneratedLesson] = useState<any>(null);
+
   // ── Pre-populate from editing assignment ─────────────────────────────────────
   useEffect(() => {
     if (editingAssignment) {
@@ -281,15 +340,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   };
 
   const handleLaunch = () => {
-    console.log('[SetupWizard handleLaunch] START', {
-      mode,
-      selectedWordsCount: selectedWords.length,
-      selectedModesCount: selectedModes.length,
-      selectedWords: selectedWords.map(w => ({ id: w.id, english: w.english })),
-      selectedModes,
-    });
     onComplete({ words: selectedWords, modes: selectedModes });
-    console.log('[SetupWizard handleLaunch] END - called onComplete');
   };
 
   const handleQuickStart = () => {
@@ -352,6 +403,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         subtitle={isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle}
         showBack
         onBack={handleBack}
+        // Single-click escape from any step.  Back is still
+        // step-by-step; Cancel always returns to the dashboard so
+        // a teacher on step 3 doesn't have to tap Back three times.
+        onExit={onBack}
+        exitLabel="Cancel"
         userName={user?.displayName}
         userAvatar={user?.avatar}
         onLogout={onLogout}
@@ -369,9 +425,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   allWords={allWords}
                   selectedWords={selectedWords}
                   onSelectedWordsChange={(words) => {
-                    console.log('[SetupWizard] setSelectedWords called with', words.length, 'words', {
-                      sample: words.slice(-3).map(w => w.english),
-                    });
                     setSelectedWords(words);
                   }}
                   onNext={handleNext}
@@ -428,6 +481,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   onDeleteSavedGroup={onDeleteSavedGroup}
                   customWords={customWords}
                   onCustomWordsChange={onCustomWordsChange}
+                  onAiGenerateWords={onAiGenerateWords}
                 />
               ) : (
                 <WordInputStep
@@ -480,6 +534,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               onSentenceDifficultyChange={onSentenceDifficultyChange}
               selectedWords={selectedWords}
               editingAssignment={editingAssignment}
+              onGenerateLesson={onGenerateLesson}
+              onAiLessonChange={setAiGeneratedLesson}
+              showToast={showToast}
             />
           )}
 
@@ -500,6 +557,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               assignmentInstructions={assignmentInstructions}
               selectedClassName={selectedClass?.name}
               editingAssignment={editingAssignment}
+              aiGeneratedLesson={aiGeneratedLesson}
             />
           )}
         </AnimatePresence>

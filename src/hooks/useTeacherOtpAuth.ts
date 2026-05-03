@@ -45,12 +45,15 @@ export interface UseTeacherOtpAuth {
   error: string | null;
   /** Seconds until resend is allowed. 0 = enabled. */
   resendInSeconds: number;
-  /** Type-and-submit the email to send the OTP. */
-  sendCode: (email: string) => Promise<void>;
+  /** Type-and-submit the email to send the OTP.  When Supabase has
+   *  CAPTCHA protection enabled (Auth → Bot and Abuse Protection),
+   *  pass the verified Turnstile token in `captchaToken`.  Without
+   *  protection enabled it's ignored. */
+  sendCode: (email: string, captchaToken?: string) => Promise<void>;
   /** Type-and-submit the 6-digit code to verify. */
   verifyCode: (code: string) => Promise<void>;
   /** Resend the same email's code. */
-  resend: () => Promise<void>;
+  resend: (captchaToken?: string) => Promise<void>;
   /** Reset back to 'idle' so the user can edit the email again. */
   reset: () => void;
 }
@@ -85,7 +88,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     };
   }, [resendInSeconds]);
 
-  const sendCode = useCallback(async (rawEmail: string) => {
+  const sendCode = useCallback(async (rawEmail: string, captchaToken?: string) => {
     const trimmed = rawEmail.trim().toLowerCase();
     // Cheap client-side sanity check — Supabase rejects malformed
     // emails too, but failing fast keeps the loading spinner from
@@ -104,29 +107,22 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     // a 6-digit code.  We use the code path so school PCs work even
     // when the teacher reads the email on their phone.
     //
-    // shouldCreateUser:false means we don't auto-create auth.users
-    // rows for unrecognised emails — the teacher allowlist gate in
-    // App.tsx's onAuthStateChange handler is the source of truth
-    // for who can become a teacher, so blocking ghost-user creation
-    // here keeps the auth.users table tidy.
-    //
-    // Wait — actually: if shouldCreateUser is false and the user
-    // doesn't exist yet, Supabase returns an error that says "user
-    // not found".  For first-time teacher signups we DO need to
-    // create an auth.users row, then the allowlist check blocks
+    // shouldCreateUser:true is the correct policy — for first-time
+    // teacher signups we need to create an auth.users row, then the
+    // allowlist check in App.tsx's onAuthStateChange handler blocks
     // any non-allowlisted teacher from getting a public.users row.
-    // Setting shouldCreateUser:true is the correct policy.
+    //
+    // captchaToken is forwarded to Supabase Auth's CAPTCHA verification
+    // path.  When CAPTCHA protection is OFF in the Supabase dashboard
+    // (Auth → Bot and Abuse Protection), Supabase ignores this field
+    // entirely — so passing it here is safe even before the dashboard
+    // setting is enabled.
     const { error: sendErr } = await supabase.auth.signInWithOtp({
       email: trimmed,
       options: {
         shouldCreateUser: true,
-        // We want to tell users to enter the CODE, but Supabase also
-        // includes a magic link in the email.  That's fine — both
-        // work, and a teacher who clicks the link in the same
-        // browser still gets signed in correctly.  The
-        // emailRedirectTo controls where the click-the-link path
-        // lands; same origin is correct.
         emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+        captchaToken: captchaToken && captchaToken.length > 0 ? captchaToken : undefined,
       },
     });
 
@@ -173,9 +169,9 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     setStage("done");
   }, [email]);
 
-  const resend = useCallback(async () => {
+  const resend = useCallback(async (captchaToken?: string) => {
     if (!email || resendInSeconds > 0) return;
-    await sendCode(email);
+    await sendCode(email, captchaToken);
   }, [email, resendInSeconds, sendCode]);
 
   const reset = useCallback(() => {

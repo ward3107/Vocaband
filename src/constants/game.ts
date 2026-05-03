@@ -421,7 +421,36 @@ export const DIFFICULTY_CONFIG: Record<SentenceDifficulty, {
   4: { label: 'Advanced', description: '10-15 words, complex structures', minWords: 10, maxWords: 15, emoji: '🏔️' },
 };
 
-export type GameMode = "classic" | "listening" | "spelling" | "matching" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder" | "fill-blank";
+export type GameMode = "classic" | "listening" | "spelling" | "matching" | "memory-flip" | "true-false" | "flashcards" | "scramble" | "reverse" | "letter-sounds" | "sentence-builder" | "fill-blank" | "word-chains" | "idiom" | "speed-round" | "review";
+
+// Single source of truth for the full mode catalog.  Used wherever we
+// need an "everything available" fallback (assignment without
+// allowed_modes, quick-play without a saved set, dashboard defaults,
+// etc).  Adding a new mode to GameMode means appending it here too —
+// otherwise the new mode silently gets filtered out of fallback lists.
+//
+// Note: 'review' is intentionally NOT in ALL_GAME_MODES — Review is
+// a student-initiated SRS session entered from the dashboard
+// widget, not something assignments can opt into.  Surfacing it as a
+// regular mode tile would let teachers tick it on assignments where
+// it has no meaning.
+export const ALL_GAME_MODES: GameMode[] = [
+  "classic",
+  "listening",
+  "spelling",
+  "matching",
+  "memory-flip",
+  "true-false",
+  "flashcards",
+  "scramble",
+  "reverse",
+  "letter-sounds",
+  "sentence-builder",
+  "fill-blank",
+  "word-chains",
+  "idiom",
+  "speed-round",
+];
 
 // ═════════════════════════════════════════════════════════════════════════
 // STRUCTURE PROGRESSION — "build something meaningful" system

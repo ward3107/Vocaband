@@ -68,7 +68,7 @@ export default function AdaptiveDrawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="hidden lg:block fixed inset-0 bg-stone-900/30 backdrop-blur-sm z-40"
+            className="hidden lg:block fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
             aria-hidden="true"
           />
 
@@ -80,15 +80,23 @@ export default function AdaptiveDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: 0.28 }}
-            className="fixed inset-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-1/2 lg:max-w-3xl bg-white z-50 shadow-2xl flex flex-col"
+            style={{ backgroundColor: 'var(--vb-surface)' }}
+            className="fixed inset-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-1/2 lg:max-w-3xl z-50 shadow-2xl flex flex-col"
           >
-            <header className="flex items-center gap-3 px-4 py-3 border-b border-stone-100 bg-white sticky top-0 z-10">
+            <header
+              className="flex items-center gap-3 px-4 py-3 border-b sticky top-0 z-10"
+              style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }}
+            >
               <button
                 type="button"
                 onClick={onClose}
-                aria-label={t.closeDetailsAria}
-                className="w-10 h-10 rounded-xl hover:bg-stone-100 flex items-center justify-center shrink-0 text-stone-600"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                aria-label="Close details"
+                className="w-10 h-10 rounded-xl hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
+                style={{
+                  color: 'var(--vb-text-secondary)',
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent" as never,
+                }}
               >
                 {/* Back-arrow feels right on mobile; on desktop it still
                     reads as "close panel". */}
@@ -100,9 +108,9 @@ export default function AdaptiveDrawer({
                 <span className="text-3xl shrink-0" aria-hidden>{avatar}</span>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="font-black text-lg text-stone-900 truncate">{title}</h2>
+                <h2 className="font-black text-lg truncate" style={{ color: 'var(--vb-text-primary)' }}>{title}</h2>
                 {subtitle && (
-                  <p className="text-xs text-stone-500 font-medium truncate">{subtitle}</p>
+                  <p className="text-xs font-medium truncate" style={{ color: 'var(--vb-text-muted)' }}>{subtitle}</p>
                 )}
               </div>
               {headerRight}

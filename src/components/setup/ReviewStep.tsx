@@ -7,13 +7,12 @@
  * - Assignment: "Assign to Class" or "Update Assignment" (blue gradient)
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { WizardMode, AssignmentData, getGameModeConfig } from './types';
-import { useLanguage } from '../../hooks/useLanguage';
-import { teacherWizardsT } from '../../locales/teacher/wizards';
+import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
 
 export interface ReviewStepProps {
   mode: WizardMode;
@@ -34,6 +33,8 @@ export interface ReviewStepProps {
   assignmentInstructions?: string;
   selectedClassName?: string;
   editingAssignment?: AssignmentData | null;
+  /** AI-generated lesson data (if any) — generated in ConfigureStep */
+  aiGeneratedLesson?: GeneratedLesson | null;
 }
 
 export const ReviewStep: React.FC<ReviewStepProps> = ({
@@ -51,6 +52,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   assignmentInstructions = '',
   selectedClassName = '',
   editingAssignment = null,
+  aiGeneratedLesson,
 }) => {
   const { language } = useLanguage();
   const t = teacherWizardsT[language];
@@ -74,7 +76,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   const isAssignment = mode === 'assignment';
   const isEditing = !!editingAssignment;
 
-  const dbWordCount = selectedWords.filter(w => w.id >= 0).length;
   const customWordCount = selectedWords.filter(w => w.id < 0).length;
 
   const modeBadges = selectedModes.map(modeId => {
@@ -98,7 +99,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <div className="flex gap-2">
               <button
                 onClick={onEditWords}
-                className="px-3 py-2 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 active:bg-stone-400 transition-all flex items-center gap-1 border-2 border-stone-300/30 text-sm"
+                className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
               >
                 <BookOpen size={14} />
                 <span className="hidden sm:inline">{t.editWordsFull}</span>
@@ -106,7 +107,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               </button>
               <button
                 onClick={onEditModes}
-                className="px-3 py-2 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 active:bg-stone-400 transition-all flex items-center gap-1 border-2 border-stone-300/30 text-sm"
+                className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
               >
                 <Target size={14} />
                 <span className="hidden sm:inline">{t.editModesFull}</span>
@@ -115,15 +116,15 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             </div>
           )}
         </div>
-        <div className="text-sm font-bold text-stone-600">{t.step3Of3}</div>
+        <div className="text-sm font-bold text-[var(--vb-text-secondary)]">Step 3 of 3</div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-black text-stone-900 mb-2">
-          {isAssignment ? t.reviewAssignmentHeading : t.reviewQpHeading}
+        <h2 className="text-2xl font-black text-[var(--vb-text-primary)] mb-2">
+          {isAssignment ? 'Review assignment' : 'Review your selection'}
         </h2>
-        <p className="text-stone-600">
-          {isAssignment ? t.reviewAssignmentSubheading : t.reviewQpSubheading}
+        <p className="text-[var(--vb-text-secondary)]">
+          {isAssignment ? 'Check everything before assigning' : 'Verify your selection'}
         </p>
       </div>
 
@@ -142,8 +143,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         >
           {/* Animated background decoration */}
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+            <div className="absolute top-0 left-0 w-32 h-32 bg-[var(--vb-surface)] rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-40 h-40 bg-[var(--vb-surface)] rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
           </div>
 
           {/* Floating particles */}
@@ -201,39 +202,39 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </motion.div>
       )}
 
-      <div className="bg-stone-200-lowest rounded-3xl shadow-xl border-2 border-surface-container-highest overflow-hidden">
-        <div className="flex items-center justify-around p-4 sm:p-6 bg-stone-200 border-b border-surface-container-highest">
+      <div className="bg-[var(--vb-surface-alt)]-lowest rounded-3xl shadow-xl border-2 border-surface-container-highest overflow-hidden">
+        <div className="flex items-center justify-around p-4 sm:p-6 bg-[var(--vb-surface-alt)] border-b border-surface-container-highest">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <BookOpen className="text-primary" size={18} />
-              <span className="text-2xl sm:text-3xl font-black text-stone-900">{selectedWords.length}</span>
+              <span className="text-2xl sm:text-3xl font-black text-[var(--vb-text-primary)]">{selectedWords.length}</span>
             </div>
-            <p className="text-xs sm:text-sm font-bold text-stone-600">{t.wordsCountLabel(selectedWords.length)}</p>
+            <p className="text-xs sm:text-sm font-bold text-[var(--vb-text-secondary)]">Word{selectedWords.length !== 1 ? 's' : ''}</p>
           </div>
 
-          <div className="w-px h-12 bg-stone-200-highest"></div>
+          <div className="w-px h-12 bg-[var(--vb-surface-alt)]-highest"></div>
 
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Target className="text-amber-500" size={18} />
-              <span className="text-2xl sm:text-3xl font-black text-stone-900">{selectedModes.length}</span>
+              <span className="text-2xl sm:text-3xl font-black text-[var(--vb-text-primary)]">{selectedModes.length}</span>
             </div>
-            <p className="text-xs sm:text-sm font-bold text-stone-600">{t.modesCountLabel(selectedModes.length)}</p>
+            <p className="text-xs sm:text-sm font-bold text-[var(--vb-text-secondary)]">Mode{selectedModes.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
 
         {isAssignment && (
           <div className="p-4 sm:p-6 border-b border-surface-container-highest space-y-3">
             <div>
-              <label className="text-xs font-bold text-stone-600 uppercase tracking-wide">{t.reviewAssignmentTitleLabel}</label>
-              <p className="text-base font-bold text-stone-900 mt-1">{assignmentTitle || t.untitledAssignment}</p>
+              <label className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">Assignment Title</label>
+              <p className="text-base font-bold text-[var(--vb-text-primary)] mt-1">{assignmentTitle || 'Untitled Assignment'}</p>
             </div>
 
             {selectedClassName && (
               <div>
-                <label className="text-xs font-bold text-stone-600 uppercase tracking-wide">{t.reviewClassLabel}</label>
-                <p className="text-base text-stone-900 mt-1 flex items-center gap-2">
-                  <Users size={16} className="text-stone-600" />
+                <label className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">Class</label>
+                <p className="text-base text-[var(--vb-text-primary)] mt-1 flex items-center gap-2">
+                  <Users size={16} className="text-[var(--vb-text-secondary)]" />
                   {selectedClassName}
                 </p>
               </div>
@@ -241,24 +242,24 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
 
             {assignmentDeadline && (
               <div>
-                <label className="text-xs font-bold text-stone-600 uppercase tracking-wide">{t.reviewDeadlineLabel}</label>
-                <p className="text-base text-stone-900 mt-1">
-                  {new Date(assignmentDeadline).toLocaleDateString(language === 'he' ? 'he-IL' : language === 'ar' ? 'ar' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <label className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">Deadline</label>
+                <p className="text-base text-[var(--vb-text-primary)] mt-1">
+                  {new Date(assignmentDeadline).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
               </div>
             )}
 
             {assignmentInstructions && (
               <div>
-                <label className="text-xs font-bold text-stone-600 uppercase tracking-wide">{t.reviewInstructionsLabel}</label>
-                <p className="text-sm text-stone-900 mt-1 line-clamp-2">{assignmentInstructions}</p>
+                <label className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">Instructions</label>
+                <p className="text-sm text-[var(--vb-text-primary)] mt-1 line-clamp-2">{assignmentInstructions}</p>
               </div>
             )}
           </div>
         )}
 
         <div className="p-4 sm:p-6 border-b border-surface-container-highest">
-          <h3 className="text-sm font-bold text-stone-900 mb-3">{t.selectedWordsHeading}</h3>
+          <h3 className="text-sm font-bold text-[var(--vb-text-primary)] mb-3">Selected Words</h3>
           <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
             {selectedWords.map(word => (
               <span
@@ -280,12 +281,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </div>
 
         <div className="p-4 sm:p-6">
-          <h3 className="text-sm font-bold text-stone-900 mb-3">{t.gameModesHeading}</h3>
+          <h3 className="text-sm font-bold text-[var(--vb-text-primary)] mb-3">Game Modes</h3>
           <div className="flex flex-wrap gap-2">
             {modeBadges.map(badge => (
               <span
                 key={badge!.id}
-                className="px-3 py-1.5 bg-stone-200-high rounded-xl text-sm font-bold text-stone-600 flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-[var(--vb-surface-alt)]-high rounded-xl text-sm font-bold text-[var(--vb-text-secondary)] flex items-center gap-1.5"
               >
                 <span>{badge!.emoji}</span>
                 <span>{badge!.name}</span>
@@ -305,7 +306,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           className={`flex items-start gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-colors ${
             saveAsTemplate
               ? 'border-indigo-300 bg-indigo-50'
-              : 'border-stone-200 bg-white hover:border-stone-300'
+              : 'border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-[var(--vb-text-muted)]'
           }`}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         >
@@ -316,12 +317,13 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             className="w-5 h-5 mt-0.5 accent-indigo-600 cursor-pointer"
           />
           <div className="flex-1">
-            <div className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+            <div className="flex items-center gap-1.5 text-sm font-bold text-[var(--vb-text-primary)]">
               <Bookmark size={14} className="text-indigo-600" />
               {t.saveAsTemplateLabel}
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">
-              {t.saveAsTemplateBlurb}
+            <p className="text-xs text-[var(--vb-text-muted)] mt-0.5">
+              Reuse this exact task in one tap, AND save these words
+              under "Saved Groups" so future assignments can pick them up.
             </p>
           </div>
         </label>
@@ -340,22 +342,13 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       <div className="flex gap-3 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:pt-0 sm:pb-0">
         <button
           onClick={onBack}
-          className="flex-1 py-4 bg-stone-200 text-stone-900 rounded-2xl font-bold hover:bg-stone-200-high border-2 border-stone-300/20 transition-all"
+          className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-primary)] rounded-2xl font-bold hover:opacity-80 border-2 border-[var(--vb-border)] transition-all"
         >
           ← {t.back}
         </button>
         <button
           ref={launchButtonRef}
           onClick={() => {
-            console.log('[ReviewStep Launch Button] CLICKED', {
-              mode,
-              selectedWordsCount: selectedWords.length,
-              selectedModesCount: selectedModes.length,
-              assignmentTitle,
-              isAssignment,
-              isEditing,
-              saveAsTemplate,
-            });
             // Save BEFORE launching — `onLaunch` typically clears the
             // wizard state in the parent, so by the time it returns the
             // snapshot SetupWizard would build is empty.
@@ -383,6 +376,36 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           )}
         </button>
       </div>
+
+      {/* AI Generated Lesson Preview */}
+      {aiGeneratedLesson && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 sm:p-6 border-2 border-fuchsia-200"
+        >
+          <h3 className="text-sm font-bold text-fuchsia-900 mb-3 flex items-center gap-2">
+            <span>📖</span> Reading Text ({aiGeneratedLesson.wordCount} words)
+          </h3>
+          <p className="text-sm text-[var(--vb-text-secondary)] mb-4 line-clamp-4">{aiGeneratedLesson.text}</p>
+
+          {aiGeneratedLesson.questions.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold text-[var(--vb-text-secondary)] mb-2">Questions ({aiGeneratedLesson.questions.length})</h4>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {aiGeneratedLesson.questions.slice(0, 5).map((q, i) => (
+                  <div key={i} className="text-xs text-[var(--vb-text-secondary)]">
+                    <span className="font-semibold">Q{i + 1}:</span> {q.question}
+                  </div>
+                ))}
+                {aiGeneratedLesson.questions.length > 5 && (
+                  <p className="text-xs text-[var(--vb-text-muted)]">...and {aiGeneratedLesson.questions.length - 5} more</p>
+                )}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   );
 };

@@ -65,6 +65,16 @@ export default function SpellingGame({
   const renderSlots = () => {
     if (!isSpelling || !cleanAnswer) return null;
     const wordGroups = cleanAnswer.split(" ");
+    // Strip whitespace from the kid's typed input before walking it
+    // letter-by-letter into the slots.  Without this, a kid who types
+    // the space in a multi-word answer (e.g. "cloth bag") sees their
+    // SPACE land in the slot meant for the first letter of the second
+    // word -- the slot styles "filled" but renders as visually empty,
+    // and every subsequent slot's typed char shifts by one.  The
+    // visible word-group gap (gap-x-3 between the flex groups below)
+    // already represents the space, so the slot row should never
+    // contain a literal space character.
+    const cleanInput = spellingInput.replace(/\s/g, "");
     let globalIdx = 0;
     return (
       <div className="flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 mb-4 sm:mb-6">
@@ -72,7 +82,7 @@ export default function SpellingGame({
           <div key={gi} className="flex gap-1 sm:gap-1.5">
             {group.split("").map((expectedChar) => {
               const idx = globalIdx++;
-              const typedChar = spellingInput[idx] || "";
+              const typedChar = cleanInput[idx] || "";
               const upper = typedChar.toUpperCase();
               const expectedUpper = expectedChar.toUpperCase();
               // Color decisions:

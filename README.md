@@ -19,7 +19,7 @@
 
 ## What it does
 
-Vocaband turns vocabulary drills into a short, competitive classroom experience. Students join a class with a 6-character code (or scan a QR code for a Quick Play session — no account needed), pick from **10 interactive game modes**, and their progress streams live to the teacher's dashboard.
+Vocaband turns vocabulary drills into a short, competitive classroom experience. Students join a class with a 6-character code (or scan a QR code for a Quick Play session — no account needed), pick from **11 interactive game modes**, and their progress streams live to the teacher's dashboard.
 
 Every word is available in **English + Hebrew + Arabic** so the UI fits Israel's two dominant first languages, fully RTL-aware. Curriculum-aligned across **Set 1 / Set 2 / Set 3** (CEFR A1 → B2).
 
@@ -84,7 +84,7 @@ No app store. No personal data required for students. Works on any device with a
 | Quick Play — QR scan, no login | ✅ Yes | ❌ No |
 | Live classroom competition | ✅ Real-time leaderboard | ❌ No |
 | No student account needed | ✅ Join by class code + name | ❌ Registration required |
-| Game modes | ✅ 10 built-in | ❌ 1–2 max |
+| Game modes | ✅ 11 built-in (each with its own visual identity) | ❌ 1–2 max |
 | Smart word matching (paste, OCR, AI translate) | ✅ Deep | ❌ Manual only |
 | Teacher analytics (per-word mistakes) | ✅ Per-student, per-word | ❌ Basic |
 | Accessibility (WCAG 2.0 AA, IS 5568) | ✅ 10-feature toolbar | ❌ Limited |
@@ -93,22 +93,40 @@ No app store. No personal data required for students. Works on any device with a
 
 ---
 
+## Recent improvements (April–May 2026)
+
+- **Per-mode visual identity** — each of the 11 modes redesigned with its own colour theme, mechanic-specific layout, and bigger mobile tap targets (88px+).  No more generic stone/blue tiles.  See the modes table below for the per-mode theme.
+- **NEW MODE: Memory Flip** — face-down card flip game that reuses the Matching word pool but tests memory + meaning.
+- **Matching → drag-line** — two-column layout with finger-drag SVG line drawing instead of flat tap-tap.  Tap-tap fallback preserved for accessibility.
+- **Scramble → tap-to-assemble** — letter tiles in a tray instead of an on-screen keyboard.  No more typing on a phone keyboard that eats half the screen.
+- **Spelling letter slots** — see the word's shape before typing.  Positional feedback on submit (green for matching letter, rose for wrong).
+- **Quick Play language picker** — students pick EN/HE/AR right after entering nickname + avatar.  Mode-selection screen also has an inline picker bar so the language can be switched mid-session.
+- **Tabbed avatar picker for Quick Play** — ~30 emojis × 6 themed groups + 30 lucide vector icons (Crown, Star, Rocket, etc.) for kids who want a non-cartoon identity.
+- **Saved word groups across auth methods** — re-keyed by email so a teacher who signs in with magic link AND Google OAuth sees the same groups (Supabase otherwise treats those as separate users).
+- **Resend SMTP integration** — magic-link + teacher-OTP emails now deliver via Resend instead of Supabase's rate-limited demo SMTP.  Operator setup walkthrough at [docs/RESEND-SMTP-SETUP.md](./docs/RESEND-SMTP-SETUP.md).
+
+---
+
 ## Features
 
-### 🎮 10 game modes
+### 🎮 11 game modes
 
-| Mode | Description |
-|---|---|
-| **Classic** | See the English word, hear it pronounced, choose the correct translation |
-| **Listening** | Audio only — no text shown. Trains the ear |
-| **Spelling** | Hear the word and type it correctly in English |
-| **Matching** | Connect Hebrew/Arabic words to their English translations |
-| **True / False** | Quick reflexes: decide if the word–translation pair is correct |
-| **Flashcards** | Self-paced review — flip cards to see answers, no scoring pressure |
-| **Word Scramble** | Unscramble mixed-up letters to form the English word |
-| **Reverse** | See the Hebrew/Arabic word, pick the English translation |
-| **Letter Sounds** | Phonics — each letter lights up and sounds out |
-| **Sentence Builder** | Tap words in the correct order to build sentences from the vocabulary |
+Every mode has its own visual identity (colour theme, mechanic-specific layout, dedicated mode pill). The full list:
+
+| Mode | Theme | Description |
+|---|---|---|
+| **Flashcards** | cyan | Self-paced review — true 3D flip card with English on the front, target language on the back |
+| **Classic** | emerald | See the English word, hear it pronounced, choose the correct translation |
+| **Fill-in-the-Blank** | lime | A sentence with one word missing — pick the word that fits (sentence card has a real visible slot box, not inline underscores) |
+| **Listening** | emerald | Audio only — no text shown. Trains the ear |
+| **Spelling** | violet | Hear the word, type it in English. Letter slots show the word's shape; positional feedback on submit |
+| **Matching** | amber | Two-column drag-line — drag a finger from a left tile to a right tile to draw a match (tap-tap fallback for non-touch) |
+| **Memory Flip** | pink | Cards face-down — flip two at a time to find pairs. Same word pool as Matching, classic memory mechanic |
+| **True / False** | rose ↔ emerald | Decide if the word–translation pair is correct. Big swipe-friendly buttons + paired colours for instant judgement |
+| **Word Scramble** | indigo | Tap-to-assemble letter tiles from a tray instead of typing. No on-screen keyboard eating half the phone screen |
+| **Reverse** | emerald | See the Hebrew/Arabic word, pick the English translation |
+| **Letter Sounds** | violet | Phonics — each letter lights up + sounds out, then type the full word |
+| **Sentence Builder** | teal | Listen to an audio sentence, then tap word tiles in order to build it. Big speaker hero so the audio prompt is unmissable |
 
 Teachers can restrict which modes are available per assignment or Quick Play session.
 
@@ -134,13 +152,14 @@ Teachers can restrict which modes are available per assignment or Quick Play ses
 
 ### 🎓 For students
 
-- **Join instantly** — Class code + name + emoji avatar. No email, no password.
+- **Join instantly** — Class code + name + emoji avatar. No email, no password. Or sign up with a Google OAuth or magic-link email — both work, both share saved word groups (saved-groups are keyed by email so identity follows the teacher across auth methods).
 - **Returning or new** — Clear "I'm returning / I'm new" toggle on the login screen.
-- **Language choice** — Hebrew or Arabic, chosen on first game, remembered thereafter.
-- **10 game modes** — Each assignment can include any subset of the 10.
+- **Tabbed avatar picker** — ~30 emojis × 6 themed groups (Animals / Faces / Food / Sports / Space / Vehicles) plus a Geometric tab with 30 vector icons. Identity choice without collisions even when 30+ students join the same Quick Play session.
+- **Language choice** — Inline EN/HE/AR picker bar at the top of the mode-selection screen. Tap to switch instantly; every mode tile + tooltip + intro re-renders in the chosen language. Quick Play students also see a dedicated language-pick step right after entering their nickname + avatar.
+- **11 game modes** — Each assignment can include any subset of the 11.
 - **XP, streaks, badges** — "Perfect Score", "Streak Master", "XP Hunter" and more.
 - **Mode intro screens** — Brief instructions in English, Hebrew, or Arabic before each game.
-- **Cumulative session scoring** — Quick Play sessions accumulate points across multiple modes for a fair leaderboard.
+- **Cumulative session scoring** — Quick Play sessions accumulate points across multiple modes for a fair leaderboard. Score restored on rescan-the-QR (90-min TTL) so kids who walk away don't lose their lead.
 - **Motivational feedback** — Audio + visual encouragement on correct answers.
 
 ---
@@ -150,12 +169,16 @@ Teachers can restrict which modes are available per assignment or Quick Play ses
 Teachers pick words, hit Launch, and students scan a QR code to join instantly. What's shipped:
 
 - 6-character session code + QR code side by side
-- All 10 game modes selectable per session (teacher's choice is respected end-to-end)
+- All 11 game modes selectable per session (teacher's choice is respected end-to-end)
 - Real-time teacher monitor with live podium
-- Leader-change celebration chime
+- **Join flow**: scan QR → pick avatar (tabbed picker, 6 themed emoji groups + 30 lucide vector icons) → enter nickname → pick UI language (EN/HE/AR) → join. Game UI from the moment of join is in the picked language.
+- **QR collapses to a 64px floating icon** when the teacher hides it, with a live-joined badge. Tap to re-expand.
+- **All teacher actions in one place** — Words list + End Session buttons live inside the QR card, no fixed footer competing for screen space
+- Leader-change celebration chime + auto-music shuffle every 2 minutes (8 background tracks, teacher-selectable theme)
 - Live connection indicator so teachers know if updates are instant or fallback
 - Polling fallback keeps the podium fresh even if real-time is degraded
-- Teacher can kick a student mid-session; kicked students see a clear screen with a "rejoin with a different name" path
+- Teacher can kick a student mid-session (top-3 podium kick affordance + rank-4+ inline kick)
+- **Same-nickname re-join** — if a student loses connection or accidentally closes the tab, rescanning the QR with the same nickname adopts their old slot with score preserved (server-side); the local "Welcome back!" banner offers Resume in-place for up to 90 minutes
 - Final-results screen for students — rank + top-3 mini podium highlighting "(you)"
 - Custom teacher-added words supported alongside curriculum words (with AI translation)
 - Per-session cumulative scoring — students keep their points across the modes they play

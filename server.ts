@@ -1898,6 +1898,560 @@ Examples of good vs bad sentences:
     }
   });
 
+  // AI Vocabulary Generator — Stage 1 of AI Lesson Builder
+  // Takes a topic + level + count, returns vocabulary words with translations.
+  app.post("/api/ai-generate-words", aiRateLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can generate vocabulary" });
+    }
+
+    const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "AI vocabulary generation not configured" });
+    }
+
+    const { topic, level, examplesToAnchor, skipCurriculumDuplicates } = req.body;
+    if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
+      return res.status(400).json({ error: "topic is required (non-empty string)" });
+    }
+    if (topic.length > 200) {
+      return res.status(400).json({ error: "topic too long (max 200 characters)" });
+    }
+    const validLevels = ["A1", "A2", "B1", "B2"];
+    if (!level || !validLevels.includes(level)) {
+      return res.status(400).json({ error: `level must be one of: ${validLevels.join(", ")}` });
+    }
+    if (examplesToAnchor !== undefined && typeof examplesToAnchor !== "string") {
+      return res.status(400).json({ error: "examplesToAnchor must be a string" });
+    }
+
+    try {
+      console.log(`[AI Words] ${userData.email || uid}: topic="${topic}" level=${level}`);
+
+      // Build the prompt for Gemini (always 20 words, mixed types)
+      const exampleHint = examplesToAnchor?.trim()
+        ? `Use these words as style guides: ${examplesToAnchor}`
+        : "";
+
+      const duplicateHint = skipCurriculumDuplicates !== false
+        ? `IMPORTANT: Avoid common curriculum words like "run, jump, play, book, school, teacher, student, family, friend, house, food, water." Pick more specific, interesting vocabulary.`
+        : "";
+
+      const prompt = `Generate 20 English vocabulary words for Israeli EFL students at ${level} level (CEFR).
+
+Topic: ${topic.trim()}
+
+Include a mix of nouns, verbs, and adjectives.
+${exampleHint}
+${duplicateHint}
+
+Return a JSON array where each item has:
+{
+  "english": "word",
+  "hebrew": "translation",
+  "arabic": "translation",
+  "example": "short simple sentence using the word (optional)"
+}
+
+Requirements:
+- Words must be appropriate for grades 4-9
+- Hebrew and Arabic translations should be accurate
+- Example sentences should be 8-15 words, simple structure
+- Output ONLY the JSON array, no markdown, no explanations
+
+Example output format:
+[
+  {"english": "weather", "hebrew": "מזג אוויר", "arabic": "الطقس", "example": "The weather is sunny today."},
+  {"english": "temperature", "hebrew": "טמפרטורה", "arabic": "درجة الحرارة", "example": "The temperature is very high."}
+]`;
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      // Parse JSON from Gemini response (it might include markdown code blocks)
+      let jsonText = text.trim();
+      if (jsonText.startsWith("```json")) {
+        jsonText = jsonText.slice(7);
+      } else if (jsonText.startsWith("```")) {
+        jsonText = jsonText.slice(3);
+      }
+      if (jsonText.endsWith("```")) {
+        jsonText = jsonText.slice(0, -3);
+      }
+      jsonText = jsonText.trim();
+
+      let generatedWords: Array<{
+        english: string;
+        hebrew: string;
+        arabic: string;
+        example?: string;
+      }>;
+
+      try {
+        generatedWords = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.warn("[AI Words] JSON parse failed, trying to extract array:", parseError);
+        // Try to extract JSON array from text
+        const arrayMatch = jsonText.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          generatedWords = JSON.parse(arrayMatch[0]);
+        } else {
+          throw new Error("Failed to parse AI response as JSON");
+        }
+      }
+
+      if (!Array.isArray(generatedWords)) {
+        throw new Error("AI response is not an array");
+      }
+
+      // Validate and sanitize each word
+      const sanitizedWords = generatedWords
+        .filter(w => w && typeof w === "object")
+        .filter(w => typeof w.english === "string" && w.english.trim().length > 0)
+        .filter(w => typeof w.hebrew === "string" && w.hebrew.trim().length > 0)
+        .filter(w => typeof w.arabic === "string" && w.arabic.trim().length > 0)
+        .map(w => ({
+          english: w.english.trim().toLowerCase(),
+          hebrew: w.hebrew.trim(),
+          arabic: w.arabic.trim(),
+          example: w.example && typeof w.example === "string" ? w.example.trim() : undefined,
+        }))
+        .filter(w => w.english.length <= 50 && w.hebrew.length <= 100 && w.arabic.length <= 100)
+        .slice(0, 30); // Cap at 30 words max
+
+      console.log(`[AI Words] generated ${sanitizedWords.length} words`);
+
+      res.json({ words: sanitizedWords });
+    } catch (error: any) {
+      console.error("[AI Words] generation error:", error?.message || error);
+      res.status(500).json({ error: "AI vocabulary generation failed" });
+    }
+  });
+
+  // AI Reading Text Processor — Stage 2 of AI Lesson Builder
+  // Takes a text + level, extracts key vocabulary and generates comprehension questions.
+  app.post("/api/ai-process-text", aiRateLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can process text" });
+    }
+
+    const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "AI text processing not configured" });
+    }
+
+    const { text, level, extractVocab = true, generateQuestions = true } = req.body;
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return res.status(400).json({ error: "text is required (non-empty string)" });
+    }
+    if (text.length > 10000) {
+      return res.status(400).json({ error: "text too long (max 10,000 characters)" });
+    }
+    const validLevels = ["A1", "A2", "B1", "B2"];
+    if (!level || !validLevels.includes(level)) {
+      return res.status(400).json({ error: `level must be one of: ${validLevels.join(", ")}` });
+    }
+
+    try {
+      console.log(`[AI Text] ${userData.email || uid}: processing text (${text.length} chars) level=${level}`);
+
+      const trimmedText = text.trim();
+      const wordCount = trimmedText.split(/\s+/).length;
+
+      // Build prompt based on what's requested
+      let prompt = `Process the following text for Israeli EFL students at ${level} level (CEFR).
+
+Text (${wordCount} words):
+"""${trimmedText}"""
+
+`;
+
+      if (extractVocab) {
+        prompt += `
+Extract 10-15 key vocabulary words from this text that:
+- Are important for understanding the text
+- Are appropriate for ${level} level
+- May be challenging for students
+
+For each word, provide:
+- english: the word from the text
+- hebrew: Hebrew translation
+- arabic: Arabic translation
+- example: a short example sentence using the word (can be from the text or new)
+`;
+      }
+
+      if (generateQuestions) {
+        prompt += `
+Generate 5-8 comprehension questions about this text:
+- Mix of literal and inferential questions
+- Appropriate for ${level} level
+- Include the answer for each question
+
+Each question should have:
+- question: the question text
+- answer: the correct answer
+- type: either "literal" (facts from text) or "inferential" (requires thinking)
+`;
+      }
+
+      prompt += `
+Return ONLY a JSON object with this exact structure:
+${extractVocab && generateQuestions ? `{
+  "vocabulary": [
+    {"english": "word", "hebrew": "translation", "arabic": "translation", "example": "sentence"}
+  ],
+  "questions": [
+    {"question": "...", "answer": "...", "type": "literal"}
+  ]
+}` : extractVocab ? `{
+  "vocabulary": [
+    {"english": "word", "hebrew": "translation", "arabic": "translation", "example": "sentence"}
+  ]
+}` : `{
+  "questions": [
+    {"question": "...", "answer": "...", "type": "literal"}
+  ]
+}`}
+
+Output ONLY the JSON, no markdown, no explanations.
+`;
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const jsonText = response.text().trim();
+
+      // Parse JSON from Gemini response (it might include markdown code blocks)
+      let parsedText = jsonText;
+      if (parsedText.startsWith("```json")) {
+        parsedText = parsedText.slice(7);
+      } else if (parsedText.startsWith("```")) {
+        parsedText = parsedText.slice(3);
+      }
+      if (parsedText.endsWith("```")) {
+        parsedText = parsedText.slice(0, -3);
+      }
+      parsedText = parsedText.trim();
+
+      let resultData: {
+        vocabulary?: Array<{ english: string; hebrew: string; arabic: string; example?: string }>;
+        questions?: Array<{ question: string; answer: string; type: "literal" | "inferential" }>;
+      };
+
+      try {
+        resultData = JSON.parse(parsedText);
+      } catch (parseError) {
+        console.warn("[AI Text] JSON parse failed, trying to extract object:", parseError);
+        const objectMatch = parsedText.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          resultData = JSON.parse(objectMatch[0]);
+        } else {
+          throw new Error("Failed to parse AI response as JSON");
+        }
+      }
+
+      // Sanitize vocabulary
+      const sanitizedVocab = (resultData.vocabulary || [])
+        .filter(w => w && typeof w === "object")
+        .filter(w => typeof w.english === "string" && w.english.trim().length > 0)
+        .filter(w => typeof w.hebrew === "string" && w.hebrew.trim().length > 0)
+        .filter(w => typeof w.arabic === "string" && w.arabic.trim().length > 0)
+        .map(w => ({
+          english: w.english.trim().toLowerCase(),
+          hebrew: w.hebrew.trim(),
+          arabic: w.arabic.trim(),
+          example: w.example && typeof w.example === "string" ? w.example.trim() : undefined,
+        }))
+        .filter(w => w.english.length <= 50 && w.hebrew.length <= 100 && w.arabic.length <= 100)
+        .slice(0, 20);
+
+      // Sanitize questions
+      const sanitizedQuestions = (resultData.questions || [])
+        .filter(q => q && typeof q === "object")
+        .filter(q => typeof q.question === "string" && q.question.trim().length > 0)
+        .filter(q => typeof q.answer === "string" && q.answer.trim().length > 0)
+        .map(q => ({
+          question: q.question.trim(),
+          answer: q.answer.trim(),
+          type: q.type === "inferential" ? "inferential" as const : "literal" as const,
+        }))
+        .slice(0, 10);
+
+      console.log(`[AI Text] ${userData.email || uid}: extracted ${sanitizedVocab.length} words, ${sanitizedQuestions.length} questions`);
+
+      const responsePayload: {
+        vocabulary: typeof sanitizedVocab;
+        questions: typeof sanitizedQuestions;
+      } = {
+        vocabulary: sanitizedVocab,
+        questions: sanitizedQuestions,
+      };
+
+      res.json(responsePayload);
+    } catch (error: any) {
+      console.error("[AI Text] processing error:", error?.message || error);
+      res.status(500).json({ error: "AI text processing failed" });
+    }
+  });
+
+  // AI Lesson Generator — Phase 3: Unified lesson generation
+  // Takes selected words + teacher preferences, generates a complete lesson
+  // with reading text and various question types.
+  app.post("/api/ai-generate-lesson", aiRateLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can generate lessons" });
+    }
+
+    const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "AI lesson generation not configured" });
+    }
+
+    const { words, config } = req.body;
+    if (!words || !Array.isArray(words) || words.length === 0) {
+      return res.status(400).json({ error: "words is required (non-empty array)" });
+    }
+    if (words.length > 100) {
+      return res.status(400).json({ error: "too many words (max 100)" });
+    }
+    if (!config || typeof config !== "object") {
+      return res.status(400).json({ error: "config is required" });
+    }
+    if (!config.textDifficulty || typeof config.textDifficulty !== "string") {
+      return res.status(400).json({ error: "config.textDifficulty is required" });
+    }
+    if (config.wordCount && (typeof config.wordCount !== "number" || config.wordCount < 50 || config.wordCount > 2000)) {
+      return res.status(400).json({ error: "config.wordCount must be between 50 and 2000" });
+    }
+    if (!config.questionTypes || typeof config.questionTypes !== "object") {
+      return res.status(400).json({ error: "config.questionTypes is required" });
+    }
+
+    try {
+      console.log(`[AI Lesson] ${userData.email || uid}: ${words.length} words, ${config.wordCount || 200} target words`);
+
+      const targetWordCount = config.wordCount || 200;
+      const wordList = words.map((w: any) => w.english || w).join(", ");
+
+      // Count total questions requested
+      const totalQuestions = Object.values(config.questionTypes).reduce((sum: number, val: any) => sum + (val || 0), 0);
+
+      // Build question type specifications
+      const questionTypeSpecs: string[] = [];
+      const typeMapping: Record<string, string> = {
+        yesNo: "Yes/No questions",
+        wh: "WH-questions (who, what, where, when, why, how)",
+        literal: "literal comprehension questions (facts directly from the text)",
+        inferential: "inferential/thinking questions (require understanding beyond the text)",
+        fillBlank: "fill-in-the-blank exercises with missing words from the text",
+        trueFalse: "true/false questions based on the text",
+        matching: "matching exercises (match items from column A to column B)",
+        multipleChoice: "multiple choice questions with 4 options each",
+        sentenceComplete: "sentence completion exercises",
+      };
+
+      for (const [key, count] of Object.entries(config.questionTypes)) {
+        if (count > 0 && typeMapping[key]) {
+          questionTypeSpecs.push(`- ${count} ${typeMapping[key]}`);
+        }
+      }
+
+      const prompt = `You are an expert English teacher for Israeli EFL students. Create a lesson using the following vocabulary words.
+
+Vocabulary words: ${wordList}
+
+Student level: ${config.textDifficulty}
+Text type: ${config.textType || "Create a coherent, engaging text"}
+
+PART 1: READING TEXT
+Generate a text of approximately ${targetWordCount} words that:
+- Naturally incorporates ALL the vocabulary words above
+- Is appropriate for the student level described
+- Is coherent, engaging, and well-structured
+- Has a clear beginning, middle, and end
+
+PART 2: QUESTIONS
+Generate exactly ${totalQuestions} questions based on the text:
+${questionTypeSpecs.length > 0 ? questionTypeSpecs.join("\n") : "- A mix of comprehension questions"}
+
+${config.includeAnswers !== false ? "Include the correct answer for each question." : ""}
+
+Return ONLY a JSON object with this exact structure:
+{
+  "text": "The complete reading text with all vocabulary words naturally integrated...",
+  "questions": [
+    {
+      "type": "yesNo",
+      "question": "Is the main character brave?",
+      "answer": "Yes"
+    },
+    {
+      "type": "wh",
+      "question": "Where does the story take place?",
+      "answer": "In a small village near the mountains"
+    },
+    {
+      "type": "literal",
+      "question": "What did Sarah find?",
+      "answer": "She found an old key"
+    },
+    {
+      "type": "inferential",
+      "question": "Why did the protagonist decide to return home?",
+      "answer": "Because she realized her family was more important than her adventure"
+    },
+    {
+      "type": "fillBlank",
+      "question": "Sarah opened the _____ door.",
+      "answer": "old wooden"
+    },
+    {
+      "type": "trueFalse",
+      "question": "The weather was sunny throughout the story.",
+      "answer": "False"
+    },
+    {
+      "type": "matching",
+      "question": "Match each character to their action",
+      "answer": "Sarah - found the key, Tom - helped search, Mom - made dinner"
+    },
+    {
+      "type": "multipleChoice",
+      "question": "What was the main theme of the story?",
+      "answer": "The importance of family",
+      "options": ["Friendship", "Adventure", "The importance of family", "Courage"]
+    },
+    {
+      "type": "sentenceComplete",
+      "question": "Complete the sentence: The old key _____ to a mysterious door.",
+      "answer": "opened"
+    }
+  ]
+}
+
+Important notes:
+- For multiple choice: always include 4 options in the "options" array
+- For matching: include all pairs in the answer
+- For fill-in-blank: use _____ to show the blank
+- Make sure ALL vocabulary words are used naturally in the text
+- Output ONLY the JSON, no markdown, no explanations
+`;
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let jsonText = response.text().trim();
+
+      // Parse JSON from Gemini response
+      if (jsonText.startsWith("```json")) {
+        jsonText = jsonText.slice(7);
+      } else if (jsonText.startsWith("```")) {
+        jsonText = jsonText.slice(3);
+      }
+      if (jsonText.endsWith("```")) {
+        jsonText = jsonText.slice(0, -3);
+      }
+      jsonText = jsonText.trim();
+
+      let lessonData: {
+        text: string;
+        questions: Array<{
+          type: string;
+          question: string;
+          answer: string;
+          options?: string[];
+        }>;
+      };
+
+      try {
+        lessonData = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.warn("[AI Lesson] JSON parse failed, trying to extract object:", parseError);
+        const objectMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          lessonData = JSON.parse(objectMatch[0]);
+        } else {
+          throw new Error("Failed to parse AI response as JSON");
+        }
+      }
+
+      if (!lessonData.text || typeof lessonData.text !== "string") {
+        throw new Error("Invalid response: missing text");
+      }
+      if (!Array.isArray(lessonData.questions)) {
+        throw new Error("Invalid response: missing questions array");
+      }
+
+      // Sanitize
+      const sanitizedText = lessonData.text.trim().slice(0, 10000);
+      const sanitizedQuestions = lessonData.questions
+        .filter(q => q && typeof q === "object")
+        .filter(q => typeof q.question === "string" && q.question.trim().length > 0)
+        .filter(q => typeof q.answer === "string" && q.answer.trim().length > 0)
+        .filter(q => ["yesNo", "wh", "literal", "inferential", "fillBlank", "trueFalse", "matching", "multipleChoice", "sentenceComplete"].includes(q.type))
+        .map(q => ({
+          type: q.type,
+          question: q.question.trim(),
+          answer: q.answer.trim(),
+          options: Array.isArray(q.options) ? q.options.slice(0, 6).map(o => String(o).trim()) : undefined,
+        }))
+        .slice(0, 100);
+
+      // Count words in generated text
+      const actualWordCount = sanitizedText.split(/\s+/).length;
+
+      console.log(`[AI Lesson] ${userData.email || uid}: generated ${actualWordCount} words, ${sanitizedQuestions.length} questions`);
+
+      res.json({
+        text: sanitizedText,
+        wordCount: actualWordCount,
+        questions: sanitizedQuestions,
+      });
+    } catch (error: any) {
+      console.error("[AI Lesson] generation error:", error?.message || error);
+      res.status(500).json({ error: "AI lesson generation failed" });
+    }
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

@@ -396,13 +396,16 @@ export default function ReportExportBar({
   };
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div
+      className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
       <div className="min-w-0">
-        <div className="flex items-center gap-2 text-stone-900">
+        <div className="flex items-center gap-2" style={{ color: 'var(--vb-text-primary)' }}>
           <Download size={16} className="text-indigo-500" />
           <span className="font-bold text-sm">{t.exportThisClass}</span>
         </div>
-        <p className="text-xs text-stone-500 mt-0.5 truncate">
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--vb-text-muted)' }}>
           {plays.length === 0
             ? t.exportEmpty
             : t.exportSummary(students.length, plays.length, className)}
@@ -413,8 +416,13 @@ export default function ReportExportBar({
           type="button"
           onClick={handleCsv}
           disabled={disabled || busy !== null}
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent' as never,
+            backgroundColor: 'var(--vb-accent)',
+            color: 'var(--vb-accent-text)',
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold hover:opacity-90 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {busy === 'csv' ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
           {t.csvButton}

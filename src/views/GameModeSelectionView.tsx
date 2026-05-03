@@ -14,11 +14,12 @@ import {
   Sparkles,
   Star,
   Edit3,
+  Brain,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 
 // Small star-rating component — 3 stars with N filled. Same visual
@@ -90,7 +91,7 @@ export default function GameModeSelectionView({
   // src/locales/student/game-modes.ts (EN / HE / AR). Adding a new
   // language = add it to the union in useLanguage + drop a new key
   // in that file. See docs/I18N-MIGRATION.md for the pattern.
-  const { language } = useLanguage();
+  const { language, setLanguage, dir } = useLanguage();
   const t = gameModesT[language];
 
   // Layout-only metadata (id, color, icon, learn-mode flag) stays in
@@ -103,11 +104,15 @@ export default function GameModeSelectionView({
     { id: "listening",         color: "blue",    icon: <Volume2 size={24} /> },
     { id: "spelling",          color: "purple",  icon: <PenTool size={24} /> },
     { id: "matching",          color: "amber",   icon: <Zap size={24} /> },
+    { id: "memory-flip",       color: "pink",    icon: <Brain size={24} /> },
     { id: "true-false",        color: "rose",    icon: <CheckCircle2 size={24} /> },
     { id: "scramble",          color: "indigo",  icon: <Shuffle size={24} /> },
     { id: "reverse",           color: "fuchsia", icon: <Repeat size={24} /> },
     { id: "letter-sounds",     color: "violet",  icon: <span className="text-2xl">🔡</span> },
     { id: "sentence-builder",  color: "teal",    icon: <span className="text-2xl">🧩</span> },
+    { id: "word-chains",       color: "orange",  icon: <span className="text-2xl">🔗</span> },
+    { id: "idiom",             color: "sky",     icon: <span className="text-2xl">💭</span> },
+    { id: "speed-round",       color: "red",     icon: <span className="text-2xl">⚡</span> },
   ];
 
   // Combined modes array — layout metadata + localised strings keyed
@@ -149,6 +154,10 @@ export default function GameModeSelectionView({
     violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
     teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
     lime: "bg-lime-50 border-lime-100 hover:bg-lime-100 text-lime-700",
+    pink: "bg-pink-50 border-pink-100 hover:bg-pink-100 text-pink-700",
+    orange: "bg-orange-50 border-orange-100 hover:bg-orange-100 text-orange-700",
+    sky: "bg-sky-50 border-sky-100 hover:bg-sky-100 text-sky-700",
+    red: "bg-red-50 border-red-100 hover:bg-red-100 text-red-700",
   };
 
   const iconColorClasses: Record<string, string> = {
@@ -163,6 +172,10 @@ export default function GameModeSelectionView({
     violet: "text-violet-600",
     teal: "text-teal-600",
     lime: "text-lime-600",
+    pink: "text-pink-600",
+    orange: "text-orange-600",
+    sky: "text-sky-600",
+    red: "text-red-600",
   };
 
   return (
@@ -177,6 +190,36 @@ export default function GameModeSelectionView({
         >
           <X size={28} />
         </button>
+
+        {/* Inline language picker — duplicates the dashboard top-bar
+            switcher but at the moment-of-decision (about to start a
+            game).  Mode names + tooltips re-render in the chosen
+            language because each tile reads `t.modes[id].name` from
+            gameModesT[language].  Available for both real-assignment
+            and Quick Play students.  Persists via useLanguage's
+            localStorage. */}
+        <div className="mb-5 sm:mb-7 flex items-center justify-center gap-2 flex-wrap">
+          {(["en", "he", "ar"] as Language[]).map((lang) => {
+            const isActive = language === lang;
+            return (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                aria-pressed={isActive}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black transition-all ${
+                  isActive
+                    ? "bg-stone-900 text-white shadow-md scale-105"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              >
+                <span className="text-lg leading-none">{languageFlags[lang]}</span>
+                <span>{languageNames[lang]}</span>
+              </button>
+            );
+          })}
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -211,6 +254,7 @@ export default function GameModeSelectionView({
               }}
               className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
               style={{ touchAction: 'manipulation' }}
+              dir={dir}
             >
               <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
               <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
@@ -241,7 +285,7 @@ export default function GameModeSelectionView({
         })()}
 
         {practiceModes.length > 0 && (
-          <div className="mb-3 text-left">
+          <div className="mb-3 text-left" dir={dir}>
             <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">{t.thenPractiseWith}</p>
           </div>
         )}

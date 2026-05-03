@@ -78,6 +78,50 @@ export interface CreateAssignmentWizardProps {
   setEditingAssignment: (assignment: AssignmentData | null) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
+  /** AI vocabulary generation — used by the AI Lesson Builder in SetupWizard. */
+  onAiGenerateWords?: (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => Promise<Array<{
+    english: string;
+    hebrew: string;
+    arabic: string;
+    example?: string;
+    isFromCurriculum?: boolean;
+    curriculumId?: number;
+  }>>;
+  /** AI lesson generator — generates reading text + questions from selected words. */
+  onGenerateLesson?: (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => Promise<{
+    text: string;
+    wordCount: number;
+    questions: Array<{
+      type: string;
+      question: string;
+      answer: string;
+      options?: string[];
+    }>;
+  }>;
   /** Save the current wizard state as a reusable template.  Forwarded
    *  to SetupWizard, which renders a "Save as template" toggle in the
    *  Review step. */
@@ -141,6 +185,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setEditingAssignment,
   showToast,
   onPlayWord,
+  onAiGenerateWords,
+  onGenerateLesson,
   onSaveTemplate,
 }) => {
   const { language, dir } = useLanguage();
@@ -170,24 +216,14 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 
   // ── Handle SetupWizard completion ───────────────────────────────────────────
   const handleWizardComplete = async (result: { words: Word[]; modes: string[] }) => {
-    console.log('[handleWizardComplete] START', {
-      wordsCount: result.words.length,
-      modesCount: result.modes.length,
-      words: result.words.map(w => w.id),
-      modes: result.modes,
-    });
-
     // Update parent state with the final selections
     const wordIds = result.words.map(w => w.id);
-    console.log('[handleWizardComplete] Updating state', { wordIds });
     setSelectedWords(wordIds);
     setAssignmentModes(result.modes);
 
-    console.log('[handleWizardComplete] Calling handleSaveAssignment with data');
     // Pass words and modes directly to avoid timing issues with async state updates
     await handleSaveAssignment(wordIds, result.modes);
 
-    console.log('[handleWizardComplete] Showing success screen');
     // Show success screen
     setShowSuccess(true);
   };
@@ -301,7 +337,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 <div className="flex gap-2">
                   <button
                     onClick={copyClassCode}
-                    className="flex-1 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all flex items-center justify-center gap-2"
                   >
                     <Copy size={18} />
                     {copiedCode === selectedClass.code ? t.copiedShort : t.copyCode}
@@ -332,7 +368,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               </button>
               <button
                 onClick={onBack}
-                className="flex-1 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all"
+                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all"
               >
                 {t.backToDashboard}
               </button>
@@ -404,6 +440,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         return result;
       }}
       onTranslateBatch={translateWordsBatch}
+      onAiGenerateWords={onAiGenerateWords}
+      onGenerateLesson={onGenerateLesson}
       topicPacks={TOPIC_PACKS}
       onOcrUpload={handleOcrUpload}
       isOcrProcessing={isOcrProcessing}

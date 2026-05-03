@@ -3,15 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
-  Share2
+  Share2, Check, ShieldAlert
 } from 'lucide-react';
 import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
 import { supabase } from '../core/supabase';
 import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
-import { useLanguage } from '../hooks/useLanguage';
-import { teacherViewsT } from '../locales/teacher/views';
+import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
+import QPAvatar from './QPAvatar';
 
 // Match the flag in QuickPlayStudentView. When on, this monitor
 // observes the /quick-play socket.io namespace for leaderboard
@@ -50,14 +50,14 @@ interface QuickPlayMonitorProps {
 // ─── Theme definitions (light surface + accent colors) ────────────────────────
 const THEMES = {
   classic: {
-    name: 'Classic', icon: '\uD83D\uDC9C', dot: 'bg-primary',
-    bg: 'bg-surface', text: 'text-on-surface',
-    card: 'bg-surface-container-lowest border-surface-container-highest',
-    qrCard: 'from-primary to-primary-container',
-    podium1: 'from-primary-container to-primary', podium2: 'from-tertiary-fixed to-tertiary', podium3: 'from-secondary-container to-secondary',
-    accent: 'text-primary', accentBg: 'bg-primary', badge1: 'bg-primary text-on-primary', badge2: 'bg-tertiary text-on-tertiary', badge3: 'bg-secondary text-on-secondary',
-    headerBg: 'bg-white/80', headerText: 'text-primary', footerBg: 'bg-white/90',
-    podiumCard: 'bg-surface-container-lowest border-surface-container-highest',
+    name: 'Classroom', icon: '📺', dot: 'bg-indigo-600',
+    bg: 'bg-gray-50', text: 'text-gray-900',
+    card: 'bg-[var(--vb-surface)] border-gray-300 shadow-lg',
+    qrCard: 'from-indigo-600 to-indigo-500',
+    podium1: 'from-amber-400 to-amber-500', podium2: 'from-blue-400 to-blue-500', podium3: 'from-emerald-400 to-emerald-500',
+    accent: 'text-indigo-600', accentBg: 'bg-indigo-600', badge1: 'bg-amber-500 text-amber-900', badge2: 'bg-blue-500 text-white', badge3: 'bg-emerald-500 text-white',
+    headerBg: 'bg-white/95', headerText: 'text-indigo-600', footerBg: 'bg-white/95',
+    podiumCard: 'bg-[var(--vb-surface)] border-2 border-gray-300 shadow-xl',
   },
   neon: {
     name: 'Neon Night', icon: '\uD83C\uDF03', dot: 'bg-gray-900',
@@ -102,12 +102,12 @@ const THEMES = {
   candy: {
     name: 'Candy Pop', icon: '\uD83C\uDF6C', dot: 'bg-pink-400',
     bg: 'bg-pink-50', text: 'text-pink-950',
-    card: 'bg-white border-pink-200',
+    card: 'bg-[var(--vb-surface)] border-pink-200',
     qrCard: 'from-pink-400 to-fuchsia-500',
     podium1: 'from-yellow-300 to-amber-400', podium2: 'from-pink-300 to-pink-500', podium3: 'from-fuchsia-300 to-fuchsia-500',
     accent: 'text-pink-600', accentBg: 'bg-pink-500', badge1: 'bg-yellow-400 text-yellow-900', badge2: 'bg-pink-500 text-white', badge3: 'bg-fuchsia-500 text-white',
     headerBg: 'bg-white/90', headerText: 'text-pink-600', footerBg: 'bg-white/90',
-    podiumCard: 'bg-white border-pink-200',
+    podiumCard: 'bg-[var(--vb-surface)] border-pink-200',
   },
   galaxy: {
     name: 'Galaxy', icon: '\uD83C\uDF0C', dot: 'bg-violet-600',
@@ -171,7 +171,7 @@ export default function QuickPlayMonitor({
   }, []);
   const [endModal, setEndModal] = useState(false);
   const [showWordsModal, setShowWordsModal] = useState(false);
-  const [theme, setTheme] = useState<ThemeKey>('galaxy');
+  const [theme, setTheme] = useState<ThemeKey>('classic');
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
@@ -183,6 +183,27 @@ export default function QuickPlayMonitor({
     try { return parseFloat(localStorage.getItem('vocaband-music-volume') || '0.5') || 0.5; } catch { return 0.5; }
   });
   const musicRef = useRef<Howl | null>(null);
+
+  // ─── Draggable QR modal state ────────────────────────────────────────────
+  const qrModalDragRef = useRef({ x: 0, y: 0 });
+  const [qrModalDragControls, setQrModalDragControls] = useState({ x: 0, y: 0 });
+
+  // Reset position when modal opens
+  useEffect(() => {
+    if (qrEnlarged) {
+      setQrModalDragControls({ x: 0, y: 0 });
+    }
+  }, [qrEnlarged]);
+
+  // ─── Mouse wheel volume control ───────────────────────────────────────────
+  const handleVolumeWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    setMusicVolume(prev => {
+      const newValue = Math.max(0, Math.min(1, prev + delta));
+      return newValue;
+    });
+  };
 
   // ─── v2 socket wiring ─────────────────────────────────────────────────
   // When VITE_QUICKPLAY_V2 is on, the real student list lives on the
@@ -257,6 +278,18 @@ export default function QuickPlayMonitor({
   // CLAUDE.md).  Root path matches what the WhatsApp / Copy-link
   // buttons in QuickPlaySetupView already use.
   const qrUrl = `${getNetworkOrigin()}/?session=${session.sessionCode}`;
+
+  // ─── Copy link feedback ───────────────────────────────────────────────────────
+  const { copied: copiedLink, copyToClipboard } = useClipboardFeedback(2000);
+
+  const handleCopyLink = useCallback(async () => {
+    const success = await copyToClipboard(qrUrl);
+    if (success) {
+      showToast('Join link copied!', 'success');
+    } else {
+      showToast('Could not copy link.', 'error');
+    }
+  }, [qrUrl, showToast, copyToClipboard]);
 
   // ─── Join sound effect ────────────────────────────────────────────────────
   // Detect newly-joined students by name diff against the previous render
@@ -526,7 +559,7 @@ export default function QuickPlayMonitor({
               transition={{ type: 'spring', stiffness: 320, damping: 22 }}
               className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white px-5 py-3 sm:px-6 sm:py-4 2xl:px-8 2xl:py-5 rounded-full shadow-2xl flex items-center gap-3 max-w-[90vw]"
             >
-              <span className="text-2xl sm:text-3xl 2xl:text-4xl">{j.avatar}</span>
+              <QPAvatar value={j.avatar} iconSize={32} className="text-2xl sm:text-3xl 2xl:text-4xl" />
               <div>
                 <p className="font-headline text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-widest opacity-90">{tT.qpJoinedFlag}</p>
                 <p className="font-headline text-base sm:text-lg 2xl:text-xl font-black truncate max-w-[60vw]">{j.name}</p>
@@ -599,7 +632,7 @@ export default function QuickPlayMonitor({
         </div>
         {/* Bottom row: music player (own line on mobile) */}
         <div className={`flex items-center mt-2 gap-2 w-full rounded-2xl px-3 py-2 ${
-          theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-stone-100'
+          theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-[var(--vb-surface-alt)]'
         }`}>
           {/* Now playing info */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -654,47 +687,45 @@ export default function QuickPlayMonitor({
               step="0.05"
               value={musicVolume}
               onChange={e => setMusicVolume(parseFloat(e.target.value))}
+              onWheel={handleVolumeWheel}
               className="w-14 sm:w-20 h-1.5 accent-primary cursor-pointer"
-              title={`Volume: ${Math.round(musicVolume * 100)}%`}
+              title={`Volume: ${Math.round(musicVolume * 100)}% — scroll to adjust`}
             />
           </div>
         </div>
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
-            When qrCollapsed is true the whole QR card collapses to a
-            small chip-style bar (just the code + player count + Show
-            button) and the podium expands to the full row — keeps the
-            podium dominant once students have already scanned in.
-            Toggle via the chip itself or the QR-enlarge modal's "Hide"
-            button. */}
-        <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8`}>
+            When qrCollapsed is true the QR shrinks to a small floating
+            icon button anchored to the right of this row, leaving the
+            podium full-width — the teacher's primary visual is the
+            scoreboard.  Tapping the icon opens the enlarged QR modal
+            (qrEnlarged); the modal has Show-as-card to bring back the
+            inline expanded card view, plus Share / Copy / Close.
+            Tapping the inline expanded card's "Hide" button collapses
+            it back to the floating icon. */}
+        <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8 relative`}>
           {qrCollapsed ? (
+            // Compact floating QR icon — replaces the old long
+            // horizontal "Show QR" strip.  Click expands directly to
+            // the inline card (not the modal) for faster teacher access.
             <button
               type="button"
               onClick={toggleQrCollapsed}
-              aria-label="Show QR code and share link"
-              className={`w-full bg-gradient-to-r ${t.qrCard} rounded-xl px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 shadow-md text-white hover:shadow-lg active:scale-[0.99] transition-all`}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              aria-label="Show QR code"
+              className={`absolute top-0 right-0 z-10 bg-gradient-to-br ${t.qrCard} rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all text-white flex flex-col items-center justify-center p-3 sm:p-4 ring-4 ring-white/30`}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any, minWidth: '80px', minHeight: '80px' }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                  <QrCode size={18} />
-                </div>
-                <div className="text-left min-w-0">
-                  <p className="font-label text-[10px] uppercase tracking-[0.2em] opacity-80 leading-tight">{tT.qpJoinCodeLabel}</p>
-                  <p className="font-headline text-base sm:text-lg font-black tracking-tighter truncate">{session.sessionCode}</p>
-                </div>
-                <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium ml-2 opacity-90">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  {effectiveStudents.length > 0 ? `${effectiveStudents.length} joined` : 'Waiting…'}
+              <QrCode size={36} className="sm:hidden" />
+              <QrCode size={42} className="hidden sm:block" />
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider mt-1 leading-none">Show QR</span>
+              {effectiveStudents.length > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1.5 bg-green-500 text-white text-[11px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white/30">
+                  {effectiveStudents.length}
                 </span>
-              </div>
-              <span className="text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg shrink-0">
-                Show QR
-              </span>
+              )}
             </button>
           ) : (
           <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
@@ -704,7 +735,7 @@ export default function QuickPlayMonitor({
                 enough that the session code + share button fit
                 alongside it on standard desktops (the previous 2xl
                 bump made it dominate the row and clip the text). */}
-            <div className="bg-white p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
+            <div className="bg-[var(--vb-surface)] p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
               <div className="w-32 h-32 sm:w-40 sm:h-40 2xl:w-48 2xl:h-48 flex items-center justify-center">
                 <QRCodeSVG
                   value={qrUrl}
@@ -746,42 +777,52 @@ export default function QuickPlayMonitor({
                       // User cancelled or share failed — fall through to clipboard copy.
                     }
                   }
-                  try {
-                    await navigator.clipboard.writeText(qrUrl);
-                    showToast('Join link copied!', 'success');
-                  } catch {
-                    showToast('Could not copy link — try long-pressing the QR code.', 'error');
-                  }
+                  handleCopyLink();
                 }}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-stone-900 font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-[0.97] transition-all mx-auto sm:mx-0"
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-[var(--vb-text-primary)] font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-[0.97] transition-all"
               >
                 <Share2 size={16} />
                 Share join link
               </button>
-              {/* Small secondary copy affordance for desktop users who
-                  prefer the plain clipboard path over the share sheet. */}
+              {/* Copy link button - same size as Share join link */}
               <button
                 type="button"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(qrUrl);
-                    showToast('Join link copied!', 'success');
-                  } catch {
-                    showToast('Could not copy link.', 'error');
-                  }
-                }}
+                onClick={handleCopyLink}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="mt-2 inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-white/70 hover:text-white transition-colors mx-auto sm:mx-0"
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-[var(--vb-text-primary)] font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-[0.97] transition-all"
               >
-                <Copy size={11} /> Copy link
+                {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                {copiedLink ? 'Copied!' : 'Copy link'}
               </button>
+              {/* Words + End Session — smaller buttons, same width as above buttons */}
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWordsModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-xl transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <BookOpen size={14} />
+                  Words
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndModal(true)}
+                  className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-xl shadow-lg shadow-red-500/30 hover:shadow-red-500/50 border-2 border-red-400 transition-all active:scale-95"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  title="⚠️ Ends the Quick Play session for all students"
+                >
+                  <ShieldAlert size={14} className="text-yellow-300" />
+                  End Session
+                </button>
+              </div>
               {/* Hide button — collapses to the chip strip above. */}
               <button
                 type="button"
                 onClick={toggleQrCollapsed}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="mt-2 inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-white/70 hover:text-white transition-colors mx-auto sm:mx-0"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                className="w-full mt-2 inline-flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
               >
                 Hide QR
               </button>
@@ -807,7 +848,7 @@ export default function QuickPlayMonitor({
                   {top3[1] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[1])}</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg"><QPAvatar value={getStudentAvatar(top3[1])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>2nd</div>
                         {/* Teacher-only kick affordance — same hover-
                             reveal pattern as the rank-4+ tiles.  Top-3
@@ -837,7 +878,7 @@ export default function QuickPlayMonitor({
                   {top3[0] && (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
-                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}>{getStudentAvatar(top3[0])}</div>
+                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}><QPAvatar value={getStudentAvatar(top3[0])} iconSize={56} className="text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl" /></div>
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
                         <button
                           onClick={() => setConfirmKick(top3[0].name)}
@@ -863,7 +904,7 @@ export default function QuickPlayMonitor({
                   {top3[2] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg">{getStudentAvatar(top3[2])}</div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg"><QPAvatar value={getStudentAvatar(top3[2])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
                         <button
                           onClick={() => setConfirmKick(top3[2].name)}
@@ -954,7 +995,7 @@ export default function QuickPlayMonitor({
                       </span>
                       <div className="relative shrink-0">
                         <div className="w-11 h-11 sm:w-12 sm:h-12 2xl:w-16 2xl:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-2xl 2xl:text-3xl border-2 border-surface-container-highest">
-                          {getStudentAvatar(student)}
+                          <QPAvatar value={getStudentAvatar(student)} iconSize={28} className="text-2xl sm:text-2xl 2xl:text-3xl" />
                         </div>
                         <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                       </div>
@@ -975,46 +1016,47 @@ export default function QuickPlayMonitor({
         )}
       </main>
 
-      {/* ─── Bottom Nav Bar ────────────────────────────────────────────────── */}
-      <footer className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-6 pt-3 ${t.footerBg} backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.08)] rounded-t-[2rem] sm:rounded-t-[3rem] transition-colors duration-500`}>
-        <div className={`flex flex-col items-center p-2 ${t.accent}`}>
-          <Users size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">{tT.qpPodium}</span>
-        </div>
-        <button
-          onClick={() => setShowWordsModal(true)}
-          className={`flex flex-col items-center ${t.text} p-2 hover:opacity-60 transition-opacity`}
-        >
-          <BookOpen size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-1">{tT.qpWords}</span>
-        </button>
-        <button
-          onClick={() => setEndModal(true)}
-          className={`flex flex-col items-center ${t.accentBg} text-white rounded-full p-3 sm:p-4 scale-110 -translate-y-3 shadow-lg active:scale-95 transition-all`}
-        >
-          <X size={22} />
-          <span className="font-label text-[9px] uppercase tracking-widest font-bold mt-0.5">{tT.qpStop}</span>
-        </button>
-      </footer>
+      {/* Bottom nav bar removed per teacher request — Words + End
+          Session moved into the QR card so every action lives in one
+          place and the podium owns the full vertical space. */}
 
-      {/* ─── Enlarged QR Modal ───────────────────────────────────────────────── */}
+      {/* ─── Enlarged QR Modal ───────────────────────────────────────────────
+          Acts as the primary "show me the QR" surface when qrCollapsed
+          is true (the icon-button route).  Includes Share / Copy /
+          Show-as-card / Close so the teacher can do everything from
+          inside the modal without re-tapping the small icon. */}
       <AnimatePresence>
         {qrEnlarged && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] cursor-pointer"
+            className="fixed inset-0 bg-transparent flex items-center justify-center p-4 z-[100] cursor-pointer"
             onClick={() => setQrEnlarged(false)}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 sm:p-10 max-w-lg w-full shadow-2xl"
+              drag
+              dragMomentum={false}
+              dragElastic={0}
+              whileDrag={{ scale: 1.02 }}
+              className="bg-[var(--vb-surface)] rounded-3xl max-w-lg w-full shadow-2xl cursor-default relative overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
-              <div className="aspect-square w-full mx-auto flex items-center justify-center">
+              {/* Draggable header area - grab anywhere here to move */}
+              <div className="bg-[var(--vb-surface-alt)] px-6 py-3 cursor-grab active:cursor-grabbing border-b border-[var(--vb-border)] flex items-center justify-center select-none">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
+                  <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
+                  <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
+                </div>
+                <span className="ml-2 text-xs font-semibold text-[var(--vb-text-muted)] uppercase tracking-wider">Drag to move</span>
+              </div>
+
+              <div className="p-6 sm:p-10">
+                <div className="aspect-square w-full mx-auto flex items-center justify-center">
                 {/* Enlarged QR (click-to-zoom).  Same client-side generator
                     as the header version — SVG scales cleanly to any
                     projector resolution. */}
@@ -1030,13 +1072,67 @@ export default function QuickPlayMonitor({
               <p className="text-center text-purple-600 font-mono font-black text-2xl sm:text-3xl mt-4">
                 {session.sessionCode}
               </p>
-              <p className="text-center text-stone-400 text-sm mt-1">Scan to join</p>
-              <button
-                onClick={() => setQrEnlarged(false)}
-                className="mt-4 w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-2xl font-bold transition-colors"
-              >
-                Close
-              </button>
+              <p className="text-center text-[var(--vb-text-muted)] text-sm mt-1">Scan to join</p>
+
+              {/* Share row — Web Share API on mobile (AirDrop /
+                  Messages / WhatsApp), clipboard fallback elsewhere.
+                  Mirrors the inline expanded card's share affordances
+                  so kids can be invited via a copy/paste link too. */}
+              <div className="mt-5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const shareData = {
+                      title: 'Join my Vocaband game',
+                      text: `Join my Vocaband Quick Play (code ${session.sessionCode}):`,
+                      url: qrUrl,
+                    };
+                    if (typeof navigator.share === 'function') {
+                      try { await navigator.share(shareData); return; } catch { /* fall through */ }
+                    }
+                    handleCopyLink();
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white font-bold py-3 rounded-2xl shadow-md active:scale-[0.97] transition-all"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <Share2 size={16} /> Share
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="px-4 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold transition-colors inline-flex items-center gap-2"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                  {copiedLink ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+
+              {/* Pin / Close row.  "Show as card" sets qrCollapsed=false
+                  and dismisses the modal so the inline expanded QR card
+                  is back on the page (for teachers who prefer the QR
+                  always visible to late joiners).  "Close" goes back to
+                  the small floating icon. */}
+              <div className="mt-3 flex items-center gap-2">
+                {qrCollapsed && (
+                  <button
+                    type="button"
+                    onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch {} setQrEnlarged(false); }}
+                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold transition-colors text-sm"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  >
+                    Pin to page
+                  </button>
+                )}
+                <button
+                  onClick={() => setQrEnlarged(false)}
+                  className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-2xl font-bold transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  Close
+                </button>
+              </div>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -1055,7 +1151,7 @@ export default function QuickPlayMonitor({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center"
+              className="bg-[var(--vb-surface)] rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center"
             >
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <X size={32} />
@@ -1067,7 +1163,7 @@ export default function QuickPlayMonitor({
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmKick(null)}
-                  className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-colors border-2 border-stone-200"
+                  className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-colors border-2 border-[var(--vb-border)]"
                 >
                   Cancel
                 </button>
@@ -1096,7 +1192,7 @@ export default function QuickPlayMonitor({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl"
+              className="bg-[var(--vb-surface)] rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl"
             >
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <LogOut size={32} />
@@ -1111,7 +1207,7 @@ export default function QuickPlayMonitor({
               <div className="flex gap-3">
                 <button
                   onClick={() => setEndModal(false)}
-                  className="flex-1 py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all border-2 border-stone-200"
+                  className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all border-2 border-[var(--vb-border)]"
                 >
                   Keep Session
                 </button>
@@ -1145,7 +1241,7 @@ export default function QuickPlayMonitor({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col"
+              className="bg-[var(--vb-surface)] rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col"
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -1159,7 +1255,7 @@ export default function QuickPlayMonitor({
                 </div>
                 <button
                   onClick={() => setShowWordsModal(false)}
-                  className="w-10 h-10 bg-stone-100 hover:bg-stone-200 rounded-full flex items-center justify-center transition-colors"
+                  className="w-10 h-10 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] rounded-full flex items-center justify-center transition-colors"
                 >
                   <X size={20} />
                 </button>
@@ -1170,11 +1266,11 @@ export default function QuickPlayMonitor({
                   {session.words.map((word, index) => (
                     <div
                       key={word.id}
-                      className="bg-stone-50 border-2 border-stone-200 rounded-2xl p-3 text-center hover:border-blue-300 transition-colors"
+                      className="bg-[var(--vb-surface)] border-2 border-[var(--vb-border)] rounded-2xl p-3 text-center hover:border-blue-300 transition-colors"
                     >
-                      <div className="text-xs text-stone-400 font-bold mb-1">#{index + 1}</div>
-                      <div className="text-base font-black text-stone-900">{word.english}</div>
-                      <div className="text-sm text-stone-600 mt-1">{word.hebrew || word.arabic || '—'}</div>
+                      <div className="text-xs text-[var(--vb-text-muted)] font-bold mb-1">#{index + 1}</div>
+                      <div className="text-base font-black text-[var(--vb-text-primary)]">{word.english}</div>
+                      <div className="text-sm text-[var(--vb-text-secondary)] mt-1">{word.hebrew || word.arabic || '—'}</div>
                     </div>
                   ))}
                 </div>

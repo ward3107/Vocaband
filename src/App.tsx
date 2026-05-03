@@ -13,6 +13,8 @@ import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, 
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
+import { getTeacherDashboardTheme } from "./constants/teacherDashboardThemes";
+import { applyThemePalette, clearThemePalette } from "./utils/applyThemePalette";
 import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
@@ -45,6 +47,8 @@ const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
+const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
 const LiveChallengeView = lazy(() => import("./views/LiveChallengeView"));
@@ -56,6 +60,7 @@ const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
+import { readQpResumeScore } from "./utils/qpResumeHint";
 import {
   readIntendedClassCode,
   clearIntendedClassCode,
@@ -71,6 +76,7 @@ import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
   MAX_ASSIGNMENT_ROUNDS,
   STREAK_CELEBRATION_MILESTONES,
+  ALL_GAME_MODES,
   type GameMode,
 } from "./constants/game";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
@@ -110,6 +116,27 @@ import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQu
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
+// ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
+// Defined at module level to avoid re-creating arrays on every auth restore.
+const PUBLIC_VIEWS = new Set<View>([
+  "public-landing", "public-terms", "public-privacy", "public-security", "accessibility-statement"
+]);
+const TEACHER_VIEWS = new Set<View>([
+  "worksheet", "classroom", "class-show", "teacher-approvals",
+  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment"
+]);
+const STUDENT_VIEWS = new Set<View>([
+  "student-dashboard", "game-mode-intro", "game-mode-selection",
+  "game-active", "game-finished", "live-challenge"
+]);
+
+/** Check if current view should be preserved during auth restore. */
+const shouldPreserveView = (role: string, currentView: View): boolean => {
+  if (PUBLIC_VIEWS.has(currentView)) return false;
+  return role === "teacher"
+    ? TEACHER_VIEWS.has(currentView)
+    : STUDENT_VIEWS.has(currentView);
+};
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -151,6 +178,9 @@ export default function App() {
     return "public-landing";
   });
   const previousViewRef = useRef<string>("public-landing");
+  // Track current view for auth state changes — using a ref so restoreSession
+  // can read the latest view even when called asynchronously from auth events.
+  const currentViewRef = useRef<View>(view);
 
   const goBack = () => {
     setView(previousViewRef.current as any);
@@ -305,6 +335,12 @@ export default function App() {
   const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
   const [quickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[], aiSentences?: string[]} | null>(null);
+  // Class Show — teacher-led projector mode.  When the teacher
+  // launches from an assignment card, this stores the assignment's
+  // word list so the setup panel pre-selects "From assignment".
+  const [classShowAssignment, setClassShowAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[] } | null>(null);
+  // Worksheet — optional pre-fill from an assignment.
+  const [worksheetAssignment, setWorksheetAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>(null);
   // Cumulative score across all modes a guest has played in the
   // current Quick Play session.  The per-mode `score` state (in
   // useGameState) resets to 0 on every new mode, so emitting it
@@ -312,7 +348,13 @@ export default function App() {
   // (server rejected with [QP SCORE regress] prev=15 new=10).
   // This ref accumulates each mode's finalScore so the QP socket
   // sees a monotonically-increasing total.
-  const qpCumulativeScoreRef = useRef(0);
+  // Cumulative QP score across all modes in a session.  Initialised
+  // from the resume hint so a kid who closed the tab and rescanned
+  // doesn't reset their server-side score (the server's monotonic
+  // score gate would otherwise reject every later updateScore as a
+  // regression — silent points loss for the kid).  Hint is 90-min
+  // TTL'd; falls through to 0 for fresh joins.
+  const qpCumulativeScoreRef = useRef(readQpResumeScore());
   const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
   const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
   // QP avatar — random by default, but if the student is resuming a
@@ -476,6 +518,107 @@ export default function App() {
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
   const { translateWord, translateWordsBatch } = useTranslate();
 
+  // AI Vocabulary Generator — calls /api/ai-generate-words endpoint
+  const handleAiGenerateWords = async (params: {
+    topic: string;
+    level: 'A1' | 'A2' | 'B1' | 'B2';
+    examplesToAnchor?: string;
+    skipCurriculumDuplicates: boolean;
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      showToast?.('Authentication required', 'error');
+      throw new Error('No auth token');
+    }
+
+    const response = await fetch('/api/ai-generate-words', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'AI generation failed');
+    }
+
+    const data = await response.json();
+
+    // Mark curriculum words by checking against ALL_WORDS
+    const curriculumWords = new Map(
+      ALL_WORDS.map(w => [w.english.toLowerCase(), w])
+    );
+
+    return data.words.map((w: {
+      english: string;
+      hebrew: string;
+      arabic: string;
+      example?: string;
+    }) => {
+      const curriculumMatch = curriculumWords.get(w.english.toLowerCase());
+      if (curriculumMatch) {
+        return {
+          ...w,
+          isFromCurriculum: true,
+          curriculumId: curriculumMatch.id,
+        };
+      }
+      return {
+        ...w,
+        isFromCurriculum: false,
+      };
+    });
+  };
+
+  // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
+  const handleGenerateLesson = async (params: {
+    words: Array<{ english: string; hebrew: string; arabic: string }>;
+    config: {
+      textDifficulty: string;
+      textType: string;
+      wordCount: number;
+      questionTypes: {
+        yesNo: number;
+        wh: number;
+        literal: number;
+        inferential: number;
+        fillBlank: number;
+        trueFalse: number;
+        matching: number;
+        multipleChoice: number;
+        sentenceComplete: number;
+      };
+      includeAnswers: boolean;
+    };
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      showToast?.('Authentication required', 'error');
+      throw new Error('No auth token');
+    }
+
+    const response = await fetch('/api/ai-generate-lesson', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'AI lesson generation failed');
+    }
+
+    return await response.json();
+  };
+
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
@@ -523,7 +666,11 @@ export default function App() {
   const [showModeIntro, setShowModeIntro] = useState(false);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
+  // Score state; for QP resume kids we seed from the localStorage
+  // hint so the visible score doesn't snap back to 0 on rescan.
+  // (Server already preserves the cumulative — see qpCumulativeScoreRef
+  // initializer above.)
+  const [score, setScore] = useState(() => readQpResumeScore());
   const [mistakes, setMistakes] = useState<number[]>([]);
   // Per-word attempts accumulated during the current game.  Flushed to the
   // word_attempts table via save_student_progress when the student finishes.
@@ -949,7 +1096,10 @@ export default function App() {
 
     // Restore session from a Supabase user.  Called OUTSIDE the auth lock
     // (fire-and-forget from the non-async onAuthStateChange callback).
-    const restoreSession = async (supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
+    // Uses currentViewRef to read the latest view and preserve navigation.
+    const restoreSession = async (
+      supabaseUser: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
+    ) => {
       if (restoreInProgress.current) return;
       // QR-scan Live Play: if the URL carries `?session=…` the user
       // scanned a teacher's Quick Play QR and the initial-view setter
@@ -963,6 +1113,7 @@ export default function App() {
       // the QR view and the student never sees the join form.
       if (quickPlaySessionParam) return;
       restoreInProgress.current = true;
+
       try {
         // For anonymous students: RLS blocks SELECT on users table
         // (is_anonymous IS FALSE). Instead of querying the DB, restore
@@ -1056,7 +1207,10 @@ export default function App() {
             if (skipRestore) {
               sessionStorage.removeItem('vocaband_skip_restore');
               try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
-              setView("teacher-dashboard");
+              // Only redirect to dashboard if not already on a valid teacher view
+              if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                setView("teacher-dashboard");
+              }
             } else {
               try {
                 const savedSession = localStorage.getItem('vocaband_quick_play_session');
@@ -1103,13 +1257,22 @@ export default function App() {
                     setView("quick-play-teacher-monitor");
                   } else {
                     localStorage.removeItem('vocaband_quick_play_session');
-                    setView("teacher-dashboard");
+                    // Preserve current view if on a valid teacher page
+                    if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                      setView("teacher-dashboard");
+                    }
                   }
                 } else {
-                  setView("teacher-dashboard");
+                  // Preserve current view if on a valid teacher page
+                  if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                    setView("teacher-dashboard");
+                  }
                 }
               } catch {
-                setView("teacher-dashboard");
+                // Preserve current view if on a valid teacher page
+                if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                  setView("teacher-dashboard");
+                }
               }
             }
           } else if (userData.role === "student" && userData.classCode) {
@@ -1186,7 +1349,10 @@ export default function App() {
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
             setStreak(userData.streak ?? 0);
-            setView("student-dashboard");
+            // Preserve current view if on a valid student page
+            if (!shouldPreserveView("student", currentViewRef.current)) {
+              setView("student-dashboard");
+            }
           } else {
             // users row exists but is in a broken state — most commonly an
             // OAuth student whose previous sign-in didn't complete class-code
@@ -1233,7 +1399,10 @@ export default function App() {
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
                 }
               }
-              setView("student-dashboard");
+              // Preserve current view if on a valid student page
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
               return;
             }
             if (studentProfile && studentProfile.status === 'pending_approval') {
@@ -1343,7 +1512,10 @@ export default function App() {
                   setStudentProgress((progressResult.data ?? []).map(mapProgress));
                 }
               }
-              setView("student-dashboard");
+              // Preserve current view if on a valid student page
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
               return;
             } else if (studentProfile && studentProfile.status === 'pending_approval') {
               showPendingApproval({
@@ -1469,6 +1641,11 @@ export default function App() {
           setLoading(false);
           return;
         }
+        // Preserve the current view when auth state changes (e.g., token refresh
+        // when user switches tabs). Only redirect to dashboard if currently on a
+        // public view. This prevents teachers from being kicked out of
+        // worksheet, classroom, class-show, etc. when they switch tabs.
+        // Uses currentViewRef internally to check the latest view.
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
@@ -1644,8 +1821,36 @@ export default function App() {
   // trigger should only appear on public/landing pages, not while a
   // student is mid-game or a teacher is in their dashboard.
   useEffect(() => {
+    currentViewRef.current = view;
     window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
   }, [view]);
+
+
+  // ─── GLOBAL TEACHER DASHBOARD THEME ────────────────────────────────────
+  // Apply teacher's selected theme globally across all pages. This runs
+  // at the App level (not per-view) so the theme persists when navigating
+  // between teacher pages without flashing or clearing.
+  // - For teachers: applies their dashboard theme CSS variables
+  // - For students/public: clears any teacher theme variables
+  // Extract theme ID separately to avoid re-running effect on unrelated user updates.
+  const teacherThemeId = user?.role === 'teacher' ? (user as any).teacherDashboardTheme : null;
+  const lastThemeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Only apply if theme actually changed (avoid unnecessary DOM writes)
+    if (lastThemeRef.current === teacherThemeId) return;
+    lastThemeRef.current = teacherThemeId;
+
+    if (teacherThemeId) {
+      const theme = getTeacherDashboardTheme(teacherThemeId);
+      applyThemePalette(theme.palette);
+      // Update data attribute for dark mode scrollbar styles
+      document.documentElement.dataset.themeDark = theme.dark.toString();
+    } else {
+      clearThemePalette();
+      delete document.documentElement.dataset.themeDark;
+    }
+  }, [teacherThemeId]);
 
 
   // View-state guards: redirect the user out of orphaned / broken
@@ -2143,6 +2348,18 @@ export default function App() {
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
+          onStartReview={() => {
+            // Spaced repetition entry point — bypasses the mode
+            // picker.  ReviewGame self-fetches its queue + the
+            // ALL_WORDS distractor pool, so we don't need to seed
+            // gameWords or activeAssignment.  Set isFinished off so
+            // the finish-screen overlay doesn't show stale state
+            // from a previous round.
+            setGameMode("review");
+            setIsFinished(false);
+            setShowModeSelection(false);
+            setView("game");
+          }}
           retention={retention}
           boosters={{
             isXpBoosterActive: boosters.isXpBoosterActive,
@@ -2318,21 +2535,18 @@ export default function App() {
             setQuickPlaySessionCode(null);
             setView("quick-play-setup");
           }}
-          onLiveChallengeClick={() => {
-            if (classes.length === 0) showToast("Create a class first!", "error");
-            else if (classes.length === 1) {
-              setSelectedClass(classes[0]);
-              setView("live-challenge");
-              setIsLiveChallenge(true);
-              if (socket) {
-                socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: classes[0].code });
-              }
-            } else {
-              setView("live-challenge-class-select");
-            }
-          }}
           onClassroomClick={() => { fetchScores(); fetchTeacherAssignments(); setView("classroom"); }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
+          onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
+          onProjectAssignmentToClass={(a) => {
+            setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
+            setView("class-show");
+          }}
+          onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
+          onPrintAssignmentWorksheet={(a) => {
+            setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
+            setView("worksheet");
+          }}
           onNewClass={() => setShowCreateClassModal(true)}
           onAssignClass={(c) => {
             setSelectedClass(c);
@@ -2400,7 +2614,7 @@ export default function App() {
             setCustomWords(unknownWords);
             setAssignmentTitle(assignment.title);
             setAssignmentDeadline(assignment.deadline || '');
-            setAssignmentModes(assignment.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+            setAssignmentModes(assignment.allowedModes ?? ALL_GAME_MODES);
             setAssignmentSentences(assignment.sentences ?? []);
             setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
             setSentencesAutoGenerated(true);
@@ -2419,7 +2633,7 @@ export default function App() {
             setCustomWords(unknownWords);
             setAssignmentTitle(assignment.title + ' (copy)');
             setAssignmentDeadline(assignment.deadline || '');
-            setAssignmentModes(assignment.allowedModes ?? ["classic","listening","spelling","matching","true-false","flashcards","scramble","reverse","letter-sounds","sentence-builder"]);
+            setAssignmentModes(assignment.allowedModes ?? ALL_GAME_MODES);
             setAssignmentSentences(assignment.sentences ?? []);
             setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
             setSentencesAutoGenerated(true);
@@ -2482,6 +2696,88 @@ export default function App() {
             setView('create-assignment');
             setAssignmentStep(1);
           }}
+          onWizardComplete={async (result) => {
+            // First-class onboarding wizard completion handler.  Creates
+            // the class + a starter assignment + marks the teacher
+            // onboarded, all in one round-trip.  Returns the new class
+            // code so the wizard can show the success step.
+            if (!user) return null;
+            try {
+              // Generate a class code (same alphabet as handleCreateClass —
+              // no 0/O/1/I to avoid teacher-typing confusion).
+              const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+              const code = Array.from(crypto.getRandomValues(new Uint32Array(8)))
+                .map(x => {
+                  const limit = Math.floor(0x100000000 / alphabet.length) * alphabet.length;
+                  let v = x;
+                  while (v >= limit) v = crypto.getRandomValues(new Uint32Array(1))[0];
+                  return alphabet[v % alphabet.length];
+                })
+                .join('');
+
+              // Insert the class.
+              const { data: classRow, error: classErr } = await supabase
+                .from('classes')
+                .insert({ name: result.className, teacher_uid: user.uid, code })
+                .select()
+                .single();
+              if (classErr || !classRow) throw classErr ?? new Error('class insert failed');
+
+              // Optimistically add to local state so the wizard's gating
+              // (classes.length === 0) flips immediately and the modal
+              // doesn't reopen on close.
+              setClasses(prev => [
+                ...prev,
+                { id: classRow.id, name: classRow.name, code: classRow.code, teacherUid: user.uid },
+              ]);
+
+              // Pick starter words from the chosen pack.  For 'custom'
+              // we skip the assignment — teacher can build it in the
+              // regular flow.
+              const vocabMod = getCachedVocabulary();
+              let words: { id: number }[] = [];
+              if (vocabMod && result.starterPack !== 'custom') {
+                const set = result.starterPack === 'set-1' ? vocabMod.SET_1_WORDS
+                  : result.starterPack === 'set-3' ? vocabMod.SET_3_WORDS
+                  : vocabMod.SET_2_WORDS;
+                words = set.slice(0, 20).map(w => ({ id: w.id }));
+              }
+
+              if (words.length > 0) {
+                await supabase.from('assignments').insert({
+                  class_id: classRow.id,
+                  word_ids: words.map(w => w.id),
+                  title: 'Welcome quiz',
+                  allowed_modes: result.modes,
+                  created_at: new Date().toISOString(),
+                  sentence_difficulty: 2,
+                });
+              }
+
+              // Flip the server flag so the wizard never re-fires.
+              await supabase.rpc('mark_teacher_onboarded').catch(err => {
+                console.error('[onboarding] mark_teacher_onboarded failed:', err);
+              });
+              setUser(prev => prev ? { ...prev, onboardedAt: new Date().toISOString() } : prev);
+
+              return { classCode: code };
+            } catch (err) {
+              console.error('[onboarding] wizard completion failed:', err);
+              showToast("Couldn't set up your class — please try again.", 'error');
+              return null;
+            }
+          }}
+          onWizardSkip={async () => {
+            // Mark onboarded so the wizard doesn't reappear.  Don't
+            // create anything — the teacher will use the regular
+            // class/assignment flows instead.
+            try {
+              await supabase.rpc('mark_teacher_onboarded');
+            } catch (err) {
+              console.error('[onboarding] skip mark failed:', err);
+            }
+            setUser(prev => prev ? { ...prev, onboardedAt: new Date().toISOString() } : prev);
+          }}
         />
       </LazyWrapper>
     );
@@ -2543,6 +2839,8 @@ export default function App() {
         setEditingAssignment={setEditingAssignment}
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
+        onAiGenerateWords={handleAiGenerateWords}
+        onGenerateLesson={handleGenerateLesson}
       />
       </LazyWrapper>
     );
@@ -2743,6 +3041,8 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         onTranslateWord={translateWord}
+        onAiGenerateWords={handleAiGenerateWords}
+        onGenerateLesson={handleGenerateLesson}
         topicPacks={TOPIC_PACKS}
         user={user}
         onLogout={() => supabase.auth.signOut()}
@@ -2763,6 +3063,92 @@ export default function App() {
     );
   }
 
+
+  if (view === "class-show") {
+    // Build the word-source list: optional pre-filled assignment.
+    // The setup panel selects index 0 automatically; if an assignment
+    // is pre-filled, it goes first.
+    const sources: { label: string; description?: string; words: Word[] }[] = [];
+    if (classShowAssignment) {
+      const knownWords = ALL_WORDS.filter(w => classShowAssignment.wordIds.includes(w.id));
+      const customs = classShowAssignment.customWords ?? [];
+      const merged = [...knownWords, ...customs.filter(c => !knownWords.some(k => k.id === c.id))];
+      if (merged.length > 0) {
+        sources.push({
+          label: classShowAssignment.title || "Assignment",
+          description: "From assignment",
+          words: merged,
+        });
+      }
+    }
+    return (
+      <LazyWrapper loadingMessage="Loading class show…">
+        <ClassShowView
+          user={user}
+          initialSources={sources}
+          initialSourceIndex={0}
+          pickerWiring={{
+            allWords: ALL_WORDS,
+            onTranslateWord: translateWord,
+            onTranslateBatch: translateWordsBatch,
+            onOcrUpload: handleOcrUpload,
+            onAiGenerateWords: handleAiGenerateWords,
+            topicPacks: TOPIC_PACKS,
+            // savedGroups: pass [] for now — wiring useSavedWordGroups
+            // through App-level state is a future PR.  WordPicker's
+            // SavedGroupsPanel renders an empty state cleanly when [].
+            savedGroups: [],
+            showToast,
+          }}
+          onExit={() => {
+            setClassShowAssignment(null);
+            setView("teacher-dashboard");
+          }}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === "worksheet") {
+    const sources: { label: string; description?: string; words: Word[] }[] = [];
+    if (worksheetAssignment) {
+      const knownWords = ALL_WORDS.filter(w => worksheetAssignment.wordIds.includes(w.id));
+      const customs = worksheetAssignment.customWords ?? [];
+      const merged = [...knownWords, ...customs.filter(c => !knownWords.some(k => k.id === c.id))];
+      if (merged.length > 0) {
+        sources.push({
+          label: worksheetAssignment.title || "Assignment",
+          description: "From assignment",
+          words: merged,
+        });
+      }
+    }
+    return (
+      <LazyWrapper loadingMessage="Loading worksheet builder…">
+        <WorksheetView
+          user={user}
+          initialSources={sources}
+          initialSourceIndex={0}
+          initialTitle={worksheetAssignment?.title}
+          className={worksheetAssignment?.className ?? null}
+          pickerWiring={{
+            allWords: ALL_WORDS,
+            onTranslateWord: translateWord,
+            onTranslateBatch: translateWordsBatch,
+            onOcrUpload: handleOcrUpload,
+            onAiGenerateWords: handleAiGenerateWords,
+            topicPacks: TOPIC_PACKS,
+            savedGroups: [],
+            showToast,
+          }}
+          onExit={() => {
+            setWorksheetAssignment(null);
+            setView("teacher-dashboard");
+          }}
+        />
+      </LazyWrapper>
+    );
+  }
 
   if (view === "quick-play-teacher-monitor") {
     if (!quickPlayActiveSession) {
@@ -2952,6 +3338,7 @@ export default function App() {
         leaderboard={leaderboard}
         isFinished={isFinished}
         handleExitGame={handleExitGame}
+        saveScore={saveScore}
         handleAnswer={handleAnswer}
         handleMatchClick={handleMatchClick}
         handleTFAnswer={handleTFAnswer}

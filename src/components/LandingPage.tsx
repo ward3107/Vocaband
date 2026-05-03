@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
+import { useLanguage } from "../hooks/useLanguage";
+import { landingPageT } from "../locales/student/landing-page";
 import {
   Rocket,
   Gamepad2,
@@ -36,6 +38,7 @@ import {
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
+import CssAnimation from "./CssAnimation";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security") => void;
@@ -46,12 +49,14 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
-  // Floating 3D cards data for hero
+  const { language, dir } = useLanguage();
+  const t = landingPageT[language];
+  // Floating 3D cards data for hero — labels translated via locale.
   const floatingCards = [
-    { icon: <Gamepad2 size={24} />, name: "11 Game Modes", color: "from-violet-500 to-purple-600", delay: 0 },
-    { icon: <Trophy size={24} />, name: "Earn XP", color: "from-blue-500 to-cyan-500", delay: 0.2 },
-    { icon: <Flame size={24} />, name: "Daily Streaks", color: "from-amber-500 to-orange-500", delay: 0.4 },
-    { icon: <Gift size={24} />, name: "Mystery Eggs", color: "from-emerald-500 to-teal-500", delay: 0.6 },
+    { icon: <Gamepad2 size={42} />, name: t.floatingCardModes, color: "from-violet-500 to-purple-600", delay: 0 },
+    { icon: <Trophy size={42} />, name: t.floatingCardXp, color: "from-blue-500 to-cyan-500", delay: 0.2 },
+    { icon: <Flame size={42} />, name: t.floatingCardStreaks, color: "from-amber-500 to-orange-500", delay: 0.4 },
+    { icon: <Gift size={42} />, name: t.floatingCardEggs, color: "from-emerald-500 to-teal-500", delay: 0.6 },
   ];
 
   return (
@@ -60,7 +65,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         currentPage="home"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
-        onTryDemo={onTryDemo}
       />
 
       <main>
@@ -110,11 +114,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight break-words mb-6"
                 >
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
-                    Level Up
+                    {t.heroTitleLine1}
                   </span>
                   <br />
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
-                    Your Vocabulary
+                    {t.heroTitleLine2}
                   </span>
                 </motion.h1>
 
@@ -124,8 +128,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
+                  dir={dir}
                 >
-                  The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.
+                  {t.heroSubtitle}
                 </motion.p>
 
                 {/* 3D CTA Buttons */}
@@ -141,7 +146,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
                     <Sparkles size={22} className="relative z-10" fill="currentColor" />
-                    <span className="relative z-10">Start Learning</span>
+                    <span className="relative z-10">{t.heroCtaStart}</span>
                     <Rocket size={22} className="relative z-10" />
                   </motion.button>
 
@@ -156,7 +161,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       <span className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
                       <GraduationCap size={20} className="relative z-10" />
-                      <span className="relative z-10">Teacher Login</span>
+                      <span className="relative z-10">{t.heroCtaTeacher}</span>
                     </motion.button>
                   )}
                 </div>
@@ -174,14 +179,86 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-lg">🐯</div>
                   </div>
                   <div className="text-left">
-                    <p className="text-white font-bold text-sm">10,000+ Students</p>
-                    <p className="text-white/60 text-xs">Learning English worldwide</p>
+                    <p className="text-white font-bold text-sm">{t.heroSocialProofCount}</p>
+                    <p className="text-white/60 text-xs">{t.heroSocialProofTagline}</p>
                   </div>
                 </motion.div>
               </div>
 
-              {/* Right - Floating 3D Cards Grid */}
-              <div className="hidden lg:grid grid-cols-2 gap-4 relative">
+              {/* Right - Hero Lottie + Floating 3D Cards Grid */}
+              <div className="hidden lg:flex flex-col gap-6 relative items-center">
+                {/* Try Demo Button - Above cards */}
+                {onTryDemo && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.5 }}
+                    className="flex justify-center"
+                  >
+                    <motion.button
+                      onClick={onTryDemo}
+                      animate={{
+                        y: [0, -4, 0],
+                        scale: [1, 1.02, 1],
+                      }}
+                      transition={{
+                        y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                        scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                      }}
+                      whileHover={{
+                        scale: 1.08,
+                        boxShadow: "0 0 30px rgba(139, 92, 246, 0.6), 0 0 60px rgba(244, 114, 182, 0.4)"
+                      }}
+                      whileTap={{ scale: 0.95 }}
+                      className="group relative px-6 py-3 rounded-full text-sm font-black text-white shadow-2xl shadow-primary/40 flex items-center gap-2 border-2 border-white/40 overflow-hidden bg-gradient-to-r from-primary via-violet-600 to-fuchsia-600"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      {/* Pulsing glow ring */}
+                      <motion.div
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-fuchsia-600"
+                      />
+
+                      {/* Animated shine sweep */}
+                      <motion.div
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                      />
+
+                      {/* Rotating gamepad icon */}
+                      <motion.div
+                        animate={{ rotateY: [0, 360], rotateZ: [0, 10, 0, -10, 0] }}
+                        transition={{
+                          rotateY: { duration: 3, repeat: Infinity, ease: "linear" },
+                          rotateZ: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="relative z-10"
+                        style={{ transformStyle: 'preserve-3d' }}
+                      >
+                        <Gamepad2 size={16} strokeWidth={3} />
+                      </motion.div>
+
+                      <span className="relative z-10">{t.navTryDemo}</span>
+
+                      {/* Sparkle effects */}
+                      <motion.span
+                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
+                        className="absolute -top-0.5 -right-0.5 text-yellow-300 text-sm"
+                      >✨</motion.span>
+                      <motion.span
+                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
+                        className="absolute -bottom-0.5 -left-0.5 text-yellow-300 text-xs"
+                      >✨</motion.span>
+                    </motion.button>
+                  </motion.div>
+                )}
+
+                {/* Cards Grid */}
+                <div className="grid grid-cols-2 gap-6 relative">
                 {floatingCards.map((card, i) => (
                   <motion.div
                     key={i}
@@ -206,11 +283,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     className="relative"
                   >
                     {/* Glassmorphism Card with 3D Depth */}
-                    <div className={`p-5 rounded-3xl bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20`}>
-                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white mb-3 shadow-inner">
+                    <div className={`p-8 rounded-3xl bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20`}>
+                      <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white mb-5 shadow-inner">
                         {card.icon}
                       </div>
-                      <p className="text-white font-black text-sm leading-tight">{card.name}</p>
+                      <p className="text-white font-black text-lg leading-tight">{card.name}</p>
                     </div>
                     {/* Floating shadow */}
                     <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-black/20 rounded-full blur-xl" />
@@ -219,6 +296,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
                 {/* Center Glow */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gradient-to-br from-violet-500/40 to-fuchsia-500/40 rounded-full blur-3xl -z-10" />
+                </div>
               </div>
             </div>
           </div>
@@ -233,10 +311,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             className="max-w-7xl mx-auto mb-12 text-center"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              Why Students Love Vocaband
+              {t.studentsSectionH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold">
-              Everything you need to master vocabulary, gamified.
+            <p className="text-lg text-white/80 font-bold" dir={dir}>
+              {t.studentsSectionSubtitle}
             </p>
           </motion.div>
 
@@ -254,34 +332,40 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 {/* Glass overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                 <div className="relative z-10">
-                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-6 shadow-inner">
-                    <Gamepad2 size={32} />
+                  {/* Game Lottie Animation */}
+                  <div className="flex justify-center mb-4">
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <CssAnimation type="game" size={100} />
+                    </motion.div>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-black mb-4">11 Game Modes</h3>
-                  <p className="text-white/80 font-bold mb-6 max-w-md">
-                    From Classic to Sentence Builder — every mode teaches differently. Find your favorite!
+                  <h3 className="text-3xl md:text-4xl font-black mb-4 text-center">{t.gameModesTitle}</h3>
+                  <p className="text-white/80 font-bold mb-6 max-w-md mx-auto text-center" dir={dir}>
+                    {t.gameModesDesc}
                   </p>
                   {/* Mode Grid */}
                   <div className="grid grid-cols-6 gap-2">
                     {[
-                      { emoji: "📖", name: "Classic" },
-                      { emoji: "🎧", name: "Listen" },
-                      { emoji: "✏️", name: "Spell" },
-                      { emoji: "⚡", name: "Match" },
-                      { emoji: "✅", name: "T/F" },
-                      { emoji: "🃏", name: "Flash" },
-                      { emoji: "🔤", name: "Scramble" },
-                      { emoji: "🔄", name: "Reverse" },
-                      { emoji: "🔡", name: "Letters" },
-                      { emoji: "🧩", name: "Sentence" },
-                      { emoji: "📝", name: "Fill Blank" },
-                    ].map((mode, i) => (
+                      { emoji: "📖", nameKey: "classic" },
+                      { emoji: "🎧", nameKey: "listen" },
+                      { emoji: "✏️", nameKey: "spell" },
+                      { emoji: "⚡", nameKey: "match" },
+                      { emoji: "✅", nameKey: "tf" },
+                      { emoji: "🃏", nameKey: "flash" },
+                      { emoji: "🔤", nameKey: "scramble" },
+                      { emoji: "🔄", nameKey: "reverse" },
+                      { emoji: "🔡", nameKey: "letters" },
+                      { emoji: "🧩", nameKey: "sentence" },
+                      { emoji: "📝", nameKey: "fillBlank" },
+                    ].map((mode) => (
                       <motion.div
-                        key={mode.name}
+                        key={mode.nameKey}
                         whileHover={{ scale: 1.15, rotate: [0, -5, 5, 0] }}
                         transition={{ duration: 0.3 }}
                         className="aspect-square rounded-xl bg-white/10 backdrop-blur-sm flex flex-col items-center justify-center gap-1 cursor-help"
-                        title={mode.name}
+                        title={t.modeNames[mode.nameKey as keyof typeof t.modeNames]}
                       >
                         <span className="text-2xl md:text-3xl">{mode.emoji}</span>
                       </motion.div>
@@ -306,9 +390,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Trophy size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Live Challenges</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Battle classmates in real-time podiums!
+                  <h3 className="text-2xl font-black mb-2">{t.liveChallengesTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.liveChallengesDesc}
                   </p>
                   {/* Animated podium with rising trophy */}
                   <div className="mt-4 relative h-20 flex items-end justify-center gap-2">
@@ -355,9 +439,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Coins size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">XP Shop</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Earn XP, spend on avatars, frames & power-ups!
+                  <h3 className="text-2xl font-black mb-2">{t.xpShopTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.xpShopDesc}
                   </p>
                   {/* Floating coins animation */}
                   <div className="mt-4 relative h-16 flex justify-center items-center gap-2">
@@ -415,9 +499,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Gift size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Mystery Eggs</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Crack eggs to unlock legendary avatars!
+                  <h3 className="text-2xl font-black mb-2">{t.mysteryEggsTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.mysteryEggsDesc}
                   </p>
                   {/* Glowing wobbling egg */}
                   <div className="mt-4 relative flex justify-center">
@@ -475,9 +559,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Zap size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Power Boosters</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    XP multipliers, streak freeze & more!
+                  <h3 className="text-2xl font-black mb-2">{t.powerBoostersTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.powerBoostersDesc}
                   </p>
                   {/* Electric lightning animation */}
                   <div className="mt-4 relative h-16 flex items-center justify-center">
@@ -531,9 +615,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Crown size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Pet Friends</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Unlock cute pets that cheer you on!
+                  <h3 className="text-2xl font-black mb-2">{t.petFriendsTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.petFriendsDesc}
                   </p>
                   {/* Bouncing pet with hearts */}
                   <div className="mt-4 relative h-16 flex items-center justify-center">
@@ -582,9 +666,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Flame size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Daily Streaks</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Keep the flame burning! Earn rewards.
+                  <h3 className="text-2xl font-black mb-2">{t.dailyStreaksTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.dailyStreaksDesc}
                   </p>
                   {/* Animated flame with rising embers */}
                   <div className="mt-4 relative h-16 flex items-center justify-center">
@@ -646,14 +730,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <GraduationCap size={16} className="text-sky-300" />
               <span className="text-sm font-black tracking-widest uppercase text-sky-200">
-                For Teachers
+                {t.teachersSectionPill}
               </span>
             </motion.div>
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              The Easiest Tool You'll Use All Year
+              {t.teachersSectionH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold">
-              Zero prep, zero paperwork, zero learning curve. Teach more, click less.
+            <p className="text-lg text-white/80 font-bold" dir={dir}>
+              {t.teachersSectionSubtitle}
             </p>
           </motion.div>
 
@@ -674,13 +758,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <CheckCircle2 size={40} />
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-3xl md:text-4xl font-black mb-3">Auto-Grading</h3>
-                    <p className="text-white/80 font-bold text-lg max-w-2xl">
-                      Every practice session graded instantly. No worksheets to collect, no stacks to review. Focus on teaching, not paperwork.
+                    <h3 className="text-3xl md:text-4xl font-black mb-3">{t.autoGradingTitle}</h3>
+                    <p className="text-white/80 font-bold text-lg max-w-2xl" dir={dir}>
+                      {t.autoGradingDesc}
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    <div className="text-6xl">✅</div>
+                    <CssAnimation type="analytics" size={80} />
                   </div>
                 </div>
               </div>
@@ -701,9 +785,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Layers size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Use Your Own Words</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Upload your custom vocabulary lists. Assign any words you need.
+                  <h3 className="text-2xl font-black mb-2">{t.useYourOwnWordsTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.useYourOwnWordsDesc}
                   </p>
                   {/* Floating word cards */}
                   <div className="mt-4 relative h-16 flex items-center justify-center">
@@ -747,9 +831,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <BarChart3 size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Spot Who's Struggling</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Real-time analytics show exactly who needs help — before the test.
+                  <h3 className="text-2xl font-black mb-2">{t.spotStrugglingTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.spotStrugglingDesc}
                   </p>
                   {/* Animated chart bars */}
                   <div className="mt-4 relative h-16 flex items-end justify-center gap-2">
@@ -787,9 +871,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Clock size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Setup in 30 Seconds</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Create class → Share code → Students join. That's it.
+                  <h3 className="text-2xl font-black mb-2">{t.quickSetupTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.quickSetupDesc}
                   </p>
                   {/* Clock tick animation */}
                   <div className="mt-4 relative h-16 flex items-center justify-center">
@@ -825,9 +909,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Sparkles size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">They Actually Want to Practice</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Game modes, XP, streaks — students voluntarily study at home.
+                  <h3 className="text-2xl font-black mb-2">{t.studentEngagementTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.studentEngagementDesc}
                   </p>
                   {/* Sparkle burst */}
                   <div className="mt-4 relative h-16 flex items-center justify-center">
@@ -881,9 +965,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Wand2 size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">AI Sentence Builder</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    One click, 10 example sentences per word — at the right level for your grade.
+                  <h3 className="text-2xl font-black mb-2">{t.aiSentenceBuilderTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.aiSentenceBuilderDesc}
                   </p>
                   <div className="mt-4 px-3 py-2 rounded-xl bg-white/10 text-xs font-bold leading-relaxed">
                     "She <span className="bg-white/30 px-1 rounded">sprinted</span> across the field to catch the ball."
@@ -907,9 +991,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                     <Camera size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Snap a Wordlist</h3>
-                  <p className="text-white/80 font-bold text-sm">
-                    Take a photo of any printed list — handwriting, textbook page, board — words extracted in seconds.
+                  <h3 className="text-2xl font-black mb-2">{t.snapWordlistTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                    {t.snapWordlistDesc}
                   </p>
                   <div className="mt-4 flex items-center justify-center gap-2">
                     <div className="text-3xl">📷</div>
@@ -939,16 +1023,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <Radio size={40} />
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-3xl md:text-4xl font-black mb-3">Quick Play — No-Signup Live Game</h3>
-                    <p className="text-white/85 font-bold text-lg max-w-2xl">
-                      Project a QR on the board, students join with their phones — no accounts, no class code typing, no setup. Live podium, real-time scores, ready in 10 seconds.
+                    <h3 className="text-3xl md:text-4xl font-black mb-3">{t.quickPlayTitle}</h3>
+                    <p className="text-white/85 font-bold text-lg max-w-2xl" dir={dir}>
+                      {t.quickPlayDesc}
                     </p>
                   </div>
                   <div className="flex flex-col items-center gap-2 flex-shrink-0">
                     <div className="px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm font-mono font-black text-2xl tracking-widest">
                       ABC123
                     </div>
-                    <div className="text-xs uppercase tracking-widest opacity-80">scan & play</div>
+                    <div className="text-xs uppercase tracking-widest opacity-80">{t.quickPlayScanPlay}</div>
                   </div>
                 </div>
               </div>
@@ -976,10 +1060,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <Globe size={40} />
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-3xl md:text-4xl font-black mb-3">Hebrew + Arabic, built in</h3>
-                    <p className="text-white/85 font-bold text-lg max-w-2xl">
-                      Every word ships with native Hebrew AND Arabic translations — no second app, no copy-paste.
-                      RTL layouts handled automatically.  More languages on the roadmap.
+                    <h3 className="text-3xl md:text-4xl font-black mb-3">{t.hebrewArabicTitle}</h3>
+                    <p className="text-white/85 font-bold text-lg max-w-2xl" dir={dir}>
+                      {t.hebrewArabicDesc}
                     </p>
                   </div>
                   {/* Three-language sample chip cluster.  Each shows the
@@ -1011,10 +1094,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             className="max-w-4xl mx-auto text-center mb-16"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              Your Journey to Mastery
+              {t.curriculumSectionH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold">
-              Aligned with CEFR A1 to B2 — three comprehensive vocabulary sets covering 6,500+ words.
+            <p className="text-lg text-white/80 font-bold" dir={dir}>
+              {t.curriculumSectionSubtitle}
             </p>
           </motion.div>
 
@@ -1035,19 +1118,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-xl transition-shadow">
                     <Target size={24} />
                     <div>
-                      <p className="font-black text-lg">Set 1 — Foundation</p>
-                      <p className="text-white/80 text-sm">Beginner vocabulary</p>
+                      <p className="font-black text-lg">{t.set1Title}</p>
+                      <p className="text-white/80 text-sm">{t.set1Desc}</p>
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-2xl shadow-emerald-500/50 items-center justify-center text-white text-2xl font-black z-10">
-                  1
+                <div className="hidden md:flex w-20 h-20 rounded-full items-center justify-center z-10 overflow-hidden">
+                  <CssAnimation type="book" size={80} />
                 </div>
                 <div className="md:w-1/2 md:pl-12">
                   <div className="p-4 rounded-2xl bg-surface-container-high">
                     <div className="flex justify-between mb-2">
-                      <span className="font-bold">Progress</span>
-                      <span className="text-emerald-600 font-black">~2000 words</span>
+                      <span className="font-bold">{t.curriculumProgress}</span>
+                      <span className="text-emerald-600 font-black">{t.set1Words}</span>
                     </div>
                     <div className="h-3 bg-surface rounded-full overflow-hidden">
                       <motion.div
@@ -1073,19 +1156,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:shadow-xl transition-shadow">
                     <Target size={24} />
                     <div>
-                      <p className="font-black text-lg">Set 2 — Intermediate</p>
-                      <p className="text-white/80 text-sm">Building complexity</p>
+                      <p className="font-black text-lg">{t.set2Title}</p>
+                      <p className="text-white/80 text-sm">{t.set2Desc}</p>
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 shadow-2xl shadow-blue-500/50 items-center justify-center text-white text-2xl font-black z-10">
-                  2
+                <div className="hidden md:flex w-20 h-20 rounded-full items-center justify-center z-10 overflow-hidden">
+                  <CssAnimation type="book" size={80} />
                 </div>
                 <div className="md:w-1/2 md:pr-12 md:text-right">
                   <div className="p-4 rounded-2xl bg-surface-container-high">
                     <div className="flex justify-between mb-2">
-                      <span className="text-blue-600 font-black">~2500 words</span>
-                      <span className="font-bold">Progress</span>
+                      <span className="text-blue-600 font-black">{t.set2Words}</span>
+                      <span className="font-bold">{t.curriculumProgress}</span>
                     </div>
                     <div className="h-3 bg-surface rounded-full overflow-hidden">
                       <motion.div
@@ -1111,19 +1194,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg hover:shadow-xl transition-shadow">
                     <Star size={24} />
                     <div>
-                      <p className="font-black text-lg">Set 3 — Academic</p>
-                      <p className="text-white/80 text-sm">Advanced mastery</p>
+                      <p className="font-black text-lg">{t.set3Title}</p>
+                      <p className="text-white/80 text-sm">{t.set3Desc}</p>
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex w-16 h-16 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 shadow-2xl shadow-violet-500/50 items-center justify-center text-white text-2xl font-black z-10">
-                  3
+                <div className="hidden md:flex w-20 h-20 rounded-full items-center justify-center z-10 overflow-hidden">
+                  <CssAnimation type="book" size={80} />
                 </div>
                 <div className="md:w-1/2 md:pl-12">
                   <div className="p-4 rounded-2xl bg-surface-container-high">
                     <div className="flex justify-between mb-2">
-                      <span className="font-bold">Progress</span>
-                      <span className="text-violet-600 font-black">~3000 words</span>
+                      <span className="font-bold">{t.curriculumProgress}</span>
+                      <span className="text-violet-600 font-black">{t.set3Words}</span>
                     </div>
                     <div className="h-3 bg-surface rounded-full overflow-hidden">
                       <motion.div
@@ -1177,25 +1260,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <Compass size={16} className="text-amber-300" />
               <span className="text-sm font-black tracking-widest uppercase text-amber-200">
-                Coming Soon
+                {t.vocaFamilyPill}
               </span>
             </motion.div>
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              The Voca Family
+              {t.vocaFamilyH2}
             </h2>
-            <p className="text-lg text-white/80 font-bold max-w-2xl mx-auto">
-              We're starting with English vocabulary — but the same gameplay engine teaches anything.
-              Subjects on the roadmap, by teacher demand:
+            <p className="text-lg text-white/80 font-bold max-w-2xl mx-auto" dir={dir}>
+              {t.vocaFamilySubtitle}
             </p>
           </motion.div>
 
           <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { name: "VocaHistory", emoji: "📜", color: "from-amber-500 to-orange-600", tag: "Dates · figures · events" },
-              { name: "VocaScience", emoji: "🔬", color: "from-emerald-500 to-teal-600", tag: "Terms · concepts · diagrams" },
-              { name: "VocaHebrew", emoji: "📖", color: "from-blue-500 to-indigo-600", tag: "Hebrew vocabulary" },
-              { name: "VocaArabic", emoji: "📚", color: "from-rose-500 to-pink-600", tag: "Arabic vocabulary" },
-              { name: "VocaMath", emoji: "🔢", color: "from-violet-500 to-fuchsia-600", tag: "Definitions · formulas" },
+              { name: t.vocaHistoryName, emoji: "📜", color: "from-amber-500 to-orange-600", tag: t.vocaHistoryTag },
+              { name: t.vocaScienceName, emoji: "🔬", color: "from-emerald-500 to-teal-600", tag: t.vocaScienceTag },
+              { name: t.vocaHebrewName, emoji: "📖", color: "from-blue-500 to-indigo-600", tag: t.vocaHebrewTag },
+              { name: t.vocaArabicName, emoji: "📚", color: "from-rose-500 to-pink-600", tag: t.vocaArabicTag },
+              { name: t.vocaMathName, emoji: "🔢", color: "from-violet-500 to-fuchsia-600", tag: t.vocaMathTag },
             ].map((subject, i) => (
               <motion.div
                 key={subject.name}
@@ -1209,14 +1291,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 <div className={`h-full p-5 rounded-3xl bg-gradient-to-br ${subject.color} text-white shadow-lg overflow-hidden`}>
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div className="relative z-10 text-center">
-                    <div className="text-4xl mb-2">{subject.emoji}</div>
+                    <div className="flex justify-center mb-2">
+                      <span
+                        className="text-5xl drop-shadow-lg"
+                        style={{
+                          animation: 'bounce 2s ease-in-out infinite',
+                          animationDelay: `${i * 0.1}s`
+                        }}
+                      >
+                        {subject.emoji}
+                      </span>
+                    </div>
                     <h3 className="text-base sm:text-lg font-black mb-1">{subject.name}</h3>
                     <p className="text-[11px] sm:text-xs font-bold text-white/80 leading-tight">{subject.tag}</p>
                   </div>
                   {/* "Coming soon" pill so nobody mistakes this for a
                       shipped feature. */}
                   <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-[9px] font-black uppercase tracking-wider">
-                    Soon
+                    {t.vocaFamilyComingSoon}
                   </div>
                 </div>
               </motion.div>
@@ -1232,15 +1324,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             viewport={{ once: true }}
             className="max-w-2xl mx-auto mt-12 text-center"
           >
-            <p className="text-white/70 font-bold text-sm mb-3">
-              Teach a different subject? Tell us which Voca to build next:
+            <p className="text-white/70 font-bold text-sm mb-3" dir={dir}>
+              {t.vocaFamilyRequestLine}
             </p>
             <a
               href="mailto:contact@vocaband.com?subject=Voca%20Roadmap%20%E2%80%93%20Subject%20Request"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-black transition-colors"
             >
               <FileText size={18} />
-              Request a subject
+              {t.vocaFamilyRequestCta}
             </a>
           </motion.div>
         </section>
@@ -1287,14 +1379,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </motion.div>
 
                 <h2 className="text-4xl md:text-6xl lg:text-7xl font-black font-headline mb-6 tracking-tight">
-                  Ready to Become a
+                  {t.finalCtaH2Line1}
                   <span className="inline-block pr-4 pb-2 mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
-                    Vocabulary Legend?
+                    {t.finalCtaH2Line2}
                   </span>
                 </h2>
 
-                <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto">
-                  Join thousands of students leveling up their English — one word at a time.
+                <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto" dir={dir}>
+                  {t.finalCtaSubtitle}
                 </p>
 
                 {/* 3D Buttons */}
@@ -1307,7 +1399,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
                     <Rocket size={24} className="relative z-10" />
-                    <span className="relative z-10">Start Learning Free</span>
+                    <span className="relative z-10">{t.finalCtaStart}</span>
                     <Sparkles size={24} className="relative z-10" fill="currentColor" />
                   </motion.button>
 
@@ -1320,7 +1412,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       <span className="absolute inset-0 bg-gradient-to-b from-white to-gray-50" />
                       <GraduationCap size={22} className="relative z-10" />
-                      <span className="relative z-10">Teacher Login</span>
+                      <span className="relative z-10">{t.finalCtaTeacher}</span>
                     </motion.button>
                   )}
                 </div>
@@ -1369,9 +1461,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </div>
                   <span className="text-white font-black text-xl">Vocaband</span>
                 </div>
-                <p className="text-white/60 text-sm leading-relaxed mb-5 max-w-xs">
-                  The vocabulary platform students worldwide actually want to play —
-                  and the easiest classroom tool teachers will use all year.
+                <p className="text-white/60 text-sm leading-relaxed mb-5 max-w-xs" dir={dir}>
+                  {t.footerTagline}
                 </p>
                 {/* Two contact CTAs reflecting the pricing strategy:
                     schools-first public, private teacher channel. */}
@@ -1381,14 +1472,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-xs transition-all"
                   >
                     <GraduationCap size={14} />
-                    School plans
+                    {t.footerSchoolPlans}
                   </a>
                   <a
                     href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/25 text-white/80 hover:text-white font-bold text-xs transition-all"
                   >
                     <FileText size={14} />
-                    Individual teacher
+                    {t.footerIndividualTeacher}
                   </a>
                 </div>
               </div>
@@ -1396,7 +1487,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               {/* Col 2: Product */}
               <div>
                 <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
-                  Product
+                  {t.footerProduct}
                 </h4>
                 <ul className="space-y-2.5">
                   <li>
@@ -1405,7 +1496,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       type="button"
                       className="text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
-                      Start Learning
+                      {t.footerStartLearning}
                     </button>
                   </li>
                   <li>
@@ -1414,7 +1505,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       type="button"
                       className="text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
-                      Try the Demo
+                      {t.footerTryDemo}
                     </button>
                   </li>
                   {!isAuthenticated && (
@@ -1424,7 +1515,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         type="button"
                         className="text-white/70 hover:text-white text-sm font-medium transition-colors"
                       >
-                        Teacher Login
+                        {t.footerTeacherLogin}
                       </button>
                     </li>
                   )}
@@ -1434,7 +1525,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               {/* Col 3: Resources */}
               <div>
                 <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
-                  Resources
+                  {t.footerResources}
                 </h4>
                 <ul className="space-y-2.5">
                   <li>
@@ -1442,7 +1533,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       href="/answers/cefr-a1-vocabulary-list.html"
                       className="text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
-                      CEFR A1 vocabulary
+                      {t.footerCefrVocab}
                     </a>
                   </li>
                   <li>
@@ -1450,7 +1541,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       href="/answers/cefr-a1-vs-a2-vocabulary.html"
                       className="text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
-                      A1 vs A2 explained
+                      {t.footerCefrExplained}
                     </a>
                   </li>
                   <li>
@@ -1458,7 +1549,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       href="/answers/best-english-vocabulary-app-grade-5.html"
                       className="text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
-                      Best ESL app — Grades 1-12
+                      {t.footerBestEsl}
                     </a>
                   </li>
                 </ul>
@@ -1467,7 +1558,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               {/* Col 4: Legal + Trust */}
               <div>
                 <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
-                  Legal & Trust
+                  {t.footerLegal}
                 </h4>
                 <ul className="space-y-2.5">
                   <li>
@@ -1477,7 +1568,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
                       <FileText size={14} aria-hidden="true" />
-                      Terms of Service
+                      {t.footerTerms}
                     </button>
                   </li>
                   <li>
@@ -1487,7 +1578,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
                       <ShieldCheck size={14} aria-hidden="true" />
-                      Privacy Policy
+                      {t.footerPrivacy}
                     </button>
                   </li>
                   <li>
@@ -1497,7 +1588,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
                       <Lock size={14} aria-hidden="true" />
-                      Security & Trust
+                      {t.footerSecurity}
                     </button>
                   </li>
                   <li>
@@ -1507,7 +1598,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
                     >
                       <Accessibility size={14} aria-hidden="true" />
-                      Accessibility
+                      {t.footerAccessibility}
                     </button>
                   </li>
                 </ul>
@@ -1517,8 +1608,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* ── Bottom bar: trust strip + copyright ───────────── */}
             <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
               {/* Copyright */}
-              <p className="text-white/50 text-xs font-medium order-2 md:order-1">
-                © {new Date().getFullYear()} Vocaband. Made with <span className="text-blue-400">💙</span> for learners everywhere.
+              <p className="text-white/50 text-xs font-medium order-2 md:order-1" dir={dir}>
+                {t.footerCopyright(new Date().getFullYear())}
               </p>
 
               {/* Trust strip — three small badges showing the things

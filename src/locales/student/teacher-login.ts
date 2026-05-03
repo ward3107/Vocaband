@@ -37,6 +37,11 @@ export interface TeacherLoginT {
   errorNotAllowlisted: string;
   /** Tiny print explaining what the code is for. */
   helpText: string;
+  /** Checkbox label below the email input. */
+  rememberMe: string;
+  /** Hint shown next to the checkbox so teachers on shared classroom
+   *  PCs know to leave it unchecked. */
+  rememberMeHint: string;
 }
 
 export const teacherLoginT: Record<Language, TeacherLoginT> = {
@@ -60,6 +65,8 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     errorSendFailed: "We couldn't send the code. Check the email and try again.",
     errorNotAllowlisted: "That email isn't approved as a teacher account yet. Ask the admin to add it.",
     helpText: "We never store passwords. The code expires in 10 minutes.",
+    rememberMe: "Remember my email on this device",
+    rememberMeHint: "Leave unchecked on shared / classroom computers.",
   },
   he: {
     heading: "התחברות ל-Vocaband",
@@ -81,6 +88,8 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     errorSendFailed: "לא הצלחנו לשלוח את הקוד. בדוק את האימייל ונסה שוב.",
     errorNotAllowlisted: "האימייל הזה עדיין לא מאושר כחשבון מורה. בקש מהמנהל להוסיף אותו.",
     helpText: "אנחנו לא שומרים סיסמאות. הקוד יפוג תוך 10 דקות.",
+    rememberMe: "זכור את האימייל שלי במכשיר זה",
+    rememberMeHint: "השאר לא מסומן במחשבים משותפים / כיתתיים.",
   },
   ar: {
     heading: "تسجيل الدخول إلى Vocaband",
@@ -102,5 +111,7 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     errorSendFailed: "لم نتمكن من إرسال الرمز. تحقق من البريد الإلكتروني وحاول مرة أخرى.",
     errorNotAllowlisted: "هذا البريد الإلكتروني غير معتمد بعد كحساب معلم. اطلب من المسؤول إضافته.",
     helpText: "نحن لا نخزن كلمات المرور أبدًا. ينتهي الرمز خلال 10 دقائق.",
+    rememberMe: "تذكر بريدي الإلكتروني على هذا الجهاز",
+    rememberMeHint: "اترك بدون تحديد على أجهزة الكمبيوتر المشتركة / الصفية.",
   },
 };

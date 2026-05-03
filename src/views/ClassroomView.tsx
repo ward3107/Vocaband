@@ -67,6 +67,24 @@ interface ClassroomViewProps {
   initialTab?: LegacyTab;
 }
 
+const LEGACY_TABS: Array<{ id: LegacyTab; label: string; icon: React.ReactNode; gradient: string }> = [
+  { id: "pulse",   label: "Pulse",   icon: <Activity size={16} />, gradient: "from-emerald-300 to-teal-400" },
+  { id: "mastery", label: "Mastery", icon: <Brain size={16} />,    gradient: "from-violet-300 to-fuchsia-400" },
+];
+
+const V2_TABS: Array<{
+  id: V2Tab;
+  emoji: string;
+  label: string;
+  gradient: string;
+  blurb: string;
+}> = [
+  { id: "today",       emoji: "🌡️", label: "Today",       gradient: "from-indigo-300 to-violet-400",  blurb: "Who needs my attention today?" },
+  { id: "students",    emoji: "👥", label: "Students",    gradient: "from-violet-300 to-fuchsia-400", blurb: "Deep-dive on one kid" },
+  { id: "assignments", emoji: "📝", label: "Assignments", gradient: "from-amber-300 to-orange-400",   blurb: "How did my class do on this?" },
+  { id: "reports",     emoji: "📊", label: "Reports",     gradient: "from-emerald-300 to-teal-400",   blurb: "Plan my next lesson" },
+];
+
 const legacyToV2: Record<LegacyTab, V2Tab> = {
   pulse: "today",
   mastery: "reports",
@@ -226,7 +244,10 @@ export default function ClassroomView(props: ClassroomViewProps) {
             top-32 sm:top-40 keeps the same clearance applied to the
             sticky position so scrolled-content doesn't slide back
             under the AppBar either. */}
-        <div className="hidden sm:block sticky top-32 sm:top-40 z-30 bg-background/90 backdrop-blur-md border-b border-stone-100 mt-32 sm:mt-40">
+        <div
+          className="hidden sm:block sticky top-32 sm:top-40 z-30 bg-background/90 backdrop-blur-md border-b mt-32 sm:mt-40"
+          style={{ borderColor: 'var(--vb-border)' }}
+        >
           <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
             {V2_TABS.map(tab => {
               const active = v2Tab === tab.id;
@@ -237,10 +258,14 @@ export default function ClassroomView(props: ClassroomViewProps) {
                   onClick={() => setV2Tab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
                     active
-                      ? `bg-gradient-to-br ${tab.gradient} text-white shadow-md`
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                      ? `bg-gradient-to-br ${t.gradient} text-white shadow-md`
+                      : ""
                   }`}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                  style={{
+                    touchAction: "manipulation",
+                    WebkitTapHighlightColor: "transparent" as never,
+                    ...(active ? {} : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }),
+                  }}
                   aria-pressed={active}
                 >
                   <span aria-hidden>{tab.emoji}</span>
@@ -262,7 +287,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
           transition={{ duration: 0.2 }}
         >
           <Suspense fallback={
-            <div className="text-center py-16 text-stone-400 text-sm">{t.loading}</div>
+            <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>Loading…</div>
           }>
             {v2Tab === "today" && (
               <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-5">
@@ -446,8 +471,9 @@ export default function ClassroomView(props: ClassroomViewProps) {
             targets (≥44 px). Replaces the desktop pill-bar on narrow
             screens. */}
         <nav
-          aria-label={t.classroomSectionsAria}
-          className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200 pb-[env(safe-area-inset-bottom)]"
+          aria-label="Classroom sections"
+          className="sm:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t pb-[env(safe-area-inset-bottom)]"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 95%, transparent)', borderColor: 'var(--vb-border)' }}
         >
           <div className="flex">
             {V2_TABS.map(tab => {
@@ -456,11 +482,10 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setV2Tab(tab.id)}
-                  className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
-                    active ? "text-stone-900" : "text-stone-400"
-                  }`}
+                  onClick={() => setV2Tab(t.id)}
+                  className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
                   style={{
+                    color: active ? 'var(--vb-text-primary)' : 'var(--vb-text-muted)',
                     touchAction: "manipulation",
                     WebkitTapHighlightColor: "transparent" as never,
                     minHeight: 56,
@@ -494,7 +519,10 @@ export default function ClassroomView(props: ClassroomViewProps) {
         onLogout={() => supabase.auth.signOut()}
       />
 
-      <div className="sticky top-[72px] sm:top-[80px] z-30 bg-background/90 backdrop-blur-md border-b border-stone-100 mt-24 sm:mt-32">
+      <div
+        className="sticky top-[72px] sm:top-[80px] z-30 bg-background/90 backdrop-blur-md border-b mt-24 sm:mt-32"
+        style={{ borderColor: 'var(--vb-border)' }}
+      >
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
           {LEGACY_TABS.map(tab => {
             const active = legacyTab === tab.id;
@@ -504,11 +532,13 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 type="button"
                 onClick={() => setLegacyTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
-                  active
-                    ? `bg-gradient-to-br ${tab.gradient} text-white shadow-md`
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  active ? `bg-gradient-to-br ${t.gradient} text-white shadow-md` : ""
                 }`}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                style={{
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent" as never,
+                  ...(active ? {} : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }),
+                }}
                 aria-pressed={active}
               >
                 {tab.icon}
@@ -526,7 +556,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
         transition={{ duration: 0.2 }}
       >
         <Suspense fallback={
-          <div className="text-center py-16 text-stone-400 text-sm">{t.loading}</div>
+          <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>Loading…</div>
         }>
           {legacyTab === "mastery" ? (
             <AnalyticsView

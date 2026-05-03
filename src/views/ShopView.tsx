@@ -78,7 +78,7 @@ function currentLimitedItem() {
 }
 
 export default function ShopView({ user, xp, setXp, setUser, setView, showToast, shopTab, setShopTab, activateBooster }: ShopViewProps) {
-  const { language } = useLanguage();
+  const { language, dir } = useLanguage();
   const t = shopT[language];
   // Cinematic egg-opening state.  Phases:
   //   'idle'    → no cinematic
@@ -882,6 +882,16 @@ interface ArcadeLobbyHubProps {
 }
 
 function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
+  // Resolve `t` LOCALLY.  This component is defined at module level
+  // (outside the parent ShopView function), so the parent's `t`
+  // closure isn't visible here -- previously every render hit
+  // `ReferenceError: t is not defined` once minified, surfacing as
+  // a "Lazy load error" the moment a kid landed on the shop tab
+  // (which the dashboard auto-mounts post-game for the shop CTA
+  // strip, hence the "errors after each game mode" report).
+  const { language, dir } = useLanguage();
+  const t = shopT[language];
+
   // Trending rail — hand-picked items that feel like "drops" worth looking
   // at.  Mix a hero egg, a premium avatar, a frame, a title.
   const trending: { label: string; pill: string; pillBg: string; onClick: () => void; emoji: string; gradient: string }[] = [
@@ -925,6 +935,7 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className={`relative shrink-0 w-40 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} p-3 pt-9 text-left shadow-md`}
+              dir={dir}
             >
               {/* NEW/HOT/RARE pill — z-10 puts it above the emoji medallion
                   so the badge is never covered.  Also given pt-9 padding
@@ -956,6 +967,7 @@ function ArcadeLobbyHub({ xp, setShopTab }: ArcadeLobbyHubProps) {
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.97 }}
               className={`relative aspect-[5/4] overflow-hidden rounded-3xl bg-gradient-to-br ${p.gradient} p-4 text-left shadow-lg`}
+              dir={dir}
             >
               <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 bg-white/20 rounded-full blur-2xl" />
               <div className="relative h-full flex flex-col justify-between">

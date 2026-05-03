@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
-import { Palette } from "lucide-react";
+import { Palette, Tv2 } from "lucide-react";
+import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
+import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
 import { supabase } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
-import { getTeacherDashboardTheme } from "../constants/teacherDashboardThemes";
+import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
@@ -17,6 +19,8 @@ import DeleteAssignmentModal from "../components/dashboard/DeleteAssignmentModal
 import RejectStudentModal from "../components/dashboard/RejectStudentModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { SavedTask } from "../hooks/useSavedTasks";
 import { useLanguage } from "../hooks/useLanguage";
@@ -69,10 +73,17 @@ interface TeacherDashboardViewProps {
 
   // Quick actions
   onQuickPlayClick: () => void;
-  onLiveChallengeClick: () => void;
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Impromptu Class Show — projector mode for phone-less classrooms. */
+  onClassShowClick: () => void;
+  /** Project a specific assignment to the class via Class Show. */
+  onProjectAssignmentToClass: (a: AssignmentData) => void;
+  /** Impromptu Worksheet builder — print word lists / scrambles / etc. */
+  onWorksheetClick: () => void;
+  /** Print a specific assignment as a worksheet. */
+  onPrintAssignmentWorksheet: (a: AssignmentData) => void;
 
   // Classes section handlers
   onNewClass: () => void;
@@ -96,6 +107,14 @@ interface TeacherDashboardViewProps {
   onUseSavedTask?: (task: SavedTask) => void;
   onTogglePinSavedTask?: (id: string) => void;
   onRemoveSavedTask?: (id: string) => void;
+
+  /** First-class onboarding wizard handler.  When provided, the
+   *  dashboard renders the wizard if the teacher has never onboarded
+   *  AND has zero classes.  Returns the new class code for the
+   *  wizard's success step. */
+  onWizardComplete?: (result: import('../components/onboarding/TeacherOnboardingWizard').WizardResult) => Promise<{ classCode: string } | null>;
+  /** Mark the wizard skipped/dismissed so it doesn't reappear. */
+  onWizardSkip?: () => void;
 }
 
 export default function TeacherDashboardView({
@@ -110,15 +129,19 @@ export default function TeacherDashboardView({
   deleteConfirmModal, setDeleteConfirmModal, onConfirmDeleteAssignment,
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
-  onQuickPlayClick, onLiveChallengeClick, onClassroomClick, onApprovalsClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick,
+  onClassShowClick, onProjectAssignmentToClass,
+  onWorksheetClick, onPrintAssignmentWorksheet,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
+  onWizardComplete, onWizardSkip,
 }: TeacherDashboardViewProps) {
-  const { language, dir } = useLanguage();
+  const { language } = useLanguage();
   const t = teacherDashboardT[language];
+
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.
   const hour = new Date().getHours();
@@ -127,8 +150,16 @@ export default function TeacherDashboardView({
 
   // Per-teacher dashboard theme.  Resolved from the stored id with a
   // safety fallback so an unknown / removed theme doesn't break render.
+  // The hook also writes the palette to CSS custom properties on
+  // document.documentElement so descendants can read var(--vb-*).
   const [showThemeMenu, setShowThemeMenu] = useState(false);
-  const dashboardTheme = getTeacherDashboardTheme(user?.teacherDashboardTheme);
+  const { theme: dashboardTheme } = useTeacherTheme(user?.teacherDashboardTheme);
+
+  // Adaptive theme — Presentation Mode toggle.  Behind a feature flag
+  // (VITE_ADAPTIVE_THEME=true at build time, or `?adaptive=1` in URL).
+  // When the flag is OFF, `adaptiveEnabled` is false and the toggle
+  // button is hidden so existing teachers see no UI change.
+  const adaptiveTheme = useAdaptiveTheme();
 
   // ─── First-rating prompt gate ─────────────────────────────────────
   // Show the rating modal when the teacher has meaningfully USED the
@@ -161,6 +192,19 @@ export default function TeacherDashboardView({
           }} />
         )}
 
+        {/* First-class onboarding wizard — opens for brand-new
+            teachers (server-side flag + zero classes).  Server-backed
+            so it doesn't re-fire on a different device.  Skipping
+            also flips the flag so the wizard never re-appears for
+            this teacher; "Open my dashboard" on step 4 also dismisses. */}
+        {onWizardComplete && onWizardSkip && (
+          <TeacherOnboardingWizard
+            open={user?.onboardedAt == null && classes.length === 0}
+            onComplete={onWizardComplete}
+            onSkip={onWizardSkip}
+          />
+        )}
+
         <TopAppBar
           title="Vocaband"
           subtitle="CEFR A1–B2 • ESL VOCABULARY"
@@ -176,13 +220,22 @@ export default function TeacherDashboardView({
               "Midnight" theme (slate-900 background) doesn't hide
               the headline behind near-black text. */}
           <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
-            <p className={`text-xs sm:text-sm font-bold uppercase tracking-widest mb-2 ${dashboardTheme.dark ? 'text-indigo-300' : 'text-indigo-500'}`}>
+            <p
+              className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--vb-accent)' }}
+            >
               {greeting}
             </p>
-            <h1 className={`text-2xl sm:text-4xl font-bold tracking-tight ${dashboardTheme.dark ? 'text-stone-50' : 'text-stone-900'}`}>
+            <h1
+              className="text-2xl sm:text-4xl font-bold tracking-tight"
+              style={{ color: 'var(--vb-text-primary)' }}
+            >
               {t.heroLine(firstName)}
             </h1>
-            <p className={`text-sm sm:text-base mt-2 ${dashboardTheme.dark ? 'text-stone-300' : 'text-stone-500'}`}>
+            <p
+              className="text-sm sm:text-base mt-2"
+              style={{ color: 'var(--vb-text-secondary)' }}
+            >
               {t.heroSubtitle}
             </p>
           </div>
@@ -190,9 +243,10 @@ export default function TeacherDashboardView({
           <TeacherQuickActions
             pendingStudentsCount={pendingStudentsCount}
             onQuickPlayClick={onQuickPlayClick}
-            onLiveChallengeClick={onLiveChallengeClick}
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
+            onClassShowClick={onClassShowClick}
+            onWorksheetClick={onWorksheetClick}
           />
 
           <TeacherClassesSection
@@ -211,6 +265,8 @@ export default function TeacherDashboardView({
             onEditAssignment={onEditAssignment}
             onDuplicateAssignment={onDuplicateAssignment}
             onDeleteAssignment={onDeleteAssignment}
+            onProjectAssignmentToClass={onProjectAssignmentToClass}
+            onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
             isDark={dashboardTheme.dark}
           />
 
@@ -286,11 +342,44 @@ export default function TeacherDashboardView({
         onClick={() => setShowThemeMenu(true)}
         title={t.changeThemeTitle}
         aria-label={t.changeThemeTitle}
-        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full bg-white text-stone-700 ring-1 ring-stone-300 shadow-lg flex items-center justify-center hover:bg-stone-50 hover:scale-105 active:scale-95 transition-transform"
+        style={{
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          backgroundColor: 'var(--vb-surface)',
+          color: 'var(--vb-text-primary)',
+          borderColor: 'var(--vb-border)',
+        }}
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
       >
         <Palette size={20} />
       </button>
+
+      {/* Presentation Mode toggle — feature-flagged.  Sits just left
+          of the theme picker button so the teacher can flip the
+          screen into projector-friendly typography (1.4× font scale,
+          stronger weight, no decorative shadows) before walking to
+          the projector and back.  Hidden entirely when the
+          `adaptiveTheme` feature flag is OFF — existing teachers see
+          no UI change. */}
+      {adaptiveTheme.adaptiveEnabled && (
+        <button
+          type="button"
+          onClick={adaptiveTheme.togglePresentationMode}
+          title={adaptiveTheme.presentationMode ? 'Exit presentation mode' : 'Presentation mode (bigger text for projecting)'}
+          aria-label="Toggle presentation mode"
+          aria-pressed={adaptiveTheme.presentationMode}
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            backgroundColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-surface)',
+            color: adaptiveTheme.presentationMode ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
+            borderColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-border)',
+          }}
+          className="fixed bottom-5 right-20 sm:bottom-6 sm:right-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        >
+          <Tv2 size={20} />
+        </button>
+      )}
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
       )}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 interface TopAppBarProps {
   title: string;
@@ -8,6 +9,15 @@ interface TopAppBarProps {
   userName?: string;
   showBack?: boolean;
   onBack?: () => void;
+  /** When provided, render a single-click "Exit" pill on the right
+   *  side of the bar.  Use in multi-step flows (assignment wizard,
+   *  Quick Play setup, Class Show, worksheet builder, etc.) so a
+   *  teacher on step 3 can bail in one tap instead of clicking Back
+   *  three times.  Distinct from `onBack`, which steps backward.
+   *  Default label is "Exit"; pass `exitLabel` to override (e.g.
+   *  "Cancel" inside a setup wizard, "End show" for Class Show). */
+  onExit?: () => void;
+  exitLabel?: string;
   userAvatar?: string;
   onLogout?: () => void;
   /** When true, surface the A/A/A display-size picker next to the
@@ -39,6 +49,8 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   userName,
   showBack = false,
   onBack,
+  onExit,
+  exitLabel = "Exit",
   userAvatar,
   onLogout,
   showScaleControl = false,
@@ -68,7 +80,8 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
 
   return (
     <header
-      className={`fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-100 transition-transform duration-300 ${
+      style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 90%, transparent)' }}
+      className={`fixed top-0 left-0 w-full z-50 backdrop-blur-md flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--vb-border)] transition-transform duration-300 ${
         isVisible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
@@ -93,8 +106,31 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Exit button — single-click escape from a multi-step flow.
+            Sits before all other right-side controls so it's easy
+            to find with a glance, no matter the step.  Renders only
+            when the parent flow opts in via `onExit`. */}
+        {onExit && (
+          <button
+            type="button"
+            onClick={onExit}
+            aria-label={exitLabel}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 active:scale-95 transition-colors border-2 border-stone-200"
+          >
+            <X size={14} />
+            <span>{exitLabel}</span>
+          </button>
+        )}
         {showScaleControl && <UiScaleControl />}
+        {/* Language switcher - compact variant for tight header space */}
+        <div className="hidden md:block">
+          <LanguageSwitcher variant="compact" className="scale-90 origin-right" />
+        </div>
+        {/* Mobile language dropdown - simpler button */}
+        <div className="md:hidden">
+          <LanguageSwitcher variant="compact" className="scale-85 origin-right" />
+        </div>
         {userName && (
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>

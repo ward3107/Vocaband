@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2 } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
-import { useLanguage } from "../hooks/useLanguage";
-import { teacherDashboardT } from "../locales/teacher/dashboard";
+import type { Word } from "../data/vocabulary";
 
 interface Assignment {
   id: string;
@@ -10,7 +9,7 @@ interface Assignment {
   title: string;
   wordIds: number[];
   deadline?: string | null;
-  words?: any[];
+  words?: Word[];
   sentences?: string[];
   allowedModes?: string[];
   sentenceDifficulty?: number;
@@ -38,6 +37,10 @@ interface ClassCardProps {
   onEditAssignment?: (assignment: Assignment) => void;
   onDuplicateAssignment?: (assignment: Assignment) => void;
   onDeleteAssignment?: (assignment: Assignment) => void;
+  /** Project this assignment to the classroom via Class Show. */
+  onProjectAssignmentToClass?: (assignment: Assignment) => void;
+  /** Print this assignment as a worksheet. */
+  onPrintAssignmentWorksheet?: (assignment: Assignment) => void;
   openDropdownClassId?: string | null;
   onToggleDropdown?: (classId: string | null) => void;
 }
@@ -59,6 +62,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onEditAssignment,
   onDuplicateAssignment,
   onDeleteAssignment,
+  onProjectAssignmentToClass,
+  onPrintAssignmentWorksheet,
   openDropdownClassId,
   onToggleDropdown,
 }) => {
@@ -179,7 +184,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
+    <div
+      style={{
+        backgroundColor: 'var(--vb-surface)',
+        borderColor: 'var(--vb-border)',
+      }}
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow"
+    >
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -189,9 +200,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
               <button
                 onClick={() => setAvatarPickerOpen(v => !v)}
                 type="button"
-                style={{ touchAction: 'manipulation' }}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'bg-gradient-to-br from-stone-50 to-white border border-stone-200' : 'bg-gradient-to-br from-indigo-500 to-violet-600'}`}
-                title={t.changeAvatarTitle}
+                style={{
+                  touchAction: 'manipulation',
+                  ...(avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : {}),
+                }}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
+                title="Change avatar"
               >
                 {avatar ? (
                   <span className="text-2xl leading-none">{avatar}</span>
@@ -202,15 +216,18 @@ const ClassCard: React.FC<ClassCardProps> = ({
 
               {/* Avatar picker popover */}
               {avatarPickerOpen && onAvatarChange && (
-                <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl border border-stone-200 shadow-2xl z-30 p-4">
+                <div
+                  className="absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl z-30 p-4"
+                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+                >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">{t.pickAvatarHeading}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>Pick avatar</span>
                     <button
                       onClick={() => setAvatarPickerOpen(false)}
                       type="button"
-                      className="w-6 h-6 rounded-full hover:bg-stone-100 flex items-center justify-center"
+                      className="w-6 h-6 rounded-full hover:bg-[var(--vb-surface-alt)] flex items-center justify-center"
                     >
-                      <X size={14} className="text-stone-400" />
+                      <X size={14} style={{ color: 'var(--vb-text-muted)' }} />
                     </button>
                   </div>
 
@@ -222,15 +239,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => handleAvatarPick(null)}
                     type="button"
-                    style={{ touchAction: 'manipulation' }}
+                    style={{
+                      touchAction: 'manipulation',
+                      backgroundColor: avatar === null ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
+                      borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
+                      color: avatar === null ? 'var(--vb-accent)' : 'var(--vb-text-secondary)',
+                    }}
                     className={`w-full mb-3 px-3 py-2 rounded-xl flex items-center gap-2 transition-all border-2 ${
-                      avatar === null
-                        ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200 text-indigo-700'
-                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700'
+                      avatar === null ? 'ring-2 ring-[var(--vb-accent-soft)]' : 'hover:border-[var(--vb-text-muted)]'
                     }`}
                   >
-                    <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
-                      <GraduationCap size={18} className="text-stone-600" />
+                    <span
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+                    >
+                      <GraduationCap size={18} style={{ color: 'var(--vb-text-secondary)' }} />
                     </span>
                     <span className="text-sm font-bold">{t.defaultAvatarLabel}</span>
                   </button>
@@ -239,7 +262,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {CLASS_AVATAR_GROUPS.map(group => (
                       <div key={group.label}>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">{group.label}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--vb-text-muted)' }}>{group.label}</p>
                         <div className="grid grid-cols-8 gap-1">
                           {group.emojis.map(em => {
                             const selected = avatar === em;
@@ -248,17 +271,22 @@ const ClassCard: React.FC<ClassCardProps> = ({
                                 key={em}
                                 onClick={() => handleAvatarPick(em)}
                                 type="button"
-                                style={{ touchAction: 'manipulation' }}
+                                style={{
+                                  touchAction: 'manipulation',
+                                  backgroundColor: selected ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
+                                  borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
+                                }}
                                 className={`aspect-square rounded-lg flex items-center justify-center text-xl transition-all border-2 ${
-                                  selected
-                                    ? 'bg-indigo-50 border-indigo-500 scale-105'
-                                    : 'bg-white border-stone-200 hover:border-stone-300 hover:scale-105'
+                                  selected ? 'scale-105' : 'hover:scale-105 hover:border-[var(--vb-text-muted)]'
                                 }`}
                               >
                                 {em}
                                 {selected && (
-                                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-indigo-500 flex items-center justify-center">
-                                    <CheckCircle2 size={8} className="text-white" />
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center"
+                                    style={{ backgroundColor: 'var(--vb-accent)' }}
+                                  >
+                                    <CheckCircle2 size={8} style={{ color: 'var(--vb-accent-text)' }} />
                                   </span>
                                 )}
                               </button>
@@ -287,11 +315,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onKeyDown={handleNameKeyDown}
                     onBlur={handleNameSave}
                     maxLength={60}
-                    placeholder={t.classNamePlaceholder}
-                    className="flex-1 text-lg sm:text-xl font-bold text-stone-900 leading-tight bg-stone-50 border-2 border-indigo-400 rounded-lg px-2 py-1 outline-none"
+                    placeholder="Class name"
+                    style={{ color: 'var(--vb-text-primary)', backgroundColor: 'var(--vb-surface-alt)' }}
+                    className="flex-1 text-lg sm:text-xl font-bold leading-tight border-2 border-[var(--vb-accent)] rounded-lg px-2 py-1 outline-none"
                     disabled={savingName}
                   />
-                  {savingName && <span className="text-xs text-stone-400">{t.saving}</span>}
+                  {savingName && <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>Saving...</span>}
                 </div>
               ) : (
                 <button
@@ -301,7 +330,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="group text-left w-full"
                   title={onNameChange ? t.clickToEditNameTitle : undefined}
                 >
-                  <h3 className="text-lg sm:text-xl font-bold text-stone-900 leading-tight truncate group-hover:text-indigo-600 transition-colors flex items-center gap-2">
+                  <h3
+                    style={{ color: 'var(--vb-text-primary)' }}
+                    className="text-lg sm:text-xl font-bold leading-tight truncate transition-colors flex items-center gap-2 group-hover:text-[var(--vb-accent)]"
+                  >
                     <span className="truncate">{name}</span>
                     {onNameChange && (
                       <Pencil size={14} className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" />
@@ -314,9 +346,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={onCopyCode}
                   type="button"
-                  style={{ touchAction: 'manipulation' }}
-                  className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider text-stone-600 hover:text-indigo-600 transition-colors"
-                  title={t.copyClassCodeTitle}
+                  style={{ touchAction: 'manipulation', color: 'var(--vb-text-secondary)' }}
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
+                  title="Copy class code"
                 >
                   <span>{code}</span>
                   {copiedCode === code ? (
@@ -326,7 +358,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   )}
                 </button>
                 {studentCount !== undefined && (
-                  <span className="text-xs text-stone-500 flex items-center gap-1">
+                  <span
+                    style={{ color: 'var(--vb-text-muted)' }}
+                    className="text-xs flex items-center gap-1"
+                  >
                     · 👥 {studentCount}
                   </span>
                 )}
@@ -339,18 +374,25 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <button
               onClick={() => setMenuOpen(v => !v)}
               type="button"
-              style={{ touchAction: 'manipulation' }}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
-              aria-label={t.classOptionsAria}
+              style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
+              aria-label="Class options"
             >
               <MoreVertical size={18} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-stone-200 shadow-lg py-1 z-20">
+              <div
+                style={{
+                  backgroundColor: 'var(--vb-surface)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
+              >
                 <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <MessageCircle size={14} className="text-emerald-600" />
                   {t.shareWhatsApp}
@@ -358,10 +400,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={() => { onCopyCode(); setMenuOpen(false); }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
-                  <Copy size={14} className="text-stone-500" />
-                  {t.copyClassCode}
+                  <Copy size={14} style={{ color: 'var(--vb-text-muted)' }} />
+                  Copy class code
                 </button>
                 <button
                   onClick={() => {
@@ -384,12 +427,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     setMenuOpen(false);
                   }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <Printer size={14} className="text-indigo-600" />
                   {t.printPoster}
                 </button>
-                <div className="h-px bg-stone-100 my-1" />
+                <div className="h-px my-1" style={{ backgroundColor: 'var(--vb-border)' }} />
                 <button
                   onClick={() => { onDelete(); setMenuOpen(false); }}
                   type="button"
@@ -408,8 +452,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
           <button
             onClick={onAssign}
             type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-all"
+            style={{
+              touchAction: 'manipulation',
+              backgroundColor: 'var(--vb-accent)',
+              color: 'var(--vb-accent-text)',
+            }}
+            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
           >
             <Zap size={15} />
             {t.newAssignment}
@@ -418,8 +466,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <button
               onClick={handleToggleAssignments}
               type="button"
-              style={{ touchAction: 'manipulation' }}
-              className="inline-flex items-center gap-1.5 py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-semibold text-sm transition-colors"
+              style={{
+                touchAction: 'manipulation',
+                backgroundColor: 'var(--vb-surface-alt)',
+                color: 'var(--vb-text-secondary)',
+              }}
+              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-sm transition-colors hover:opacity-90"
               aria-expanded={showAssignments}
             >
               <BookOpen size={15} />
@@ -438,17 +490,33 @@ const ClassCard: React.FC<ClassCardProps> = ({
       {assignments.length > 0 && showAssignments && (
         <div
           ref={assignmentsListRef}
-          className="border-t border-stone-100 bg-stone-50/50 px-5 py-4 space-y-2 rounded-b-2xl"
+          style={{
+            borderColor: 'var(--vb-border)',
+            backgroundColor: 'var(--vb-surface-alt)',
+          }}
+          className="border-t px-5 py-4 space-y-2 rounded-b-2xl"
         >
           {assignments.map((assignment) => (
             <div
               key={assignment.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white rounded-xl border border-stone-200"
+              style={{
+                backgroundColor: 'var(--vb-surface)',
+                borderColor: 'var(--vb-border)',
+              }}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border"
             >
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-stone-900 text-sm truncate">{assignment.title}</p>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  {t.wordCount(assignment.wordIds.length)} · {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : t.noDeadline}
+                <p
+                  style={{ color: 'var(--vb-text-primary)' }}
+                  className="font-semibold text-sm truncate"
+                >
+                  {assignment.title}
+                </p>
+                <p
+                  style={{ color: 'var(--vb-text-muted)' }}
+                  className="text-xs mt-0.5"
+                >
+                  {assignment.wordIds.length} word{assignment.wordIds.length === 1 ? '' : 's'} · {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : 'No deadline'}
                 </p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
@@ -456,7 +524,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => onEditAssignment(assignment)}
                     type="button"
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
                     {t.editAssignment}
                   </button>
@@ -465,9 +534,42 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => onDuplicateAssignment(assignment)}
                     type="button"
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
                     {t.duplicateAssignment}
+                  </button>
+                )}
+                {onProjectAssignmentToClass && (
+                  <button
+                    onClick={() => onProjectAssignmentToClass(assignment)}
+                    type="button"
+                    style={{
+                      backgroundColor: 'var(--vb-accent-soft)',
+                      color: 'var(--vb-accent)',
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
+                    aria-label="Project to class"
+                    title="Project to class"
+                  >
+                    <Tv2 size={13} />
+                    <span className="hidden sm:inline">Project</span>
+                  </button>
+                )}
+                {onPrintAssignmentWorksheet && (
+                  <button
+                    onClick={() => onPrintAssignmentWorksheet(assignment)}
+                    type="button"
+                    style={{
+                      backgroundColor: 'var(--vb-surface-alt)',
+                      color: 'var(--vb-text-secondary)',
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
+                    aria-label="Print worksheet"
+                    title="Print worksheet"
+                  >
+                    <Printer size={13} />
+                    <span className="hidden sm:inline">Print</span>
                   </button>
                 )}
                 {onDeleteAssignment && (

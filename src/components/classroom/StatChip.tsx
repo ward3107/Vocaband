@@ -51,7 +51,9 @@ const TEXT_TONE: Record<StatTone, string> = {
   rose:    "text-rose-600",
   indigo:  "text-indigo-600",
   violet:  "text-violet-600",
-  stone:   "text-stone-700",
+  // The neutral tone reads from the active teacher theme so it blends in
+  // with whichever palette the teacher picked.
+  stone:   "text-[var(--vb-text-secondary)]",
 };
 
 const RING_TONE: Record<StatTone, string> = {
@@ -60,7 +62,7 @@ const RING_TONE: Record<StatTone, string> = {
   rose:    "border-rose-100 hover:border-rose-200",
   indigo:  "border-indigo-100 hover:border-indigo-200",
   violet:  "border-violet-100 hover:border-violet-200",
-  stone:   "border-stone-100 hover:border-stone-200",
+  stone:   "border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]",
 };
 
 // Score → tone scale.
@@ -116,7 +118,7 @@ export default function StatChip({
           {icon && <span className="text-sm" aria-hidden>{icon}</span>}
           {value}
         </span>
-        <span className="text-[10px] font-black uppercase tracking-wider text-stone-600 truncate">
+        <span className="text-[10px] font-black uppercase tracking-wider truncate" style={{ color: 'var(--vb-text-secondary)' }}>
           {label}
         </span>
         {tooltip && (
@@ -130,8 +132,13 @@ export default function StatChip({
             onMouseLeave={() => setTipOpen(false)}
             aria-label={t.whatLabelMeansAria(label)}
             aria-expanded={tipOpen}
-            className="w-3.5 h-3.5 shrink-0 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+            className="w-3.5 h-3.5 shrink-0 rounded-full hover:opacity-80 flex items-center justify-center transition-colors"
+            style={{
+              backgroundColor: 'var(--vb-surface-alt)',
+              color: 'var(--vb-text-muted)',
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent" as never,
+            }}
           >
             <Info size={9} />
           </button>
@@ -139,7 +146,7 @@ export default function StatChip({
       </div>
 
       {caption && (
-        <div className="text-[10px] text-stone-400 mt-1 leading-tight truncate">{caption}</div>
+        <div className="text-[10px] mt-1 leading-tight truncate" style={{ color: 'var(--vb-text-muted)' }}>{caption}</div>
       )}
 
       {tooltip && tipOpen && (

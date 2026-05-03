@@ -29,8 +29,13 @@ const ActionCard: React.FC<ActionCardProps> = ({
     <button
       onClick={onClick}
       type="button"
-      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className="group relative w-full h-full bg-white rounded-2xl p-5 sm:p-6 text-left border border-stone-200 shadow-sm hover:shadow-md hover:border-stone-300 active:scale-[0.99] transition-all"
+      style={{
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent',
+        backgroundColor: 'var(--vb-surface)',
+        borderColor: 'var(--vb-border)',
+      }}
+      className="group relative w-full h-full rounded-2xl p-5 sm:p-6 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
     >
       {badge != null && badge > 0 && (
         <span className="absolute top-3 right-3 bg-rose-500 text-white text-xs font-bold rounded-full min-w-6 h-6 px-1.5 flex items-center justify-center shadow-sm">
@@ -42,11 +47,24 @@ const ActionCard: React.FC<ActionCardProps> = ({
           <span className={iconColor}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0 pt-0.5">
-          <h3 className="text-base sm:text-lg font-bold text-stone-900 leading-tight mb-1">{title}</h3>
-          <p className="text-xs sm:text-sm text-stone-500 leading-snug">{description}</p>
+          <h3
+            style={{ color: 'var(--vb-text-primary)' }}
+            className="text-base sm:text-lg font-bold leading-tight mb-1"
+          >
+            {title}
+          </h3>
+          <p
+            style={{ color: 'var(--vb-text-secondary)' }}
+            className="text-xs sm:text-sm leading-snug"
+          >
+            {description}
+          </p>
         </div>
       </div>
-      <div className="flex items-center justify-between text-stone-600 group-hover:text-indigo-600 transition-colors">
+      <div
+        style={{ color: 'var(--vb-text-secondary)' }}
+        className="flex items-center justify-between transition-colors group-hover:text-[var(--vb-accent)]"
+      >
         <span className="text-sm font-semibold">{buttonText}</span>
         <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
       </div>

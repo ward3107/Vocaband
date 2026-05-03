@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { Zap, Sparkles, Lock } from "lucide-react";
 import { ALL_WORDS } from "../../data/vocabulary";
-import { MAX_ASSIGNMENT_ROUNDS } from "../../constants/game";
+import { MAX_ASSIGNMENT_ROUNDS, ALL_GAME_MODES } from "../../constants/game";
 import { resolveAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } from "../../hooks/useAssignmentPlays";
 import type { AppUser, AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
@@ -10,7 +10,7 @@ import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
-const DEFAULT_MODES = ["classic", "listening", "spelling", "matching", "true-false", "flashcards", "scramble", "reverse"];
+const DEFAULT_MODES = ALL_GAME_MODES;
 
 // Per-card accent palette — rotates so the dashboard feels colourful instead
 // of uniform, but each card stays internally consistent.

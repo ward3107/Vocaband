@@ -211,7 +211,16 @@
       "Bash(set PORT=3001)",
       "Bash(findstr :3001)",
       "Bash(findstr node *)",
-      "Bash(findstr :3002)"
+      "Bash(findstr :3002)",
+      "Bash(npm update *)",
+      "Bash(claude *)",
+      "Bash(find *)",
+      "Bash(git diff *)",
+      "Bash(grep -E \"src/.*\\\\.tsx?$\")",
+      "Bash(xargs -I {} git show \"HEAD:{}\")",
+      "Bash(dir /s /b *.tsx *.ts)",
+      "Bash(findstr /v \"node_modules\")",
+      "Bash(npx eslint *)"
     ]
   }
 }

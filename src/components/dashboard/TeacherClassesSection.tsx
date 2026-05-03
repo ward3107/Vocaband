@@ -23,9 +23,13 @@ interface TeacherClassesSectionProps {
   onEditAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (assignment: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (assignment: AssignmentData) => void;
-  /** When true (Midnight dashboard theme), the heading + sub-text on
-   *  the page background flip to lighter colours so they don't
-   *  disappear against the slate-900 gradient. */
+  /** Project this assignment to the classroom via Class Show. */
+  onProjectAssignmentToClass?: (assignment: AssignmentData) => void;
+  /** Print this assignment as a worksheet. */
+  onPrintAssignmentWorksheet?: (assignment: AssignmentData) => void;
+  /** Kept for source-compat with the previous theme system; the
+   *  component now reads colours from CSS custom properties (var(--vb-*))
+   *  set by useTeacherTheme() so this prop is unused. */
   isDark?: boolean;
 }
 
@@ -35,7 +39,7 @@ export default function TeacherClassesSection({
   onNewClass, onAssign, onDeleteClass, onEditClass,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
-  isDark = false,
+  onProjectAssignmentToClass, onPrintAssignmentWorksheet,
 }: TeacherClassesSectionProps) {
   const { language } = useLanguage();
   const t = teacherDashboardT[language];
@@ -43,11 +47,14 @@ export default function TeacherClassesSection({
     <div data-tour="my-classes">
       <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
         <div>
-          <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${isDark ? 'text-stone-50' : 'text-stone-900'}`}>
-            <Users size={18} className={isDark ? 'text-stone-300' : 'text-stone-400'} />
-            {t.myClassesHeading}
+          <h2
+            className="text-lg sm:text-xl font-bold flex items-center gap-2"
+            style={{ color: 'var(--vb-text-primary)' }}
+          >
+            <Users size={18} style={{ color: 'var(--vb-text-muted)' }} />
+            My classes
           </h2>
-          <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-stone-300' : 'text-stone-500'}`}>
+          <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--vb-text-secondary)' }}>
             {classes.length === 0
               ? t.noClassesYetSubtitle
               : t.classCount(classes.length)}
@@ -57,9 +64,13 @@ export default function TeacherClassesSection({
           data-tour="new-class"
           onClick={onNewClass}
           type="button"
-          style={{ touchAction: 'manipulation' }}
-          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
-          aria-label={t.newClassAria}
+          style={{
+            touchAction: 'manipulation',
+            backgroundColor: 'var(--vb-accent)',
+            color: 'var(--vb-accent-text)',
+          }}
+          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
+          aria-label="Create new class"
         >
           <Plus size={16} />
           <span className="hidden sm:inline">{t.newClassFull}</span>
@@ -68,17 +79,34 @@ export default function TeacherClassesSection({
       </div>
 
       {classes.length === 0 ? (
-        <div className="bg-white border border-dashed border-stone-300 rounded-2xl py-16 px-6 text-center">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Users size={24} className="text-stone-400" />
+        <div
+          className="border border-dashed rounded-2xl py-16 px-6 text-center"
+          style={{
+            backgroundColor: 'var(--vb-surface)',
+            borderColor: 'var(--vb-border)',
+          }}
+        >
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+          >
+            <Users size={24} style={{ color: 'var(--vb-text-muted)' }} />
           </div>
-          <p className="text-stone-700 font-semibold mb-1">{t.emptyTitle}</p>
-          <p className="text-sm text-stone-500 mb-6">{t.emptySubtitle}</p>
+          <p className="font-semibold mb-1" style={{ color: 'var(--vb-text-primary)' }}>
+            No classes yet
+          </p>
+          <p className="text-sm mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
+            Create your first class to get a shareable join code.
+          </p>
           <button
             onClick={onNewClass}
             type="button"
-            style={{ touchAction: 'manipulation' }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
+            style={{
+              touchAction: 'manipulation',
+              backgroundColor: 'var(--vb-accent)',
+              color: 'var(--vb-accent-text)',
+            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
           >
             <Plus size={16} />
             {t.emptyCta}
@@ -119,6 +147,8 @@ export default function TeacherClassesSection({
                 onEditAssignment={(assignment) => onEditAssignment(assignment, c)}
                 onDuplicateAssignment={(assignment) => onDuplicateAssignment(assignment, c)}
                 onDeleteAssignment={onDeleteAssignment}
+                onProjectAssignmentToClass={onProjectAssignmentToClass}
+                onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
               />
             );
           })}

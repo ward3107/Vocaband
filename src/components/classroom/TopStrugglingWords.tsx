@@ -82,13 +82,16 @@ export default function TopStrugglingWords({
   }, [classScores, classStudents]);
 
   return (
-    <section className="bg-white rounded-2xl border-2 border-stone-200 shadow-sm p-4 sm:p-5">
+    <section
+      className="rounded-2xl border-2 shadow-sm p-4 sm:p-5"
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+    >
       <header className="flex items-start gap-2 mb-3">
         <div className="mt-0.5"><AlertTriangle size={18} className="text-rose-600" /></div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-stone-900">{t.whatToReteach}</h3>
-          <p className="text-xs text-stone-500 mt-0.5">
-            {t.reteachSubtitle}
+          <h3 className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>What to reteach</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
+            Most-missed words across the class. Coverage % shows how widespread the confusion is.
           </p>
         </div>
         {/* One-click reteach: takes the current top-10 word IDs and
@@ -110,34 +113,44 @@ export default function TopStrugglingWords({
       </header>
 
       {rows.length === 0 ? (
-        <div className="text-center text-sm text-stone-500 py-6">
-          {t.reteachEmpty}
+        <div className="text-center text-sm py-6" style={{ color: 'var(--vb-text-muted)' }}>
+          No mistakes recorded yet — your class is doing great.
         </div>
       ) : (
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wider text-stone-500 border-b border-stone-200">
-                <th className="px-3 py-2 font-bold">{t.reteachColWord}</th>
-                <th className="px-3 py-2 font-bold">{t.reteachColHebrew}</th>
-                <th className="px-3 py-2 font-bold">{t.reteachColArabic}</th>
-                <th className="px-3 py-2 font-bold text-right">{t.reteachColMisses}</th>
-                <th className="px-3 py-2 font-bold text-right">{t.reteachColPctOfClass}</th>
+              <tr
+                className="text-left text-xs uppercase tracking-wider border-b"
+                style={{ color: 'var(--vb-text-muted)', borderColor: 'var(--vb-border)' }}
+              >
+                <th className="px-3 py-2 font-bold">Word</th>
+                <th className="px-3 py-2 font-bold">Hebrew</th>
+                <th className="px-3 py-2 font-bold">Arabic</th>
+                <th className="px-3 py-2 font-bold text-right">Misses</th>
+                <th className="px-3 py-2 font-bold text-right">% of class</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(row => (
-                <tr key={row.wid} className="border-b border-stone-100 last:border-b-0">
-                  <td className="px-3 py-2 font-bold text-stone-900">{row.english}</td>
-                  <td className="px-3 py-2 text-stone-700" dir="rtl">{row.hebrew}</td>
-                  <td className="px-3 py-2 text-stone-700" dir="rtl">{row.arabic}</td>
+                <tr key={row.wid} className="border-b last:border-b-0" style={{ borderColor: 'var(--vb-border)' }}>
+                  <td className="px-3 py-2 font-bold" style={{ color: 'var(--vb-text-primary)' }}>{row.english}</td>
+                  <td className="px-3 py-2" dir="rtl" style={{ color: 'var(--vb-text-secondary)' }}>{row.hebrew}</td>
+                  <td className="px-3 py-2" dir="rtl" style={{ color: 'var(--vb-text-secondary)' }}>{row.arabic}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{row.total}</td>
                   <td className="px-3 py-2 text-right">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                      row.studentPct >= 60 ? "bg-rose-100 text-rose-700" :
-                      row.studentPct >= 30 ? "bg-amber-100 text-amber-700" :
-                      "bg-stone-100 text-stone-700"
-                    }`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        row.studentPct >= 60 ? "bg-rose-100 text-rose-700" :
+                        row.studentPct >= 30 ? "bg-amber-100 text-amber-700" :
+                        ""
+                      }`}
+                      style={
+                        row.studentPct < 30
+                          ? { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }
+                          : undefined
+                      }
+                    >
                       {row.studentPct}%
                     </span>
                   </td>
