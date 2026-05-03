@@ -96,6 +96,13 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   const shareRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set to true by tryNativeShare when navigator.share rejects with
+  // AbortError / NotAllowedError — i.e. the user opened the OS share
+  // sheet and then dismissed it.  The click handler reads this and
+  // suppresses the per-network fallback menu in that case (otherwise
+  // the social-icon popup popped the moment the user closed the share
+  // sheet — teacher report).  Reset at the start of every share attempt.
+  const nativeShareCancelledRef = useRef(false);
 
   // Clear the "copied" reset timer on unmount so it can't fire on an
   // unmounted component (React would log a state-on-unmounted warning).
@@ -217,15 +224,26 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   // Falls back silently when unsupported (most desktop browsers);
   // the per-network buttons still work as manual fallbacks.
   const tryNativeShare = useCallback(async (): Promise<boolean> => {
+    nativeShareCancelledRef.current = false;
     if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
       return false;
     }
     try {
       await navigator.share({ title: "Vocaband", text: shareText, url: shareUrl });
       return true;
-    } catch {
-      // User cancelled or share failed — swallow; caller falls back
-      // to the per-network menu.
+    } catch (err) {
+      // navigator.share rejects with AbortError when the user dismisses
+      // the OS share sheet.  Some browsers (Safari) use NotAllowedError
+      // when the call wasn't gestured cleanly.  Both mean "user saw the
+      // real share UI and chose to close it" — so the click handler
+      // must NOT pop the per-network fallback menu on top, otherwise
+      // closing the OS share sheet appears to "open social icons"
+      // (teacher report).  Anything else (TypeError, browser quirk)
+      // falls through as "unsupported" so the manual menu is offered.
+      const name = (err as { name?: string } | null)?.name;
+      if (name === "AbortError" || name === "NotAllowedError") {
+        nativeShareCancelledRef.current = true;
+      }
       return false;
     }
   }, [shareText, shareUrl]);
@@ -415,8 +433,12 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
             return;
           }
           const used = await tryNativeShare();
-          if (!used) {
-            // No navigator.share support — fall back to the menu.
+          // Only open the per-network fallback menu when navigator.share
+          // is genuinely missing.  If the user opened the OS share sheet
+          // and dismissed it, `nativeShareCancelledRef.current` is true
+          // and we respect that — otherwise the social-icon menu pops
+          // the moment they close the OS sheet.
+          if (!used && !nativeShareCancelledRef.current) {
             setShareOpen(true);
           }
         }}
