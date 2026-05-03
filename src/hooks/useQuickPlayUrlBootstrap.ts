@@ -160,8 +160,31 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           return;
         }
 
-        // Fetch database words from vocabulary
-        const dbWords = (getCachedVocabulary()?.ALL_WORDS ?? []).filter(w => data.word_ids.includes(w.id));
+        // Fetch database words from vocabulary.  Vocabulary is
+        // lazy-loaded via useVocabularyLazy, but Quick Play guests
+        // arrive via direct URL (QR scan) before any view that
+        // triggers the lazy hook — so the cache is empty on first
+        // load and curriculum-only sessions failed with "no words"
+        // and bounced to landing.  Mirror the teacher-restore path
+        // in App.tsx (~line 1232) and dynamic-import the module
+        // when the cache is empty.  Resolves to the same chunk the
+        // hook will use later.
+        let vocab = getCachedVocabulary();
+        if (!vocab) {
+          try {
+            const m = await import("../data/vocabulary");
+            vocab = {
+              ALL_WORDS: m.ALL_WORDS,
+              SET_1_WORDS: m.SET_1_WORDS,
+              SET_2_WORDS: m.SET_2_WORDS,
+              SET_3_WORDS: (m as { SET_3_WORDS?: Word[] }).SET_3_WORDS ?? [],
+              TOPIC_PACKS: m.TOPIC_PACKS,
+            };
+          } catch (err) {
+            console.error('[Quick Play Load] vocabulary import failed', err);
+          }
+        }
+        const dbWords = (vocab?.ALL_WORDS ?? []).filter(w => data.word_ids.includes(w.id));
 
         // Parse custom words from JSON
         let customWords: Word[] = [];
