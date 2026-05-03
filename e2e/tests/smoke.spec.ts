@@ -53,16 +53,14 @@ test.describe('Smoke — app boots', () => {
   });
 
   test('body has actual rendered content (not blank white page)', async ({ publicPage: page }) => {
+    // goToLanding waits for React to *replace* the static
+    // boot-debug placeholder shipped in index.html, so by the time
+    // we get here we know the tree has mounted.  We re-assert with
+    // count > 0 and a body-text floor as guardrails.
     await goToLanding(page);
-    // Wait for the React tree to flush at least one node into #root.
-    await page.waitForFunction(
-      () => {
-        const root = document.querySelector('#root');
-        return root && root.children.length > 0;
-      },
-      { timeout: 10_000 },
-    );
     const rootChildren = await page.locator('#root > *').count();
     expect(rootChildren, 'expected #root to contain at least one mounted child').toBeGreaterThan(0);
+    const bodyText = await page.textContent('body');
+    expect(bodyText?.length, 'body text — React rendered something past the placeholder').toBeGreaterThan(100);
   });
 });
