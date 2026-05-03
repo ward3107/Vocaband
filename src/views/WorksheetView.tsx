@@ -83,6 +83,16 @@ export default function WorksheetView({
   const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+  // Compact layout — sheets flow together on the same page when they
+  // fit, instead of forcing a new page before each one.  Default ON
+  // because teachers were getting 9-10 page PDFs for 2 words across
+  // 5 modes; the natural-flow path packs the same content into 1-3.
+  // Teachers who want the old "per-page" output can toggle this off.
+  const [compactLayout, setCompactLayout] = useState(true);
+  // Force the answer key onto its own page.  Default OFF so the key
+  // flows below the questions inline (compact); ON for teachers
+  // handing out paper worksheets without the answer page attached.
+  const [answerKeyOnNewPage, setAnswerKeyOnNewPage] = useState(false);
 
   // Toggle sheet type selection
   const toggleSheetType = (type: WorksheetSheetType) => {
