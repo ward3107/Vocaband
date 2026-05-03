@@ -160,6 +160,17 @@ export interface LandingPageT {
   finalCtaStart: string;
   finalCtaTeacher: string;
 
+  // ─── Section: AI Does the Heavy Lifting ─────────────────────────
+  aiSectionH2: string;
+  aiSectionSubtitle: string;
+  aiZeroWork: string;
+  aiZeroWorkDesc: string;
+  aiAutoSentences: string;
+  aiAutoSentencesDesc: string;
+  aiAutoGrading: string;
+  aiAutoGradingDesc: string;
+  aiJustAssign: string;
+
   // ─── Footer ─────────────────────────────────────────────────────
   footerTagline: string;
   footerSchoolPlans: string;
@@ -195,10 +206,10 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSocialProofCount: "10,000+ Students",
     heroSocialProofTagline: "Learning English worldwide",
 
-    floatingCardModes: "⚔️ EPIC BATTLES",
-    floatingCardXp: "🏆 LEVEL UP",
-    floatingCardStreaks: "🔥 ON FIRE!",
-    floatingCardEggs: "💎 LEGENDARY LOOT",
+    floatingCardModes: "🎮 11 Game Modes",
+    floatingCardXp: "⭐ Earn XP",
+    floatingCardStreaks: "🔥 Daily Streaks",
+    floatingCardEggs: "🎁 Daily Chests",
 
     studentsSectionH2: "Why Students Love Vocaband",
     studentsSectionSubtitle: "Everything you need to master vocabulary, gamified.",
@@ -223,8 +234,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     liveChallengesDesc: "Battle classmates in real-time podiums!",
     xpShopTitle: "XP Shop",
     xpShopDesc: "Earn XP, spend on avatars, frames & power-ups!",
-    mysteryEggsTitle: "Mystery Eggs",
-    mysteryEggsDesc: "Crack eggs to unlock legendary avatars!",
+    mysteryEggsTitle: "Daily Chests",
+    mysteryEggsDesc: "Open chests to unlock legendary avatars!",
     powerBoostersTitle: "Power Boosters",
     powerBoostersDesc: "XP multipliers, streak freeze & more!",
     petFriendsTitle: "Pet Friends",
@@ -301,6 +312,17 @@ export const landingPageT: Record<Language, LandingPageT> = {
     finalCtaStart: "Start Learning Free",
     finalCtaTeacher: "Teacher Login",
 
+    // AI Does the Heavy Lifting
+    aiSectionH2: "AI Does All the Work",
+    aiSectionSubtitle: "You focus on teaching. AI handles the rest.",
+    aiZeroWork: "⚡ Zero Prep Work",
+    aiZeroWorkDesc: "Just pick your words. AI generates everything automatically — sentences, questions, exercises.",
+    aiAutoSentences: "🤖 AI-Generated Content",
+    aiAutoSentencesDesc: "Contextual sentences, fill-in-the-blank exercises, and more — created instantly.",
+    aiAutoGrading: "✅ Auto-Grading",
+    aiAutoGradingDesc: "Instant feedback for students. Zero grading for you. Track progress with one click.",
+    aiJustAssign: "Just Assign. That's It.",
+
     // Footer
     footerTagline: "The vocabulary platform students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
     footerSchoolPlans: "School plans",
@@ -336,10 +358,10 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSocialProofCount: "+10,000 תלמידים",
     heroSocialProofTagline: "לומדים אנגלית בכל העולם",
 
-    floatingCardModes: "⚔️ קרבות אפיים",
-    floatingCardXp: "🏆 עלה רמות!",
-    floatingCardStreaks: "🔥 בוער!",
-    floatingCardEggs: "💎 שלל אגדי",
+    floatingCardModes: "🎮 11 מצבי משחק",
+    floatingCardXp: "⭐ צבור נקודות",
+    floatingCardStreaks: "🔥 רצף יומי",
+    floatingCardEggs: "🎁 תיבות יומיות",
 
     studentsSectionH2: "למה תלמידים אוהבים את Vocaband",
     studentsSectionSubtitle: "כל מה שצריך כדי לשלוט באוצר מילים — בצורה משחקית.",
@@ -364,13 +386,13 @@ export const landingPageT: Record<Language, LandingPageT> = {
     liveChallengesDesc: "התחרו בחברי לכיתה בפודיום בזמן אמת!",
     xpShopTitle: "חנות XP",
     xpShopDesc: "צברו XP, הוציאו על אווטארים, מסגרות וחיזוקים!",
-    mysteryEggsTitle: "ביצי הפתעה",
-    mysteryEggsDesc: "שברו ביצים כדי לפתוח אווטארים אגדיים!",
+    mysteryEggsTitle: "תיבות הפתעה",
+    mysteryEggsDesc: "פתחו תיבות כדי לקבל אווטארים אגדיים!",
     powerBoostersTitle: "חיזוקי כוח",
     powerBoostersDesc: "מכפילי XP, הקפאת רצפים ועוד!",
     petFriendsTitle: "חיות מחמד",
     petFriendsDesc: "פתחו חיות מחמד חמודות שמעודדות אתכם!",
-    dailyStreaksTitle: "רצפים יומיים",
+    dailyStreaksTitle: "רצף יומי",
     dailyStreaksDesc: "שמרו על ההשפעה! קבלו פרסים.",
 
     // Teacher Section
@@ -388,7 +410,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     spotStrugglingDesc: "ניתוח בזמן אמת מראה בדיוק מי צריך עזרה — לפני המבחן.",
     quickSetupTitle: "הקמה ב-30 שניות",
     quickSetupDesc: "צרו כיתה → שתפו קוד → תלמידים מצטרפים. זה הכל.",
-    studentEngagementTitle: "הם באמת רוצים להתאמן",
+    studentEngagementTitle: "תלמידים רוצים לתרגל",
     studentEngagementDesc: "מצבי משחק, XP, רצפים — תלמידים מתאמנים מרצון בבית.",
     aiSentenceBuilderTitle: "בונה משפטים בבינה מלאכותית",
     aiSentenceBuilderDesc: "לחיצה אחת, 10 משפטים לדוגמה לכל מילה — ברמה המתאימה לכיתה שלכם.",
@@ -442,6 +464,17 @@ export const landingPageT: Record<Language, LandingPageT> = {
     finalCtaStart: "התחילו ללמוד חינם",
     finalCtaTeacher: "כניסת מורים",
 
+    // AI Does the Heavy Lifting
+    aiSectionH2: "הבינה המלאכותית עושה את כל העבודה",
+    aiSectionSubtitle: "אתם מתמקדים בלימוד. הבינה המלאכותית מטפלת בכל השאר.",
+    aiZeroWork: "⚡ אפס עבודת הכנה",
+    aiZeroWorkDesc: "רק בחרו מילים. הבינה המלאכותית יוצרת הכל אוטומטית — משפטים, שאלות, תרגילים.",
+    aiAutoSentences: "🤖 תוכן שנוצר על ידי בינה מלאכותית",
+    aiAutoSentencesDesc: "משפטים בהקשר, תרגילי השלמה, ועוד — נוצרים באופן מיידי.",
+    aiAutoGrading: "✅ בדיקה אוטומטית",
+    aiAutoGradingDesc: "משוב מיידי לתלמידים. אפס בדיקה עבורכם. מעקב אחר התקדמות בלחיצת כפתור.",
+    aiJustAssign: "פשוט מקצים משימות. זה הכל.",
+
     // Footer
     footerTagline: "פלטפורמת אוצר המילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
     footerSchoolPlans: "תכניות בתי ספר",
@@ -477,16 +510,16 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSocialProofCount: "+10,000 طالب",
     heroSocialProofTagline: "يتعلمون الإنجليزية حول العالم",
 
-    floatingCardModes: "⚔️ معارك ملحمية",
-    floatingCardXp: "🏆 اارتقِ مستواك!",
-    floatingCardStreaks: "🔥 مشتعل!",
-    floatingCardEggs: "💎 غنائم أسطورية",
+    floatingCardModes: "🎮 11 لعبة",
+    floatingCardXp: "⭐ اكسب النقاط",
+    floatingCardStreaks: "🔥 سلسلة أيام",
+    floatingCardEggs: "🎁 صناديق يومية",
 
     studentsSectionH2: "لماذا يحب الطلاب Vocaband",
     studentsSectionSubtitle: "كل ما تحتاجه لإتقان المفردات، بأسلوب لعبة.",
 
     // Student Features
-    gameModesTitle: "11 وضع لعب",
+    gameModesTitle: "11 لعبة",
     gameModesDesc: "من الكلاسيكي إلى بناء الجمل — كل وضع يعلّم بشكل مختلف. اعثر على المفضّل!",
     modeNames: {
       classic: "كلاسيكي",
@@ -505,8 +538,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     liveChallengesDesc: "نافس زملاء الصف في منصات مباشرة!",
     xpShopTitle: "متجر XP",
     xpShopDesc: "اكسب XP، أنفقها على صور رمزية وإطارات وقوّات!",
-    mysteryEggsTitle: "بيوض المفاجآت",
-    mysteryEggsDesc: "افتح البيوض لتكشف صورًا رمزية أسطورية!",
+    mysteryEggsTitle: "صناديق المفاجآت",
+    mysteryEggsDesc: "افتح الصناديق لتكشف صورًا رمزية أسطورية!",
     powerBoostersTitle: "قوّات تعزيز",
     powerBoostersDesc: "مضاعفات XP، تجميد السلاسل والمزيد!",
     petFriendsTitle: "رفاق الحيوانات",
@@ -582,6 +615,17 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "انضم إلى آلاف الطلاب الذين يطورون إنجليزيتهم — كلمة واحدة في كل مرة.",
     finalCtaStart: "ابدأ التعلم مجاناً",
     finalCtaTeacher: "دخول المعلمين",
+
+    // AI Does the Heavy Lifting
+    aiSectionH2: "الذكاء الاصطناعي يقوم بكل العمل",
+    aiSectionSubtitle: "أنت تركز على التدريس. الذكاء الاصطناعي يتولى الباقي.",
+    aiZeroWork: "⚡ لا حاجة للتحضير",
+    aiZeroWorkDesc: "فقط اختر الكلمات. الذكاء الاصطناعي ينشئ كل شيء تلقائياً — جمل وأسئلة وتمارين.",
+    aiAutoSentences: "🤖 محتوى مدعوم بالذكاء الاصطناعي",
+    aiAutoSentencesDesc: "جمل سياقية وتمارين ملء الفراغات والمزيد — تنشأ على الفور.",
+    aiAutoGrading: "✅ تصحيح تلقائي",
+    aiAutoGradingDesc: "ملاحظات فورية للطلاب. لا تصحيح عليك. تتبع التقدم بنقرة واحدة.",
+    aiJustAssign: "فقط عيّن مهام. هذا كل شيء.",
 
     // Footer
     footerTagline: "منصة المفردات التي يريد الطلاب حول العالم لعبها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",

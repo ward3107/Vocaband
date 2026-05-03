@@ -31,7 +31,7 @@ export function WordListSheet({ words, translationLang }: WordListSheetProps) {
       </thead>
       <tbody>
         {words.map((w, idx) => (
-          <tr key={w.id} style={{ borderBottom: '1px solid #ddd' }}>
+          <tr key={w.id} style={{ borderBottom: '1px solid #ddd', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
             <td style={{ padding: '0.5rem' }}>{idx + 1}</td>
             <td style={{ padding: '0.5rem', fontWeight: 600 }}>{w.english}</td>
             <td style={{ padding: '0.5rem' }} dir="auto">{pickTranslation(w, translationLang)}</td>

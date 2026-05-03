@@ -153,7 +153,8 @@
   }
 
   .vb-print-page-break {
-    page-break-before: always;
+    page-break-after: always;
+    page-break-before: auto;
   }
   .vb-print-page-break-before {
     page-break-before: always;
@@ -166,7 +167,8 @@
     break-inside: avoid;
   }
   @page {
-    margin: 1.5cm;
+    margin: 1cm;
+    size: A4;
   }
 }
 

@@ -202,7 +202,7 @@ export default function Worksheet({
                       </thead>
                       <tbody>
                         {words.map((w, idx) => (
-                          <tr key={w.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
                             <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
                             <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
                             <td style={{ padding: '0.3rem', color: '#333' }}>
@@ -235,7 +235,7 @@ export default function Worksheet({
               </thead>
               <tbody>
                 {words.map((w, idx) => (
-                  <tr key={w.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
                     <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
                     <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
                     <td style={{ padding: '0.3rem', color: '#333' }}>
