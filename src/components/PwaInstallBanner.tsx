@@ -44,6 +44,13 @@ const COPY: Record<Language, {
   iosTitle: string;
   iosStep1: string;
   iosStep2: string;
+  /** Android browsers without beforeinstallprompt — Firefox, Samsung
+   *  Internet, in-app webviews, Chrome before its engagement
+   *  heuristics fire.  Same shape as the iOS instructions but pointing
+   *  at the browser's own menu instead of the share sheet. */
+  androidManualTitle: string;
+  androidManualStep1: string;
+  androidManualStep2: string;
   install: string;
   dismiss: string;
 }> = {
@@ -53,6 +60,9 @@ const COPY: Record<Language, {
     iosTitle: "Install Vocaband on iPhone",
     iosStep1: "Tap the Share button below",
     iosStep2: "Choose \"Add to Home Screen\"",
+    androidManualTitle: "Install Vocaband",
+    androidManualStep1: "Open the browser menu (⋮ in the top corner)",
+    androidManualStep2: "Tap \"Install app\" or \"Add to Home screen\"",
     install: "Install",
     dismiss: "Not now",
   },
@@ -62,6 +72,9 @@ const COPY: Record<Language, {
     iosTitle: "התקנת Vocaband באייפון",
     iosStep1: "הקישו על כפתור השיתוף למטה",
     iosStep2: "בחרו \"הוסף למסך הבית\"",
+    androidManualTitle: "התקנת Vocaband",
+    androidManualStep1: "פתחו את תפריט הדפדפן (⋮ בפינה העליונה)",
+    androidManualStep2: "הקישו על \"התקן אפליקציה\" או \"הוסף למסך הבית\"",
     install: "התקנה",
     dismiss: "לא עכשיו",
   },
@@ -71,6 +84,9 @@ const COPY: Record<Language, {
     iosTitle: "تثبيت Vocaband على iPhone",
     iosStep1: "اضغط على زر المشاركة أدناه",
     iosStep2: "اختر \"إضافة إلى الشاشة الرئيسية\"",
+    androidManualTitle: "تثبيت Vocaband",
+    androidManualStep1: "افتح قائمة المتصفح (⋮ في الزاوية العلوية)",
+    androidManualStep2: "اضغط على \"تثبيت التطبيق\" أو \"إضافة إلى الشاشة الرئيسية\"",
     install: "تثبيت",
     dismiss: "ليس الآن",
   },
@@ -97,6 +113,18 @@ function isIosSafari(): boolean {
   // Chrome on iOS is "CriOS"; Firefox is "FxiOS".  Real Safari excludes both.
   const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
   return isIos && isSafari;
+}
+
+// Mobile browsers that don't fire `beforeinstallprompt` (or only fire
+// it after Chrome's site-engagement heuristics decide the user is
+// "engaged" — multiple visits, ≥30 s, manifest, SW, …) still benefit
+// from a manual prompt.  Falling back to instructions for those keeps
+// the banner from appearing inconsistently between sessions: teachers
+// reported "sometimes the PWA message appears, sometimes it doesn't".
+function isAndroidLikeMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /Android|Mobi/.test(ua) && !/iPad|iPhone|iPod/.test(ua);
 }
 
 function recentlyDismissed(): boolean {
@@ -136,9 +164,14 @@ export default function PwaInstallBanner() {
     if (recentlyDismissed()) return;
 
     const id = setTimeout(() => {
-      // Android: only show if we have a captured prompt
-      // iOS: always show (manual instructions)
-      if (installPrompt || isIosSafari()) {
+      // Show whenever any mobile install path makes sense.  Earlier
+      // this was Android-with-prompt OR iOS Safari only — Android
+      // browsers without the prompt event silently skipped (Firefox,
+      // Samsung Internet, in-app webviews, Chrome before its
+      // engagement heuristics kicked in).  Now we also fall back to
+      // manual instructions for Android-like UAs so the banner is
+      // consistent across sessions.
+      if (installPrompt || isIosSafari() || isAndroidLikeMobile()) {
         setShow(true);
       }
     }, WARMUP_MS);
@@ -227,40 +260,52 @@ export default function PwaInstallBanner() {
               </button>
             </div>
           ) : (
-            // iOS step-by-step.  We can't trigger the share sheet
-            // programmatically, so we explain it.
-            <div className="p-4">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-md">
-                  <Download className="w-6 h-6 text-white" />
+            // Manual step-by-step — iOS gets the share-sheet path,
+            // Android-like (Firefox / Samsung Internet / in-app
+            // webviews / engagement-throttled Chrome) get the
+            // browser-menu path.  We can't trigger either
+            // programmatically, so we explain.  Detected here, not
+            // in state, so the banner re-evaluates if the UA changes
+            // (rare — mostly just simplifies the state machine).
+            (() => {
+              const useIosCopy = isIosSafari();
+              return (
+                <div className="p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-md">
+                      <Download className="w-6 h-6 text-white" />
+                    </div>
+                    <p className={`flex-1 font-black text-sm text-stone-900 ${isRTL ? "text-right" : "text-left"}`}>
+                      {useIosCopy ? t.iosTitle : t.androidManualTitle}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={dismiss}
+                      aria-label={t.dismiss}
+                      className="shrink-0 w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-400"
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <ol className={`space-y-2 text-sm text-stone-700 ${isRTL ? "text-right" : "text-left"}`}>
+                    <li className="flex items-center gap-2">
+                      <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center">1</span>
+                      <span className="flex items-center gap-1">
+                        {useIosCopy ? t.iosStep1 : t.androidManualStep1}
+                        {useIosCopy && (
+                          <Share className="w-4 h-4 inline-block text-indigo-600" />
+                        )}
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center">2</span>
+                      <span>{useIosCopy ? t.iosStep2 : t.androidManualStep2}</span>
+                    </li>
+                  </ol>
                 </div>
-                <p className={`flex-1 font-black text-sm text-stone-900 ${isRTL ? "text-right" : "text-left"}`}>
-                  {t.iosTitle}
-                </p>
-                <button
-                  type="button"
-                  onClick={dismiss}
-                  aria-label={t.dismiss}
-                  className="shrink-0 w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-400"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <ol className={`space-y-2 text-sm text-stone-700 ${isRTL ? "text-right" : "text-left"}`}>
-                <li className="flex items-center gap-2">
-                  <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center">1</span>
-                  <span className="flex items-center gap-1">
-                    {t.iosStep1}
-                    <Share className="w-4 h-4 inline-block text-indigo-600" />
-                  </span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center">2</span>
-                  <span>{t.iosStep2}</span>
-                </li>
-              </ol>
-            </div>
+              );
+            })()
           )}
         </div>
       </motion.div>
