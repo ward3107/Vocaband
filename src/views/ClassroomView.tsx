@@ -215,7 +215,11 @@ export default function ClassroomView(props: ClassroomViewProps) {
 
   if (CLASSROOM_V2) {
     return (
-      <div dir={dir} className="min-h-screen bg-background pb-28 sm:pb-12">
+      <div
+        dir={dir}
+        className="min-h-screen pb-28 sm:pb-12"
+        style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+      >
         <TopAppBar
           title={t.classroomTitle}
           subtitle={V2_TABS.find(tab => tab.id === v2Tab)?.blurb.toUpperCase() ?? ""}
@@ -245,8 +249,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
             sticky position so scrolled-content doesn't slide back
             under the AppBar either. */}
         <div
-          className="hidden sm:block sticky top-32 sm:top-40 z-30 bg-background/90 backdrop-blur-md border-b mt-32 sm:mt-40"
-          style={{ borderColor: 'var(--vb-border)' }}
+          className="hidden sm:block sticky top-32 sm:top-40 z-30 backdrop-blur-md border-b mt-32 sm:mt-40"
+          style={{ borderColor: 'var(--vb-border)', backgroundColor: 'color-mix(in srgb, var(--vb-surface-alt) 92%, transparent)' }}
         >
           <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
             {V2_TABS.map(tab => {
@@ -508,7 +512,11 @@ export default function ClassroomView(props: ClassroomViewProps) {
 
   // ── Legacy 2-tab layout (default until VITE_CLASSROOM_V2=true) ─────────
   return (
-    <div dir={dir} className="min-h-screen bg-background pb-12">
+    <div
+      dir={dir}
+      className="min-h-screen pb-12"
+      style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+    >
       <TopAppBar
         title={t.classroomTitle}
         subtitle={t.legacySubtitle}
@@ -520,8 +528,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
       />
 
       <div
-        className="sticky top-[72px] sm:top-[80px] z-30 bg-background/90 backdrop-blur-md border-b mt-24 sm:mt-32"
-        style={{ borderColor: 'var(--vb-border)' }}
+        className="sticky top-[72px] sm:top-[80px] z-30 backdrop-blur-md border-b mt-24 sm:mt-32"
+        style={{ borderColor: 'var(--vb-border)', backgroundColor: 'color-mix(in srgb, var(--vb-surface-alt) 92%, transparent)' }}
       >
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
           {LEGACY_TABS.map(tab => {
