@@ -99,19 +99,59 @@
    teacher hits Cmd/Ctrl+P (or our "Print" button which calls
    window.print()) and gets a clean page exported to PDF or paper.
    ============================================================================= */
+/* =============================================================================
+   Print-only worksheet system
+
+   Pattern: any node tagged with `.vb-print-only` is hidden on screen
+   and visible during print.  Print mode uses a TWO-LAYER approach
+   so we don't hit the classic "visibility: hidden still reserves
+   space" trap that pushes the print content past several blank pages:
+
+   1. Hide all on-screen UI by SUPPRESSING ITS LAYOUT entirely
+      (display: none on the visible chrome).  This is enforced by
+      tagging the print-only stack with `.vb-print-stack` and using
+      a sibling-negation selector below.
+   2. The print-only content lives inside `.vb-print-stack` which is
+      shown at the document origin.  All `.vb-print-only` descendants
+      cascade to visible.
+
+   On screen, both `.vb-print-only` and `.vb-print-stack` are hidden
+   by the @media screen rules at the bottom.
+   ============================================================================= */
 @media print {
-  body * {
-    visibility: hidden;
+  /* Hide every direct body child by default.  This kills the
+     hidden-but-still-occupying-space layout problem that was
+     producing 5+ empty pages before the actual worksheet content.
+     The print stack opts back in via the rule below. */
+  body > * {
+    display: none !important;
   }
-  .vb-print-only,
-  .vb-print-only * {
-    visibility: visible;
+
+  /* Show the print stack and everything inside it.  When
+     WorksheetView mounts, it portals (or renders) a single
+     `.vb-print-stack` direct-body-child holding all worksheets. */
+  body > .vb-print-stack,
+  body > .vb-print-stack * {
+    display: revert !important;
   }
-  .vb-print-only {
-    position: relative;
+  body > .vb-print-stack {
+    display: block !important;
     background: white !important;
     color: black !important;
   }
+
+  /* Legacy support — anywhere else in the app that uses
+     `.vb-print-only` as a sibling of regular UI (Class Show banners,
+     etc.) keeps working via the original visibility-based reveal. */
+  .vb-print-only {
+    visibility: visible;
+    background: white !important;
+    color: black !important;
+  }
+  .vb-print-only * {
+    visibility: visible;
+  }
+
   .vb-print-page-break {
     page-break-before: always;
   }
@@ -130,10 +170,11 @@
   }
 }
 
-/* The print-only container is hidden from screen rendering — only
-   becomes visible when the print dialog is active. */
+/* The print-only containers are hidden from screen rendering — only
+   visible during the print dialog. */
 @media screen {
-  .vb-print-only {
+  .vb-print-only,
+  .vb-print-stack {
     display: none;
   }
 }

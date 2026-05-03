@@ -76,8 +76,16 @@ interface WorksheetProps {
   translationLang: 'he' | 'ar' | 'en';
   /** AI-generated sentences keyed by word ID — for Fill-in-the-blank and Sentence Builder sheets */
   aiSentences?: Record<number, string>;
-  /** Add page break before this worksheet (for multi-sheet printouts) */
+  /** Add page break before this worksheet (for multi-sheet printouts).
+   *  Default false — sheets flow naturally and only break when they
+   *  don't fit on the current page.  WorksheetView sets this true
+   *  per-sheet only when the teacher unchecks the "compact" toggle. */
   pageBreakBefore?: boolean;
+  /** Force the consolidated answer key onto a new page.  Default
+   *  false — answers ride after the last sheet's questions inline.
+   *  Set true when the teacher wants to hand out the worksheet
+   *  without the answer page attached. */
+  answerKeyOnNewPage?: boolean;
   /** Worksheet index for title display */
   sheetIndex?: number;
   /** Total number of sheets */
@@ -109,7 +117,8 @@ function getSheetLabel(type: WorksheetSheetType, t: any): string {
 }
 
 export default function Worksheet({
-  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences, pageBreakBefore = false,
+  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences,
+  pageBreakBefore = false, answerKeyOnNewPage = false,
   sheetIndex = 0, totalSheets = 1, allSelectedSheetTypes,
 }: WorksheetProps) {
   const t = worksheetStrings[translationLang === 'he' ? 'he' : translationLang === 'ar' ? 'ar' : 'en'];
@@ -122,15 +131,18 @@ export default function Worksheet({
   const outerClass = [
     'vb-print-only',
     'vb-print-avoid-break',
-    forcePageBreak ? 'vb-print-page-break-before' : '',
+    pageBreakBefore ? 'vb-print-page-break-before' : '',
   ].filter(Boolean).join(' ');
+
+  // Render a small dashed divider between sheets when they share a
+  // page (i.e. when no forced page break and not the very first
+  // sheet).  Gives the reader a clear "next exercise starts here"
+  // signal without consuming a whole page.
+  const showDivider = !pageBreakBefore && sheetIndex > 0 && !title;
 
   return (
     <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
-      {/* Visual divider for the second-and-onward sheets when no
-          forced page break — gives the reader a clear "next exercise
-          starts here" signal without consuming an entire page. */}
-      {showSeparator && !forcePageBreak && !title && (
+      {showDivider && (
         <div style={{ marginTop: '2rem', marginBottom: '1.25rem', borderTop: '1.5px dashed #888' }} />
       )}
 
@@ -163,9 +175,15 @@ export default function Worksheet({
       {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
       {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
 
-      {/* Compact Consolidated Answer Key - only on the last worksheet */}
+      {/* Compact Consolidated Answer Key - only on the last worksheet.
+          Defaults to flowing inline below the questions; when
+          `answerKeyOnNewPage` is set, the page-break class kicks in so
+          teachers can hand out the questions without the answers. */}
       {includeAnswerKey && sheetIndex === totalSheets - 1 && (
-        <div className="vb-print-page-break">
+        <div
+          className={['vb-print-avoid-break', answerKeyOnNewPage ? 'vb-print-page-break' : ''].filter(Boolean).join(' ')}
+          style={{ marginTop: answerKeyOnNewPage ? 0 : '2rem' }}
+        >
           <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>{t.answerKey}</h2>
 
           {allSelectedSheetTypes && allSelectedSheetTypes.length > 0 ? (
