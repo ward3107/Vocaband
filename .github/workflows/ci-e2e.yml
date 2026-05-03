@@ -1,17 +1,24 @@
 # CI — Playwright end-to-end smoke test.
 #
 # Separate from ci.yml because:
-#   - Browser install adds ~30s and ~150 MB of cache
+#   - Browser install + run takes 5+ min, slower than the typecheck/
+#     tests/build gate
 #   - We want PR feedback in <2 min from ci.yml; e2e runs in parallel
 #     and reports its own status check
 #   - When e2e is flaky on a network hiccup we don't want to block
 #     the typecheck / unit gate
 #
-# Goal: catch the smoke-level "does the app load and the SPA shell
-# render" failures.  Anything deeper (full teacher flow, real
-# Supabase) lives in dedicated suites that aren't in this gate yet.
+# Scope: only the smoke spec (3 tests in e2e/tests/smoke.spec.ts).
+# The full e2e suite (~23 tests across navigation/public-pages/
+# schema-validation) is too long for every PR — those run via
+# `npm run test:e2e` locally or on demand via workflow_dispatch.
 
 name: CI — e2e smoke
+
+# Least-privilege — read code + write artifacts on failure.  CodeQL
+# flags missing top-level permissions; this is the recommended fix.
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -28,7 +35,10 @@ jobs:
   e2e:
     name: Playwright smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Bumped from 10 → 20 min after the first run was canceled at the
+    # 10-min mark while still installing browsers + running tests.
+    # Browser install + 3 smoke tests serially fit comfortably in 20.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -43,11 +53,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Cache Playwright browsers so subsequent runs skip the ~2.5 min
+      # download.  Cache key includes the @playwright/test version
+      # from package.json so a Playwright bump invalidates the cache
+      # automatically (no stale browser binaries surviving an upgrade).
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: npm run test:e2e
+      - name: Install Playwright system deps (when cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        # When the browsers cache hits we still need the OS-level
+        # libraries (libnss3, etc.) — those aren't part of the cache.
+        # `--with-deps` reinstalls only the apt packages.
+        run: npx playwright install-deps chromium
+
+      # Scope to smoke.spec.ts only — the rest of the e2e suite (23
+      # tests across navigation / public-pages / schema-validation)
+      # was timing out at 10 min on a single worker.  Smoke is the
+      # "does it boot" gate; deeper suites stay opt-in via local run.
+      - name: Run Playwright smoke
+        run: npx playwright test --config e2e/playwright.config.ts e2e/tests/smoke.spec.ts
 
       - name: Upload Playwright report on failure
         if: failure()

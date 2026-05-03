@@ -19,6 +19,13 @@
 
 name: CI
 
+# Least-privilege permissions — workflow only checks out code and
+# runs tests, no need to write to issues / PRs / packages / etc.
+# CodeQL flags missing top-level permissions as a security warning;
+# this block is the recommended fix.
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main]
