@@ -8,6 +8,8 @@ import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
 import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
 import { DateTimePicker } from '../DateTimePicker';
+import { useLanguage } from '../../hooks/useLanguage';
+import { teacherWizardsT } from '../../locales/teacher/wizards';
 
 // ── Derive assignment meta from selected modes ───────────────────────────────
 // The old "Quick template" UI forced teachers to pick a preset before
@@ -106,6 +108,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   editingAssignment: _editingAssignment = null,
 }) => {
   void _editingAssignment;
+  const { language } = useLanguage();
+  const t = teacherWizardsT[language];
 
   // Ref on the Next button is kept for programmatic focus only (e.g.
   // accessibility announce on step mount), never for auto-scrolling.
@@ -275,19 +279,19 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
         >
           <ArrowLeft size={18} />
-          Back
+          {t.back}
         </button>
         <div className="text-sm font-bold text-stone-600">
-          Step 2 of 3
+          {t.step2Of3}
         </div>
       </div>
 
       <div className="text-center">
         <h2 className="text-2xl font-black text-stone-900 mb-2">
-          {isAssignment ? 'Configure assignment' : 'Configure Quick Play'}
+          {isAssignment ? t.configureAssignmentHeading : t.configureQpHeading}
         </h2>
         <p className="text-stone-600">
-          {isAssignment ? 'Pick game modes first — we’ll suggest the rest' : 'Pick modes, then add an optional title'}
+          {isAssignment ? t.configureAssignmentSubheading : t.configureQpSubheading}
         </p>
       </div>
 
@@ -307,14 +311,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm shadow-md">1</span>
             <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
-              <span>🎮</span> Game modes
+              <span>🎮</span> {t.gameModesLabel}
             </label>
           </div>
           <button
             onClick={handleSelectAllToggle}
             className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
-            {selectedModes.length >= ALL_GAME_MODE_IDS.length ? 'Reset default' : 'Select all'}
+            {selectedModes.length >= ALL_GAME_MODE_IDS.length ? t.resetDefault : t.selectAll}
           </button>
         </div>
 
@@ -417,19 +421,19 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="flex flex-wrap gap-4 text-xs text-stone-600 pt-1">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span>Beginner</span>
+            <span>{t.diffBeginner}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-violet-500"></div>
-            <span>Intermediate</span>
+            <span>{t.diffIntermediate}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-            <span>Advanced</span>
+            <span>{t.diffAdvanced}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-            <span>Mastery</span>
+            <span>{t.diffMastery}</span>
           </div>
         </div>
 
@@ -451,7 +455,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             >
               ↓
             </motion.span>
-            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">next: name it</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">{t.nextNameIt}</span>
           </motion.div>
         )}
       </motion.div>
@@ -475,26 +479,25 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white'
           }`}>2</span>
           <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
-            <span>✏️</span> {isAssignment ? 'Name and instruct' : 'Label this session'}
+            <span>✏️</span> {isAssignment ? t.detailsLabelAssignment : t.detailsLabelQp}
           </label>
         </div>
 
         {isAssignment && selectedModes.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-4 text-center text-xs text-stone-500">
             <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
-            Pick one or more game modes above and we'll suggest a title
-            automatically. You can always edit it.
+            {t.pickModesNudge}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {/* Title */}
             <div>
               <label htmlFor="assignment-title" className="block text-xs font-bold text-stone-600 mb-1.5">
-                {isAssignment ? 'Assignment title ' : 'Session title '}
+                {isAssignment ? `${t.assignmentTitleLabel} ` : `${t.sessionTitleLabel} `}
                 {isAssignment ? (
                   <span className="text-red-500">*</span>
                 ) : (
-                  <span className="text-stone-400 font-normal">(optional)</span>
+                  <span className="text-stone-400 font-normal">{t.optionalParen}</span>
                 )}
               </label>
               <input
@@ -507,9 +510,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   titleManuallyEditedRef.current = true;
                   onTitleChange?.(e.target.value);
                 }}
-                placeholder={isAssignment
-                  ? 'e.g., Fruits Vocabulary - Unit 5'
-                  : 'e.g., Period 3 warm-up'}
+                placeholder={isAssignment ? t.titlePlaceholderAssignment : t.titlePlaceholderQp}
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all"
               />
             </div>
@@ -517,7 +518,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             {/* Instructions */}
             <div>
               <label htmlFor="assignment-instructions" className="block text-xs font-bold text-stone-600 mb-1.5">
-                {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
+                {isAssignment ? t.instructionsLabelAssignment : t.instructionsLabelQp}
               </label>
               <textarea
                 id="assignment-instructions"
@@ -528,9 +529,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   instructionsManuallyEditedRef.current = true;
                   onInstructionsChange?.(e.target.value);
                 }}
-                placeholder={isAssignment
-                  ? 'Add a note for your students...'
-                  : 'e.g., Remember to use headphones'}
+                placeholder={isAssignment ? t.instructionsPlaceholderAssignment : t.instructionsPlaceholderQp}
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-stone-800 placeholder:text-stone-400 transition-all resize-none"
               />
@@ -545,11 +544,11 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white font-black text-sm shadow-md">3</span>
             <label className="block text-sm font-bold text-stone-900">
-              {selectedModes.includes('sentence-builder') ? 'Sentence Builder Setup' : 'Fill-in-the-Blank Setup'}
+              {selectedModes.includes('sentence-builder') ? t.sentenceBuilderHeading : t.fillBlankHeading}
             </label>
           </div>
           <label className="block text-xs font-bold text-stone-600 mt-2">
-            Sentence Difficulty Level
+            {t.difficultyLevelLabel}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {([1, 2, 3, 4] as SentenceDifficulty[]).map((level) => {
@@ -590,12 +589,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               {isGeneratingAI ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Generating AI sentences...
+                  {t.generatingAi}
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Generate with AI
+                  {t.generateAi}
                 </>
               )}
             </button>
@@ -604,13 +603,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {/* Add Custom Sentence */}
           <div className="mt-4 space-y-2">
             <label className="block text-xs font-bold text-stone-600">
-              Add Your Own Sentences
+              {t.addOwnSentencesLabel}
             </label>
             <div className="flex gap-2">
               <textarea
                 value={customSentenceInput}
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
-                placeholder="Write or paste your sentence here..."
+                placeholder={t.sentencePlaceholder}
                 rows={2}
                 className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-stone-300/30 bg-stone-200-lowest text-stone-900 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
               />
@@ -625,7 +624,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 className="px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2 self-end"
               >
                 <Plus size={18} />
-                Add
+                {t.addBtn}
               </button>
             </div>
           </div>
@@ -634,7 +633,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {assignmentSentences.length > 0 && (
             <div className="mt-3">
               <label className="block text-xs font-bold text-stone-600 mb-2">
-                Generated Sentences ({assignmentSentences.length}) — hover to preview, click to edit
+                {t.generatedSentencesLabel(assignmentSentences.length)}
               </label>
               <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
                 {assignmentSentences.map((sentence, idx) => {
@@ -666,7 +665,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                           onSentencesChange?.(updated);
                         }}
                         className="text-stone-600 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        title="Remove sentence"
+                        title={t.removeSentenceTitle}
                       >
                         <X size={14} />
                       </button>
@@ -682,7 +681,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingSentenceIndex(null)}>
               <div className="bg-stone-100 rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold text-stone-900 mb-4">
-                  Edit Sentence #{editingSentenceIndex + 1}
+                  {t.editSentenceTitle(editingSentenceIndex + 1)}
                 </h3>
                 <textarea
                   autoFocus
@@ -701,13 +700,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onClick={() => setEditingSentenceIndex(null)}
                     className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
                   >
-                    Cancel
+                    {t.cancel}
                   </button>
                   <button
                     onClick={() => setEditingSentenceIndex(null)}
                     className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
                   >
-                    Done
+                    {t.done}
                   </button>
                 </div>
               </div>
@@ -729,15 +728,15 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             </span>
             <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
               <Calendar size={14} className="text-indigo-500" />
-              Schedule (optional)
+              {t.scheduleOptional}
             </label>
           </div>
           <div>
-            <label className="block text-xs text-stone-500 mb-1.5">Deadline</label>
+            <label className="block text-xs text-stone-500 mb-1.5">{t.deadlineLabel}</label>
             <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
-              placeholder="Pick deadline date and time"
+              placeholder={t.deadlinePickerPlaceholder}
             />
           </div>
         </motion.div>
@@ -756,7 +755,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           onClick={onBack}
           className="flex-1 py-3 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
         >
-          ← Back
+          ← {t.back}
         </button>
         <button
           ref={nextButtonRef}
@@ -766,11 +765,11 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         >
           {isAssignment ? (
             <>
-              Review
+              {t.reviewCta}
               <ArrowRight size={20} />
             </>
           ) : (
-            'Skip to QR'
+            t.skipToQr
           )}
         </button>
       </div>
