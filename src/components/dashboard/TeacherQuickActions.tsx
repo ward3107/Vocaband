@@ -1,5 +1,7 @@
 import { GraduationCap, UserCircle, Tv2, Printer, Zap } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
 interface TeacherQuickActionsProps {
   pendingStudentsCount: number;

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2 } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 
 interface Assignment {
   id: string;

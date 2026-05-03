@@ -13,6 +13,8 @@ import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Spark
 import { Word } from '../../data/vocabulary';
 import { WizardMode, AssignmentData, getGameModeConfig } from './types';
 import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
+import { useLanguage } from '../../hooks/useLanguage';
+import { teacherWizardsT } from '../../locales/teacher/wizards';
 
 export interface ReviewStepProps {
   mode: WizardMode;
