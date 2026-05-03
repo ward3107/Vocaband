@@ -56,6 +56,16 @@ const STUDENT_EMOJIS = ["😡", "😕", "😐", "🙂", "😍"];
 export default function RatingPrompt({ user, kind, guestStorage, onDone }: RatingPromptProps) {
   const [open, setOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // Two-step star selection for the teacher variant.  Earlier the
+  // stars submitted on click and only the SINGLE hovered star
+  // highlighted, so a teacher who tapped the 3rd star (intending
+  // "3 stars") got credited for 1 — they had no visual cue showing
+  // 1..N filled before submit.  Now: clicking star N fills 1..N
+  // cumulatively, the teacher sees their pick, and a Send button
+  // confirms.  Hover preview keeps desktop feel; touch users see
+  // the selected fill stick after they tap.
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [hoveredRating, setHoveredRating] = useState<number | null>(null);
 
   // Esc to dismiss.
   useEffect(() => {
@@ -168,27 +178,70 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                 <p className="text-sm text-[var(--vb-text-secondary)] text-center mb-6">
                   Quick rating — helps us know what to build next.
                 </p>
-                <div className="flex justify-center gap-2 sm:gap-3 mb-2" role="group" aria-label="Rating">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => handleSubmit(n)}
-                      disabled={submitting}
-                      aria-label={`${n} star${n === 1 ? "" : "s"}`}
-                      className="group p-2 sm:p-3 rounded-2xl hover:bg-amber-50 transition-colors disabled:opacity-60"
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-                    >
-                      <Star
-                        size={36}
-                        className="text-amber-400 group-hover:fill-amber-400 group-hover:scale-110 transition-transform"
-                      />
-                    </button>
-                  ))}
+                {/* Cumulative-fill star widget.  The "active" rating is
+                    whichever is largest of (a) the star being hovered
+                    on desktop or (b) the star already tapped by the
+                    teacher.  Every star with index <= active renders
+                    as filled amber, the rest as outlined.  This is the
+                    standard 5-star pattern teachers already recognise
+                    from app-store ratings. */}
+                <div
+                  className="flex justify-center gap-2 sm:gap-3 mb-4"
+                  role="radiogroup"
+                  aria-label="Rating, 1 to 5 stars"
+                  onMouseLeave={() => setHoveredRating(null)}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => {
+                    const active = (hoveredRating ?? selectedRating ?? 0) >= n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setSelectedRating(n)}
+                        onMouseEnter={() => setHoveredRating(n)}
+                        disabled={submitting}
+                        role="radio"
+                        aria-checked={selectedRating === n}
+                        aria-label={`${n} star${n === 1 ? "" : "s"}`}
+                        className="p-2 sm:p-3 rounded-2xl hover:bg-amber-50 transition-colors disabled:opacity-60"
+                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                      >
+                        <Star
+                          size={36}
+                          className={`transition-transform ${
+                            active
+                              ? "text-amber-400 fill-amber-400 scale-110"
+                              : "text-amber-300"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-xs text-[var(--vb-text-muted)] text-center">
-                  Tap a star · 1 = needs work, 5 = great
+                {/* Live label — shows what the teacher is about to
+                    submit so they don't have to guess what each star
+                    count means.  Updates with hover (desktop) and the
+                    last tap (mobile). */}
+                <p className="text-sm font-bold text-[var(--vb-text-primary)] text-center mb-3 min-h-[1.25rem]">
+                  {(() => {
+                    const r = hoveredRating ?? selectedRating;
+                    if (r == null) return "Tap a star to rate";
+                    if (r === 1) return "1 star · Needs work";
+                    if (r === 2) return `${r} stars · Could be better`;
+                    if (r === 3) return `${r} stars · It's okay`;
+                    if (r === 4) return `${r} stars · Pretty good`;
+                    return `${r} stars · Love it`;
+                  })()}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => selectedRating != null && handleSubmit(selectedRating)}
+                  disabled={selectedRating == null || submitting}
+                  className="w-full py-3 rounded-2xl font-bold bg-amber-400 text-stone-900 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                >
+                  {submitting ? "Sending…" : "Send rating"}
+                </button>
               </>
             ) : (
               <>
