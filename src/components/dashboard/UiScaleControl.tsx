@@ -8,20 +8,24 @@
  * signature gradient + white text.  Sits next to Logout in TopAppBar.
  */
 import { useUiScale, type UiScale } from "../../hooks/useUiScale";
-
-const OPTIONS: Array<{ id: UiScale; label: string; size: string; aria: string }> = [
-  { id: 'normal', label: 'A',  size: 'text-sm',  aria: 'Normal size' },
-  { id: 'large',  label: 'A',  size: 'text-base',aria: 'Large size'  },
-  { id: 'xlarge', label: 'A',  size: 'text-lg',  aria: 'Extra large size' },
-];
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 export default function UiScaleControl() {
   const { scale, setScale } = useUiScale();
+  const { language } = useLanguage();
+  const t = teacherModalsT[language];
+
+  const OPTIONS: Array<{ id: UiScale; label: string; size: string; aria: string }> = [
+    { id: 'normal', label: 'A', size: 'text-sm',   aria: t.scaleNormalAria },
+    { id: 'large',  label: 'A', size: 'text-base', aria: t.scaleLargeAria  },
+    { id: 'xlarge', label: 'A', size: 'text-lg',   aria: t.scaleXLargeAria },
+  ];
 
   return (
     <div
       role="group"
-      aria-label="Display size"
+      aria-label={t.scaleGroupAria}
       className="hidden sm:inline-flex items-stretch rounded-xl bg-surface-container-lowest border-2 border-primary-container/30 overflow-hidden shadow-sm"
     >
       {OPTIONS.map((opt) => {

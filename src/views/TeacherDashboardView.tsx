@@ -23,6 +23,8 @@ import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { SavedTask } from "../hooks/useSavedTasks";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -178,7 +180,7 @@ export default function TeacherDashboardView({
 
   return (
     <>
-      <div className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
+      <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
         {consentModal}
         {exitConfirmModal}
 

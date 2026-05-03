@@ -150,6 +150,8 @@ export default function QuickPlayMonitor({
   showToast,
   realtimeStatus = 'connecting',
 }: QuickPlayMonitorProps) {
+  const { language } = useLanguage();
+  const tT = teacherViewsT[language];
   const [qrEnlarged, setQrEnlarged] = useState(false);
   // Collapsed-by-default QR card.  Per teacher request the inline
   // QR/code/share strip eats too much podium real estate after the
@@ -267,7 +269,15 @@ export default function QuickPlayMonitor({
     }
     return origin;
   };
-  const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
+  // Use the root path with `?session=` — App.tsx:128 reads the param
+  // from `location.search` regardless of pathname, but Cloudflare
+  // Workers Assets `auto-trailing-slash` 301-redirects `/quick-play`
+  // to `/quick-play/` and the redirect step can drop the query string
+  // before the SPA gets to read it (same bug pattern as the
+  // /poster.html → /poster Service-Worker cache issue noted in
+  // CLAUDE.md).  Root path matches what the WhatsApp / Copy-link
+  // buttons in QuickPlaySetupView already use.
+  const qrUrl = `${getNetworkOrigin()}/?session=${session.sessionCode}`;
 
   // ─── Copy link feedback ───────────────────────────────────────────────────────
   const { copied: copiedLink, copyToClipboard } = useClipboardFeedback(2000);
@@ -551,7 +561,7 @@ export default function QuickPlayMonitor({
             >
               <QPAvatar value={j.avatar} iconSize={32} className="text-2xl sm:text-3xl 2xl:text-4xl" />
               <div>
-                <p className="font-headline text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-widest opacity-90">Joined!</p>
+                <p className="font-headline text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-widest opacity-90">{tT.qpJoinedFlag}</p>
                 <p className="font-headline text-base sm:text-lg 2xl:text-xl font-black truncate max-w-[60vw]">{j.name}</p>
               </div>
               <span className="text-xl sm:text-2xl 2xl:text-3xl ml-1">✨</span>
@@ -629,7 +639,7 @@ export default function QuickPlayMonitor({
             <span className="text-lg shrink-0">{MUSIC_TRACKS[currentTrack].icon}</span>
             <div className="min-w-0">
               <p className={`text-[11px] font-bold truncate ${t.headerText}`}>{MUSIC_TRACKS[currentTrack].name}</p>
-              <p className={`text-[9px] ${t.headerText} opacity-50`}>Background Music</p>
+              <p className={`text-[9px] ${t.headerText} opacity-50`}>{tT.qpBackgroundMusic}</p>
             </div>
           </div>
 
@@ -638,7 +648,7 @@ export default function QuickPlayMonitor({
             <button
               onClick={() => changeTrack((currentTrack - 1 + MUSIC_TRACKS.length) % MUSIC_TRACKS.length)}
               className={`p-1.5 rounded-full ${t.headerText} opacity-60 hover:opacity-100 transition-opacity`}
-              title="Previous track"
+              title={tT.qpPrevTrackTitle}
             >
               <SkipBack size={14} fill="currentColor" />
             </button>
@@ -656,7 +666,7 @@ export default function QuickPlayMonitor({
             <button
               onClick={() => changeTrack((currentTrack + 1) % MUSIC_TRACKS.length)}
               className={`p-1.5 rounded-full ${t.headerText} opacity-60 hover:opacity-100 transition-opacity`}
-              title="Next track"
+              title={tT.qpNextTrackTitle}
             >
               <SkipForward size={14} fill="currentColor" />
             </button>
@@ -829,7 +839,7 @@ export default function QuickPlayMonitor({
                                 clearly readable from across the room.
                                 Per teacher request 2026-04-30. */}
           <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-xl p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
-            <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text}`}>Current Leaders</div>
+            <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text}`}>{tT.qpCurrentLeaders}</div>
 
             {top3.length > 0 ? (
               <>
@@ -1146,7 +1156,7 @@ export default function QuickPlayMonitor({
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <X size={32} />
               </div>
-              <h2 className="text-xl font-black text-gray-900 mb-2">Remove Player?</h2>
+              <h2 className="text-xl font-black text-gray-900 mb-2">{tT.qpRemovePlayerTitle}</h2>
               <p className="text-gray-500 mb-6">
                 Remove <strong>{confirmKick}</strong> from this Quick Play session?
               </p>
@@ -1239,7 +1249,7 @@ export default function QuickPlayMonitor({
                     <BookOpen size={24} />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-gray-900">Selected Words</h2>
+                    <h2 className="text-xl font-black text-gray-900">{tT.qpSelectedWords}</h2>
                     <p className="text-sm text-gray-500">{session.words.length} words in this session</p>
                   </div>
                 </div>

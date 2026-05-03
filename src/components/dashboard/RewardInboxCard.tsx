@@ -24,6 +24,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Gift, Sparkles, X, Trophy, Crown, Smile } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import { celebrate } from "../../utils/celebrate";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherViewsT, type TeacherViewsT } from "../../locales/teacher/views";
 
 interface RewardRow {
   id: string;
@@ -61,15 +63,17 @@ interface RewardInboxCardProps {
   }) => void;
 }
 
-const TYPE_META: Record<string, { gradient: string; icon: React.ReactNode; label: string }> = {
-  xp:     { gradient: 'from-amber-400 to-orange-500',   icon: <Sparkles size={22} />, label: 'XP Boost' },
-  badge:  { gradient: 'from-emerald-400 to-teal-500',   icon: <Trophy size={22} />,   label: 'New Badge' },
-  title:  { gradient: 'from-fuchsia-500 to-pink-600',   icon: <Crown size={22} />,    label: 'New Title' },
-  avatar: { gradient: 'from-sky-400 to-indigo-600',     icon: <Smile size={22} />,    label: 'New Avatar' },
-};
+const buildTypeMeta = (t: TeacherViewsT): Record<string, { gradient: string; icon: React.ReactNode; label: string }> => ({
+  xp:     { gradient: 'from-amber-400 to-orange-500',   icon: <Sparkles size={22} />, label: t.rewardXpLabel },
+  badge:  { gradient: 'from-emerald-400 to-teal-500',   icon: <Trophy size={22} />,   label: t.rewardBadgeLabel },
+  title:  { gradient: 'from-fuchsia-500 to-pink-600',   icon: <Crown size={22} />,    label: t.rewardTitleLabel },
+  avatar: { gradient: 'from-sky-400 to-indigo-600',     icon: <Smile size={22} />,    label: t.rewardAvatarLabel },
+});
 
-const metaFor = (type: string) =>
-  TYPE_META[type] ?? { gradient: 'from-stone-500 to-stone-700', icon: <Gift size={22} />, label: 'Reward' };
+const metaFor = (type: string, t: TeacherViewsT) => {
+  const m = buildTypeMeta(t);
+  return m[type] ?? { gradient: 'from-stone-500 to-stone-700', icon: <Gift size={22} />, label: t.rewardGenericLabel };
+};
 
 const formatValue = (type: string, value: string): string => {
   if (type === 'xp') {
@@ -80,6 +84,8 @@ const formatValue = (type: string, value: string): string => {
 };
 
 export default function RewardInboxCard({ userUid, onServerRewardsArrived }: RewardInboxCardProps) {
+  const { language } = useLanguage();
+  const t = teacherViewsT[language];
   const [rewards, setRewards] = useState<RewardRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [dismissing, setDismissing] = useState<Set<string>>(new Set());
@@ -219,7 +225,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
     <div className="max-w-4xl mx-auto px-3 sm:px-0 mb-4 space-y-3">
       <AnimatePresence initial={false}>
         {rewards.map((r, i) => {
-          const meta = metaFor(r.reward_type);
+          const meta = metaFor(r.reward_type, t);
           const isDismissing = dismissing.has(r.id);
           return (
             <motion.div
@@ -234,7 +240,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
                 type="button"
                 onClick={() => dismiss(r)}
                 disabled={isDismissing}
-                aria-label="Dismiss reward"
+                aria-label={t.dismissRewardAria}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors disabled:opacity-50"
               >
                 <X size={16} />
@@ -252,7 +258,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
 
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-black uppercase tracking-[0.25em] opacity-90">
-                    {meta.label} · from {r.teacher_name}
+                    {t.rewardFromTeacher(meta.label, r.teacher_name)}
                   </p>
                   <p className="text-2xl sm:text-3xl font-black mt-0.5 leading-tight break-words">
                     {formatValue(r.reward_type, r.reward_value)}
@@ -276,7 +282,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
                       disabled={isDismissing}
                       className="px-4 py-2 rounded-xl bg-white text-stone-900 font-black text-sm hover:bg-white/90 transition-colors shadow-sm disabled:opacity-60"
                     >
-                      Thanks!
+                      {t.thanksBtn}
                     </button>
                     <span className="text-[11px] opacity-80 font-semibold">
                       {new Date(r.created_at).toLocaleString(undefined, {

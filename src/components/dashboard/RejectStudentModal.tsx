@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface RejectStudentModalProps {
   modal: { id: string; displayName: string } | null;
@@ -8,11 +10,14 @@ interface RejectStudentModalProps {
 }
 
 export default function RejectStudentModal({ modal, onCancel, onConfirm }: RejectStudentModalProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   return (
     <AnimatePresence>
       {modal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
           <motion.div
+            dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -29,7 +34,7 @@ export default function RejectStudentModal({ modal, onCancel, onConfirm }: Rejec
               You're about to reject <strong>"{modal.displayName}"</strong>. They will need to sign up again with a new class code to join your class.
             </p>
             <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
-              ⚠️ This action cannot be undone. The student's profile will be marked as rejected.
+              {t.rejectWarn}
             </p>
             <div className="flex gap-3">
               <button
@@ -41,13 +46,13 @@ export default function RejectStudentModal({ modal, onCancel, onConfirm }: Rejec
                 }}
                 className="flex-1 py-4 rounded-2xl font-bold hover:opacity-90 transition-all border-2"
               >
-                Keep Student
+                {t.rejectKeep}
               </button>
               <button
                 onClick={() => onConfirm(modal.id)}
                 className="flex-1 py-4 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-200"
               >
-                Reject Student
+                {t.rejectConfirm}
               </button>
             </div>
           </motion.div>

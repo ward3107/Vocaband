@@ -21,6 +21,8 @@ import { AssignmentData } from './setup/types';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSavedWordGroups } from '../hooks/useSavedWordGroups';
 import { saveCorrection } from '../utils/translationCorrections';
+import { useLanguage } from '../hooks/useLanguage';
+import { teacherWizardsT } from '../locales/teacher/wizards';
 
 // Keep the existing AssignmentData interface for backward compatibility
 export interface AssignmentDataCompat extends AssignmentData {
@@ -187,6 +189,8 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   onGenerateLesson,
   onSaveTemplate,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = teacherWizardsT[language];
   // ── Local State ─────────────────────────────────────────────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -235,13 +239,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       navigator.clipboard.writeText(selectedClass.code);
       setCopiedCode(selectedClass.code);
       setTimeout(() => setCopiedCode(null), 2000);
-      if (showToast) showToast('Class code copied!', 'success');
+      if (showToast) showToast(t.classCodeCopied, 'success');
     }
   };
 
   // ── Share via WhatsApp ─────────────────────────────────────────────────────
   const shareViaWhatsApp = () => {
-    const message = `Join my class on VocabAnd! Class code: ${selectedClass?.code}`;
+    const message = t.joinMessage(selectedClass?.code ?? '');
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -260,6 +264,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   if (showSuccess) {
     return (
       <motion.div
+        dir={dir}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="min-h-screen bg-background p-4 sm:p-6 flex items-center justify-center"
@@ -288,12 +293,10 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               transition={{ delay: 0.3 }}
             >
               <h2 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
-                {editingAssignment ? 'Assignment Updated!' : 'Assignment Created!'}
+                {editingAssignment ? t.assignmentUpdatedTitle : t.assignmentCreatedTitle}
               </h2>
               <p className="text-on-surface-variant">
-                {editingAssignment
-                  ? 'Your changes have been saved successfully'
-                  : 'Your students can now access this assignment'}
+                {editingAssignment ? t.assignmentUpdatedSubtitle : t.assignmentCreatedSubtitle}
               </p>
             </motion.div>
 
@@ -309,11 +312,11 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 <div className="flex items-center gap-3 text-sm text-on-surface-variant mt-1">
                   <div className="flex items-center gap-1">
                     <BookOpen size={14} />
-                    <span>{selectedWordsIds.length} words</span>
+                    <span>{t.successWordsCount(selectedWordsIds.length)}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Target size={14} />
-                    <span>{assignmentModes.length} modes</span>
+                    <span>{t.successModesCount(assignmentModes.length)}</span>
                   </div>
                 </div>
               </div>
@@ -327,7 +330,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 transition={{ delay: 0.5 }}
                 className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-100"
               >
-                <div className="text-sm text-blue-700 mb-2 font-bold">Share with students</div>
+                <div className="text-sm text-blue-700 mb-2 font-bold">{t.shareWithStudents}</div>
                 <div className="text-3xl font-black text-blue-900 mb-4 tracking-wider">
                   {selectedClass.code}
                 </div>
@@ -337,14 +340,14 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                     className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all flex items-center justify-center gap-2"
                   >
                     <Copy size={18} />
-                    {copiedCode === selectedClass.code ? 'Copied!' : 'Copy code'}
+                    {copiedCode === selectedClass.code ? t.copiedShort : t.copyCode}
                   </button>
                   <button
                     onClick={shareViaWhatsApp}
                     className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all flex items-center justify-center gap-2"
                   >
                     <Share2 size={18} />
-                    WhatsApp
+                    {t.whatsAppLabel}
                   </button>
                 </div>
               </motion.div>
@@ -361,13 +364,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 onClick={handleCreateAnother}
                 className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all"
               >
-                Create another
+                {t.createAnother}
               </button>
               <button
                 onClick={onBack}
                 className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all"
               >
-                Back to dashboard
+                {t.backToDashboard}
               </button>
             </motion.div>
           </motion.div>

@@ -27,6 +27,8 @@ import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import MasteryHeatmap, { type MasteryRow } from "../gradebook/MasteryHeatmap";
 import { ALL_WORDS } from "../../data/vocabulary";
 import type { ProgressData, AssignmentData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherDrilldownsT } from "../../locales/teacher/drilldowns";
 
 interface StudentProfileProps {
   open: boolean;
@@ -69,6 +71,8 @@ const textColor = (s: number): string => {
 export default function StudentProfile({
   open, onClose, student, scores, masteryRows, teacherAssignments, onReward,
 }: StudentProfileProps) {
+  const { language } = useLanguage();
+  const t = teacherDrilldownsT[language];
   const stats = useMemo(() => {
     if (scores.length === 0) {
       return { avg: 0, plays: 0, totalXp: 0, lastActive: null as Date | null };
@@ -130,14 +134,14 @@ export default function StudentProfile({
   }, [scores]);
 
   const assignmentTitle = (id: string) =>
-    teacherAssignments.find(a => a.id === id)?.title ?? "Quick Play";
+    teacherAssignments.find(a => a.id === id)?.title ?? t.fallbackAssignmentLabel;
 
   const lastActiveLabel = stats.lastActive
-    ? stats.lastActive.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-    : "—";
+    ? stats.lastActive.toLocaleDateString(language === 'he' ? 'he-IL' : language === 'ar' ? 'ar' : undefined, { month: "short", day: "numeric" })
+    : t.noLastActive;
 
   const headerSubtitle = student
-    ? `${stats.plays} ${stats.plays === 1 ? "play" : "plays"} · last ${lastActiveLabel}`
+    ? t.studentHeaderSubtitle(stats.plays, lastActiveLabel)
     : "";
 
   return (
@@ -154,10 +158,10 @@ export default function StudentProfile({
             onClick={onReward}
             className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm flex items-center gap-1.5 shrink-0"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-            aria-label={`Reward ${student.name}`}
+            aria-label={t.rewardAria(student.name)}
           >
             <Gift size={16} />
-            Reward
+            {t.rewardBtn}
           </button>
         ) : null
       }
@@ -182,33 +186,33 @@ export default function StudentProfile({
           <div className="grid grid-cols-2 gap-3">
             <StatTile
               value={`${stats.avg}%`}
-              label="avg score"
-              caption="across every game"
+              label={t.statAvgScoreLabel}
+              caption={t.statAvgScoreCaption}
               tone={stats.avg >= 80 ? "emerald" : stats.avg >= 70 ? "amber" : "rose"}
-              tooltip="The student's average score (out of 100) across every game they've finished. 80+ = solid, 70-79 = okay, below 70 = needs help."
+              tooltip={t.statAvgScoreTooltip}
             />
             <StatTile
               value={String(stats.plays)}
-              label={stats.plays === 1 ? "play" : "plays"}
-              caption="total attempts"
+              label={stats.plays === 1 ? t.statPlayCountSingular : t.statPlayCountPlural}
+              caption={t.statPlaysCaption}
               tone="indigo"
-              tooltip="Total number of game-rounds completed by this student across all assignments and modes."
+              tooltip={t.statPlaysTooltip}
             />
             <StatTile
               value={String(stats.totalXp)}
-              label="XP earned"
-              caption="sum of all scores"
+              label={t.statXpLabel}
+              caption={t.statXpCaption}
               tone="violet"
               icon={<Flame size={14} />}
-              tooltip="Cumulative XP — the sum of every score the student has earned in every game. Drives shop unlocks + their level title."
+              tooltip={t.statXpTooltip}
             />
             <StatTile
               value={lastActiveLabel}
-              label="last active"
-              caption="most recent play"
+              label={t.statLastActiveLabel}
+              caption={t.statLastActiveCaption}
               tone="stone"
               icon={<Calendar size={14} />}
-              tooltip="The date of this student's most recent game. Useful for spotting students who've gone quiet."
+              tooltip={t.statLastActiveTooltip}
             />
           </div>
 
@@ -282,7 +286,7 @@ export default function StudentProfile({
                 {topMisses.map(({ word, count }) => (
                   <span
                     key={word.id}
-                    title={`Got "${word.english}" wrong on first try ${count} time${count === 1 ? '' : 's'}. Hebrew: ${word.hebrew}`}
+                    title={t.struggledChipTitle(word.english, count, word.hebrew)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs"
                   >
                     {word.english}

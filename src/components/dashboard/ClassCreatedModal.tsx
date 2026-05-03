@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Check, Copy, MessageCircle } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface ClassCreatedModalProps {
   createdClassCode: string | null;
@@ -12,11 +14,14 @@ interface ClassCreatedModalProps {
 export default function ClassCreatedModal({
   createdClassCode, createdClassName, copiedCode, setCopiedCode, onDone,
 }: ClassCreatedModalProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   return (
     <AnimatePresence>
       {createdClassCode && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
           <motion.div
+            dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -57,7 +62,7 @@ export default function ClassCreatedModal({
             <div className="grid grid-cols-2 gap-3 mb-3">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`${createdClassName} - Class Code: ${createdClassCode}`);
+                  navigator.clipboard.writeText(t.classCardCopyMsg(createdClassName, createdClassCode));
                   setCopiedCode(createdClassCode);
                   setTimeout(() => setCopiedCode(null), 2000);
                 }}
@@ -81,7 +86,7 @@ export default function ClassCreatedModal({
                 className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
               >
                 <MessageCircle size={20} />
-                <span>WhatsApp</span>
+                <span>{t.whatsAppShort}</span>
               </a>
             </div>
 
@@ -90,7 +95,7 @@ export default function ClassCreatedModal({
               style={{ color: 'var(--vb-text-secondary)' }}
               className="w-full py-4 font-bold hover:opacity-80 rounded-2xl transition-all"
             >
-              Done
+              {t.doneBtn}
             </button>
           </motion.div>
         </div>

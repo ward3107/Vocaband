@@ -67,6 +67,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
   openDropdownClassId,
   onToggleDropdown,
 }) => {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const showAssignments = openDropdownClassId === code;
@@ -253,7 +255,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     >
                       <GraduationCap size={18} style={{ color: 'var(--vb-text-secondary)' }} />
                     </span>
-                    <span className="text-sm font-bold">Default</span>
+                    <span className="text-sm font-bold">{t.defaultAvatarLabel}</span>
                   </button>
 
                   {/* Emoji grid - scrollable */}
@@ -326,7 +328,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   type="button"
                   style={{ touchAction: 'manipulation' }}
                   className="group text-left w-full"
-                  title={onNameChange ? "Click to edit name" : undefined}
+                  title={onNameChange ? t.clickToEditNameTitle : undefined}
                 >
                   <h3
                     style={{ color: 'var(--vb-text-primary)' }}
@@ -393,7 +395,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <MessageCircle size={14} className="text-emerald-600" />
-                  Share via WhatsApp
+                  {t.shareWhatsApp}
                 </button>
                 <button
                   onClick={() => { onCopyCode(); setMenuOpen(false); }}
@@ -429,7 +431,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
                 >
                   <Printer size={14} className="text-indigo-600" />
-                  Print classroom poster
+                  {t.printPoster}
                 </button>
                 <div className="h-px my-1" style={{ backgroundColor: 'var(--vb-border)' }} />
                 <button
@@ -438,7 +440,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 text-left"
                 >
                   <Trash2 size={14} />
-                  Delete class
+                  {t.deleteClass}
                 </button>
               </div>
             )}
@@ -458,7 +460,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
             className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
           >
             <Zap size={15} />
-            New assignment
+            {t.newAssignment}
           </button>
           {assignments.length > 0 && (
             <button
@@ -525,7 +527,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     style={{ color: 'var(--vb-text-secondary)' }}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
-                    Edit
+                    {t.editAssignment}
                   </button>
                 )}
                 {onDuplicateAssignment && (
@@ -535,7 +537,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     style={{ color: 'var(--vb-text-secondary)' }}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-surface-alt)]"
                   >
-                    Duplicate
+                    {t.duplicateAssignment}
                   </button>
                 )}
                 {onProjectAssignmentToClass && (
@@ -575,7 +577,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onClick={() => onDeleteAssignment(assignment)}
                     type="button"
                     className="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    aria-label="Delete assignment"
+                    aria-label={t.deleteAssignmentAria}
                   >
                     <Trash2 size={13} />
                   </button>

@@ -136,6 +136,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   showToast,
 }) => {
   void _editingAssignment;
+  const { language } = useLanguage();
+  const t = teacherWizardsT[language];
 
   // AI Lesson Builder state
   const [showAiLessonBuilder, setShowAiLessonBuilder] = useState(false);
@@ -314,7 +316,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
         >
           <ArrowLeft size={18} />
-          Back
+          {t.back}
         </button>
         <div className="text-sm font-bold text-[var(--vb-text-secondary)]">
           Step 2 of 3
@@ -406,7 +408,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             onClick={handleSelectAllToggle}
             className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
-            {selectedModes.length >= ALL_GAME_MODE_IDS.length ? 'Reset default' : 'Select all'}
+            {selectedModes.length >= ALL_GAME_MODE_IDS.length ? t.resetDefault : t.selectAll}
           </button>
         </div>
 
@@ -509,19 +511,19 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         <div className="flex flex-wrap gap-4 text-xs text-[var(--vb-text-secondary)] pt-1">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span>Beginner</span>
+            <span>{t.diffBeginner}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-violet-500"></div>
-            <span>Intermediate</span>
+            <span>{t.diffIntermediate}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-            <span>Advanced</span>
+            <span>{t.diffAdvanced}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-            <span>Mastery</span>
+            <span>{t.diffMastery}</span>
           </div>
         </div>
 
@@ -644,8 +646,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         {isAssignment && selectedModes.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-4 text-center text-xs text-[var(--vb-text-muted)]">
             <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
-            Pick one or more game modes above and we'll suggest a title
-            automatically. You can always edit it.
+            {t.pickModesNudge}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
@@ -690,9 +691,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   instructionsManuallyEditedRef.current = true;
                   onInstructionsChange?.(e.target.value);
                 }}
-                placeholder={isAssignment
-                  ? 'Add a note for your students...'
-                  : 'e.g., Remember to use headphones'}
+                placeholder={isAssignment ? t.instructionsPlaceholderAssignment : t.instructionsPlaceholderQp}
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all resize-none"
               />
@@ -752,12 +751,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               {isGeneratingAI ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Generating AI sentences...
+                  {t.generatingAi}
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Generate with AI
+                  {t.generateAi}
                 </>
               )}
             </button>
@@ -772,7 +771,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               <textarea
                 value={customSentenceInput}
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
-                placeholder="Write or paste your sentence here..."
+                placeholder={t.sentencePlaceholder}
                 rows={2}
                 className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
               />
@@ -787,7 +786,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 className="px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2 self-end"
               >
                 <Plus size={18} />
-                Add
+                {t.addBtn}
               </button>
             </div>
           </div>
@@ -863,13 +862,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onClick={() => setEditingSentenceIndex(null)}
                     className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
                   >
-                    Cancel
+                    {t.cancel}
                   </button>
                   <button
                     onClick={() => setEditingSentenceIndex(null)}
                     className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
                   >
-                    Done
+                    {t.done}
                   </button>
                 </div>
               </div>
@@ -891,7 +890,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             </span>
             <label className="flex items-center gap-2 text-sm font-bold text-[var(--vb-text-secondary)]">
               <Calendar size={14} className="text-indigo-500" />
-              Schedule (optional)
+              {t.scheduleOptional}
             </label>
           </div>
           <div>
@@ -899,7 +898,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
-              placeholder="Pick deadline date and time"
+              placeholder={t.deadlinePickerPlaceholder}
             />
           </div>
         </motion.div>
@@ -918,7 +917,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           onClick={onBack}
           className="flex-1 py-3 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
         >
-          ← Back
+          ← {t.back}
         </button>
         <button
           ref={nextButtonRef}
@@ -928,11 +927,11 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         >
           {isAssignment ? (
             <>
-              Review
+              {t.reviewCta}
               <ArrowRight size={20} />
             </>
           ) : (
-            'Skip to QR'
+            t.skipToQr
           )}
         </button>
       </div>

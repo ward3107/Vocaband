@@ -54,6 +54,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   editingAssignment = null,
   aiGeneratedLesson,
 }) => {
+  const { language } = useLanguage();
+  const t = teacherWizardsT[language];
   // Ref for launch button (auto-scroll)
   const launchButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -91,7 +93,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="signature-gradient text-white px-3 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={16} /> {t.back}
           </button>
           {isQuickPlay && (
             <div className="flex gap-2">
@@ -100,16 +102,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                 className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
               >
                 <BookOpen size={14} />
-                <span className="hidden sm:inline">Edit Words</span>
-                <span className="sm:hidden">Words</span>
+                <span className="hidden sm:inline">{t.editWordsFull}</span>
+                <span className="sm:hidden">{t.editWordsShort}</span>
               </button>
               <button
                 onClick={onEditModes}
                 className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
               >
                 <Target size={14} />
-                <span className="hidden sm:inline">Edit Modes</span>
-                <span className="sm:hidden">Modes</span>
+                <span className="hidden sm:inline">{t.editModesFull}</span>
+                <span className="sm:hidden">{t.editModesShort}</span>
               </button>
             </div>
           )}
@@ -170,7 +172,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             </motion.div>
 
             <h3 className="text-xl sm:text-2xl font-black text-white mb-2 drop-shadow-lg">
-              Ready to Play! 🎮
+              {t.readyToPlay}
             </h3>
 
             <motion.p
@@ -179,7 +181,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               transition={{ delay: 0.4 }}
               className="text-white/90 text-sm sm:text-base mb-4"
             >
-              {selectedWords.length} word{selectedWords.length > 1 ? 's' : ''} • {selectedModes.length} game mode{selectedModes.length > 1 ? 's' : ''} loaded
+              {t.loadedSummary(selectedWords.length, selectedModes.length)}
             </motion.p>
 
             {/* Stats pills */}
@@ -190,10 +192,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               className="flex items-center justify-center gap-2 flex-wrap"
             >
               <div className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-bold border border-white/30">
-                📚 {selectedWords.length} words
+                {t.wordsPill(selectedWords.length)}
               </div>
               <div className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-bold border border-white/30">
-                🎯 {selectedModes.length} modes
+                {t.modesPill(selectedModes.length)}
               </div>
             </motion.div>
           </div>
@@ -274,7 +276,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             ))}
           </div>
           {customWordCount > 0 && (
-            <p className="text-xs text-amber-700 mt-2">✨ {customWordCount} custom word{customWordCount > 1 ? 's' : ''} (session-only)</p>
+            <p className="text-xs text-amber-700 mt-2">{t.customWordsBadge(customWordCount)}</p>
           )}
         </div>
 
@@ -317,7 +319,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           <div className="flex-1">
             <div className="flex items-center gap-1.5 text-sm font-bold text-[var(--vb-text-primary)]">
               <Bookmark size={14} className="text-indigo-600" />
-              Save as template + word group
+              {t.saveAsTemplateLabel}
             </div>
             <p className="text-xs text-[var(--vb-text-muted)] mt-0.5">
               Reuse this exact task in one tap, AND save these words
@@ -342,7 +344,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           onClick={onBack}
           className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-primary)] rounded-2xl font-bold hover:opacity-80 border-2 border-[var(--vb-border)] transition-all"
         >
-          ← Back
+          ← {t.back}
         </button>
         <button
           ref={launchButtonRef}
@@ -363,13 +365,13 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         >
           {isAssignment ? (
             <>
-              {isEditing ? 'Update Assignment' : 'Assign to Class'}
+              {isEditing ? t.updateAssignment : t.assignToClass}
               <ArrowRight size={20} />
             </>
           ) : (
             <>
               <QrCode size={20} />
-              Generate QR Code
+              {t.generateQrCode}
             </>
           )}
         </button>

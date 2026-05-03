@@ -18,6 +18,8 @@ import { useMemo } from "react";
 import { AlertTriangle, Plus } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
 import { ALL_WORDS } from "../../data/vocabulary";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 
 interface ClassStudent {
   name: string;
@@ -42,6 +44,8 @@ export interface TopStrugglingWordsProps {
 export default function TopStrugglingWords({
   classCode, scores, classStudents, onCreateReteachAssignment,
 }: TopStrugglingWordsProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   const classScores = useMemo(
     () => (classCode ? scores.filter(s => s.classCode === classCode) : scores),
     [scores, classCode],
@@ -103,7 +107,7 @@ export default function TopStrugglingWords({
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
             <Plus size={14} />
-            Reteach these
+            {t.reteachCta}
           </button>
         )}
       </header>

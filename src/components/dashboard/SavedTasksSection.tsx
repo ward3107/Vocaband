@@ -9,6 +9,8 @@
 
 import { Pin, Trash2, Bookmark, Repeat } from 'lucide-react';
 import type { SavedTask } from '../../hooks/useSavedTasks';
+import { useLanguage } from '../../hooks/useLanguage';
+import { teacherDrilldownsT, type TeacherDrilldownsT } from '../../locales/teacher/drilldowns';
 
 export interface SavedTasksSectionProps {
   tasks: SavedTask[];
@@ -21,15 +23,15 @@ export interface SavedTasksSectionProps {
   isDark?: boolean;
 }
 
-function relativeTime(ts: number | null): string {
-  if (!ts) return 'never used';
+function relativeTime(ts: number | null, t: TeacherDrilldownsT): string {
+  if (!ts) return t.neverUsed;
   const diff = Date.now() - ts;
   const days = Math.floor(diff / 86_400_000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  return `${Math.floor(days / 30)} months ago`;
+  if (days === 0) return t.today;
+  if (days === 1) return t.yesterday;
+  if (days < 7) return t.daysAgo(days);
+  if (days < 30) return t.weeksAgo(Math.floor(days / 7));
+  return t.monthsAgo(Math.floor(days / 30));
 }
 
 export default function SavedTasksSection({
@@ -38,6 +40,8 @@ export default function SavedTasksSection({
   onTogglePin,
   onRemove,
 }: SavedTasksSectionProps) {
+  const { language } = useLanguage();
+  const t = teacherDrilldownsT[language];
   if (tasks.length === 0) return null;
 
   return (
@@ -80,9 +84,7 @@ export default function SavedTasksSection({
                 <div className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
                   {task.mode === 'quick-play' ? '🎮 Quick Play' : '📝 Assignment'}
                   {' · '}
-                  {task.wordIds.length} word{task.wordIds.length === 1 ? '' : 's'}
-                  {' · '}
-                  {task.modes.length} mode{task.modes.length === 1 ? '' : 's'}
+                  {t.wordModeSummary(task.wordIds.length, task.modes.length)}
                 </div>
               </div>
               <button
@@ -117,12 +119,12 @@ export default function SavedTasksSection({
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
-                <Repeat size={14} /> Use
+                <Repeat size={14} /> {t.useBtn}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`Delete "${task.title || 'this template'}"?`)) onRemove(task.id);
+                  if (confirm(t.deleteConfirm(task.title || t.untitledTemplate))) onRemove(task.id);
                 }}
                 className="p-2 rounded-xl hover:bg-rose-100 hover:text-rose-600 transition-colors"
                 style={{

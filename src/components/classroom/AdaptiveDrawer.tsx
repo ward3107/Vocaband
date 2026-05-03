@@ -16,6 +16,8 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X, ArrowLeft } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 
 interface AdaptiveDrawerProps {
   open: boolean;
@@ -34,6 +36,8 @@ interface AdaptiveDrawerProps {
 export default function AdaptiveDrawer({
   open, onClose, title, subtitle, avatar, children, headerRight,
 }: AdaptiveDrawerProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   // Esc key closes the drawer.
   useEffect(() => {
     if (!open) return;

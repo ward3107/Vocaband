@@ -21,6 +21,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Gift, X, Sparkles, Wand2 } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import { TEACHER_XP_PRESETS } from "../../constants/game";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 export interface StudentInfo {
   uid: string;
@@ -37,6 +39,8 @@ interface TeacherRewardModalProps {
 }
 
 export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast }: TeacherRewardModalProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   const [selectedXp, setSelectedXp] = useState<number | null>(null);
   const [reason, setReason] = useState('');
   const [giving, setGiving] = useState(false);
@@ -57,7 +61,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
 
       if (error) throw error;
 
-      showToast?.(`Sent +${selectedXp} XP to ${student.name}!`, 'success');
+      showToast?.(t.sentXpToast(selectedXp, student.name), 'success');
       onRewardGiven?.();
       onClose();
     } catch (err) {
@@ -68,9 +72,9 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
       const reasonText =
         (e?.message && !e.message.includes('JWT')) ? e.message :
         e?.details ? e.details :
-        'unknown error';
+        t.rewardUnknownError;
       console.error('Failed to give reward:', err);
-      showToast?.(`Couldn't give reward: ${reasonText}`, 'error');
+      showToast?.(t.rewardErrorToast(reasonText), 'error');
     } finally {
       setGiving(false);
     }
@@ -81,6 +85,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
       {student && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <motion.div
+            dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -102,6 +107,8 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
               <button
                 onClick={onClose}
                 type="button"
+                className="w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center transition-colors"
+                aria-label={t.closeAria}
                 className="w-8 h-8 rounded-full hover:bg-[var(--vb-surface-alt)] flex items-center justify-center transition-colors"
                 aria-label="Close"
               >
@@ -113,7 +120,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
             <div className="mb-6">
               <p className="text-sm font-semibold text-[var(--vb-text-secondary)] mb-3 flex items-center gap-2">
                 <Sparkles size={16} className="text-amber-500" />
-                Select XP amount:
+                {t.selectXpAmount}
               </p>
               <div className="grid grid-cols-4 gap-3">
                 {TEACHER_XP_PRESETS.map((xp) => (
@@ -146,7 +153,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 type="text"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g., Great participation today!"
+                placeholder={t.shortMsgPlaceholder}
                 maxLength={120}
                 className="w-full px-4 py-3 rounded-xl border-2 border-[var(--vb-border)] focus:border-amber-400 focus:outline-none transition-colors text-sm"
               />
@@ -163,7 +170,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 disabled={giving}
                 className="flex-1 py-3.5 px-6 rounded-2xl font-bold text-[var(--vb-text-secondary)] bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] transition-colors disabled:opacity-50"
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 onClick={handleGiveReward}
@@ -174,11 +181,11 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 }`}
               >
                 {giving ? (
-                  <>Sending...</>
+                  <>{t.sendingShort}</>
                 ) : (
                   <>
                     <Wand2 size={18} />
-                    Send XP
+                    {t.sendXp}
                   </>
                 )}
               </button>

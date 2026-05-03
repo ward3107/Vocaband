@@ -30,6 +30,8 @@ import ReportExportBar from "../components/classroom/ReportExportBar";
 import ReportsDashboard from "../components/classroom/ReportsDashboard";
 import TopStrugglingWords from "../components/classroom/TopStrugglingWords";
 import AttendanceTable from "../components/classroom/AttendanceTable";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherClassroomT } from "../locales/teacher/classroom";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -95,6 +97,28 @@ export default function ClassroomView(props: ClassroomViewProps) {
     expandedStudent, setExpandedStudent, setView, showToast,
     initialTab = "pulse",
   } = props;
+
+  const { language, dir } = useLanguage();
+  const t = teacherClassroomT[language];
+
+  // Tab metadata depends on `t` (labels + blurbs) so it has to live
+  // inside the component.  Static gradients + emojis don't translate.
+  const LEGACY_TABS: Array<{ id: LegacyTab; label: string; icon: React.ReactNode; gradient: string }> = [
+    { id: "pulse",   label: t.tabPulse,   icon: <Activity size={16} />, gradient: "from-emerald-500 to-teal-600" },
+    { id: "mastery", label: t.tabMastery, icon: <Brain size={16} />,    gradient: "from-violet-500 to-fuchsia-600" },
+  ];
+  const V2_TABS: Array<{
+    id: V2Tab;
+    emoji: string;
+    label: string;
+    gradient: string;
+    blurb: string;
+  }> = [
+    { id: "today",       emoji: "🌡️", label: t.tabToday,       gradient: "from-indigo-500 to-violet-600",  blurb: t.blurbToday },
+    { id: "students",    emoji: "👥", label: t.tabStudents,    gradient: "from-violet-500 to-fuchsia-600", blurb: t.blurbStudents },
+    { id: "assignments", emoji: "📝", label: t.tabAssignments, gradient: "from-amber-500 to-orange-600",   blurb: t.blurbAssignments },
+    { id: "reports",     emoji: "📊", label: t.tabReports,     gradient: "from-emerald-500 to-teal-600",   blurb: t.blurbReports },
+  ];
 
   const [legacyTab, setLegacyTab] = useState<LegacyTab>(initialTab);
 
@@ -191,10 +215,10 @@ export default function ClassroomView(props: ClassroomViewProps) {
 
   if (CLASSROOM_V2) {
     return (
-      <div className="min-h-screen bg-background pb-28 sm:pb-12">
+      <div dir={dir} className="min-h-screen bg-background pb-28 sm:pb-12">
         <TopAppBar
-          title="Classroom"
-          subtitle={V2_TABS.find(t => t.id === v2Tab)?.blurb.toUpperCase() ?? ""}
+          title={t.classroomTitle}
+          subtitle={V2_TABS.find(tab => tab.id === v2Tab)?.blurb.toUpperCase() ?? ""}
           showBack
           onBack={() => {
             // Strip the ?tab= param before leaving so browser back from
@@ -225,13 +249,13 @@ export default function ClassroomView(props: ClassroomViewProps) {
           style={{ borderColor: 'var(--vb-border)' }}
         >
           <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
-            {V2_TABS.map(t => {
-              const active = v2Tab === t.id;
+            {V2_TABS.map(tab => {
+              const active = v2Tab === tab.id;
               return (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
-                  onClick={() => setV2Tab(t.id)}
+                  onClick={() => setV2Tab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
                     active
                       ? `bg-gradient-to-br ${t.gradient} text-white shadow-md`
@@ -244,8 +268,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
                   }}
                   aria-pressed={active}
                 >
-                  <span aria-hidden>{t.emoji}</span>
-                  {t.label}
+                  <span aria-hidden>{tab.emoji}</span>
+                  {tab.label}
                 </button>
               );
             })}
@@ -275,22 +299,22 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 <div className="grid grid-cols-3 gap-2">
                   <StatChip
                     value={`${todayStats.activeStudents}/${todayStats.rosterSize || "—"}`}
-                    label="active"
+                    label={t.statActiveLabel}
                     tone="indigo"
-                    tooltip="Active = students who completed at least one game this week. The /N is the class roster total."
+                    tooltip={t.statActiveTooltip}
                   />
                   <StatChip
                     value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
-                    label="avg score"
+                    label={t.statAvgScoreLabel}
                     score={todayStats.avgScore ?? undefined}
                     tone={todayStats.avgScore == null ? "stone" : undefined}
-                    tooltip="Mean score across every completed game in the last 7 days. Green ≥80, amber 50–79, rose under 50."
+                    tooltip={t.statAvgScoreTooltip}
                   />
                   <StatChip
                     value={todayStats.playsThisWeek}
-                    label="plays"
+                    label={t.statPlaysLabel}
                     tone="violet"
-                    tooltip="Every time a student finishes a game mode counts as one play. Last 7 days."
+                    tooltip={t.statPlaysTooltip}
                   />
                 </div>
 
@@ -452,11 +476,11 @@ export default function ClassroomView(props: ClassroomViewProps) {
           style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 95%, transparent)', borderColor: 'var(--vb-border)' }}
         >
           <div className="flex">
-            {V2_TABS.map(t => {
-              const active = v2Tab === t.id;
+            {V2_TABS.map(tab => {
+              const active = v2Tab === tab.id;
               return (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
                   onClick={() => setV2Tab(t.id)}
                   className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
@@ -467,12 +491,12 @@ export default function ClassroomView(props: ClassroomViewProps) {
                     minHeight: 56,
                   }}
                   aria-pressed={active}
-                  aria-label={t.label}
+                  aria-label={tab.label}
                 >
                   <span className={`text-2xl leading-none transition-transform ${active ? "scale-110" : ""}`} aria-hidden>
-                    {t.emoji}
+                    {tab.emoji}
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-wider">{t.label}</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
                 </button>
               );
             })}
@@ -484,10 +508,10 @@ export default function ClassroomView(props: ClassroomViewProps) {
 
   // ── Legacy 2-tab layout (default until VITE_CLASSROOM_V2=true) ─────────
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div dir={dir} className="min-h-screen bg-background pb-12">
       <TopAppBar
-        title="Classroom"
-        subtitle="PULSE · MASTERY"
+        title={t.classroomTitle}
+        subtitle={t.legacySubtitle}
         showBack
         onBack={() => setView("teacher-dashboard")}
         userName={user?.displayName}
@@ -500,13 +524,13 @@ export default function ClassroomView(props: ClassroomViewProps) {
         style={{ borderColor: 'var(--vb-border)' }}
       >
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
-          {LEGACY_TABS.map(t => {
-            const active = legacyTab === t.id;
+          {LEGACY_TABS.map(tab => {
+            const active = legacyTab === tab.id;
             return (
               <button
-                key={t.id}
+                key={tab.id}
                 type="button"
-                onClick={() => setLegacyTab(t.id)}
+                onClick={() => setLegacyTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
                   active ? `bg-gradient-to-br ${t.gradient} text-white shadow-md` : ""
                 }`}
@@ -517,8 +541,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 }}
                 aria-pressed={active}
               >
-                {t.icon}
-                {t.label}
+                {tab.icon}
+                {tab.label}
               </button>
             );
           })}

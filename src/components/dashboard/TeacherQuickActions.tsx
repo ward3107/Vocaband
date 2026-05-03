@@ -14,6 +14,9 @@ export default function TeacherQuickActions({
   pendingStudentsCount,
   onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick,
 }: TeacherQuickActionsProps) {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
+
   return (
     <div className="mb-8 sm:mb-10">
       {/* ───────────────────────────────────────────── */}

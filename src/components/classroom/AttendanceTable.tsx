@@ -16,6 +16,8 @@
 import { useMemo } from "react";
 import { CalendarCheck } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 
 interface ClassStudent {
   name: string;
@@ -48,6 +50,8 @@ function shortDay(d: Date): string {
 export default function AttendanceTable({
   classCode, scores, classStudents,
 }: AttendanceTableProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   const classScores = useMemo(
     () => (classCode ? scores.filter(s => s.classCode === classCode) : scores),
     [scores, classCode],

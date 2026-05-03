@@ -5,6 +5,8 @@ import TopAppBar from "../components/TopAppBar";
 import { supabase, type ClassData } from "../core/supabase";
 import { SOCKET_EVENTS } from "../core/types";
 import type { View } from "../core/views";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherViewsT } from "../locales/teacher/views";
 
 interface LiveChallengeClassSelectViewProps {
   user: { displayName?: string; avatar?: string } | null;
@@ -23,11 +25,13 @@ export default function LiveChallengeClassSelectView({
   setSelectedClass,
   setIsLiveChallenge,
 }: LiveChallengeClassSelectViewProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherViewsT[language];
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div dir={dir} className="min-h-screen bg-background pb-8">
       <TopAppBar
-        title="Live Mode for Classes"
-        subtitle="SELECT A CLASS TO START"
+        title={t.liveModeTitle}
+        subtitle={t.liveModeSubtitle}
         showBack
         onBack={() => setView("teacher-dashboard")}
         userName={user?.displayName}
@@ -46,8 +50,8 @@ export default function LiveChallengeClassSelectView({
             <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 shadow-lg">
               <Zap className="text-white" size={32} />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Select a Class</h2>
-            <p className="text-white/90 font-medium">Choose which class to start the Live Challenge for</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">{t.selectClassHeading}</h2>
+            <p className="text-white/90 font-medium">{t.selectClassBlurb}</p>
           </motion.div>
         </div>
 
@@ -77,7 +81,7 @@ export default function LiveChallengeClassSelectView({
                   <div>
                     <h3 className="text-xl font-black text-on-surface">{cls.name}</h3>
                     <p className="text-on-surface-variant text-sm font-medium">
-                      Code: <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ml-1">{cls.code}</span>
+                      {t.codeLabel} <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ml-1">{cls.code}</span>
                     </p>
                   </div>
                 </div>
