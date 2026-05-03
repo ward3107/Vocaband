@@ -88,7 +88,12 @@ export default function Worksheet({
   const date = new Date().toLocaleDateString();
 
   return (
-    <div className={`vb-print-only ${pageBreakBefore ? 'vb-print-page-break-before' : ''}`} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
+    <div
+      className={`vb-print-only ${pageBreakBefore ? 'vb-print-page-break' : ''}`}
+      lang={translationLang}
+      dir={translationLang === 'en' ? 'ltr' : 'auto'}
+      style={{ pageBreakInside: 'avoid' }}
+    >
       {title && (
         <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
           <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>{title}</h1>
@@ -120,8 +125,8 @@ export default function Worksheet({
 
       {/* Compact Consolidated Answer Key - only on the last worksheet */}
       {includeAnswerKey && sheetIndex === totalSheets - 1 && (
-        <div className="vb-print-page-break">
-          <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>{t.answerKey}</h2>
+        <div className="vb-print-page-break" style={{ pageBreakBefore: totalSheets > 1 ? 'always' : 'auto' }}>
+          <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem', pageBreakAfter: 'avoid' }}>{t.answerKey}</h2>
 
           {allSelectedSheetTypes && allSelectedSheetTypes.length > 0 ? (
             <div>
@@ -139,7 +144,7 @@ export default function Worksheet({
                       </thead>
                       <tbody>
                         {words.map((w, idx) => (
-                          <tr key={w.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
                             <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
                             <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
                             <td style={{ padding: '0.3rem', color: '#333' }}>
@@ -172,7 +177,7 @@ export default function Worksheet({
               </thead>
               <tbody>
                 {words.map((w, idx) => (
-                  <tr key={w.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
                     <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
                     <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
                     <td style={{ padding: '0.3rem', color: '#333' }}>

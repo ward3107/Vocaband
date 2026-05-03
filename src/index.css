@@ -44,14 +44,46 @@
     background: white !important;
     color: black !important;
   }
+
+  /* Smart page breaks - avoid blank pages */
   .vb-print-page-break {
-    page-break-before: always;
+    page-break-after: always;
+    page-break-before: auto;
   }
   .vb-print-page-break-before {
     page-break-before: always;
   }
+
+  /* Keep worksheets together when possible */
+  .vb-print-only > div {
+    page-break-inside: avoid;
+  }
+
+  /* Prevent tables from splitting across pages */
+  .vb-print-only table {
+    page-break-inside: avoid;
+  }
+
+  /* Prevent orphan/widow lines */
+  .vb-print-only p,
+  .vb-print-only td {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Avoid page break right after headers */
+  .vb-print-only header {
+    page-break-after: avoid;
+  }
+
+  /* Avoid page break before answer key heading */
+  .vb-print-only h2 {
+    page-break-after: avoid;
+  }
+
   @page {
-    margin: 1.5cm;
+    margin: 1cm;
+    size: A4;
   }
 }
 
