@@ -15,6 +15,8 @@ import { motion } from "motion/react";
 import { X } from "lucide-react";
 import { TEACHER_DASHBOARD_THEMES } from "../../constants/teacherDashboardThemes";
 import { supabase, type AppUser } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface TeacherThemeMenuProps {
   user: AppUser | null;
@@ -23,6 +25,8 @@ interface TeacherThemeMenuProps {
 }
 
 export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThemeMenuProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   const currentId = user?.teacherDashboardTheme ?? 'default';
 
   const pick = async (themeId: string) => {
@@ -48,6 +52,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
       onClick={onClose}
     >
       <motion.div
+        dir={dir}
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.92, opacity: 0 }}
@@ -56,19 +61,19 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-black text-stone-900">Dashboard theme</h2>
+          <h2 className="text-2xl font-black text-stone-900">{t.themeMenuHeading}</h2>
           <button
             onClick={onClose}
             type="button"
             className="p-2 rounded-full hover:bg-stone-100 text-stone-500"
-            aria-label="Close theme picker"
+            aria-label={t.themeCloseAria}
           >
             <X size={20} />
           </button>
         </div>
 
         <p className="text-sm text-stone-600 mb-5">
-          Pick a look for your teacher dashboard.  Only you see this — students keep their own theme from the shop.
+          {t.themeMenuBlurb}
         </p>
 
         <div className="grid grid-cols-2 gap-3">

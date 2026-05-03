@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, GraduationCap } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../../constants/game";
 import type { ClassData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface EditClassModalProps {
   /** The class being edited; null = modal hidden. */
@@ -25,6 +27,8 @@ interface EditClassModalProps {
  * gestures / national flags) — see CLASS_AVATAR_GROUPS in constants.
  */
 export default function EditClassModal({ klass, onClose, onSave }: EditClassModalProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherModalsT[language];
   const [name, setName] = useState(klass?.name ?? "");
   const [avatar, setAvatar] = useState<string | null>(klass?.avatar ?? null);
   const [saving, setSaving] = useState(false);
@@ -57,21 +61,21 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
       {klass && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
           <motion.div
+            dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="mb-5">
-              <h2 className="text-2xl font-black text-stone-900">Edit class</h2>
+              <h2 className="text-2xl font-black text-stone-900">{t.editTitle}</h2>
               <p className="text-sm text-stone-500 mt-1">
-                Rename this class or pick a new avatar — students, assignments,
-                and progress all stay intact.  Class code stays the same.
+                {t.editBlurb}
               </p>
             </div>
 
             {/* Name */}
-            <label htmlFor="edit-class-name" className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Class name</label>
+            <label htmlFor="edit-class-name" className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">{t.classNameLabel}</label>
             <input
               autoFocus
               type="text"
@@ -80,17 +84,17 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Grade 8-B"
+              placeholder={t.classNameInputPlaceholder}
               maxLength={60}
               className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 focus:border-indigo-600 outline-none mb-1 font-bold text-stone-900"
             />
             <div className="flex justify-between mb-5">
-              <span className="text-[11px] text-stone-400">Class code: <span className="font-mono font-bold text-stone-600">{klass.code}</span> (cannot change)</span>
+              <span className="text-[11px] text-stone-400">{t.classCodeStatic(klass.code)}</span>
               <span className={`text-[11px] font-bold ${trimmed.length > 60 ? 'text-rose-600' : 'text-stone-400'}`}>{trimmed.length}/60</span>
             </div>
 
             {/* Avatar picker — grouped by theme so it stays scannable */}
-            <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Class avatar</label>
+            <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">{t.classAvatarLabel}</label>
 
             {/* "Default" tile — clears the selection back to the standard icon */}
             <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 mb-3">
@@ -98,7 +102,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 onClick={() => setAvatar(null)}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                title="Use default icon"
+                title={t.useDefaultIconTitle}
                 className={`aspect-square rounded-xl flex items-center justify-center transition-all border-2 ${
                   avatar === null
                     ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200'
@@ -152,7 +156,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 style={{ touchAction: 'manipulation' }}
                 className="flex-1 py-3 rounded-2xl font-bold text-stone-600 hover:bg-stone-50 transition-colors border-2 border-stone-200 disabled:opacity-50"
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 onClick={handleSave}
@@ -161,7 +165,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 style={{ touchAction: 'manipulation' }}
                 className="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t.saving : t.saveChanges}
               </button>
             </div>
           </motion.div>
