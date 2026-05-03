@@ -39,6 +39,10 @@ import AttendanceTable from "../components/classroom/AttendanceTable";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherClassroomT } from "../locales/teacher/classroom";
 import { teacherViewsT } from "../locales/teacher/views";
+import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
+import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
+import GuideTriggerButton from "../components/onboarding/GuideTriggerButton";
+import { teacherGuidesT } from "../locales/teacher/guides";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -93,6 +97,8 @@ export default function ClassroomView(props: ClassroomViewProps) {
   const { language, dir } = useLanguage();
   const t = teacherClassroomT[language];
   const tViews = teacherViewsT[language];
+  const guide = useFirstTimeGuide("classroom");
+  const guideStrings = teacherGuidesT[language].classroom;
 
   // Tab metadata depends on `t` (labels + blurbs) so it has to live
   // inside the component.  Static gradients + emojis don't translate.
@@ -228,21 +234,24 @@ export default function ClassroomView(props: ClassroomViewProps) {
           {subtitle}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={handleBack}
-        style={{
-          borderColor: 'var(--vb-border)',
-          color: 'var(--vb-text-secondary)',
-          backgroundColor: 'var(--vb-surface)',
-          touchAction: 'manipulation',
-          WebkitTapHighlightColor: 'transparent' as never,
-        }}
-        className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90 shrink-0"
-      >
-        <ArrowLeft size={16} />
-        <span className="hidden sm:inline">{tViews.backToDashboard}</span>
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <GuideTriggerButton onClick={guide.open} />
+        <button
+          type="button"
+          onClick={handleBack}
+          style={{
+            borderColor: 'var(--vb-border)',
+            color: 'var(--vb-text-secondary)',
+            backgroundColor: 'var(--vb-surface)',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent' as never,
+          }}
+          className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+        >
+          <ArrowLeft size={16} />
+          <span className="hidden sm:inline">{tViews.backToDashboard}</span>
+        </button>
+      </div>
     </div>
   );
 
@@ -516,6 +525,14 @@ export default function ClassroomView(props: ClassroomViewProps) {
             })}
           </div>
         </nav>
+
+        <FirstTimeGuide
+          isOpen={guide.isOpen}
+          onDone={guide.dismiss}
+          heading={guideStrings.heading}
+          subheading={guideStrings.subheading}
+          steps={guideStrings.steps}
+        />
       </div>
     );
   }
@@ -607,6 +624,14 @@ export default function ClassroomView(props: ClassroomViewProps) {
           </Suspense>
         </motion.div>
       </motion.div>
+
+      <FirstTimeGuide
+        isOpen={guide.isOpen}
+        onDone={guide.dismiss}
+        heading={guideStrings.heading}
+        subheading={guideStrings.subheading}
+        steps={guideStrings.steps}
+      />
     </div>
   );
 }

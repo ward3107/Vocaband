@@ -27,6 +27,10 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
 import WordPicker from '../setup/WordPicker';
+import { useFirstTimeGuide } from '../../hooks/useFirstTimeGuide';
+import FirstTimeGuide from '../onboarding/FirstTimeGuide';
+import GuideTriggerButton from '../onboarding/GuideTriggerButton';
+import { teacherGuidesT } from '../../locales/teacher/guides';
 
 export type ClassShowMode =
   | 'classic'
@@ -128,6 +132,8 @@ export default function ClassShowSetup({
 }: ClassShowSetupProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
+  const guide = useFirstTimeGuide('class-show');
+  const guideStrings = teacherGuidesT[language].classShow;
 
   const [mode, setMode] = useState<ClassShowMode>('classic');
 
@@ -188,19 +194,22 @@ export default function ClassShowSetup({
               {t.projectToClass}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              borderColor: 'var(--vb-border)',
-              color: 'var(--vb-text-secondary)',
-              backgroundColor: 'var(--vb-surface)',
-            }}
-            className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
-          >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">Back</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <GuideTriggerButton onClick={guide.open} />
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                borderColor: 'var(--vb-border)',
+                color: 'var(--vb-text-secondary)',
+                backgroundColor: 'var(--vb-surface)',
+              }}
+              className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+          </div>
         </div>
 
         {/* Word source picker */}
@@ -307,6 +316,14 @@ export default function ClassShowSetup({
           </button>
         </div>
       </motion.div>
+
+      <FirstTimeGuide
+        isOpen={guide.isOpen}
+        onDone={guide.dismiss}
+        heading={guideStrings.heading}
+        subheading={guideStrings.subheading}
+        steps={guideStrings.steps}
+      />
     </div>
   );
 }
