@@ -24,6 +24,7 @@ import { FlashcardsSheet } from './sheets/FlashcardsSheet';
 import { MatchingSheet } from './sheets/MatchingSheet';
 import { SentenceBuilderSheet } from './sheets/SentenceBuilderSheet';
 import type { Word } from '../../data/vocabulary';
+import { worksheetStrings } from '../../locales/student/worksheet';
 
 export type WorksheetSheetType =
   | 'word-list'
@@ -49,11 +50,41 @@ interface WorksheetProps {
   aiSentences?: Record<number, string>;
   /** Add page break before this worksheet (for multi-sheet printouts) */
   pageBreakBefore?: boolean;
+  /** Worksheet index for title display */
+  sheetIndex?: number;
+  /** Total number of sheets */
+  totalSheets?: number;
+  /** All selected sheet types for consolidated answer key */
+  allSelectedSheetTypes?: WorksheetSheetType[];
+}
+
+function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
+  if (lang === 'he') return w.hebrew;
+  if (lang === 'ar') return w.arabic;
+  return w.english;
+}
+
+function getSheetLabel(type: WorksheetSheetType, t: any): string {
+  const labelMap: Record<WorksheetSheetType, keyof typeof t> = {
+    'word-list': 'wordListLabel',
+    'scramble': 'scrambleLabel',
+    'fill-blank': 'fillBlankLabel',
+    'match-up': 'matchUpLabel',
+    'multiple-choice': 'multipleChoiceLabel',
+    'reverse-translation': 'reverseTranslationLabel',
+    'true-false': 'trueFalseLabel',
+    'flashcards': 'flashcardsLabel',
+    'matching': 'matchingLabel',
+    'sentence-builder': 'sentenceBuilderLabel',
+  };
+  return t[labelMap[type]] || type;
 }
 
 export default function Worksheet({
   sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences, pageBreakBefore = false,
+  sheetIndex = 0, totalSheets = 1, allSelectedSheetTypes,
 }: WorksheetProps) {
+  const t = worksheetStrings[translationLang === 'he' ? 'he' : translationLang === 'ar' ? 'ar' : 'en'];
   const date = new Date().toLocaleDateString();
 
   return (
@@ -62,11 +93,18 @@ export default function Worksheet({
         <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
           <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>{title}</h1>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '11pt' }}>
-            {className && <span><strong>Class:</strong> {className}</span>}
-            <span><strong>Date:</strong> {date}</span>
-            <span><strong>Name:</strong> ____________________</span>
+            {className && <span><strong>{t.classLabel}</strong> {className}</span>}
+            <span><strong>{t.dateLabel}</strong> {date}</span>
+            <span><strong>{t.nameLabel}</strong> ____________________</span>
           </div>
         </header>
+      )}
+
+      {/* Sheet type indicator when multiple sheets */}
+      {totalSheets > 1 && (
+        <div style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'inline-block', fontWeight: 700, fontSize: '11pt', color: '#555' }}>
+          {getSheetLabel(sheetType, t)}
+        </div>
       )}
 
       {sheetType === 'word-list' && <WordListSheet words={words} translationLang={translationLang} />}
@@ -80,22 +118,83 @@ export default function Worksheet({
       {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
       {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
 
-      {includeAnswerKey && sheetType !== 'word-list' && sheetType !== 'flashcards' && (
+      {/* Compact Consolidated Answer Key - only on the last worksheet */}
+      {includeAnswerKey && sheetIndex === totalSheets - 1 && (
         <div className="vb-print-page-break">
-          <h2 style={{ fontSize: '20pt', fontWeight: 900, marginBottom: '1rem' }}>Answer key</h2>
-          {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'fill-blank' && <FillBlankSheet words={words} answerKey aiSentences={aiSentences} />}
-          {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} answerKey />}
-          {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} answerKey aiSentences={aiSentences} />}
+          <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>{t.answerKey}</h2>
+
+          {allSelectedSheetTypes && allSelectedSheetTypes.length > 0 ? (
+            <div>
+              {allSelectedSheetTypes.map((answerType) => (
+                <div key={answerType} style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '13pt', fontWeight: 700, marginBottom: '0.5rem', color: '#555' }}>{getSheetLabel(answerType, t)}</h3>
+                  {answerType === 'word-list' || answerType === 'flashcards' ? null : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
+                          <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
+                          <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>{t.tableWord}</th>
+                          <th style={{ textAlign: 'left', padding: '0.3rem' }}>{t.tableAnswer}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {words.map((w, idx) => (
+                          <tr key={w.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
+                            <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
+                            <td style={{ padding: '0.3rem', color: '#333' }}>
+                                                              {answerType === 'scramble' && w.english}
+                              {answerType === 'multiple-choice' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerOptionA}</span>}
+                              {answerType === 'reverse-translation' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
+                              {answerType === 'true-false' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerTrueWithHint}</span>}
+                              {answerType === 'fill-blank' && (aiSentences?.[w.id] ? <span style={{ fontSize: '9pt' }}>"...{w.english}..."</span> : w.english)}
+                              {answerType === 'match-up' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
+                              {answerType === 'matching' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
+                              {answerType === 'sentence-builder' && (aiSentences?.[w.id] || <span>{t.answerCompleteSentence}</span>)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Fallback for single worksheet - compact format */
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
+                  <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
+                  <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>{t.tableWord}</th>
+                  <th style={{ textAlign: 'left', padding: '0.3rem' }}>{t.tableAnswer}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {words.map((w, idx) => (
+                  <tr key={w.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
+                    <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
+                    <td style={{ padding: '0.3rem', color: '#333' }}>
+                      {sheetType === 'scramble' && w.english}
+                      {sheetType === 'multiple-choice' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerOptionA}</span>}
+                      {sheetType === 'reverse-translation' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
+                      {sheetType === 'true-false' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerTrue}</span>}
+                      {sheetType === 'fill-blank' && (aiSentences?.[w.id] || w.english)}
+                      {sheetType === 'match-up' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
+                      {sheetType === 'matching' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
+                      {sheetType === 'sentence-builder' && (aiSentences?.[w.id] || t.answerCompleteSentence)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
       <footer style={{ marginTop: '2rem', fontSize: '9pt', color: '#666', textAlign: 'center' }}>
-        Vocaband · vocaband.com
+        {t.vocabandFooter}
       </footer>
     </div>
   );

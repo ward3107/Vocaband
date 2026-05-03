@@ -24,6 +24,7 @@ import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../core/supabase';
+import { worksheetStrings, type WorksheetStrings } from '../locales/student/worksheet';
 import Worksheet, { type WorksheetSheetType } from '../components/worksheet/Worksheet';
 import { WordListSheet } from '../components/worksheet/sheets/WordListSheet';
 import { ScrambleSheet } from '../components/worksheet/sheets/ScrambleSheet';
@@ -54,26 +55,30 @@ interface WorksheetViewProps {
   pickerWiring?: ClassShowWordPickerWiring;
 }
 
-// All worksheet types matching the game modes (sound-based modes excluded)
-const SHEET_TYPES: Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> = [
-  { id: 'word-list',           label: 'Word List',           description: 'Bilingual reference sheet',           icon: <BookOpen size={26} />,         gradient: 'from-emerald-300 to-teal-400', needsSentences: false },
-  { id: 'scramble',            label: 'Scramble',            description: 'Unscramble each word',               icon: <Shuffle size={26} />,          gradient: 'from-orange-300 to-red-400', needsSentences: false },
-  { id: 'fill-blank',          label: 'Fill in the Blank',   description: 'Sentences with missing words',      icon: <FileText size={26} />,          gradient: 'from-indigo-300 to-violet-400', needsSentences: true },
-  { id: 'match-up',            label: 'Match-up',            description: 'Connect word to translation',       icon: <Link2 size={26} />,            gradient: 'from-pink-300 to-rose-400', needsSentences: false },
-  { id: 'multiple-choice',     label: 'Multiple Choice',     description: 'Choose the correct answer',         icon: <Layers size={26} />,            gradient: 'from-indigo-300 to-violet-400', needsSentences: false },
-  { id: 'reverse-translation', label: 'Reverse Translation', description: 'Write English from translation',    icon: <ArrowLeftRight size={26} />,    gradient: 'from-amber-300 to-orange-400', needsSentences: false },
-  { id: 'true-false',          label: 'True/False',          description: 'Is the translation correct?',       icon: <CheckCircle size={26} />,       gradient: 'from-rose-300 to-pink-400', needsSentences: false },
-  { id: 'flashcards',          label: 'Flashcards',          description: 'Cut and fold study cards',           icon: <Sparkles size={26} />,          gradient: 'from-fuchsia-300 to-purple-400', needsSentences: false },
-  { id: 'matching',            label: 'Matching',            description: 'Draw lines to match pairs',         icon: <Grid3x3 size={26} />,           gradient: 'from-violet-300 to-purple-400', needsSentences: false },
-  { id: 'sentence-builder',    label: 'Sentence Builder',    description: 'Unscramble sentences',               icon: <Puzzle size={26} />,            gradient: 'from-teal-300 to-emerald-400', needsSentences: true },
-];
+// Build sheet types with translations (called inside component where t is available)
+function buildSheetTypes(t: WorksheetStrings): Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> {
+  return [
+    { id: 'word-list',           label: t.wordListLabel,           description: t.wordListDesc,           icon: <BookOpen size={26} />,         gradient: 'from-emerald-300 to-teal-400', needsSentences: false },
+    { id: 'scramble',            label: t.scrambleLabel,            description: t.scrambleDesc,               icon: <Shuffle size={26} />,          gradient: 'from-orange-300 to-red-400', needsSentences: false },
+    { id: 'fill-blank',          label: t.fillBlankLabel,   description: t.fillBlankDesc,      icon: <FileText size={26} />,          gradient: 'from-indigo-300 to-violet-400', needsSentences: true },
+    { id: 'match-up',            label: t.matchUpLabel,            description: t.matchUpDesc,       icon: <Link2 size={26} />,            gradient: 'from-pink-300 to-rose-400', needsSentences: false },
+    { id: 'multiple-choice',     label: t.multipleChoiceLabel,     description: t.multipleChoiceDesc,         icon: <Layers size={26} />,            gradient: 'from-indigo-300 to-violet-400', needsSentences: false },
+    { id: 'reverse-translation', label: t.reverseTranslationLabel, description: t.reverseTranslationDesc,    icon: <ArrowLeftRight size={26} />,    gradient: 'from-amber-300 to-orange-400', needsSentences: false },
+    { id: 'true-false',          label: t.trueFalseLabel,          description: t.trueFalseDesc,       icon: <CheckCircle size={26} />,       gradient: 'from-rose-300 to-pink-400', needsSentences: false },
+    { id: 'flashcards',          label: t.flashcardsLabel,          description: t.flashcardsDesc,           icon: <Sparkles size={26} />,          gradient: 'from-fuchsia-300 to-purple-400', needsSentences: false },
+    { id: 'matching',            label: t.matchingLabel,            description: t.matchingDesc,         icon: <Grid3x3 size={26} />,           gradient: 'from-violet-300 to-purple-400', needsSentences: false },
+    { id: 'sentence-builder',    label: t.sentenceBuilderLabel,    description: t.sentenceBuilderDesc,               icon: <Puzzle size={26} />,            gradient: 'from-teal-300 to-emerald-400', needsSentences: true },
+  ];
+}
 
 export default function WorksheetView({
   user, initialSources, initialSourceIndex = 0, initialTitle, className, onExit, pickerWiring,
 }: WorksheetViewProps) {
   useTeacherTheme(user?.teacherDashboardTheme);
   const { language } = useLanguage();
+  const t: WorksheetStrings = worksheetStrings[language];
   const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
+  const SHEET_TYPES = buildSheetTypes(t);
 
   const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
@@ -127,10 +132,10 @@ export default function WorksheetView({
   const effectiveSources = useMemo(() => {
     if (customWords.length === 0) return initialSources;
     return [
-      { label: 'My custom selection', description: 'Built with paste / OCR / packs', words: customWords },
+      { label: t.customSelection, description: t.builtWithPasteOcr, words: customWords },
       ...initialSources,
     ];
-  }, [customWords, initialSources]);
+  }, [customWords, initialSources, t]);
 
   const [sourceIdx, setSourceIdx] = useState(() =>
     Math.max(0, Math.min(initialSourceIndex, initialSources.length - 1)),
@@ -235,10 +240,10 @@ export default function WorksheetView({
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>
-              Print worksheet
+              {t.heading}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
-              Pick words, choose a sheet type, hit Print.
+              {t.subtitle}
             </p>
           </div>
           <button
@@ -252,14 +257,14 @@ export default function WorksheetView({
             className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
           >
             <ArrowLeft size={16} />
-            Back
+            {t.backButton}
           </button>
         </div>
 
         {/* Word source */}
         <div className="mb-6">
           <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            Word source
+            {t.wordSource}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {effectiveSources.map((s, idx) => {
@@ -283,7 +288,7 @@ export default function WorksheetView({
                   </div>
                   {s.description && (
                     <div className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
-                      {s.description} · {s.words.length} words
+                      {s.description} · {t.wordsCount(s.words.length)}
                     </div>
                   )}
                 </button>
@@ -316,8 +321,8 @@ export default function WorksheetView({
         {/* Sheet type picker */}
         <div className="mb-6">
           <h2 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center justify-between" style={{ color: 'var(--vb-text-muted)' }}>
-            <span>Sheet types</span>
-            <span className="font-normal">{selectedSheetTypes.size} selected</span>
+            <span>{t.sheetTypes}</span>
+            <span className="font-normal">{t.selectedCount(selectedSheetTypes.size)}</span>
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {SHEET_TYPES.map(s => {
@@ -360,14 +365,14 @@ export default function WorksheetView({
                 )}
                 <div>
                   <div className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
-                    AI Sentence Generation
+                    {t.aiSentenceGeneration}
                   </div>
                   <div className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
                     {isGeneratingSentences
-                      ? 'Generating sentences...'
+                      ? t.generatingSentences
                       : Object.keys(aiSentences).length > 0
-                      ? `${Object.keys(aiSentences).length} sentences generated`
-                      : 'Generate example sentences for your worksheet'}
+                      ? t.sentencesGenerated(Object.keys(aiSentences).length)
+                      : t.generateSentencesDesc}
                   </div>
                 </div>
               </div>
@@ -384,24 +389,24 @@ export default function WorksheetView({
                 {isGeneratingSentences ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    Generating...
+                    {t.generating}
                   </>
                 ) : Object.keys(aiSentences).length > 0 ? (
                   <>
                     <Sparkles size={16} />
-                    Regenerate
+                    {t.regenerate}
                   </>
                 ) : (
                   <>
                     <Sparkles size={16} />
-                    Generate Sentences
+                    {t.generateSentences}
                   </>
                 )}
               </button>
             </div>
             {!aiEnabled && (
               <div className="mt-2 text-xs" style={{ color: 'var(--vb-text-muted)' }}>
-                AI features are not available. Please contact support to enable.
+                {t.aiNotAvailable}
               </div>
             )}
           </div>
@@ -410,7 +415,7 @@ export default function WorksheetView({
         {/* Title */}
         <div className="mb-8">
           <label className="text-xs font-bold uppercase tracking-widest block mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-            Worksheet title
+            {t.worksheetTitle}
           </label>
           <input
             type="text"
@@ -436,7 +441,7 @@ export default function WorksheetView({
               style={{ accentColor: 'var(--vb-accent)' }}
             />
             <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
-              Include answer key (separate page)
+              {t.includeAnswerKey}
             </span>
           </label>
         )}
@@ -444,7 +449,7 @@ export default function WorksheetView({
         {/* Preview */}
         <div className="mb-8">
           <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            Preview
+            {t.preview}
           </h2>
           <div
             className="rounded-2xl border-2 p-4 sm:p-6 max-h-[480px] overflow-y-auto"
@@ -497,7 +502,7 @@ export default function WorksheetView({
             className="px-8 py-4 rounded-2xl font-black text-lg flex items-center gap-2 shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Printer size={20} />
-            Print
+            {t.print}
           </button>
         </div>
       </motion.div>
@@ -515,6 +520,8 @@ export default function WorksheetView({
           translationLang={translationLang}
           aiSentences={aiSentences}
           pageBreakBefore={idx > 0}
+          sheetIndex={idx}
+          totalSheets={selectedSheetTypes.size}
         />
       ))}
     </div>

@@ -1,7 +1,6 @@
 import React from "react";
 import { ArrowLeft, Printer, FileText, Scale, Users, Shield, AlertTriangle, Gavel, Mail } from "lucide-react";
 import PublicNav from "./PublicNav";
-import MobileNav from "./MobileNav";
 import FloatingButtons from "./FloatingButtons";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
@@ -300,7 +299,6 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
         </footer>
       </main>
 
-      <MobileNav currentPage="terms" onNavigate={onNavigate} />
       <FloatingButtons />
     </div>
   );

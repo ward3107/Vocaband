@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 interface TopAppBarProps {
   title: string;
@@ -94,8 +95,16 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {showScaleControl && <UiScaleControl />}
+        {/* Language switcher - compact variant for tight header space */}
+        <div className="hidden md:block">
+          <LanguageSwitcher variant="compact" className="scale-90 origin-right" />
+        </div>
+        {/* Mobile language dropdown - simpler button */}
+        <div className="md:hidden">
+          <LanguageSwitcher variant="compact" className="scale-85 origin-right" />
+        </div>
         {userName && (
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>

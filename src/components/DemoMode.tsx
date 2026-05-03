@@ -24,7 +24,6 @@ import {
   Repeat,
   Globe,
   GraduationCap,
-  Star,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
@@ -1285,7 +1284,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         >
                           🎮
                         </motion.span>
-                        <div className="text-left">
+                        <div className="text-left" dir={dir}>
                           <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                             {language === 'en' ? 'Try' : language === 'he' ? 'נסו' : 'جرب'}
                           </div>
@@ -1546,6 +1545,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
+                    dir={dir}
                   >
                     <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
                     <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
@@ -1570,7 +1570,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 );
               })()}
 
-              <div className="mb-3 text-left">
+              <div className="mb-3 text-left" dir={dir}>
                 <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-500/80">Then practise with</p>
               </div>
 
@@ -1678,7 +1678,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ duration: 0.35 }}
-                dir="ltr"
+                dir={dir}
                 className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
               >
                 <motion.div
