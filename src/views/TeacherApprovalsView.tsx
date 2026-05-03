@@ -3,6 +3,8 @@ import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap }
 import TopAppBar from "../components/TopAppBar";
 import { supabase } from "../core/supabase";
 import type { View } from "../core/views";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherViewsT } from "../locales/teacher/views";
 
 interface PendingStudent {
   id: string;
@@ -44,15 +46,17 @@ export default function TeacherApprovalsView({
   handleRejectStudent,
   showToast,
 }: TeacherApprovalsViewProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherViewsT[language];
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-20 sm:pt-24 pb-12 px-4 sm:px-6">
+    <div dir={dir} className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-20 sm:pt-24 pb-12 px-4 sm:px-6">
       {consentModal}
       {exitConfirmModal}
 
       {/* Top App Bar */}
       <TopAppBar
-        title="Student Approvals"
-        subtitle="Review and approve student signups"
+        title={t.approvalsTitle}
+        subtitle={t.approvalsSubtitle}
         userName={user?.displayName}
         userAvatar={user?.avatar}
         onLogout={() => supabase.auth.signOut()}
@@ -68,9 +72,9 @@ export default function TeacherApprovalsView({
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={28} className="text-emerald-500" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 mb-1">All caught up!</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 mb-1">{t.allCaughtUp}</h2>
             <p className="text-sm text-stone-500 mb-6">
-              No students are waiting for approval right now.
+              {t.allCaughtUpBlurb}
             </p>
             <button
               onClick={() => setView("teacher-dashboard")}
@@ -78,7 +82,7 @@ export default function TeacherApprovalsView({
               style={{ touchAction: 'manipulation' }}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
             >
-              Back to dashboard
+              {t.backToDashboard}
             </button>
           </div>
         ) : (
@@ -87,10 +91,10 @@ export default function TeacherApprovalsView({
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-1">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-                  Pending approvals
+                  {t.pendingApprovals}
                 </h1>
                 <p className="text-sm text-stone-500 mt-1">
-                  {pendingStudents.length} {pendingStudents.length === 1 ? 'student' : 'students'} waiting for you to approve or reject.
+                  {t.pendingSummary(pendingStudents.length)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -99,10 +103,10 @@ export default function TeacherApprovalsView({
                   type="button"
                   style={{ touchAction: 'manipulation' }}
                   className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-semibold text-sm text-stone-700 active:scale-95 transition-all"
-                  title="Refresh list"
+                  title={t.refreshTitle}
                 >
                   <RefreshCw size={15} />
-                  <span className="hidden sm:inline">Refresh</span>
+                  <span className="hidden sm:inline">{t.refresh}</span>
                 </button>
                 {pendingStudents.length > 1 && (
                   <button
@@ -116,15 +120,15 @@ export default function TeacherApprovalsView({
                         }
                       }
                       await loadPendingStudents();
-                      showToast(`Approved ${names.length} students!`, "success");
+                      showToast(t.approvedNToast(names.length), "success");
                     }}
                     type="button"
                     style={{ touchAction: 'manipulation' }}
                     className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
-                    title="Approve all pending students at once"
+                    title={t.approveAllTitle}
                   >
                     <Check size={15} />
-                    Approve all ({pendingStudents.length})
+                    {t.approveAllN(pendingStudents.length)}
                   </button>
                 )}
               </div>
@@ -156,7 +160,7 @@ export default function TeacherApprovalsView({
                           <span>·</span>
                           <span className="truncate">{student.className}</span>
                           <span>·</span>
-                          <span>Joined {new Date(student.joinedAt).toLocaleDateString()}</span>
+                          <span>{t.joinedOn(new Date(student.joinedAt).toLocaleDateString(language === 'he' ? 'he-IL' : language === 'ar' ? 'ar' : undefined))}</span>
                         </div>
                       </div>
                     </div>
@@ -168,20 +172,20 @@ export default function TeacherApprovalsView({
                         type="button"
                         style={{ touchAction: 'manipulation' }}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                        title="Reject this student — they'll need to sign up again"
+                        title={t.rejectTitle}
                       >
                         <X size={16} />
-                        <span className="hidden sm:inline">Reject</span>
+                        <span className="hidden sm:inline">{t.rejectShort}</span>
                       </button>
                       <button
                         onClick={() => handleApproveStudent(student.id, student.displayName)}
                         type="button"
                         style={{ touchAction: 'manipulation' }}
                         className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
-                        title="Approve this student so they can log in and start learning"
+                        title={t.approveTitle}
                       >
                         <Check size={16} />
-                        Approve
+                        {t.approve}
                       </button>
                     </div>
                   </div>
@@ -193,8 +197,7 @@ export default function TeacherApprovalsView({
             <div className="mt-6 p-4 bg-stone-50 border border-stone-200 rounded-xl flex gap-3">
               <Info size={16} className="text-stone-400 shrink-0 mt-0.5" />
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                After approval, students can log in immediately with their class code and start earning XP.
-                Their progress is saved automatically.
+                {t.approvalsHelper}
               </p>
             </div>
           </>
