@@ -259,8 +259,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </motion.div>
                 )}
 
-                {/* Cards Grid - Large Rectangular Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto relative">
+                {/* Cards Grid - Large Rectangular Cards.
+                    Mobile: single column, taller aspect, larger icon
+                    + text so the hero remains a full visual on phones
+                    instead of small thumbnail-sized cards.
+                    Desktop: two columns at 4:3. */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto relative">
                 {floatingCards.map((card, i) => (
                   <motion.div
                     key={i}
@@ -284,13 +288,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     }}
                     className="relative"
                   >
-                    {/* Large Rectangular Card */}
-                    <div className={`p-8 rounded-[2rem] bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[4/3]`}>
-                      <div className="h-full flex flex-col items-center justify-center gap-4">
-                        <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                    {/* Large Rectangular Card.
+                        Mobile: 5:4 aspect with bigger padding and icon
+                        so the card feels substantial on a phone screen
+                        (was 4:3 with tighter sizing — read as small).
+                        Tablet+: original 4:3 / p-8 / smaller icon. */}
+                    <div className={`p-10 sm:p-8 rounded-[2rem] bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
+                      <div className="h-full flex flex-col items-center justify-center gap-5 sm:gap-4">
+                        <div className="w-28 h-28 sm:w-24 sm:h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
                           {card.icon}
                         </div>
-                        <p className="text-white font-black text-2xl text-center leading-tight drop-shadow-lg">{card.name}</p>
+                        <p className="text-white font-black text-3xl sm:text-2xl text-center leading-tight drop-shadow-lg">{card.name}</p>
                       </div>
                     </div>
                     {/* Floating shadow */}
@@ -1401,7 +1409,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             </p>
           </motion.div>
 
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {/* Mobile shows ONE card per row (was two — too cramped at
+              5 subjects x 2-up).  Tablet steps up to 3, desktop fits
+              all 5 across.  Padding + emoji size also scale up on
+              mobile so each row reads as a real "feature card" not a
+              chip. */}
+          <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
             {[
               { name: t.vocaHistoryName, emoji: "📜", color: "from-amber-500 to-orange-600", tag: t.vocaHistoryTag },
               { name: t.vocaScienceName, emoji: "🔬", color: "from-emerald-500 to-teal-600", tag: t.vocaScienceTag },
@@ -1418,12 +1431,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 whileHover={{ y: -8, scale: 1.04 }}
                 className="relative group"
               >
-                <div className={`h-full p-5 rounded-3xl bg-gradient-to-br ${subject.color} text-white shadow-lg overflow-hidden`}>
+                <div className={`h-full p-7 sm:p-5 rounded-3xl bg-gradient-to-br ${subject.color} text-white shadow-lg overflow-hidden`}>
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div className="relative z-10 text-center">
-                    <div className="flex justify-center mb-2">
+                    <div className="flex justify-center mb-3 sm:mb-2">
                       <span
-                        className="text-5xl drop-shadow-lg"
+                        className="text-6xl sm:text-5xl drop-shadow-lg"
                         style={{
                           animation: 'bounce 2s ease-in-out infinite',
                           animationDelay: `${i * 0.1}s`
@@ -1432,8 +1445,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         {subject.emoji}
                       </span>
                     </div>
-                    <h3 className="text-base sm:text-lg font-black mb-1">{subject.name}</h3>
-                    <p className="text-[11px] sm:text-xs font-bold text-white/80 leading-tight">{subject.tag}</p>
+                    <h3 className="text-xl sm:text-lg font-black mb-1.5 sm:mb-1">{subject.name}</h3>
+                    <p className="text-sm sm:text-xs font-bold text-white/80 leading-tight">{subject.tag}</p>
                   </div>
                   {/* "Coming soon" pill so nobody mistakes this for a
                       shipped feature. */}
