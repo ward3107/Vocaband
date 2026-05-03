@@ -78,6 +78,16 @@ export default function WorksheetView({
   const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+  // Compact layout — sheets flow together on the same page when they
+  // fit, instead of forcing a new page before each one.  Default ON
+  // because teachers were getting 9-10 page PDFs for 2 words across
+  // 5 modes; the natural-flow path packs the same content into 1-3.
+  // Teachers who want the old "per-page" output can toggle this off.
+  const [compactLayout, setCompactLayout] = useState(true);
+  // Force the answer key onto its own page.  Default OFF so the key
+  // flows below the questions inline (compact); ON for teachers
+  // handing out paper worksheets without the answer page attached.
+  const [answerKeyOnNewPage, setAnswerKeyOnNewPage] = useState(false);
 
   // Toggle sheet type selection
   const toggleSheetType = (type: WorksheetSheetType) => {
@@ -426,20 +436,60 @@ export default function WorksheetView({
           />
         </div>
 
-        {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
-          <label className="flex items-center gap-3 mb-8 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeAnswerKey}
-              onChange={(e) => setIncludeAnswerKey(e.target.checked)}
-              className="w-5 h-5 accent-current"
-              style={{ accentColor: 'var(--vb-accent)' }}
-            />
-            <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
-              Include answer key (separate page)
-            </span>
-          </label>
-        )}
+        {/* Layout options — answer key + page packing.  Stacked
+            checkboxes; the second two only render when there's
+            actually multi-sheet output (or any answer-keyable sheet)
+            so first-time teachers aren't overwhelmed. */}
+        <div className="mb-8 space-y-2">
+          {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
+            <>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeAnswerKey}
+                  onChange={(e) => setIncludeAnswerKey(e.target.checked)}
+                  className="w-5 h-5 accent-current"
+                  style={{ accentColor: 'var(--vb-accent)' }}
+                />
+                <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
+                  Include answer key
+                </span>
+              </label>
+              {includeAnswerKey && (
+                <label className="flex items-center gap-3 cursor-pointer ml-8">
+                  <input
+                    type="checkbox"
+                    checked={answerKeyOnNewPage}
+                    onChange={(e) => setAnswerKeyOnNewPage(e.target.checked)}
+                    className="w-5 h-5 accent-current"
+                    style={{ accentColor: 'var(--vb-accent)' }}
+                  />
+                  <span className="text-sm" style={{ color: 'var(--vb-text-secondary)' }}>
+                    Put answer key on a separate page
+                  </span>
+                </label>
+              )}
+            </>
+          )}
+
+          {selectedSheetTypes.size > 1 && (
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!compactLayout}
+                onChange={(e) => setCompactLayout(!e.target.checked)}
+                className="w-5 h-5 accent-current"
+                style={{ accentColor: 'var(--vb-accent)' }}
+              />
+              <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>
+                Each sheet on its own page
+              </span>
+              <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                (off = pack tightly, default)
+              </span>
+            </label>
+          )}
+        </div>
 
         {/* Preview */}
         <div className="mb-8">
@@ -503,20 +553,31 @@ export default function WorksheetView({
       </motion.div>
 
       {/* The actual print-only worksheets — invisible on screen but
-          materialised so window.print() has something to lay out. */}
-      {Array.from(selectedSheetTypes).map((type, idx) => (
-        <Worksheet
-          key={`worksheet-${idx}-${type}`}
-          sheetType={type}
-          title={idx === 0 ? title : undefined}
-          words={wordsForSheet}
-          className={className ?? null}
-          includeAnswerKey={includeAnswerKey}
-          translationLang={translationLang}
-          aiSentences={aiSentences}
-          pageBreakBefore={idx > 0}
-        />
-      ))}
+          materialised so window.print() has something to lay out.
+          Default behaviour packs them tightly via natural page flow;
+          `forcePageBreak` (set when the teacher unchecks compact)
+          falls back to the older one-sheet-per-page output.  Each
+          subsequent sheet still gets a small section label so the
+          reader can tell where one exercise ends and the next begins. */}
+      {Array.from(selectedSheetTypes).map((type, idx) => {
+        const sheetInfo = SHEET_TYPES.find(s => s.id === type);
+        return (
+          <Worksheet
+            key={`worksheet-${idx}-${type}`}
+            sheetType={type}
+            title={idx === 0 ? title : undefined}
+            sectionLabel={selectedSheetTypes.size > 1 ? sheetInfo?.label : undefined}
+            showSeparator={idx > 0}
+            words={wordsForSheet}
+            className={className ?? null}
+            includeAnswerKey={includeAnswerKey}
+            translationLang={translationLang}
+            aiSentences={aiSentences}
+            forcePageBreak={!compactLayout && idx > 0}
+            answerKeyOnNewPage={answerKeyOnNewPage}
+          />
+        );
+      })}
     </div>
   );
 }
