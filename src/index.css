@@ -142,6 +142,15 @@
     color: black !important;
     margin: 0 !important;
     padding: 0 !important;
+    /* Force LTR for the entire printed worksheet regardless of the
+       teacher's UI language.  Worksheet structure (numbering, headers,
+       layout) is LTR; HE/AR translation cells handle their own text
+       direction via inline `dir="auto"`.  Without this override, the
+       inherited `dir="rtl"` from a Hebrew/Arabic UI flipped the whole
+       printed page and confused Chrome's print engine into inserting
+       blank pages between sheets. */
+    direction: ltr !important;
+    text-align: left !important;
     min-height: 0 !important;
   }
 

@@ -88,7 +88,7 @@ export default function WorksheetView({
   const t: WorksheetStrings = worksheetStrings[language];
   const guide = useFirstTimeGuide('worksheet');
   const guideStrings = teacherGuidesT[language].worksheet;
-  const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
+  const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'en';
   const SHEET_TYPES = buildSheetTypes(t);
 
   const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
@@ -597,7 +597,12 @@ export default function WorksheetView({
           `pageBreakBefore` to honor the "Each sheet on its own page"
           toggle. */}
       {typeof document !== 'undefined' && createPortal(
-        <div className="vb-print-stack">
+        // Force LTR on the print stack itself so Chrome's print engine
+        // doesn't inherit any rtl direction from the surrounding teacher
+        // dashboard (which sets dir=rtl when the UI language is HE/AR).
+        // Worksheet content is built LTR; mixed-direction translation
+        // text inside is handled per-cell via `dir="auto"` inline.
+        <div className="vb-print-stack" dir="ltr">
           {Array.from(selectedSheetTypes).map((type, idx) => (
             <Worksheet
               key={`worksheet-${idx}-${type}`}

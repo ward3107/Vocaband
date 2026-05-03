@@ -147,7 +147,17 @@ export default function Worksheet({
   const showDivider = !pageBreakBefore && sheetIndex > 0 && !title;
 
   return (
-    <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'rtl'}>
+    // Worksheet structure is ALWAYS left-to-right: numbering goes 1.. on
+    // the left, English headers + footer + sheet labels read LTR, and
+    // every layout (two-column word list, sentence-with-blank, match-up
+    // grid) is built LTR.  Individual translation cells use `dir="auto"`
+    // inline so Hebrew / Arabic text inside them still renders correctly.
+    // Forcing the outer container to `rtl` (which an earlier version did
+    // for non-English) flipped the whole printed page right-to-left and
+    // confused Chrome's print engine into inserting blank pages between
+    // sheets.  Locking it to `ltr` fixes both the visual flip and the
+    // empty-pages-in-PDF bug.
+    <div className={outerClass} lang={translationLang} dir="ltr">
       {showDivider && (
         <div style={{ marginTop: '2rem', marginBottom: '1.25rem', borderTop: '1.5px dashed #888' }} />
       )}
