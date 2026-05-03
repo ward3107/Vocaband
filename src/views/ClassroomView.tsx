@@ -18,12 +18,18 @@
  *
  * Legacy `initialTab` values ("pulse" / "mastery") still work — they
  * map onto the closest v2 tab when the flag is on.
+ *
+ * 2026-05 redesign: both layouts now sit inside the Worksheet/Class
+ * Show "card chrome" — a max-w-5xl rounded-3xl card with shadow-2xl
+ * over the surface-alt background. Tabs render as a pill row at the
+ * top of the card body, and the page-level TopAppBar has been replaced
+ * with the same in-card title + Back button used by Worksheet/Class
+ * Show. Mobile bottom-nav stays outside the card by design.
  */
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Activity, Brain } from "lucide-react";
-import TopAppBar from "../components/TopAppBar";
-import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
+import { Activity, ArrowLeft, Brain } from "lucide-react";
+import { type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import StatChip from "../components/classroom/StatChip";
 import ReportExportBar from "../components/classroom/ReportExportBar";
@@ -32,6 +38,7 @@ import TopStrugglingWords from "../components/classroom/TopStrugglingWords";
 import AttendanceTable from "../components/classroom/AttendanceTable";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherClassroomT } from "../locales/teacher/classroom";
+import { teacherViewsT } from "../locales/teacher/views";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -67,24 +74,6 @@ interface ClassroomViewProps {
   initialTab?: LegacyTab;
 }
 
-const LEGACY_TABS: Array<{ id: LegacyTab; label: string; icon: React.ReactNode; gradient: string }> = [
-  { id: "pulse",   label: "Pulse",   icon: <Activity size={16} />, gradient: "from-emerald-300 to-teal-400" },
-  { id: "mastery", label: "Mastery", icon: <Brain size={16} />,    gradient: "from-violet-300 to-fuchsia-400" },
-];
-
-const V2_TABS: Array<{
-  id: V2Tab;
-  emoji: string;
-  label: string;
-  gradient: string;
-  blurb: string;
-}> = [
-  { id: "today",       emoji: "🌡️", label: "Today",       gradient: "from-indigo-300 to-violet-400",  blurb: "Who needs my attention today?" },
-  { id: "students",    emoji: "👥", label: "Students",    gradient: "from-violet-300 to-fuchsia-400", blurb: "Deep-dive on one kid" },
-  { id: "assignments", emoji: "📝", label: "Assignments", gradient: "from-amber-300 to-orange-400",   blurb: "How did my class do on this?" },
-  { id: "reports",     emoji: "📊", label: "Reports",     gradient: "from-emerald-300 to-teal-400",   blurb: "Plan my next lesson" },
-];
-
 const legacyToV2: Record<LegacyTab, V2Tab> = {
   pulse: "today",
   mastery: "reports",
@@ -97,9 +86,13 @@ export default function ClassroomView(props: ClassroomViewProps) {
     expandedStudent, setExpandedStudent, setView, showToast,
     initialTab = "pulse",
   } = props;
+  // user is consumed by GradebookView/AnalyticsView via spread props below;
+  // referenced in JSX so no unused-var warning.
+  void user;
 
   const { language, dir } = useLanguage();
   const t = teacherClassroomT[language];
+  const tViews = teacherViewsT[language];
 
   // Tab metadata depends on `t` (labels + blurbs) so it has to live
   // inside the component.  Static gradients + emojis don't translate.
@@ -213,202 +206,219 @@ export default function ClassroomView(props: ClassroomViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classScores, classStudents, classCode]);
 
+  // Shared header chrome — title + Back button, identical to
+  // WorksheetView so the teacher feels at home moving between flows.
+  // Subtitle is tab-aware in v2 (active blurb), legacySubtitle for v1.
+  const handleBack = useCallback(() => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tab");
+      window.history.replaceState({ view: "teacher-dashboard" }, "", url.toString());
+    } catch { /* non-browser env */ }
+    setView("teacher-dashboard");
+  }, [setView]);
+
+  const cardHeader = (subtitle: string) => (
+    <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3">
+      <div className="min-w-0">
+        <h1 className="text-3xl sm:text-4xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>
+          {t.classroomTitle}
+        </h1>
+        <p className="text-sm sm:text-base truncate" style={{ color: 'var(--vb-text-secondary)' }}>
+          {subtitle}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={handleBack}
+        style={{
+          borderColor: 'var(--vb-border)',
+          color: 'var(--vb-text-secondary)',
+          backgroundColor: 'var(--vb-surface)',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent' as never,
+        }}
+        className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90 shrink-0"
+      >
+        <ArrowLeft size={16} />
+        <span className="hidden sm:inline">{tViews.backToDashboard}</span>
+      </button>
+    </div>
+  );
+
   if (CLASSROOM_V2) {
+    const activeTabMeta = V2_TABS.find(tab => tab.id === v2Tab);
     return (
       <div
         dir={dir}
-        className="min-h-screen pb-28 sm:pb-12"
+        className="min-h-screen p-4 sm:p-8 pb-28 sm:pb-12"
         style={{ backgroundColor: 'var(--vb-surface-alt)' }}
       >
-        <TopAppBar
-          title={t.classroomTitle}
-          subtitle={V2_TABS.find(tab => tab.id === v2Tab)?.blurb.toUpperCase() ?? ""}
-          showBack
-          onBack={() => {
-            // Strip the ?tab= param before leaving so browser back from
-            // the dashboard doesn't pop into a stale classroom URL.
-            try {
-              const url = new URL(window.location.href);
-              url.searchParams.delete("tab");
-              window.history.replaceState({ view: "teacher-dashboard" }, "", url.toString());
-            } catch { /* non-browser env */ }
-            setView("teacher-dashboard");
-          }}
-          userName={user?.displayName}
-          userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
-        />
-
-        {/* Desktop/tablet top nav — hidden on mobile where the bottom nav
-            takes over for thumb-reach.
-            mt-32 sm:mt-40 = clear the TopAppBar's full height on every
-            viewport (the previous mt-24/sm:mt-32 was a hair short and
-            the top of the active-tab pill peeked above the AppBar's
-            bottom edge — teacher screenshot showed that as a "cutoff").
-            top-32 sm:top-40 keeps the same clearance applied to the
-            sticky position so scrolled-content doesn't slide back
-            under the AppBar either. */}
-        <div
-          className="hidden sm:block sticky top-32 sm:top-40 z-30 backdrop-blur-md border-b mt-32 sm:mt-40"
-          style={{ borderColor: 'var(--vb-border)', backgroundColor: 'color-mix(in srgb, var(--vb-surface-alt) 92%, transparent)' }}
-        >
-          <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
-            {V2_TABS.map(tab => {
-              const active = v2Tab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setV2Tab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
-                    active
-                      ? `bg-gradient-to-br ${t.gradient} text-white shadow-md`
-                      : ""
-                  }`}
-                  style={{
-                    touchAction: "manipulation",
-                    WebkitTapHighlightColor: "transparent" as never,
-                    ...(active ? {} : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }),
-                  }}
-                  aria-pressed={active}
-                >
-                  <span aria-hidden>{tab.emoji}</span>
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Mobile spacer so content clears the TopAppBar.  Bumped to
-            h-32 to match the desktop top-nav offset. */}
-        <div className="sm:hidden h-32" />
-
         <motion.div
-          key={v2Tab}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
+          style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+          className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
         >
-          <Suspense fallback={
-            <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>Loading…</div>
-          }>
-            {v2Tab === "today" && (
-              <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-5">
-                {/* Stats row — three chips, dense.  ENROLLED was a fourth
-                    chip but it was the same number as the "active /
-                    enrolled" caption on the first chip, so teachers
-                    saw the roster size twice in a row.  Folded into
-                    the active-students caption instead. */}
-                <div className="grid grid-cols-3 gap-2">
-                  <StatChip
-                    value={`${todayStats.activeStudents}/${todayStats.rosterSize || "—"}`}
-                    label={t.statActiveLabel}
-                    tone="indigo"
-                    tooltip={t.statActiveTooltip}
-                  />
-                  <StatChip
-                    value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
-                    label={t.statAvgScoreLabel}
-                    score={todayStats.avgScore ?? undefined}
-                    tone={todayStats.avgScore == null ? "stone" : undefined}
-                    tooltip={t.statAvgScoreTooltip}
-                  />
-                  <StatChip
-                    value={todayStats.playsThisWeek}
-                    label={t.statPlaysLabel}
-                    tone="violet"
-                    tooltip={t.statPlaysTooltip}
-                  />
-                </div>
+          {cardHeader(activeTabMeta?.blurb ?? "")}
 
-                {/* The existing pulse cards + activity chart come from
-                    GradebookView, sliced via the sections prop. Class
-                    selection is controlled so switching tabs doesn't
-                    lose the teacher's pick.  Export button is hidden
-                    here (CSV + PDF now live exclusively on the Reports
-                    tab per teacher feedback). */}
-                <GradebookView
-                  user={user}
-                  allScores={allScores}
-                  teacherAssignments={teacherAssignments}
-                  classStudents={classStudents}
-                  classes={classes}
-                  expandedStudent={expandedStudent}
-                  setExpandedStudent={setExpandedStudent}
-                  setView={setView}
-                  showToast={showToast}
-                  embedded
-                  sections={["pulse", "activity"]}
-                  hideExport
-                  selectedClassCode={classCode}
-                  onSelectedClassChange={setClassCode}
-                />
-                {/* "Suggestions for today" action list was removed 2026-04-24 —
-                    teachers found it cluttered the Today view and its three
-                    inactive-student / most-missed-word / incomplete-assignment
-                    rules already surface via the Students / Reports / Assignments
-                    tabs directly. */}
-              </div>
-            )}
-            {v2Tab === "students" && (
-              <div className="space-y-4">
-                <GradebookView
-                  user={user}
-                  allScores={allScores}
-                  teacherAssignments={teacherAssignments}
-                  classStudents={classStudents}
-                  classes={classes}
-                  expandedStudent={expandedStudent}
-                  setExpandedStudent={setExpandedStudent}
-                  setView={setView}
-                  showToast={showToast}
-                  embedded
-                  sections={["students"]}
-                  hideExport
-                  useDrawerDrill
-                  selectedClassCode={classCode}
-                  onSelectedClassChange={setClassCode}
-                />
-                {/* "Who needs help" — moved here from Reports tab on
-                    2026-04-28.  Lives next to the per-student roster
-                    so the teacher's mental flow is "scan the table →
-                    tap a low-attendance student → open their profile". */}
-                <div className="px-4 sm:px-6 max-w-5xl mx-auto">
+          {/* Tab pills — sit inside the card just under the header.
+              Hidden on mobile where the fixed bottom-nav (outside the
+              card, below) takes over thumb-reach duty. */}
+          <div className="hidden sm:block mb-6">
+            <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
+              {t.classroomSectionsAria}
+            </h2>
+            <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
+              {V2_TABS.map(tab => {
+                const active = v2Tab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setV2Tab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
+                      active
+                        ? `bg-gradient-to-br ${tab.gradient} text-white shadow-md`
+                        : ""
+                    }`}
+                    style={{
+                      touchAction: "manipulation",
+                      WebkitTapHighlightColor: "transparent" as never,
+                      ...(active ? {} : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }),
+                    }}
+                    aria-pressed={active}
+                  >
+                    <span aria-hidden>{tab.emoji}</span>
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <motion.div
+            key={v2Tab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Suspense fallback={
+              <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>{t.loading}</div>
+            }>
+              {v2Tab === "today" && (
+                <div className="mt-6 space-y-5">
+                  {/* Stats row — three chips, dense.  ENROLLED was a fourth
+                      chip but it was the same number as the "active /
+                      enrolled" caption on the first chip, so teachers
+                      saw the roster size twice in a row.  Folded into
+                      the active-students caption instead. */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <StatChip
+                      value={`${todayStats.activeStudents}/${todayStats.rosterSize || "—"}`}
+                      label={t.statActiveLabel}
+                      tone="indigo"
+                      tooltip={t.statActiveTooltip}
+                    />
+                    <StatChip
+                      value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
+                      label={t.statAvgScoreLabel}
+                      score={todayStats.avgScore ?? undefined}
+                      tone={todayStats.avgScore == null ? "stone" : undefined}
+                      tooltip={t.statAvgScoreTooltip}
+                    />
+                    <StatChip
+                      value={todayStats.playsThisWeek}
+                      label={t.statPlaysLabel}
+                      tone="violet"
+                      tooltip={t.statPlaysTooltip}
+                    />
+                  </div>
+
+                  {/* The existing pulse cards + activity chart come from
+                      GradebookView, sliced via the sections prop. Class
+                      selection is controlled so switching tabs doesn't
+                      lose the teacher's pick.  Export button is hidden
+                      here (CSV + PDF now live exclusively on the Reports
+                      tab per teacher feedback). */}
+                  <GradebookView
+                    user={user}
+                    allScores={allScores}
+                    teacherAssignments={teacherAssignments}
+                    classStudents={classStudents}
+                    classes={classes}
+                    expandedStudent={expandedStudent}
+                    setExpandedStudent={setExpandedStudent}
+                    setView={setView}
+                    showToast={showToast}
+                    embedded
+                    sections={["pulse", "activity"]}
+                    hideExport
+                    selectedClassCode={classCode}
+                    onSelectedClassChange={setClassCode}
+                  />
+                  {/* "Suggestions for today" action list was removed 2026-04-24 —
+                      teachers found it cluttered the Today view and its three
+                      inactive-student / most-missed-word / incomplete-assignment
+                      rules already surface via the Students / Reports / Assignments
+                      tabs directly. */}
+                </div>
+              )}
+              {v2Tab === "students" && (
+                <div className="mt-6 space-y-4">
+                  <GradebookView
+                    user={user}
+                    allScores={allScores}
+                    teacherAssignments={teacherAssignments}
+                    classStudents={classStudents}
+                    classes={classes}
+                    expandedStudent={expandedStudent}
+                    setExpandedStudent={setExpandedStudent}
+                    setView={setView}
+                    showToast={showToast}
+                    embedded
+                    sections={["students"]}
+                    hideExport
+                    useDrawerDrill
+                    selectedClassCode={classCode}
+                    onSelectedClassChange={setClassCode}
+                  />
+                  {/* "Who needs help" — moved here from Reports tab on
+                      2026-04-28.  Lives next to the per-student roster
+                      so the teacher's mental flow is "scan the table →
+                      tap a low-attendance student → open their profile". */}
                   <AttendanceTable
                     classCode={classCode}
                     scores={allScores}
                     classStudents={classStudents}
                   />
                 </div>
-              </div>
-            )}
-            {v2Tab === "assignments" && (
-              <div className="space-y-4">
-                <GradebookView
-                  user={user}
-                  allScores={allScores}
-                  teacherAssignments={teacherAssignments}
-                  classStudents={classStudents}
-                  classes={classes}
-                  expandedStudent={expandedStudent}
-                  setExpandedStudent={setExpandedStudent}
-                  setView={setView}
-                  showToast={showToast}
-                  embedded
-                  sections={["assignments"]}
-                  hideExport
-                  useDrawerDrill
-                  selectedClassCode={classCode}
-                  onSelectedClassChange={setClassCode}
-                />
-                {/* "What to reteach" — moved here from Reports tab on
-                    2026-04-28.  The "Reteach these" button sends the
-                    top-10 word IDs into the Create-Assignment wizard
-                    pre-filled, closing the loop teachers couldn't
-                    close before (they'd see the words on Reports and
-                    have to recreate them by hand on Assignments). */}
-                <div className="px-4 sm:px-6 max-w-5xl mx-auto">
+              )}
+              {v2Tab === "assignments" && (
+                <div className="mt-6 space-y-4">
+                  <GradebookView
+                    user={user}
+                    allScores={allScores}
+                    teacherAssignments={teacherAssignments}
+                    classStudents={classStudents}
+                    classes={classes}
+                    expandedStudent={expandedStudent}
+                    setExpandedStudent={setExpandedStudent}
+                    setView={setView}
+                    showToast={showToast}
+                    embedded
+                    sections={["assignments"]}
+                    hideExport
+                    useDrawerDrill
+                    selectedClassCode={classCode}
+                    onSelectedClassChange={setClassCode}
+                  />
+                  {/* "What to reteach" — moved here from Reports tab on
+                      2026-04-28.  The "Reteach these" button sends the
+                      top-10 word IDs into the Create-Assignment wizard
+                      pre-filled, closing the loop teachers couldn't
+                      close before (they'd see the words on Reports and
+                      have to recreate them by hand on Assignments). */}
                   <TopStrugglingWords
                     classCode={classCode}
                     scores={allScores}
@@ -426,56 +436,56 @@ export default function ClassroomView(props: ClassroomViewProps) {
                     }}
                   />
                 </div>
-              </div>
-            )}
-            {v2Tab === "reports" && (
-              <div className="pt-4 px-4 sm:px-6 max-w-5xl mx-auto space-y-4">
-                {/* Exports live on the Reports tab only — teachers asked
-                    us to stop showing them on Today / Students because
-                    they hunted for "where's the download" and found it
-                    in three different places.  CSV + PDF both formatted
-                    with the same underlying rows so the numbers line up. */}
-                <ReportExportBar
-                  classCode={classCode}
-                  classes={classes}
-                  scores={allScores}
-                  assignments={teacherAssignments}
-                  classStudents={classStudents}
-                  showToast={showToast}
-                />
-                {/* Real Reports content — per-week trend, top struggling
-                    words, plays/day histogram, attendance.  Sits between
-                    the export bar (where teachers grab data) and the
-                    legacy AnalyticsView (which keeps "what to reteach"
-                    + the CSV-ish per-mode mastery view). */}
-                <ReportsDashboard
-                  classCode={classCode}
-                  scores={allScores}
-                  assignments={teacherAssignments}
-                  classStudents={classStudents}
-                />
-                <AnalyticsView
-                  user={user}
-                  classes={classes}
-                  allScores={allScores}
-                  teacherAssignments={teacherAssignments}
-                  setView={setView}
-                  selectedClass={selectedClass}
-                  setSelectedClass={setSelectedClass}
-                  selectedWords={selectedWords}
-                  setSelectedWords={setSelectedWords}
-                  embedded
-                />
-              </div>
-            )}
-          </Suspense>
+              )}
+              {v2Tab === "reports" && (
+                <div className="mt-6 space-y-4">
+                  {/* Exports live on the Reports tab only — teachers asked
+                      us to stop showing them on Today / Students because
+                      they hunted for "where's the download" and found it
+                      in three different places.  CSV + PDF both formatted
+                      with the same underlying rows so the numbers line up. */}
+                  <ReportExportBar
+                    classCode={classCode}
+                    classes={classes}
+                    scores={allScores}
+                    assignments={teacherAssignments}
+                    classStudents={classStudents}
+                    showToast={showToast}
+                  />
+                  {/* Real Reports content — per-week trend, top struggling
+                      words, plays/day histogram, attendance.  Sits between
+                      the export bar (where teachers grab data) and the
+                      legacy AnalyticsView (which keeps "what to reteach"
+                      + the CSV-ish per-mode mastery view). */}
+                  <ReportsDashboard
+                    classCode={classCode}
+                    scores={allScores}
+                    assignments={teacherAssignments}
+                    classStudents={classStudents}
+                  />
+                  <AnalyticsView
+                    user={user}
+                    classes={classes}
+                    allScores={allScores}
+                    teacherAssignments={teacherAssignments}
+                    setView={setView}
+                    selectedClass={selectedClass}
+                    setSelectedClass={setSelectedClass}
+                    selectedWords={selectedWords}
+                    setSelectedWords={setSelectedWords}
+                    embedded
+                  />
+                </div>
+              )}
+            </Suspense>
+          </motion.div>
         </motion.div>
 
         {/* Mobile-only bottom nav — fixed, four emoji tabs, finger-sized
-            targets (≥44 px). Replaces the desktop pill-bar on narrow
-            screens. */}
+            targets (≥44 px). Lives outside the card by design so the
+            thumb can reach without scrolling. */}
         <nav
-          aria-label="Classroom sections"
+          aria-label={t.classroomSectionsAria}
           className="sm:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t pb-[env(safe-area-inset-bottom)]"
           style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 95%, transparent)', borderColor: 'var(--vb-border)' }}
         >
@@ -486,7 +496,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setV2Tab(t.id)}
+                  onClick={() => setV2Tab(tab.id)}
                   className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
                   style={{
                     color: active ? 'var(--vb-text-primary)' : 'var(--vb-text-muted)',
@@ -514,87 +524,88 @@ export default function ClassroomView(props: ClassroomViewProps) {
   return (
     <div
       dir={dir}
-      className="min-h-screen pb-12"
+      className="min-h-screen p-4 sm:p-8 pb-12"
       style={{ backgroundColor: 'var(--vb-surface-alt)' }}
     >
-      <TopAppBar
-        title={t.classroomTitle}
-        subtitle={t.legacySubtitle}
-        showBack
-        onBack={() => setView("teacher-dashboard")}
-        userName={user?.displayName}
-        userAvatar={user?.avatar}
-        onLogout={() => supabase.auth.signOut()}
-      />
-
-      <div
-        className="sticky top-[72px] sm:top-[80px] z-30 backdrop-blur-md border-b mt-24 sm:mt-32"
-        style={{ borderColor: 'var(--vb-border)', backgroundColor: 'color-mix(in srgb, var(--vb-surface-alt) 92%, transparent)' }}
-      >
-        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex gap-2 overflow-x-auto">
-          {LEGACY_TABS.map(tab => {
-            const active = legacyTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setLegacyTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
-                  active ? `bg-gradient-to-br ${t.gradient} text-white shadow-md` : ""
-                }`}
-                style={{
-                  touchAction: "manipulation",
-                  WebkitTapHighlightColor: "transparent" as never,
-                  ...(active ? {} : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }),
-                }}
-                aria-pressed={active}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <motion.div
-        key={legacyTab}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
+        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+        className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
       >
-        <Suspense fallback={
-          <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>Loading…</div>
-        }>
-          {legacyTab === "mastery" ? (
-            <AnalyticsView
-              user={user}
-              classes={classes}
-              allScores={allScores}
-              teacherAssignments={teacherAssignments}
-              setView={setView}
-              selectedClass={selectedClass}
-              setSelectedClass={setSelectedClass}
-              selectedWords={selectedWords}
-              setSelectedWords={setSelectedWords}
-              embedded
-            />
-          ) : (
-            <GradebookView
-              user={user}
-              allScores={allScores}
-              teacherAssignments={teacherAssignments}
-              classStudents={classStudents}
-              classes={classes}
-              expandedStudent={expandedStudent}
-              setExpandedStudent={setExpandedStudent}
-              setView={setView}
-              showToast={showToast}
-              embedded
-              focus="pulse"
-            />
-          )}
-        </Suspense>
+        {cardHeader(t.legacySubtitle)}
+
+        {/* Tab pills inside the card. */}
+        <div className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
+            {t.classroomSectionsAria}
+          </h2>
+          <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
+            {LEGACY_TABS.map(tab => {
+              const active = legacyTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setLegacyTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all ${
+                    active ? `bg-gradient-to-br ${tab.gradient} text-white shadow-md` : ""
+                  }`}
+                  style={{
+                    touchAction: "manipulation",
+                    WebkitTapHighlightColor: "transparent" as never,
+                    ...(active ? {} : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }),
+                  }}
+                  aria-pressed={active}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <motion.div
+          key={legacyTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="mt-6"
+        >
+          <Suspense fallback={
+            <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>{t.loading}</div>
+          }>
+            {legacyTab === "mastery" ? (
+              <AnalyticsView
+                user={user}
+                classes={classes}
+                allScores={allScores}
+                teacherAssignments={teacherAssignments}
+                setView={setView}
+                selectedClass={selectedClass}
+                setSelectedClass={setSelectedClass}
+                selectedWords={selectedWords}
+                setSelectedWords={setSelectedWords}
+                embedded
+              />
+            ) : (
+              <GradebookView
+                user={user}
+                allScores={allScores}
+                teacherAssignments={teacherAssignments}
+                classStudents={classStudents}
+                classes={classes}
+                expandedStudent={expandedStudent}
+                setExpandedStudent={setExpandedStudent}
+                setView={setView}
+                showToast={showToast}
+                embedded
+                focus="pulse"
+              />
+            )}
+          </Suspense>
+        </motion.div>
       </motion.div>
     </div>
   );
