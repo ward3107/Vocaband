@@ -1,7 +1,7 @@
 import { LogOut, Globe } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "../../core/supabase";
-import { useLanguage, languageNames, languageFlags, type Language } from "../../hooks/useLanguage";
+import { useLanguage, languageNames, type Language } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 /**
@@ -34,8 +34,7 @@ export default function StudentTopBar() {
           className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-stone-500 hover:text-stone-900 hover:bg-white/60 rounded-xl text-xs sm:text-sm font-semibold transition-all"
         >
           <Globe size={14} />
-          <span className="hidden sm:inline">{languageFlags[language]} {languageNames[language]}</span>
-          <span className="sm:hidden">{languageFlags[language]}</span>
+          <span className="hidden sm:inline">{languageNames[language]}</span>
         </button>
         {langOpen && (
           <>
@@ -51,7 +50,7 @@ export default function StudentTopBar() {
                     language === lng ? 'bg-indigo-50 text-indigo-700' : 'text-stone-700'
                   }`}
                 >
-                  <span>{languageFlags[lng]}</span>
+                  <Globe size={14} aria-hidden />
                   <span>{languageNames[lng]}</span>
                 </button>
               ))}
