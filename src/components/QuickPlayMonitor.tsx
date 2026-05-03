@@ -248,7 +248,15 @@ export default function QuickPlayMonitor({
     }
     return origin;
   };
-  const qrUrl = `${getNetworkOrigin()}/quick-play?session=${session.sessionCode}`;
+  // Use the root path with `?session=` — App.tsx:128 reads the param
+  // from `location.search` regardless of pathname, but Cloudflare
+  // Workers Assets `auto-trailing-slash` 301-redirects `/quick-play`
+  // to `/quick-play/` and the redirect step can drop the query string
+  // before the SPA gets to read it (same bug pattern as the
+  // /poster.html → /poster Service-Worker cache issue noted in
+  // CLAUDE.md).  Root path matches what the WhatsApp / Copy-link
+  // buttons in QuickPlaySetupView already use.
+  const qrUrl = `${getNetworkOrigin()}/?session=${session.sessionCode}`;
 
   // ─── Join sound effect ────────────────────────────────────────────────────
   // Detect newly-joined students by name diff against the previous render
