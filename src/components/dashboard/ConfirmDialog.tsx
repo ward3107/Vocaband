@@ -36,7 +36,7 @@ export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: Confi
             <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
-            <h3 className="text-2xl font-black mb-3 text-[var(--vb-text-primary)]">Confirm Action</h3>
+            <h3 className="text-2xl font-black mb-3 text-[var(--vb-text-primary)]">{t.confirmActionTitle}</h3>
             <p className="text-[var(--vb-text-secondary)] mb-8">{confirmDialog.message}</p>
             <div className="flex gap-3">
               <button

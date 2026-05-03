@@ -29,10 +29,10 @@ export default function CreateClassModal({
             className="rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              Create New Class
+              {t.createTitle}
             </h2>
             <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              Enter a name for your class (e.g. Grade 8-B)
+              {t.createBlurb}
             </p>
             <input
               autoFocus
