@@ -403,11 +403,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         subtitle={isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle}
         showBack
         onBack={handleBack}
-        // Single-click escape from any step.  Back is still
-        // step-by-step; Cancel always returns to the dashboard so
-        // a teacher on step 3 doesn't have to tap Back three times.
-        onExit={onBack}
-        exitLabel="Cancel"
         userName={user?.displayName}
         userAvatar={user?.avatar}
         onLogout={onLogout}
@@ -561,6 +556,29 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
             />
           )}
         </AnimatePresence>
+
+        {/* Bottom-of-page Cancel — single-click escape from any
+            step.  Back is still step-by-step; Cancel always returns
+            to the dashboard so a teacher on step 3 doesn't have to
+            tap Back three times.  Lives at the bottom (not the
+            TopAppBar) per teacher feedback "the cancel button
+            should be at the bottom not at the top of the pages".
+            Margin-top pushes it below the in-step sticky action
+            bars; safe-area padding keeps it above the iOS home
+            indicator. */}
+        <div
+          className="mt-10 mb-6 flex justify-center"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-sm font-bold text-stone-500 hover:text-stone-700 underline-offset-4 hover:underline transition-colors"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+          >
+            {t.cancel}
+          </button>
+        </div>
       </div>
     </div>
   );
