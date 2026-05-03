@@ -19,6 +19,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Info } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 
 export type StatTone = "emerald" | "amber" | "rose" | "indigo" | "violet" | "stone";
 
@@ -76,6 +78,8 @@ function toneFromScore(s: number): StatTone {
 export default function StatChip({
   value, label, caption, tooltip, tone, score, onClick, icon,
 }: StatChipProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   const [tipOpen, setTipOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const resolvedTone: StatTone = tone ?? (score != null ? toneFromScore(score) : "indigo");
@@ -124,7 +128,7 @@ export default function StatChip({
             }}
             onMouseEnter={() => setTipOpen(true)}
             onMouseLeave={() => setTipOpen(false)}
-            aria-label={`What "${label}" means`}
+            aria-label={t.whatLabelMeansAria(label)}
             aria-expanded={tipOpen}
             className="w-3.5 h-3.5 shrink-0 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
@@ -145,7 +149,7 @@ export default function StatChip({
           onClick={(e) => e.stopPropagation()}
         >
           <span className="font-bold uppercase tracking-wider text-stone-300 text-[10px] block mb-1">
-            What this means
+            {t.whatThisMeans}
           </span>
           {tooltip}
         </div>

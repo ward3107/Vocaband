@@ -1,6 +1,8 @@
 import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
 interface TeacherClassesSectionProps {
   classes: ClassData[];
@@ -35,18 +37,20 @@ export default function TeacherClassesSection({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   isDark = false,
 }: TeacherClassesSectionProps) {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
   return (
     <div data-tour="my-classes">
       <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
         <div>
           <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${isDark ? 'text-stone-50' : 'text-stone-900'}`}>
             <Users size={18} className={isDark ? 'text-stone-300' : 'text-stone-400'} />
-            My classes
+            {t.myClassesHeading}
           </h2>
           <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-stone-300' : 'text-stone-500'}`}>
             {classes.length === 0
-              ? "You haven't created any classes yet."
-              : `${classes.length} class${classes.length === 1 ? '' : 'es'}`}
+              ? t.noClassesYetSubtitle
+              : t.classCount(classes.length)}
           </p>
         </div>
         <button
@@ -55,11 +59,11 @@ export default function TeacherClassesSection({
           type="button"
           style={{ touchAction: 'manipulation' }}
           className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
-          aria-label="Create new class"
+          aria-label={t.newClassAria}
         >
           <Plus size={16} />
-          <span className="hidden sm:inline">New class</span>
-          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">{t.newClassFull}</span>
+          <span className="sm:hidden">{t.newClassShort}</span>
         </button>
       </div>
 
@@ -68,8 +72,8 @@ export default function TeacherClassesSection({
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Users size={24} className="text-stone-400" />
           </div>
-          <p className="text-stone-700 font-semibold mb-1">No classes yet</p>
-          <p className="text-sm text-stone-500 mb-6">Create your first class to get a shareable join code.</p>
+          <p className="text-stone-700 font-semibold mb-1">{t.emptyTitle}</p>
+          <p className="text-sm text-stone-500 mb-6">{t.emptySubtitle}</p>
           <button
             onClick={onNewClass}
             type="button"
@@ -77,7 +81,7 @@ export default function TeacherClassesSection({
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
           >
             <Plus size={16} />
-            Create first class
+            {t.emptyCta}
           </button>
         </div>
       ) : (

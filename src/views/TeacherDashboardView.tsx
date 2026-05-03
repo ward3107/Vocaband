@@ -19,6 +19,8 @@ import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { SavedTask } from "../hooks/useSavedTasks";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -115,11 +117,13 @@ export default function TeacherDashboardView({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
 }: TeacherDashboardViewProps) {
+  const { language, dir } = useLanguage();
+  const t = teacherDashboardT[language];
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const firstName = (user?.displayName || "").split(" ")[0] || "Teacher";
+  const greeting = hour < 12 ? t.greetingMorning : hour < 18 ? t.greetingAfternoon : t.greetingEvening;
+  const firstName = (user?.displayName || "").split(" ")[0] || t.defaultFirstName;
 
   // Per-teacher dashboard theme.  Resolved from the stored id with a
   // safety fallback so an unknown / removed theme doesn't break render.
@@ -145,7 +149,7 @@ export default function TeacherDashboardView({
 
   return (
     <>
-      <div className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
+      <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
         {consentModal}
         {exitConfirmModal}
 
@@ -176,10 +180,10 @@ export default function TeacherDashboardView({
               {greeting}
             </p>
             <h1 className={`text-2xl sm:text-4xl font-bold tracking-tight ${dashboardTheme.dark ? 'text-stone-50' : 'text-stone-900'}`}>
-              {firstName}, here's your classroom.
+              {t.heroLine(firstName)}
             </h1>
             <p className={`text-sm sm:text-base mt-2 ${dashboardTheme.dark ? 'text-stone-300' : 'text-stone-500'}`}>
-              Manage your classes, review student progress, and create new assignments in a few taps.
+              {t.heroSubtitle}
             </p>
           </div>
 
@@ -280,8 +284,8 @@ export default function TeacherDashboardView({
       <button
         type="button"
         onClick={() => setShowThemeMenu(true)}
-        title="Change dashboard theme"
-        aria-label="Change dashboard theme"
+        title={t.changeThemeTitle}
+        aria-label={t.changeThemeTitle}
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full bg-white text-stone-700 ring-1 ring-stone-300 shadow-lg flex items-center justify-center hover:bg-stone-50 hover:scale-105 active:scale-95 transition-transform"
       >

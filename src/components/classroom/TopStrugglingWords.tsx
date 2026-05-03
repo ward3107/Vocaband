@@ -18,6 +18,8 @@ import { useMemo } from "react";
 import { AlertTriangle, Plus } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
 import { ALL_WORDS } from "../../data/vocabulary";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 
 interface ClassStudent {
   name: string;
@@ -42,6 +44,8 @@ export interface TopStrugglingWordsProps {
 export default function TopStrugglingWords({
   classCode, scores, classStudents, onCreateReteachAssignment,
 }: TopStrugglingWordsProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   const classScores = useMemo(
     () => (classCode ? scores.filter(s => s.classCode === classCode) : scores),
     [scores, classCode],
@@ -82,9 +86,9 @@ export default function TopStrugglingWords({
       <header className="flex items-start gap-2 mb-3">
         <div className="mt-0.5"><AlertTriangle size={18} className="text-rose-600" /></div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-stone-900">What to reteach</h3>
+          <h3 className="font-bold text-stone-900">{t.whatToReteach}</h3>
           <p className="text-xs text-stone-500 mt-0.5">
-            Most-missed words across the class. Coverage % shows how widespread the confusion is.
+            {t.reteachSubtitle}
           </p>
         </div>
         {/* One-click reteach: takes the current top-10 word IDs and
@@ -100,25 +104,25 @@ export default function TopStrugglingWords({
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
             <Plus size={14} />
-            Reteach these
+            {t.reteachCta}
           </button>
         )}
       </header>
 
       {rows.length === 0 ? (
         <div className="text-center text-sm text-stone-500 py-6">
-          No mistakes recorded yet — your class is doing great.
+          {t.reteachEmpty}
         </div>
       ) : (
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-stone-500 border-b border-stone-200">
-                <th className="px-3 py-2 font-bold">Word</th>
-                <th className="px-3 py-2 font-bold">Hebrew</th>
-                <th className="px-3 py-2 font-bold">Arabic</th>
-                <th className="px-3 py-2 font-bold text-right">Misses</th>
-                <th className="px-3 py-2 font-bold text-right">% of class</th>
+                <th className="px-3 py-2 font-bold">{t.reteachColWord}</th>
+                <th className="px-3 py-2 font-bold">{t.reteachColHebrew}</th>
+                <th className="px-3 py-2 font-bold">{t.reteachColArabic}</th>
+                <th className="px-3 py-2 font-bold text-right">{t.reteachColMisses}</th>
+                <th className="px-3 py-2 font-bold text-right">{t.reteachColPctOfClass}</th>
               </tr>
             </thead>
             <tbody>

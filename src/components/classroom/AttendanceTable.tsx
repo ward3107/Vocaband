@@ -16,6 +16,8 @@
 import { useMemo } from "react";
 import { CalendarCheck } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 
 interface ClassStudent {
   name: string;
@@ -48,6 +50,8 @@ function shortDay(d: Date): string {
 export default function AttendanceTable({
   classCode, scores, classStudents,
 }: AttendanceTableProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   const classScores = useMemo(
     () => (classCode ? scores.filter(s => s.classCode === classCode) : scores),
     [scores, classCode],
@@ -83,25 +87,25 @@ export default function AttendanceTable({
       <header className="flex items-start gap-2 mb-3">
         <div className="mt-0.5"><CalendarCheck size={18} className="text-sky-600" /></div>
         <div>
-          <h3 className="font-bold text-stone-900">Who needs help</h3>
+          <h3 className="font-bold text-stone-900">{t.whoNeedsHelp}</h3>
           <p className="text-xs text-stone-500 mt-0.5">
-            Last 14 days · ✓ = played at least once that day · students at the bottom are drifting.
+            {t.attendanceSubtitle}
           </p>
         </div>
       </header>
 
       {attendance.rows.length === 0 ? (
-        <div className="text-center text-sm text-stone-500 py-6">Add a class to see attendance.</div>
+        <div className="text-center text-sm text-stone-500 py-6">{t.attendanceEmpty}</div>
       ) : (
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="text-xs">
             <thead>
               <tr>
-                <th className="px-3 py-2 text-left font-bold text-stone-700 sticky left-0 bg-white">Student</th>
+                <th className="px-3 py-2 text-left font-bold text-stone-700 sticky left-0 bg-white">{t.attendanceColStudent}</th>
                 {attendance.days.map(d => (
                   <th key={d.iso} className="px-2 py-2 text-stone-500 font-semibold whitespace-nowrap">{d.label}</th>
                 ))}
-                <th className="px-3 py-2 text-right font-bold text-stone-700 whitespace-nowrap">Days</th>
+                <th className="px-3 py-2 text-right font-bold text-stone-700 whitespace-nowrap">{t.attendanceColDays}</th>
               </tr>
             </thead>
             <tbody>

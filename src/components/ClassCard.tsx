@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
+import { useLanguage } from "../hooks/useLanguage";
+import { teacherDashboardT } from "../locales/teacher/dashboard";
 
 interface Assignment {
   id: string;
@@ -60,6 +62,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
   openDropdownClassId,
   onToggleDropdown,
 }) => {
+  const { language } = useLanguage();
+  const t = teacherDashboardT[language];
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const showAssignments = openDropdownClassId === code;
@@ -187,7 +191,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 type="button"
                 style={{ touchAction: 'manipulation' }}
                 className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'bg-gradient-to-br from-stone-50 to-white border border-stone-200' : 'bg-gradient-to-br from-indigo-500 to-violet-600'}`}
-                title="Change avatar"
+                title={t.changeAvatarTitle}
               >
                 {avatar ? (
                   <span className="text-2xl leading-none">{avatar}</span>
@@ -200,7 +204,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               {avatarPickerOpen && onAvatarChange && (
                 <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl border border-stone-200 shadow-2xl z-30 p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Pick avatar</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">{t.pickAvatarHeading}</span>
                     <button
                       onClick={() => setAvatarPickerOpen(false)}
                       type="button"
@@ -228,7 +232,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
                       <GraduationCap size={18} className="text-stone-600" />
                     </span>
-                    <span className="text-sm font-bold">Default</span>
+                    <span className="text-sm font-bold">{t.defaultAvatarLabel}</span>
                   </button>
 
                   {/* Emoji grid - scrollable */}
@@ -283,11 +287,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onKeyDown={handleNameKeyDown}
                     onBlur={handleNameSave}
                     maxLength={60}
-                    placeholder="Class name"
+                    placeholder={t.classNamePlaceholder}
                     className="flex-1 text-lg sm:text-xl font-bold text-stone-900 leading-tight bg-stone-50 border-2 border-indigo-400 rounded-lg px-2 py-1 outline-none"
                     disabled={savingName}
                   />
-                  {savingName && <span className="text-xs text-stone-400">Saving...</span>}
+                  {savingName && <span className="text-xs text-stone-400">{t.saving}</span>}
                 </div>
               ) : (
                 <button
@@ -295,7 +299,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   type="button"
                   style={{ touchAction: 'manipulation' }}
                   className="group text-left w-full"
-                  title={onNameChange ? "Click to edit name" : undefined}
+                  title={onNameChange ? t.clickToEditNameTitle : undefined}
                 >
                   <h3 className="text-lg sm:text-xl font-bold text-stone-900 leading-tight truncate group-hover:text-indigo-600 transition-colors flex items-center gap-2">
                     <span className="truncate">{name}</span>
@@ -312,7 +316,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   type="button"
                   style={{ touchAction: 'manipulation' }}
                   className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider text-stone-600 hover:text-indigo-600 transition-colors"
-                  title="Copy class code"
+                  title={t.copyClassCodeTitle}
                 >
                   <span>{code}</span>
                   {copiedCode === code ? (
@@ -337,7 +341,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               type="button"
               style={{ touchAction: 'manipulation' }}
               className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
-              aria-label="Class options"
+              aria-label={t.classOptionsAria}
             >
               <MoreVertical size={18} />
             </button>
@@ -349,7 +353,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
                 >
                   <MessageCircle size={14} className="text-emerald-600" />
-                  Share via WhatsApp
+                  {t.shareWhatsApp}
                 </button>
                 <button
                   onClick={() => { onCopyCode(); setMenuOpen(false); }}
@@ -357,7 +361,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
                 >
                   <Copy size={14} className="text-stone-500" />
-                  Copy class code
+                  {t.copyClassCode}
                 </button>
                 <button
                   onClick={() => {
@@ -383,7 +387,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 text-left"
                 >
                   <Printer size={14} className="text-indigo-600" />
-                  Print classroom poster
+                  {t.printPoster}
                 </button>
                 <div className="h-px bg-stone-100 my-1" />
                 <button
@@ -392,7 +396,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 text-left"
                 >
                   <Trash2 size={14} />
-                  Delete class
+                  {t.deleteClass}
                 </button>
               </div>
             )}
@@ -408,7 +412,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
             className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-all"
           >
             <Zap size={15} />
-            New assignment
+            {t.newAssignment}
           </button>
           {assignments.length > 0 && (
             <button
@@ -444,7 +448,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-stone-900 text-sm truncate">{assignment.title}</p>
                 <p className="text-xs text-stone-500 mt-0.5">
-                  {assignment.wordIds.length} word{assignment.wordIds.length === 1 ? '' : 's'} · {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : 'No deadline'}
+                  {t.wordCount(assignment.wordIds.length)} · {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : t.noDeadline}
                 </p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
@@ -454,7 +458,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     type="button"
                     className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
                   >
-                    Edit
+                    {t.editAssignment}
                   </button>
                 )}
                 {onDuplicateAssignment && (
@@ -463,7 +467,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     type="button"
                     className="px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
                   >
-                    Duplicate
+                    {t.duplicateAssignment}
                   </button>
                 )}
                 {onDeleteAssignment && (
@@ -471,7 +475,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onClick={() => onDeleteAssignment(assignment)}
                     type="button"
                     className="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    aria-label="Delete assignment"
+                    aria-label={t.deleteAssignmentAria}
                   >
                     <Trash2 size={13} />
                   </button>

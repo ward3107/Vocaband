@@ -17,6 +17,8 @@
  */
 import { useMemo } from "react";
 import { TrendingUp, BarChart3 } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherClassroomT } from "../../locales/teacher/classroom";
 import {
   ResponsiveContainer,
   LineChart,
@@ -76,6 +78,8 @@ export default function ReportsDashboard({
   assignments,
   classStudents,
 }: ReportsDashboardProps) {
+  const { language } = useLanguage();
+  const t = teacherClassroomT[language];
   // Filter scores to the selected class (or all if no class chosen)
   const classScores = useMemo(
     () => (classCode ? scores.filter(s => s.classCode === classCode) : scores),
@@ -135,17 +139,17 @@ export default function ReportsDashboard({
     <div className="space-y-6">
       {/* Header chip row — quick gut feel before charts. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiChip label="Plays (all-time)" value={totalPlays} />
-        <KpiChip label="Students on roster" value={classStudents.length} />
-        <KpiChip label="Assignments" value={totalAssignments} />
-        <KpiChip label="Plays this week" value={weeklyTrend[weeklyTrend.length - 1]?.plays ?? 0} />
+        <KpiChip label={t.kpiPlaysAllTime} value={totalPlays} />
+        <KpiChip label={t.kpiStudentsRoster} value={classStudents.length} />
+        <KpiChip label={t.kpiAssignments} value={totalAssignments} />
+        <KpiChip label={t.kpiPlaysThisWeek} value={weeklyTrend[weeklyTrend.length - 1]?.plays ?? 0} />
       </div>
 
       {/* ── Per-week trend ─────────────────────────────────────────── */}
       <Section
         icon={<TrendingUp size={18} className="text-emerald-600" />}
-        title="Class average — last 8 weeks"
-        sub="Average score across every play, week by week. Gaps mean no plays that week."
+        title={t.trendTitle}
+        sub={t.trendSubtitle}
       >
         <div className="h-56 sm:h-64">
           <ResponsiveContainer>
@@ -155,7 +159,7 @@ export default function ReportsDashboard({
               <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="#78716c" unit="%" />
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e4", fontSize: 12 }}
-                formatter={((value: unknown) => [value == null ? "—" : `${value}%`, "Avg score"]) as never}
+                formatter={((value: unknown) => [value == null ? "—" : `${value}%`, t.trendAxisAvgScore]) as never}
               />
               <Line type="monotone" dataKey="avg" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} connectNulls={false} />
             </LineChart>
@@ -166,8 +170,8 @@ export default function ReportsDashboard({
       {/* ── Plays per day histogram ─────────────────────────────────── */}
       <Section
         icon={<BarChart3 size={18} className="text-indigo-600" />}
-        title="Plays per day — last 30 days"
-        sub="One bar per day.  Spikes around assignment due dates; flat days = nobody played."
+        title={t.histogramTitle}
+        sub={t.histogramSubtitle}
       >
         <div className="h-56 sm:h-64">
           <ResponsiveContainer>
@@ -177,7 +181,7 @@ export default function ReportsDashboard({
               <YAxis tick={{ fontSize: 11 }} stroke="#78716c" allowDecimals={false} />
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e4", fontSize: 12 }}
-                formatter={((value: unknown) => [value, "Plays"]) as never}
+                formatter={((value: unknown) => [value, t.histogramAxisPlays]) as never}
               />
               <Bar dataKey="plays" fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>
