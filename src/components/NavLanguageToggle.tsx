@@ -89,7 +89,7 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
             universal "language" affordance the icon provides.  Globe +
             current code keeps the language unambiguous in any locale. */}
         <Globe size={16} className="relative z-10" strokeWidth={2.5} aria-hidden />
-        <span className="relative z-10">{currentLabel}</span>
+        <span className="relative z-10">{currentLang.label}</span>
 
         {/* Dropdown arrow */}
         <motion.svg
