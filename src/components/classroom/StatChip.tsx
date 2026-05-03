@@ -152,10 +152,11 @@ export default function StatChip({
       {tooltip && tipOpen && (
         <div
           role="tooltip"
-          className="absolute z-20 top-full left-0 right-0 mt-2 p-3 bg-stone-900 text-white text-xs rounded-xl shadow-2xl leading-snug"
+          className="absolute z-20 top-full left-0 right-0 mt-2 p-3 text-xs rounded-xl shadow-2xl leading-snug"
+          style={{ backgroundColor: 'var(--vb-text-primary)', color: 'var(--vb-surface)' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="font-bold uppercase tracking-wider text-stone-300 text-[10px] block mb-1">
+          <span className="font-bold uppercase tracking-wider text-[10px] block mb-1 opacity-70">
             {t.whatThisMeans}
           </span>
           {tooltip}
@@ -172,8 +173,12 @@ export default function StatChip({
         <button
           type="button"
           onClick={onClick}
-          className={`relative w-full text-left bg-white rounded-xl px-3 py-2 border transition-colors ${RING_TONE[resolvedTone]}`}
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent" as never,
+            backgroundColor: 'var(--vb-surface)',
+          }}
+          className={`relative w-full text-left rounded-xl px-3 py-2 border transition-colors ${RING_TONE[resolvedTone]}`}
         >
           {body}
         </button>
@@ -183,7 +188,8 @@ export default function StatChip({
   return (
     <div
       ref={ref}
-      className={`relative bg-white rounded-xl px-3 py-2 border ${RING_TONE[resolvedTone]}`}
+      style={{ backgroundColor: 'var(--vb-surface)' }}
+      className={`relative rounded-xl px-3 py-2 border ${RING_TONE[resolvedTone]}`}
     >
       {body}
     </div>

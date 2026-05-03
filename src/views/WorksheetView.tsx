@@ -21,7 +21,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle, MessageCircle, Link } from 'lucide-react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../core/supabase';
@@ -37,6 +37,8 @@ import { TrueFalseSheet } from '../components/worksheet/sheets/TrueFalseSheet';
 import { FlashcardsSheet } from '../components/worksheet/sheets/FlashcardsSheet';
 import { MatchingSheet } from '../components/worksheet/sheets/MatchingSheet';
 import { SentenceBuilderSheet } from '../components/worksheet/sheets/SentenceBuilderSheet';
+import { IdiomSheet } from '../components/worksheet/sheets/IdiomSheet';
+import { WordChainsSheet } from '../components/worksheet/sheets/WordChainsSheet';
 import WordPicker from '../components/setup/WordPicker';
 import type { ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import type { Word } from '../data/vocabulary';
@@ -69,6 +71,8 @@ function buildSheetTypes(t: WorksheetStrings): Array<{ id: WorksheetSheetType; l
     { id: 'flashcards',          label: t.flashcardsLabel,          description: t.flashcardsDesc,           icon: <Sparkles size={26} />,          gradient: 'from-fuchsia-300 to-purple-400', needsSentences: false },
     { id: 'matching',            label: t.matchingLabel,            description: t.matchingDesc,         icon: <Grid3x3 size={26} />,           gradient: 'from-violet-300 to-purple-400', needsSentences: false },
     { id: 'sentence-builder',    label: t.sentenceBuilderLabel,    description: t.sentenceBuilderDesc,               icon: <Puzzle size={26} />,            gradient: 'from-teal-300 to-emerald-400', needsSentences: true },
+    { id: 'idiom',               label: t.idiomLabel,              description: t.idiomDesc,                  icon: <MessageCircle size={26} />,     gradient: 'from-sky-300 to-cyan-400', needsSentences: false },
+    { id: 'word-chains',         label: t.wordChainsLabel,         description: t.wordChainsDesc,             icon: <Link size={26} />,              gradient: 'from-amber-300 to-orange-400', needsSentences: false },
   ];
 }
 
@@ -543,6 +547,8 @@ export default function WorksheetView({
                   {type === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
                   {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
                   {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
+                  {type === 'idiom' && <IdiomSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'word-chains' && <WordChainsSheet words={wordsForSheet} translationLang={translationLang} />}
                 </div>
               );
             })}

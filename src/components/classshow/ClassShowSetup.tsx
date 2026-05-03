@@ -21,6 +21,7 @@ import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
   Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2, ArrowLeft,
+  MessageCircle, Zap, Link,
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
@@ -39,7 +40,10 @@ export type ClassShowMode =
   | 'letter-sounds'
   | 'matching'
   | 'memory-flip'
-  | 'sentence-builder';
+  | 'sentence-builder'
+  | 'idiom'
+  | 'speed-round'
+  | 'word-chains';
 
 export interface ClassShowWordSource {
   /** Stable label shown in the picker. */
@@ -106,6 +110,9 @@ const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: R
   { id: 'matching',         nameKey: 'modeMatching',        icon: <Link2 size={26} />,          gradient: 'from-pink-300 to-rose-400' },
   { id: 'memory-flip',      nameKey: 'modeMemoryFlip',      icon: <Grid3x3 size={26} />,        gradient: 'from-violet-300 to-purple-400' },
   { id: 'sentence-builder', nameKey: 'modeSentenceBuilder', icon: <Puzzle size={26} />,         gradient: 'from-teal-300 to-emerald-400' },
+  { id: 'idiom',            nameKey: 'modeIdiom',           icon: <MessageCircle size={26} />,  gradient: 'from-sky-300 to-cyan-400' },
+  { id: 'speed-round',      nameKey: 'modeSpeedRound',      icon: <Zap size={26} />,            gradient: 'from-red-300 to-rose-400' },
+  { id: 'word-chains',      nameKey: 'modeWordChains',      icon: <Link size={26} />,           gradient: 'from-amber-300 to-orange-400' },
 ];
 
 export default function ClassShowSetup({

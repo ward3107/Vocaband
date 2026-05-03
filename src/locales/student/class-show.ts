@@ -38,6 +38,9 @@ export interface ClassShowStrings {
   modeMatching: string;
   modeMemoryFlip: string;
   modeSentenceBuilder: string;
+  modeIdiom: string;
+  modeSpeedRound: string;
+  modeWordChains: string;
   // Adapted-mode hints
   spellingHint: string;
   scrambleHint: string;
@@ -91,6 +94,9 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeMatching: 'Matching',
     modeMemoryFlip: 'Memory Flip',
     modeSentenceBuilder: 'Sentence Builder',
+    modeIdiom: 'Idioms',
+    modeSpeedRound: 'Speed Round',
+    modeWordChains: 'Word Chains',
     spellingHint: 'Type each letter as the class calls it out',
     scrambleHint: 'Class shouts the answer · tap reveal',
     matchingHint: 'Tap an English word, then its translation',
@@ -138,6 +144,9 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeMatching: 'התאמה',
     modeMemoryFlip: 'משחק זיכרון',
     modeSentenceBuilder: 'בנה משפט',
+    modeIdiom: 'ביטויים',
+    modeSpeedRound: 'סבב מהיר',
+    modeWordChains: 'שרשרת מילים',
     spellingHint: 'הקלד כל אות שהכיתה קוראת',
     scrambleHint: 'הכיתה אומרת את התשובה · לחץ הצג',
     matchingHint: 'לחץ מילה באנגלית ואז את התרגום',
@@ -185,6 +194,9 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeMatching: 'مطابقة',
     modeMemoryFlip: 'لعبة الذاكرة',
     modeSentenceBuilder: 'ابن جملة',
+    modeIdiom: 'التعابير',
+    modeSpeedRound: 'جولة سريعة',
+    modeWordChains: 'سلاسل الكلمات',
     spellingHint: 'اكتب كل حرف كما يقوله الصف',
     scrambleHint: 'الصف يقول الإجابة · اضغط اكشف',
     matchingHint: 'اضغط كلمة إنجليزية ثم ترجمتها',

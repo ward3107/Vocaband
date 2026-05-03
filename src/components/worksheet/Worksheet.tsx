@@ -42,6 +42,8 @@ import { TrueFalseSheet } from './sheets/TrueFalseSheet';
 import { FlashcardsSheet } from './sheets/FlashcardsSheet';
 import { MatchingSheet } from './sheets/MatchingSheet';
 import { SentenceBuilderSheet } from './sheets/SentenceBuilderSheet';
+import { IdiomSheet } from './sheets/IdiomSheet';
+import { WordChainsSheet } from './sheets/WordChainsSheet';
 import type { Word } from '../../data/vocabulary';
 import { worksheetStrings } from '../../locales/student/worksheet';
 
@@ -55,7 +57,9 @@ export type WorksheetSheetType =
   | 'true-false'
   | 'flashcards'
   | 'matching'
-  | 'sentence-builder';
+  | 'sentence-builder'
+  | 'idiom'
+  | 'word-chains';
 
 interface WorksheetProps {
   sheetType: WorksheetSheetType;
@@ -112,6 +116,8 @@ function getSheetLabel(type: WorksheetSheetType, t: any): string {
     'flashcards': 'flashcardsLabel',
     'matching': 'matchingLabel',
     'sentence-builder': 'sentenceBuilderLabel',
+    'idiom': 'idiomLabel',
+    'word-chains': 'wordChainsLabel',
   };
   return t[labelMap[type]] || type;
 }
@@ -141,7 +147,7 @@ export default function Worksheet({
   const showDivider = !pageBreakBefore && sheetIndex > 0 && !title;
 
   return (
-    <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'auto'}>
+    <div className={outerClass} lang={translationLang} dir={translationLang === 'en' ? 'ltr' : 'rtl'}>
       {showDivider && (
         <div style={{ marginTop: '2rem', marginBottom: '1.25rem', borderTop: '1.5px dashed #888' }} />
       )}
@@ -174,6 +180,8 @@ export default function Worksheet({
       {sheetType === 'flashcards' && <FlashcardsSheet words={words} translationLang={translationLang} />}
       {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
       {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
+      {sheetType === 'idiom' && <IdiomSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'word-chains' && <WordChainsSheet words={words} translationLang={translationLang} />}
 
       {/* Compact Consolidated Answer Key - only on the last worksheet.
           Defaults to flowing inline below the questions; when
@@ -191,7 +199,7 @@ export default function Worksheet({
               {allSelectedSheetTypes.map((answerType) => (
                 <div key={answerType} style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '13pt', fontWeight: 700, marginBottom: '0.5rem', color: '#555' }}>{getSheetLabel(answerType, t)}</h3>
-                  {answerType === 'word-list' || answerType === 'flashcards' ? null : (
+                  {answerType === 'word-list' || answerType === 'flashcards' || answerType === 'word-chains' ? null : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
@@ -214,6 +222,7 @@ export default function Worksheet({
                               {answerType === 'match-up' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
                               {answerType === 'matching' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
                               {answerType === 'sentence-builder' && (aiSentences?.[w.id] || <span>{t.answerCompleteSentence}</span>)}
+                              {answerType === 'idiom' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
                             </td>
                           </tr>
                         ))}
@@ -247,6 +256,7 @@ export default function Worksheet({
                       {sheetType === 'match-up' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
                       {sheetType === 'matching' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
                       {sheetType === 'sentence-builder' && (aiSentences?.[w.id] || t.answerCompleteSentence)}
+                      {sheetType === 'idiom' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
                     </td>
                   </tr>
                 ))}

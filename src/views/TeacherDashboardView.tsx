@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Palette, Tv2 } from "lucide-react";
 import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
@@ -164,8 +164,21 @@ export default function TeacherDashboardView({
   // product (≥1 class + ≥1 assignment created), hasn't rated yet, and
   // hasn't dismissed within the last 7 days.  A one-shot per session;
   // dismissed/rated state is the parent's source of truth.
+  //
+  // Delay (`ratingDelayElapsed`) — added 2026-05 in response to teacher
+  // feedback "the rating modal pops up immediately when I land on the
+  // dashboard and contrasts other things at the start".  We wait 45
+  // seconds after dashboard mount before allowing the prompt to render,
+  // so the teacher has time to settle in (look at classes, kick off an
+  // action) before being interrupted.
   const [ratingDismissedThisSession, setRatingDismissedThisSession] = useState(false);
+  const [ratingDelayElapsed, setRatingDelayElapsed] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setRatingDelayElapsed(true), 45_000);
+    return () => window.clearTimeout(id);
+  }, []);
   const showRatingPrompt = useMemo(() => {
+    if (!ratingDelayElapsed) return false;
     if (ratingDismissedThisSession) return false;
     if (user?.firstRating != null) return false;
     if (user?.ratingDismissedAt) {
@@ -174,7 +187,7 @@ export default function TeacherDashboardView({
       if (Date.now() - dismissedMs < sevenDaysMs) return false;
     }
     return classes.length >= 1 && teacherAssignments.length >= 1;
-  }, [user?.firstRating, user?.ratingDismissedAt, classes.length, teacherAssignments.length, ratingDismissedThisSession]);
+  }, [user?.firstRating, user?.ratingDismissedAt, classes.length, teacherAssignments.length, ratingDismissedThisSession, ratingDelayElapsed]);
 
   return (
     <>

@@ -11,10 +11,11 @@
  */
 
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import {
   Sparkles, X, Loader2, Check, ChevronDown, ChevronUp,
-  RefreshCw, BookOpen, HelpCircle, FileText, Plus, Minus
+  RefreshCw, BookOpen, HelpCircle, FileText, Plus, Minus, Printer
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -542,8 +543,22 @@ export default function AiLessonBuilder({
                 </div>
               </div>
 
-              {/* Save/Close Buttons */}
+              {/* Action buttons.  "Print / Save as PDF" is the
+                  primary path — fires window.print() which uses the
+                  print stack portaled below.  "Save to assignment"
+                  is secondary and only renders when a parent supplies
+                  onSaveLesson (assignment wizard does, Worksheet
+                  flow does not). */}
               <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  type="button"
+                  className="flex-1 py-3 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 transition-all flex items-center justify-center gap-2"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                >
+                  <Printer className="w-5 h-5" />
+                  Print / Save as PDF
+                </button>
                 {onSaveLesson && (
                   <button
                     onClick={() => {
@@ -551,11 +566,11 @@ export default function AiLessonBuilder({
                       handleClose();
                     }}
                     type="button"
-                    className="flex-1 py-3 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 transition-all"
+                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                   >
-                    <Check className="w-5 h-5 inline mr-2" />
-                    Save & Print
+                    <Check className="w-5 h-5" />
+                    Save
                   </button>
                 )}
                 <button
@@ -571,6 +586,78 @@ export default function AiLessonBuilder({
           )}
         </div>
       </motion.div>
+
+      {/* Print stack — portaled to document.body so window.print()
+          renders ONLY the lesson + question key.  Hidden on screen
+          via the @media screen rules in index.css.  Same pattern as
+          WorksheetView — portal-to-body + the global print CSS hides
+          everything except `body > .vb-print-stack` during print. */}
+      {generatedLesson && typeof document !== 'undefined' && createPortal(
+        <div className="vb-print-stack">
+          <div className="vb-print-only vb-print-avoid-break" style={{ padding: '0', color: '#000' }}>
+            <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
+              <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>
+                Reading Comprehension Lesson
+              </h1>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '11pt' }}>
+                <span><strong>Date:</strong> {new Date().toLocaleDateString()}</span>
+                <span><strong>Name:</strong> ____________________</span>
+              </div>
+            </header>
+
+            {/* Reading text */}
+            <section style={{ marginBottom: '2rem' }}>
+              <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem' }}>
+                Reading
+              </h2>
+              <p style={{ fontSize: '12pt', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                {generatedLesson.text}
+              </p>
+            </section>
+
+            {/* Questions */}
+            <section className="vb-print-avoid-break" style={{ marginBottom: '2rem' }}>
+              <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem' }}>
+                Questions ({generatedLesson.questions.length})
+              </h2>
+              <ol style={{ paddingLeft: '1.5rem', fontSize: '12pt', lineHeight: 1.8 }}>
+                {generatedLesson.questions.map((q, i) => (
+                  <li key={i} style={{ marginBottom: '0.85rem' }}>
+                    <div>{q.question}</div>
+                    {q.options && q.options.length > 0 && (
+                      <ol type="A" style={{ marginTop: '0.4rem', paddingLeft: '1.5rem' }}>
+                        {q.options.map((opt, j) => (
+                          <li key={j} style={{ marginBottom: '0.2rem' }}>{opt}</li>
+                        ))}
+                      </ol>
+                    )}
+                    {!q.options && (
+                      <div style={{ marginTop: '0.4rem', borderBottom: '1px solid #888', height: '1.2em' }} />
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            {/* Answer key — only when teacher opted in */}
+            {includeAnswers && (
+              <section className="vb-print-avoid-break vb-print-page-break" style={{ marginTop: '2rem' }}>
+                <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem', borderBottom: '2px solid #000', paddingBottom: '0.4rem' }}>
+                  Answer Key
+                </h2>
+                <ol style={{ paddingLeft: '1.5rem', fontSize: '11pt', lineHeight: 1.7 }}>
+                  {generatedLesson.questions.map((q, i) => (
+                    <li key={i} style={{ marginBottom: '0.4rem' }}>
+                      <strong>{q.answer}</strong>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
