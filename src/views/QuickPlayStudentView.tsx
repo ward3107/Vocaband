@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, QrCode } from "lucide-react";
+import { Loader2, QrCode, Globe } from "lucide-react";
 import AvatarPicker from "../components/QPAvatarPicker";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
@@ -9,7 +9,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
-import { useLanguage, type Language, languageNames, languageFlags } from "../hooks/useLanguage";
+import { useLanguage, type Language, languageNames } from "../hooks/useLanguage";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -464,7 +464,7 @@ export default function QuickPlayStudentView({
                     className="w-full py-4 sm:py-5 bg-surface-container hover:bg-surface-container-high active:scale-[0.98] rounded-2xl font-black text-lg sm:text-xl transition-all shadow-md flex items-center justify-center gap-3 border-2 border-surface-container-highest"
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
                   >
-                    <span className="text-3xl sm:text-4xl leading-none">{languageFlags[lang]}</span>
+                    <Globe className="w-8 h-8 sm:w-10 sm:h-10 text-on-surface-variant" strokeWidth={2} aria-hidden />
                     <span className="text-on-surface">{languageNames[lang]}</span>
                   </button>
                 ))}

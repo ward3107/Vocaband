@@ -11,10 +11,10 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
   const { language, setLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
-  const languages: { code: Language; label: string; flag: string }[] = [
-    { code: "en", label: "English", flag: "🇺🇸" },
-    { code: "he", label: "עברית", flag: "🇮🇱" },
-    { code: "ar", label: "العربية", flag: "🇸🇦" },
+  const languages: { code: Language; label: string }[] = [
+    { code: "en", label: "English" },
+    { code: "he", label: "עברית" },
+    { code: "ar", label: "العربية" },
   ];
 
   const currentLang = languages.find(l => l.code === language) || languages[0];
@@ -49,7 +49,7 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
                 }`}
                 type="button"
               >
-                <span className="text-xl">{lang.flag}</span>
+                <Globe size={18} strokeWidth={2.25} aria-hidden />
                 <span>{lang.label}</span>
                 {language === lang.code && (
                   <motion.span

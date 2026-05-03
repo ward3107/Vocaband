@@ -7,7 +7,7 @@ import OAuthButton from "../components/OAuthButton";
 import StudentEmailOtpCard from "../components/StudentEmailOtpCard";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
-import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
+import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
 import { Globe } from "lucide-react";
 
@@ -276,7 +276,7 @@ export default function StudentAccountLoginView({
                     style={{ touchAction: 'manipulation' }}
                   >
                     <Globe size={14} />
-                    <span>{languageFlags[language]} {languageNames[language]}</span>
+                    <span>{languageNames[language]}</span>
                   </button>
                   {langOpen && (
                     <>
@@ -292,7 +292,7 @@ export default function StudentAccountLoginView({
                               language === lng ? 'bg-indigo-50 text-indigo-700' : 'text-stone-700'
                             }`}
                           >
-                            <span>{languageFlags[lng]}</span>
+                            <Globe size={14} aria-hidden />
                             <span>{languageNames[lng]}</span>
                           </button>
                         ))}

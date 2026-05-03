@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Globe } from "lucide-react";
-import { useLanguage, languageFlags, Language } from "../hooks/useLanguage";
+import { useLanguage, Language } from "../hooks/useLanguage";
 
 interface LandingLanguageToggleProps {
   className?: string;
@@ -53,7 +53,7 @@ const LandingLanguageToggle: React.FC<LandingLanguageToggleProps> = ({ className
                 whileTap={{ scale: 0.92 }}
                 type="button"
               >
-                <span className="text-base">{languageFlags[lang]}</span>
+                <Globe size={14} strokeWidth={2.25} aria-hidden />
                 <span className="text-xs">
                   {lang === "en" ? "EN" : lang === "he" ? "עב" : "ع"}
                 </span>

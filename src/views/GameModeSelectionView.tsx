@@ -15,11 +15,12 @@ import {
   Star,
   Edit3,
   Brain,
+  Globe,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
-import { useLanguage, languageNames, languageFlags, type Language } from "../hooks/useLanguage";
+import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 
 // Small star-rating component — 3 stars with N filled. Same visual
@@ -214,7 +215,7 @@ export default function GameModeSelectionView({
                 }`}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
               >
-                <span className="text-lg leading-none">{languageFlags[lang]}</span>
+                <Globe size={16} strokeWidth={2.25} aria-hidden />
                 <span>{languageNames[lang]}</span>
               </button>
             );
