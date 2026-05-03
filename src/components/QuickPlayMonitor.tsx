@@ -12,6 +12,8 @@ import { supabase } from '../core/supabase';
 import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
 import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
 import QPAvatar from './QPAvatar';
+import { useLanguage } from '../hooks/useLanguage';
+import { teacherViewsT } from '../locales/teacher/views';
 
 // Match the flag in QuickPlayStudentView. When on, this monitor
 // observes the /quick-play socket.io namespace for leaderboard

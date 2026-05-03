@@ -23,8 +23,6 @@ import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { SavedTask } from "../hooks/useSavedTasks";
-import { useLanguage } from "../hooks/useLanguage";
-import { teacherDashboardT } from "../locales/teacher/dashboard";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -139,7 +137,7 @@ export default function TeacherDashboardView({
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
   onWizardComplete, onWizardSkip,
 }: TeacherDashboardViewProps) {
-  const { language } = useLanguage();
+  const { language, dir } = useLanguage();
   const t = teacherDashboardT[language];
 
   // Time-of-day greeting — small but friendly touch so the teacher feels the

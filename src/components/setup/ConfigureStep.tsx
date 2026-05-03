@@ -10,6 +10,8 @@ import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS, Wizar
 import { DateTimePicker } from '../DateTimePicker';
 import AiLessonBuilder from '../ai-lesson-builder/AiLessonBuilder';
 import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
+import { useLanguage } from '../../hooks/useLanguage';
+import { teacherWizardsT } from '../../locales/teacher/wizards';
 
 // ── Derive assignment meta from selected modes ───────────────────────────────
 // The old "Quick template" UI forced teachers to pick a preset before
