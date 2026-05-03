@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -9,6 +9,15 @@ interface TopAppBarProps {
   userName?: string;
   showBack?: boolean;
   onBack?: () => void;
+  /** When provided, render a single-click "Exit" pill on the right
+   *  side of the bar.  Use in multi-step flows (assignment wizard,
+   *  Quick Play setup, Class Show, worksheet builder, etc.) so a
+   *  teacher on step 3 can bail in one tap instead of clicking Back
+   *  three times.  Distinct from `onBack`, which steps backward.
+   *  Default label is "Exit"; pass `exitLabel` to override (e.g.
+   *  "Cancel" inside a setup wizard, "End show" for Class Show). */
+  onExit?: () => void;
+  exitLabel?: string;
   userAvatar?: string;
   onLogout?: () => void;
   /** When true, surface the A/A/A display-size picker next to the
@@ -40,6 +49,8 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   userName,
   showBack = false,
   onBack,
+  onExit,
+  exitLabel = "Exit",
   userAvatar,
   onLogout,
   showScaleControl = false,
@@ -96,6 +107,21 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Exit button — single-click escape from a multi-step flow.
+            Sits before all other right-side controls so it's easy
+            to find with a glance, no matter the step.  Renders only
+            when the parent flow opts in via `onExit`. */}
+        {onExit && (
+          <button
+            type="button"
+            onClick={onExit}
+            aria-label={exitLabel}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 active:scale-95 transition-colors border-2 border-stone-200"
+          >
+            <X size={14} />
+            <span>{exitLabel}</span>
+          </button>
+        )}
         {showScaleControl && <UiScaleControl />}
         {/* Language switcher - compact variant for tight header space */}
         <div className="hidden md:block">

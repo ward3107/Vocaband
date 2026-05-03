@@ -397,6 +397,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         subtitle={isQuickPlay ? 'SELECT WORDS • GENERATE QR CODE' : 'SELECT WORDS • ASSIGN TO CLASS'}
         showBack
         onBack={handleBack}
+        // Single-click escape from any step.  Back is still
+        // step-by-step; Cancel always returns to the dashboard so
+        // a teacher on step 3 doesn't have to tap Back three times.
+        onExit={onBack}
+        exitLabel="Cancel"
         userName={user?.displayName}
         userAvatar={user?.avatar}
         onLogout={onLogout}
