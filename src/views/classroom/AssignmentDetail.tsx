@@ -26,6 +26,8 @@ import { useMemo } from "react";
 import { CheckCircle2, Clock, Moon, Users, Send } from "lucide-react";
 import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import type { ProgressData } from "../../core/supabase";
+import { useLanguage } from "../../hooks/useLanguage";
+import { teacherDrilldownsT } from "../../locales/teacher/drilldowns";
 
 interface ClassStudent {
   name: string;
@@ -72,6 +74,8 @@ const scoreColor = (s: number): string => {
 export default function AssignmentDetail({
   open, onClose, assignment, scores, classStudents, onReassign,
 }: AssignmentDetailProps) {
+  const { language } = useLanguage();
+  const t = teacherDrilldownsT[language];
   const { done, stuck, notStarted, classAvg } = useMemo(() => {
     const byStudent = new Map<string, StudentScore>();
     scores.forEach(s => {
@@ -135,7 +139,7 @@ export default function AssignmentDetail({
       open={open && !!assignment}
       onClose={onClose}
       title={assignment?.title ?? ""}
-      subtitle={assignment ? `${classAvg}% class avg · ${completionPct}% done` : ""}
+      subtitle={assignment ? t.assignmentSubtitle(classAvg, completionPct) : ""}
       avatar="📝"
     >
       {!assignment ? null : (
@@ -145,19 +149,19 @@ export default function AssignmentDetail({
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="text-[11px] font-black uppercase tracking-wider text-stone-500">
-                  Completion
+                  {t.completionLabel}
                 </div>
                 <div className="text-3xl font-black text-indigo-600 mt-1">
                   {done.length + stuck.length}
                   <span className="text-stone-400 text-xl"> / {totalExpected}</span>
                 </div>
                 <div className="text-[10px] text-stone-500 mt-1">
-                  students who've played at least once
+                  {t.studentsPlayedAtLeastOnce}
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-[11px] font-black uppercase tracking-wider text-stone-500">
-                  Class avg
+                  {t.classAvgLabel}
                 </div>
                 <div className={`text-3xl font-black mt-1 ${
                   classAvg >= 80 ? "text-emerald-600" :
@@ -166,7 +170,7 @@ export default function AssignmentDetail({
                   {classAvg}%
                 </div>
                 <div className="text-[10px] text-stone-500 mt-1">
-                  average across every play
+                  {t.averageAcrossEveryPlay}
                 </div>
               </div>
             </div>
@@ -181,45 +185,45 @@ export default function AssignmentDetail({
           {/* ── Three buckets ──────────────────────────────────────── */}
           <Bucket
             icon={<CheckCircle2 size={18} className="text-emerald-600" />}
-            title="Done"
-            subtitle="Played and averaging ≥70%"
+            title={t.doneTitle}
+            subtitle={t.doneSubtitle}
             count={done.length}
             tone="emerald"
           >
             {done.length === 0 ? (
-              <Empty text="No one has crossed 70% yet." />
+              <Empty text={t.doneEmpty} />
             ) : (
               done.slice(0, 20).map(s => (
-                <StudentRow key={s.name} student={s} showScore />
+                <StudentRow key={s.name} student={s} rowSummary={t.studentRowSummary} showScore />
               ))
             )}
           </Bucket>
 
           <Bucket
             icon={<Clock size={18} className="text-amber-600" />}
-            title="Stuck"
-            subtitle="Played but averaging under 70%"
+            title={t.stuckTitle}
+            subtitle={t.stuckSubtitle}
             count={stuck.length}
             tone="amber"
           >
             {stuck.length === 0 ? (
-              <Empty text="Everyone who played is doing fine." />
+              <Empty text={t.stuckEmpty} />
             ) : (
               stuck.slice(0, 20).map(s => (
-                <StudentRow key={s.name} student={s} showScore />
+                <StudentRow key={s.name} student={s} rowSummary={t.studentRowSummary} showScore />
               ))
             )}
           </Bucket>
 
           <Bucket
             icon={<Moon size={18} className="text-stone-600" />}
-            title="Not started"
-            subtitle="Zero plays on this assignment"
+            title={t.notStartedTitle}
+            subtitle={t.notStartedSubtitle}
             count={notStarted.length}
             tone="stone"
           >
             {notStarted.length === 0 ? (
-              <Empty text="Everyone's opened this one." />
+              <Empty text={t.notStartedEmpty} />
             ) : (
               notStarted.slice(0, 20).map(name => (
                 <div
@@ -229,7 +233,7 @@ export default function AssignmentDetail({
                   <span className="text-lg" aria-hidden>🦊</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-stone-800 truncate">{name}</p>
-                    <p className="text-[11px] text-stone-500">Hasn't opened it</p>
+                    <p className="text-[11px] text-stone-500">{t.hasntOpenedIt}</p>
                   </div>
                 </div>
               ))
@@ -249,7 +253,7 @@ export default function AssignmentDetail({
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
             <Send size={16} />
-            Reassign to {strugglerNames.length} {strugglerNames.length === 1 ? "student" : "students"} who haven't finished
+            {t.reassignCta(strugglerNames.length)}
           </button>
         </div>
       )}
@@ -287,14 +291,14 @@ function Bucket({
   );
 }
 
-function StudentRow({ student, showScore }: { student: StudentScore; showScore?: boolean }) {
+function StudentRow({ student, showScore, rowSummary }: { student: StudentScore; showScore?: boolean; rowSummary: (plays: number, best: number) => string }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-stone-50/60">
       <span className="text-lg shrink-0" aria-hidden>{student.avatar}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-stone-800 truncate">{student.name}</p>
         <p className="text-[11px] text-stone-500">
-          {student.attempts} {student.attempts === 1 ? "play" : "plays"} · best {student.bestScore}
+          {rowSummary(student.attempts, student.bestScore)}
         </p>
       </div>
       {showScore && (
