@@ -46,10 +46,13 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Requirement | Status | Location |
 |-------------|--------|----------|
 | Audit log table | Done | `public.audit_log` — records actor, action, data category, target, timestamp |
-| Teacher gradebook access logged | Done | `src/App.tsx` → `fetchScores()` calls `logAudit('view_gradebook', 'progress')` |
-| Class deletion logged | Done | `supabase/migrations/010_privacy_compliance.sql` → `on_class_deleted` trigger |
-| Data export logged | Done | `export_my_data()` RPC inserts audit log entry |
-| Account deletion logged | Done | `delete_my_account()` RPC inserts audit log entry before deletion |
+| Audit log helper in app code | Done (2026-05-04) | `src/utils/audit.ts → logAudit()` — best-effort, never throws |
+| Teacher gradebook access logged | Done (2026-05-04) | `useTeacherActions.fetchScores()` calls `logAudit('view_gradebook', 'progress', { metadata: { rows, classes } })` after successful fetch |
+| Class deletion logged | Done (2026-05-04) | `useTeacherActions.handleDeleteClass` calls `logAudit('delete_class', 'classes', { metadata: { class_id } })` after successful delete |
+| Other admin actions logged | TODO | `delete_assignment`, `award_reward`, `approve_student`, `reject_student`, `remove_student`, `edit_class`, `edit_assignment` — wire incrementally as each surface is touched.  All have AuditAction values pre-defined in `src/utils/audit.ts`. |
+| Data export logged | Done | `export_my_data()` RPC inserts audit log entry; `PrivacySettingsView` now calls the RPC (was bypassing it before 2026-05-04) |
+| Account deletion logged | Done | `delete_my_account()` RPC inserts audit log entry before deletion; `PrivacySettingsView` now calls the RPC (was bypassing it before 2026-05-04) |
+| Audit log retention enforced | Done (2026-05-04) | `cleanup_expired_data()` function exists in `010_privacy_compliance.sql`; `20260605_cleanup_expired_data_cron.sql` schedules it nightly at 03:30 UTC |
 | RLS policies on all tables | Done | See `SECURITY.md` for full policy descriptions |
 | Role checks enforced | Done | RLS + `is_teacher()` / `is_admin()` helper functions |
 | Security headers documented | Done | `SECURITY.md` § Security Headers |
