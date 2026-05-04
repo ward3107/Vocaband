@@ -84,11 +84,28 @@ const formatValue = (type: string, value: string): string => {
 };
 
 export default function RewardInboxCard({ userUid, onServerRewardsArrived }: RewardInboxCardProps) {
+  // Capture onServerRewardsArrived via a ref so the realtime
+  // subscription effect below doesn't tear down + recreate the channel
+  // every time the parent re-renders with a fresh inline arrow.  A
+  // 2026-05-04 audit found the parent passes
+  // `onServerRewardsArrived={({...}) => onApplyServerRewards(...)}`
+  // (a new function on every render), and the effect's
+  // [onServerRewardsArrived, userUid] dep array meant we were
+  // tearing down the `reward-inbox-${uid}` channel + immediately
+  // re-running `fetchRewards()` (a get_unseen_rewards RPC) on
+  // every render of StudentDashboardView.  XP updates / theme
+  // changes / banner mounts hammered the RPC.
   const { language } = useLanguage();
   const t = teacherViewsT[language];
   const [rewards, setRewards] = useState<RewardRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [dismissing, setDismissing] = useState<Set<string>>(new Set());
+  // Stable ref to the latest onServerRewardsArrived — see comment block
+  // above the component on why this matters.  We update the ref in an
+  // effect rather than passing the prop directly into the realtime
+  // subscription effect's deps.
+  const onServerRewardsArrivedRef = useRef(onServerRewardsArrived);
+  useEffect(() => { onServerRewardsArrivedRef.current = onServerRewardsArrived; }, [onServerRewardsArrived]);
   // Tracks reward ids we've already surfaced to the caller so polling
   // doesn't double-apply an xp bump if the same row comes back across
   // multiple fetches before the student has clicked Thanks!.
@@ -128,7 +145,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
         // XP from fetchUserProfile; firing the callback would
         // double-count.
         newList.forEach(r => appliedIdsRef.current.add(r.id));
-      } else if (truelyNew.length > 0 && onServerRewardsArrived) {
+      } else if (truelyNew.length > 0 && onServerRewardsArrivedRef.current) {
         // A reward landed AFTER the student was already on the
         // dashboard — their in-memory user stats are stale and need
         // to match the DB (which the RPC has already updated).
@@ -147,7 +164,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
             badgesToAppend.push(`🎭 ${r.reward_value}`);
           }
         }
-        onServerRewardsArrived({ xpToAdd, badgesToAppend, rewards: truelyNew });
+        onServerRewardsArrivedRef.current({ xpToAdd, badgesToAppend, rewards: truelyNew });
       }
 
       setRewards(newList);
@@ -205,7 +222,11 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
     // one-shot seed gate and adding it would re-run the effect every
     // time it flips, creating a tight loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onServerRewardsArrived, userUid]);
+    // Effect deps: ONLY userUid.  onServerRewardsArrived is captured
+    // via onServerRewardsArrivedRef above so a new inline arrow from
+    // the parent doesn't trigger a channel teardown.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userUid]);
 
   const dismiss = async (reward: RewardRow) => {
     // Visual dismissal first — instant feedback even on flaky Wi-Fi.

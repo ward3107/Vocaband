@@ -434,7 +434,14 @@ export default function App() {
 
   // --- TOAST NOTIFICATIONS STATE ---
   const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  // Stable across renders so consumers can put `showToast` in
+  // useEffect / useCallback dep arrays without causing churn.  A
+  // 2026-05-04 audit found GradebookView, RewardInboxCard, and
+  // PendingApprovalScreen all used `showToast` as a dep and got
+  // re-fired on every App render — that was a major contributor
+  // to the request-storm incident.  setToasts (from useState) is
+  // already stable, so [] is the correct dep list here.
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
     // Errors stay longer so users can read them on mobile
@@ -442,7 +449,7 @@ export default function App() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, duration);
-  };
+  }, []);
 
   // --- CONFIRMATION DIALOG STATE ---
   const [confirmDialog, setConfirmDialog] = useState<{

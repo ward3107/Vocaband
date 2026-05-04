@@ -28,7 +28,7 @@
  * student progress" responsibility, so bundling them here makes
  * the recovery story easier to reason about.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase, type AppUser } from '../core/supabase';
 import { installQuickPlayQueueFlusher } from '../core/saveQueue';
 
@@ -44,15 +44,32 @@ export function useSaveQueueResilience(
 ): void {
   const { user, isSaving, saveQueueHasPending, processSaveQueue } = params;
 
+  // Capture the volatile inputs via refs so the flush interval below
+  // is set up ONCE per user-identity change and doesn't rebuild on
+  // every save start/end.  Per the 2026-05-04 audit: `isSaving`
+  // flips true→false on every saved game, and previously caused the
+  // interval to be torn down + recreated each time — meaning the
+  // 5s clock kept resetting and the interval rarely actually fired
+  // for genuinely-pending queues.  Reading the latest values via
+  // refs preserves correctness while making the effect stable.
+  const isSavingRef = useRef(isSaving);
+  const saveQueueHasPendingRef = useRef(saveQueueHasPending);
+  const processSaveQueueRef = useRef(processSaveQueue);
+  useEffect(() => { isSavingRef.current = isSaving; }, [isSaving]);
+  useEffect(() => { saveQueueHasPendingRef.current = saveQueueHasPending; }, [saveQueueHasPending]);
+  useEffect(() => { processSaveQueueRef.current = processSaveQueue; }, [processSaveQueue]);
+
   // ─── 1. Periodic flush while idle ─────────────────────────────────
   useEffect(() => {
+    if (!user) return;
     const flushInterval = setInterval(() => {
-      if (user && !isSaving && saveQueueHasPending()) {
-        processSaveQueue();
+      if (!isSavingRef.current && saveQueueHasPendingRef.current()) {
+        processSaveQueueRef.current();
       }
     }, 5000);
     return () => clearInterval(flushInterval);
-  }, [isSaving, user, saveQueueHasPending, processSaveQueue]);
+    // Effect deps: ONLY user identity.  See ref-pattern comment above.
+  }, [user]);
 
   // ─── 2. Retry pending progress writes from a previous session ────
   useEffect(() => {
