@@ -46,12 +46,24 @@ in earlier compliance work (`docs/PRIVACY_CHECKLIST.md`, the
 - **Engineering**: incident-response runbook, sub-processors public page,
   pre-filled vendor questionnaire, DPIA technical template — being done
   on this branch.
-- **Operator (you)**: appoint a DPO publicly, register the database with
-  the Privacy Protection Authority, expose privacy contact email.
+- **Operator NOW** (do at any user count): appoint a DPO publicly, set up
+  privacy email alias.
+- **Operator LATER** (threshold-gated): database registration with the
+  Privacy Protection Authority — only mandatory once you cross specific
+  thresholds (≥10,000 users, sensitive-data category, etc.; see § A1
+  below).  At <1,000 users, defer.
 - **Legal**: Hebrew privacy policy review against MoE template, DPA
-  contract template for schools.
-- **Third-party paid**: pen-test by qualified firm (~15-30k NIS), legal
-  review (~5-15k NIS).
+  contract template for schools — do as soon as time + budget allow,
+  not user-count gated.
+- **Third-party paid**: pen-test by qualified firm (~15-30k NIS) —
+  defer until ~1,000 users or first school formally asks; legal
+  review (~5-15k NIS) — anytime.
+
+> **What this means at 5 users:** appoint DPO + book lawyer consult +
+> launch publicly via the teacher-discovers-it channel.  Skip the
+> registration / pen-test / DPIA / MoE submission for now.  Re-evaluate
+> at ~1,000 users.  See `docs/LAUNCH-STRATEGY-HE.md` for the full
+> rationale.
 
 ---
 
@@ -64,8 +76,10 @@ falls under **רמת אבטחה גבוהה (High level)**.
 
 | Requirement | Status | What we have | Gap | Owner |
 |---|---|---|---|---|
-| Database registered with the Privacy Protection Authority (הרשות להגנת הפרטיות) | ❌ | — | **Required for High level**.  Free, online, takes 30-90 days. | 🚫 Operator |
+| Database registered with the Privacy Protection Authority (הרשות להגנת הפרטיות) | 🟡 **Threshold-gated — not yet required** | — | Registration only becomes **mandatory** once any of these hit: (1) ≥10,000 data subjects, (2) ≥100,000 records, (3) processing "sensitive data" (medical / biometric / criminal records / religion / sexual — Vocaband collects none of these), (4) used for direct marketing, (5) data not collected directly from the subject, (6) operated by a public body. **At <10,000 users none apply.** Set a calendar reminder at ~5,000 users to start (30-90 day lead time). | 🚫 Operator (when threshold approached) |
 | Internal classification of which databases are at which level | ⏳ | Implicit in config; explicit doc on this branch | Adding `docs/MOE-REQUIREMENTS.md` § A1.1 | ✅ Done in this commit |
+
+> **Why not just register now anyway?** Argument for waiting: it's not legally required, enforcement focuses on large violations not 5-user startups, and your time at this stage is better spent on growth. Argument for doing it now: it's free, takes ~1 hour, signals professionalism, and removes a future to-do. Either is defensible — the recommendation here is **defer** unless a specific school's IT / a lawyer advises otherwise.
 
 ### A2 — Documentation (תיק"מ — Information Security File)
 
@@ -202,64 +216,93 @@ Everything created on branch `claude/moe-compliance-package`:
 
 In suggested order of priority.  Numbers are rough Israeli market estimates.
 
-### Phase 1 — Pre-paperwork (do before talking to any school)
+### Phase 1 — Pre-paperwork (now, at any user count)
 1. **Appoint a DPO.** Founder can serve. Publish name + email on `/privacy`. ~0 NIS.
-2. **Register the database with the Privacy Protection Authority** at https://www.gov.il/he/service/database_registration. Free; takes 30-90 days for confirmation. Need: database name, controller (Vocaband Educational Technologies), purpose, data categories (already documented in `privacy-config.ts`).
-3. **Set up a privacy@vocaband.com alias** with a 24h response SLA published in the incident-response doc.
+2. **Set up a privacy@vocaband.com alias** with a 24h response SLA published in the incident-response doc.
+3. **Set calendar reminders for the threshold triggers:**
+   - At **~1,000 users**: revisit pen-test scheduling (no longer just "5 users — too early").
+   - At **~5,000 users**: start database registration with the Privacy Protection Authority — 30-90 day lead time so the certificate is in hand before crossing 10,000.
+   - At **first school formally adopting**: pull in the lawyer for the DPA + the MoE submission track.
 
-### Phase 2 — Lawyer engagement (~6-15k NIS, 2-4 weeks)
+### Phase 2 — Lawyer engagement (~6-15k NIS, 2-4 weeks) — when to do it
+**Do this as soon as your time + budget allows; it's not user-count gated.**  Even at 5 users the policy review is useful and a privacy lawyer's read on the parental-consent question is a one-time investment that derisks the whole roadmap.
+
 4. **1-hour consult with an Israeli EdTech privacy lawyer.** Confirm:
    - Whether teacher-mediated onboarding satisfies § 25 parental consent.
    - Which MoE circular applies to your deployment model (per-school vs district vs MoE catalog).
    - Whether the current /privacy page matches MoE template — diff it.
-5. **DPA template drafted** for school agreements.
+   - **Confirm the registration thresholds** — the rules change.  If the lawyer says register now anyway, do it.
+5. **DPA template drafted** for school agreements (defer until first school formally asks).
 6. **Privacy policy + terms reviewed and updated** to MoE template alignment.
 
-### Phase 3 — Pen-test (~15-30k NIS, 3-6 weeks)
-7. **3rd-party penetration test by a qualified Israeli firm.** Examples: Comsec (https://www.comsec.co.il), 2bSecure, AVNET Cyber & Information Security, Sela Group. Mandatory under Reg 2017 for High level. Report becomes input for your DPIA.
+### Phase 3 — Database registration (deferred — trigger-gated)
+7. **Register with the Privacy Protection Authority** at https://www.gov.il/he/service/database_registration once any threshold trigger applies (see § A1).  Free; 30-90 days for confirmation.  Have prepared: database name, controller (Vocaband Educational Technologies), purpose, data categories (already documented in `privacy-config.ts`).
 
-### Phase 4 — MoE submission (~free, 1-3 months MoE turnaround)
-8. **Obtain Tofes 22/23** from MoE Information Security desk (`security@education.gov.il` or via official channel).
-9. **Fill in the questionnaire** using the technical answers in `docs/MOE-VENDOR-QUESTIONNAIRE.md`. Add legal answers from the lawyer engagement.
-10. **Submit + iterate** with MoE reviewer until approved.
+### Phase 4 — Pen-test (~15-30k NIS, 3-6 weeks) — when to do it
+**Defer until either:** (a) you have ~1,000+ users, OR (b) the first school formally asks for a pen-test report in writing, OR (c) you cross the registration threshold (above 10,000 users) — at that point Reg 2017 makes the 18-month cadence mandatory.
 
-### Phase 5 — Ongoing maintenance
-11. **Quarterly internal audit** (already cadence per `SECURITY-OVERVIEW.md`).
-12. **18-month re-test** mandate: schedule the next 3rd-party pen-test for late 2027.
-13. **Annual privacy-policy review** + version bump in `privacy-config.ts` if anything changes.
+8. **3rd-party penetration test by a qualified Israeli firm.** Examples: Comsec (https://www.comsec.co.il), 2bSecure, AVNET Cyber & Information Security, Sela Group. Report becomes input for your DPIA.
+9. **Self-pentest first** using `docs/SELF-PENTEST-GUIDE-HE.md` to find and fix the easy issues before paying.
+
+### Phase 5 — MoE submission (~free, 1-3 months MoE turnaround) — when to do it
+**Defer until you have 5+ schools using the platform organically.** A formal submission without references is weak; with references it's much stronger.
+
+10. **Obtain Tofes 22/23** from MoE Information Security desk (`security@education.gov.il` or via official channel).
+11. **Fill in the questionnaire** using the technical answers in `docs/MOE-VENDOR-QUESTIONNAIRE.md`. Add legal answers from the lawyer engagement.
+12. **Submit + iterate** with MoE reviewer until approved.
+
+### Phase 6 — Ongoing maintenance (continuous)
+13. **Quarterly internal audit** (already cadence per `SECURITY-OVERVIEW.md`).
+14. **18-month re-test** cadence kicks in *only after first formal pen-test* — so this becomes mandatory the day Phase 4 happens.
+15. **Annual privacy-policy review** + version bump in `privacy-config.ts` if anything changes.
 
 ---
 
-## Section E — 90-day path to MoE acceptance
+## Section E — Realistic timeline by user count
 
-Realistic timeline assuming you start tomorrow.
+The earlier version of this doc proposed a 90-day all-in-one MoE
+sprint.  That makes sense **only after you have a school formally
+asking for MoE-approved status**.  At pre-traction stages, sequencing
+the work to actual triggers saves ~50k NIS of upfront cost on
+work that wouldn't matter yet.
 
 ```
-Week 1
-  ├─ Day 1: Appoint DPO publicly, register database, set up privacy alias
-  ├─ Day 2: Book lawyer consult
-  └─ Day 3-7: Pre-meeting prep — gather everything in this tracker for lawyer
+NOW (5-1,000 users) — total cost ~1-2k NIS
+  ├─ Day 1: Appoint DPO publicly + set up privacy@ alias
+  ├─ Day 1: Stand up staging (free Supabase + free Fly.io)
+  ├─ Week 1: Run self-pentest per docs/SELF-PENTEST-GUIDE-HE.md
+  ├─ Week 2-3: Book + complete 1-hour lawyer consult (~1-2k NIS)
+  └─ Continuous: Public launch + organic growth (Kahoot model)
 
-Weeks 2-3 — Lawyer phase
-  ├─ Lawyer reviews privacy/terms against MoE template
-  ├─ Drafts DPA
-  └─ Confirms parental-consent model
+  Calendar reminders: revisit at 1,000 users, 5,000 users, first
+  school formally adopting.
 
-Weeks 4-7 — Pen-test phase
-  ├─ Get quotes from 2-3 Israeli pen-test firms
-  ├─ Provide them: source code access, staging environment, scope
-  └─ Receive report, file findings, remediate
+AT ~1,000 users OR first school asks formally — total cost ~15-30k NIS
+  ├─ Re-run self-pentest
+  ├─ Quote 2-3 pen-test firms; pick one
+  ├─ Pen-test (3-6 weeks)
+  └─ Remediate findings
 
-Weeks 8-9 — DPIA / paperwork
-  ├─ Complete DPIA using technical template + pen-test findings
-  ├─ Fill MoE Tofes 22/23 from this tracker + lawyer's answers
-  └─ Internal sign-off
+AT ~5,000 users — total cost 0 NIS, lead time 30-90 days
+  └─ Start database registration with the Privacy Protection
+     Authority (free; want certificate before crossing 10,000)
 
-Weeks 10-12 — MoE submission + iteration
-  └─ Submit, respond to reviewer questions, finalise
+AT first school using formally OR ≥5 schools organic — total cost ~6-15k NIS
+  ├─ Lawyer drafts DPA template
+  ├─ Lawyer reviews privacy/terms vs MoE template
+  ├─ Complete DPIA from docs/DPIA-TECHNICAL.md (lawyer fills legal
+  │  sections; engineering already done)
+  └─ Submit Tofes 22/23 to MoE Information Security desk
 ```
 
-**Total budget:** ~50-80k NIS (lawyer ~10k, pen-test ~25k, DPO own time, misc ~5k).
+**Phased budget (so cost lands when revenue can absorb it):**
+- Now: ~1-2k NIS (lawyer consult only).
+- After ~1,000 users: + ~15-30k NIS (pen-test).
+- After first school: + ~6-15k NIS (DPA + policy revision).
+- Total to MoE acceptance: ~22-47k NIS, spread over 12-18 months.
+
+This is roughly half the cost of the all-in-one sprint and matches
+the cadence at which you'd actually need each artefact.
 
 ---
 
