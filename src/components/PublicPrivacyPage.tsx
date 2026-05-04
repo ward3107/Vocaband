@@ -285,22 +285,37 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                 <tbody className="text-on-surface-variant">
                   <tr className="border-b border-surface-container/50">
                     <td className="py-2 pr-4 font-medium">Supabase</td>
-                    <td className="py-2 pr-4">{language === 'en' ? 'Database, authentication' : language === 'he' ? 'מסד נתונים, אימות' : 'قاعدة البيانات، المصادقة'}</td>
-                    <td className="py-2 pr-4">EU (Frankfurt) / US</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Database, authentication, file storage' : language === 'he' ? 'מסד נתונים, אימות, אחסון קבצים' : 'قاعدة البيانات، المصادقة، تخزين الملفات'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'EU (Frankfurt)' : language === 'he' ? 'אירופה (פרנקפורט)' : 'الاتحاد الأوروبي (فرانكفورت)'}</td>
+                  </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Fly.io</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Application server (REST API + WebSocket)' : language === 'he' ? 'שרת היישום (REST API + WebSocket)' : 'خادم التطبيق (REST API + WebSocket)'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'EU (Amsterdam)' : language === 'he' ? 'אירופה (אמסטרדם)' : 'الاتحاد الأوروبي (أمستردام)'}</td>
+                  </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Cloudflare</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'CDN, DNS, TLS, DDoS protection' : language === 'he' ? 'CDN, DNS, TLS, הגנה מפני DDoS' : 'CDN، DNS، TLS، الحماية من DDoS'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Global edge' : language === 'he' ? 'קצה גלובלי' : 'الحافة العالمية'}</td>
                   </tr>
                   <tr className="border-b border-surface-container/50">
                     <td className="py-2 pr-4 font-medium">Google OAuth</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'Teacher sign-in only' : language === 'he' ? 'כניסת מורים בלבד' : 'تسجيل دخول المعلمين فقط'}</td>
-                    <td className="py-2 pr-4">US</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Global (US)' : language === 'he' ? 'גלובלי (ארה"ב)' : 'عالمي (الولايات المتحدة)'}</td>
                   </tr>
                   <tr className="border-b border-surface-container/50">
-                    <td className="py-2 pr-4 font-medium">Fly.io</td>
-                    <td className="py-2 pr-4">{language === 'en' ? 'Application server hosting' : language === 'he' ? 'אירוח שרת היישום' : 'استضافة خادم التطبيق'}</td>
-                    <td className="py-2 pr-4">EU / US</td>
+                    <td className="py-2 pr-4 font-medium">Anthropic (Claude)</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'AI sentence generation (teacher-triggered, vocabulary words only)' : language === 'he' ? 'יצירת משפטים בבינה מלאכותית (יזום ע"י מורה, מילים בלבד)' : 'إنشاء جمل بالذكاء الاصطناعي (يبدأها المعلم، كلمات فقط)'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'United States' : language === 'he' ? 'ארצות הברית' : 'الولايات المتحدة'}</td>
+                  </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Google Cloud (Gemini)</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'OCR for teacher-uploaded vocabulary images' : language === 'he' ? 'OCR לתמונות אוצר מילים שמורים מעלים' : 'OCR لصور مفردات يحملها المعلمون'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'EU (europe-west)' : language === 'he' ? 'אירופה' : 'الاتحاد الأوروبي'}</td>
                   </tr>
                   <tr>
-                    <td className="py-2 pr-4 font-medium">Cloudflare</td>
-                    <td className="py-2 pr-4">{language === 'en' ? 'Static asset delivery + CDN' : language === 'he' ? 'אספקת נכסים סטטיים + CDN' : 'تسليم الأصول الثابتة + CDN'}</td>
+                    <td className="py-2 pr-4 font-medium">Google Fonts</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Web font delivery' : language === 'he' ? 'אספקת גופנים' : 'تسليم الخطوط'}</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'Global edge' : language === 'he' ? 'קצה גלובלי' : 'الحافة العالمية'}</td>
                   </tr>
                 </tbody>
