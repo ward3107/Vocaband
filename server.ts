@@ -1771,6 +1771,57 @@ Strict quality rules:
     });
   });
 
+  // ─── Quick Play session lookup (public, service-role) ─────────────
+  // Frontend bootstrap calls this as a fallback when the direct
+  // Supabase REST query fails — typically because:
+  //   (a) anonymous sign-ins are disabled at the Supabase project
+  //       level → POST /auth/v1/signup returns 400 → guest has no
+  //       session → RLS filters them to 0 rows → 406, OR
+  //   (b) the SELECT policy on quick_play_sessions doesn't list anon
+  //       (the migration `20260516_qp_sessions_select_anon.sql` adds
+  //       the role; if it hasn't run, anon role is filtered to 0
+  //       rows → 406).
+  // This endpoint sidesteps both by using the service role key, which
+  // bypasses RLS entirely.  Safe to expose unauthenticated because QP
+  // sessions are designed to be public-by-code (anyone with the QR
+  // can join), and we only return rows where is_active=true.  Rate
+  // limited to make code-guessing painful.
+  const qpSessionLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60, // 60 lookups/min/IP — generous for a classroom of 30
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many lookups, please try again in a minute." },
+  });
+  app.get("/api/quick-play/session/:code", qpSessionLimiter, async (req, res) => {
+    const code = req.params.code;
+    if (!code || !/^[A-Z0-9]{4,8}$/i.test(code)) {
+      return res.status(400).json({ error: "Invalid session code format" });
+    }
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Server not configured" });
+    }
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("quick_play_sessions")
+        .select("*")
+        .eq("session_code", code.toUpperCase())
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error) {
+        console.error("[qp-session-lookup] supabase error:", error);
+        return res.status(500).json({ error: "Lookup failed" });
+      }
+      if (!data) {
+        return res.status(404).json({ error: "Session not found or no longer active" });
+      }
+      return res.json(data);
+    } catch (err) {
+      console.error("[qp-session-lookup] exception:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
   // AI sentence generation — rate limited per teacher
   const aiRateLimiter = rateLimit({
     windowMs: 60 * 1000,
