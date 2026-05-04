@@ -19,6 +19,7 @@ import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
+import { logAudit } from "../utils/audit";
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_IMPORT_WORDS = 500;
@@ -647,6 +648,11 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
           const { error } = await supabase.from('classes').delete().eq('id', classId);
           if (error) throw error;
           setClasses(prev => prev.filter(c => c.id !== classId));
+          // Best-effort audit entry — fire and forget; never blocks UX.
+          // Records that this teacher deleted this class, with the
+          // class_id in metadata for forensic lookup.  Required by
+          // PPA Reg 2017 § 7 monitoring obligations for High-level DBs.
+          void logAudit('delete_class', 'classes', { metadata: { class_id: classId } });
           showToast("Class deleted successfully.", "success");
         } catch (error) {
           handleDbError(error, OperationType.DELETE, `classes/${classId}`);
@@ -771,6 +777,16 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     }
 
     setAllScores(allRows);
+
+    // Best-effort audit entry — records that this teacher accessed
+    // student progress data.  Fire-and-forget so the gradebook view
+    // never waits on audit writes.  Required by PPA Reg 2017 § 7 to
+    // demonstrate "appropriate monitoring" of access to personal data.
+    if (allRows.length > 0) {
+      void logAudit('view_gradebook', 'progress', {
+        metadata: { rows: allRows.length, classes: classes.length },
+      });
+    }
 
     // Derive students from the same data — avoids a separate query
     const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};
