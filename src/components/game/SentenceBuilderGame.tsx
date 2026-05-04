@@ -109,8 +109,12 @@ export default function SentenceBuilderGame({
       {/* Built-sentence canvas — where the kid assembles.  Min
           height = ~2 lines of tiles so the layout doesn't reflow
           every time a word is added.  Tap a built tile to remove
-          it (sends it back to the word bank). */}
+          it (sends it back to the word bank).
+          dir="ltr" — the sentence is English, builds left-to-right.
+          Without this, Hebrew UI flipped the word order, and a kid
+          who tapped "She / is / happy" saw "happy / is / She". */}
       <div
+        dir="ltr"
         className={`min-h-[96px] sm:min-h-[112px] border-2 rounded-3xl p-3 sm:p-4 flex flex-wrap gap-2 items-center justify-center transition-colors ${canvasBorderClass}`}
       >
         {builtSentence.length === 0 && (
@@ -146,8 +150,10 @@ export default function SentenceBuilderGame({
 
       {/* Word bank — the kid's pool of available words.  Bigger
           tiles than before (px-4 py-2 vs px-3 py-1.5), 44px min
-          tap target, theme-tinted hover state. */}
-      <div className="flex flex-wrap gap-2 sm:gap-2.5 justify-center min-h-[60px]">
+          tap target, theme-tinted hover state.
+          dir="ltr" matches the builder canvas above — keeps the
+          shuffled tiles in their array order in any locale. */}
+      <div dir="ltr" className="flex flex-wrap gap-2 sm:gap-2.5 justify-center min-h-[60px]">
         <AnimatePresence>
           {availableWords.map((word, i) => (
             <motion.button
