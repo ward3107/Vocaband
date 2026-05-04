@@ -12,10 +12,32 @@
 // ---------------------------------------------------------------------------
 
 export const DATA_CONTROLLER = {
-  name: "Vocaband Educational Technologies",  // Legal entity name
+  name: "Vocaband",  // Legal entity name
   country: "Israel",
   contactEmail: "contact@vocaband.com",       // Amendment 13 accountability contact
   legalEmail: "contact@vocaband.com",         // Legal inquiries
+} as const;
+
+// ─── Data Protection Officer (ממונה על הגנת הפרטיות) ──────────────
+// Public contact for privacy questions, data-subject rights requests
+// (export / delete / rectify), and breach notifications.
+//
+// Required to be public-facing under תיקון 13 (Privacy Protection
+// Law Amendment 13, 2025).  The role can be filled by the founder
+// for a small company — no separate hire needed at this stage.
+//
+// `name` is shown in the privacy page so a regulator / parent can
+// verify a real human is accountable.  Use the full legal name as
+// it would appear on a חוזה / business registration.
+//
+// `email` is the dedicated privacy address.  Aliasing it to the
+// founder's main inbox is fine; just make sure it's monitored on
+// the 24h SLA published in INCIDENT-RESPONSE.md.
+export const DATA_PROTECTION_OFFICER = {
+  name: "Waseem Abu Akel",   // ⚠️ EDIT THIS before merging
+  role: "Founder & Data Protection Officer",
+  email: "privacy@vocaband.com",              // alias forwards to founder's inbox
+  responseSlaHours: 24,
 } as const;
 
 // ---------------------------------------------------------------------------
