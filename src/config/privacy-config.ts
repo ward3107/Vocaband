@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 export const DATA_CONTROLLER = {
-  name: "Vocaband Educational Technologies",  // Legal entity name
+  name: "Vocaband",  // Legal entity name
   country: "Israel",
   contactEmail: "contact@vocaband.com",       // Amendment 13 accountability contact
   legalEmail: "contact@vocaband.com",         // Legal inquiries
@@ -34,7 +34,7 @@ export const DATA_CONTROLLER = {
 // founder's main inbox is fine; just make sure it's monitored on
 // the 24h SLA published in INCIDENT-RESPONSE.md.
 export const DATA_PROTECTION_OFFICER = {
-  name: "TODO: full legal name of the DPO",   // ⚠️ EDIT THIS before merging
+  name: "Waseem Abu Akel",   // ⚠️ EDIT THIS before merging
   role: "Founder & Data Protection Officer",
   email: "privacy@vocaband.com",              // alias forwards to founder's inbox
   responseSlaHours: 24,
