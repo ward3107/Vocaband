@@ -152,7 +152,13 @@ export default function ReportsDashboard({
         sub={t.trendSubtitle}
       >
         <div className="h-56 sm:h-64">
-          <ResponsiveContainer>
+          {/* `minWidth={0}` silences Recharts' "width(-1) height(-1)"
+              warning that fires during the brief moment between mount
+              and the parent flex container measuring its dimensions
+              (most visible when the teacher switches to the reports
+              tab — the parent goes from display:none → flex and
+              ResponsiveContainer measures during the transition). */}
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={weeklyTrend} margin={{ top: 6, right: 12, bottom: 6, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
               <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="#78716c" />
@@ -174,7 +180,8 @@ export default function ReportsDashboard({
         sub={t.histogramSubtitle}
       >
         <div className="h-56 sm:h-64">
-          <ResponsiveContainer>
+          {/* See sister chart above for the minWidth={0} rationale. */}
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart data={playsPerDay} margin={{ top: 6, right: 12, bottom: 6, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
               <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={3} stroke="#78716c" />
