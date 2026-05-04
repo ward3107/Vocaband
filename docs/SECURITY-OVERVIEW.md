@@ -24,8 +24,8 @@ For deep technical detail, jump to the linked per-area docs.
 | Authentication (Google OAuth + anonymous Quick Play) | ✅ Wired | Code |
 | Three HIGH audit findings (2026-04-28) | ✅ Fixed in code, applied to live DB | Code + Operator |
 | All three MED findings — `teacher_profiles` enum, `quick_play_sessions` enum, class-RPC role check | ✅ Fixed in code (operator pastes migrations) | Code + Operator |
-| CSP `unsafe-eval` removed | ✅ Fixed | Code (deploys with Render) |
-| CSP `unsafe-inline` (script + style) | ⚠️ Load-bearing — kept, documented | — |
+| CSP `unsafe-eval` | ⚠️ **Still allowed — kept for now** | Initially flagged for removal, but a 2026-05-04 audit found it's still in `public/_headers`.  Reason for keeping: at least one bundled dep (likely a build-time codegen helper) needs `eval`.  Removing it broke Vite/Vue eval-based codegen in earlier attempts.  Revisit only after a full dependency audit identifies which package needs it.  Mitigation in the meantime: React's auto-escaping + the existing `script-src 'self'` whitelist still block external `<script>` injection. |
+| CSP `unsafe-inline` (script + style) | ⚠️ Load-bearing — kept, documented | Cloudflare Insights beacon + motion/react inline animation styles |
 | Secret hygiene (no committed secrets, .gitignore correct) | ✅ Verified | Code |
 | Express global error handler (no stack-trace leaks) | ✅ Added | Code |
 | `/api/features?debug=1` info leak | ✅ Sanitised | Code |

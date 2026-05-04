@@ -22,17 +22,25 @@ export const DATA_CONTROLLER = {
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-export const PRIVACY_POLICY_VERSION = "2024-03-01";  // Version 2.0 - Amendment 13 compliant
-export const TERMS_VERSION = "2024-03-01";            // Version 2.0 - Amendment 13 compliant
+// Bumped 2026-05-04 — sub-processor list refreshed (Render + Tesseract
+// removed; Cloudflare, Fly.io, Anthropic, Google Cloud Gemini, Google
+// Fonts added).  Bumping triggers the consent re-prompt so existing
+// users see the updated disclosure list before continuing.
+export const PRIVACY_POLICY_VERSION = "2026-05-04";  // Version 2.1 - Amendment 13 + processor list refresh
+export const TERMS_VERSION = "2026-05-04";            // Version 2.1 - bumped alongside privacy version
 
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
 // ---------------------------------------------------------------------------
 
 export const HOSTING_REGIONS = {
-  supabase: "us-east-1",           // Supabase project region
-  render: "oregon",                // Render web service region
-  googleAuth: "global",            // Google OAuth is multi-region
+  supabase: "EU (Frankfurt) — eu-central-1",
+  flyio: "EU (Amsterdam) — ams",
+  cloudflare: "Global edge network",
+  googleAuth: "Global (US-anchored)",
+  anthropic: "United States",
+  googleCloud: "EU (europe-west)",
+  googleFonts: "Global edge network",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -52,59 +60,72 @@ export interface ThirdPartyEntry {
 /**
  * Exhaustive registry of every external service the app communicates with.
  * Any new SDK or API MUST be added here before use — see PRIVACY_CHECKLIST.md.
+ *
+ * Source of truth for both the in-app Privacy Settings panel AND the
+ * public privacy page table.  When this list changes, also update
+ * `docs/SUBPROCESSORS.md` and bump `PRIVACY_POLICY_VERSION` so the
+ * consent re-prompt fires.
  */
 export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
   {
     name: "Supabase",
-    purpose: "Database, authentication, row-level security",
-    dataCategories: ["user profiles", "class data", "assignments", "progress scores", "auth tokens"],
+    purpose: "PostgreSQL database, authentication, row-level security, file storage, real-time subscriptions",
+    dataCategories: ["user profiles", "class data", "assignments", "progress scores", "audit logs", "auth tokens", "uploaded vocabulary lists"],
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.supabase,
-    endpoint: "*.supabase.co",
+    endpoint: "*.supabase.co (custom domain auth.vocaband.com)",
   },
   {
-    name: "Render",
-    purpose: "Web server hosting, Socket.IO live challenge server",
-    dataCategories: ["HTTP requests (IP, User-Agent)", "live challenge scores (in-memory only)"],
+    name: "Fly.io",
+    purpose: "Application server hosting (REST API, WebSocket server, OCR + AI translation endpoints)",
+    dataCategories: ["HTTP requests (IP, User-Agent)", "live challenge scores (in-memory only — never written to disk)", "OCR uploaded images (in-memory only — discarded after processing)"],
     processorOnly: true,
-    hostingRegion: HOSTING_REGIONS.render,
-    endpoint: "www.vocaband.com",
+    hostingRegion: HOSTING_REGIONS.flyio,
+    endpoint: "api.vocaband.com (vocaband.fly.dev)",
+  },
+  {
+    name: "Cloudflare",
+    purpose: "DNS, CDN, TLS termination, DDoS mitigation, Workers (request routing), privacy-friendly Web Analytics (no cookies)",
+    dataCategories: ["HTTP request metadata (IP, User-Agent, geolocation country)", "TLS handshake metadata"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.cloudflare,
+    endpoint: "vocaband.com, *.vocaband.com",
   },
   {
     name: "Google OAuth",
-    purpose: "Teacher authentication via Google Sign-In",
-    dataCategories: ["email address", "display name", "OAuth tokens"],
+    purpose: "Teacher authentication via Google Sign-In (alternative path to email + OTP)",
+    dataCategories: ["email address", "display name", "OAuth ID + refresh tokens"],
     processorOnly: false,
     hostingRegion: HOSTING_REGIONS.googleAuth,
     endpoint: "accounts.google.com",
-    notes: "Google acts as an independent controller for its own auth data",
+    notes: "Google acts as an INDEPENDENT controller for the OAuth handshake itself; processor for the email + display name passed back to Vocaband",
   },
   {
-    name: "Google Sheets (optional)",
-    purpose: "Teacher imports vocabulary from a public Google Sheet",
-    dataCategories: ["sheet content (vocabulary words only, no personal data)"],
-    processorOnly: false,
-    hostingRegion: "global",
-    endpoint: "docs.google.com",
-    notes: "Only triggered by explicit teacher action; no personal data sent",
+    name: "Anthropic (Claude API)",
+    purpose: "AI sentence generation for vocabulary worksheets and AI lesson builder",
+    dataCategories: ["vocabulary words (no personal data)", "generation parameters (difficulty level, language pair)"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.anthropic,
+    endpoint: "api.anthropic.com",
+    notes: "Triggered only on explicit teacher action.  Anthropic API tier has zero-retention policy — prompts and responses are not stored beyond the request lifetime, not used for model training. https://privacy.anthropic.com",
   },
   {
-    name: "Tesseract.js (server-side OCR)",
-    purpose: "OCR — extract English text from images for vocabulary matching",
-    dataCategories: ["uploaded image (processed in-memory on server via HTTPS)"],
-    processorOnly: false,
-    hostingRegion: "server-side (same region as main app)",
-    endpoint: "/api/ocr",
-    notes: "Image sent with JWT authentication; processed by Tesseract.js in-process; only English words returned; image not stored after processing",
+    name: "Google Cloud (Gemini API)",
+    purpose: "Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js)",
+    dataCategories: ["uploaded image bytes (typically a worksheet photo containing only English words)"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.googleCloud,
+    endpoint: "generativelanguage.googleapis.com",
+    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.",
   },
   {
-    name: "Google Favicon",
-    purpose: "Display Google icon on Sign-In button",
-    dataCategories: ["HTTP request metadata (IP, User-Agent)"],
+    name: "Google Fonts",
+    purpose: "Web font delivery (Plus Jakarta Sans, Heebo, Be Vietnam Pro, Fredoka)",
+    dataCategories: ["HTTP request metadata (IP, User-Agent, Referer) when the browser fetches font files"],
     processorOnly: false,
-    hostingRegion: "global",
-    endpoint: "www.google.com/favicon.ico",
-    notes: "Static asset fetch; no personal data transmitted",
+    hostingRegion: HOSTING_REGIONS.googleFonts,
+    endpoint: "fonts.googleapis.com, fonts.gstatic.com",
+    notes: "Per Google's privacy doc, font request data is logged but not used for advertising or correlated to other Google services.  Self-hosted fonts are a future option to remove this.",
   },
 ];
 

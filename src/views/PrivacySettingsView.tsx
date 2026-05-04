@@ -30,17 +30,15 @@ export default function PrivacySettingsView({
 
   const handleExportData = async () => {
     try {
-      // Client-side data export — fetch user's own data via RLS-protected queries
-      const [userResult, progressResult] = await Promise.all([
-        supabase.from('users').select('*').eq('uid', user.uid).maybeSingle(),
-        supabase.from('progress').select('*').eq('student_uid', user.uid),
-      ]);
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        user: userResult.data,
-        progress: progressResult.data ?? [],
-      };
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      // Use the export_my_data RPC instead of building the export
+      // client-side.  The RPC returns the COMPLETE export (including
+      // classes_owned, consent_history, assignments_created — which
+      // the old client-side path silently dropped) and writes an
+      // audit_log entry for the access — both required under
+      // תיקון 13 / PPA accountability.
+      const { data, error } = await supabase.rpc('export_my_data');
+      if (error) throw error;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -60,9 +58,19 @@ export default function PrivacySettingsView({
       message: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
       onConfirm: async () => {
         try {
-          // Delete user's progress and profile
-          await supabase.from('progress').delete().eq('student_uid', user.uid);
-          await supabase.from('users').delete().eq('uid', user.uid);
+          // Use the delete_my_account RPC instead of issuing two
+          // direct DELETEs.  The RPC:
+          //   - Writes the audit_log entry BEFORE deleting (so we
+          //     keep a record even after the user is gone).
+          //   - Branches on role: a teacher's account cascades to
+          //     all owned classes / assignments / linked students,
+          //     not just the users + progress rows that the old
+          //     client-side path touched.
+          //   - Cleans up consent_log entries for the user.
+          // The old path left orphaned classes/assignments behind
+          // for every teacher who deleted their account.
+          const { error } = await supabase.rpc('delete_my_account');
+          if (error) throw error;
           localStorage.removeItem('vocaband_consent_version');
           await supabase.auth.signOut();
           showToast("Account deleted successfully.", "success");
