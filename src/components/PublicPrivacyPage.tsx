@@ -6,6 +6,7 @@ import BackButton from "./BackButton";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
 import { privacyTranslations, uiTranslations } from "../config/translations/legalTranslations";
+import { DATA_PROTECTION_OFFICER } from "../config/privacy-config";
 
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "security") => void;
@@ -95,6 +96,24 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                  language === 'he' ? 'לפניות פרטיות, בקשות גישה לנתונים או תלונות, צרו איתנו קשר בכתובת למעלה. נשיב תוך 30 יום כנדרש על פי חוק.' :
                  'لاستفسارات الخصوصية أو طلبات الوصول إلى البيانات أو الشكاوى، تواصل معنا عبر البريد أعلاه. سنرد خلال 30 يومًا كما يقتضي القانون.'}
               </p>
+
+              {/* Data Protection Officer (ממונה על הגנת הפרטיות).
+                  Required to be public-facing under תיקון 13.  Sourced
+                  from DATA_PROTECTION_OFFICER in privacy-config.ts so
+                  this stays in sync if the role-holder changes. */}
+              <h3 className="font-bold text-lg mt-6 mb-2">
+                {language === 'en' ? 'Data Protection Officer' :
+                 language === 'he' ? 'ממונה על הגנת הפרטיות' :
+                 'مسؤول حماية البيانات'}
+              </h3>
+              <ul className={`space-y-2`}>
+                <li><strong>{language === 'en' ? 'Name:' : language === 'he' ? 'שם:' : 'الاسم:'}</strong> {DATA_PROTECTION_OFFICER.name}</li>
+                <li><strong>{language === 'en' ? 'Role:' : language === 'he' ? 'תפקיד:' : 'الدور:'}</strong> {DATA_PROTECTION_OFFICER.role}</li>
+                <li><strong>{language === 'en' ? 'Privacy Email:' : language === 'he' ? 'אימייל לפרטיות:' : 'بريد الخصوصية:'}</strong> <span className="text-primary">{DATA_PROTECTION_OFFICER.email}</span></li>
+                <li><strong>{language === 'en' ? 'Response SLA:' : language === 'he' ? 'זמן תגובה מובטח:' : 'وقت الاستجابة:'}</strong> {language === 'en' ? `${DATA_PROTECTION_OFFICER.responseSlaHours} hours for incident reports; 30 days for data-subject rights requests.` :
+                 language === 'he' ? `${DATA_PROTECTION_OFFICER.responseSlaHours} שעות לדיווחי אירועי אבטחה; 30 יום לבקשות זכויות נושאי מידע.` :
+                 `${DATA_PROTECTION_OFFICER.responseSlaHours} ساعة لتقارير الحوادث؛ 30 يومًا لطلبات حقوق أصحاب البيانات.`}</li>
+              </ul>
             </div>
           </section>
 
