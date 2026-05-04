@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { View } from '../core/views';
 import { supabase } from '../core/supabase';
 
@@ -42,6 +42,19 @@ export default function PendingApprovalScreen({
 }: PendingApprovalScreenProps) {
   const [checking, setChecking] = useState(false);
   const [dots, setDots] = useState('');
+  // Capture the parent-supplied callbacks via refs so the realtime
+  // subscription effect below doesn't tear down + recreate the
+  // channel + 30s poll on every parent render.  A 2026-05-04 audit
+  // found the effect's [handleLoginAsStudent, showToast] deps caused
+  // a teardown-then-checkStatus-then-resubscribe cycle on every App
+  // render.  showToast is now stable thanks to a useCallback in
+  // App.tsx, but handleLoginAsStudent still arrives as a fresh ref
+  // when it's redefined on each parent render — this ref pattern
+  // makes the effect insulated either way.
+  const handleLoginAsStudentRef = useRef(handleLoginAsStudent);
+  const showToastRef = useRef(showToast);
+  useEffect(() => { handleLoginAsStudentRef.current = handleLoginAsStudent; }, [handleLoginAsStudent]);
+  useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   // Animated '...' on the heading for a friendlier "we're watching" feel.
   useEffect(() => {
@@ -57,8 +70,8 @@ export default function PendingApprovalScreen({
       if (cancelled) return;
       if (row && row.status === 'approved') {
         try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-        showToast("You've been approved! Logging in...", 'success');
-        void handleLoginAsStudent(row.id);
+        showToastRef.current("You've been approved! Logging in...", 'success');
+        void handleLoginAsStudentRef.current(row.id);
       }
     };
 
@@ -130,7 +143,12 @@ export default function PendingApprovalScreen({
       document.removeEventListener('visibilitychange', handleVisibility);
       supabase.removeChannel(channel);
     };
-  }, [pendingApprovalInfo.classCode, pendingApprovalInfo.name, handleLoginAsStudent, showToast]);
+    // Effect deps: ONLY the primitives we genuinely depend on (the
+    // class code + display name).  showToast and handleLoginAsStudent
+    // come in via refs above, so a fresh reference from the parent
+    // doesn't tear down the channel + 30s poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingApprovalInfo.classCode, pendingApprovalInfo.name]);
 
   const handleManualCheck = async () => {
     setChecking(true);

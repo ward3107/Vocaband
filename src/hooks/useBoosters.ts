@@ -94,14 +94,21 @@ export function useBoosters(uid: string | null | undefined) {
     return mult;
   }, [isXpBoosterActive, isWeekendWarriorActive]);
 
-  /** Activate a booster.  Called from shop's purchaseBooster handler. */
+  /** Activate a booster.  Called from shop's purchaseBooster handler.
+   *  Date.now() is computed inside the body (not via the closure-
+   *  captured `now` constant) so the callback identity is stable
+   *  across renders.  A 2026-05-04 audit found `now` in the deps
+   *  array caused this callback ref to churn every render — local-
+   *  only churn today, but invites bugs if a future caller takes
+   *  `activate` as a useEffect dep. */
   const activate = useCallback((id: BoosterId) => {
     const d = DURATIONS[id];
+    const tNow = Date.now();
     if (id === 'xp_booster' && d.durationMs) {
       // Stack: extend existing expiry rather than reset.
-      setXpBoosterExpiry(prev => Math.max(prev, now) + (d.durationMs ?? 0));
+      setXpBoosterExpiry(prev => Math.max(prev, tNow) + (d.durationMs ?? 0));
     } else if (id === 'focus_mode' && d.durationMs) {
-      setFocusModeExpiry(prev => Math.max(prev, now) + (d.durationMs ?? 0));
+      setFocusModeExpiry(prev => Math.max(prev, tNow) + (d.durationMs ?? 0));
     } else if (id === 'streak_freeze') {
       setStreakFreezes(prev => prev + 1);
     } else if (id === 'lucky_charm') {
@@ -110,7 +117,7 @@ export function useBoosters(uid: string | null | undefined) {
       setWeekendArmed(true);
     }
     // lucky_spin grants a reward immediately via shop RPC; nothing to set here.
-  }, [now]);
+  }, []);
 
   /** Consume a single Lucky Charm shield if available.  Call once on
    * game start.  Returns true if a charm was consumed (caller should
