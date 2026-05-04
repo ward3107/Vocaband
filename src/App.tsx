@@ -25,6 +25,7 @@ import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/A
 import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
 import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
+import { logAudit } from './utils/audit';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
@@ -2535,7 +2536,15 @@ export default function App() {
             setQuickPlaySessionCode(null);
             setView("quick-play-setup");
           }}
-          onClassroomClick={() => { fetchScores(); fetchTeacherAssignments(); setView("classroom"); }}
+          onClassroomClick={() => {
+            fetchScores();
+            fetchTeacherAssignments();
+            setView("classroom");
+            // Audit-log the access ONCE per click, not per realtime push.
+            // fetchScores re-fires on every progress INSERT, so logging
+            // there caused a request storm — see 2026-05-04 audit fix.
+            void logAudit('view_gradebook', 'progress');
+          }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
           onProjectAssignmentToClass={(a) => {

@@ -778,15 +778,16 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
     setAllScores(allRows);
 
-    // Best-effort audit entry — records that this teacher accessed
-    // student progress data.  Fire-and-forget so the gradebook view
-    // never waits on audit writes.  Required by PPA Reg 2017 § 7 to
-    // demonstrate "appropriate monitoring" of access to personal data.
-    if (allRows.length > 0) {
-      void logAudit('view_gradebook', 'progress', {
-        metadata: { rows: allRows.length, classes: classes.length },
-      });
-    }
+    // NOTE on audit logging: we deliberately DO NOT call logAudit here.
+    // fetchScores is on the realtime hot path — every progress INSERT
+    // a student commits triggers a postgres_changes broadcast that
+    // re-fires fetchScores on every connected teacher dashboard.
+    // Logging here doubled the request count for what's essentially
+    // background data refresh.  The audit-log entry for "teacher
+    // accessed gradebook" is now written ONCE per session-mount of
+    // the classroom view, from useViewGuards (or wherever that view
+    // first loads), not on every refresh.  See 2026-05-04 request-
+    // storm audit notes in COMPLIANCE-CHECKLIST-PLAIN.md.
 
     // Derive students from the same data — avoids a separate query
     const studentMap: Record<string, {name: string, classCode: string, lastActive: string}> = {};

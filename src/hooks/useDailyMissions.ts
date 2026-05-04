@@ -95,8 +95,21 @@ export function useDailyMissions({ enabled, showToast, onXpGranted }: UseDailyMi
   // Keep a snapshot of completion state across recordPlay calls so we
   // can fire toasts only on the transition (not every play).
   const completedSnapshotRef = useRef<Set<DailyMissionType>>(new Set());
+  // Track whether we've ever attempted timezone persistence — gates
+  // the fire-once-per-mount behaviour.  Without this, a 2026-05-04
+  // request-storm audit found that putting `missions.length` in the
+  // fetchMissions useCallback deps caused the callback ref to rebuild
+  // on first successful fetch, which re-fired the init effect and
+  // re-called persistTimezone → 2× set_user_timezone RPC per mount.
+  // Multiplied by every dashboard mount across the school day, this
+  // dwarfed the actual feature traffic.  Refs are how we read state
+  // without contributing to deps.
+  const timezonePersistedRef = useRef(false);
+  const missionsCountRef = useRef(0);
 
   const persistTimezone = useCallback(async () => {
+    if (timezonePersistedRef.current) return; // fire-once per mount
+    timezonePersistedRef.current = true;
     const tz = deviceTimezone();
     if (tz === 'UTC') return; // skip the write — UTC is the column default
     try {
@@ -111,7 +124,9 @@ export function useDailyMissions({ enabled, showToast, onXpGranted }: UseDailyMi
   const fetchMissions = useCallback(async (force = false) => {
     if (!enabled) return;
     const date = todayLocalDateString();
-    if (!force && fetchedDateRef.current === date && missions.length > 0) return;
+    // Read missions length via the ref so this callback's identity
+    // doesn't depend on it — see the comment block above.
+    if (!force && fetchedDateRef.current === date && missionsCountRef.current > 0) return;
 
     setIsLoading(true);
     try {
@@ -121,6 +136,7 @@ export function useDailyMissions({ enabled, showToast, onXpGranted }: UseDailyMi
       if (error) throw error;
       const rows = (data ?? []) as DailyMission[];
       setMissions(rows);
+      missionsCountRef.current = rows.length;
       completedSnapshotRef.current = new Set(
         rows.filter(r => r.completed).map(r => r.mission_type),
       );
@@ -132,7 +148,7 @@ export function useDailyMissions({ enabled, showToast, onXpGranted }: UseDailyMi
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, missions.length]);
+  }, [enabled]); // STABLE — missionsCountRef is a ref, not a dep.
 
   // Initial fetch + write-back the device timezone.
   useEffect(() => {
@@ -185,6 +201,7 @@ export function useDailyMissions({ enabled, showToast, onXpGranted }: UseDailyMi
         }
         if (xpGrantedTotal > 0) onXpGranted?.(xpGrantedTotal);
         setMissions(rows);
+        missionsCountRef.current = rows.length;
       } catch (err) {
         console.error('[daily-missions] record_mission_progress failed:', err);
         // Silent — same forgiving pattern as saveScore.  The next

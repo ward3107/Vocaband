@@ -73,11 +73,18 @@ export function usePetEvolution({ enabled }: UsePetEvolutionOptions): UsePetEvol
   const [state, setState] = useState<PetEvolutionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const fetchedDateRef = useRef<string | null>(null);
+  // Track "have we ever populated state?" via a ref so it's not in the
+  // useCallback deps — putting `state` (an object) in deps caused the
+  // callback ref to rebuild after every successful fetch, which made
+  // the init useEffect re-fire and call fetchState() again (an extra
+  // bailed-out call per mount).  Multiplied by render churn this
+  // contributed to a 2026-05-04 request-storm audit.
+  const hasStateRef = useRef(false);
 
   const fetchState = useCallback(async (force = false) => {
     if (!enabled) return;
     const date = todayLocalDateString();
-    if (!force && fetchedDateRef.current === date && state !== null) return;
+    if (!force && fetchedDateRef.current === date && hasStateRef.current) return;
 
     setIsLoading(true);
     try {
@@ -95,6 +102,7 @@ export function usePetEvolution({ enabled }: UsePetEvolutionOptions): UsePetEvol
       } else {
         setState({ activeDays: 0, lastActiveDate: null, daysSinceLastActive: 0 });
       }
+      hasStateRef.current = true;
       fetchedDateRef.current = date;
     } catch (err) {
       console.error('[pet-evolution] fetch failed:', err);
@@ -102,7 +110,7 @@ export function usePetEvolution({ enabled }: UsePetEvolutionOptions): UsePetEvol
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, state]);
+  }, [enabled]); // STABLE — hasStateRef is a ref, not a dep.
 
   useEffect(() => {
     if (!enabled) {
