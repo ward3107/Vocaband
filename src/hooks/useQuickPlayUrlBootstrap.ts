@@ -135,25 +135,59 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           await supabase.auth.signInAnonymously().catch(() => {});
         }
 
-        const { data, error } = await supabase
+        // First, try the direct Supabase REST path.  When RLS +
+        // anonymous-signup are both correctly configured this is one
+        // network hop and ~50ms.  We use `maybeSingle()` instead of
+        // `.single()` so 0-rows comes back as `data: null` instead
+        // of a 406 — the noisy DevTools error was scaring teachers
+        // even when the fallback below recovered.
+        let { data, error } = await supabase
           .from('quick_play_sessions')
           .select('*')
           .eq('session_code', sessionCode)
           .eq('is_active', true)
-          .single();
+          .maybeSingle();
 
         if (error || !data) {
-          // Verbose logging — this path is where we lose Quick Play
-          // students to the landing page, so make the reason obvious
-          // in DevTools on every failure mode.
-          console.error('[Quick Play Load] session lookup failed', {
+          // Fallback: server endpoint that uses the service role key
+          // to bypass RLS entirely.  Reaches success even when:
+          //   - anonymous sign-ins are disabled in the Supabase
+          //     project settings (so the guest never gets an
+          //     authenticated role for the SELECT), or
+          //   - the SELECT policy on quick_play_sessions hasn't
+          //     been migrated to include the anon role (the
+          //     20260516_qp_sessions_select_anon migration).
+          // The endpoint is rate-limited and only returns sessions
+          // where is_active=true, so it's safe to call unauthenticated
+          // — same trust model as a QR code being public.
+          console.warn('[Quick Play Load] direct lookup failed, trying server fallback', {
             sessionCode,
             error: error ? {
               message: error.message, code: error.code, details: error.details, hint: error.hint,
             } : null,
             dataIsNull: !data,
-            quickPlayV2: QUICKPLAY_V2,
           });
+          try {
+            const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+            const fallbackRes = await fetch(`${apiUrl}/api/quick-play/session/${encodeURIComponent(sessionCode)}`);
+            if (fallbackRes.ok) {
+              data = await fallbackRes.json();
+              error = null;
+            } else if (fallbackRes.status === 404) {
+              // Genuinely no active session under that code — keep the
+              // existing "invalid or expired" UX.
+              console.error('[Quick Play Load] server fallback 404 — session not found or inactive', { sessionCode });
+            } else {
+              console.error('[Quick Play Load] server fallback non-OK', { sessionCode, status: fallbackRes.status });
+            }
+          } catch (fetchErr) {
+            console.error('[Quick Play Load] server fallback threw', { sessionCode, fetchErr });
+          }
+        }
+
+        if (!data) {
+          // Both paths gave up — session genuinely isn't reachable.
+          // The verbose logging above tells DevTools why.
           showToast("Invalid or expired Quick Play session. Please scan the QR code again.", "error");
           window.history.replaceState({}, '', window.location.pathname);
           setView("public-landing");
