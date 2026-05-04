@@ -218,8 +218,11 @@ export default function ScrambleGame({
       </div>
 
       {/* Built-word slots — one per expected letter, tappable to
-          send a letter back to the tray. */}
-      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-4 sm:mb-5">
+          send a letter back to the tray.
+          dir="ltr" is REQUIRED — English letters spell out left-to-
+          right.  Without it, a Hebrew-UI student sees the slots
+          mirrored and ends up tapping letters in the wrong order. */}
+      <div dir="ltr" className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-4 sm:mb-5">
         {renderSlots()}
       </div>
 
@@ -228,8 +231,12 @@ export default function ScrambleGame({
       <input type="hidden" name="answer" value={spellingInput} readOnly />
 
       {/* Letter tile tray — tap a tile to place it in the next slot.
-          Used tiles dim and become non-interactive. */}
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-5 sm:mb-6">
+          Used tiles dim and become non-interactive.
+          dir="ltr" so the scrambled letters render in their array
+          order regardless of UI language — RTL inheritance was
+          flipping the row in Hebrew, so a teacher / kid saw e.g.
+          "REHTONA" instead of the same shuffle as everyone else. */}
+      <div dir="ltr" className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-5 sm:mb-6">
         <AnimatePresence>
           {trayLetters.map((letter, idx) => {
             const used = usedTileIndexes.includes(idx);
