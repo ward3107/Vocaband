@@ -120,7 +120,7 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
 // Defined at module level to avoid re-creating arrays on every auth restore.
 const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "accessibility-statement"
+  "public-landing", "public-terms", "public-privacy", "public-security", "public-faq", "public-free-resources", "public-status", "accessibility-statement"
 ]);
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
@@ -196,13 +196,16 @@ export default function App() {
     handleCookieCustomize,
   } = useCookieConsent();
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
       accessibility: "accessibility-statement",
       security: "public-security",
+      faq: "public-faq",
+      resources: "public-free-resources",
+      status: "public-status",
     } as const;
     setView(viewMap[page]);
   };
@@ -223,6 +226,9 @@ export default function App() {
     view === "public-terms" ||
     view === "public-privacy" ||
     view === "public-security" ||
+    view === "public-faq" ||
+    view === "public-free-resources" ||
+    view === "public-status" ||
     view === "accessibility-statement";
   const vocab = useVocabularyLazy(!isPublicView);
   // Falsy-safe constants so existing code paths that reference these

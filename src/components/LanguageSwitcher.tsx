@@ -11,8 +11,6 @@ interface LanguageSwitcherProps {
   variant?: "pill" | "compact";
 }
 
-const SHORT_CODE: Record<Language, string> = { en: "EN", he: "עב", ar: "ع" };
-
 const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = "", variant = "pill" }) => {
   const { language, setLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -70,11 +68,10 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = "", var
         aria-label={languageNames[language]}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className={`relative inline-flex items-center gap-1.5 ${triggerSize} rounded-xl bg-surface-container-low text-on-surface font-bold border border-surface-container-high/60 hover:bg-surface-container transition-colors`}
+        className={`relative inline-flex items-center ${triggerSize} rounded-xl bg-surface-container-low text-on-surface font-bold border border-surface-container-high/60 hover:bg-surface-container transition-colors`}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
       >
-        <Globe size={variant === "compact" ? 14 : 16} strokeWidth={2.25} aria-hidden />
-        <span>{SHORT_CODE[language]}</span>
+        <Globe size={variant === "compact" ? 16 : 18} strokeWidth={2.25} aria-hidden />
         {/* Tiny caret so the affordance reads as "this opens" */}
         <motion.svg
           width="8" height="8" viewBox="0 0 8 8"
@@ -94,7 +91,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = "", var
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.12 }}
-            className="absolute top-full right-0 mt-2 py-1.5 rounded-xl bg-surface-container-lowest shadow-2xl border border-surface-container-highest overflow-hidden min-w-[170px] z-50"
+            className="absolute top-full right-0 mt-2 py-1.5 rounded-xl bg-surface-container-lowest shadow-2xl border border-surface-container-highest overflow-hidden min-w-[170px] z-[100]"
           >
             {languages.map(lang => {
               const isActive = language === lang;

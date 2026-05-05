@@ -1,0 +1,78 @@
+import type { Language } from "../../hooks/useLanguage";
+
+export interface FreeResourcesT {
+  backButton: string;
+  title: string;
+  subtitle: string;
+
+  // Section heading - Topic Packs
+  topicPacksTitle: string;
+  topicPacksSubtitle: string;
+  topicPackDescription: string; // has {count} placeholder
+  topicPackSize: string; // has {words} and {pages} placeholders
+
+  // Download button
+  download: string;
+  downloading: string;
+
+  // CTA
+  ctaTitle: string;
+  ctaText: string;
+  ctaButton: string;
+}
+
+export const freeResourcesT: Record<Language, FreeResourcesT> = {
+  en: {
+    backButton: "Back",
+    title: "Free Resources",
+    subtitle: "Downloadable vocabulary lists by topic",
+
+    topicPacksTitle: "Topic-Based Vocabulary Packs",
+    topicPacksSubtitle: "Download word lists organized by topic for easy printing and sharing",
+    topicPackDescription: "Essential vocabulary words for this topic. Perfect for classroom use and self-study.",
+    topicPackSize: "{words} words • {pages} pages",
+
+    download: "Download PDF",
+    downloading: "Downloading...",
+
+    ctaTitle: "Want more?",
+    ctaText: "Join thousands of teachers using Vocaband to make vocabulary practice engaging and effective.",
+    ctaButton: "Get Started Free",
+  },
+
+  he: {
+    backButton: "חזרה",
+    title: "משאבים בחינם",
+    subtitle: "רשימות אוצר מילים לפי נושא להורדה",
+
+    topicPacksTitle: "חבילות אוצר מילים לפי נושאים",
+    topicPacksSubtitle: "הורידו רשימות מילים מאורגנות לפי נושא להדפסה ושיתוף קל",
+    topicPackDescription: "מילים חיוניות לנושא זה. מושלם לשימוש בכיתה וללמידה עצמאית.",
+    topicPackSize: "{words} מילים • {pages} עמודים",
+
+    download: "הורד PDF",
+    downloading: "מוריד...",
+
+    ctaTitle: "רוצים עוד?",
+    ctaText: "הצטרפו לאלפי המורים שמשתמשים ב-Vocaband כדי להפוך את תרגול אוצר המילים למהנה ואפקטיבי.",
+    ctaButton: "התחילו בחינם",
+  },
+
+  ar: {
+    backButton: "رجوع",
+    title: "موارد مجانية",
+    subtitle: "قوائم مفردات حسب الموضوع للتنزيل",
+
+    topicPacksTitle: "حزم المفردات حسب الموضوع",
+    topicPacksSubtitle: "نزّل قوائم الكلمات المنظمة حسب الموضوع للطباعة والمشاركة السهولة",
+    topicPackDescription: "كلمات أساسية لهذا الموضوع. مثالية للاستخدام في الصف والدراسة الذاتية.",
+    topicPackSize: "{words} كلمات • {pages} صفحات",
+
+    download: "تنزيل PDF",
+    downloading: "جاري التنزيل...",
+
+    ctaTitle: "تريد المزيد؟",
+    ctaText: "انضم إلى آلاف المعلمين الذين يستخدمون Vocaband لجعل ممارسة المفردات ممتعة وفعالة.",
+    ctaButton: "ابدأ مجانًا",
+  },
+};

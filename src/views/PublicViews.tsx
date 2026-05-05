@@ -23,13 +23,19 @@ import {
   TermsPageWrapper,
   PrivacyPageWrapper,
   SecurityPageWrapper,
+  FaqPageWrapper,
+  FreeResourcesPageWrapper,
+  StatusPageWrapper,
   DemoModeWrapper,
   AccessibilityStatementWrapper,
 } from "../components/LazyComponents";
 import TeacherLoginView from "./TeacherLoginView";
 import FloatingButtons from "../components/FloatingButtons";
+import { useEffect } from "react";
 
-type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security";
+type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status";
+
+const SCROLL_POS_KEY = "vocaband_landing_scroll_pos";
 
 export interface PublicViewsProps {
   view: View;
@@ -58,25 +64,32 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     cookieBannerOverlay,
   } = props;
 
+  // Wrapper that saves scroll position before navigating away from landing
+  const handleNavigate = (page: PublicNavigatePage) => {
+    // Save scroll position when leaving landing page
+    if (view === "public-landing" && page !== "home") {
+      try {
+        sessionStorage.setItem(SCROLL_POS_KEY, JSON.stringify({
+          x: window.scrollX,
+          y: window.scrollY,
+        }));
+      } catch { /* ignore storage errors */ }
+    }
+    onPublicNavigate(page);
+  };
+
   if (view === "public-landing") {
     return (
-      <>
-        {configErrorBanner}
-        <LandingPageWrapper
-          onNavigate={onPublicNavigate}
-          onGetStarted={() => setView("student-account-login")}
-          onTeacherLogin={onTeacherOAuth}
-          onTryDemo={() => setShowDemo(true)}
-          isAuthenticated={!!user}
-        />
-        {showDemo && (
-          <DemoModeWrapper
-            onClose={() => setShowDemo(false)}
-          />
-        )}
-        {cookieBannerOverlay}
-        <FloatingButtons showBackToTop={true} />
-      </>
+      <LandingPageWithScrollRestore
+        configErrorBanner={configErrorBanner}
+        cookieBannerOverlay={cookieBannerOverlay}
+        showDemo={showDemo}
+        setShowDemo={setShowDemo}
+        setView={setView}
+        onNavigate={handleNavigate}
+        onTeacherOAuth={onTeacherOAuth}
+        isAuthenticated={!!user}
+      />
     );
   }
 
@@ -84,7 +97,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     return (
       <>
         <TermsPageWrapper
-          onNavigate={onPublicNavigate}
+          onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
@@ -97,7 +110,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     return (
       <>
         <PrivacyPageWrapper
-          onNavigate={onPublicNavigate}
+          onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
@@ -110,7 +123,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     return (
       <>
         <SecurityPageWrapper
-          onNavigate={onPublicNavigate}
+          onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
@@ -137,7 +150,46 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     return (
       <>
         <AccessibilityStatementWrapper
-          onNavigate={onPublicNavigate}
+          onNavigate={handleNavigate}
+          onGetStarted={() => setView("student-account-login")}
+          onBack={goBack}
+        />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "public-faq") {
+    return (
+      <>
+        <FaqPageWrapper
+          onNavigate={handleNavigate}
+          onGetStarted={() => setView("student-account-login")}
+          onBack={goBack}
+        />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "public-free-resources") {
+    return (
+      <>
+        <FreeResourcesPageWrapper
+          onNavigate={handleNavigate}
+          onGetStarted={() => setView("student-account-login")}
+          onBack={goBack}
+        />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "public-status") {
+    return (
+      <>
+        <StatusPageWrapper
+          onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
           onBack={goBack}
         />
@@ -147,4 +199,61 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
   }
 
   return null;
+}
+
+// Separate component for landing page to handle scroll restoration
+function LandingPageWithScrollRestore({
+  configErrorBanner,
+  cookieBannerOverlay,
+  showDemo,
+  setShowDemo,
+  setView,
+  onNavigate,
+  onTeacherOAuth,
+  isAuthenticated,
+}: {
+  configErrorBanner: ReactNode;
+  cookieBannerOverlay: ReactNode;
+  showDemo: boolean;
+  setShowDemo: (v: boolean) => void;
+  setView: (v: View) => void;
+  onNavigate: (page: PublicNavigatePage) => void;
+  onTeacherOAuth: () => void;
+  isAuthenticated: boolean;
+}) {
+  useEffect(() => {
+    // Restore scroll position after a short delay to ensure content is rendered
+    const timeoutId = setTimeout(() => {
+      try {
+        const saved = sessionStorage.getItem(SCROLL_POS_KEY);
+        if (saved) {
+          const { x, y } = JSON.parse(saved);
+          window.scrollTo(x, y);
+          sessionStorage.removeItem(SCROLL_POS_KEY);
+        }
+      } catch { /* ignore parse errors */ }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  return (
+    <>
+      {configErrorBanner}
+      <LandingPageWrapper
+        onNavigate={onNavigate}
+        onGetStarted={() => setView("student-account-login")}
+        onTeacherLogin={onTeacherOAuth}
+        onTryDemo={() => setShowDemo(true)}
+        isAuthenticated={isAuthenticated}
+      />
+      {showDemo && (
+        <DemoModeWrapper
+          onClose={() => setShowDemo(false)}
+        />
+      )}
+      {cookieBannerOverlay}
+      <FloatingButtons showBackToTop={true} />
+    </>
+  );
 }

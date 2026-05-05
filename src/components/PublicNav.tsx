@@ -17,7 +17,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
   const { language } = useLanguage();
   const t = landingPageT[language];
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-stone-100/80 backdrop-blur-md flex justify-between items-center px-4 md:px-6 py-2 border-b border-stone-200/50">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-stone-100/80 backdrop-blur-md flex justify-between items-center px-4 md:px-6 py-2 border-b border-stone-200/50 overflow-visible">
       <button
         onClick={() => onNavigate("home")}
         className="flex items-center gap-2"
@@ -33,7 +33,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
         </span>
       </button>
 
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="flex items-center gap-2 md:gap-3 mr-12 md:mr-8">
         <NavLanguageToggle />
       </div>
     </nav>
