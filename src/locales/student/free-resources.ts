@@ -11,10 +11,13 @@ export interface FreeResourcesT {
   topicPackDescription: string; // has {count} placeholder
   topicPackSize: string; // has {words} and {pages} placeholders
 
-  // Download button
+  // Download buttons
   download: string;
   downloading: string;
   downloadMatching: string;
+  downloadFlashcards: string;
+  downloadBingo: string;
+  downloadWordSearch: string;
 
   // Matching Practice
   matchingPracticeTitle: string;
@@ -43,6 +46,9 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     download: "Download PDF",
     downloading: "Downloading...",
     downloadMatching: "Matching Exercise",
+    downloadFlashcards: "Flashcards",
+    downloadBingo: "Bingo Cards",
+    downloadWordSearch: "Word Search",
 
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
@@ -68,6 +74,9 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     download: "הורד PDF",
     downloading: "מוריד...",
     downloadMatching: "תרגיל התאמה",
+    downloadFlashcards: "כרטיסיות",
+    downloadBingo: "כרטיסי בינגו",
+    downloadWordSearch: "חיפוש מילים",
 
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
@@ -93,6 +102,9 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     download: "تنزيل PDF",
     downloading: "جاري التنزيل...",
     downloadMatching: "تمرين المطابقة",
+    downloadFlashcards: "بطاقات تعليمية",
+    downloadBingo: "بطاقات البينغو",
+    downloadWordSearch: "بحث الكلمات",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
