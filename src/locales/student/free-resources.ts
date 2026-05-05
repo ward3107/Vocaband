@@ -14,6 +14,14 @@ export interface FreeResourcesT {
   // Download button
   download: string;
   downloading: string;
+  downloadMatching: string;
+
+  // Matching Practice
+  matchingPracticeTitle: string;
+  matchingPracticeSubtitle: string;
+  matchingPracticeHebrew: string;
+  matchingPracticeArabic: string;
+  matchingPracticeDescription: string;
 
   // CTA
   ctaTitle: string;
@@ -34,6 +42,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     download: "Download PDF",
     downloading: "Downloading...",
+    downloadMatching: "Matching Exercise",
+
+    matchingPracticeTitle: "Interactive Practice",
+    matchingPracticeSubtitle: "Practice matching words with translations",
+    matchingPracticeHebrew: "English ↔ Hebrew",
+    matchingPracticeArabic: "English ↔ Arabic",
+    matchingPracticeDescription: "Play an interactive matching game to test your vocabulary skills.",
 
     ctaTitle: "Want more?",
     ctaText: "Join thousands of teachers using Vocaband to make vocabulary practice engaging and effective.",
@@ -52,6 +67,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     download: "הורד PDF",
     downloading: "מוריד...",
+    downloadMatching: "תרגיל התאמה",
+
+    matchingPracticeTitle: "תרגול אינטראקטיבי",
+    matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
+    matchingPracticeHebrew: "אנגלית ↔ עברית",
+    matchingPracticeArabic: "אנגלית ↔ ערבית",
+    matchingPracticeDescription: "שחקו משחק התאמה אינטראקטיבי לבדיקת הידע שלכם.",
 
     ctaTitle: "רוצים עוד?",
     ctaText: "הצטרפו לאלפי המורים שמשתמשים ב-Vocaband כדי להפוך את תרגול אוצר המילים למהנה ואפקטיבי.",
@@ -70,6 +92,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     download: "تنزيل PDF",
     downloading: "جاري التنزيل...",
+    downloadMatching: "تمرين المطابقة",
+
+    matchingPracticeTitle: "تمرين تفاعلي",
+    matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
+    matchingPracticeHebrew: "الإنجليزية ↔ العبرية",
+    matchingPracticeArabic: "الإنجليزية ↔ العربية",
+    matchingPracticeDescription: "العب لعبة المطابقة التفاعلية لاختبار مهاراتك في المفردات.",
 
     ctaTitle: "تريد المزيد؟",
     ctaText: "انضم إلى آلاف المعلمين الذين يستخدمون Vocaband لجعل ممارسة المفردات ممتعة وفعالة.",

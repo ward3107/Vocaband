@@ -9,6 +9,7 @@ import {
   FileText,
   Rocket,
   Loader2,
+  Gamepad2,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 
@@ -38,9 +39,11 @@ interface ResourceCardProps {
   description: string;
   size: string;
   downloadLabel: string;
+  matchingLabel: string;
   gradient: string;
   delay: number;
   onDownload: () => void;
+  onMatching: () => void;
   isDownloading: boolean;
 }
 
@@ -50,9 +53,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   description,
   size,
   downloadLabel,
+  matchingLabel,
   gradient,
   delay,
   onDownload,
+  onMatching,
   isDownloading,
 }) => {
   const { isRTL } = useLanguage();
@@ -79,28 +84,43 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       <div className="p-6">
         <p className="text-white/80 mb-6 leading-relaxed text-lg">{description}</p>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onDownload}
-          disabled={isDownloading}
-          className={`w-full py-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 text-lg ${
-            isDownloading ? "cursor-wait" : "cursor-pointer"
-          }`}
-          type="button"
-        >
-          {isDownloading ? (
-            <>
-              <Loader2 size={20} className="animate-spin" />
-              {downloadLabel}
-            </>
-          ) : (
-            <>
-              <Download size={20} className={isRTL ? "ml-2" : "mr-2"} />
-              {downloadLabel}
-            </>
-          )}
-        </motion.button>
+        <div className="space-y-3">
+          {/* Main Download Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onDownload}
+            disabled={isDownloading}
+            className={`w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 ${
+              isDownloading ? "cursor-wait" : "cursor-pointer"
+            }`}
+            type="button"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                {downloadLabel}
+              </>
+            ) : (
+              <>
+                <Download size={18} className={isRTL ? "ml-2" : "mr-2"} />
+                {downloadLabel}
+              </>
+            )}
+          </motion.button>
+
+          {/* Matching Exercise Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onMatching}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 font-bold transition-all flex items-center justify-center gap-2 border border-emerald-400/30"
+            type="button"
+          >
+            <Gamepad2 size={18} className={isRTL ? "ml-2" : "mr-2"} />
+            {matchingLabel}
+          </motion.button>
+        </div>
       </div>
     </motion.div>
   );
@@ -147,71 +167,79 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({
     setDownloadingId(null);
   };
 
+  const handleMatchingExercise = async (topicName: string) => {
+    setDownloadingId(`matching-${topicName}`);
+
+    const topicPack = TOPIC_PACKS.find((tp) => tp.name === topicName);
+    if (!topicPack) {
+      setDownloadingId(null);
+      return;
+    }
+
+    const words = topicPack.ids.map((id) => ALL_WORDS.find((w) => w.id === id)).filter(Boolean);
+    const matchingHTML = generateMatchingExerciseHTML(topicPack, words, language);
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(matchingHTML);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    }
+
+    setDownloadingId(null);
+  };
+
   const generateWorksheetHTML = (topicPack: { name: string; icon: string }, words: typeof ALL_WORDS, lang: string) => {
     const isRTL = lang === "he" || lang === "ar";
     const dir = isRTL ? "rtl" : "ltr";
     const wordCount = words.length;
+    const today = new Date().toLocaleDateString(lang === "he" ? "he-IL" : lang === "ar" ? "ar-SA" : "en-US");
 
     // Translations for the worksheet
     const worksheetTitles = {
       en: {
         vocabulary: "Vocabulary Worksheet",
-        topic: "Topic:",
-        word: "Word (English)",
+        word: "English",
         translation: "Translation",
         practice: "Practice Writing",
         name: "Name:",
         date: "Date:",
-        wordsLabel: wordCount === 1 ? "word" : "words",
-        practiceInstruction: "Write each word and its translation to practice.",
-        page: "Page",
-        instructions: "Instructions: Learn the vocabulary words, then use the practice page on the back."
+        school: "School:",
+        class: "Class:",
       },
       he: {
         vocabulary: "גיליון עבודה - אוצר מילים",
-        topic: "נושא:",
-        word: "מילה באנגלית",
+        word: "אנגלית",
         translation: "תרגום",
         practice: "תרגול כתיבה",
         name: "שם:",
         date: "תאריך:",
-        wordsLabel: wordCount === 1 ? "מילה" : "מילים",
-        practiceInstruction: "כתוב כל מילה והתרגום שלה לתרגול.",
-        page: "עמוד",
-        instructions: "הוראות: למדו את מילות האוצר, ואז השתמשו בדף התרגול מאחור."
+        school: "בית ספר:",
+        class: "כיתה:",
       },
       ar: {
         vocabulary: "ورقة عمل - المفردات",
-        topic: "الموضوع:",
-        word: "الكلمة (الإنجليزية)",
+        word: "الإنجليزية",
         translation: "الترجمة",
         practice: "تمارين الكتابة",
         name: "الاسم:",
         date: "التاريخ:",
-        wordsLabel: wordCount === 1 ? "كلمة" : "كلمات",
-        practiceInstruction: "اكتب كل كلمة وترجمتها للتدرب.",
-        page: "صفحة",
-        instructions: "التعليمات: تعلم كلمات المفردات، ثم استخدم صفحة التدرب في الخلف."
+        school: "المدرسة:",
+        class: "الصف:",
       },
     };
 
     const titles = worksheetTitles[lang as keyof typeof worksheetTitles] || worksheetTitles.en;
 
-    // Get translation based on language - only ONE language, not both
+    // Get translation based on language
     const getTranslation = (word: typeof ALL_WORDS[0]) => {
       if (lang === "he") return word.hebrew;
       if (lang === "ar") return word.arabic;
-      return word.hebrew; // English gets Hebrew translation
+      return word.hebrew;
     };
-
-    // Create practice boxes matching the word count
-    const practiceBoxesHTML = words.map((_, i) => `
-      <div class="practice-box">
-        <div class="practice-label">${i + 1}.</div>
-        <div class="practice-input english-input"></div>
-        <div class="practice-input translation-input"></div>
-      </div>
-    `).join("");
 
     return `
 <!DOCTYPE html>
@@ -224,124 +252,89 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page {
       size: A4;
-      margin: 15mm;
+      margin: 12mm;
     }
     body {
       font-family: ${isRTL ? "'Segoe UI', Tahoma, Arial, sans-serif" : "'Segoe UI', Arial, sans-serif"};
-      line-height: 1.6;
+      line-height: 1.4;
       color: #333;
       font-size: 14px;
     }
-    .page {
-      min-height: 250mm;
-      padding: 20px;
-      page-break-after: always;
-    }
-    .page:last-child {
-      page-break-after: auto;
+    .container {
+      padding: 12px;
+      max-width: 100%;
     }
     .header {
       text-align: center;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
+      margin-bottom: 15px;
+      padding-bottom: 12px;
       border-bottom: 4px solid #8b5cf6;
     }
-    .logo {
-      font-size: 36px;
-      font-weight: bold;
-      color: #8b5cf6;
-      margin-bottom: 15px;
-    }
-    .topic-icon {
-      font-size: 72px;
-      margin: 20px 0;
-    }
-    .topic-title {
-      font-size: 28px;
-      font-weight: bold;
-      margin: 15px 0;
-      color: #7c3aed;
-    }
-    .word-count-badge {
-      display: inline-block;
-      background: linear-gradient(135deg, #8b5cf6, #a855f7);
-      color: white;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 16px;
-      font-weight: bold;
-      margin: 15px 0;
-    }
-    .instructions-box {
-      background: #f0fdf4;
-      border: 2px solid #22c55e;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 30px 0;
-      text-align: center;
-    }
-    .instructions-title {
-      font-size: 18px;
-      font-weight: bold;
-      color: #16a34a;
-      margin-bottom: 10px;
-    }
-    .instructions-text {
-      font-size: 14px;
-      color: #15803d;
-    }
-    .student-info {
+    .header-top {
       display: flex;
       justify-content: space-between;
-      margin: 40px 0;
-      padding: 20px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .logo {
+      font-size: 26px;
+      font-weight: bold;
+      color: #8b5cf6;
+    }
+    .topic-icon {
+      font-size: 42px;
+    }
+    .topic-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #7c3aed;
+      margin-bottom: 4px;
+    }
+    .word-count {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    .student-info {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 15px;
+      padding: 12px;
       background: #f3f4f6;
-      border-radius: 12px;
-      gap: 20px;
+      border-radius: 10px;
     }
     .info-field {
-      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     .info-label {
-      font-size: 16px;
+      font-size: 13px;
       font-weight: bold;
-      color: #374151;
-      display: block;
-      margin-bottom: 8px;
+      color: #4b5563;
+      margin-bottom: 4px;
     }
-    .info-line {
+    .info-input {
       border-bottom: 2px solid #d1d5db;
-      height: 30px;
-    }
-    .decorative-line {
-      height: 3px;
-      background: linear-gradient(90deg, #8b5cf6, #a855f7, #8b5cf6);
-      margin: 30px 0;
-      border-radius: 2px;
-    }
-    .page-footer {
-      text-align: center;
-      margin-top: auto;
-      padding-top: 20px;
-      border-top: 1px solid #e5e7eb;
-      font-size: 11px;
-      color: #9ca3af;
+      height: 26px;
+      padding: 2px 6px;
+      font-size: 14px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-bottom: 15px;
     }
     th {
       background: linear-gradient(135deg, #8b5cf6, #a855f7);
       color: white;
-      padding: 15px 10px;
+      padding: 10px 8px;
       text-align: ${isRTL ? "right" : "left"};
       font-weight: bold;
       font-size: 14px;
     }
     td {
-      padding: 12px 10px;
+      padding: 8px 6px;
       border-bottom: 1px solid #e5e7eb;
       text-align: ${isRTL ? "right" : "left"};
       font-size: 14px;
@@ -352,124 +345,127 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({
     .num-cell {
       font-weight: bold;
       color: #8b5cf6;
-      width: 8%;
+      width: 6%;
       text-align: center;
+      font-size: 14px;
     }
     .word-cell {
-      font-weight: bold;
+      font-weight: 600;
       color: #7c3aed;
+      width: 47%;
       font-size: 15px;
-      width: 46%;
     }
     .translation-cell {
       color: #374151;
+      width: 47%;
       font-size: 15px;
-      width: 46%;
     }
     .practice-section {
-      margin-top: 30px;
-      padding: 25px;
+      margin-top: 12px;
+      padding: 15px;
       background: #fef3c7;
-      border-radius: 16px;
+      border-radius: 12px;
       border: 3px dashed #f59e0b;
     }
+    .practice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
     .practice-title {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: bold;
       color: #92400e;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    .practice-instruction {
-      text-align: center;
-      margin-bottom: 25px;
-      font-size: 14px;
-      color: #78350f;
     }
     .practice-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
+      gap: 10px;
     }
     .practice-box {
       border: 2px solid #d1d5db;
-      border-radius: 10px;
-      padding: 10px;
+      border-radius: 8px;
+      padding: 8px;
       background: white;
-      min-height: 80px;
+      min-height: 65px;
+      display: flex;
+      flex-direction: column;
     }
     .practice-label {
       font-size: 12px;
       color: #7c3aed;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       font-weight: bold;
+    }
+    .practice-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
     .practice-input {
       border-bottom: 2px dotted #9ca3af;
       padding: 3px 0;
-      margin-top: 3px;
       font-size: 12px;
       min-height: 20px;
     }
-    .english-input::before {
-      content: "${lang === "en" ? "English:" : lang === "he" ? "אנגלית:" : "الإنجليزية:"}";
+    .practice-input.english::before {
+      content: "English: ";
       font-size: 10px;
       color: #9ca3af;
-      display: block;
     }
-    .translation-input::before {
-      content: "${lang === "en" ? "Translation:" : lang === "he" ? "תרגום:" : "الترجمة:"}";
+    .practice-input.translation::before {
+      content: "${lang === "he" ? "תרגום: " : lang === "ar" ? "الترجمة: " : "Translation: "}";
       font-size: 10px;
       color: #9ca3af;
-      display: block;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 11px;
+      color: #9ca3af;
     }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .page { page-break-after: always; }
-      .page:last-child { page-break-after: auto; }
     }
   </style>
 </head>
 <body>
-  <!-- PAGE 1: Cover with Student Info -->
-  <div class="page">
+  <div class="container">
+    <!-- Header -->
     <div class="header">
-      <div class="logo">📚 Vocaband</div>
-      <div class="topic-icon">${topicPack.icon}</div>
+      <div class="header-top">
+        <div class="logo">📚 Vocaband</div>
+        <div class="topic-icon">${topicPack.icon}</div>
+        <div style="font-size: 12px; color: #9ca3af;">${today}</div>
+      </div>
       <div class="topic-title">${topicPack.name}</div>
-      <div class="word-count-badge">${wordCount} ${titles.wordsLabel}</div>
+      <div class="word-count">${wordCount} words</div>
     </div>
 
-    <div class="decorative-line"></div>
-
-    <div class="instructions-box">
-      <div class="instructions-title">📝 ${titles.vocabulary}</div>
-      <div class="instructions-text">${titles.instructions}</div>
-    </div>
-
+    <!-- Student Info -->
     <div class="student-info">
       <div class="info-field">
         <span class="info-label">${titles.name}</span>
-        <div class="info-line"></div>
+        <div class="info-input"></div>
       </div>
       <div class="info-field">
         <span class="info-label">${titles.date}</span>
-        <div class="info-line"></div>
+        <div class="info-input">${today}</div>
+      </div>
+      <div class="info-field">
+        <span class="info-label">${titles.school}</span>
+        <div class="info-input"></div>
+      </div>
+      <div class="info-field">
+        <span class="info-label">${titles.class}</span>
+        <div class="info-input"></div>
       </div>
     </div>
 
-    <div class="page-footer">
-      ${titles.page} 1 of 3 • © ${new Date().getFullYear()} Vocaband • www.vocaband.com
-    </div>
-  </div>
-
-  <!-- PAGE 2: Words and Translations Table -->
-  <div class="page">
-    <div class="header" style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #8b5cf6;">
-      <div class="logo" style="font-size: 24px; margin-bottom: 10px;">📚 ${topicPack.name}</div>
-      <div style="font-size: 16px; color: #6b7280;">${titles.word} + ${titles.translation}</div>
-    </div>
-
+    <!-- Vocabulary Table -->
     <table>
       <thead>
         <tr>
@@ -489,23 +485,299 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({
       </tbody>
     </table>
 
-    <div class="page-footer" style="margin-top: auto;">
-      ${titles.page} 2 of 3 • © ${new Date().getFullYear()} Vocaband • www.vocaband.com
-    </div>
-  </div>
-
-  <!-- PAGE 3: Practice Boxes -->
-  <div class="page">
+    <!-- Practice Section -->
     <div class="practice-section">
-      <div class="practice-title">✏️ ${titles.practice}</div>
-      <p class="practice-instruction">${titles.practiceInstruction}</p>
+      <div class="practice-header">
+        <div class="practice-title">✏️ ${titles.practice}</div>
+      </div>
       <div class="practice-grid">
-        ${practiceBoxesHTML}
+        ${words.map((_, i) => `
+          <div class="practice-box">
+            <div class="practice-label">${i + 1}.</div>
+            <div class="practice-inputs">
+              <div class="practice-input english"></div>
+              <div class="practice-input translation"></div>
+            </div>
+          </div>
+        `).join("")}
       </div>
     </div>
 
-    <div class="page-footer" style="margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-      ${titles.page} 3 of 3 • © ${new Date().getFullYear()} Vocaband • www.vocaband.com
+    <!-- Footer -->
+    <div class="footer">
+      © ${new Date().getFullYear()} Vocaband • www.vocaband.com
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  };
+
+  const generateMatchingExerciseHTML = (topicPack: { name: string; icon: string }, words: typeof ALL_WORDS, lang: string) => {
+    const isRTL = lang === "he" || lang === "ar";
+    const dir = isRTL ? "rtl" : "ltr";
+
+    // Translations for the matching exercise
+    const matchingTitles = {
+      en: {
+        title: "Matching Exercise",
+        instructions: "Write the number of the correct English word next to each translation.",
+        englishWords: "English Words",
+        translations: "Translations",
+        writeNumber: "Write #",
+        name: "Name:",
+        date: "Date:",
+        page: "Page",
+      },
+      he: {
+        title: "תרגיל התאמה",
+        instructions: "כתובו את מספר המילה הנכונה באנגלית ליד כל תרגום.",
+        englishWords: "מילים באנגלית",
+        translations: "תרגומים",
+        writeNumber: "כתוב #",
+        name: "שם:",
+        date: "תאריך:",
+        page: "עמוד",
+      },
+      ar: {
+        title: "تمرين المطابقة",
+        instructions: "اكتب رقم الكلمة الإنجليزية الصحيحة بجانب كل ترجمة.",
+        englishWords: "الكلمات الإنجليزية",
+        translations: "الترجمات",
+        writeNumber: "اكتب #",
+        name: "الاسم:",
+        date: "التاريخ:",
+        page: "صفحة",
+      },
+    };
+
+    const titles = matchingTitles[lang as keyof typeof matchingTitles] || matchingTitles.en;
+
+    // Get translation based on language
+    const getTranslation = (word: typeof ALL_WORDS[0]) => {
+      if (lang === "he") return word.hebrew;
+      if (lang === "ar") return word.arabic;
+      return word.hebrew;
+    };
+
+    // Create TWO separate sections:
+    // 1. English words numbered in order
+    // 2. Scrambled translations with empty boxes for numbers
+
+    // Shuffle translations independently
+    const shuffledTranslations = [...words]
+      .map((word, index) => ({
+        translation: getTranslation(word),
+        correctNumber: index + 1
+      }))
+      .sort(() => Math.random() - 0.5);
+
+    // English words section (numbered)
+    const englishWordsSection = words.map((word, index) => `
+      <div class="word-item">
+        <span class="word-num">${index + 1}.</span>
+        <span class="word-text">${word.english}</span>
+      </div>
+    `).join("");
+
+    // Translations section (scrambled, with number input)
+    const translationsSection = shuffledTranslations.map((item) => `
+      <div class="translation-item">
+        <span class="translation-text">${item.translation}</span>
+        <div class="number-box">___</div>
+      </div>
+    `).join("");
+
+    return `
+<!DOCTYPE html>
+<html lang="${lang}" dir="${dir}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${topicPack.name} - ${titles.title}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+    body {
+      font-family: ${isRTL ? "'Segoe UI', Tahoma, Arial, sans-serif" : "'Segoe UI', Arial, sans-serif"};
+      line-height: 1.4;
+      color: #333;
+      font-size: 14px;
+    }
+    .page {
+      padding: 15px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #10b981;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #10b981;
+      margin-bottom: 5px;
+    }
+    .topic-icon {
+      font-size: 40px;
+      margin: 10px 0;
+    }
+    .topic-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #059669;
+    }
+    .instructions-box {
+      background: #ecfdf5;
+      border: 2px solid #10b981;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 15px 0;
+      text-align: center;
+    }
+    .instructions-text {
+      font-size: 14px;
+      color: #047857;
+      font-weight: 500;
+    }
+    .student-info {
+      display: flex;
+      justify-content: space-between;
+      margin: 15px 0;
+      padding: 10px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      gap: 15px;
+    }
+    .info-field {
+      flex: 1;
+    }
+    .info-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: #374151;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .info-line {
+      border-bottom: 2px solid #d1d5db;
+      height: 20px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #059669;
+      margin: 15px 0 10px 0;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .words-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .word-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #f0fdf4;
+      border-radius: 6px;
+      border: 1px solid #10b981;
+    }
+    .word-num {
+      font-weight: bold;
+      color: #10b981;
+      font-size: 14px;
+      min-width: 25px;
+    }
+    .word-text {
+      font-weight: 600;
+      color: #059669;
+      font-size: 14px;
+    }
+    .translations-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .translation-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: #fef3c7;
+      border-radius: 6px;
+      border: 1px solid #f59e0b;
+      gap: 8px;
+    }
+    .translation-text {
+      font-weight: 500;
+      color: #92400e;
+      font-size: 14px;
+    }
+    .number-box {
+      min-width: 35px;
+      height: 24px;
+      border-bottom: 2px solid #d1d5db;
+      text-align: center;
+      font-size: 14px;
+      color: #6b7280;
+      flex-shrink: 0;
+    }
+    .page-footer {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="logo">📚 Vocaband - ${titles.title}</div>
+      <div class="topic-icon">${topicPack.icon}</div>
+      <div class="topic-title">${topicPack.name}</div>
+    </div>
+
+    <div class="instructions-box">
+      <div class="instructions-text">✏️ ${titles.instructions}</div>
+    </div>
+
+    <div class="student-info">
+      <div class="info-field">
+        <span class="info-label">${titles.name}</span>
+        <div class="info-line"></div>
+      </div>
+      <div class="info-field">
+        <span class="info-label">${titles.date}</span>
+        <div class="info-line"></div>
+      </div>
+    </div>
+
+    <div class="section-title">📝 ${titles.englishWords}</div>
+    <div class="words-grid">
+      ${englishWordsSection}
+    </div>
+
+    <div class="section-title">✏️ ${titles.translations} — ${titles.writeNumber}</div>
+    <div class="translations-grid">
+      ${translationsSection}
+    </div>
+
+    <div class="page-footer">
+      © ${new Date().getFullYear()} Vocaband • www.vocaband.com
     </div>
   </div>
 </body>
@@ -581,10 +853,12 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({
                     description={t.topicPackDescription.replace("{count}", wordCount.toString())}
                     size={t.topicPackSize.replace("{words}", wordCount.toString()).replace("{pages}", pagesCount.toString())}
                     downloadLabel={t.download}
+                    matchingLabel={t.downloadMatching}
                     gradient={gradient}
                     delay={Math.min(index * 0.05, 0.5)}
                     onDownload={() => handleDownload(topic.name)}
-                    isDownloading={downloadingId === topic.name}
+                    onMatching={() => handleMatchingExercise(topic.name)}
+                    isDownloading={downloadingId === topic.name || downloadingId === `matching-${topic.name}`}
                   />
                 );
               })}

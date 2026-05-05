@@ -1798,7 +1798,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             family — no contrast breaks.
           ═══════════════════════════════════════════════════════════
         */}
-        <footer className="py-16 px-4 md:px-6 relative">
+        <footer className="py-4 px-4 md:px-6 relative">
           <div className="max-w-7xl mx-auto">
 
             {/* ── 4-column grid ─────────────────────────────────── */}
