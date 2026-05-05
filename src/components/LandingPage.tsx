@@ -5,7 +5,10 @@ import { landingPageT } from "../locales/student/landing-page";
 import {
   Rocket,
   Gamepad2,
+  Play,
   Users,
+  User,
+  Apple,
   Coins,
   ArrowRight,
   Link2,
@@ -35,14 +38,21 @@ import {
   Camera,
   Radio,
   Compass,
+  CircleHelp,
+  Mail,
+  Lightbulb,
+  Download,
+  Activity,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 import CssAnimation from "./CssAnimation";
 import SubjectRequestModal from "./SubjectRequestModal";
+import FeatureRequestModal from "./FeatureRequestModal";
+import SchoolInquiryModal from "./SchoolInquiryModal";
 
 interface LandingPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security") => void;
+  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
   onGetStarted: () => void;
   onTeacherLogin: () => void;
   onTryDemo?: () => void;
@@ -50,9 +60,11 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
-  const { language, dir } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
+  const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
   // Floating 3D cards data for hero — labels translated via locale.
   const floatingCards = [
     { icon: <Gamepad2 size={42} />, name: t.floatingCardModes, color: "from-violet-500 to-purple-600", delay: 0 },
@@ -110,8 +122,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               <div className="text-center lg:text-left">
                 {/* Main Headline - 3D Text Effect */}
                 <motion.h1
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, x: isRTL ? 50 : -50, y: 30 }}
+                  animate={{ opacity: 1, x: 0, y: 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight break-words mb-6"
                 >
@@ -137,19 +149,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
                 {/* 3D CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                  {/* Start Learning - 3D Purple */}
+                  {/* Start Learning - For Students */}
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
                     onClick={onGetStarted}
                     style={{ touchAction: 'manipulation' }}
-                    className="group relative px-8 py-4 rounded-2xl text-xl font-black text-white shadow-[0_10px_0_0_#6d28d9,0_20px_40px_rgba(139,92,246,0.4)] hover:shadow-[0_14px_0_0_#5b21b6,0_25px_50px_rgba(139,92,246,0.5)] active:shadow-[0_3px_0_0_#6d28d9,0_8px_20px_rgba(139,92,246,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
+                    className="group relative px-8 py-4 rounded-lg text-xl font-black text-white shadow-[0_10px_0_0_#6d28d9,0_20px_40px_rgba(139,92,246,0.4)] hover:shadow-[0_14px_0_0_#5b21b6,0_25px_50px_rgba(139,92,246,0.5)] active:shadow-[0_3px_0_0_#6d28d9,0_8px_20px_rgba(139,92,246,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
-                    <Sparkles size={22} className="relative z-10" fill="currentColor" />
+                    <div className="relative z-10 flex items-center gap-1">
+                      <Gamepad2 size={26} strokeWidth={2.5} />
+                      <Sparkles size={24} strokeWidth={2.5} />
+                    </div>
                     <span className="relative z-10">{t.heroCtaStart}</span>
-                    <Rocket size={22} className="relative z-10" />
                   </motion.button>
 
                   {!isAuthenticated && (
@@ -159,10 +173,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       transition={{ duration: 0.5, delay: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
                       onClick={onTeacherLogin}
                       style={{ touchAction: 'manipulation' }}
-                      className="group relative px-6 py-4 rounded-2xl text-lg font-bold text-white shadow-[0_10px_0_0_#0369a1,0_20px_40px_rgba(14,165,233,0.4)] hover:shadow-[0_14px_0_0_#0284c7,0_25px_50px_rgba(14,165,233,0.5)] active:shadow-[0_3px_0_0_#0369a1,0_8px_20px_rgba(14,165,233,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500 overflow-hidden"
+                      className="group relative px-6 py-4 rounded-lg text-lg font-bold text-white shadow-[0_10px_0_0_#0369a1,0_20px_40px_rgba(14,165,233,0.4)] hover:shadow-[0_14px_0_0_#0284c7,0_25px_50px_rgba(14,165,233,0.5)] active:shadow-[0_3px_0_0_#0369a1,0_8px_20px_rgba(14,165,233,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500 overflow-hidden"
                     >
                       <span className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
-                      <GraduationCap size={20} className="relative z-10" />
+                      <div className="relative z-10 flex items-center gap-1">
+                        <Users size={26} strokeWidth={2.5} />
+                        <Trophy size={24} strokeWidth={2.5} />
+                      </div>
                       <span className="relative z-10">{t.heroCtaTeacher}</span>
                     </motion.button>
                   )}
@@ -189,73 +206,120 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
               {/* Right - Hero Lottie + Floating 3D Cards Grid */}
               <div className="hidden lg:flex flex-col gap-6 relative items-center">
-                {/* Try Demo Button - Above cards */}
+                {/* Try Demo Icon - 3D Gamepad + Book + Text */}
                 {onTryDemo && (
                   <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.5 }}
-                    className="flex justify-center"
+                    className="flex items-center gap-8 cursor-pointer"
+                    dir={dir}
+                    onClick={onTryDemo}
                   >
-                    <motion.button
-                      onClick={onTryDemo}
-                      animate={{
-                        y: [0, -4, 0],
-                        scale: [1, 1.02, 1],
-                      }}
-                      transition={{
-                        y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                        scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                      }}
-                      whileHover={{
-                        scale: 1.08,
-                        boxShadow: "0 0 30px rgba(139, 92, 246, 0.6), 0 0 60px rgba(244, 114, 182, 0.4)"
-                      }}
+                    {/* "Play it" text - connected for Arabic/Hebrew, wavy letters for English */}
+                    {language === "en" ? (
+                      <div className="flex gap-0.5" dir={dir}>
+                        {t.heroPlayItWord.split("").map((letter, i) => (
+                          <motion.span
+                            key={`play-${i}`}
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: i * 0.1
+                            }}
+                            className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
+                            style={{
+                              textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
+                            }}
+                          >
+                            {letter}
+                          </motion.span>
+                        ))}
+                      </div>
+                    ) : (
+                      <motion.span
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
+                        style={{
+                          textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
+                        }}
+                      >
+                        {t.heroPlayItWord}
+                      </motion.span>
+                    )}
+
+                    {/* Animated 3D Icon */}
+                    <motion.div
+                      animate={{ y: [0, -12, 0] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+                      whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
-                      className="group relative px-6 py-3 rounded-full text-sm font-black text-white shadow-2xl shadow-primary/40 flex items-center gap-2 border-2 border-white/40 overflow-hidden bg-gradient-to-r from-primary via-violet-600 to-fuchsia-600"
+                      className="relative w-24 h-24 flex-shrink-0"
                       style={{ touchAction: 'manipulation' }}
                     >
-                      {/* Pulsing glow ring */}
+                      {/* 3D shadow layer */}
                       <motion.div
-                        animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-fuchsia-600"
+                        animate={{ y: [0, 10, 0], scale: [1, 0.85, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+                        className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-3xl blur-xl"
                       />
 
-                      {/* Animated shine sweep */}
-                      <motion.div
-                        animate={{ x: ['-100%', '200%'] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-                      />
+                      {/* Main icon container */}
+                      <div className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-3xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
+                        {/* Shine sweep */}
+                        <motion.div
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                        />
 
-                      {/* Rotating gamepad icon */}
-                      <motion.div
-                        animate={{ rotateY: [0, 360], rotateZ: [0, 10, 0, -10, 0] }}
-                        transition={{
-                          rotateY: { duration: 3, repeat: Infinity, ease: "linear" },
-                          rotateZ: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                        {/* Gamepad icon */}
+                        <Gamepad2 size={42} strokeWidth={2.5} className="relative z-10 text-white" />
+
+                        {/* Book icon overlay - bottom right */}
+                        <div className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                          <BookOpen size={14} strokeWidth={2.5} className="text-primary" />
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* "Learn it" text - connected for Arabic/Hebrew, wavy letters for English */}
+                    {language === "en" ? (
+                      <div className="flex gap-0.5" dir={dir}>
+                        {t.heroLearnItWord.split("").map((letter, i) => (
+                          <motion.span
+                            key={`learn-${i}`}
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: (i + 4) * 0.1
+                            }}
+                            className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
+                            style={{
+                              textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
+                            }}
+                          >
+                            {letter}
+                          </motion.span>
+                        ))}
+                      </div>
+                    ) : (
+                      <motion.span
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                        className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
+                        style={{
+                          textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
                         }}
-                        className="relative z-10"
-                        style={{ transformStyle: 'preserve-3d' }}
                       >
-                        <Gamepad2 size={16} strokeWidth={3} />
-                      </motion.div>
-
-                      <span className="relative z-10">{t.navTryDemo}</span>
-
-                      {/* Sparkle effects */}
-                      <motion.span
-                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
-                        className="absolute -top-0.5 -right-0.5 text-yellow-300 text-sm"
-                      >✨</motion.span>
-                      <motion.span
-                        animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-                        className="absolute -bottom-0.5 -left-0.5 text-yellow-300 text-xs"
-                      >✨</motion.span>
-                    </motion.button>
+                        {t.heroLearnItWord}
+                      </motion.span>
+                    )}
                   </motion.div>
                 )}
 
@@ -1567,6 +1631,151 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </motion.div>
         </section>
 
+        {/* Who Are You? Section - Teacher vs School vs Student */}
+        <section className="py-24 px-4 md:px-6 relative mb-16 bg-gradient-to-b from-slate-900/80 via-slate-900/90 to-slate-900">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-5xl mx-auto mb-12 text-center"
+          >
+            <h2 className="text-3xl md:text-5xl font-black font-headline mb-4 text-white drop-shadow-lg">
+              {t.whoAreYouTitle}
+            </h2>
+            <p className="text-lg text-white/70 font-bold" dir={dir}>
+              {t.whoAreYouSubtitle}
+            </p>
+          </motion.div>
+
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            {/* Teacher Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              whileHover={{ y: -8 }}
+              className="group relative"
+            >
+              <div className="h-full bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-[2rem] p-8 shadow-2xl shadow-violet-500/30 hover:shadow-violet-500/50 transition-all">
+                {/* Shine effect */}
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <div className="relative z-10">
+                  {/* Icon */}
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
+                    <Users size={32} className="text-white" />
+                  </div>
+
+                  {/* Content */}
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
+                    {t.teacherCardTitle}
+                  </h3>
+                  <p className="text-white/80 text-base mb-6 leading-relaxed" dir={dir}>
+                    {t.teacherCardDesc}
+                  </p>
+
+                  {/* CTA Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onTeacherLogin}
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-violet-600 font-black text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                    type="button"
+                  >
+                    <Sparkles size={20} />
+                    {t.teacherCardCta}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* School Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              whileHover={{ y: -8 }}
+              className="group relative"
+            >
+              <div className="h-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-[2rem] p-8 shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all">
+                {/* Shine effect */}
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <div className="relative z-10">
+                  {/* Icon */}
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
+                    <GraduationCap size={32} className="text-white" />
+                  </div>
+
+                  {/* Content */}
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
+                    {t.schoolCardTitle}
+                  </h3>
+                  <p className="text-white/80 text-base mb-6 leading-relaxed" dir={dir}>
+                    {t.schoolCardDesc}
+                  </p>
+
+                  {/* CTA Button - Open School Inquiry Modal */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsSchoolModalOpen(true)}
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-amber-600 font-black text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                    type="button"
+                  >
+                    <Mail size={20} />
+                    {t.schoolCardCta}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Student Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ y: -8 }}
+              className="group relative"
+            >
+              <div className="h-full bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 rounded-[2rem] p-8 shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all">
+                {/* Shine effect */}
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <div className="relative z-10">
+                  {/* Icon */}
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
+                    <User size={32} className="text-white" />
+                  </div>
+
+                  {/* Content */}
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
+                    {t.studentCardTitle}
+                  </h3>
+                  <p className="text-white/80 text-base mb-6 leading-relaxed" dir={dir}>
+                    {t.studentCardDesc}
+                  </p>
+
+                  {/* CTA Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onGetStarted}
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-emerald-600 font-black text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                    type="button"
+                  >
+                    <Rocket size={20} />
+                    {t.studentCardCta}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
         {/*
           ═══════════════════════════════════════════════════════════
           REDESIGNED FOOTER — 4-column structured grid
@@ -1589,7 +1798,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             family — no contrast breaks.
           ═══════════════════════════════════════════════════════════
         */}
-        <footer className="py-16 px-4 md:px-6 relative">
+        <footer className="py-4 px-4 md:px-6 relative">
           <div className="max-w-7xl mx-auto">
 
             {/* ── 4-column grid ─────────────────────────────────── */}
@@ -1607,32 +1816,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </div>
                   <span className="text-white font-black text-xl">Vocaband</span>
                 </div>
-                <p className="text-white/60 text-sm leading-relaxed mb-5 max-w-xs" dir={dir}>
+                <p className="text-white/75 text-sm leading-relaxed mb-5 max-w-xs" dir={dir}>
                   {t.footerTagline}
                 </p>
-                {/* Two contact CTAs reflecting the pricing strategy:
-                    schools-first public, private teacher channel. */}
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="mailto:contact@vocaband.com?subject=School%20Plan%20Inquiry"
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 text-white font-bold text-xs transition-all"
-                  >
-                    <GraduationCap size={14} />
-                    {t.footerSchoolPlans}
-                  </a>
-                  <a
-                    href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/25 text-white/80 hover:text-white font-bold text-xs transition-all"
-                  >
-                    <FileText size={14} />
-                    {t.footerIndividualTeacher}
-                  </a>
-                </div>
               </div>
 
               {/* Col 2: Product */}
               <div>
-                <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
+                <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
                   {t.footerProduct}
                 </h4>
                 <ul className="space-y-2.5">
@@ -1640,7 +1831,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <button
                       onClick={onGetStarted}
                       type="button"
-                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerStartLearning}
                     </button>
@@ -1649,7 +1840,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <button
                       onClick={onTryDemo}
                       type="button"
-                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerTryDemo}
                     </button>
@@ -1659,7 +1850,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <button
                         onClick={onTeacherLogin}
                         type="button"
-                        className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                        className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                       >
                         {t.footerTeacherLogin}
                       </button>
@@ -1670,14 +1861,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
               {/* Col 3: Resources */}
               <div>
-                <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
+                <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
                   {t.footerResources}
                 </h4>
                 <ul className="space-y-2.5">
                   <li>
                     <a
                       href="/answers/cefr-a1-vocabulary-list.html"
-                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerCefrVocab}
                     </a>
@@ -1685,7 +1876,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <li>
                     <a
                       href="/answers/cefr-a1-vs-a2-vocabulary.html"
-                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerCefrExplained}
                     </a>
@@ -1693,17 +1884,56 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <li>
                     <a
                       href="/answers/best-english-vocabulary-app-grade-5.html"
-                      className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerBestEsl}
                     </a>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate("faq")}
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <CircleHelp size={14} aria-hidden="true" />
+                      {t.footerFaq}
+                    </button>
+                  </li>
+                  <li>
+                    <a
+                      href="mailto:contact@vocaband.com"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Mail size={14} aria-hidden="true" />
+                      {t.footerContact}
+                    </a>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setIsFeatureModalOpen(true)}
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Lightbulb size={14} aria-hidden="true" />
+                      {t.footerFeatureRequest}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate("resources")}
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Download size={14} aria-hidden="true" />
+                      {t.footerFreeResources}
+                    </button>
                   </li>
                 </ul>
               </div>
 
               {/* Col 4: Legal + Trust */}
               <div>
-                <h4 className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-4">
+                <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
                   {t.footerLegal}
                 </h4>
                 <ul className="space-y-2.5">
@@ -1711,7 +1941,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <button
                       onClick={() => onNavigate("terms")}
                       type="button"
-                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <FileText size={14} aria-hidden="true" />
                       {t.footerTerms}
@@ -1721,7 +1951,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <button
                       onClick={() => onNavigate("privacy")}
                       type="button"
-                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <ShieldCheck size={14} aria-hidden="true" />
                       {t.footerPrivacy}
@@ -1731,7 +1961,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <button
                       onClick={() => onNavigate("security")}
                       type="button"
-                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <Lock size={14} aria-hidden="true" />
                       {t.footerSecurity}
@@ -1741,10 +1971,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <button
                       onClick={() => onNavigate("accessibility")}
                       type="button"
-                      className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <Accessibility size={14} aria-hidden="true" />
                       {t.footerAccessibility}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => onNavigate("status")}
+                      type="button"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Activity size={14} aria-hidden="true" />
+                      {t.footerStatus}
                     </button>
                   </li>
                 </ul>
@@ -1754,7 +1994,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* ── Bottom bar: trust strip + copyright ───────────── */}
             <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
               {/* Copyright */}
-              <p className="text-white/50 text-xs font-medium order-2 md:order-1" dir={dir}>
+              <p className="text-white/70 text-xs font-medium order-2 md:order-1" dir={dir}>
                 {t.footerCopyright(new Date().getFullYear())}
               </p>
 
@@ -1794,6 +2034,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       <SubjectRequestModal
         isOpen={isSubjectModalOpen}
         onClose={() => setIsSubjectModalOpen(false)}
+      />
+
+      <FeatureRequestModal
+        isOpen={isFeatureModalOpen}
+        onClose={() => setIsFeatureModalOpen(false)}
+      />
+
+      <SchoolInquiryModal
+        isOpen={isSchoolModalOpen}
+        onClose={() => setIsSchoolModalOpen(false)}
       />
 
       {/* The floating accessibility button that used to live here has been

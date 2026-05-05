@@ -30,6 +30,21 @@ export interface LandingPageT {
   heroCtaTeacher: string;
   heroSocialProofCount: string;
   heroSocialProofTagline: string;
+  heroPlayItWord: string;
+  heroLearnItWord: string;
+
+  // ─── Who Are You? Section ───────────────────────────────────────
+  whoAreYouTitle: string;
+  whoAreYouSubtitle: string;
+  teacherCardTitle: string;
+  teacherCardDesc: string;
+  teacherCardCta: string;
+  schoolCardTitle: string;
+  schoolCardDesc: string;
+  schoolCardCta: string;
+  studentCardTitle: string;
+  studentCardDesc: string;
+  studentCardCta: string;
 
   // ─── Floating hero cards ────────────────────────────────────────
   floatingCardModes: string;
@@ -188,6 +203,11 @@ export interface LandingPageT {
   footerPrivacy: string;
   footerSecurity: string;
   footerAccessibility: string;
+  footerFaq: string;
+  footerContact: string;
+  footerFeatureRequest: string;
+  footerFreeResources: string;
+  footerStatus: string;
   footerCopyright: (year: number) => string;
 }
 
@@ -205,6 +225,20 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroCtaTeacher: "Teacher Login",
     heroSocialProofCount: "10,000+ Students",
     heroSocialProofTagline: "Learning English worldwide",
+    heroPlayItWord: "Play it",
+    heroLearnItWord: "Learn it",
+
+    whoAreYouTitle: "Who are you?",
+    whoAreYouSubtitle: "Choose your path to get started",
+    teacherCardTitle: "I'm a Teacher",
+    teacherCardDesc: "Create unlimited classes and assignments for free. Track your students' progress effortlessly.",
+    teacherCardCta: "Start Free — It takes 2 minutes",
+    schoolCardTitle: "I'm a School",
+    schoolCardDesc: "Get school-wide licenses with advanced analytics, priority support, and custom integrations.",
+    schoolCardCta: "Get a Quote",
+    studentCardTitle: "I'm a Student",
+    studentCardDesc: "Join your class and play games to master vocabulary. Earn XP, unlock avatars, and compete with friends.",
+    studentCardCta: "Start Learning",
 
     floatingCardModes: "🎮 11 Game Modes",
     floatingCardXp: "⭐ Earn XP",
@@ -340,6 +374,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerPrivacy: "Privacy Policy",
     footerSecurity: "Security & Trust",
     footerAccessibility: "Accessibility",
+    footerFaq: "FAQ",
+    footerContact: "Contact Support",
+    footerFeatureRequest: "Request a Feature",
+    footerFreeResources: "Free Resources",
+    footerStatus: "System Status",
     footerCopyright: (year) =>
       `© ${year} Vocaband. Made with 💙 for learners everywhere.`,
   },
@@ -357,6 +396,20 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroCtaTeacher: "כניסת מורים",
     heroSocialProofCount: "+10,000 תלמידים",
     heroSocialProofTagline: "לומדים אנגלית בכל העולם",
+    heroPlayItWord: "שחקו אותה",
+    heroLearnItWord: "למדו אותה",
+
+    whoAreYouTitle: "מי אתה?",
+    whoAreYouSubtitle: "בחר את הדרך שלך להתחיל",
+    teacherCardTitle: "אני מורה",
+    teacherCardDesc: "צור כיתות ומטלות בלי הגבלה — בחינם. עקוב אחר התקדמות התלמידים שלך בקלות.",
+    teacherCardCta: "התחל בחינם — לוקח 2 דקות",
+    schoolCardTitle: "אני בית ספר",
+    schoolCardDesc: "קבל רישיונות לבית ספר עם ניתוחים מתקדמים, תמיכה בעדיפות, ושילובים מותאמים אישית.",
+    schoolCardCta: "קבל הצעת מחיר",
+    studentCardTitle: "אני תלמיד",
+    studentCardDesc: "הצטרפו לכיתה שלכם ושחקו במשחקים לשליטה באוצר המילים. צברו נקודות, שחררו אווטארים, והתחרו עם חברים.",
+    studentCardCta: "התחילו ללמוד",
 
     floatingCardModes: "🎮 11 מצבי משחק",
     floatingCardXp: "⭐ צבור נקודות",
@@ -492,6 +545,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerPrivacy: "מדיניות פרטיות",
     footerSecurity: "אבטחה ואמון",
     footerAccessibility: "נגישות",
+    footerFaq: "שאלות נפוצות",
+    footerContact: "צור קשר",
+    footerFeatureRequest: "הצע פיצ'ר חדש",
+    footerFreeResources: "משאבים בחינם",
+    footerStatus: "סטטוס מערכת",
     footerCopyright: (year) =>
       `© ${year} Vocaband. נוצר עם 💙 ללומדים בכל העולם.`,
   },
@@ -509,6 +567,20 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroCtaTeacher: "دخول المعلمين",
     heroSocialProofCount: "+10,000 طالب",
     heroSocialProofTagline: "يتعلمون الإنجليزية حول العالم",
+    heroPlayItWord: "العبها",
+    heroLearnItWord: "تعلمها",
+
+    whoAreYouTitle: "من أنت؟",
+    whoAreYouSubtitle: "اختر مسارك للبدء",
+    teacherCardTitle: "أنا معلم",
+    teacherCardDesc: "أنشئ فصولًا ومهام غير محدودة مجانًا. تتبع تقدم طلابك بسهولة.",
+    teacherCardCta: "ابدأ مجانًا — يستغرق دقيقتين",
+    schoolCardTitle: "أنا مدرسة",
+    schoolCardDesc: "احصل على تراخيص للمدرسة مع تحليلات متقدمة ودعم أولوية وتكاملات مخصصة.",
+    schoolCardCta: "اطلب عرض سعر",
+    studentCardTitle: "أنا طالب",
+    studentCardDesc: "انضم إلى فصلك والعب ألعابًا لإتقان المفردات. اكسب النقاط، وافتح الأفتار، وتنافس مع الأصدقاء.",
+    studentCardCta: "ابدأ التعلم",
 
     floatingCardModes: "🎮 11 لعبة",
     floatingCardXp: "⭐ اكسب النقاط",
@@ -644,6 +716,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerPrivacy: "سياسة الخصوصية",
     footerSecurity: "الأمان والثقة",
     footerAccessibility: "إمكانية الوصول",
+    footerFaq: "الأسئلة الشائعة",
+    footerContact: "تواصل مع الدعم",
+    footerFeatureRequest: "اقترح ميزة جديدة",
+    footerFreeResources: "موارد مجانية",
+    footerStatus: "حالة النظام",
     footerCopyright: (year) =>
       `© ${year} Vocaband. صُنع بحب 💙 للمتعلمين في كل مكان.`,
   },

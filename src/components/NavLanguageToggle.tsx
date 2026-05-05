@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Globe } from "lucide-react";
 import { useLanguage, Language } from "../hooks/useLanguage";
@@ -8,8 +8,9 @@ interface NavLanguageToggleProps {
 }
 
 const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" }) => {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, isRTL } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
 
   const languages: { code: Language; label: string }[] = [
     { code: "en", label: "English" },
@@ -17,13 +18,28 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
     { code: "ar", label: "العربية" },
   ];
 
-  const currentLang = languages.find(l => l.code === language) || languages[0];
+  const handleMouseEnter = () => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsOpen(false);
+    }, 200);
+  };
+
+  // Position dropdown based on direction: LTR aligns right, RTL aligns left
+  const dropdownPosition = isRTL ? "left-0" : "right-0";
 
   return (
     <div
       className={`relative ${className}`}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Dropdown menu */}
       <AnimatePresence>
@@ -33,7 +49,9 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 mt-2 py-2 rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-50"
+            className={`absolute top-full mt-2 py-2 rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-[200] ${dropdownPosition}`}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             {languages.map((lang) => (
               <button
@@ -70,9 +88,10 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
       <motion.button
         whileHover={{ scale: 1.05, rotate: 5 }}
         whileTap={{ scale: 0.95 }}
-        className="relative bg-white text-slate-700 px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 border-2 border-slate-200 hover:border-violet-400 transition-all cursor-pointer"
+        className="relative bg-white text-slate-700 px-3 py-2.5 rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 border-2 border-slate-200 hover:border-violet-400 transition-all cursor-pointer"
         type="button"
         aria-label="Change language"
+        aria-expanded={isOpen}
       >
         {/* Animated shine sweep */}
         <motion.div
@@ -84,12 +103,8 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
         {/* Inner shadow for depth */}
         <div className="absolute inset-0 bg-black/10 rounded-full" />
 
-        {/* Globe icon — restored 2026-05.  Earlier UI polish swapped
-            the globe for plain letters but teachers were missing the
-            universal "language" affordance the icon provides.  Globe +
-            current code keeps the language unambiguous in any locale. */}
-        <Globe size={16} className="relative z-10" strokeWidth={2.5} aria-hidden />
-        <span className="relative z-10">{currentLang.label}</span>
+        {/* Globe icon */}
+        <Globe size={18} className="relative z-10" strokeWidth={2.5} aria-hidden />
 
         {/* Dropdown arrow */}
         <motion.svg
