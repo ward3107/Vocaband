@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { freeResourcesT } from "../locales/student/free-resources";
 import { TOPIC_PACKS, ALL_WORDS } from "../data/vocabulary";
+import { getSentencesForWord } from "../data/sentence-bank";
 import {
   ArrowLeft,
   Download,
@@ -17,6 +18,7 @@ import {
   X,
   Volume2,
   Settings,
+  PencilLine,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 import html2pdf from "html2pdf.js";
@@ -857,6 +859,143 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
+const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver, showTranslations } = settings;
+  const t = {
+    en: { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", className: "Class:" },
+    he: { title: "השלמת חסר", instructions: "השתמשו במילים מבנק המילים כדי להשלים כל חסר.", wordBank: "בנק מילים", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:", className: "כיתה:" },
+    ar: { title: "املأ الفراغ", instructions: "استخدم الكلمات من بنك الكلمات لملء كل فراغ.", wordBank: "بنك الكلمات", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:", className: "الصف:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", className: "Class:" };
+
+  const BLANK = "____________";
+  const seedBase = hashString(pack.name);
+
+  // Pick a sentence per word that actually contains the target so the blank
+  // is meaningful. Fall back to a Level 1 template (guaranteed to literally
+  // contain the word) if none of the candidate sentences match — better than
+  // a generic placeholder that gives the student no semantic hint.
+  const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const buildItem = (word: Word, idx: number): { word: Word; sentence: string } => {
+    const candidates = getSentencesForWord(word, 2);
+    const re = new RegExp(`\\b${escapeRe(word.english)}\\b`, "i");
+    const fitting = candidates.filter((s) => re.test(s));
+    if (fitting.length > 0) {
+      const picked = fitting[(seedBase + idx) % fitting.length];
+      return { word, sentence: picked.replace(re, BLANK) };
+    }
+    // Last-resort templates that always contain the word literally.
+    const fallbacks = [`I see the ${word.english} every day`, `She likes the ${word.english} a lot`, `They use ${word.english} in the lesson`];
+    const picked = fallbacks[(seedBase + idx) % fallbacks.length];
+    return { word, sentence: picked.replace(re, BLANK) };
+  };
+
+  const items = words.map(buildItem);
+  const bank = seededShuffle(words, seedBase ^ 0xbeef);
+
+  const PER_PAGE = 8;
+  const sentencePages = chunk(items, PER_PAGE);
+  const totalPages = sentencePages.length + 1; // + answer key
+
+  const accent = inkSaver ? "#000000" : "#0ea5e9";
+  const accentDark = inkSaver ? "#000000" : "#0369a1";
+  const softBg = inkSaver ? "#ffffff" : "#f0f9ff";
+  const bankBg = inkSaver ? "#ffffff" : "#f0f9ff";
+  const bankBorder = inkSaver ? "#000000" : "#7dd3fc";
+  const sentenceBg = inkSaver ? "#ffffff" : "#f9fafb";
+
+  const styles =
+    baseStyles(lang, "#0ea5e9", "#0369a1", settings) +
+    `
+    .instructions { background: ${softBg}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .word-bank { background: ${bankBg}; border: 2px solid ${bankBorder}; border-radius: 8px; padding: 4mm; margin: 4mm 0; }
+    .word-bank-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; text-align: center; font-size: 1.05em; }
+    .word-bank-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+    .word-bank-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: white; border: 1px solid ${bankBorder}; border-radius: 4px; font-size: 0.95em; }
+    .word-bank-en { font-weight: 700; color: ${inkSaver ? "#000000" : "#1f2937"}; flex: 1; }
+    .word-bank-tr { color: #6b7280; font-size: 0.85em; }
+    .word-bank-qr svg { display: block; width: 9mm; height: 9mm; }
+    .sentence-list { display: flex; flex-direction: column; gap: 3mm; margin-top: 4mm; }
+    .sentence-item { display: flex; gap: 3mm; padding: 3mm 4mm; background: ${sentenceBg}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 6px; min-height: 12mm; align-items: center; }
+    .sentence-num { font-weight: 800; color: ${accent}; min-width: 8mm; font-size: 1.1em; }
+    .sentence-text { flex: 1; line-height: 1.7; }
+    .sentence-text .blank { font-weight: 800; letter-spacing: 1px; color: ${accent}; }
+    .answer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
+  `;
+
+  // Mark the blank with a span so its color stays even in ink-saver mode
+  // and so html2canvas treats it as a single token (no mid-word wrap).
+  const renderSentence = (s: string) => escapeHtml(s).replace(BLANK, `<span class="blank">${BLANK}</span>`);
+
+  const wordBankHTML = `
+    <div class="word-bank no-break">
+      <div class="word-bank-title">📋 ${escapeHtml(t.wordBank)}</div>
+      <div class="word-bank-grid">
+        ${bank
+          .map(
+            (w) => `
+          <div class="word-bank-item">
+            <span class="word-bank-en en">${escapeHtml(applyCasing(w.english, casing))}</span>
+            ${showTranslations ? `<span class="word-bank-tr">${escapeHtml(getTranslation(w, lang))}</span>` : ""}
+            ${audioQR ? `<span class="word-bank-qr">${qrSvg(getAudioUrl(w.id), 32)}</span>` : ""}
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </div>`;
+
+  const sentencePagesHTML = sentencePages
+    .map((group, pageIdx) => {
+      const startIdx = pageIdx * PER_PAGE;
+      return `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        ${pageIdx === 0
+          ? `<div class="instructions">✏️ ${escapeHtml(t.instructions)}</div>
+             <div class="info-row no-break" style="grid-template-columns: repeat(3, 1fr);">
+               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+               <div class="info-field"><span class="info-label">${escapeHtml(t.className)}</span><div class="info-input"></div></div>
+             </div>
+             ${wordBankHTML}`
+          : ""}
+        <div class="sentence-list">
+          ${group
+            .map(
+              (item, i) => `
+            <div class="sentence-item no-break">
+              <span class="sentence-num">${startIdx + i + 1}.</span>
+              <span class="sentence-text en">${renderSentence(item.sentence)}</span>
+            </div>`,
+            )
+            .join("")}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`;
+    })
+    .join("");
+
+  const answerKeyHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.answerKey)}
+      <div class="answer-grid">
+        ${items
+          .map(
+            (item, i) => `
+          <div class="answer-cell">
+            <span class="answer-num">${i + 1}.</span>
+            <span class="en" style="font-weight:700;">${escapeHtml(applyCasing(item.word.english, casing))}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter(totalPages, totalPages, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: sentencePagesHTML + answerKeyHTML });
+};
+
 // ---------- React components ----------
 
 interface FreeResourcesViewProps {
@@ -876,6 +1015,7 @@ interface ResourceCardProps {
   flashcardsLabel: string;
   bingoLabel: string;
   wordSearchLabel: string;
+  fillBlankLabel: string;
   gradient: string;
   delay: number;
   onDownload: () => void;
@@ -883,6 +1023,7 @@ interface ResourceCardProps {
   onFlashcards: () => void;
   onBingo: () => void;
   onWordSearch: () => void;
+  onFillBlank: () => void;
   isDownloading: boolean;
 }
 
@@ -897,6 +1038,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   flashcardsLabel,
   bingoLabel,
   wordSearchLabel,
+  fillBlankLabel,
   gradient,
   delay,
   onDownload,
@@ -904,6 +1046,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   onFlashcards,
   onBingo,
   onWordSearch,
+  onFillBlank,
   isDownloading,
 }) => {
   const { isRTL } = useLanguage();
@@ -998,6 +1141,18 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             >
               <Search size={14} />
               <span className="truncate">{wordSearchLabel}</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onFillBlank}
+              aria-label={`${fillBlankLabel} — ${title}`}
+              className="col-span-2 py-2.5 rounded-xl bg-gradient-to-r from-sky-500/20 to-cyan-500/20 hover:from-sky-500/30 hover:to-cyan-500/30 text-sky-300 font-bold transition-all flex items-center justify-center gap-1.5 border border-sky-400/30 text-sm"
+              type="button"
+            >
+              <PencilLine size={14} />
+              <span className="truncate">{fillBlankLabel}</span>
             </motion.button>
           </div>
         </div>
@@ -1126,7 +1281,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const showWordsPerPage = format === "worksheet";
-  const showTranslationsToggle = format === "worksheet" || format === "flashcards" || format === "bingo";
+  const showTranslationsToggle =
+    format === "worksheet" || format === "flashcards" || format === "bingo" || format === "fillblank";
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // ESC closes the modal
@@ -1316,7 +1472,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   );
 };
 
-type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch";
+type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch" | "fillblank";
 
 interface PreviewSource {
   pack: TopicPack;
@@ -1332,6 +1488,7 @@ const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string, 
   flashcards: generateFlashcardsHTML,
   bingo: generateBingoCardsHTML,
   wordsearch: generateWordSearchHTML,
+  fillblank: generateFillBlankHTML,
 };
 
 const filenameSuffix: Record<Format, string> = {
@@ -1340,6 +1497,7 @@ const filenameSuffix: Record<Format, string> = {
   flashcards: "Flashcards",
   bingo: "Bingo_Cards",
   wordsearch: "Word_Search",
+  fillblank: "Fill_in_the_Blank",
 };
 
 const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onBack }) => {
@@ -1551,6 +1709,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       flashcardsLabel={t.downloadFlashcards}
                       bingoLabel={t.downloadBingo}
                       wordSearchLabel={t.downloadWordSearch}
+                      fillBlankLabel={t.downloadFillBlank}
                       gradient={gradient}
                       delay={Math.min(index * 0.05, 0.5)}
                       onDownload={() => openPreview(topic.name, "worksheet")}
@@ -1558,6 +1717,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       onFlashcards={() => openPreview(topic.name, "flashcards")}
                       onBingo={() => openPreview(topic.name, "bingo")}
                       onWordSearch={() => openPreview(topic.name, "wordsearch")}
+                      onFillBlank={() => openPreview(topic.name, "fillblank")}
                       isDownloading={isDownloading}
                     />
                   );
