@@ -4,6 +4,19 @@
 
 ---
 
+## `!resume` — pick up where we left off
+
+When the user types **`!resume`** at the start of a session (or asks "what was I working on"), do this in one pass:
+
+1. Read `docs/operator-tasks.md` — what's pending on the human side (lawyer, pen-test, MoE, etc.)
+2. Read `docs/open-issues.md` — what's pending on the engineering side
+3. Run `git log --oneline origin/main -10` and `git branch -r --no-merged origin/main` — what shipped recently and what's pushed but unmerged
+4. Reply with a 5-bullet summary in this order: **last commits → unmerged branches → operator pending → engineering pending → suggested next move**
+
+Don't read the full archive (`docs/session-history-*.md`) unless asked — too noisy for a resume.
+
+---
+
 ## Product overview
 
 **Vocaband** is an English vocabulary app for Israeli schools (grades 4–9). Core audience: English-language teachers + their students, with translations into **Hebrew** and **Arabic**. Curriculum alignment: Israeli Ministry of Education vocabulary sets (**Set 1 / Set 2 / Set 3** — internal data type uses `"Set 1" | "Set 2" | "Set 3" | "Custom"`).
