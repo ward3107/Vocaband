@@ -78,7 +78,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         return;
       }
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('file', file);
       const res = await fetch('/api/ocr', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
