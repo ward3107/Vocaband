@@ -16,6 +16,7 @@ import {
   Printer,
   X,
   Volume2,
+  Settings,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 import html2pdf from "html2pdf.js";
@@ -24,12 +25,44 @@ import qrcode from "qrcode-generator";
 type Word = (typeof ALL_WORDS)[number];
 type TopicPack = (typeof TOPIC_PACKS)[number];
 type Casing = "original" | "lower" | "upper";
+type FontSize = "small" | "medium" | "large";
+type Orientation = "portrait" | "landscape";
+
+// All export-time options live in one bag so each generator has a single
+// trailing parameter and adding a new option doesn't ripple through five
+// call sites. Defaults applied in the parent component.
+interface WorksheetSettings {
+  casing: Casing;
+  audioQR: boolean;
+  fontSize: FontSize;
+  inkSaver: boolean;
+  showTranslations: boolean;
+  wordsPerPage: number;
+  orientation: Orientation;
+}
+
+const DEFAULT_SETTINGS: WorksheetSettings = {
+  casing: "original",
+  audioQR: false,
+  fontSize: "medium",
+  inkSaver: false,
+  showTranslations: true,
+  wordsPerPage: 22,
+  orientation: "portrait",
+};
 
 // Many beginning EFL students do not yet recognise that "Apple" and "apple"
 // are the same word. Worksheets default to "original" but teachers can flip
 // every English token to lowercase or uppercase from the preview modal.
 const applyCasing = (s: string, c: Casing): string =>
   c === "lower" ? s.toLowerCase() : c === "upper" ? s.toUpperCase() : s;
+
+const fontSizePt = (f: FontSize): number => (f === "small" ? 10 : f === "large" ? 13 : 11);
+
+// A blank line that takes the same vertical space as text would, so the
+// table layout doesn't jump when "Show translations" is off.
+const blankLine = (color: string) =>
+  `<span style="display:inline-block;border-bottom:1.5px dotted ${color};min-width:30mm;height:0.7em;"></span>`;
 
 const GRADIENTS = [
   "from-violet-500 to-fuchsia-500",
@@ -117,7 +150,9 @@ const qrSvg = (text: string, sizePx: number): string => {
 // One shared stylesheet covers fonts (Inter/Heebo/Cairo via Google Fonts so HE/AR
 // glyphs render reliably across machines), the A4 page setup, page-break rules,
 // and the .en class that keeps English LTR even on RTL sheets.
-const baseStyles = (lang: string, accent: string, accentDark: string) => {
+// In ink-saver mode the accent collapses to black so colored heads and rules
+// still show structure but don't waste toner.
+const baseStyles = (lang: string, accent: string, accentDark: string, settings: WorksheetSettings) => {
   const fontStack =
     lang === "he"
       ? "'Heebo', 'Segoe UI', Tahoma, Arial, sans-serif"
@@ -125,15 +160,21 @@ const baseStyles = (lang: string, accent: string, accentDark: string) => {
         ? "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif"
         : "'Inter', 'Segoe UI', Arial, sans-serif";
 
+  const ink = settings.inkSaver;
+  const headerAccent = ink ? "#111827" : accent;
+  const headerBg = ink ? "#ffffff" : accent;
+  const infoBg = ink ? "#ffffff" : "#f3f4f6";
+  const infoBorder = ink ? "1.5px solid #111827" : "0";
+
   return `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Heebo:wght@400;600;700;800&family=Cairo:wght@400;600;700;800&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { size: A4; margin: 12mm; }
+    @page { size: A4 ${settings.orientation}; margin: 12mm; }
     html, body {
       font-family: ${fontStack};
       line-height: 1.4;
-      color: #1f2937;
-      font-size: 11pt;
+      color: ${ink ? "#000000" : "#1f2937"};
+      font-size: ${fontSizePt(settings.fontSize)}pt;
       background: #ffffff;
     }
     .sheet {
@@ -155,7 +196,7 @@ const baseStyles = (lang: string, accent: string, accentDark: string) => {
       text-align: center;
       margin-bottom: 6mm;
       padding-bottom: 4mm;
-      border-bottom: 3px solid ${accent};
+      border-bottom: 3px solid ${headerAccent};
     }
     .header-row {
       display: flex;
@@ -167,13 +208,13 @@ const baseStyles = (lang: string, accent: string, accentDark: string) => {
     .logo {
       font-size: 18pt;
       font-weight: 800;
-      color: ${accent};
+      color: ${headerAccent};
     }
-    .topic-icon { font-size: 28pt; }
+    .topic-icon { font-size: 28pt; ${ink ? "filter: grayscale(1);" : ""} }
     .topic-title {
       font-size: 16pt;
       font-weight: 800;
-      color: ${accentDark};
+      color: ${ink ? "#000000" : accentDark};
     }
     .word-count { font-size: 10pt; color: #6b7280; font-weight: 600; }
     .footer {
@@ -190,7 +231,8 @@ const baseStyles = (lang: string, accent: string, accentDark: string) => {
       gap: 4mm;
       margin-bottom: 5mm;
       padding: 3mm 4mm;
-      background: #f3f4f6;
+      background: ${infoBg};
+      border: ${infoBorder};
       border-radius: 6px;
     }
     .info-field { display: flex; flex-direction: column; }
@@ -246,7 +288,8 @@ const sheetFooter = (pageIndex: number, pageCount: number, pageLabel: string) =>
 
 // ---------- generators ----------
 
-const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
+const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver, showTranslations, wordsPerPage } = settings;
   const t = {
     en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page", listen: "Listen" },
     he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", page: "עמוד", listen: "הקשבה" },
@@ -255,33 +298,44 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, cas
   const s = t || { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page", listen: "Listen" };
 
   const today = new Date().toLocaleDateString(lang === "he" ? "he-IL" : lang === "ar" ? "ar-SA" : "en-US");
-  const ROWS_PER_PAGE = 22;
+  const ROWS_PER_PAGE = wordsPerPage;
   const PRACTICE_PER_PAGE = 9;
 
   const tablePages = chunk(words, ROWS_PER_PAGE);
   const practicePages = chunk(words, PRACTICE_PER_PAGE);
   const totalPages = tablePages.length + practicePages.length;
 
+  const thBg = inkSaver
+    ? "background: #ffffff; color: #000000; border-bottom: 2px solid #000000;"
+    : "background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white;";
+  const evenRowBg = inkSaver ? "transparent" : "#faf7ff";
+  const numColor = inkSaver ? "#000000" : "#8b5cf6";
+  const wordColor = inkSaver ? "#000000" : "#7c3aed";
+  const practiceBg = inkSaver ? "#ffffff" : "#fef3c7";
+  const practiceBorder = inkSaver ? "1.5px solid #000000" : "2px dashed #f59e0b";
+  const practiceTitleColor = inkSaver ? "#000000" : "#92400e";
+  const practiceLabelColor = inkSaver ? "#000000" : "#7c3aed";
+
   const styles =
-    baseStyles(lang, "#8b5cf6", "#7c3aed") +
+    baseStyles(lang, "#8b5cf6", "#7c3aed", settings) +
     `
     table { width: 100%; border-collapse: collapse; }
-    th { background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; padding: 3mm 2mm; font-weight: 700; font-size: 11pt; text-align: start; }
+    th { ${thBg} padding: 3mm 2mm; font-weight: 700; text-align: start; }
     th.num, td.num { width: 8%; text-align: center; }
     th.qr, td.qr { width: 14%; text-align: center; }
-    td { padding: 2.5mm 2mm; border-bottom: 1px solid #e5e7eb; font-size: 11pt; vertical-align: middle; }
-    tr:nth-child(even) { background: #faf7ff; }
-    td.num { font-weight: 700; color: #8b5cf6; }
-    td.word { font-weight: 600; color: #7c3aed; }
+    td { padding: 2.5mm 2mm; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+    tr:nth-child(even) { background: ${evenRowBg}; }
+    td.num { font-weight: 700; color: ${numColor}; }
+    td.word { font-weight: 600; color: ${wordColor}; }
     .qr-cell svg { display: block; width: 14mm; height: 14mm; margin: 0 auto; }
-    .practice-section { padding: 5mm; background: #fef3c7; border-radius: 8px; border: 2px dashed #f59e0b; }
-    .practice-title { font-size: 14pt; font-weight: 800; color: #92400e; margin-bottom: 4mm; text-align: center; }
+    .practice-section { padding: 5mm; background: ${practiceBg}; border-radius: 8px; border: ${practiceBorder}; }
+    .practice-title { font-size: 14pt; font-weight: 800; color: ${practiceTitleColor}; margin-bottom: 4mm; text-align: center; }
     .practice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
     .practice-box { border: 1.5px solid #d1d5db; border-radius: 6px; padding: 3mm; background: white; min-height: 22mm; display: flex; flex-direction: column; }
-    .practice-label { font-size: 10pt; color: #7c3aed; font-weight: 700; margin-bottom: 2mm; }
-    .practice-input { border-bottom: 1.5px dotted #9ca3af; padding: 1.5mm 0; min-height: 5mm; font-size: 9pt; }
-    .practice-input.en::before { content: "EN: "; color: #9ca3af; font-size: 8pt; }
-    .practice-input.tr::before { content: "${lang === "he" ? "תרגום: " : lang === "ar" ? "الترجمة: " : "Translation: "}"; color: #9ca3af; font-size: 8pt; }
+    .practice-label { font-size: 0.95em; color: ${practiceLabelColor}; font-weight: 700; margin-bottom: 2mm; }
+    .practice-input { border-bottom: 1.5px dotted #9ca3af; padding: 1.5mm 0; min-height: 5mm; font-size: 0.85em; }
+    .practice-input.en::before { content: "EN: "; color: #9ca3af; font-size: 0.85em; }
+    .practice-input.tr::before { content: "${lang === "he" ? "תרגום: " : lang === "ar" ? "الترجمة: " : "Translation: "}"; color: #9ca3af; font-size: 0.85em; }
   `;
 
   const tablePagesHTML = tablePages
@@ -313,7 +367,7 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, cas
               <tr>
                 <td class="num">${startIdx + i + 1}</td>
                 <td class="word"><span class="en">${escapeHtml(applyCasing(w.english, casing))}</span></td>
-                <td>${escapeHtml(getTranslation(w, lang))}</td>
+                <td>${showTranslations ? escapeHtml(getTranslation(w, lang)) : blankLine("#9ca3af")}</td>
                 ${audioQR ? `<td class="qr qr-cell">${qrSvg(getAudioUrl(w.id), 50)}</td>` : ""}
               </tr>`,
               )
@@ -359,7 +413,8 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, cas
   });
 };
 
-const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
+const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver } = settings;
   const t = {
     en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
     he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
@@ -370,22 +425,31 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
   const groups = chunk(words, PER_PAGE);
   const totalPages = groups.length + 1; // + answer key
 
+  const wordItemBg = inkSaver ? "#ffffff" : "#f0fdf4";
+  const wordItemBorder = inkSaver ? "#000000" : "#10b981";
+  const trItemBg = inkSaver ? "#ffffff" : "#fef3c7";
+  const trItemBorder = inkSaver ? "#000000" : "#f59e0b";
+  const trTextColor = inkSaver ? "#000000" : "#92400e";
+  const accentColor = inkSaver ? "#000000" : "#10b981";
+  const accentDark = inkSaver ? "#000000" : "#047857";
+  const instructionsBg = inkSaver ? "#ffffff" : "#ecfdf5";
+
   const styles =
-    baseStyles(lang, "#10b981", "#047857") +
+    baseStyles(lang, "#10b981", "#047857", settings) +
     `
-    .instructions { background: #ecfdf5; border: 2px solid #10b981; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; font-size: 11pt; color: #047857; font-weight: 600; }
-    .section-title { font-size: 12pt; font-weight: 800; color: #047857; margin: 5mm 0 3mm; padding-bottom: 1mm; border-bottom: 1.5px solid #d1fae5; }
+    .instructions { background: ${instructionsBg}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .section-title { font-size: 1.1em; font-weight: 800; color: ${accentDark}; margin: 5mm 0 3mm; padding-bottom: 1mm; border-bottom: 1.5px solid ${inkSaver ? "#d1d5db" : "#d1fae5"}; }
     .pair-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
-    .word-item { display: flex; align-items: center; gap: 2mm; padding: 2.5mm 3mm; background: #f0fdf4; border: 1px solid #10b981; border-radius: 5px; }
-    .word-num { font-weight: 800; color: #10b981; min-width: 7mm; }
-    .word-text { font-weight: 600; color: #047857; flex: 1; }
+    .word-item { display: flex; align-items: center; gap: 2mm; padding: 2.5mm 3mm; background: ${wordItemBg}; border: 1px solid ${wordItemBorder}; border-radius: 5px; }
+    .word-num { font-weight: 800; color: ${accentColor}; min-width: 7mm; }
+    .word-text { font-weight: 600; color: ${accentDark}; flex: 1; }
     .word-qr svg { display: block; width: 11mm; height: 11mm; }
-    .translation-item { display: flex; justify-content: space-between; align-items: center; padding: 2.5mm 3mm; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 5px; gap: 3mm; }
-    .translation-text { font-weight: 600; color: #92400e; }
-    .number-box { min-width: 12mm; height: 7mm; border: 1.5px solid #d1d5db; border-radius: 4px; }
+    .translation-item { display: flex; justify-content: space-between; align-items: center; padding: 2.5mm 3mm; background: ${trItemBg}; border: 1px solid ${trItemBorder}; border-radius: 5px; gap: 3mm; }
+    .translation-text { font-weight: 600; color: ${trTextColor}; }
+    .number-box { min-width: 12mm; height: 7mm; border: 1.5px solid #6b7280; border-radius: 4px; }
     .answer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
-    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 10pt; }
-    .answer-num { font-weight: 800; color: #10b981; min-width: 6mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .answer-num { font-weight: 800; color: ${accentColor}; min-width: 6mm; }
   `;
 
   const pageHTML = groups
@@ -461,7 +525,8 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
   });
 };
 
-const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
+const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
     en: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation", page: "Page" },
     he: { title: "כרטיסיות", instructions: "גזרו לאורך הקווים המלאים. קפלו לאורך הקו המקווקו — אנגלית בקדמה, תרגום בגב.", english: "אנגלית", translation: "תרגום", page: "עמוד" },
@@ -472,19 +537,26 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, ca
   const pages = chunk(words, PER_PAGE);
   const totalPages = pages.length;
 
+  const cardBorder = inkSaver ? "#000000" : "#93c5fd";
+  const backBorder = inkSaver ? "#000000" : "#fcd34d";
+  const frontBg = inkSaver ? "#ffffff" : "linear-gradient(135deg, #dbeafe, #eff6ff)";
+  const backBg = inkSaver ? "#ffffff" : "linear-gradient(135deg, #fef3c7, #fef9e7)";
+  const accentColor = inkSaver ? "#000000" : "#3b82f6";
+  const accentDark = inkSaver ? "#000000" : "#1e40af";
+
   const styles =
-    baseStyles(lang, "#3b82f6", "#1d4ed8") +
+    baseStyles(lang, "#3b82f6", "#1d4ed8", settings) +
     `
-    .instructions { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; font-size: 10pt; color: #1e40af; font-weight: 600; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#eff6ff"}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
     .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6mm; margin-top: 4mm; }
     .flashcard { display: flex; flex-direction: column; height: 78mm; }
-    .flashcard-front, .flashcard-back { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #93c5fd; border-radius: 8px; padding: 5mm; text-align: center; position: relative; }
-    .flashcard-front { background: linear-gradient(135deg, #dbeafe, #eff6ff); }
-    .flashcard-back { background: linear-gradient(135deg, #fef3c7, #fef9e7); border-color: #fcd34d; }
-    .flashcard-number { position: absolute; top: 2mm; ${lang === "he" || lang === "ar" ? "left" : "right"}: 2mm; font-size: 9pt; font-weight: 800; color: #6b7280; background: white; padding: 1mm 3mm; border-radius: 999px; }
-    .flashcard-word { font-size: 18pt; font-weight: 800; color: #1f2937; margin: 3mm 0; }
-    .flashcard-hint { font-size: 8pt; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-    .fold-line { height: 0; border-top: 1.5px dashed #9ca3af; margin: 2mm 0; }
+    .flashcard-front, .flashcard-back { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid ${cardBorder}; border-radius: 8px; padding: 5mm; text-align: center; position: relative; }
+    .flashcard-front { background: ${frontBg}; }
+    .flashcard-back { background: ${backBg}; border-color: ${backBorder}; }
+    .flashcard-number { position: absolute; top: 2mm; ${lang === "he" || lang === "ar" ? "left" : "right"}: 2mm; font-size: 0.85em; font-weight: 800; color: #6b7280; background: white; padding: 1mm 3mm; border-radius: 999px; border: 1px solid #d1d5db; }
+    .flashcard-word { font-size: 1.6em; font-weight: 800; color: ${inkSaver ? "#000000" : "#1f2937"}; margin: 3mm 0; }
+    .flashcard-hint { font-size: 0.75em; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    .fold-line { height: 0; border-top: 1.5px dashed #6b7280; margin: 2mm 0; }
     .flashcard-qr { position: absolute; top: 2mm; ${lang === "he" || lang === "ar" ? "right" : "left"}: 2mm; }
     .flashcard-qr svg { display: block; width: 12mm; height: 12mm; background: white; padding: 1mm; border-radius: 3px; }
   `;
@@ -505,7 +577,7 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, ca
           <div class="fold-line"></div>
           <div class="flashcard-back">
             <div class="flashcard-number">${startIdx + i + 1}</div>
-            <div class="flashcard-word">${escapeHtml(getTranslation(w, lang))}</div>
+            <div class="flashcard-word">${showTranslations ? escapeHtml(getTranslation(w, lang)) : blankLine("#9ca3af")}</div>
             <div class="flashcard-hint">${escapeHtml(t.translation)}</div>
           </div>
         </div>`,
@@ -525,7 +597,8 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, ca
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
 };
 
-const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
+const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
     en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. First to 5 in a row wins!", free: "FREE", wordList: "Word List", card: "Card", page: "Page" },
     he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. הראשון שמשלים 5 בשורה מנצח!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", page: "עמוד" },
@@ -538,20 +611,32 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, ca
   const CARD_COUNT = 4;
   const totalPages = CARD_COUNT + 1; // cards + word list
 
+  const accentColor = inkSaver ? "#000000" : "#f59e0b";
+  const accentDark = inkSaver ? "#000000" : "#d97706";
+  const cardBg = inkSaver ? "#ffffff" : "#fffbeb";
+  const cardBorder = inkSaver ? "#000000" : "#fbbf24";
+  const cellBorder = inkSaver ? "#6b7280" : "#fcd34d";
+  const cellTextColor = inkSaver ? "#000000" : "#78350f";
+  const freeBg = inkSaver ? "#000000" : "linear-gradient(135deg, #fbbf24, #f59e0b)";
+  const freeColor = inkSaver ? "#ffffff" : "#ffffff";
+  const wordListBg = inkSaver ? "#ffffff" : "#f3f4f6";
+  const wordListItemBg = inkSaver ? "#ffffff" : "white";
+  const wordListItemBorder = inkSaver ? "1px solid #d1d5db" : "0";
+
   const styles =
-    baseStyles(lang, "#f59e0b", "#d97706") +
+    baseStyles(lang, "#f59e0b", "#d97706", settings) +
     `
-    .instructions { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; font-size: 10pt; color: #92400e; font-weight: 600; }
-    .bingo-card { border: 2px solid #fbbf24; border-radius: 10px; padding: 5mm; background: #fffbeb; margin: 4mm 0; }
-    .bingo-card-title { text-align: center; font-weight: 800; color: #d97706; margin-bottom: 4mm; font-size: 14pt; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#fffbeb"}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${inkSaver ? "#000000" : "#92400e"}; font-weight: 600; }
+    .bingo-card { border: 2px solid ${cardBorder}; border-radius: 10px; padding: 5mm; background: ${cardBg}; margin: 4mm 0; }
+    .bingo-card-title { text-align: center; font-weight: 800; color: ${accentDark}; margin-bottom: 4mm; font-size: 1.3em; }
     .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; }
-    .bingo-cell { aspect-ratio: 1 / 1; min-height: 28mm; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fcd34d; border-radius: 6px; background: white; font-size: 11pt; font-weight: 700; color: #78350f; text-align: center; padding: 2mm; line-height: 1.2; word-break: break-word; }
-    .bingo-cell.free { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
-    .word-list-section { padding: 5mm; background: #f3f4f6; border-radius: 8px; }
-    .word-list-title { font-weight: 800; color: #374151; margin-bottom: 4mm; text-align: center; font-size: 12pt; }
+    .bingo-cell { aspect-ratio: 1 / 1; min-height: 28mm; display: flex; align-items: center; justify-content: center; border: 1.5px solid ${cellBorder}; border-radius: 6px; background: white; font-weight: 700; color: ${cellTextColor}; text-align: center; padding: 2mm; line-height: 1.2; word-break: break-word; }
+    .bingo-cell.free { background: ${freeBg}; color: ${freeColor}; }
+    .word-list-section { padding: 5mm; background: ${wordListBg}; border-radius: 8px; ${inkSaver ? "border: 1.5px solid #000000;" : ""} }
+    .word-list-title { font-weight: 800; color: ${inkSaver ? "#000000" : "#374151"}; margin-bottom: 4mm; text-align: center; font-size: 1.1em; }
     .word-list-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
-    .word-list-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: white; border-radius: 4px; font-size: 10pt; }
-    .word-list-num { font-weight: 800; color: #f59e0b; min-width: 6mm; }
+    .word-list-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: ${wordListItemBg}; border: ${wordListItemBorder}; border-radius: 4px; font-size: 0.9em; }
+    .word-list-num { font-weight: 800; color: ${accentColor}; min-width: 6mm; }
     .word-list-text { flex: 1; }
     .word-list-qr svg { display: block; width: 9mm; height: 9mm; }
   `;
@@ -590,8 +675,8 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, ca
             <div class="word-list-item">
               <span class="word-list-num">${i + 1}.</span>
               <span class="word-list-text">
-                <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(applyCasing(w.english, casing))}</span>
-                <span style="color:#6b7280;">— ${escapeHtml(getTranslation(w, lang))}</span>
+                <span class="en" style="font-weight:600; color:${inkSaver ? "#000000" : "#1f2937"};">${escapeHtml(applyCasing(w.english, casing))}</span>
+                ${showTranslations ? `<span style="color:#6b7280;">— ${escapeHtml(getTranslation(w, lang))}</span>` : ""}
               </span>
               ${audioQR ? `<span class="word-list-qr">${qrSvg(getAudioUrl(w.id), 32)}</span>` : ""}
             </div>`,
@@ -605,7 +690,8 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, ca
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + wordListPage });
 };
 
-const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
+const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver } = settings;
   // Word search grids are always one consistent case so the eye can scan the
   // letters as a uniform texture. We honour the toggle: "lower" → all
   // lowercase, otherwise → all uppercase. The word list always matches the
@@ -687,21 +773,30 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, ca
     }
   }
 
+  const accentColor = inkSaver ? "#000000" : "#ec4899";
+  const accentDark = inkSaver ? "#000000" : "#9d174d";
+  const softBg = inkSaver ? "#ffffff" : "#fdf2f8";
+  const softBorder = inkSaver ? "#000000" : "#f9a8d4";
+  const gridFrameBg = inkSaver ? "#000000" : "#374151";
+  const cellTextColor = inkSaver ? "#000000" : "#374151";
+  const foundBg = inkSaver ? "#e5e7eb" : "#fce7f3";
+  const foundColor = inkSaver ? "#000000" : "#9d174d";
+
   const styles =
-    baseStyles(lang, "#ec4899", "#db2777") +
+    baseStyles(lang, "#ec4899", "#db2777", settings) +
     `
-    .instructions { background: #fdf2f8; border: 2px solid #ec4899; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; font-size: 10pt; color: #9d174d; font-weight: 600; }
+    .instructions { background: ${softBg}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
     .ws-content { display: grid; grid-template-columns: 2fr 1fr; gap: 6mm; align-items: start; }
-    .ws-info-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-bottom: 4mm; padding: 3mm 4mm; background: #fdf2f8; border: 1.5px solid #f9a8d4; border-radius: 6px; }
-    .ws-info-label { font-size: 9pt; font-weight: 700; color: #9d174d; margin-bottom: 1mm; }
-    .ws-info-input { border-bottom: 1.5px solid #f9a8d4; height: 6mm; }
-    .ws-grid { display: grid; grid-template-columns: repeat(${gridSize}, 1fr); gap: 0.5mm; background: #374151; padding: 1mm; border-radius: 6px; }
-    .ws-cell { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; background: white; font-size: 12pt; font-weight: 700; color: #374151; }
-    .ws-cell.found { background: #fce7f3; color: #9d174d; }
-    .ws-wordlist { background: #fdf2f8; border: 1.5px solid #f9a8d4; border-radius: 6px; padding: 4mm; }
-    .ws-wordlist-title { font-weight: 800; color: #9d174d; margin-bottom: 3mm; text-align: center; font-size: 11pt; }
-    .ws-word { display: flex; align-items: center; gap: 2mm; padding: 1.5mm 0; font-size: 10pt; }
-    .ws-word-num { font-weight: 800; color: #ec4899; min-width: 6mm; }
+    .ws-info-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-bottom: 4mm; padding: 3mm 4mm; background: ${softBg}; border: 1.5px solid ${softBorder}; border-radius: 6px; }
+    .ws-info-label { font-size: 0.85em; font-weight: 700; color: ${accentDark}; margin-bottom: 1mm; }
+    .ws-info-input { border-bottom: 1.5px solid ${inkSaver ? "#6b7280" : "#f9a8d4"}; height: 6mm; }
+    .ws-grid { display: grid; grid-template-columns: repeat(${gridSize}, 1fr); gap: 0.5mm; background: ${gridFrameBg}; padding: 1mm; border-radius: 6px; }
+    .ws-cell { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; background: white; font-size: 1.1em; font-weight: 700; color: ${cellTextColor}; }
+    .ws-cell.found { background: ${foundBg}; color: ${foundColor}; }
+    .ws-wordlist { background: ${softBg}; border: 1.5px solid ${softBorder}; border-radius: 6px; padding: 4mm; }
+    .ws-wordlist-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; text-align: center; }
+    .ws-word { display: flex; align-items: center; gap: 2mm; padding: 1.5mm 0; }
+    .ws-word-num { font-weight: 800; color: ${accentColor}; min-width: 6mm; }
     .ws-word-text { flex: 1; }
     .ws-word-qr svg { display: block; width: 9mm; height: 9mm; }
   `;
@@ -918,20 +1013,97 @@ interface PreviewState {
   format: string;
 }
 
+// Small presentational helpers for the settings drawer. Intentionally local —
+// they're not used elsewhere and keep the modal markup readable.
+const SettingsField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <label className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-violet-900">
+    <span>{label}:</span>
+    {children}
+  </label>
+);
+
+interface SegmentedOption<V> {
+  value: V;
+  label: string;
+}
+function SegmentedControl<V extends string | number>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  options: SegmentedOption<V>[];
+  value: V;
+  onChange: (v: V) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className="inline-flex rounded-lg bg-white p-0.5 border border-violet-200"
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={String(opt.value)}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt.value)}
+            className={`px-2.5 py-1 rounded-md text-xs sm:text-sm font-bold transition-all ${
+              active ? "bg-violet-600 text-white" : "text-violet-700 hover:bg-violet-50"
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const CheckboxField: React.FC<{ label: string; checked: boolean; onChange: (v: boolean) => void }> = ({
+  label,
+  checked,
+  onChange,
+}) => (
+  <label className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-violet-900 cursor-pointer">
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="w-4 h-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+    />
+    {label}
+  </label>
+);
+
 interface PreviewModalProps {
   preview: PreviewState;
+  format: Format;
   printLabel: string;
   downloadLabel: string;
   cancelLabel: string;
   previewTitle: string;
   closeLabel: string;
-  casing: Casing;
-  onCasingChange: (c: Casing) => void;
-  casingLabel: string;
-  casingOptions: { value: Casing; label: string }[];
-  audioQR: boolean;
-  onAudioQRChange: (v: boolean) => void;
-  audioQRLabel: string;
+  settings: WorksheetSettings;
+  onSettingChange: <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) => void;
+  labels: {
+    casing: string;
+    casingOptions: { value: Casing; label: string }[];
+    audioQR: string;
+    settings: string;
+    fontSize: string;
+    fontSizeOptions: { value: FontSize; label: string }[];
+    inkSaver: string;
+    showTranslations: string;
+    wordsPerPage: string;
+    wordsPerPageOptions: number[];
+    orientation: string;
+    orientationOptions: { value: Orientation; label: string }[];
+  };
   onClose: () => void;
   onDownload: () => void;
   isDownloading: boolean;
@@ -939,22 +1111,22 @@ interface PreviewModalProps {
 
 const PreviewModal: React.FC<PreviewModalProps> = ({
   preview,
+  format,
   printLabel,
   downloadLabel,
   cancelLabel,
   previewTitle,
   closeLabel,
-  casing,
-  onCasingChange,
-  casingLabel,
-  casingOptions,
-  audioQR,
-  onAudioQRChange,
-  audioQRLabel,
+  settings,
+  onSettingChange,
+  labels,
   onClose,
   onDownload,
   isDownloading,
 }) => {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const showWordsPerPage = format === "worksheet";
+  const showTranslationsToggle = format === "worksheet" || format === "flashcards" || format === "bingo";
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // ESC closes the modal
@@ -988,26 +1160,20 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-base sm:text-xl font-bold text-white truncate">{previewTitle}</h3>
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="text-white/80 text-xs sm:text-sm font-semibold hidden sm:inline"
-              aria-hidden="true"
-            >
-              {casingLabel}
-            </span>
             <div
               className="inline-flex rounded-lg bg-white/15 p-1 border border-white/20"
               role="radiogroup"
-              aria-label={casingLabel}
+              aria-label={labels.casing}
             >
-              {casingOptions.map((opt) => {
-                const active = casing === opt.value;
+              {labels.casingOptions.map((opt) => {
+                const active = settings.casing === opt.value;
                 return (
                   <button
                     key={opt.value}
                     type="button"
                     role="radio"
                     aria-checked={active}
-                    onClick={() => onCasingChange(opt.value)}
+                    onClick={() => onSettingChange("casing", opt.value)}
                     className={`px-2.5 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-bold transition-all ${
                       active ? "bg-white text-violet-700" : "text-white/90 hover:bg-white/10"
                     }`}
@@ -1020,18 +1186,33 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             <button
               type="button"
               role="switch"
-              aria-checked={audioQR}
-              aria-label={audioQRLabel}
-              onClick={() => onAudioQRChange(!audioQR)}
-              title={audioQRLabel}
+              aria-checked={settings.audioQR}
+              aria-label={labels.audioQR}
+              onClick={() => onSettingChange("audioQR", !settings.audioQR)}
+              title={labels.audioQR}
               className={`px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold ${
-                audioQR
+                settings.audioQR
                   ? "bg-white text-violet-700 border-white"
                   : "bg-white/15 text-white/90 border-white/20 hover:bg-white/20"
               }`}
             >
               <Volume2 size={14} />
-              <span className="hidden sm:inline">{audioQRLabel}</span>
+              <span className="hidden sm:inline">{labels.audioQR}</span>
+            </button>
+            <button
+              type="button"
+              aria-expanded={settingsOpen}
+              aria-controls="worksheet-settings-drawer"
+              onClick={() => setSettingsOpen((o) => !o)}
+              title={labels.settings}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold ${
+                settingsOpen
+                  ? "bg-white text-violet-700 border-white"
+                  : "bg-white/15 text-white/90 border-white/20 hover:bg-white/20"
+              }`}
+            >
+              <Settings size={14} />
+              <span className="hidden sm:inline">{labels.settings}</span>
             </button>
             <button
               onClick={onClose}
@@ -1043,6 +1224,56 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             </button>
           </div>
         </div>
+
+        {settingsOpen && (
+          <div
+            id="worksheet-settings-drawer"
+            className="bg-violet-50 border-b border-violet-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap gap-x-6 gap-y-3 items-center"
+          >
+            <SettingsField label={labels.fontSize}>
+              <SegmentedControl
+                ariaLabel={labels.fontSize}
+                options={labels.fontSizeOptions}
+                value={settings.fontSize}
+                onChange={(v) => onSettingChange("fontSize", v)}
+              />
+            </SettingsField>
+
+            <SettingsField label={labels.orientation}>
+              <SegmentedControl
+                ariaLabel={labels.orientation}
+                options={labels.orientationOptions}
+                value={settings.orientation}
+                onChange={(v) => onSettingChange("orientation", v)}
+              />
+            </SettingsField>
+
+            {showWordsPerPage && (
+              <SettingsField label={labels.wordsPerPage}>
+                <SegmentedControl
+                  ariaLabel={labels.wordsPerPage}
+                  options={labels.wordsPerPageOptions.map((n) => ({ value: n, label: String(n) }))}
+                  value={settings.wordsPerPage}
+                  onChange={(v) => onSettingChange("wordsPerPage", v)}
+                />
+              </SettingsField>
+            )}
+
+            {showTranslationsToggle && (
+              <CheckboxField
+                label={labels.showTranslations}
+                checked={settings.showTranslations}
+                onChange={(v) => onSettingChange("showTranslations", v)}
+              />
+            )}
+
+            <CheckboxField
+              label={labels.inkSaver}
+              checked={settings.inkSaver}
+              onChange={(v) => onSettingChange("inkSaver", v)}
+            />
+          </div>
+        )}
 
         <div className="flex-1 overflow-hidden bg-gray-100">
           <iframe
@@ -1095,7 +1326,7 @@ interface PreviewSource {
   topicName: string;
 }
 
-const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => string> = {
+const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => string> = {
   worksheet: generateWorksheetHTML,
   matching: generateMatchingExerciseHTML,
   flashcards: generateFlashcardsHTML,
@@ -1116,27 +1347,42 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const t = freeResourcesT[language];
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [previewSource, setPreviewSource] = useState<PreviewSource | null>(null);
-  const [casing, setCasing] = useState<Casing>("original");
-  const [audioQR, setAudioQR] = useState(false);
+  const [settings, setSettings] = useState<WorksheetSettings>(DEFAULT_SETTINGS);
   const [isExporting, setIsExporting] = useState(false);
 
-  // HTML is derived from source + casing + audioQR, so flipping a toggle
-  // re-renders the iframe instantly without a network round-trip.
+  const updateSetting = <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) =>
+    setSettings((prev) => ({ ...prev, [key]: value }));
+
+  // HTML is derived from source + settings, so flipping any toggle re-renders
+  // the iframe instantly without a network round-trip.
   const preview: PreviewState | null = useMemo(() => {
     if (!previewSource) return null;
     return {
-      html: generators[previewSource.format](previewSource.pack, previewSource.words, language, casing, audioQR),
+      html: generators[previewSource.format](previewSource.pack, previewSource.words, language, settings),
       filename: previewSource.filename,
       topicName: previewSource.topicName,
       format: previewSource.format,
     };
-  }, [previewSource, language, casing, audioQR]);
+  }, [previewSource, language, settings]);
 
   const casingOptions: { value: Casing; label: string }[] = [
     { value: "original", label: t.casingOriginal },
     { value: "lower", label: t.casingLower },
     { value: "upper", label: t.casingUpper },
   ];
+
+  const fontSizeOptions: { value: FontSize; label: string }[] = [
+    { value: "small", label: t.fontSizeSmall },
+    { value: "medium", label: t.fontSizeMedium },
+    { value: "large", label: t.fontSizeLarge },
+  ];
+
+  const orientationOptions: { value: Orientation; label: string }[] = [
+    { value: "portrait", label: t.orientationPortrait },
+    { value: "landscape", label: t.orientationLandscape },
+  ];
+
+  const wordsPerPageOptions = [15, 22, 30];
 
   const openPreview = (topicName: string, format: Format) => {
     const pack = TOPIC_PACKS.find((tp) => tp.name === topicName);
@@ -1168,7 +1414,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
       filename: preview.filename,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: settings.orientation, compress: true },
       pagebreak: { mode: ["css", "legacy"] as const },
     };
 
@@ -1307,21 +1553,31 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
         </div>
       </main>
 
-      {preview && (
+      {preview && previewSource && (
         <PreviewModal
           preview={preview}
+          format={previewSource.format}
           previewTitle={t.previewTitle}
           printLabel={t.print}
           downloadLabel={t.download}
           cancelLabel={t.cancel}
           closeLabel={t.closePreview}
-          casing={casing}
-          onCasingChange={setCasing}
-          casingLabel={t.casingLabel}
-          casingOptions={casingOptions}
-          audioQR={audioQR}
-          onAudioQRChange={setAudioQR}
-          audioQRLabel={t.audioQRLabel}
+          settings={settings}
+          onSettingChange={updateSetting}
+          labels={{
+            casing: t.casingLabel,
+            casingOptions,
+            audioQR: t.audioQRLabel,
+            settings: t.settingsLabel,
+            fontSize: t.fontSizeLabel,
+            fontSizeOptions,
+            inkSaver: t.inkSaverLabel,
+            showTranslations: t.showTranslationsLabel,
+            wordsPerPage: t.wordsPerPageLabel,
+            wordsPerPageOptions,
+            orientation: t.orientationLabel,
+            orientationOptions,
+          }}
           onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}
           isDownloading={isExporting}
