@@ -11,6 +11,9 @@ export interface FreeResourcesT {
   topicPackDescription: string; // has {count} placeholder
   topicPackSize: string; // has {words} and {pages} placeholders
 
+  // Free resources pill above the title
+  freeResourcesPill: string;
+
   // Download buttons
   download: string;
   downloading: string;
@@ -18,6 +21,12 @@ export interface FreeResourcesT {
   downloadFlashcards: string;
   downloadBingo: string;
   downloadWordSearch: string;
+
+  // Preview modal
+  previewTitle: string;
+  print: string;
+  cancel: string;
+  closePreview: string;
 
   // Matching Practice
   matchingPracticeTitle: string;
@@ -43,12 +52,19 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     topicPackDescription: "Essential vocabulary words for this topic. Perfect for classroom use and self-study.",
     topicPackSize: "{words} words • {pages} pages",
 
+    freeResourcesPill: "Free Resources",
+
     download: "Download PDF",
     downloading: "Downloading...",
     downloadMatching: "Matching Exercise",
     downloadFlashcards: "Flashcards",
     downloadBingo: "Bingo Cards",
     downloadWordSearch: "Word Search",
+
+    previewTitle: "Preview",
+    print: "Print",
+    cancel: "Cancel",
+    closePreview: "Close preview",
 
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
@@ -71,12 +87,19 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     topicPackDescription: "מילים חיוניות לנושא זה. מושלם לשימוש בכיתה וללמידה עצמאית.",
     topicPackSize: "{words} מילים • {pages} עמודים",
 
+    freeResourcesPill: "משאבים בחינם",
+
     download: "הורד PDF",
     downloading: "מוריד...",
     downloadMatching: "תרגיל התאמה",
     downloadFlashcards: "כרטיסיות",
     downloadBingo: "כרטיסי בינגו",
     downloadWordSearch: "חיפוש מילים",
+
+    previewTitle: "תצוגה מקדימה",
+    print: "הדפסה",
+    cancel: "ביטול",
+    closePreview: "סגור תצוגה מקדימה",
 
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
@@ -99,12 +122,19 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     topicPackDescription: "كلمات أساسية لهذا الموضوع. مثالية للاستخدام في الصف والدراسة الذاتية.",
     topicPackSize: "{words} كلمات • {pages} صفحات",
 
+    freeResourcesPill: "موارد مجانية",
+
     download: "تنزيل PDF",
     downloading: "جاري التنزيل...",
     downloadMatching: "تمرين المطابقة",
     downloadFlashcards: "بطاقات تعليمية",
     downloadBingo: "بطاقات البينغو",
     downloadWordSearch: "بحث الكلمات",
+
+    previewTitle: "معاينة",
+    print: "طباعة",
+    cancel: "إلغاء",
+    closePreview: "إغلاق المعاينة",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
