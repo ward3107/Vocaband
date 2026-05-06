@@ -29,6 +29,8 @@ type TopicPack = (typeof TOPIC_PACKS)[number];
 type Casing = "original" | "lower" | "upper";
 type FontSize = "small" | "medium" | "large";
 type Orientation = "portrait" | "landscape";
+type BingoGridSize = 3 | 5 | 7;
+type BingoCardCount = 4 | 8 | 16;
 
 // All export-time options live in one bag so each generator has a single
 // trailing parameter and adding a new option doesn't ripple through five
@@ -41,6 +43,8 @@ interface WorksheetSettings {
   showTranslations: boolean;
   wordsPerPage: number;
   orientation: Orientation;
+  bingoGridSize: BingoGridSize;
+  bingoCardCount: BingoCardCount;
 }
 
 const DEFAULT_SETTINGS: WorksheetSettings = {
@@ -51,6 +55,8 @@ const DEFAULT_SETTINGS: WorksheetSettings = {
   showTranslations: true,
   wordsPerPage: 22,
   orientation: "portrait",
+  bingoGridSize: 5,
+  bingoCardCount: 4,
 };
 
 // Many beginning EFL students do not yet recognise that "Apple" and "apple"
@@ -600,18 +606,32 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, se
 };
 
 const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, audioQR, inkSaver, showTranslations } = settings;
+  const { casing, audioQR, inkSaver, showTranslations, bingoGridSize, bingoCardCount } = settings;
   const t = {
-    en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. First to 5 in a row wins!", free: "FREE", wordList: "Word List", card: "Card", page: "Page" },
-    he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. הראשון שמשלים 5 בשורה מנצח!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", page: "עמוד" },
-    ar: { title: "بطاقات البينغو", instructions: "يقول المعلم الكلمات بالإنجليزية، ويضع الطلاب علامة على الترجمة. أول من يحصل على 5 في صف يفوز!", free: "مجاني", wordList: "قائمة الكلمات", card: "بطاقة", page: "صفحة" },
-  }[lang as "en" | "he" | "ar"] || { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. First to 5 in a row wins!", free: "FREE", wordList: "Word List", card: "Card", page: "Page" };
+    en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. Win by completing a full row, column, or diagonal!", free: "FREE", wordList: "Word List", card: "Card", page: "Page", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." },
+    he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. מנצחים על-ידי השלמת שורה, טור או אלכסון מלא!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", page: "עמוד", callersTitle: "רשימת הקראה למורה", callersInstructions: "הקריאו לתלמידים את המילים באנגלית בכל סדר. סמנו כל מילה אחרי שהקראתם אותה." },
+    ar: { title: "بطاقات البينغو", instructions: "يقول المعلم الكلمات بالإنجليزية، ويضع الطلاب علامة على الترجمة. الفوز بإكمال صف أو عمود أو قطر كامل!", free: "مجاني", wordList: "قائمة الكلمات", card: "بطاقة", page: "صفحة", callersTitle: "قائمة المعلم للنداء", callersInstructions: "اقرأ هذه الكلمات الإنجليزية للصف بأي ترتيب. ضع علامة على كل كلمة بعد قراءتها." },
+  }[lang as "en" | "he" | "ar"] || { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation.", free: "FREE", wordList: "Word List", card: "Card", page: "Page", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." };
 
-  // Need at least 24 unique translations for a 5×5 grid with a free center.
-  // If the pack is smaller, repeat translations to fill — better than crashing.
-  const pool = words.length >= 24 ? words : Array.from({ length: 24 }, (_, i) => words[i % words.length]);
-  const CARD_COUNT = 4;
-  const totalPages = CARD_COUNT + 1; // cards + word list
+  // Cells per card depends on grid size. Centre cell is "free" only on odd
+  // grids (3, 5, 7) — even grids skip the free centre because there isn't
+  // one. cellsToFill = total - (1 if centre exists).
+  const totalCells = bingoGridSize * bingoGridSize;
+  const hasCentre = bingoGridSize % 2 === 1;
+  const cellsToFill = hasCentre ? totalCells - 1 : totalCells;
+
+  // If the pack is smaller than the cards need, repeat words so 7×7 grids
+  // still render. Better than crashing on small packs (e.g. Days & Months).
+  const pool = words.length >= cellsToFill
+    ? words
+    : Array.from({ length: cellsToFill }, (_, i) => words[i % words.length]);
+
+  // Bigger grids → smaller cells → smaller font so HE/AR translations don't
+  // overflow. Tuned to fit two-word translations without truncation at A4.
+  const cellMinHeight = bingoGridSize === 3 ? "50mm" : bingoGridSize === 5 ? "28mm" : "18mm";
+  const cellFontSize = bingoGridSize === 3 ? "1.4em" : bingoGridSize === 5 ? "1em" : "0.75em";
+
+  const totalPages = bingoCardCount + 2; // cards + word list + caller's checklist
 
   const accentColor = inkSaver ? "#000000" : "#f59e0b";
   const accentDark = inkSaver ? "#000000" : "#d97706";
@@ -620,7 +640,7 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
   const cellBorder = inkSaver ? "#6b7280" : "#fcd34d";
   const cellTextColor = inkSaver ? "#000000" : "#78350f";
   const freeBg = inkSaver ? "#000000" : "linear-gradient(135deg, #fbbf24, #f59e0b)";
-  const freeColor = inkSaver ? "#ffffff" : "#ffffff";
+  const freeColor = "#ffffff";
   const wordListBg = inkSaver ? "#ffffff" : "#f3f4f6";
   const wordListItemBg = inkSaver ? "#ffffff" : "white";
   const wordListItemBorder = inkSaver ? "1px solid #d1d5db" : "0";
@@ -631,8 +651,8 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
     .instructions { background: ${inkSaver ? "#ffffff" : "#fffbeb"}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${inkSaver ? "#000000" : "#92400e"}; font-weight: 600; }
     .bingo-card { border: 2px solid ${cardBorder}; border-radius: 10px; padding: 5mm; background: ${cardBg}; margin: 4mm 0; }
     .bingo-card-title { text-align: center; font-weight: 800; color: ${accentDark}; margin-bottom: 4mm; font-size: 1.3em; }
-    .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; }
-    .bingo-cell { aspect-ratio: 1 / 1; min-height: 28mm; display: flex; align-items: center; justify-content: center; border: 1.5px solid ${cellBorder}; border-radius: 6px; background: white; font-weight: 700; color: ${cellTextColor}; text-align: center; padding: 2mm; line-height: 1.2; word-break: break-word; }
+    .bingo-grid { display: grid; grid-template-columns: repeat(${bingoGridSize}, 1fr); gap: 2mm; }
+    .bingo-cell { aspect-ratio: 1 / 1; min-height: ${cellMinHeight}; display: flex; align-items: center; justify-content: center; border: 1.5px solid ${cellBorder}; border-radius: 6px; background: white; font-size: ${cellFontSize}; font-weight: 700; color: ${cellTextColor}; text-align: center; padding: 1.5mm; line-height: 1.15; word-break: break-word; overflow: hidden; }
     .bingo-cell.free { background: ${freeBg}; color: ${freeColor}; }
     .word-list-section { padding: 5mm; background: ${wordListBg}; border-radius: 8px; ${inkSaver ? "border: 1.5px solid #000000;" : ""} }
     .word-list-title { font-weight: 800; color: ${inkSaver ? "#000000" : "#374151"}; margin-bottom: 4mm; text-align: center; font-size: 1.1em; }
@@ -641,16 +661,33 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
     .word-list-num { font-weight: 800; color: ${accentColor}; min-width: 6mm; }
     .word-list-text { flex: 1; }
     .word-list-qr svg { display: block; width: 9mm; height: 9mm; }
+    .callers-section { padding: 5mm; background: ${inkSaver ? "#ffffff" : "#fffbeb"}; border: 1.5px solid ${accentColor}; border-radius: 8px; }
+    .callers-title { font-weight: 800; color: ${accentDark}; margin-bottom: 4mm; text-align: center; font-size: 1.1em; }
+    .callers-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm; }
+    .callers-row { display: flex; align-items: center; gap: 3mm; padding: 2mm 3mm; background: ${wordListItemBg}; border: 1px solid ${inkSaver ? "#000000" : "#fcd34d"}; border-radius: 4px; font-size: 0.95em; }
+    .callers-checkbox { width: 4.5mm; height: 4.5mm; border: 1.5px solid ${inkSaver ? "#000000" : "#9ca3af"}; border-radius: 2px; flex-shrink: 0; }
+    .callers-num { font-weight: 800; color: ${accentColor}; min-width: 7mm; }
+    .callers-en { font-weight: 700; color: ${inkSaver ? "#000000" : "#1f2937"}; flex: 1; }
+    .callers-tr { color: #6b7280; font-size: 0.85em; }
   `;
 
-  const cardPages = Array.from({ length: CARD_COUNT }, (_, cardIdx) => {
+  const cardPages = Array.from({ length: bingoCardCount }, (_, cardIdx) => {
     const seed = hashString(pack.name) ^ (cardIdx + 1);
-    const picked = seededShuffle(pool, seed).slice(0, 24);
-    const cells = [
-      ...picked.slice(0, 12).map((w) => ({ text: getTranslation(w, lang), free: false })),
-      { text: t.free, free: true },
-      ...picked.slice(12, 24).map((w) => ({ text: getTranslation(w, lang), free: false })),
-    ];
+    const picked = seededShuffle(pool, seed).slice(0, cellsToFill);
+    const cells: { text: string; free: boolean }[] = [];
+    if (hasCentre) {
+      const centreIdx = Math.floor(totalCells / 2);
+      let nonFreeCursor = 0;
+      for (let i = 0; i < totalCells; i++) {
+        if (i === centreIdx) {
+          cells.push({ text: t.free, free: true });
+        } else {
+          cells.push({ text: getTranslation(picked[nonFreeCursor++], lang), free: false });
+        }
+      }
+    } else {
+      picked.forEach((w) => cells.push({ text: getTranslation(w, lang), free: false }));
+    }
     return `
     <section class="sheet">
       ${sheetHeader(pack, t.title)}
@@ -686,10 +723,38 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
             .join("")}
         </div>
       </div>
+      ${sheetFooter(bingoCardCount + 1, totalPages, t.page)}
+    </section>`;
+
+  // Caller's checklist for the teacher: checkbox + numbered word + (optional)
+  // translation so they can read either side. Shuffled so the call order
+  // varies between print runs without changing the cards' layouts (cards are
+  // seeded per-card; this list uses its own seed).
+  const callerOrder = seededShuffle(words, hashString(pack.name) ^ 0xca11);
+  const callersListPage = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.callersTitle)}
+      <div class="instructions">📣 ${escapeHtml(t.callersInstructions)}</div>
+      <div class="callers-section">
+        <div class="callers-title">📋 ${escapeHtml(t.callersTitle)}</div>
+        <div class="callers-grid">
+          ${callerOrder
+            .map(
+              (w, i) => `
+            <div class="callers-row">
+              <span class="callers-checkbox"></span>
+              <span class="callers-num">${i + 1}.</span>
+              <span class="callers-en en">${escapeHtml(applyCasing(w.english, casing))}</span>
+              ${showTranslations ? `<span class="callers-tr">${escapeHtml(getTranslation(w, lang))}</span>` : ""}
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>
       ${sheetFooter(totalPages, totalPages, t.page)}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + wordListPage });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + wordListPage + callersListPage });
 };
 
 const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
@@ -1258,6 +1323,10 @@ interface PreviewModalProps {
     wordsPerPageOptions: number[];
     orientation: string;
     orientationOptions: { value: Orientation; label: string }[];
+    bingoGridSize: string;
+    bingoGridSizeOptions: { value: BingoGridSize; label: string }[];
+    bingoCardCount: string;
+    bingoCardCountOptions: { value: BingoCardCount; label: string }[];
   };
   onClose: () => void;
   onDownload: () => void;
@@ -1281,6 +1350,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const showWordsPerPage = format === "worksheet";
+  const showBingoSettings = format === "bingo";
   const showTranslationsToggle =
     format === "worksheet" || format === "flashcards" || format === "bingo" || format === "fillblank";
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -1413,6 +1483,27 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                   onChange={(v) => onSettingChange("wordsPerPage", v)}
                 />
               </SettingsField>
+            )}
+
+            {showBingoSettings && (
+              <>
+                <SettingsField label={labels.bingoGridSize}>
+                  <SegmentedControl
+                    ariaLabel={labels.bingoGridSize}
+                    options={labels.bingoGridSizeOptions}
+                    value={settings.bingoGridSize}
+                    onChange={(v) => onSettingChange("bingoGridSize", v)}
+                  />
+                </SettingsField>
+                <SettingsField label={labels.bingoCardCount}>
+                  <SegmentedControl
+                    ariaLabel={labels.bingoCardCount}
+                    options={labels.bingoCardCountOptions}
+                    value={settings.bingoCardCount}
+                    onChange={(v) => onSettingChange("bingoCardCount", v)}
+                  />
+                </SettingsField>
+              </>
             )}
 
             {showTranslationsToggle && (
@@ -1549,6 +1640,16 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   ];
 
   const wordsPerPageOptions = [15, 22, 30];
+  const bingoGridSizeOptions: { value: BingoGridSize; label: string }[] = [
+    { value: 3, label: "3×3" },
+    { value: 5, label: "5×5" },
+    { value: 7, label: "7×7" },
+  ];
+  const bingoCardCountOptions: { value: BingoCardCount; label: string }[] = [
+    { value: 4, label: "4" },
+    { value: 8, label: "8" },
+    { value: 16, label: "16" },
+  ];
 
   const openPreview = (topicName: string, format: Format) => {
     const pack = TOPIC_PACKS.find((tp) => tp.name === topicName);
@@ -1790,6 +1891,10 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             wordsPerPageOptions,
             orientation: t.orientationLabel,
             orientationOptions,
+            bingoGridSize: t.bingoGridSizeLabel,
+            bingoGridSizeOptions,
+            bingoCardCount: t.bingoCardCountLabel,
+            bingoCardCountOptions,
           }}
           onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}

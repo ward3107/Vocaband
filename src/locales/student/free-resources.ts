@@ -58,6 +58,12 @@ export interface FreeResourcesT {
   orientationPortrait: string;
   orientationLandscape: string;
 
+  // Bingo-only settings
+  bingoGridSizeLabel: string;
+  bingoCardCountLabel: string;
+  bingoCallersTitle: string;
+  bingoCallersInstructions: string;
+
   // Matching Practice
   matchingPracticeTitle: string;
   matchingPracticeSubtitle: string;
@@ -121,6 +127,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     orientationPortrait: "Portrait",
     orientationLandscape: "Landscape",
 
+    bingoGridSizeLabel: "Grid",
+    bingoCardCountLabel: "Cards",
+    bingoCallersTitle: "Caller's Checklist",
+    bingoCallersInstructions: "Read these English words to the class in any order. Tick each word as you call it.",
+
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
     matchingPracticeHebrew: "English ↔ Hebrew",
@@ -181,6 +192,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     orientationPortrait: "לאורך",
     orientationLandscape: "לרוחב",
 
+    bingoGridSizeLabel: "רשת",
+    bingoCardCountLabel: "כרטיסים",
+    bingoCallersTitle: "רשימת הקראה למורה",
+    bingoCallersInstructions: "הקריאו לתלמידים את המילים באנגלית בכל סדר שתבחרו. סמנו כל מילה אחרי שהקראתם אותה.",
+
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
     matchingPracticeHebrew: "אנגלית ↔ עברית",
@@ -240,6 +256,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     orientationLabel: "اتجاه الصفحة",
     orientationPortrait: "عمودي",
     orientationLandscape: "أفقي",
+
+    bingoGridSizeLabel: "الشبكة",
+    bingoCardCountLabel: "البطاقات",
+    bingoCallersTitle: "قائمة المعلم للنداء",
+    bingoCallersInstructions: "اقرأ هذه الكلمات الإنجليزية للصف بأي ترتيب. ضع علامة على كل كلمة بعد قراءتها.",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
