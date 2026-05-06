@@ -39,7 +39,7 @@
     "csvtojson": "^2.0.14",
     "date-fns": "^4.1.0",
     "express": "^4.21.2",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "^8.5.1",
     "helmet": "^8.1.0",
     "howler": "^2.2.4",
     "html2pdf.js": "^0.14.0",
