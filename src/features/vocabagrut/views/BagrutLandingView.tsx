@@ -1,8 +1,14 @@
-// Step 1 of the Vocabagrut teacher flow: pick module + word source, then
-// hit Generate.  On success the shell advances to BagrutEditorView.
+// Step 1 of the Vocabagrut teacher flow: pick module + words, review the
+// final list, then hit Generate.  On success the shell advances to
+// BagrutEditorView.
+//
+// Words flow into a single `pendingWords` list from any of three sources
+// (paste, phone photo / gallery via OCR, or pull from an existing class
+// assignment).  The teacher sees and approves the merged list before
+// generation runs — they can remove individual chips or clear all.
 
-import { useRef, useState } from 'react';
-import { ArrowLeft, Camera, ClipboardPaste, FolderOpen, Sparkles, Loader2, X } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Camera, ClipboardPaste, FolderOpen, Sparkles, Loader2, X, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData, AssignmentData } from '../../../core/supabase';
 import { supabase } from '../../../core/supabase';
@@ -30,11 +36,32 @@ const MODULE_GRADIENTS: Record<BagrutModule, string> = {
   E: 'from-slate-400 via-slate-500 to-slate-600',
 };
 
+const WORD_RE = /^[a-zA-Z\-']{1,30}$/;
+const MAX_WORDS = 60;
+
+function normaliseWord(raw: string): string | null {
+  const w = raw.trim().toLowerCase();
+  return WORD_RE.test(w) ? w : null;
+}
+
+function parsePasteText(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const piece of text.split(/[,\n;\t|]+/)) {
+    const w = normaliseWord(piece);
+    if (w && !seen.has(w)) {
+      seen.add(w);
+      out.push(w);
+    }
+  }
+  return out;
+}
+
 export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onGenerated, showToast }: Props) {
   const [module, setModule] = useState<BagrutModule>('B');
   const [source, setSource] = useState<WordSource>('paste');
-  const [pasteText, setPasteText] = useState('');
-  const [photoWords, setPhotoWords] = useState<string[]>([]);
+  const [pendingWords, setPendingWords] = useState<string[]>([]);
+  const [pasteDraft, setPasteDraft] = useState('');
   const [showCamera, setShowCamera] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -42,33 +69,56 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gen = useBagrutGenerator();
 
-  const teacherClasses = classes.filter(c => c.teacherUid === user.uid);
-  const classAssignments = selectedClassId
-    ? teacherAssignments.filter(a => a.classId === selectedClassId)
-    : [];
+  const teacherClasses = useMemo(() => classes.filter(c => c.teacherUid === user.uid), [classes, user.uid]);
+  const classAssignments = useMemo(
+    () => (selectedClassId ? teacherAssignments.filter(a => a.classId === selectedClassId) : []),
+    [selectedClassId, teacherAssignments],
+  );
 
-  function parsePaste(text: string): string[] {
-    return text
-      .split(/[,\n;\t|]+/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => /^[a-zA-Z\-']{1,30}$/.test(w))
-      .filter((w, i, arr) => arr.indexOf(w) === i);
+  function addWords(incoming: string[]): { added: number; skippedDup: number; cappedAt: number | null } {
+    let added = 0;
+    let skippedDup = 0;
+    setPendingWords(prev => {
+      const seen = new Set(prev);
+      const next = [...prev];
+      for (const raw of incoming) {
+        const w = normaliseWord(raw);
+        if (!w) continue;
+        if (seen.has(w)) { skippedDup++; continue; }
+        if (next.length >= MAX_WORDS) break;
+        next.push(w);
+        seen.add(w);
+        added++;
+      }
+      return next;
+    });
+    const cappedAt = added < incoming.length && pendingWords.length + incoming.length > MAX_WORDS ? MAX_WORDS : null;
+    return { added, skippedDup, cappedAt };
   }
 
-  function getAssignmentWords(): string[] {
-    if (!selectedAssignmentId) return [];
-    const a = teacherAssignments.find(x => x.id === selectedAssignmentId);
-    if (!a) return [];
-    return (a.words ?? []).map(w => w.english.toLowerCase());
+  function removeWord(w: string) {
+    setPendingWords(prev => prev.filter(x => x !== w));
   }
 
-  function getCurrentWords(): string[] {
-    if (source === 'paste') return parsePaste(pasteText);
-    if (source === 'photo') return photoWords;
-    if (source === 'class') return getAssignmentWords();
-    return [];
+  function clearAll() {
+    setPendingWords([]);
   }
 
+  // ── Paste source ─────────────────────────────────────────────────────
+  const pastePreview = useMemo(() => parsePasteText(pasteDraft), [pasteDraft]);
+
+  function commitPaste() {
+    if (pastePreview.length === 0) {
+      showToast('No valid words detected in the paste box', 'info');
+      return;
+    }
+    const { added, skippedDup } = addWords(pastePreview);
+    setPasteDraft('');
+    if (added > 0) showToast(`Added ${added} word${added === 1 ? '' : 's'}${skippedDup ? ` (${skippedDup} duplicate${skippedDup === 1 ? '' : 's'} skipped)` : ''}`, 'success');
+    else if (skippedDup > 0) showToast('Already in the list', 'info');
+  }
+
+  // ── Photo / gallery source ───────────────────────────────────────────
   async function runOcrOnFile(file: File) {
     setOcrLoading(true);
     try {
@@ -84,17 +134,26 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: fd,
       });
+      // Sniff content-type so we surface a useful message if the
+      // backend isn't reachable (HTML 404 fallback would otherwise
+      // throw "Unexpected token <" from res.json()).
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        showToast(`OCR endpoint not reachable (HTTP ${res.status}). Check the backend deploy.`, 'error');
+        return;
+      }
       const body = await res.json();
       if (!res.ok) {
-        showToast(body.error || 'OCR failed', 'error');
+        showToast(body.error || body.message || 'OCR failed', 'error');
         return;
       }
       const words = (body.words || []) as string[];
-      setPhotoWords(prev => {
-        const merged = [...prev, ...words.map(w => w.toLowerCase())];
-        return merged.filter((w, i) => merged.indexOf(w) === i && /^[a-zA-Z\-']{1,30}$/.test(w));
-      });
-      showToast(`Found ${words.length} words from image`, 'success');
+      if (words.length === 0) {
+        showToast('No English words detected in the image', 'info');
+        return;
+      }
+      const { added, skippedDup } = addWords(words);
+      showToast(`Image processed — ${added} added${skippedDup ? `, ${skippedDup} duplicate${skippedDup === 1 ? '' : 's'} skipped` : ''}`, 'success');
     } catch (err: any) {
       showToast(err?.message || 'OCR error', 'error');
     } finally {
@@ -102,24 +161,39 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
     }
   }
 
-  async function handleGenerate() {
-    const words = getCurrentWords();
-    if (words.length === 0) {
-      showToast('Add at least one word first', 'error');
+  // ── Class-assignment source ──────────────────────────────────────────
+  const selectedAssignment = teacherAssignments.find(a => a.id === selectedAssignmentId);
+  const assignmentWords = (selectedAssignment?.words ?? []).map(w => w.english.toLowerCase());
+
+  function pullAssignmentWords() {
+    if (!selectedAssignment) {
+      showToast('Pick an assignment first', 'info');
       return;
     }
-    const test = await gen.generate(module, words);
+    if (assignmentWords.length === 0) {
+      showToast('That assignment has no words', 'info');
+      return;
+    }
+    const { added, skippedDup } = addWords(assignmentWords);
+    if (added > 0) showToast(`Added ${added} word${added === 1 ? '' : 's'} from "${selectedAssignment.title}"${skippedDup ? ` (${skippedDup} duplicate${skippedDup === 1 ? '' : 's'} skipped)` : ''}`, 'success');
+    else showToast('All those words are already in the list', 'info');
+  }
+
+  // ── Generate ─────────────────────────────────────────────────────────
+  async function handleGenerate() {
+    if (pendingWords.length === 0) {
+      showToast('Add some words first', 'error');
+      return;
+    }
+    const test = await gen.generate(module, pendingWords);
     if (test) {
       showToast(gen.cached ? 'Loaded from cache' : 'Generated! Review and export.', 'success');
-      onGenerated(test, words);
+      onGenerated(test, pendingWords);
     }
   }
 
-  const wordCount = getCurrentWords().length;
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--vb-bg)' }}>
-      {/* Hero header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 opacity-90" />
         <div className="relative px-4 sm:px-8 py-6 sm:py-10">
@@ -184,10 +258,10 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           )}
         </section>
 
-        {/* ── Word source picker ── */}
+        {/* ── Add words ── */}
         <section>
           <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            2 · Where are the words from?
+            2 · Add words
           </h2>
           <div className="grid grid-cols-3 gap-2 mb-4">
             <SourceTab active={source === 'paste'} icon={<ClipboardPaste size={18} />} label="Paste" onClick={() => setSource('paste')} />
@@ -196,13 +270,28 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           </div>
 
           {source === 'paste' && (
-            <textarea
-              value={pasteText}
-              onChange={e => setPasteText(e.target.value)}
-              placeholder="Paste or type words separated by commas, new lines, or semicolons. Example: harvest, community, neighbour, garden, soil, vegetables"
-              className="w-full min-h-[140px] p-3 rounded-xl border text-sm"
-              style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
-            />
+            <div className="space-y-3">
+              <textarea
+                value={pasteDraft}
+                onChange={e => setPasteDraft(e.target.value)}
+                placeholder="Paste or type words separated by commas, new lines, or semicolons. Example: harvest, community, neighbour, garden, soil, vegetables"
+                className="w-full min-h-[140px] p-3 rounded-xl border text-sm"
+                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                  {pastePreview.length === 0 ? 'No valid words yet' : `${pastePreview.length} word${pastePreview.length === 1 ? '' : 's'} ready to add`}
+                </span>
+                <button
+                  type="button"
+                  onClick={commitPaste}
+                  disabled={pastePreview.length === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40"
+                >
+                  <Plus size={16} /> Add to list
+                </button>
+              </div>
+            </div>
           )}
 
           {source === 'photo' && (
@@ -242,23 +331,9 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   <Loader2 size={14} className="animate-spin" /> Reading words from image…
                 </div>
               )}
-              {photoWords.length > 0 && (
-                <div className="rounded-xl p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
-                  <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-                    {photoWords.length} words found
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {photoWords.map(w => (
-                      <span key={w} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-primary)' }}>
-                        {w}
-                        <button type="button" onClick={() => setPhotoWords(p => p.filter(x => x !== w))} className="opacity-60 hover:opacity-100">
-                          <X size={12} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <p className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
+                Detected words go straight into the list below — review and remove any false positives.
+              </p>
             </div>
           )}
 
@@ -288,18 +363,84 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   ))}
                 </select>
               )}
+              {selectedAssignment && (
+                <div className="rounded-xl p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+                    {assignmentWords.length} word{assignmentWords.length === 1 ? '' : 's'} in this assignment
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {assignmentWords.slice(0, 30).map(w => (
+                      <span key={w} className="inline-block px-2 py-0.5 rounded-md text-xs" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>{w}</span>
+                    ))}
+                    {assignmentWords.length > 30 && (
+                      <span className="text-xs px-2 py-0.5" style={{ color: 'var(--vb-text-muted)' }}>+{assignmentWords.length - 30} more…</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={pullAssignmentWords}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700"
+                  >
+                    <Plus size={16} /> Add all to list
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>
 
+        {/* ── Review and approve ── */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>
+              3 · Review &amp; approve
+            </h2>
+            {pendingWords.length > 0 && (
+              <button type="button" onClick={clearAll} className="text-xs font-medium" style={{ color: 'var(--vb-text-muted)' }}>
+                Clear all
+              </button>
+            )}
+          </div>
+          <div
+            className="rounded-2xl p-4 border min-h-[88px]"
+            style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+          >
+            {pendingWords.length === 0 ? (
+              <div className="text-sm py-3 text-center" style={{ color: 'var(--vb-text-muted)' }}>
+                Add words from any source above. They'll appear here for you to review and remove false positives before generating.
+              </div>
+            ) : (
+              <>
+                <div className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--vb-text-secondary)' }}>
+                  <span>{pendingWords.length} word{pendingWords.length === 1 ? '' : 's'} ready</span>
+                  {pendingWords.length >= MAX_WORDS && <span className="text-amber-600">· capped at {MAX_WORDS}</span>}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {pendingWords.map(w => (
+                    <span
+                      key={w}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
+                      style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-primary)' }}
+                    >
+                      {w}
+                      <button
+                        type="button"
+                        onClick={() => removeWord(w)}
+                        className="opacity-60 hover:opacity-100"
+                        aria-label={`Remove ${w}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
         {/* ── Generate ── */}
         <section className="pt-2">
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <div className="text-sm" style={{ color: 'var(--vb-text-secondary)' }}>
-              {wordCount === 0 ? 'No words yet' : `${wordCount} word${wordCount === 1 ? '' : 's'} ready`}
-              {wordCount > 60 && <span className="text-amber-600"> · capped at 60</span>}
-            </div>
-          </div>
           {gen.error && (
             <div className="mb-3 rounded-xl p-3 text-sm bg-rose-50 text-rose-700 border border-rose-200">
               {gen.error}
@@ -307,16 +448,16 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           )}
           <motion.button
             type="button"
-            whileHover={{ scale: gen.loading ? 1 : 1.02 }}
-            whileTap={{ scale: gen.loading ? 1 : 0.97 }}
+            whileHover={{ scale: gen.loading || pendingWords.length === 0 ? 1 : 1.02 }}
+            whileTap={{ scale: gen.loading || pendingWords.length === 0 ? 1 : 0.97 }}
             onClick={handleGenerate}
-            disabled={gen.loading || wordCount === 0}
+            disabled={gen.loading || pendingWords.length === 0}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
           >
             {gen.loading ? (
               <><Loader2 size={20} className="animate-spin" /> Generating Module {module}…</>
             ) : (
-              <><Sparkles size={20} /> Generate {MODULE_SPECS[module].label} mock exam</>
+              <><Sparkles size={20} /> Generate {MODULE_SPECS[module].label} mock exam ({pendingWords.length} word{pendingWords.length === 1 ? '' : 's'})</>
             )}
           </motion.button>
           <p className="mt-3 text-xs text-center" style={{ color: 'var(--vb-text-muted)' }}>
