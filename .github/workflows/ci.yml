@@ -69,16 +69,25 @@ jobs:
       # through (esbuild is more lenient than tsc on missing names
       # and type mismatches).
       #
-      # Currently NON-BLOCKING (continue-on-error) because main
-      # carries ~68 pre-existing typecheck failures inherited from
-      # PRs merged before CI existed.  Cleaning those is a separate
-      # sweep — once that lands, flip continue-on-error to false so
-      # this becomes a hard gate.  In the meantime the step still
-      # runs so every PR sees its own delta in the logs and reviewers
-      # can spot fresh regressions before they merge.
-      - name: Typecheck (warn-only for now)
-        continue-on-error: true
-        run: npm run typecheck:ci
+      # Was previously NON-BLOCKING because main carries ~85 pre-
+      # existing typecheck failures inherited from PRs merged before
+      # CI existed.  Going BLOCKING outright would have stopped every
+      # PR until that backlog was cleared.
+      #
+      # Switched 2026-05-04 to a RATCHET: the existing count is the
+      # baseline (`.typecheck-baseline`).  CI now fails if a PR
+      # increases the count.  Cleanup PRs that drive the count down
+      # are encouraged to commit the new lower baseline in the same
+      # PR — the ratchet only goes down.  See
+      # `scripts/typecheck-ratchet.sh` for the full logic.
+      #
+      # Net effect: new code is held to the strict standard, old code
+      # becomes a measurable backlog.  PR #458's three regressions
+      # (FeatureRequestModal duplicate JSX attr, AccessibilityStatement
+      # missing prop, CreateAssignmentWizard arg mismatch) would have
+      # been blocked under this gate.
+      - name: Typecheck (ratchet — fails on regression)
+        run: ./scripts/typecheck-ratchet.sh
 
       # Vitest runs all unit tests in src/__tests__/.  No watch mode,
       # CI-only flags handled by `npm run test` (= `vitest run`).
