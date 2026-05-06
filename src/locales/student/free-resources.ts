@@ -38,6 +38,19 @@ export interface FreeResourcesT {
   // Audio QR codes — students scan with a phone to hear pronunciation.
   audioQRLabel: string;
 
+  // Customization panel
+  settingsLabel: string;
+  fontSizeLabel: string;
+  fontSizeSmall: string;
+  fontSizeMedium: string;
+  fontSizeLarge: string;
+  inkSaverLabel: string;
+  showTranslationsLabel: string;
+  wordsPerPageLabel: string;
+  orientationLabel: string;
+  orientationPortrait: string;
+  orientationLandscape: string;
+
   // Matching Practice
   matchingPracticeTitle: string;
   matchingPracticeSubtitle: string;
@@ -83,6 +96,18 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     audioQRLabel: "Audio QR",
 
+    settingsLabel: "Settings",
+    fontSizeLabel: "Font size",
+    fontSizeSmall: "S",
+    fontSizeMedium: "M",
+    fontSizeLarge: "L",
+    inkSaverLabel: "Ink saver (B&W)",
+    showTranslationsLabel: "Show translations",
+    wordsPerPageLabel: "Words per page",
+    orientationLabel: "Orientation",
+    orientationPortrait: "Portrait",
+    orientationLandscape: "Landscape",
+
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
     matchingPracticeHebrew: "English ↔ Hebrew",
@@ -125,6 +150,18 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     audioQRLabel: "קודי QR לאודיו",
 
+    settingsLabel: "הגדרות",
+    fontSizeLabel: "גודל גופן",
+    fontSizeSmall: "S",
+    fontSizeMedium: "M",
+    fontSizeLarge: "L",
+    inkSaverLabel: "חיסכון בדיו (שחור-לבן)",
+    showTranslationsLabel: "הצג תרגומים",
+    wordsPerPageLabel: "מילים לעמוד",
+    orientationLabel: "כיוון דף",
+    orientationPortrait: "לאורך",
+    orientationLandscape: "לרוחב",
+
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
     matchingPracticeHebrew: "אנגלית ↔ עברית",
@@ -166,6 +203,18 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     casingUpper: "ABC",
 
     audioQRLabel: "رموز QR صوتية",
+
+    settingsLabel: "إعدادات",
+    fontSizeLabel: "حجم الخط",
+    fontSizeSmall: "S",
+    fontSizeMedium: "M",
+    fontSizeLarge: "L",
+    inkSaverLabel: "توفير الحبر (أبيض وأسود)",
+    showTranslationsLabel: "إظهار الترجمات",
+    wordsPerPageLabel: "كلمات في الصفحة",
+    orientationLabel: "اتجاه الصفحة",
+    orientationPortrait: "عمودي",
+    orientationLandscape: "أفقي",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
