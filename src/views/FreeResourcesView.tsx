@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { freeResourcesT } from "../locales/student/free-resources";
@@ -15,12 +15,21 @@ import {
   Search,
   Printer,
   X,
+  Volume2,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 import html2pdf from "html2pdf.js";
+import qrcode from "qrcode-generator";
 
 type Word = (typeof ALL_WORDS)[number];
 type TopicPack = (typeof TOPIC_PACKS)[number];
+type Casing = "original" | "lower" | "upper";
+
+// Many beginning EFL students do not yet recognise that "Apple" and "apple"
+// are the same word. Worksheets default to "original" but teachers can flip
+// every English token to lowercase or uppercase from the preview modal.
+const applyCasing = (s: string, c: Casing): string =>
+  c === "lower" ? s.toLowerCase() : c === "upper" ? s.toUpperCase() : s;
 
 const GRADIENTS = [
   "from-violet-500 to-fuchsia-500",
@@ -83,6 +92,25 @@ const getTranslation = (word: Word, lang: string) =>
 
 const safeFilename = (name: string) =>
   name.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+// Audio URL matches src/hooks/useAudio.ts so QR codes resolve to the same
+// mp3 the in-app player uses. Students scan with a phone → browser opens
+// the audio file → plays. Works even if Vocaband is offline.
+const getAudioUrl = (wordId: number): string => {
+  const base = import.meta.env.VITE_SUPABASE_URL || "";
+  return `${base}/storage/v1/object/public/sound/${wordId}.mp3`;
+};
+
+// Inline SVG QR — scales without quality loss when html2pdf rasterizes it,
+// and prints crisp via native Print. Error level M is the sweet spot for
+// scannability at ~15mm (~21×21 modules) on A4 paper.
+const qrSvg = (text: string, sizePx: number): string => {
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  const cellSize = Math.max(2, Math.floor(sizePx / qr.getModuleCount()));
+  return qr.createSvgTag({ cellSize, margin: 0, scalable: true });
+};
 
 // ---------- shared HTML/CSS base ----------
 
@@ -218,13 +246,13 @@ const sheetFooter = (pageIndex: number, pageCount: number, pageLabel: string) =>
 
 // ---------- generators ----------
 
-const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
   const t = {
-    en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page" },
-    he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", page: "עמוד" },
-    ar: { title: "ورقة عمل - المفردات", word: "الإنجليزية", translation: "الترجمة", practice: "تمارين الكتابة", name: "الاسم:", date: "التاريخ:", school: "المدرسة:", className: "الصف:", page: "صفحة" },
+    en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page", listen: "Listen" },
+    he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", page: "עמוד", listen: "הקשבה" },
+    ar: { title: "ورقة عمل - المفردات", word: "الإنجليزية", translation: "الترجمة", practice: "تمارين الكتابة", name: "الاسم:", date: "التاريخ:", school: "المدرسة:", className: "الصف:", page: "صفحة", listen: "استمع" },
   }[lang as "en" | "he" | "ar"] || undefined;
-  const s = t || { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page" };
+  const s = t || { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page", listen: "Listen" };
 
   const today = new Date().toLocaleDateString(lang === "he" ? "he-IL" : lang === "ar" ? "ar-SA" : "en-US");
   const ROWS_PER_PAGE = 22;
@@ -240,10 +268,12 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => 
     table { width: 100%; border-collapse: collapse; }
     th { background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; padding: 3mm 2mm; font-weight: 700; font-size: 11pt; text-align: start; }
     th.num, td.num { width: 8%; text-align: center; }
+    th.qr, td.qr { width: 14%; text-align: center; }
     td { padding: 2.5mm 2mm; border-bottom: 1px solid #e5e7eb; font-size: 11pt; vertical-align: middle; }
     tr:nth-child(even) { background: #faf7ff; }
     td.num { font-weight: 700; color: #8b5cf6; }
     td.word { font-weight: 600; color: #7c3aed; }
+    .qr-cell svg { display: block; width: 14mm; height: 14mm; margin: 0 auto; }
     .practice-section { padding: 5mm; background: #fef3c7; border-radius: 8px; border: 2px dashed #f59e0b; }
     .practice-title { font-size: 14pt; font-weight: 800; color: #92400e; margin-bottom: 4mm; text-align: center; }
     .practice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
@@ -270,15 +300,21 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => 
             </div>`
           : ""}
         <table>
-          <thead><tr><th class="num">#</th><th>${escapeHtml(s.word)}</th><th>${escapeHtml(s.translation)}</th></tr></thead>
+          <thead><tr>
+            <th class="num">#</th>
+            <th>${escapeHtml(s.word)}</th>
+            <th>${escapeHtml(s.translation)}</th>
+            ${audioQR ? `<th class="qr">🔊 ${escapeHtml(s.listen)}</th>` : ""}
+          </tr></thead>
           <tbody>
             ${rows
               .map(
                 (w, i) => `
               <tr>
                 <td class="num">${startIdx + i + 1}</td>
-                <td class="word"><span class="en">${escapeHtml(w.english)}</span></td>
+                <td class="word"><span class="en">${escapeHtml(applyCasing(w.english, casing))}</span></td>
                 <td>${escapeHtml(getTranslation(w, lang))}</td>
+                ${audioQR ? `<td class="qr qr-cell">${qrSvg(getAudioUrl(w.id), 50)}</td>` : ""}
               </tr>`,
               )
               .join("")}
@@ -323,7 +359,7 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => 
   });
 };
 
-const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
   const t = {
     en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
     he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
@@ -342,7 +378,8 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
     .pair-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
     .word-item { display: flex; align-items: center; gap: 2mm; padding: 2.5mm 3mm; background: #f0fdf4; border: 1px solid #10b981; border-radius: 5px; }
     .word-num { font-weight: 800; color: #10b981; min-width: 7mm; }
-    .word-text { font-weight: 600; color: #047857; }
+    .word-text { font-weight: 600; color: #047857; flex: 1; }
+    .word-qr svg { display: block; width: 11mm; height: 11mm; }
     .translation-item { display: flex; justify-content: space-between; align-items: center; padding: 2.5mm 3mm; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 5px; gap: 3mm; }
     .translation-text { font-weight: 600; color: #92400e; }
     .number-box { min-width: 12mm; height: 7mm; border: 1.5px solid #d1d5db; border-radius: 4px; }
@@ -374,7 +411,8 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
               (n) => `
             <div class="word-item">
               <span class="word-num">${n.number}.</span>
-              <span class="word-text en">${escapeHtml(n.word.english)}</span>
+              <span class="word-text en">${escapeHtml(applyCasing(n.word.english, casing))}</span>
+              ${audioQR ? `<span class="word-qr">${qrSvg(getAudioUrl(n.word.id), 40)}</span>` : ""}
             </div>`,
             )
             .join("")}
@@ -406,7 +444,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
             (w, i) => `
           <div class="answer-cell">
             <span class="answer-num">${i + 1}.</span>
-            <span class="en">${escapeHtml(w.english)}</span>
+            <span class="en">${escapeHtml(applyCasing(w.english, casing))}</span>
             <span style="color:#6b7280;">→ ${escapeHtml(getTranslation(w, lang))}</span>
           </div>`,
           )
@@ -423,7 +461,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
   });
 };
 
-const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
   const t = {
     en: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation", page: "Page" },
     he: { title: "כרטיסיות", instructions: "גזרו לאורך הקווים המלאים. קפלו לאורך הקו המקווקו — אנגלית בקדמה, תרגום בגב.", english: "אנגלית", translation: "תרגום", page: "עמוד" },
@@ -447,6 +485,8 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
     .flashcard-word { font-size: 18pt; font-weight: 800; color: #1f2937; margin: 3mm 0; }
     .flashcard-hint { font-size: 8pt; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
     .fold-line { height: 0; border-top: 1.5px dashed #9ca3af; margin: 2mm 0; }
+    .flashcard-qr { position: absolute; top: 2mm; ${lang === "he" || lang === "ar" ? "right" : "left"}: 2mm; }
+    .flashcard-qr svg { display: block; width: 12mm; height: 12mm; background: white; padding: 1mm; border-radius: 3px; }
   `;
 
   const pagesHTML = pages
@@ -458,7 +498,8 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
         <div class="flashcard no-break">
           <div class="flashcard-front">
             <div class="flashcard-number">${startIdx + i + 1}</div>
-            <div class="flashcard-word en">${escapeHtml(w.english)}</div>
+            ${audioQR ? `<div class="flashcard-qr">${qrSvg(getAudioUrl(w.id), 45)}</div>` : ""}
+            <div class="flashcard-word en">${escapeHtml(applyCasing(w.english, casing))}</div>
             <div class="flashcard-hint">${escapeHtml(t.english)}</div>
           </div>
           <div class="fold-line"></div>
@@ -484,7 +525,7 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
 };
 
-const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
   const t = {
     en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. First to 5 in a row wins!", free: "FREE", wordList: "Word List", card: "Card", page: "Page" },
     he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. הראשון שמשלים 5 בשורה מנצח!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", page: "עמוד" },
@@ -509,8 +550,10 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
     .word-list-section { padding: 5mm; background: #f3f4f6; border-radius: 8px; }
     .word-list-title { font-weight: 800; color: #374151; margin-bottom: 4mm; text-align: center; font-size: 12pt; }
     .word-list-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
-    .word-list-item { display: flex; gap: 2mm; padding: 2mm 3mm; background: white; border-radius: 4px; font-size: 10pt; }
+    .word-list-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: white; border-radius: 4px; font-size: 10pt; }
     .word-list-num { font-weight: 800; color: #f59e0b; min-width: 6mm; }
+    .word-list-text { flex: 1; }
+    .word-list-qr svg { display: block; width: 9mm; height: 9mm; }
   `;
 
   const cardPages = Array.from({ length: CARD_COUNT }, (_, cardIdx) => {
@@ -546,8 +589,11 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
               (w, i) => `
             <div class="word-list-item">
               <span class="word-list-num">${i + 1}.</span>
-              <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(w.english)}</span>
-              <span style="color:#6b7280;">— ${escapeHtml(getTranslation(w, lang))}</span>
+              <span class="word-list-text">
+                <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(applyCasing(w.english, casing))}</span>
+                <span style="color:#6b7280;">— ${escapeHtml(getTranslation(w, lang))}</span>
+              </span>
+              ${audioQR ? `<span class="word-list-qr">${qrSvg(getAudioUrl(w.id), 32)}</span>` : ""}
             </div>`,
             )
             .join("")}
@@ -559,7 +605,14 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + wordListPage });
 };
 
-const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => {
+  // Word search grids are always one consistent case so the eye can scan the
+  // letters as a uniform texture. We honour the toggle: "lower" → all
+  // lowercase, otherwise → all uppercase. The word list always matches the
+  // grid so students can't think "APPLE" and "Apple" are different words.
+  const gridCase: "upper" | "lower" = casing === "lower" ? "lower" : "upper";
+  const toGridCase = (s: string) =>
+    gridCase === "lower" ? s.toLowerCase() : s.toUpperCase();
   const t = {
     en: { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:", page: "Page" },
     he: { title: "חיפוש מילים", instructions: "מצאו את כל המילים המוסתרות באנגלית. המילים יכולות להיות אופקיות, אנכיות או אלכסוניות.", wordsToFind: "מילים למציאה", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:", page: "עמוד" },
@@ -567,6 +620,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
   }[lang as "en" | "he" | "ar"] || { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:", page: "Page" };
 
   // Cap and filter to letters-only English; sort longer first to improve placement success.
+  // Internally we work in uppercase letters; we lowercase at render time when needed.
   const candidates = words
     .map((w) => ({ word: w, letters: w.english.toUpperCase().replace(/[^A-Z]/g, "") }))
     .filter((c) => c.letters.length >= 3 && c.letters.length <= 12)
@@ -611,17 +665,17 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
     return false;
   };
 
-  const placedWords: { letters: string; original: string }[] = [];
+  const placedWords: { letters: string; original: string; id: number }[] = [];
   for (const c of candidates) {
     if (placeWord(c.letters, c.word.english)) {
-      placedWords.push({ letters: c.letters, original: c.word.english });
+      placedWords.push({ letters: c.letters, original: c.word.english, id: c.word.id });
     }
   }
 
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const fillerLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
-      if (grid[r][c] === "") grid[r][c] = letters[Math.floor(rand() * letters.length)];
+      if (grid[r][c] === "") grid[r][c] = fillerLetters[Math.floor(rand() * fillerLetters.length)];
     }
   }
 
@@ -646,8 +700,10 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
     .ws-cell.found { background: #fce7f3; color: #9d174d; }
     .ws-wordlist { background: #fdf2f8; border: 1.5px solid #f9a8d4; border-radius: 6px; padding: 4mm; }
     .ws-wordlist-title { font-weight: 800; color: #9d174d; margin-bottom: 3mm; text-align: center; font-size: 11pt; }
-    .ws-word { display: flex; gap: 2mm; padding: 1.5mm 0; font-size: 10pt; }
+    .ws-word { display: flex; align-items: center; gap: 2mm; padding: 1.5mm 0; font-size: 10pt; }
     .ws-word-num { font-weight: 800; color: #ec4899; min-width: 6mm; }
+    .ws-word-text { flex: 1; }
+    .ws-word-qr svg { display: block; width: 9mm; height: 9mm; }
   `;
 
   const cellHTML = (highlight: boolean) =>
@@ -656,7 +712,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
         row
           .map(
             (cell, c) =>
-              `<div class="ws-cell${highlight && placedMask[r][c] ? " found" : ""}">${escapeHtml(cell)}</div>`,
+              `<div class="ws-cell${highlight && placedMask[r][c] ? " found" : ""}">${escapeHtml(toGridCase(cell))}</div>`,
           )
           .join(""),
       )
@@ -667,7 +723,8 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
       (w, i) => `
     <div class="ws-word">
       <span class="ws-word-num">${i + 1}.</span>
-      <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(w.original)}</span>
+      <span class="ws-word-text en" style="font-weight:600; color:#1f2937;">${escapeHtml(toGridCase(w.original))}</span>
+      ${audioQR ? `<span class="ws-word-qr">${qrSvg(getAudioUrl(w.id), 32)}</span>` : ""}
     </div>`,
     )
     .join("");
@@ -868,6 +925,13 @@ interface PreviewModalProps {
   cancelLabel: string;
   previewTitle: string;
   closeLabel: string;
+  casing: Casing;
+  onCasingChange: (c: Casing) => void;
+  casingLabel: string;
+  casingOptions: { value: Casing; label: string }[];
+  audioQR: boolean;
+  onAudioQRChange: (v: boolean) => void;
+  audioQRLabel: string;
   onClose: () => void;
   onDownload: () => void;
   isDownloading: boolean;
@@ -880,6 +944,13 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   cancelLabel,
   previewTitle,
   closeLabel,
+  casing,
+  onCasingChange,
+  casingLabel,
+  casingOptions,
+  audioQR,
+  onAudioQRChange,
+  audioQRLabel,
   onClose,
   onDownload,
   isDownloading,
@@ -914,16 +985,63 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col"
       >
-        <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
+        <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-base sm:text-xl font-bold text-white truncate">{previewTitle}</h3>
-          <button
-            onClick={onClose}
-            type="button"
-            aria-label={closeLabel}
-            className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-          >
-            <X size={22} />
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="text-white/80 text-xs sm:text-sm font-semibold hidden sm:inline"
+              aria-hidden="true"
+            >
+              {casingLabel}
+            </span>
+            <div
+              className="inline-flex rounded-lg bg-white/15 p-1 border border-white/20"
+              role="radiogroup"
+              aria-label={casingLabel}
+            >
+              {casingOptions.map((opt) => {
+                const active = casing === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => onCasingChange(opt.value)}
+                    className={`px-2.5 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-bold transition-all ${
+                      active ? "bg-white text-violet-700" : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={audioQR}
+              aria-label={audioQRLabel}
+              onClick={() => onAudioQRChange(!audioQR)}
+              title={audioQRLabel}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold ${
+                audioQR
+                  ? "bg-white text-violet-700 border-white"
+                  : "bg-white/15 text-white/90 border-white/20 hover:bg-white/20"
+              }`}
+            >
+              <Volume2 size={14} />
+              <span className="hidden sm:inline">{audioQRLabel}</span>
+            </button>
+            <button
+              onClick={onClose}
+              type="button"
+              aria-label={closeLabel}
+              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+            >
+              <X size={22} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden bg-gray-100">
@@ -967,30 +1085,58 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   );
 };
 
+type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch";
+
+interface PreviewSource {
+  pack: TopicPack;
+  words: Word[];
+  format: Format;
+  filename: string;
+  topicName: string;
+}
+
+const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string, casing: Casing, audioQR: boolean) => string> = {
+  worksheet: generateWorksheetHTML,
+  matching: generateMatchingExerciseHTML,
+  flashcards: generateFlashcardsHTML,
+  bingo: generateBingoCardsHTML,
+  wordsearch: generateWordSearchHTML,
+};
+
+const filenameSuffix: Record<Format, string> = {
+  worksheet: "Worksheet",
+  matching: "Matching_Exercise",
+  flashcards: "Flashcards",
+  bingo: "Bingo_Cards",
+  wordsearch: "Word_Search",
+};
+
 const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onBack }) => {
   const { language, dir, textAlign, isRTL } = useLanguage();
   const t = freeResourcesT[language];
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [previewSource, setPreviewSource] = useState<PreviewSource | null>(null);
+  const [casing, setCasing] = useState<Casing>("original");
+  const [audioQR, setAudioQR] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch";
+  // HTML is derived from source + casing + audioQR, so flipping a toggle
+  // re-renders the iframe instantly without a network round-trip.
+  const preview: PreviewState | null = useMemo(() => {
+    if (!previewSource) return null;
+    return {
+      html: generators[previewSource.format](previewSource.pack, previewSource.words, language, casing, audioQR),
+      filename: previewSource.filename,
+      topicName: previewSource.topicName,
+      format: previewSource.format,
+    };
+  }, [previewSource, language, casing, audioQR]);
 
-  const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string) => string> = {
-    worksheet: generateWorksheetHTML,
-    matching: generateMatchingExerciseHTML,
-    flashcards: generateFlashcardsHTML,
-    bingo: generateBingoCardsHTML,
-    wordsearch: generateWordSearchHTML,
-  };
-
-  const filenameSuffix: Record<Format, string> = {
-    worksheet: "Worksheet",
-    matching: "Matching_Exercise",
-    flashcards: "Flashcards",
-    bingo: "Bingo_Cards",
-    wordsearch: "Word_Search",
-  };
+  const casingOptions: { value: Casing; label: string }[] = [
+    { value: "original", label: t.casingOriginal },
+    { value: "lower", label: t.casingLower },
+    { value: "upper", label: t.casingUpper },
+  ];
 
   const openPreview = (topicName: string, format: Format) => {
     const pack = TOPIC_PACKS.find((tp) => tp.name === topicName);
@@ -1001,12 +1147,12 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     if (words.length === 0) return;
 
     setActiveTopic(`${format}-${topicName}`);
-    const html = generators[format](pack, words, language);
-    setPreview({
-      html,
-      filename: `${safeFilename(pack.name)}_${filenameSuffix[format]}.pdf`,
-      topicName,
+    setPreviewSource({
+      pack,
+      words,
       format,
+      topicName,
+      filename: `${safeFilename(pack.name)}_${filenameSuffix[format]}.pdf`,
     });
     setActiveTopic(null);
   };
@@ -1032,7 +1178,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
       console.error("PDF generation failed:", error);
     } finally {
       setIsExporting(false);
-      setPreview(null);
+      setPreviewSource(null);
     }
   };
 
@@ -1169,7 +1315,14 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
           downloadLabel={t.download}
           cancelLabel={t.cancel}
           closeLabel={t.closePreview}
-          onClose={() => setPreview(null)}
+          casing={casing}
+          onCasingChange={setCasing}
+          casingLabel={t.casingLabel}
+          casingOptions={casingOptions}
+          audioQR={audioQR}
+          onAudioQRChange={setAudioQR}
+          audioQRLabel={t.audioQRLabel}
+          onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}
           isDownloading={isExporting}
         />

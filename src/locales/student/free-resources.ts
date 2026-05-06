@@ -28,6 +28,16 @@ export interface FreeResourcesT {
   cancel: string;
   closePreview: string;
 
+  // Letter case toggle (English only — students who don't yet know
+  // capital vs. small letters benefit from a single consistent case).
+  casingLabel: string;
+  casingOriginal: string;
+  casingLower: string;
+  casingUpper: string;
+
+  // Audio QR codes — students scan with a phone to hear pronunciation.
+  audioQRLabel: string;
+
   // Matching Practice
   matchingPracticeTitle: string;
   matchingPracticeSubtitle: string;
@@ -66,6 +76,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     cancel: "Cancel",
     closePreview: "Close preview",
 
+    casingLabel: "Letter case",
+    casingOriginal: "As is",
+    casingLower: "abc",
+    casingUpper: "ABC",
+
+    audioQRLabel: "Audio QR",
+
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
     matchingPracticeHebrew: "English ↔ Hebrew",
@@ -101,6 +118,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     cancel: "ביטול",
     closePreview: "סגור תצוגה מקדימה",
 
+    casingLabel: "אותיות",
+    casingOriginal: "כפי שהוא",
+    casingLower: "abc",
+    casingUpper: "ABC",
+
+    audioQRLabel: "קודי QR לאודיו",
+
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
     matchingPracticeHebrew: "אנגלית ↔ עברית",
@@ -135,6 +159,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     print: "طباعة",
     cancel: "إلغاء",
     closePreview: "إغلاق المعاينة",
+
+    casingLabel: "حالة الأحرف",
+    casingOriginal: "كما هي",
+    casingLower: "abc",
+    casingUpper: "ABC",
+
+    audioQRLabel: "رموز QR صوتية",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
