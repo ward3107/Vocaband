@@ -63,7 +63,7 @@ export const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 // Pre-reverse RTL runs so jsPDF (which writes left-to-right) renders
 // Hebrew correctly.  Process word-by-word so mixed strings like
 // "Score: 80% (סימו)" keep the Latin part untouched.
-const RTL_WORD_RE = /[֐-׿؀-ۿݐ-ݿࢠ-ࣿיִ-﻿]+/g;
+const RTL_WORD_RE = /[֐-׿؀-ۿݐ-ݿࢠ-ࣿ]+/g;
 
 export function fixRtl(text: string): string {
   return text.replace(RTL_WORD_RE, run => run.split('').reverse().join(''));
