@@ -127,8 +127,25 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         showToast('Sign in required for OCR', 'error');
         return;
       }
+      // Surface what the browser is actually about to upload — useful
+      // when /api/ocr returns 400 because of a missing or unsupported
+      // mimetype (some Android galleries hand us a `File` with empty
+      // `.type`, which multer's fileFilter rejects).
+      console.log('[vocabagrut] OCR upload', {
+        name: file.name,
+        size: file.size,
+        type: file.type || '(empty mimetype)',
+      });
       const fd = new FormData();
-      fd.append('file', file);
+      // If the browser handed us a typeless File (some Android image
+      // pickers do this), retag as JPEG so multer's fileFilter doesn't
+      // reject it on an empty mime.  The /api/ocr handler downstream
+      // passes the mime to Gemini, which auto-detects from bytes, so a
+      // mislabel here is harmless.
+      const safe = file.type && file.type.startsWith('image/')
+        ? file
+        : new File([file], file.name || 'capture.jpg', { type: 'image/jpeg' });
+      fd.append('file', safe);
       const res = await fetch('/api/ocr', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -139,12 +156,18 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
       // throw "Unexpected token <" from res.json()).
       const ct = res.headers.get('content-type') || '';
       if (!ct.includes('application/json')) {
+        const sample = (await res.text()).slice(0, 120).replace(/\s+/g, ' ');
+        console.error('[vocabagrut] OCR non-JSON response', { status: res.status, ct, sample });
         showToast(`OCR endpoint not reachable (HTTP ${res.status}). Check the backend deploy.`, 'error');
         return;
       }
       const body = await res.json();
       if (!res.ok) {
-        showToast(body.error || body.message || 'OCR failed', 'error');
+        console.error('[vocabagrut] OCR error response', { status: res.status, body });
+        const msg = body.error
+          ? `${body.error}${body.message ? ` — ${body.message}` : ''}`
+          : `OCR failed (HTTP ${res.status})`;
+        showToast(msg, 'error');
         return;
       }
       const words = (body.words || []) as string[];
