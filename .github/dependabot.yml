@@ -1,0 +1,34 @@
+# Dependabot — automated dependency updates.
+#
+# Strategy: weekly grouped PRs, not per-package noise.  CI's `npm audit`
+# step blocks high/critical-severity merges, so anything Dependabot
+# files for those tiers is high signal.  Patch + minor updates are
+# grouped to keep the PR queue manageable; majors come solo so the
+# diff is easy to review.
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      patch-and-minor:
+        update-types:
+          - "patch"
+          - "minor"
+    # Security-only updates bypass grouping so they ship immediately.
+    # No allow/ignore lists — let GitHub's advisory feed dictate.
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "ci"

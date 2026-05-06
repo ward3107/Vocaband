@@ -35,9 +35,23 @@ export function useBagrutGenerator() {
         },
         body: JSON.stringify({ module, words }),
       });
+      // Sniff the response type before parsing.  When the Fly.io backend
+      // hasn't been redeployed with the new endpoint, the request falls
+      // through to the SPA index.html — calling res.json() on that throws
+      // a useless "Unexpected token <" error.  Detect the HTML case and
+      // surface a deploy-pointing message instead.
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        const sample = (await res.text()).slice(0, 80).replace(/\s+/g, ' ');
+        const msg = res.status === 404 || ct.includes('text/html')
+          ? 'The Vocabagrut endpoint is not reachable. Make sure the Fly.io backend has been redeployed with the new /api/generate-bagrut route.'
+          : `Unexpected response (${res.status}): ${sample}`;
+        setState({ loading: false, error: msg, test: null, cached: false, model: null });
+        return null;
+      }
       const body = await res.json();
       if (!res.ok) {
-        setState({ loading: false, error: body.error || 'Generation failed', test: null, cached: false, model: null });
+        setState({ loading: false, error: body.error || `Generation failed (HTTP ${res.status})`, test: null, cached: false, model: null });
         return null;
       }
       setState({ loading: false, error: null, test: body.test, cached: !!body.cached, model: body.model ?? null });
