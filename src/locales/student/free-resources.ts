@@ -21,6 +21,7 @@ export interface FreeResourcesT {
   downloadFlashcards: string;
   downloadBingo: string;
   downloadWordSearch: string;
+  downloadFillBlank: string;
 
   // Preview modal
   previewTitle: string;
@@ -89,6 +90,7 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     downloadFlashcards: "Flashcards",
     downloadBingo: "Bingo Cards",
     downloadWordSearch: "Word Search",
+    downloadFillBlank: "Fill in the Blank",
 
     previewTitle: "Preview",
     print: "Print",
@@ -148,6 +150,7 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     downloadFlashcards: "כרטיסיות",
     downloadBingo: "כרטיסי בינגו",
     downloadWordSearch: "חיפוש מילים",
+    downloadFillBlank: "השלמת חסר",
 
     previewTitle: "תצוגה מקדימה",
     print: "הדפסה",
@@ -207,6 +210,7 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     downloadFlashcards: "بطاقات تعليمية",
     downloadBingo: "بطاقات البينغو",
     downloadWordSearch: "بحث الكلمات",
+    downloadFillBlank: "املأ الفراغ",
 
     previewTitle: "معاينة",
     print: "طباعة",
