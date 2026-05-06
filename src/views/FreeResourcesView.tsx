@@ -1349,6 +1349,14 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const [previewSource, setPreviewSource] = useState<PreviewSource | null>(null);
   const [settings, setSettings] = useState<WorksheetSettings>(DEFAULT_SETTINGS);
   const [isExporting, setIsExporting] = useState(false);
+  const [topicSearch, setTopicSearch] = useState("");
+
+  // Strip the trailing emoji from pack names so "school" matches "School 📚".
+  const filteredPacks = useMemo(() => {
+    const q = topicSearch.trim().toLowerCase();
+    if (!q) return TOPIC_PACKS;
+    return TOPIC_PACKS.filter((p) => p.name.toLowerCase().includes(q));
+  }, [topicSearch]);
 
   const updateSetting = <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -1469,7 +1477,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             transition={{ delay: 0.1 }}
             className="mb-12"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
                 <FileText size={20} className="text-white" />
               </div>
@@ -1479,38 +1487,83 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-              {TOPIC_PACKS.map((topic, index) => {
-                const wordCount = topic.ids.length;
-                const pagesCount = Math.max(1, Math.ceil(wordCount / 22));
-                const gradient = GRADIENTS[index % GRADIENTS.length];
-                const isDownloading = activeTopic !== null && activeTopic.endsWith(`-${topic.name}`);
-
-                return (
-                  <ResourceCard
-                    key={topic.name}
-                    topicName={topic.name}
-                    icon={<span className="text-3xl">{topic.icon}</span>}
-                    title={topic.name}
-                    description={t.topicPackDescription.replace("{count}", wordCount.toString())}
-                    size={t.topicPackSize.replace("{words}", wordCount.toString()).replace("{pages}", pagesCount.toString())}
-                    downloadLabel={t.download}
-                    matchingLabel={t.downloadMatching}
-                    flashcardsLabel={t.downloadFlashcards}
-                    bingoLabel={t.downloadBingo}
-                    wordSearchLabel={t.downloadWordSearch}
-                    gradient={gradient}
-                    delay={Math.min(index * 0.05, 0.5)}
-                    onDownload={() => openPreview(topic.name, "worksheet")}
-                    onMatching={() => openPreview(topic.name, "matching")}
-                    onFlashcards={() => openPreview(topic.name, "flashcards")}
-                    onBingo={() => openPreview(topic.name, "bingo")}
-                    onWordSearch={() => openPreview(topic.name, "wordsearch")}
-                    isDownloading={isDownloading}
-                  />
-                );
-              })}
+            <div className="sticky top-20 z-20 mb-6 -mx-2 px-2 py-3 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/10">
+              <div className="relative">
+                <Search
+                  size={18}
+                  className={`absolute top-1/2 -translate-y-1/2 text-violet-300 pointer-events-none ${isRTL ? "right-3" : "left-3"}`}
+                />
+                <input
+                  type="search"
+                  value={topicSearch}
+                  onChange={(e) => setTopicSearch(e.target.value)}
+                  placeholder={t.searchPlaceholder}
+                  aria-label={t.searchPlaceholder}
+                  dir={dir}
+                  className={`w-full ${isRTL ? "pr-10 pl-10" : "pl-10 pr-10"} py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 font-semibold focus:outline-none focus:border-violet-400 focus:bg-white/15 transition-all`}
+                />
+                {topicSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setTopicSearch("")}
+                    aria-label={t.searchClear}
+                    className={`absolute top-1/2 -translate-y-1/2 text-white/60 hover:text-white p-1 rounded ${isRTL ? "left-2" : "right-2"}`}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              {topicSearch && (
+                <p className="text-violet-200/80 text-xs font-semibold mt-2 px-1" dir={dir}>
+                  {t.searchResults
+                    .replace("{matched}", String(filteredPacks.length))
+                    .replace("{total}", String(TOPIC_PACKS.length))}
+                </p>
+              )}
             </div>
+
+            {filteredPacks.length === 0 ? (
+              <div className="text-center py-16 px-4 rounded-2xl bg-white/5 border border-white/10">
+                <Search size={40} className="mx-auto mb-3 text-violet-400/60" />
+                <p className="text-white/70 font-semibold">{t.searchEmpty}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {filteredPacks.map((topic, index) => {
+                  const wordCount = topic.ids.length;
+                  const pagesCount = Math.max(1, Math.ceil(wordCount / 22));
+                  // Stable gradient: keyed off the original pack index so the same
+                  // pack always gets the same color regardless of filter results.
+                  const stableIndex = TOPIC_PACKS.findIndex((p) => p.name === topic.name);
+                  const gradient = GRADIENTS[stableIndex % GRADIENTS.length];
+                  const isDownloading = activeTopic !== null && activeTopic.endsWith(`-${topic.name}`);
+
+                  return (
+                    <ResourceCard
+                      key={topic.name}
+                      topicName={topic.name}
+                      icon={<span className="text-3xl">{topic.icon}</span>}
+                      title={topic.name}
+                      description={t.topicPackDescription.replace("{count}", wordCount.toString())}
+                      size={t.topicPackSize.replace("{words}", wordCount.toString()).replace("{pages}", pagesCount.toString())}
+                      downloadLabel={t.download}
+                      matchingLabel={t.downloadMatching}
+                      flashcardsLabel={t.downloadFlashcards}
+                      bingoLabel={t.downloadBingo}
+                      wordSearchLabel={t.downloadWordSearch}
+                      gradient={gradient}
+                      delay={Math.min(index * 0.05, 0.5)}
+                      onDownload={() => openPreview(topic.name, "worksheet")}
+                      onMatching={() => openPreview(topic.name, "matching")}
+                      onFlashcards={() => openPreview(topic.name, "flashcards")}
+                      onBingo={() => openPreview(topic.name, "bingo")}
+                      onWordSearch={() => openPreview(topic.name, "wordsearch")}
+                      isDownloading={isDownloading}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
 
           <motion.div

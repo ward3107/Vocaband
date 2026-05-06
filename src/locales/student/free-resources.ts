@@ -38,6 +38,12 @@ export interface FreeResourcesT {
   // Audio QR codes — students scan with a phone to hear pronunciation.
   audioQRLabel: string;
 
+  // Topic search
+  searchPlaceholder: string;
+  searchResults: string; // {matched} of {total} packs
+  searchClear: string;
+  searchEmpty: string;
+
   // Customization panel
   settingsLabel: string;
   fontSizeLabel: string;
@@ -96,6 +102,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     audioQRLabel: "Audio QR",
 
+    searchPlaceholder: "Search topic packs…",
+    searchResults: "{matched} of {total} packs",
+    searchClear: "Clear search",
+    searchEmpty: "No packs match your search.",
+
     settingsLabel: "Settings",
     fontSizeLabel: "Font size",
     fontSizeSmall: "S",
@@ -150,6 +161,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
 
     audioQRLabel: "קודי QR לאודיו",
 
+    searchPlaceholder: "חיפוש חבילות נושאים…",
+    searchResults: "{matched} מתוך {total} חבילות",
+    searchClear: "נקה חיפוש",
+    searchEmpty: "לא נמצאו חבילות התואמות לחיפוש.",
+
     settingsLabel: "הגדרות",
     fontSizeLabel: "גודל גופן",
     fontSizeSmall: "S",
@@ -203,6 +219,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     casingUpper: "ABC",
 
     audioQRLabel: "رموز QR صوتية",
+
+    searchPlaceholder: "ابحث عن حزم المواضيع…",
+    searchResults: "{matched} من {total} حزمة",
+    searchClear: "مسح البحث",
+    searchEmpty: "لا توجد حزم تطابق بحثك.",
 
     settingsLabel: "إعدادات",
     fontSizeLabel: "حجم الخط",
