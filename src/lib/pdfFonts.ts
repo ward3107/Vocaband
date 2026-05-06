@@ -57,7 +57,7 @@ export function registerHebrewArabicFonts(doc: jsPDF, fonts: Base64Font): void {
 }
 
 // Detect script in a string so callers can pick the right font.
-export const HEBREW_RE = /[֐-׿יִ-ﭏ]/;
+export const HEBREW_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]/;
 export const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
 // Pre-reverse RTL runs so jsPDF (which writes left-to-right) renders
