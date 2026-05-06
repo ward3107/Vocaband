@@ -235,8 +235,7 @@ ${formData.description}`;
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="pointer-events-auto"
-              className="relative w-full max-w-lg"
+              className="pointer-events-auto relative w-full max-w-lg"
               dir={dir}
             >
               <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">

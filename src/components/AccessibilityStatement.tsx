@@ -35,7 +35,7 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onBac
 
   return (
     <div className="min-h-screen bg-surface font-body" dir={isRTL ? 'rtl' : 'ltr'}>
-      <PublicNav onNavigate={onNavigate} onGetStarted={onGetStarted} />
+      <PublicNav currentPage="home" onNavigate={onNavigate} onGetStarted={onGetStarted} />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
         <div className="flex items-center gap-4 mb-6">
