@@ -65,6 +65,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Security gate — fail the build on HIGH or CRITICAL CVEs in the
+      # dependency tree.  Moderate/low are surfaced (Dependabot files
+      # PRs, see .github/dependabot.yml) but don't block merges, so the
+      # team can triage at human pace without a perpetually-red CI.
+      #
+      # If a high-severity issue lands in a transitive dep, fix via
+      # `package.json#overrides` rather than waiting for the upstream
+      # to bump (see commit `<sha>` for the ip-address override
+      # template).
+      - name: Audit dependencies (fails on high/critical)
+        run: npm audit --omit=dev --audit-level=high
+
       # tsc --noEmit catches TS errors that vite build silently lets
       # through (esbuild is more lenient than tsc on missing names
       # and type mismatches).
