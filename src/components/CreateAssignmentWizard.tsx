@@ -60,7 +60,12 @@ export interface CreateAssignmentWizardProps {
   handleTagInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleDocxUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleOcrUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSaveAssignment: () => void;
+  // Optional overrides match the real signature in useTeacherActions —
+  // the call site at line 225 passes (wordIds, modes) explicitly to
+  // avoid the async-state timing issue noted there.  The prop type
+  // was declared as `() => void` and silently accepted any args at
+  // the JS level, but TypeScript caught the discrepancy.
+  handleSaveAssignment: (wordsOverride?: number[], modesOverride?: string[]) => void | Promise<void>;
   assignmentSentences: string[];
   setAssignmentSentences: (sentences: string[]) => void;
   sentenceDifficulty: SentenceDifficulty;
