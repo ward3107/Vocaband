@@ -35,6 +35,9 @@ export interface FreeResourcesT {
   casingLower: string;
   casingUpper: string;
 
+  // Audio QR codes — students scan with a phone to hear pronunciation.
+  audioQRLabel: string;
+
   // Matching Practice
   matchingPracticeTitle: string;
   matchingPracticeSubtitle: string;
@@ -78,6 +81,8 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     casingLower: "abc",
     casingUpper: "ABC",
 
+    audioQRLabel: "Audio QR",
+
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
     matchingPracticeHebrew: "English ↔ Hebrew",
@@ -118,6 +123,8 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     casingLower: "abc",
     casingUpper: "ABC",
 
+    audioQRLabel: "קודי QR לאודיו",
+
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
     matchingPracticeHebrew: "אנגלית ↔ עברית",
@@ -157,6 +164,8 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     casingOriginal: "كما هي",
     casingLower: "abc",
     casingUpper: "ABC",
+
+    audioQRLabel: "رموز QR صوتية",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
