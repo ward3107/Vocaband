@@ -50,6 +50,7 @@ const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
+const VocabagrutShell = lazy(() => import("./features/vocabagrut/VocabagrutShell"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
 const LiveChallengeView = lazy(() => import("./views/LiveChallengeView"));
@@ -2592,6 +2593,7 @@ export default function App() {
             setView("class-show");
           }}
           onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
+          onVocabagrutClick={() => { setView("vocabagrut"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -3203,6 +3205,20 @@ export default function App() {
             setWorksheetAssignment(null);
             setView("teacher-dashboard");
           }}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === "vocabagrut" && user) {
+    return (
+      <LazyWrapper loadingMessage="Loading Vocabagrut…">
+        <VocabagrutShell
+          user={user}
+          classes={classes}
+          teacherAssignments={teacherAssignments}
+          onExit={() => setView(user.role === 'student' ? 'student-dashboard' : 'teacher-dashboard')}
+          showToast={showToast}
         />
       </LazyWrapper>
     );

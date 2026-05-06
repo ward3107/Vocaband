@@ -220,7 +220,8 @@
       "Bash(xargs -I {} git show \"HEAD:{}\")",
       "Bash(dir /s /b *.tsx *.ts)",
       "Bash(findstr /v \"node_modules\")",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "mcp__9e877a58-62c8-403b-a83a-d373ba08281a__apply_migration"
     ]
   }
 }
