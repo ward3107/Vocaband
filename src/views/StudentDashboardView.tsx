@@ -305,6 +305,37 @@ export default function StudentDashboardView({
             setView={setView}
             setShowModeSelection={setShowModeSelection}
           />
+
+          {/* Mock Bagrut exams entry — only renders the inline tile;
+              the listing + take-test view live in VocabagrutShell. */}
+          <button
+            type="button"
+            onClick={() => setView("vocabagrut")}
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              backgroundColor: 'var(--vb-surface)',
+              borderColor: 'var(--vb-border)',
+            }}
+            className="group relative w-full rounded-2xl p-4 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">
+                <span className="text-white text-lg font-black">B</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 style={{ color: 'var(--vb-text-primary)' }} className="text-sm font-bold leading-tight mb-0.5">
+                  Mock Bagrut exams
+                </h3>
+                <p style={{ color: 'var(--vb-text-secondary)' }} className="text-xs leading-snug">
+                  Practice the real Bagrut paper format
+                </p>
+              </div>
+              <svg className="w-4 h-4 shrink-0" style={{ color: 'var(--vb-text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </button>
         </div>
 
         {/* ── Structure detail modal ─────────────────────────────

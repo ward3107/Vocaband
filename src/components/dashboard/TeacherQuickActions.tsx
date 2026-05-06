@@ -1,4 +1,4 @@
-import { GraduationCap, UserCircle, Tv2, Printer, Zap } from "lucide-react";
+import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -10,11 +10,12 @@ interface TeacherQuickActionsProps {
   onApprovalsClick: () => void;
   onClassShowClick?: () => void;
   onWorksheetClick?: () => void;
+  onVocabagrutClick?: () => void;
 }
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick,
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
   const t = teacherDashboardT[language];
@@ -107,6 +108,22 @@ export default function TeacherQuickActions({
                   title="Worksheet"
                   description="Print a sheet for class"
                   onClick={onWorksheetClick}
+                />
+              </div>
+            </HelpTooltip>
+          )}
+
+          {/* Vocabagrut — Bagrut-style mock exam */}
+          {onVocabagrutClick && (
+            <HelpTooltip className="h-full" content="Generate a Bagrut-style mock exam from your word list. Looks like the real Israeli MoE Bagrut paper — perfect for format familiarity in grades 7–9.">
+              <div className="h-full" data-tour="vocabagrut">
+                <CompactActionCard
+                  icon={<Sparkles size={20} />}
+                  iconBg="bg-violet-100"
+                  iconColor="text-violet-600"
+                  title="Vocabagrut"
+                  description="Bagrut-style mock exam"
+                  onClick={onVocabagrutClick}
                 />
               </div>
             </HelpTooltip>

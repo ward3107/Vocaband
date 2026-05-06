@@ -36,7 +36,8 @@ export type View =
   | "quick-play-teacher-monitor"
   | "quick-play-student"
   | "class-show"
-  | "worksheet";
+  | "worksheet"
+  | "vocabagrut";
 
 export type ShopTab =
   // "hub" = the Arcade Lobby landing screen (portal tiles + hero +

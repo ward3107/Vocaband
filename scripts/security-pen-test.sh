@@ -83,6 +83,45 @@ body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/quick_play_joins" \
   -d '{"session_code":"FAKE99","student_name":"spam"}')
 check "anon insert is rejected" "row-level security|violates|permission denied|42501" "$body"
 
+# ─── Test 5: anon enumerating Vocabagrut tests ────────────────────────
+echo "[5] Anon enumerating bagrut_tests"
+body=$(curl -s "$SUPABASE_URL/rest/v1/bagrut_tests?select=id" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon bagrut_tests returns empty" '^\[\]$' "$body"
+
+# ─── Test 6: anon enumerating Vocabagrut responses ────────────────────
+echo "[6] Anon enumerating bagrut_responses"
+body=$(curl -s "$SUPABASE_URL/rest/v1/bagrut_responses?select=id" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon bagrut_responses returns empty" '^\[\]$' "$body"
+
+# ─── Test 7: anon enumerating bagrut_cache (server-only) ──────────────
+echo "[7] Anon enumerating bagrut_cache"
+body=$(curl -s "$SUPABASE_URL/rest/v1/bagrut_cache?select=cache_key" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon bagrut_cache returns empty" '^\[\]$' "$body"
+
+# ─── Test 8: anon inserting bagrut_tests ──────────────────────────────
+echo "[8] Anon inserting bagrut_tests"
+body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_tests" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"teacher_uid":"00000000-0000-0000-0000-000000000000","module":"B","title":"hack","source_words":["x"],"content":{}}')
+check "anon bagrut_tests insert is rejected" "row-level security|violates|permission denied|42501" "$body"
+
+# ─── Test 9: anon inserting bagrut_cache (server-only) ────────────────
+echo "[9] Anon inserting bagrut_cache"
+body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_cache" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"cache_key":"hack","module":"B","model":"x","content":{}}')
+check "anon bagrut_cache insert is rejected" "row-level security|violates|permission denied|42501" "$body"
+
 echo
 echo "Results: $PASS passed, $FAIL failed."
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1

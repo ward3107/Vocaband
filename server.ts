@@ -4,12 +4,17 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import { createHash } from "crypto";
 import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
+import { validateBagrutTest, computeMcMax, scoreMcAnswers, stripAnswerKey } from "./src/features/vocabagrut/lib/bagrutSchema";
+import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
+import type { BagrutModule, BagrutTest } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
@@ -2501,6 +2506,326 @@ Important notes:
       console.error("[AI Lesson] generation error:", error?.message || error);
       res.status(500).json({ error: "AI lesson generation failed" });
     }
+  });
+
+  // ─── Vocabagrut — Bagrut-style mock exam generator ─────────────────────
+  // Source-of-truth for module metadata is src/features/vocabagrut/lib/moduleMap.ts.
+  // Per-module model selection: A and B (easier modules, A2/B1) → Haiku.
+  // C, D, E (B1+) → Sonnet, where inference question quality matters.
+
+  const MODEL_BY_MODULE: Record<BagrutModule, string> = {
+    A: "claude-haiku-4-5-20251001",
+    B: "claude-haiku-4-5-20251001",
+    C: "claude-sonnet-4-6",
+    D: "claude-sonnet-4-6",
+    E: "claude-sonnet-4-6",
+  };
+
+  // English teachers will batch — generate a week of tests for several
+  // classes in one sitting.  Per-token (per-teacher) limits intentionally
+  // higher than the sentence generator.
+  const bagrutHourLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "You've generated 30 mock exams in the last hour. Take a break and try again shortly." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+  const bagrutDayLimiter = rateLimit({
+    windowMs: 24 * 60 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Daily Vocabagrut limit reached (200/day). Resets in 24 hours." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  const WORD_RE = /^[a-zA-Z\-']{1,30}$/;
+  function sanitizeWords(input: unknown): string[] {
+    if (!Array.isArray(input)) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of input) {
+      if (typeof raw !== "string") continue;
+      const trimmed = raw.trim().toLowerCase();
+      if (!WORD_RE.test(trimmed)) continue;
+      if (seen.has(trimmed)) continue;
+      seen.add(trimmed);
+      out.push(trimmed);
+      if (out.length >= 60) break;
+    }
+    return out;
+  }
+
+  function bagrutCacheKey(module: BagrutModule, model: string, words: string[]): string {
+    const sorted = [...words].sort().join("|");
+    return createHash("sha256").update(`${module}:${model}:${sorted}`).digest("hex");
+  }
+
+  app.post("/api/generate-bagrut", bagrutDayLimiter, bagrutHourLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const auth = await verifyTokenWithEmail(token);
+    if (!auth) return res.status(401).json({ error: "Invalid token" });
+
+    const userData = await getUserRoleAndClass(auth.uid);
+    if (!userData || userData.role !== "teacher") {
+      return res.status(403).json({ error: "Only teachers can generate mock exams" });
+    }
+
+    // Same gate as other premium AI features — must be in ai_allowlist.
+    const { allowed, error: gateErr } = await isPremiumTeacher(auth.email);
+    if (gateErr) return res.status(503).json({ error: gateErr });
+    if (!allowed) return res.status(403).json({ error: "Vocabagrut is a premium feature. Contact your administrator to be added to the allowlist." });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: "AI generation not configured" });
+
+    const { module, words } = req.body ?? {};
+    if (typeof module !== "string" || !(module in MODEL_BY_MODULE)) {
+      return res.status(400).json({ error: "module must be one of A|B|C|D|E" });
+    }
+    const moduleTyped = module as BagrutModule;
+    if (!MODULE_SPECS[moduleTyped].available) {
+      return res.status(400).json({ error: `Module ${moduleTyped} is not yet available. v1 supports A, B, C.` });
+    }
+
+    const sanitized = sanitizeWords(words);
+    if (sanitized.length === 0) {
+      return res.status(400).json({ error: "Provide at least one valid English word" });
+    }
+
+    const model = MODEL_BY_MODULE[moduleTyped];
+    const cacheKey = bagrutCacheKey(moduleTyped, model, sanitized);
+
+    // ── Cache lookup ────────────────────────────────────────────────
+    if (supabaseAdmin) {
+      try {
+        const { data: cached } = await supabaseAdmin
+          .from("bagrut_cache")
+          .select("content, expires_at")
+          .eq("cache_key", cacheKey)
+          .gt("expires_at", new Date().toISOString())
+          .maybeSingle();
+        if (cached?.content) {
+          // Fire-and-forget hit counter; don't block the response on it.
+          supabaseAdmin
+            .from("bagrut_cache")
+            .update({ hits: (cached as any).hits != null ? (cached as any).hits + 1 : 1 })
+            .eq("cache_key", cacheKey)
+            .then(() => {});
+          return res.json({ test: cached.content, cached: true, model });
+        }
+      } catch (err) {
+        console.warn("[bagrut] cache lookup failed:", err);
+      }
+    }
+
+    // ── Generate ────────────────────────────────────────────────────
+    const anthropic = new Anthropic({ apiKey });
+    const promptInput = { module: moduleTyped, words: sanitized };
+    const systemPrompt = buildSystemPrompt(promptInput);
+    const userMessage = buildUserMessage(promptInput);
+
+    let attempt = 0;
+    let lastError = "";
+    let validated: BagrutTest | null = null;
+
+    while (attempt < 2 && !validated) {
+      attempt++;
+      try {
+        // Anthropic prompt caching: mark the system prompt block cacheable.
+        // The 5-minute cache yields a ~90% input-token discount on subsequent
+        // calls within the window — significant when teachers batch.
+        const response = await anthropic.messages.create({
+          model,
+          max_tokens: 4096,
+          system: [
+            {
+              type: "text",
+              text: systemPrompt,
+              cache_control: { type: "ephemeral" },
+            },
+          ],
+          tools: [BAGRUT_TOOL as any],
+          tool_choice: { type: "tool", name: "bagrut_test" },
+          messages: [
+            {
+              role: "user",
+              content: attempt === 1
+                ? userMessage
+                : `${userMessage}\n\nThe previous attempt failed validation: ${lastError}. Fix that field and try again.`,
+            },
+          ],
+        });
+
+        const toolUse = response.content.find(b => b.type === "tool_use");
+        if (!toolUse || toolUse.type !== "tool_use") {
+          lastError = "model did not return a tool_use block";
+          continue;
+        }
+
+        const result = validateBagrutTest(toolUse.input);
+        if (!result.ok) {
+          lastError = result.error;
+          continue;
+        }
+        validated = result.value;
+      } catch (err: any) {
+        console.error("[bagrut] anthropic call failed:", err?.message || err);
+        return res.status(502).json({ error: "AI service unavailable", detail: err?.message || String(err) });
+      }
+    }
+
+    if (!validated) {
+      console.warn("[bagrut] generation failed after retry. lastError:", lastError);
+      return res.status(502).json({ error: "Generation failed validation", detail: lastError });
+    }
+
+    // ── Cache write (fire-and-forget) ───────────────────────────────
+    if (supabaseAdmin) {
+      supabaseAdmin
+        .from("bagrut_cache")
+        .upsert({
+          cache_key: cacheKey,
+          module: moduleTyped,
+          model,
+          content: validated,
+        }, { onConflict: "cache_key" })
+        .then(() => {});
+    }
+
+    res.json({ test: validated, cached: false, model });
+  });
+
+  // Server-side auto-grade for student MC submissions.  Recomputes the score
+  // from the canonical bagrut_tests.content + bagrut_responses.answers, so
+  // any client tampering with mc_score is overwritten on submit.
+  app.post("/api/submit-bagrut", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "student") {
+      return res.status(403).json({ error: "Only students can submit responses" });
+    }
+
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+
+    const { test_id, answers } = req.body ?? {};
+    if (typeof test_id !== "string") return res.status(400).json({ error: "test_id required" });
+    if (typeof answers !== "object" || answers === null || Array.isArray(answers)) {
+      return res.status(400).json({ error: "answers must be an object" });
+    }
+
+    // Load the canonical test (with answer key).  Service role bypasses RLS.
+    const { data: testRow, error: testErr } = await supabaseAdmin
+      .from("bagrut_tests")
+      .select("id, class_id, content, published")
+      .eq("id", test_id)
+      .maybeSingle();
+    if (testErr || !testRow) return res.status(404).json({ error: "Test not found" });
+    if (!testRow.published || !testRow.class_id) {
+      return res.status(403).json({ error: "Test is not published" });
+    }
+
+    // Verify student is enrolled in the test's class.
+    const { data: classRow } = await supabaseAdmin
+      .from("classes")
+      .select("code")
+      .eq("id", testRow.class_id)
+      .maybeSingle();
+    if (!classRow || classRow.code !== userData.classCode) {
+      return res.status(403).json({ error: "You are not enrolled in this test's class" });
+    }
+
+    const test = testRow.content as BagrutTest;
+    const sanitizedAnswers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(answers)) {
+      if (typeof k === "string" && typeof v === "string" && v.length <= 5000) {
+        sanitizedAnswers[k] = v;
+      }
+    }
+
+    const mcMax = computeMcMax(test);
+    const mcScore = scoreMcAnswers(test, sanitizedAnswers);
+
+    // Upsert the response with submitted_at locked.
+    const { error: upsertErr } = await supabaseAdmin
+      .from("bagrut_responses")
+      .upsert({
+        test_id,
+        student_uid: uid,
+        answers: sanitizedAnswers,
+        mc_score: mcScore,
+        mc_max: mcMax,
+        submitted_at: new Date().toISOString(),
+      }, { onConflict: "test_id,student_uid" });
+
+    if (upsertErr) {
+      console.error("[bagrut] response upsert failed:", upsertErr);
+      return res.status(500).json({ error: "Failed to save response" });
+    }
+
+    res.json({
+      mc_score: mcScore,
+      mc_max: mcMax,
+      // Echo back the test with the answer key included so the student
+      // sees correct answers on the review screen.
+      review: test,
+    });
+  });
+
+  // Public student fetch — returns the test with the answer key stripped.
+  // Avoids any chance of the correct_answer leaking in DevTools before submit.
+  app.get("/api/student-bagrut/:id", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || userData.role !== "student") {
+      return res.status(403).json({ error: "Students only" });
+    }
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+
+    const { data: testRow } = await supabaseAdmin
+      .from("bagrut_tests")
+      .select("id, class_id, title, module, content, published")
+      .eq("id", req.params.id)
+      .maybeSingle();
+    if (!testRow || !testRow.published || !testRow.class_id) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+
+    const { data: classRow } = await supabaseAdmin
+      .from("classes")
+      .select("code")
+      .eq("id", testRow.class_id)
+      .maybeSingle();
+    if (!classRow || classRow.code !== userData.classCode) {
+      return res.status(403).json({ error: "Not enrolled in this class" });
+    }
+
+    res.json({
+      id: testRow.id,
+      title: testRow.title,
+      module: testRow.module,
+      test: stripAnswerKey(testRow.content as BagrutTest),
+    });
   });
 
   if (process.env.NODE_ENV !== "production") {
