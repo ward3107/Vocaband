@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { freeResourcesT } from "../locales/student/free-resources";
@@ -21,6 +21,13 @@ import html2pdf from "html2pdf.js";
 
 type Word = (typeof ALL_WORDS)[number];
 type TopicPack = (typeof TOPIC_PACKS)[number];
+type Casing = "original" | "lower" | "upper";
+
+// Many beginning EFL students do not yet recognise that "Apple" and "apple"
+// are the same word. Worksheets default to "original" but teachers can flip
+// every English token to lowercase or uppercase from the preview modal.
+const applyCasing = (s: string, c: Casing): string =>
+  c === "lower" ? s.toLowerCase() : c === "upper" ? s.toUpperCase() : s;
 
 const GRADIENTS = [
   "from-violet-500 to-fuchsia-500",
@@ -218,7 +225,7 @@ const sheetFooter = (pageIndex: number, pageCount: number, pageLabel: string) =>
 
 // ---------- generators ----------
 
-const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing) => {
   const t = {
     en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page" },
     he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", page: "עמוד" },
@@ -277,7 +284,7 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => 
                 (w, i) => `
               <tr>
                 <td class="num">${startIdx + i + 1}</td>
-                <td class="word"><span class="en">${escapeHtml(w.english)}</span></td>
+                <td class="word"><span class="en">${escapeHtml(applyCasing(w.english, casing))}</span></td>
                 <td>${escapeHtml(getTranslation(w, lang))}</td>
               </tr>`,
               )
@@ -323,7 +330,7 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string) => 
   });
 };
 
-const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing) => {
   const t = {
     en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
     he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
@@ -374,7 +381,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
               (n) => `
             <div class="word-item">
               <span class="word-num">${n.number}.</span>
-              <span class="word-text en">${escapeHtml(n.word.english)}</span>
+              <span class="word-text en">${escapeHtml(applyCasing(n.word.english, casing))}</span>
             </div>`,
             )
             .join("")}
@@ -406,7 +413,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
             (w, i) => `
           <div class="answer-cell">
             <span class="answer-num">${i + 1}.</span>
-            <span class="en">${escapeHtml(w.english)}</span>
+            <span class="en">${escapeHtml(applyCasing(w.english, casing))}</span>
             <span style="color:#6b7280;">→ ${escapeHtml(getTranslation(w, lang))}</span>
           </div>`,
           )
@@ -423,7 +430,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
   });
 };
 
-const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing) => {
   const t = {
     en: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation", page: "Page" },
     he: { title: "כרטיסיות", instructions: "גזרו לאורך הקווים המלאים. קפלו לאורך הקו המקווקו — אנגלית בקדמה, תרגום בגב.", english: "אנגלית", translation: "תרגום", page: "עמוד" },
@@ -458,7 +465,7 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
         <div class="flashcard no-break">
           <div class="flashcard-front">
             <div class="flashcard-number">${startIdx + i + 1}</div>
-            <div class="flashcard-word en">${escapeHtml(w.english)}</div>
+            <div class="flashcard-word en">${escapeHtml(applyCasing(w.english, casing))}</div>
             <div class="flashcard-hint">${escapeHtml(t.english)}</div>
           </div>
           <div class="fold-line"></div>
@@ -484,7 +491,7 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
 };
 
-const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing) => {
   const t = {
     en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. First to 5 in a row wins!", free: "FREE", wordList: "Word List", card: "Card", page: "Page" },
     he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. הראשון שמשלים 5 בשורה מנצח!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", page: "עמוד" },
@@ -546,7 +553,7 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
               (w, i) => `
             <div class="word-list-item">
               <span class="word-list-num">${i + 1}.</span>
-              <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(w.english)}</span>
+              <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(applyCasing(w.english, casing))}</span>
               <span style="color:#6b7280;">— ${escapeHtml(getTranslation(w, lang))}</span>
             </div>`,
             )
@@ -559,7 +566,14 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string) =>
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + wordListPage });
 };
 
-const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) => {
+const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, casing: Casing) => {
+  // Word search grids are always one consistent case so the eye can scan the
+  // letters as a uniform texture. We honour the toggle: "lower" → all
+  // lowercase, otherwise → all uppercase. The word list always matches the
+  // grid so students can't think "APPLE" and "Apple" are different words.
+  const gridCase: "upper" | "lower" = casing === "lower" ? "lower" : "upper";
+  const toGridCase = (s: string) =>
+    gridCase === "lower" ? s.toLowerCase() : s.toUpperCase();
   const t = {
     en: { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:", page: "Page" },
     he: { title: "חיפוש מילים", instructions: "מצאו את כל המילים המוסתרות באנגלית. המילים יכולות להיות אופקיות, אנכיות או אלכסוניות.", wordsToFind: "מילים למציאה", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:", page: "עמוד" },
@@ -567,6 +581,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
   }[lang as "en" | "he" | "ar"] || { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:", page: "Page" };
 
   // Cap and filter to letters-only English; sort longer first to improve placement success.
+  // Internally we work in uppercase letters; we lowercase at render time when needed.
   const candidates = words
     .map((w) => ({ word: w, letters: w.english.toUpperCase().replace(/[^A-Z]/g, "") }))
     .filter((c) => c.letters.length >= 3 && c.letters.length <= 12)
@@ -618,10 +633,10 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
     }
   }
 
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const fillerLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
-      if (grid[r][c] === "") grid[r][c] = letters[Math.floor(rand() * letters.length)];
+      if (grid[r][c] === "") grid[r][c] = fillerLetters[Math.floor(rand() * fillerLetters.length)];
     }
   }
 
@@ -656,7 +671,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
         row
           .map(
             (cell, c) =>
-              `<div class="ws-cell${highlight && placedMask[r][c] ? " found" : ""}">${escapeHtml(cell)}</div>`,
+              `<div class="ws-cell${highlight && placedMask[r][c] ? " found" : ""}">${escapeHtml(toGridCase(cell))}</div>`,
           )
           .join(""),
       )
@@ -667,7 +682,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string) =>
       (w, i) => `
     <div class="ws-word">
       <span class="ws-word-num">${i + 1}.</span>
-      <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(w.original)}</span>
+      <span class="en" style="font-weight:600; color:#1f2937;">${escapeHtml(toGridCase(w.original))}</span>
     </div>`,
     )
     .join("");
@@ -868,6 +883,10 @@ interface PreviewModalProps {
   cancelLabel: string;
   previewTitle: string;
   closeLabel: string;
+  casing: Casing;
+  onCasingChange: (c: Casing) => void;
+  casingLabel: string;
+  casingOptions: { value: Casing; label: string }[];
   onClose: () => void;
   onDownload: () => void;
   isDownloading: boolean;
@@ -880,6 +899,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   cancelLabel,
   previewTitle,
   closeLabel,
+  casing,
+  onCasingChange,
+  casingLabel,
+  casingOptions,
   onClose,
   onDownload,
   isDownloading,
@@ -914,16 +937,47 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col"
       >
-        <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
+        <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-base sm:text-xl font-bold text-white truncate">{previewTitle}</h3>
-          <button
-            onClick={onClose}
-            type="button"
-            aria-label={closeLabel}
-            className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-          >
-            <X size={22} />
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="text-white/80 text-xs sm:text-sm font-semibold hidden sm:inline"
+              aria-hidden="true"
+            >
+              {casingLabel}
+            </span>
+            <div
+              className="inline-flex rounded-lg bg-white/15 p-1 border border-white/20"
+              role="radiogroup"
+              aria-label={casingLabel}
+            >
+              {casingOptions.map((opt) => {
+                const active = casing === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => onCasingChange(opt.value)}
+                    className={`px-2.5 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-bold transition-all ${
+                      active ? "bg-white text-violet-700" : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={onClose}
+              type="button"
+              aria-label={closeLabel}
+              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+            >
+              <X size={22} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden bg-gray-100">
@@ -967,30 +1021,57 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   );
 };
 
+type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch";
+
+interface PreviewSource {
+  pack: TopicPack;
+  words: Word[];
+  format: Format;
+  filename: string;
+  topicName: string;
+}
+
+const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string, casing: Casing) => string> = {
+  worksheet: generateWorksheetHTML,
+  matching: generateMatchingExerciseHTML,
+  flashcards: generateFlashcardsHTML,
+  bingo: generateBingoCardsHTML,
+  wordsearch: generateWordSearchHTML,
+};
+
+const filenameSuffix: Record<Format, string> = {
+  worksheet: "Worksheet",
+  matching: "Matching_Exercise",
+  flashcards: "Flashcards",
+  bingo: "Bingo_Cards",
+  wordsearch: "Word_Search",
+};
+
 const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onBack }) => {
   const { language, dir, textAlign, isRTL } = useLanguage();
   const t = freeResourcesT[language];
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [previewSource, setPreviewSource] = useState<PreviewSource | null>(null);
+  const [casing, setCasing] = useState<Casing>("original");
   const [isExporting, setIsExporting] = useState(false);
 
-  type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch";
+  // HTML is derived from the source + casing, so flipping the toggle
+  // re-renders the iframe instantly without a network round-trip.
+  const preview: PreviewState | null = useMemo(() => {
+    if (!previewSource) return null;
+    return {
+      html: generators[previewSource.format](previewSource.pack, previewSource.words, language, casing),
+      filename: previewSource.filename,
+      topicName: previewSource.topicName,
+      format: previewSource.format,
+    };
+  }, [previewSource, language, casing]);
 
-  const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string) => string> = {
-    worksheet: generateWorksheetHTML,
-    matching: generateMatchingExerciseHTML,
-    flashcards: generateFlashcardsHTML,
-    bingo: generateBingoCardsHTML,
-    wordsearch: generateWordSearchHTML,
-  };
-
-  const filenameSuffix: Record<Format, string> = {
-    worksheet: "Worksheet",
-    matching: "Matching_Exercise",
-    flashcards: "Flashcards",
-    bingo: "Bingo_Cards",
-    wordsearch: "Word_Search",
-  };
+  const casingOptions: { value: Casing; label: string }[] = [
+    { value: "original", label: t.casingOriginal },
+    { value: "lower", label: t.casingLower },
+    { value: "upper", label: t.casingUpper },
+  ];
 
   const openPreview = (topicName: string, format: Format) => {
     const pack = TOPIC_PACKS.find((tp) => tp.name === topicName);
@@ -1001,12 +1082,12 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     if (words.length === 0) return;
 
     setActiveTopic(`${format}-${topicName}`);
-    const html = generators[format](pack, words, language);
-    setPreview({
-      html,
-      filename: `${safeFilename(pack.name)}_${filenameSuffix[format]}.pdf`,
-      topicName,
+    setPreviewSource({
+      pack,
+      words,
       format,
+      topicName,
+      filename: `${safeFilename(pack.name)}_${filenameSuffix[format]}.pdf`,
     });
     setActiveTopic(null);
   };
@@ -1032,7 +1113,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
       console.error("PDF generation failed:", error);
     } finally {
       setIsExporting(false);
-      setPreview(null);
+      setPreviewSource(null);
     }
   };
 
@@ -1169,7 +1250,11 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
           downloadLabel={t.download}
           cancelLabel={t.cancel}
           closeLabel={t.closePreview}
-          onClose={() => setPreview(null)}
+          casing={casing}
+          onCasingChange={setCasing}
+          casingLabel={t.casingLabel}
+          casingOptions={casingOptions}
+          onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}
           isDownloading={isExporting}
         />
