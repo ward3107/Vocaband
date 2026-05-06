@@ -127,8 +127,8 @@ const TEACHER_VIEWS = new Set<View>([
   "quick-play-teacher-monitor", "quick-play-setup", "create-assignment"
 ]);
 const STUDENT_VIEWS = new Set<View>([
-  "student-dashboard", "game-mode-intro", "game-mode-selection",
-  "game-active", "game-finished", "live-challenge"
+  "student-dashboard", "game", "live-challenge",
+  "shop", "global-leaderboard", "privacy-settings",
 ]);
 
 /** Check if current view should be preserved during auth restore. */
@@ -1085,6 +1085,18 @@ export default function App() {
     showToast, translateWordsBatch,
   });
 
+  // Adapter for the picker-wiring `onOcrUpload` contract.  The picker
+  // expects `(file: File) => Promise<{ words, success? }>` but the
+  // existing OCR pipeline is preview-modal based — extracted words
+  // flow through the modal into setCustomWords + setSelectedWords,
+  // not through this function's return value.  We honour the
+  // contract by returning an empty result; the picker doesn't read
+  // the words back from here in any path I could find.
+  const onPickerOcrUpload = useCallback(async (file: File) => {
+    await processOcrFile(file);
+    return { words: [], success: true };
+  }, [processOcrFile]);
+
   // --- AUTH LOGIC ---
   useEffect(() => {
     // If Supabase isn't configured, skip auth entirely and show the landing page.
@@ -1132,20 +1144,31 @@ export default function App() {
         // For anonymous students: RLS blocks SELECT on users table
         // (is_anonymous IS FALSE). Instead of querying the DB, restore
         // directly from localStorage which was saved on login.
-        const isAnonymous = supabaseUser.is_anonymous || supabaseUser.app_metadata?.provider === 'anonymous';
+        // `is_anonymous` is on auth.users but not in the public type
+        // surfaced to clients, so cast through the indexable shape to
+        // read it without losing the rest of the type info.
+        const supabaseUserAny = supabaseUser as unknown as {
+          id: string;
+          is_anonymous?: boolean;
+          app_metadata?: { provider?: string };
+        };
+        const isAnonymous = !!supabaseUserAny.is_anonymous || supabaseUserAny.app_metadata?.provider === 'anonymous';
         // Speculatively fetch teacher-owned classes in parallel with the
         // users row. For teachers this halves login latency — the two
         // round-trips overlap instead of running back-to-back. For
         // students it's a cheap RLS-filtered query that returns []
         // (they're not the teacher_uid owner of any class) so no harm.
-        const speculativeClassesPromise = isAnonymous
+        // PostgrestBuilder is PromiseLike, so to chain .catch we wrap in
+        // Promise.resolve() (gets us a real Promise, .catch works).
+        const speculativeClassesPromise: Promise<ClassData[]> = isAnonymous
           ? Promise.resolve([] as ClassData[])
-          : supabase
-              .from('classes')
-              .select(CLASS_COLUMNS)
-              .eq('teacher_uid', supabaseUser.id)
-              .then(r => (r.data ?? []).map(mapClass))
-              .catch(() => [] as ClassData[]);
+          : Promise.resolve(
+              supabase
+                .from('classes')
+                .select(CLASS_COLUMNS)
+                .eq('teacher_uid', supabaseUser.id)
+                .then(r => (r.data ?? []).map(mapClass))
+            ).catch(() => [] as ClassData[]);
         let userData = await fetchUserProfile(supabaseUser.id);
 
         if (!userData && isAnonymous) {
@@ -1248,10 +1271,14 @@ export default function App() {
                       const m = await import("./data/vocabulary");
                       vocabMod = {
                         ALL_WORDS: m.ALL_WORDS, SET_1_WORDS: m.SET_1_WORDS,
-                        SET_2_WORDS: m.SET_2_WORDS, TOPIC_PACKS: m.TOPIC_PACKS,
+                        SET_2_WORDS: m.SET_2_WORDS, SET_3_WORDS: m.SET_3_WORDS,
+                        TOPIC_PACKS: m.TOPIC_PACKS,
                       };
                     }
-                    const dbWords = vocabMod.ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
+                    // vocabMod is guaranteed non-null here — either the
+                    // cached lookup returned something or we just assigned
+                    // the dynamic-import shape above.
+                    const dbWords = vocabMod!.ALL_WORDS.filter(w => (sessionData.word_ids || []).includes(w.id));
                     // allowed_modes can come from either the DB (source of
                     // truth on refresh) or the cached localStorage blob
                     // (fallback if the column was added after the session
@@ -1383,7 +1410,7 @@ export default function App() {
             // column.  Saves ~1.4 KB / call.
             const { data: studentProfile } = await supabase
               .from('student_profiles')
-              .select('email, status, display_name, class_code, xp, avatar')
+              .select('id, email, status, display_name, class_code, xp, avatar')
               .eq('email', supabaseUser.email ?? "")
               .maybeSingle();
             if (studentProfile && (studentProfile.status === 'active' || studentProfile.status === 'approved')) {
@@ -1497,7 +1524,7 @@ export default function App() {
             // Narrowed select on 2026-04-28 to match the consumer below.
             const { data: studentProfile } = await supabase
               .from('student_profiles')
-              .select('email, status, display_name, class_code, xp, avatar')
+              .select('id, email, status, display_name, class_code, xp, avatar')
               .eq('email', supabaseUser.email ?? "")
               .maybeSingle();
             if (studentProfile && (studentProfile.status === 'active' || studentProfile.status === 'approved')) {
@@ -2777,7 +2804,9 @@ export default function App() {
               }
 
               // Flip the server flag so the wizard never re-fires.
-              await supabase.rpc('mark_teacher_onboarded').catch(err => {
+              // PostgrestBuilder is PromiseLike — wrap in Promise.resolve()
+              // to get a real Promise so we can chain .catch.
+              await Promise.resolve(supabase.rpc('mark_teacher_onboarded')).catch((err: unknown) => {
                 console.error('[onboarding] mark_teacher_onboarded failed:', err);
               });
               setUser(prev => prev ? { ...prev, onboardedAt: new Date().toISOString() } : prev);
@@ -2857,8 +2886,15 @@ export default function App() {
           setEditingAssignment(null);
           setView("teacher-dashboard");
         }}
-        editingAssignment={editingAssignment}
-        setEditingAssignment={setEditingAssignment}
+        // The setup wizard's AssignmentData type narrows
+        // sentenceDifficulty to `1|2|3|4`; the supabase mapper returns
+        // it as `number` (DB is INT, no DB-level CHECK constraint).
+        // The runtime value is always 1-4 by row-spec, so the cast is
+        // correct at the value level — TS just can't prove it from a
+        // `number` parameter type.  Cast both the value and the
+        // setter to keep the wizard's tighter typing intact.
+        editingAssignment={editingAssignment as unknown as import('./components/setup/types').AssignmentData | null}
+        setEditingAssignment={setEditingAssignment as unknown as React.Dispatch<React.SetStateAction<import('./components/setup/types').AssignmentData | null>>}
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         onAiGenerateWords={handleAiGenerateWords}
@@ -3113,7 +3149,7 @@ export default function App() {
             allWords: ALL_WORDS,
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
-            onOcrUpload: handleOcrUpload,
+            onOcrUpload: onPickerOcrUpload,
             onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             // savedGroups: pass [] for now — wiring useSavedWordGroups
@@ -3157,7 +3193,7 @@ export default function App() {
             allWords: ALL_WORDS,
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
-            onOcrUpload: handleOcrUpload,
+            onOcrUpload: onPickerOcrUpload,
             onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             savedGroups: [],
