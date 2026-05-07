@@ -1,10 +1,14 @@
 # Vocaband — Pricing Model
 
 > Hybrid go-to-market pricing for Vocaband's first 12-24 months.
-> Public face = schools-first.  Private channel = individual teachers.
-> No published prices — every deal negotiated.
+> **Public face**: individual teacher prices ARE published on landing
+> (Free + Pro at ₪290/yr or ₪29/mo, with a 30-day no-card trial).
+> **Schools** still have NO public price — a "Get a quote" CTA opens
+> the inquiry modal so every school deal is sized to the school.
 >
-> Drafted 2026-04-28.  Last revised 2026-05-07.  Living document —
+> Drafted 2026-04-28.  Last revised 2026-05-07 (pivoted from
+> "no public prices at all" to "individual public, schools private"
+> after the freemium-trial decision).  Living document —
 > revisit quarterly.
 
 ## Why "schools-first public" is the right call
@@ -67,15 +71,15 @@ tier — most schools land here):
   fragmented broken accounts vs ₪10K of a real school deal — the gap
   is justified by central billing + DPA + training
 
-### Individual teacher rate (private channel)
+### Individual teacher rate (now public on landing)
 
-| Term | Rate |
-|---|---|
-| Annual | **290 NIS / year** (~24 NIS/mo equivalent) |
-| Monthly | **29 NIS / month** |
-| Founding-100 (after free year) | **14.50 NIS/mo or ~145 NIS/year** lifetime |
-
-Don't publish these.  Quote them in private replies.
+| Term | Rate | Visibility |
+|---|---|---|
+| Free | **₪0 forever** — 1 class, 30 students, all 11 modes, MoE word sets, HE/AR | ✅ Public on landing |
+| Annual Pro | **290 NIS / year** (~24 NIS/mo equivalent) | ✅ Public on landing |
+| Monthly Pro | **29 NIS / month** | ✅ Public on landing |
+| Pro trial | **30 days free, no card required, auto-downgrades to Free** | ✅ Public on landing |
+| Founding-100 (after free year) | **14.50 NIS/mo or ~145 NIS/year** lifetime | 🔒 Private — only for the founding cohort |
 
 ### What's included at each level
 
@@ -185,19 +189,23 @@ private mailto + Stripe Payment Links is enough:
 Public checkout (3-tier landing pricing card) waits until you have
 50+ paying teachers AND a clearer signal on which tier converts best.
 
-## What NOT to put on the landing page (yet)
+## What's on the landing page now (2026-05-07 pivot)
 
-Until at least 50 paying teachers + 1 closed school deal:
+After the freemium decision, the landing page now publishes:
 
-- ❌ **Specific NIS prices** (29, 39, anything)
-- ❌ **Tiered pricing cards** (Free / Basic / Pro / School)
-- ❌ **"per teacher" anchoring**
-- ❌ **Annual vs monthly comparisons**
-- ❌ **Stripe checkout buttons**
+- ✅ **Free tier card** — ₪0 forever, 1 class / 30 students / all 11 modes
+- ✅ **Pro tier card** — ₪290/yr or ₪29/mo, 30-day trial, "Most popular" badge
+- ✅ **Schools tier card** — no price, "Get a quote" → opens `SchoolInquiryModal`
+- ✅ "Individual teacher? Get in touch" smaller mailto in footer (back-channel for solo teachers who hesitate at Pro)
 
-What stays on the landing today:
-- ✅ "Get a quote for your school" mailto button
-- ✅ "Individual teacher? Get in touch" smaller mailto in footer
+What still stays OFF the landing:
+
+- ❌ **School prices** (still private, every school sized individually)
+- ❌ **Founding-100 special rate** (₪14.50/mo) — that's a private campaign rate, not a public anchor
+- ❌ **"Per teacher" school pricing** (publishing 6×₪29 anchors school deals low)
+- ❌ **Stripe checkout** — still not wired; Pro CTA goes to teacher signup, then payment lives in-app once Stripe is configured
+
+What stays on the landing as before:
 - ✅ Founding-100 teaser when the campaign is active
 - ✅ The Voca-family roadmap section (multi-subject teaser)
 
@@ -226,12 +234,13 @@ Re-read this doc each quarter and validate against reality:
 
 | Item | Status |
 |---|---|
-| Public landing pricing strategy | ✅ Schools-first, no published prices, two mailtos |
+| Public landing pricing strategy | ✅ Pivoted 2026-05-07: individual prices public, schools private |
 | Footer "School plans" mailto (school-inquiry modal) | ✅ Shipped 2026-04-28 |
 | Footer "Individual teacher? Get in touch" mailto | ✅ Shipped 2026-05-07 |
 | `school_inquiries` table — leads persisted to Supabase | ✅ Shipped 2026-05-07 (migration `20260610_school_inquiries`) |
 | Internal price ladder (this doc) | ✅ Revised 2026-05-07 with ₪10-12K standard-public anchor |
+| **Public 3-tier pricing card on landing** (Free / Pro / Schools) | ✅ Shipped 2026-05-07 with 30-day trial, no card required |
 | Founding-100 campaign | ⏳ Not started — wait until product is fully production-ready |
-| Stripe account + Payment Links | ⏳ Not yet — need first individual-teacher inquiry to justify the setup |
+| Stripe account + Payment Links | ⏳ **Now blocking** — Pro CTA exists publicly, need payment wiring before first conversion |
+| Trial-timer + plan gating in app | ⏳ **Now blocking** — landing promises 30-day trial, app needs to enforce it |
 | Year 1 revenue tracking dashboard | ⏳ Defer until first paying teacher |
-| Public 3-tier pricing card on landing | ⏳ Quarter 4 decision |
