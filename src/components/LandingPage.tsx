@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
@@ -65,6 +65,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
+
+  // Mobile scroll-snap: tag the body while LandingPage is mounted so the
+  // matching @media rule in index.css kicks in. Cleaned up on unmount so
+  // the rest of the app keeps free scroll behavior.
+  useEffect(() => {
+    document.body.classList.add("landing-snap");
+    return () => {
+      document.body.classList.remove("landing-snap");
+    };
+  }, []);
+
   // Floating 3D cards data for hero — labels translated via locale.
   const floatingCards = [
     { icon: <Gamepad2 size={42} />, name: t.floatingCardModes, color: "from-violet-500 to-purple-600", delay: 0 },
@@ -393,7 +404,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Features Section - 3D Bento Grid */}
-        <section id="features" className="py-20 px-4 md:px-6 relative">
+        <section id="features" className="py-12 md:py-20 px-4 md:px-6 relative">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -805,7 +816,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* AI Section - Does All the Heavy Lifting */}
-        <section className="py-20 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
+        <section className="py-12 md:py-20 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -931,7 +942,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Teacher Features Section - Why Teachers Love Vocaband */}
-        <section className="py-20 px-4 md:px-6 relative">
+        <section className="py-12 md:py-20 px-4 md:px-6 relative">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1302,7 +1313,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Interactive Journey Section - Scroll Progress Path */}
-        <section className="py-20 px-4 md:px-6 relative overflow-hidden">
+        <section className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1461,7 +1472,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             misrepresent shipped features.  No CTA to buy — just a
             "stay in the loop" mailto link for early-access leads.
             ═══════════════════════════════════════════════════════════ */}
-        <section className="py-20 px-4 md:px-6 relative overflow-hidden">
+        <section className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1562,7 +1573,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Final CTA - Epic 3D Card */}
-        <section className="py-24 px-4 md:px-6 bg-surface">
+        <section className="py-12 md:py-24 px-4 md:px-6 bg-surface">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 50 }}
             whileInView={{ opacity: 1, scale: 1, y: 0 }}
@@ -1660,7 +1671,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           push the eye to Pro.
           ═══════════════════════════════════════════════════════════
         */}
-        <section id="pricing" className="py-24 px-4 md:px-6 relative">
+        <section id="pricing" className="py-12 md:py-24 px-4 md:px-6 relative">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}

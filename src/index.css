@@ -291,6 +291,20 @@ h1, h2, h3, h4, h5, h6, .font-headline {
   --font-body: var(--font-body-he);
 }
 
+/* Mobile-only scroll-snap on the public landing page.
+   `body.landing-snap` is toggled by <LandingPage> while it's mounted.
+   `proximity` (vs `mandatory`) snaps when the user releases near a
+   section but never traps long sections that exceed the viewport. */
+@media (max-width: 767px) {
+  body.landing-snap {
+    scroll-snap-type: y proximity;
+  }
+  body.landing-snap section {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+}
+
 [lang="he"] h1, [lang="he"] h2, [lang="he"] h3, [lang="he"] h4,
 [lang="he"] h5, [lang="he"] h6, [lang="he"] .font-headline,
 [lang="ar"] h1, [lang="ar"] h2, [lang="ar"] h3, [lang="ar"] h4,
