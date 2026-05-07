@@ -98,7 +98,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
@@ -147,6 +147,14 @@ export interface AppUser {
    *  completion).  Used by TeacherDashboardView to decide whether to
    *  open the wizard on mount.  Students ignore this field. */
   onboardedAt?: string | null;
+  /** Paid plan tier — see src/core/plan.ts.  'free' is default; the
+   *  effective plan at runtime also considers `trialEndsAt`.  Students
+   *  ignore this field. */
+  plan?: 'free' | 'pro' | 'school';
+  /** Timestamp the 30-day Pro trial expires.  While > now() and
+   *  plan='free', the teacher has Pro features.  NULL for users who
+   *  never had a trial (e.g. plan='pro' set manually). */
+  trialEndsAt?: string | null;
 }
 
 export interface ClassData {
@@ -213,6 +221,8 @@ export function mapUser(row: any): AppUser {
     firstRatingAt: row.first_rating_at ?? null,
     ratingDismissedAt: row.rating_dismissed_at ?? null,
     onboardedAt: row.onboarded_at ?? null,
+    plan: row.plan ?? 'free',
+    trialEndsAt: row.trial_ends_at ?? null,
   };
 }
 
@@ -234,6 +244,8 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.activeFrame !== undefined && { active_frame: u.activeFrame }),
     ...(u.activeTitle !== undefined && { active_title: u.activeTitle }),
     ...(u.teacherDashboardTheme !== undefined && { teacher_dashboard_theme: u.teacherDashboardTheme }),
+    ...(u.plan !== undefined && { plan: u.plan }),
+    ...(u.trialEndsAt !== undefined && { trial_ends_at: u.trialEndsAt }),
   };
 }
 

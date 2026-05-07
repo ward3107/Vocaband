@@ -213,6 +213,11 @@ export interface SetupWizardProps {
   // TopAppBar props
   user?: { displayName?: string; avatar?: string } | null;
   onLogout?: () => void;
+
+  /** Effective Pro plan flag, plumbed down to ConfigureStep so the AI
+   *  sentence-generation button is hidden for Free teachers.  Optional
+   *  so existing call sites continue to work — defaults to false. */
+  isProUser?: boolean;
 }
 
 export const SetupWizard: React.FC<SetupWizardProps> = ({
@@ -262,6 +267,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   onDeleteSavedGroup,
   user,
   onLogout,
+  isProUser = false,
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherWizardsT[language];
@@ -542,6 +548,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               onGenerateLesson={onGenerateLesson}
               onAiLessonChange={setAiGeneratedLesson}
               showToast={showToast}
+              isProUser={isProUser}
             />
           )}
 

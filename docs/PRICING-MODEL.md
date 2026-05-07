@@ -240,7 +240,8 @@ Re-read this doc each quarter and validate against reality:
 | `school_inquiries` table — leads persisted to Supabase | ✅ Shipped 2026-05-07 (migration `20260610_school_inquiries`) |
 | Internal price ladder (this doc) | ✅ Revised 2026-05-07 with ₪10-12K standard-public anchor |
 | **Public 3-tier pricing card on landing** (Free / Pro / Schools) | ✅ Shipped 2026-05-07 with 30-day trial, no card required |
+| **Client-side trial timer + plan gating** | ✅ Shipped 2026-05-07 — migration `20260611_teacher_plan_and_trial`, helper at `src/core/plan.ts`, gates at: class create, student approve (30/class), Camera OCR, AI sentence gen.  Trial countdown banner on TeacherDashboardView. |
 | Founding-100 campaign | ⏳ Not started — wait until product is fully production-ready |
-| Stripe account + Payment Links | ⏳ **Now blocking** — Pro CTA exists publicly, need payment wiring before first conversion |
-| Trial-timer + plan gating in app | ⏳ **Now blocking** — landing promises 30-day trial, app needs to enforce it |
+| Stripe account + Payment Links | ⏳ **Now blocking** — Pro CTA exists publicly, need payment wiring before first conversion (currently Upgrade CTA is a mailto) |
+| Server-side plan enforcement (RLS / RPC) | ⏳ Follow-up — current gates are client-side only; tech-savvy users could bypass in DevTools.  Acceptable for soft launch; required before any anti-abuse story matters. |
 | Year 1 revenue tracking dashboard | ⏳ Defer until first paying teacher |
