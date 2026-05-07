@@ -1579,9 +1579,26 @@ export default function App() {
               // RPC failed (cold start, function missing) — throw so retry handles it
               throw new Error(`Teacher allowlist check failed: ${allowErr.message}`);
             }
-            if (!isAllowed) {
-              // Not a teacher either — this is a new OAuth student who hasn't
-              // entered a class code yet.  Show the class code entry form.
+            // The teacher_allowlist gate dates from the early-stage
+            // soft launch when only invited teachers could sign up.
+            // With public freemium pricing live (Free + Pro tiers
+            // advertised on the landing page), ANY user who arrived
+            // via the teacher flow should be onboarded as a teacher.
+            // TeacherLoginCard stamps intended_role="teacher" before
+            // both Google OAuth and email-OTP, so reading that flag
+            // here lets us honour the user's explicit intent without
+            // requiring an admin to pre-add their email.
+            //
+            // Without this branch, brand-new freemium signups landed
+            // on student-account-login (class-code + name form) and
+            // had to be told to ask the operator to be allowlisted —
+            // which silently broke the public "Start free" promise.
+            const teacherIntent = readIntendedRole();
+            const wantsTeacher = teacherIntent?.role === 'teacher' && teacherIntent.fresh;
+            if (!isAllowed && !wantsTeacher) {
+              // No teacher intent + not allowlisted → genuinely a new
+              // student arriving via OAuth (e.g. a kid pressed Google
+              // on the student login page).  Show the class-code form.
               setOauthEmail(supabaseUser.email || "");
               setOauthAuthUid(supabaseUser.id);
               setShowOAuthClassCode(true);
@@ -1589,6 +1606,9 @@ export default function App() {
               setLoading(false);
               return;
             }
+            // Consumed — clear so a future student-flow login on the
+            // same device doesn't accidentally inherit the stamp.
+            if (teacherIntent) clearIntendedRole();
             const newUser: AppUser = {
               uid: supabaseUser.id,
               email: supabaseUser.email || "",
