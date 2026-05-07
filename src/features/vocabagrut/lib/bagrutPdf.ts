@@ -1,11 +1,12 @@
 // Bagrut paper PDF exporter — the most important deliverable of Vocabagrut.
 //
-// Goal: produce a paper that visually mimics the real Israeli MoE English
-// Bagrut so students get FORMAT FAMILIARITY before they hit 10th grade.
-// Layout reference: bilingual MoE header → module + point program label →
-// student name/class/date fields → PART I reading + line numbers + MCQ +
-// short-answer → PART II vocab-in-context → PART III writing prompt with
-// bullets and a ruled box → bilingual GOOD LUCK / בהצלחה footer.
+// Goal: a practice paper whose layout gives students FORMAT FAMILIARITY
+// before they hit 10th grade. This is NOT an official MoE document and
+// must not carry MoE/state branding.
+// Layout: module + point program label → student name/class/date fields →
+// PART I reading + line numbers + MCQ + short-answer → PART II vocab-in-
+// context → PART III writing prompt with bullets and a ruled box →
+// bilingual GOOD LUCK / בהצלחה footer.
 //
 // jsPDF + jsPDF-autotable are imported lazily by callers — this module
 // itself does not eager-import them so it stays out of the initial
@@ -61,11 +62,6 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   }
 
   // ── Header ───────────────────────────────────────────────────────────
-  doc.setDrawColor(120, 120, 120);
-  doc.setLineWidth(0.6);
-  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 16;
-
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(20, 20, 20);
