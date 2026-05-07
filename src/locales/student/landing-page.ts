@@ -28,10 +28,12 @@ export interface LandingPageT {
   heroSubtitle: string;
   heroCtaStart: string;
   heroCtaTeacher: string;
-  heroSocialProofCount: string;
-  heroSocialProofTagline: string;
   heroPlayItWord: string;
   heroLearnItWord: string;
+  heroTrustCurriculum: string;
+  heroTrustTrilingual: string;
+  heroTrustEu: string;
+  heroTrustOrigin: string;
 
   // ─── Who Are You? Section ───────────────────────────────────────
   whoAreYouTitle: string;
@@ -223,10 +225,12 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
     heroCtaStart: "Start Learning",
     heroCtaTeacher: "Teacher Login",
-    heroSocialProofCount: "10,000+ Students",
-    heroSocialProofTagline: "Learning English worldwide",
     heroPlayItWord: "Play it",
     heroLearnItWord: "Learn it",
+    heroTrustCurriculum: "MoE-Aligned Curriculum",
+    heroTrustTrilingual: "Hebrew · Arabic · English",
+    heroTrustEu: "EU-Hosted · GDPR",
+    heroTrustOrigin: "Built in Israel",
 
     whoAreYouTitle: "Who are you?",
     whoAreYouSubtitle: "Choose your path to get started",
@@ -394,10 +398,12 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "משחק אוצר מילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
     heroCtaStart: "התחילו ללמוד",
     heroCtaTeacher: "כניסת מורים",
-    heroSocialProofCount: "+10,000 תלמידים",
-    heroSocialProofTagline: "לומדים אנגלית בכל העולם",
     heroPlayItWord: "שחקו אותה",
     heroLearnItWord: "למדו אותה",
+    heroTrustCurriculum: "מותאם לתוכנית משרד החינוך",
+    heroTrustTrilingual: "עברית · ערבית · אנגלית",
+    heroTrustEu: "מאוחסן באירופה · GDPR",
+    heroTrustOrigin: "פותח בישראל",
 
     whoAreYouTitle: "מי אתה?",
     whoAreYouSubtitle: "בחר את הדרך שלך להתחיל",
@@ -565,10 +571,12 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "لعبة المفردات التي يريد الطلاب حول العالم أن يلعبوها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
     heroCtaStart: "ابدأ التعلم",
     heroCtaTeacher: "دخول المعلمين",
-    heroSocialProofCount: "+10,000 طالب",
-    heroSocialProofTagline: "يتعلمون الإنجليزية حول العالم",
     heroPlayItWord: "العبها",
     heroLearnItWord: "تعلمها",
+    heroTrustCurriculum: "متوافق مع منهج وزارة التربية",
+    heroTrustTrilingual: "العربية · العبرية · الإنجليزية",
+    heroTrustEu: "مستضاف في أوروبا · GDPR",
+    heroTrustOrigin: "صُنع في إسرائيل",
 
     whoAreYouTitle: "من أنت؟",
     whoAreYouSubtitle: "اختر مسارك للبدء",
