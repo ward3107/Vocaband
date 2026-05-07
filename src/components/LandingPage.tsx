@@ -43,6 +43,7 @@ import {
   Lightbulb,
   Download,
   Activity,
+  MapPin,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -201,6 +202,37 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <p className="text-white font-bold text-sm">{t.heroSocialProofCount}</p>
                     <p className="text-white/60 text-xs">{t.heroSocialProofTagline}</p>
                   </div>
+                </motion.div>
+
+                {/* Hero trust strip — factual claims only.
+                    Curriculum alignment, language coverage, EU
+                    hosting, and country of origin are all things we
+                    can defend in writing.  Engagement / endorsement
+                    stats live elsewhere (or wait for real data).
+                    See docs/PRICING-MODEL.md for positioning. */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                  className={`mt-4 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
+                  dir={dir}
+                >
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
+                    <BookOpen size={12} aria-hidden="true" />
+                    {t.heroTrustCurriculum}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/15 text-fuchsia-100 border border-fuchsia-400/30 font-bold text-xs backdrop-blur-sm">
+                    <Globe size={12} aria-hidden="true" />
+                    {t.heroTrustTrilingual}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/30 font-bold text-xs backdrop-blur-sm">
+                    <ShieldCheck size={12} aria-hidden="true" />
+                    {t.heroTrustEu}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/15 text-sky-100 border border-sky-400/30 font-bold text-xs backdrop-blur-sm">
+                    <MapPin size={12} aria-hidden="true" />
+                    {t.heroTrustOrigin}
+                  </span>
                 </motion.div>
               </div>
 
