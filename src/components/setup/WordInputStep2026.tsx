@@ -1052,7 +1052,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
           <button
             onClick={selectAll}
             type="button"
-            className="flex-1 py-2 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-lg hover:bg-emerald-200 transition-colors"
+            className="flex-1 py-2 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-lg hover:bg-indigo-200 transition-colors"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {TEXT.allWords}
@@ -1086,8 +1086,8 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                     isAlreadyAdded
                       ? 'bg-[var(--vb-surface-alt)] border border-[var(--vb-border)] opacity-60 cursor-not-allowed'
                       : isSelected
-                      ? 'bg-emerald-50 border-2 border-emerald-400'
-                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-emerald-300'
+                      ? 'bg-indigo-50 border-2 border-indigo-400'
+                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-indigo-300'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
@@ -1105,7 +1105,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                         </span>
                       )}
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-[var(--vb-text-muted)]'
+                        isSelected ? 'border-indigo-500 bg-indigo-500' : 'border-[var(--vb-text-muted)]'
                       }`}>
                         {isSelected && <Check className="w-3 h-3 text-white" />}
                       </div>
@@ -1568,7 +1568,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                   type="button"
                   className={`w-full p-3 rounded-lg text-center transition-all ${
                     isSelected
-                      ? 'bg-emerald-50 border-2 border-emerald-300'
+                      ? 'bg-violet-50 border-2 border-violet-300'
                       : isPending
                       ? 'bg-indigo-50 border-2 border-indigo-300'
                       : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
