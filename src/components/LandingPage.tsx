@@ -1792,6 +1792,196 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
         {/*
           ═══════════════════════════════════════════════════════════
+          PRICING SECTION — Free / Pro (with prices) / Schools (no
+          price → opens inquiry modal).
+          ───────────────────────────────────────────────────────────
+          Per docs/PRICING-MODEL.md: individual teacher prices ARE
+          public (₪290/yr or ₪29/mo) but school prices are NEVER
+          public — schools click through to the inquiry modal.
+
+          The Pro card is the visual focal point: ring + scale + the
+          "Most popular" badge, mirroring the established hero gradient
+          family.  Free + Schools are deliberately cooler / quieter to
+          push the eye to Pro.
+          ═══════════════════════════════════════════════════════════
+        */}
+        <section id="pricing" className="py-24 px-4 md:px-6 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-5xl mx-auto mb-12 text-center"
+          >
+            <h2 className="text-3xl md:text-5xl font-black font-headline mb-4 text-white drop-shadow-lg">
+              {t.pricingTitle}
+            </h2>
+            <p className="text-lg text-white/70 font-bold" dir={dir}>
+              {t.pricingSubtitle}
+            </p>
+          </motion.div>
+
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-stretch">
+
+            {/* Free card — quiet slate gradient */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              whileHover={{ y: -8 }}
+              className="group relative"
+            >
+              <div className="h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-[2rem] p-8 shadow-2xl shadow-slate-900/40 hover:shadow-slate-900/60 transition-all border border-white/10">
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-6">
+                    <Sparkles size={32} className="text-white" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-1">
+                    {t.pricingFreeName}
+                  </h3>
+                  <p className="text-white/60 text-sm mb-6" dir={dir}>
+                    {t.pricingFreeTagline}
+                  </p>
+                  <div className="mb-6 flex items-baseline gap-2">
+                    <span className="text-4xl md:text-5xl font-black text-white">{t.pricingFreePrice}</span>
+                    <span className="text-white/60 text-base font-semibold">{t.pricingFreePriceSuffix}</span>
+                  </div>
+                  <ul className="space-y-3 mb-8 flex-grow" dir={dir}>
+                    {[t.pricingFreeFeature1, t.pricingFreeFeature2, t.pricingFreeFeature3, t.pricingFreeFeature4, t.pricingFreeFeature5].map((feat, i) => (
+                      <li key={i} className={`flex items-start gap-3 text-white/85 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onTeacherLogin}
+                    className="w-full py-4 px-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-lg border border-white/20 transition-all flex items-center justify-center gap-2"
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    {t.pricingFreeCta}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Pro card — focal point: scaled, ring, "Most popular" badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              whileHover={{ y: -8 }}
+              className="group relative md:scale-105 md:-my-2 z-10"
+            >
+              {/* Most-popular badge */}
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+                <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-black shadow-lg shadow-amber-500/40 uppercase tracking-wide">
+                  {t.pricingProBadge}
+                </div>
+              </div>
+              <div className="h-full bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-[2rem] p-8 shadow-2xl shadow-violet-500/40 hover:shadow-violet-500/60 transition-all ring-2 ring-amber-400/60">
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
+                    <Crown size={32} className="text-white" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-1">
+                    {t.pricingProName}
+                  </h3>
+                  <p className="text-white/85 text-sm mb-6" dir={dir}>
+                    {t.pricingProTagline}
+                  </p>
+                  <div className="mb-1 flex items-baseline gap-2">
+                    <span className="text-4xl md:text-5xl font-black text-white">{t.pricingProPrice}</span>
+                    <span className="text-white/85 text-base font-semibold">{t.pricingProPriceSuffix}</span>
+                  </div>
+                  <p className="text-white/70 text-sm mb-3" dir={dir}>
+                    {t.pricingProPriceAlt}
+                  </p>
+                  <p className="text-amber-300 text-sm font-bold mb-6" dir={dir}>
+                    ⚡ {t.pricingProTrialNote}
+                  </p>
+                  <ul className="space-y-3 mb-8 flex-grow" dir={dir}>
+                    {[t.pricingProFeature1, t.pricingProFeature2, t.pricingProFeature3, t.pricingProFeature4, t.pricingProFeature5, t.pricingProFeature6, t.pricingProFeature7].map((feat, i) => (
+                      <li key={i} className={`flex items-start gap-3 text-white text-sm ${isRTL ? 'flex-row-reverse' : ''} ${i === 0 ? 'font-bold' : ''}`}>
+                        <CheckCircle2 size={18} className="text-amber-300 flex-shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onTeacherLogin}
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-violet-600 font-black text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <Rocket size={20} />
+                    {t.pricingProCta}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Schools card — opens inquiry modal, no price */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ y: -8 }}
+              className="group relative"
+            >
+              <div className="h-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-[2rem] p-8 shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all">
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
+                    <GraduationCap size={32} className="text-white" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black text-white mb-1">
+                    {t.pricingSchoolName}
+                  </h3>
+                  <p className="text-white/85 text-sm mb-6" dir={dir}>
+                    {t.pricingSchoolTagline}
+                  </p>
+                  <div className="mb-1 flex items-baseline gap-2">
+                    <span className="text-4xl md:text-5xl font-black text-white">{t.pricingSchoolPrice}</span>
+                  </div>
+                  <p className="text-white/80 text-sm mb-6" dir={dir}>
+                    {t.pricingSchoolPriceNote}
+                  </p>
+                  <ul className="space-y-3 mb-8 flex-grow" dir={dir}>
+                    {[t.pricingSchoolFeature1, t.pricingSchoolFeature2, t.pricingSchoolFeature3, t.pricingSchoolFeature4, t.pricingSchoolFeature5, t.pricingSchoolFeature6, t.pricingSchoolFeature7].map((feat, i) => (
+                      <li key={i} className={`flex items-start gap-3 text-white text-sm ${isRTL ? 'flex-row-reverse' : ''} ${i === 0 ? 'font-bold' : ''}`}>
+                        <CheckCircle2 size={18} className="text-white flex-shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsSchoolModalOpen(true)}
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-amber-600 font-black text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <Mail size={20} />
+                    {t.pricingSchoolCta}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/*
+          ═══════════════════════════════════════════════════════════
           REDESIGNED FOOTER — 4-column structured grid
           ───────────────────────────────────────────────────────────
           Was: brand + 4 legal pills crammed onto one centred row,

@@ -188,6 +188,53 @@ export interface LandingPageT {
   aiAutoGradingDesc: string;
   aiJustAssign: string;
 
+  // ─── Pricing section ────────────────────────────────────────────
+  // Individual prices are public.  Schools intentionally have no
+  // visible price — they open the inquiry modal instead.  Per
+  // docs/PRICING-MODEL.md.
+  pricingTitle: string;
+  pricingSubtitle: string;
+
+  pricingFreeName: string;
+  pricingFreeTagline: string;
+  pricingFreePrice: string;
+  pricingFreePriceSuffix: string;
+  pricingFreeFeature1: string;
+  pricingFreeFeature2: string;
+  pricingFreeFeature3: string;
+  pricingFreeFeature4: string;
+  pricingFreeFeature5: string;
+  pricingFreeCta: string;
+
+  pricingProBadge: string;
+  pricingProName: string;
+  pricingProTagline: string;
+  pricingProPrice: string;
+  pricingProPriceSuffix: string;
+  pricingProPriceAlt: string;
+  pricingProTrialNote: string;
+  pricingProFeature1: string;
+  pricingProFeature2: string;
+  pricingProFeature3: string;
+  pricingProFeature4: string;
+  pricingProFeature5: string;
+  pricingProFeature6: string;
+  pricingProFeature7: string;
+  pricingProCta: string;
+
+  pricingSchoolName: string;
+  pricingSchoolTagline: string;
+  pricingSchoolPrice: string;
+  pricingSchoolPriceNote: string;
+  pricingSchoolFeature1: string;
+  pricingSchoolFeature2: string;
+  pricingSchoolFeature3: string;
+  pricingSchoolFeature4: string;
+  pricingSchoolFeature5: string;
+  pricingSchoolFeature6: string;
+  pricingSchoolFeature7: string;
+  pricingSchoolCta: string;
+
   // ─── Footer ─────────────────────────────────────────────────────
   footerTagline: string;
   footerSchoolPlans: string;
@@ -361,6 +408,47 @@ export const landingPageT: Record<Language, LandingPageT> = {
     aiAutoGrading: "✅ Auto-Grading",
     aiAutoGradingDesc: "Instant feedback for students. Zero grading for you. Track progress with one click.",
     aiJustAssign: "Just Assign. That's It.",
+
+    // Pricing
+    pricingTitle: "Simple pricing for teachers",
+    pricingSubtitle: "Start with 30 days of Pro free — no credit card required.",
+    pricingFreeName: "Free",
+    pricingFreeTagline: "Forever free, no card needed",
+    pricingFreePrice: "₪0",
+    pricingFreePriceSuffix: "/forever",
+    pricingFreeFeature1: "1 class",
+    pricingFreeFeature2: "Up to 30 students",
+    pricingFreeFeature3: "All 11 game modes",
+    pricingFreeFeature4: "MoE word sets (Set 1, 2, 3)",
+    pricingFreeFeature5: "Hebrew + Arabic translations",
+    pricingFreeCta: "Start free",
+    pricingProBadge: "Most popular",
+    pricingProName: "Pro",
+    pricingProTagline: "For teachers who want everything",
+    pricingProPrice: "₪290",
+    pricingProPriceSuffix: "/year",
+    pricingProPriceAlt: "or ₪29 / month",
+    pricingProTrialNote: "30-day free trial — no card required",
+    pricingProFeature1: "Everything in Free, plus:",
+    pricingProFeature2: "Unlimited classes",
+    pricingProFeature3: "Unlimited students",
+    pricingProFeature4: "AI Sentence Builder",
+    pricingProFeature5: "Camera OCR for custom word lists",
+    pricingProFeature6: "Advanced analytics",
+    pricingProFeature7: "Priority support",
+    pricingProCta: "Start 30-day free trial",
+    pricingSchoolName: "Schools",
+    pricingSchoolTagline: "Tailored to your school",
+    pricingSchoolPrice: "Custom",
+    pricingSchoolPriceNote: "Quoted per school",
+    pricingSchoolFeature1: "Everything in Pro for all teachers",
+    pricingSchoolFeature2: "Central billing — one NIS invoice",
+    pricingSchoolFeature3: "Principal dashboard",
+    pricingSchoolFeature4: "SSO / Google Workspace",
+    pricingSchoolFeature5: "Training session for staff",
+    pricingSchoolFeature6: "Priority support, 24h SLA",
+    pricingSchoolFeature7: "DPA + EU-hosted data",
+    pricingSchoolCta: "Get a quote",
 
     // Footer
     footerTagline: "The vocabulary platform students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
@@ -536,6 +624,47 @@ export const landingPageT: Record<Language, LandingPageT> = {
     aiAutoGradingDesc: "משוב מיידי לתלמידים. אפס בדיקה עבורכם. מעקב אחר התקדמות בלחיצת כפתור.",
     aiJustAssign: "פשוט מקצים משימות. זה הכל.",
 
+    // Pricing
+    pricingTitle: "מחירים פשוטים למורים",
+    pricingSubtitle: "התחילו עם 30 ימי Pro חינם — בלי כרטיס אשראי.",
+    pricingFreeName: "חינם",
+    pricingFreeTagline: "חינם לתמיד, בלי כרטיס",
+    pricingFreePrice: "₪0",
+    pricingFreePriceSuffix: "/לתמיד",
+    pricingFreeFeature1: "כיתה אחת",
+    pricingFreeFeature2: "עד 30 תלמידים",
+    pricingFreeFeature3: "כל 11 מצבי המשחק",
+    pricingFreeFeature4: "ערכות משרד החינוך (סט 1, 2, 3)",
+    pricingFreeFeature5: "תרגומים לעברית וערבית",
+    pricingFreeCta: "התחילו בחינם",
+    pricingProBadge: "הכי פופולרי",
+    pricingProName: "Pro",
+    pricingProTagline: "למורים שרוצים את הכל",
+    pricingProPrice: "₪290",
+    pricingProPriceSuffix: "/שנה",
+    pricingProPriceAlt: "או ₪29 / חודש",
+    pricingProTrialNote: "30 ימי ניסיון חינם — בלי כרטיס אשראי",
+    pricingProFeature1: "כל מה שבחינם, ובנוסף:",
+    pricingProFeature2: "כיתות ללא הגבלה",
+    pricingProFeature3: "תלמידים ללא הגבלה",
+    pricingProFeature4: "בונה משפטים AI",
+    pricingProFeature5: "סריקת מצלמה לרשימות מילים",
+    pricingProFeature6: "אנליטיקה מתקדמת",
+    pricingProFeature7: "תמיכה מועדפת",
+    pricingProCta: "התחילו ניסיון חינם של 30 יום",
+    pricingSchoolName: "בתי ספר",
+    pricingSchoolTagline: "מותאם לבית הספר שלכם",
+    pricingSchoolPrice: "מותאם אישית",
+    pricingSchoolPriceNote: "הצעת מחיר לכל בית ספר",
+    pricingSchoolFeature1: "כל מה שב־Pro לכל המורים",
+    pricingSchoolFeature2: "חיוב מרכזי — חשבונית אחת בשקלים",
+    pricingSchoolFeature3: "לוח בקרה למנהל/ת",
+    pricingSchoolFeature4: "התחברות SSO / Google Workspace",
+    pricingSchoolFeature5: "הדרכה לצוות",
+    pricingSchoolFeature6: "תמיכה מועדפת, SLA של 24 שעות",
+    pricingSchoolFeature7: "DPA + נתונים מאוחסנים באירופה",
+    pricingSchoolCta: "קבלו הצעת מחיר",
+
     // Footer
     footerTagline: "פלטפורמת אוצר המילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
     footerSchoolPlans: "תכניות בתי ספר",
@@ -709,6 +838,47 @@ export const landingPageT: Record<Language, LandingPageT> = {
     aiAutoGrading: "✅ تصحيح تلقائي",
     aiAutoGradingDesc: "ملاحظات فورية للطلاب. لا تصحيح عليك. تتبع التقدم بنقرة واحدة.",
     aiJustAssign: "فقط عيّن مهام. هذا كل شيء.",
+
+    // Pricing
+    pricingTitle: "أسعار بسيطة للمعلمين",
+    pricingSubtitle: "ابدأ بـ 30 يومًا من Pro مجانًا — بدون بطاقة ائتمان.",
+    pricingFreeName: "مجاني",
+    pricingFreeTagline: "مجاني للأبد، بدون بطاقة",
+    pricingFreePrice: "₪0",
+    pricingFreePriceSuffix: "/للأبد",
+    pricingFreeFeature1: "صف واحد",
+    pricingFreeFeature2: "حتى 30 طالبًا",
+    pricingFreeFeature3: "جميع أنماط اللعب الـ11",
+    pricingFreeFeature4: "مجموعات وزارة التربية (1، 2، 3)",
+    pricingFreeFeature5: "ترجمات بالعبرية والعربية",
+    pricingFreeCta: "ابدأ مجانًا",
+    pricingProBadge: "الأكثر شعبية",
+    pricingProName: "Pro",
+    pricingProTagline: "للمعلمين الذين يريدون كل شيء",
+    pricingProPrice: "₪290",
+    pricingProPriceSuffix: "/سنة",
+    pricingProPriceAlt: "أو ₪29 / شهر",
+    pricingProTrialNote: "تجربة مجانية لـ 30 يومًا — بدون بطاقة",
+    pricingProFeature1: "كل ما في المجاني، بالإضافة إلى:",
+    pricingProFeature2: "صفوف بلا حدود",
+    pricingProFeature3: "طلاب بلا حدود",
+    pricingProFeature4: "منشئ الجمل بالذكاء الاصطناعي",
+    pricingProFeature5: "مسح ضوئي لقوائم الكلمات المخصصة",
+    pricingProFeature6: "تحليلات متقدمة",
+    pricingProFeature7: "دعم ذو أولوية",
+    pricingProCta: "ابدأ تجربة 30 يومًا مجانًا",
+    pricingSchoolName: "المدارس",
+    pricingSchoolTagline: "مخصص لمدرستك",
+    pricingSchoolPrice: "مخصص",
+    pricingSchoolPriceNote: "عرض سعر لكل مدرسة",
+    pricingSchoolFeature1: "كل ما في Pro لجميع المعلمين",
+    pricingSchoolFeature2: "فوترة مركزية — فاتورة واحدة بالشيكل",
+    pricingSchoolFeature3: "لوحة تحكم للمدير",
+    pricingSchoolFeature4: "تسجيل دخول SSO / Google Workspace",
+    pricingSchoolFeature5: "جلسة تدريب للطاقم",
+    pricingSchoolFeature6: "دعم ذو أولوية، SLA 24 ساعة",
+    pricingSchoolFeature7: "DPA + بيانات مستضافة في أوروبا",
+    pricingSchoolCta: "احصل على عرض سعر",
 
     // Footer
     footerTagline: "منصة المفردات التي يريد الطلاب حول العالم لعبها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
