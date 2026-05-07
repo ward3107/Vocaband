@@ -11,12 +11,15 @@ import { DATA_PROTECTION_OFFICER } from "../config/privacy-config";
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "security") => void;
   onGetStarted: () => void;
+  /** Teacher signup — drives PublicNav's "Start free" CTA. */
+  onTeacherLogin?: () => void;
   onBack?: () => void;
 }
 
 const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
   onNavigate,
   onGetStarted,
+  onTeacherLogin,
   onBack,
 }) => {
   const { language, dir, isRTL } = useLanguage();
@@ -29,6 +32,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         currentPage="privacy"
         onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy")}
         onGetStarted={onGetStarted}
+        onTeacherLogin={onTeacherLogin}
       />
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">

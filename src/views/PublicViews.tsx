@@ -99,6 +99,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <TermsPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}
@@ -112,6 +113,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <PrivacyPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}
@@ -125,6 +127,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <SecurityPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}
@@ -152,6 +155,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <AccessibilityStatementWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}
@@ -165,6 +169,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <FaqPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}
@@ -178,6 +183,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <FreeResourcesPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}
@@ -191,6 +197,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         <StatusPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={() => setView("student-account-login")}
+          onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
         {cookieBannerOverlay}

@@ -8,6 +8,8 @@ import PublicNav from "../components/PublicNav";
 interface FaqViewProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq") => void;
   onGetStarted: () => void;
+  /** Teacher signup — drives PublicNav's "Start free" CTA. */
+  onTeacherLogin?: () => void;
   onBack: () => void;
 }
 
@@ -62,7 +64,7 @@ const FaqItem: React.FC<FaqItemProps> = ({ question, answer, isOpen, onToggle })
   );
 };
 
-const FaqView: React.FC<FaqViewProps> = ({ onNavigate, onGetStarted, onBack }) => {
+const FaqView: React.FC<FaqViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
   const { language, dir, textAlign, isRTL } = useLanguage();
   const t = faqT[language];
   const [openItem, setOpenItem] = useState<string | null>(null);
@@ -77,6 +79,7 @@ const FaqView: React.FC<FaqViewProps> = ({ onNavigate, onGetStarted, onBack }) =
         currentPage="faq"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
+        onTeacherLogin={onTeacherLogin}
       />
 
       <main className="pt-24 pb-16 px-4 md:px-6">
