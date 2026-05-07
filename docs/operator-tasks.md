@@ -36,19 +36,21 @@ Applied to production via MCP, in order:
 
 Verified via DB introspection that the 3 local June files (`20260609_vocabagrut`, `20260610_school_inquiries`, `20260611_teacher_plan_and_trial`) were pure duplicates of earlier-applied versions (`20260506130131_vocabagrut`, `20260507104138_school_inquiries`, `20260507121937_teacher_plan_and_trial`). Deleted the duplicates from local repo (commit `f07b76d`).
 
-## ⚠️ PENDING — June feature migrations (no collisions)
+## ✅ DONE 2026-05-07 — June feature migration backlog
 
-Five June migrations are unambiguous and safe to apply once you're ready:
+Applied to production via MCP, in dependency order:
 
 ```
-20260605_cleanup_expired_data_cron
-20260605_daily_missions
-20260606_pet_evolution
-20260607_spaced_repetition
-20260608_teacher_onboarded_at
+20260507205457 cleanup_expired_data_cron       (pg_cron job nightly 03:30 UTC, retention enforcement)
+20260507205536 daily_missions                  (users.timezone, daily_missions table, 4 RPCs)
+20260507205558 pet_evolution                   (users.pet_active_days/last_active_date, 2 RPCs)
+20260507205628 spaced_repetition               (review_schedule table, 4 RPCs)
+20260507205641 teacher_onboarded_at            (users.onboarded_at, 1 RPC)
 ```
 
-These are feature additions (cron job, daily missions, pet evolution system, spaced repetition, teacher onboarding timestamp). Lower urgency than security — defer until ready to ship those features.
+Local files renamed to match applied versions. Cron job active and scheduled (verified `cron.job` table). Pen-test re-run: 9/9 passed.
+
+Backend is now ready for: daily-missions UI, pet-evolution UI, spaced-repetition Review mode tile, teacher onboarding wizard completion tracking. None of these activate without app code shipping.
 
 ---
 
