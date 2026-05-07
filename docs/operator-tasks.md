@@ -2,47 +2,65 @@
 
 These are actions the human needs to take — no code change will cover them.
 
+> **Last reconciled with production:** 2026-05-07. The April-28 security
+> migration backlog is closed; pen-test passes 9/9. Remaining items are
+> the May/June feature migrations (with collision-investigation needed)
+> and the operational tasks #2–#4 below.
+
 ---
 
-## 1. Apply pending Supabase migrations
+## ✅ DONE 2026-05-07 — April-28 security migration backlog
 
-Paste each into **Supabase → SQL Editor**:
+Applied to production via MCP, in order:
 
 ```
-20260428134000_security_high_revoke_anon_after_recreate.sql
-20260428140000_first_rating_columns.sql
-20260428141000_security_med_quick_play_sessions.sql
-20260428142000_security_med_class_rpc_admin.sql
-20260428150000_quick_play_ratings.sql
+20260428120000_teacher_dashboard_theme
+20260428130000_security_high_save_progress_auth
+20260428131000_security_high_quick_play_joins
+20260428132000_security_high_award_reward
+20260428133000_security_med_teacher_profiles
+20260428134000_security_high_revoke_anon_after_recreate
+20260428140000_first_rating_columns
+20260428141000_security_med_quick_play_sessions
+20260428142000_security_med_class_rpc_admin
+20260428150000_quick_play_ratings
+20260430073933_saved_word_groups
+20260501022528_saved_word_groups_by_email
 ```
 
-Each is idempotent (safe to re-run). First four close audit findings; last enables QP guest ratings.
+12 migrations total. All idempotent. Pen-test passed 9/9 (`scripts/security-pen-test.sh`). No new advisors flagged.
 
 ---
 
-## 2. Verify all migrations live
+## ⚠️ PENDING — Investigate June migrations with name collisions
 
-Run verification SQL in `docs/SECURITY-OVERVIEW.md` (4-row CTE). Should return all-green.
+Three local June migrations have name overlap with already-applied earlier-dated migrations:
 
----
+| Local file (pending) | Already applied as |
+|---|---|
+| `supabase/migrations/20260609_vocabagrut.sql` | `20260506130131_vocabagrut` |
+| `supabase/migrations/20260610_school_inquiries.sql` | `20260507104138_school_inquiries` |
+| `supabase/migrations/20260611_teacher_plan_and_trial.sql` | `20260507121937_teacher_plan_and_trial` |
 
-## 3. Run live pen-test
+**Action:** diff each pair before applying. Likely either (a) iteration/update of the same logical migration — apply the new one, or (b) accidental duplicate — delete the new file. Don't blind-apply.
 
-```bash
-./scripts/security-pen-test.sh   # needs .env.local or env vars
+## ⚠️ PENDING — Other June migrations (no collisions)
+
+Five June migrations are unambiguous and safe to apply once you're ready:
+
+```
+20260605_cleanup_expired_data_cron
+20260605_daily_missions
+20260606_pet_evolution
+20260607_spaced_repetition
+20260608_teacher_onboarded_at
 ```
 
-Expected: 4 passed, 0 failed.
+These are feature additions (cron job, daily missions, pet evolution system, spaced repetition, teacher onboarding timestamp). Lower urgency than security — defer until ready to ship those features.
 
 ---
 
-## 4. (Optional) UptimeRobot ping
-
-Fly Starter has no cold starts but still good belt-and-suspenders.
-
----
-
-## 5. Regenerate + re-upload motivational audio
+## 1. (OPTIONAL) Regenerate + re-upload motivational audio
 
 If phrase audio is still mismatched:
 
@@ -53,7 +71,7 @@ npx tsx scripts/upload-motivational.ts   # needs .env.local with service_role ke
 
 ---
 
-## 6. Configure Supabase email + magic-link template for teacher OTP
+## 2. Configure Supabase email + magic-link template for teacher OTP
 
 **Authentication → Providers → Email:** enable + Email OTP length = **6** digits (default 8 won't validate).
 
@@ -61,6 +79,12 @@ npx tsx scripts/upload-motivational.ts   # needs .env.local with service_role ke
 
 ---
 
-## 7. Merge `claude/fix-points-display-9Q4Dw` → `main`
+## 3. (OPTIONAL) UptimeRobot ping
 
-All 2026-04-29/30 work (OCR final fix via in-page camera, PWA install banner, 3 new dashboard themes, teacher OTP login, full student i18n) only ships on this branch's preview deploy until merged.
+Fly Starter has no cold starts but still good belt-and-suspenders.
+
+---
+
+## ✅ DONE earlier — `claude/fix-points-display-9Q4Dw` merged to main
+
+Branch no longer exists in remote (verified 2026-05-07 via `git branch -r`). All 2026-04-29/30 work (OCR final fix via in-page camera, PWA install banner, 3 new dashboard themes, teacher OTP login, full student i18n) shipped.
