@@ -160,8 +160,8 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
   return (
     <div className="min-h-screen bg-surface" dir={dir}>
       <PublicNav
-        currentPage="privacy"
-        onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy")}
+        currentPage="security"
+        onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy" | "security")}
         onGetStarted={onGetStarted}
       />
 

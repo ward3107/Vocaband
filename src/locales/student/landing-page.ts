@@ -23,6 +23,7 @@ export interface LandingPageT {
   navCefrBadge: string;
   navFeatures: string;
   navPricing: string;
+  navForSchools: string;
   navResources: string;
   navFaq: string;
   navSignIn: string;
@@ -274,6 +275,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navCefrBadge: "CEFR A1–B2",
     navFeatures: "Features",
     navPricing: "Pricing",
+    navForSchools: "For Schools",
     navResources: "Resources",
     navFaq: "FAQ",
     navSignIn: "Sign in",
@@ -495,6 +497,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navCefrBadge: "CEFR A1–B2",
     navFeatures: "תכונות",
     navPricing: "מחירים",
+    navForSchools: "לבתי ספר",
     navResources: "משאבים",
     navFaq: "שאלות נפוצות",
     navSignIn: "התחברות",
@@ -716,6 +719,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navCefrBadge: "CEFR A1–B2",
     navFeatures: "الميزات",
     navPricing: "الأسعار",
+    navForSchools: "للمدارس",
     navResources: "المصادر",
     navFaq: "الأسئلة الشائعة",
     navSignIn: "تسجيل الدخول",

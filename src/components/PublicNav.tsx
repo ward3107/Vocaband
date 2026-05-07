@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, LogIn } from "lucide-react";
+import { Menu, X, LogIn, GraduationCap } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
+import SchoolInquiryModal from "./SchoolInquiryModal";
 
 // The nav lives across two surfaces:
 //
@@ -42,6 +43,12 @@ const PublicNav: React.FC<PublicNavProps> = ({
   const { language, isRTL } = useLanguage();
   const t = landingPageT[language];
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Local modal — every page that mounts PublicNav gets a "For Schools"
+  // CTA in the nav.  Owning the modal here avoids threading a callback
+  // through every sub-page (Terms, FAQ, Privacy, Status, etc.).  The
+  // landing page's pricing-card "Get a quote" CTA still uses its own
+  // separate instance — at most one of the two ever renders visibly.
+  const [schoolModalOpen, setSchoolModalOpen] = useState(false);
 
   // Lock body scroll when the mobile drawer is open — otherwise long
   // landings let the user scroll the page underneath, which makes the
@@ -85,13 +92,22 @@ const PublicNav: React.FC<PublicNavProps> = ({
     onNavigate(page);
   };
 
+  const openSchoolModal = () => {
+    setMobileOpen(false);
+    setSchoolModalOpen(true);
+  };
+
   // Reused for desktop + mobile so copy + accessibility live in one place.
+  // "For Schools" is an action (opens inquiry modal), not an anchor or
+  // page — schools have no public price page per docs/PRICING-MODEL.md.
   const navItems: Array<
     | { kind: "anchor"; id: string; label: string }
     | { kind: "page"; page: NavPage; label: string }
+    | { kind: "action"; id: string; label: string; onClick: () => void; icon?: React.ReactNode }
   > = [
     { kind: "anchor", id: "features", label: t.navFeatures },
     { kind: "anchor", id: "pricing", label: t.navPricing },
+    { kind: "action", id: "schools", label: t.navForSchools, onClick: openSchoolModal, icon: <GraduationCap size={14} /> },
     { kind: "page", page: "resources", label: t.navResources },
     { kind: "page", page: "faq", label: t.navFaq },
   ];
@@ -122,17 +138,33 @@ const PublicNav: React.FC<PublicNavProps> = ({
 
           {/* Desktop links — collapse to hamburger below md. */}
           <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-            {navItems.map(item =>
-              item.kind === "anchor" ? (
-                <button
-                  key={item.id}
-                  onClick={() => goToAnchor(item.id)}
-                  className="px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
-                  type="button"
-                >
-                  {item.label}
-                </button>
-              ) : (
+            {navItems.map(item => {
+              if (item.kind === "anchor") {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => goToAnchor(item.id)}
+                    className="px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
+                    type="button"
+                  >
+                    {item.label}
+                  </button>
+                );
+              }
+              if (item.kind === "action") {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.onClick}
+                    className="px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5 inline-flex items-center gap-1.5"
+                    type="button"
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                );
+              }
+              return (
                 <button
                   key={item.page}
                   onClick={() => goToPage(item.page)}
@@ -145,8 +177,8 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 >
                   {item.label}
                 </button>
-              ),
-            )}
+              );
+            })}
           </div>
 
           {/* Right side — desktop CTAs + lang.  On mobile, lang only;
@@ -218,17 +250,33 @@ const PublicNav: React.FC<PublicNavProps> = ({
             </div>
 
             <nav className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
-              {navItems.map(item =>
-                item.kind === "anchor" ? (
-                  <button
-                    key={item.id}
-                    onClick={() => goToAnchor(item.id)}
-                    className="w-full text-start px-3 py-3 text-base font-bold text-stone-800 hover:bg-primary/5 rounded-lg transition-colors"
-                    type="button"
-                  >
-                    {item.label}
-                  </button>
-                ) : (
+              {navItems.map(item => {
+                if (item.kind === "anchor") {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => goToAnchor(item.id)}
+                      className="w-full text-start px-3 py-3 text-base font-bold text-stone-800 hover:bg-primary/5 rounded-lg transition-colors"
+                      type="button"
+                    >
+                      {item.label}
+                    </button>
+                  );
+                }
+                if (item.kind === "action") {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.onClick}
+                      className="w-full text-start px-3 py-3 text-base font-bold text-stone-800 hover:bg-primary/5 rounded-lg transition-colors inline-flex items-center gap-2"
+                      type="button"
+                    >
+                      {item.icon}
+                      {item.label}
+                    </button>
+                  );
+                }
+                return (
                   <button
                     key={item.page}
                     onClick={() => goToPage(item.page)}
@@ -241,8 +289,8 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   >
                     {item.label}
                   </button>
-                ),
-              )}
+                );
+              })}
             </nav>
 
             <div className="border-t border-stone-200 p-4 space-y-2">
@@ -273,6 +321,11 @@ const PublicNav: React.FC<PublicNavProps> = ({
           </div>
         </div>
       )}
+
+      <SchoolInquiryModal
+        isOpen={schoolModalOpen}
+        onClose={() => setSchoolModalOpen(false)}
+      />
     </>
   );
 };

@@ -129,7 +129,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onBac
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
-      <PublicNav currentPage="home" onNavigate={onNavigate} onGetStarted={onGetStarted} />
+      <PublicNav currentPage="status" onNavigate={onNavigate} onGetStarted={onGetStarted} />
 
       <main className="pt-24 pb-16 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
