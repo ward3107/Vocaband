@@ -6,7 +6,6 @@ import {
   Rocket,
   Gamepad2,
   Play,
-  Users,
   User,
   Apple,
   Coins,
@@ -149,40 +148,40 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.heroSubtitle}
                 </motion.p>
 
-                {/* 3D CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                  {/* Start Learning - For Students */}
+                {/* Hero CTA — student-first.
+                    The big purple button is the only thing kids should
+                    see. Teachers get a small secondary text link below
+                    so we don't split a 9-year-old's attention. */}
+                <div className="flex flex-col gap-3 items-center lg:items-start">
+                  {/* Start Learning - dominant student CTA */}
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
                     onClick={onGetStarted}
                     style={{ touchAction: 'manipulation' }}
-                    className="group relative px-8 py-4 rounded-lg text-xl font-black text-white shadow-[0_10px_0_0_#6d28d9,0_20px_40px_rgba(139,92,246,0.4)] hover:shadow-[0_14px_0_0_#5b21b6,0_25px_50px_rgba(139,92,246,0.5)] active:shadow-[0_3px_0_0_#6d28d9,0_8px_20px_rgba(139,92,246,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
+                    type="button"
+                    className="group relative w-full sm:w-auto px-10 py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_12px_0_0_#6d28d9,0_24px_50px_rgba(139,92,246,0.5)] hover:shadow-[0_16px_0_0_#5b21b6,0_28px_60px_rgba(139,92,246,0.6)] active:shadow-[0_4px_0_0_#6d28d9,0_10px_24px_rgba(139,92,246,0.4)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
-                    <div className="relative z-10 flex items-center gap-1">
-                      <Gamepad2 size={26} strokeWidth={2.5} />
-                      <Sparkles size={24} strokeWidth={2.5} />
+                    <div className="relative z-10 flex items-center gap-2">
+                      <Gamepad2 size={32} strokeWidth={2.5} />
+                      <Sparkles size={28} strokeWidth={2.5} />
                     </div>
                     <span className="relative z-10">{t.heroCtaStart}</span>
                   </motion.button>
 
                   {!isAuthenticated && (
                     <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.5 }}
                       onClick={onTeacherLogin}
-                      style={{ touchAction: 'manipulation' }}
-                      className="group relative px-6 py-4 rounded-lg text-lg font-bold text-white shadow-[0_10px_0_0_#0369a1,0_20px_40px_rgba(14,165,233,0.4)] hover:shadow-[0_14px_0_0_#0284c7,0_25px_50px_rgba(14,165,233,0.5)] active:shadow-[0_3px_0_0_#0369a1,0_8px_20px_rgba(14,165,233,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500 overflow-hidden"
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      type="button"
+                      className="text-sm md:text-base font-semibold text-white/70 hover:text-white underline decoration-white/40 hover:decoration-white underline-offset-4 transition-colors"
                     >
-                      <span className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
-                      <div className="relative z-10 flex items-center gap-1">
-                        <Users size={26} strokeWidth={2.5} />
-                        <Trophy size={24} strokeWidth={2.5} />
-                      </div>
-                      <span className="relative z-10">{t.heroCtaTeacher}</span>
+                      {t.heroCtaTeacher}
                     </motion.button>
                   )}
                 </div>
