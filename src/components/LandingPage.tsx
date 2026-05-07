@@ -159,17 +159,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.heroSubtitle}
                 </motion.p>
 
-                {/* Hero CTA — student-first.
-                    The big purple button is the only thing kids should
-                    see. Teachers get a small secondary text link below
-                    so we don't split a 9-year-old's attention. */}
+                {/* Hero CTA — teacher-first.
+                    Teachers are the buyer audience: they evaluate the
+                    freemium pitch + sign up.  The big purple button
+                    points at the teacher signup/login flow.  Students
+                    don't browse the marketing site — they arrive via
+                    a teacher-shared `?class=XXX` link or visit the
+                    dedicated `/student` URL.  We keep a small "I'm a
+                    student" text link below so a student who somehow
+                    lands here can still get to their login. */}
                 <div className="flex flex-col gap-3 items-center lg:items-start">
-                  {/* Start Learning - dominant student CTA */}
+                  {/* Get Started Free - dominant teacher CTA */}
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                    onClick={onGetStarted}
+                    onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation' }}
                     type="button"
                     className="group relative w-full sm:w-auto px-10 py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_12px_0_0_#6d28d9,0_24px_50px_rgba(139,92,246,0.5)] hover:shadow-[0_16px_0_0_#5b21b6,0_28px_60px_rgba(139,92,246,0.6)] active:shadow-[0_4px_0_0_#6d28d9,0_10px_24px_rgba(139,92,246,0.4)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
@@ -187,12 +192,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5, delay: 0.5 }}
-                      onClick={onTeacherLogin}
+                      onClick={onGetStarted}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                       type="button"
                       className="text-sm md:text-base font-semibold text-white/70 hover:text-white underline decoration-white/40 hover:decoration-white underline-offset-4 transition-colors"
                     >
-                      {t.heroCtaTeacher}
+                      {t.heroCtaStudent}
                     </motion.button>
                   )}
                 </div>
