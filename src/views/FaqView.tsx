@@ -74,7 +74,7 @@ const FaqView: React.FC<FaqViewProps> = ({ onNavigate, onGetStarted, onBack }) =
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav
-        currentPage="home"
+        currentPage="faq"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
       />

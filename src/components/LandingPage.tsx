@@ -80,6 +80,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         currentPage="home"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
+        onTeacherLogin={onTeacherLogin}
       />
 
       <main>
@@ -393,7 +394,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Features Section - 3D Bento Grid */}
-        <section className="py-20 px-4 md:px-6 relative">
+        <section id="features" className="py-20 px-4 md:px-6 relative">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}

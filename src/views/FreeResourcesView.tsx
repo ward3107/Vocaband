@@ -1752,7 +1752,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
-      <PublicNav currentPage="home" onNavigate={onNavigate} onGetStarted={onGetStarted} />
+      <PublicNav currentPage="resources" onNavigate={onNavigate} onGetStarted={onGetStarted} />
 
       <main className="pt-24 pb-16 px-4 md:px-6">
         <div className="max-w-6xl mx-auto">
