@@ -21,6 +21,14 @@ export interface LandingPageT {
   navTryDemo: string;
   navTryDemoShort: string;
   navCefrBadge: string;
+  navFeatures: string;
+  navPricing: string;
+  navResources: string;
+  navFaq: string;
+  navSignIn: string;
+  navStartFree: string;
+  navMenuOpen: string;
+  navMenuClose: string;
 
   // ─── Hero ───────────────────────────────────────────────────────
   heroTitleLine1: string;
@@ -264,6 +272,14 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navTryDemo: "PLAY NOW",
     navTryDemoShort: "PLAY",
     navCefrBadge: "CEFR A1–B2",
+    navFeatures: "Features",
+    navPricing: "Pricing",
+    navResources: "Resources",
+    navFaq: "FAQ",
+    navSignIn: "Sign in",
+    navStartFree: "Start free",
+    navMenuOpen: "Open menu",
+    navMenuClose: "Close menu",
 
     heroTitleLine1: "Level Up",
     heroTitleLine2: "Your Vocabulary",
@@ -477,6 +493,14 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navTryDemo: "שחקו עכשיו",
     navTryDemoShort: "שחקו",
     navCefrBadge: "CEFR A1–B2",
+    navFeatures: "תכונות",
+    navPricing: "מחירים",
+    navResources: "משאבים",
+    navFaq: "שאלות נפוצות",
+    navSignIn: "התחברות",
+    navStartFree: "התחילו בחינם",
+    navMenuOpen: "פתיחת תפריט",
+    navMenuClose: "סגירת תפריט",
 
     heroTitleLine1: "שדרגו",
     heroTitleLine2: "את אוצר המילים",
@@ -690,6 +714,14 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navTryDemo: "العب الآن",
     navTryDemoShort: "العب",
     navCefrBadge: "CEFR A1–B2",
+    navFeatures: "الميزات",
+    navPricing: "الأسعار",
+    navResources: "المصادر",
+    navFaq: "الأسئلة الشائعة",
+    navSignIn: "تسجيل الدخول",
+    navStartFree: "ابدأ مجانًا",
+    navMenuOpen: "فتح القائمة",
+    navMenuClose: "إغلاق القائمة",
 
     heroTitleLine1: "ارتقِ",
     heroTitleLine2: "بمفرداتك",
