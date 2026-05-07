@@ -61,13 +61,6 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   }
 
   // ── Header ───────────────────────────────────────────────────────────
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(60, 60, 60);
-  doc.text('STATE OF ISRAEL — MINISTRY OF EDUCATION', PAGE_WIDTH / 2, y, { align: 'center' });
-  y += 14;
-  drawHebrew('מדינת ישראל — משרד החינוך', PAGE_WIDTH / 2, y, { align: 'center', size: 11 });
-  y += 16;
   doc.setDrawColor(120, 120, 120);
   doc.setLineWidth(0.6);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
