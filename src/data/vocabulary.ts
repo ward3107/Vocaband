@@ -6667,9 +6667,12 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     ids: [4313], // can be expanded
   },
   {
-    name: "Greetings & Phrases 👋",
+    name: "Greetings & Polite Words 👋",
     icon: "👋",
-    ids: [102, 122, 126, 130, 132], // 5 greeting phrases
+    // Merged from "Greetings & Phrases", "Hello & Goodbye", and the original
+    // "Greetings & Polite Words" (2026-05-07): bye, goodbye, hi, hello, please,
+    // sorry, sure, thank/thanks, yes/no, maybe, excuse, plus the 5 phrases.
+    ids: [102, 122, 126, 130, 132, 141, 622, 1937, 2130, 2845, 3073, 3436, 4135, 4334, 4490, 5127, 6041, 6541],
   },
   {
     name: "Bathroom 🚽",
@@ -6679,12 +6682,17 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Common Verbs 🏃",
     icon: "🏃",
-    ids: [1143, 2605, 2628, 2931, 3256, 3432, 3818], // 7 common verbs
+    // Merged from "Common Verbs" + "Action Words" (2026-05-07).
+    ids: [203, 205, 1143, 1356, 2605, 2628, 2931, 3256, 3432, 3818],
   },
   {
-    name: "Places & Rooms 🏠",
+    name: "House & Rooms 🏠",
     icon: "🏠",
-    ids: [1874, 2167, 2188, 2198, 3892], // 5 places
+    // Merged from "Places & Rooms" + "House & Rooms" (2026-05-07): bath,
+    // bathroom, bedroom, ceiling, door, fence, floor, garage, garden, gate,
+    // hall, home, house, kitchen, roof, shower, stairs, toilet, wall, window,
+    // basement, plus the 5 places (school, etc.).
+    ids: [373, 376, 420, 715, 1281, 1599, 1667, 1780, 1782, 1786, 1874, 2021, 2167, 2188, 2198, 2544, 3798, 3892, 4010, 4201, 4616, 4907, 5050, 8082],
   },
   {
     name: "Sky & Space ✨",
@@ -6692,29 +6700,11 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     ids: [2525, 3584, 3666, 4313], // 4 sky words
   },
   {
-    name: "Hello & Goodbye 👋",
-    icon: "👋",
-    ids: [102, 132, 141], // 3 greeting words
-  },
-  {
     name: "Hot & Cold 🌡️",
     icon: "🌡️",
     ids: [879, 2190, 4914], // 3 temperature words
   },
-  {
-    name: "Action Words 💪",
-    icon: "💪",
-    ids: [1143, 1356, 203, 205, 2931, 3432, 3818], // 7 action verbs
-  },
   // ── 2026-04-26 — additional topic packs (teacher request) ─────────
-  {
-    name: "House & Rooms 🏠",
-    icon: "🏠",
-    // bath, bathroom, bedroom, ceiling, door, fence, floor, garage,
-    // garden, gate, hall, home, house, kitchen, roof, shower, stairs,
-    // toilet, wall, window, basement
-    ids: [373, 376, 420, 715, 1281, 1599, 1667, 1780, 1782, 1786, 2021, 2167, 2198, 2544, 3798, 4010, 4201, 4616, 4907, 5050, 8082],
-  },
   {
     name: "Opposites ⚖️",
     icon: "⚖️",
@@ -6777,12 +6767,5 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "❓",
     // how, what, when, where, who, why, whose, which
     ids: [2202, 4986, 5013, 5016, 5028, 5031, 6147, 9112],
-  },
-  {
-    name: "Greetings & Polite Words 👋",
-    icon: "👋",
-    // bye, goodbye, hi, maybe, no, please, sorry, sure, thank, yes,
-    // thanks, excuse
-    ids: [622, 1937, 2130, 2845, 3073, 3436, 4135, 4334, 4490, 5127, 6041, 6541],
   },
 ];
