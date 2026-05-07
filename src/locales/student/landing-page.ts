@@ -207,6 +207,7 @@ export interface LandingPageT {
   footerAccessibility: string;
   footerFaq: string;
   footerContact: string;
+  footerTeacherInquiry: string;
   footerFeatureRequest: string;
   footerFreeResources: string;
   footerStatus: string;
@@ -380,6 +381,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerAccessibility: "Accessibility",
     footerFaq: "FAQ",
     footerContact: "Contact Support",
+    footerTeacherInquiry: "Individual teacher? Get in touch",
     footerFeatureRequest: "Request a Feature",
     footerFreeResources: "Free Resources",
     footerStatus: "System Status",
@@ -553,6 +555,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerAccessibility: "נגישות",
     footerFaq: "שאלות נפוצות",
     footerContact: "צור קשר",
+    footerTeacherInquiry: "מורה פרטי? צרו איתנו קשר",
     footerFeatureRequest: "הצע פיצ'ר חדש",
     footerFreeResources: "משאבים בחינם",
     footerStatus: "סטטוס מערכת",
@@ -726,6 +729,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerAccessibility: "إمكانية الوصول",
     footerFaq: "الأسئلة الشائعة",
     footerContact: "تواصل مع الدعم",
+    footerTeacherInquiry: "معلم فردي؟ تواصل معنا",
     footerFeatureRequest: "اقترح ميزة جديدة",
     footerFreeResources: "موارد مجانية",
     footerStatus: "حالة النظام",

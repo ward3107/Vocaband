@@ -4,23 +4,31 @@
 > Public face = schools-first.  Private channel = individual teachers.
 > No published prices — every deal negotiated.
 >
-> Drafted 2026-04-28.  Living document — revisit quarterly.
+> Drafted 2026-04-28.  Last revised 2026-05-07.  Living document —
+> revisit quarterly.
 
 ## Why "schools-first public" is the right call
 
-Most Israeli schools have **1-4 English teachers**, not 30.  That
-matters for two reasons:
+Most Israeli schools have **3-6 English teachers** (revised 2026-05-07
+based on market check), not 30.  That matters for two reasons:
 
-1. **Volume-discount tiers don't make sense yet.**  4 teachers ×
-   25 NIS = 100 NIS/mo would be a tiny school deal — not worth the
+1. **Volume-discount tiers don't make sense yet.**  6 teachers ×
+   25 NIS = 150 NIS/mo would be a tiny school deal — not worth the
    procurement cycle on either side.  Real school-license value
    only emerges after **multi-subject Voca-family** ships (English
    + History + Civics + Science teachers all at the same school =
-   12-15 teachers).
+   15-25 teachers).
 2. **Public per-teacher pricing anchors the conversation low.**  If
    the landing page says "39 NIS / teacher", any school you talk to
-   computes "30 × 39 = 1,170/mo" in their head — and starts the
+   computes "6 × 39 = 234/mo" in their head — and starts the
    negotiation from there, not from a real school-license figure.
+3. **The "let teachers self-pay" arbitrage gets worse with low
+   per-teacher pricing.**  At 6 teachers × 290 NIS/year personal =
+   1,740 NIS, a stingy principal will refuse the school plan
+   entirely.  Hiding the per-teacher number forces the conversation
+   onto school-license value (central billing, principal dashboard,
+   training, DPA), which is where school plans actually justify
+   their price.
 
 **Therefore**: don't publish prices.  Every deal is a conversation,
 which lets us price by school size + subject mix + relationship.
@@ -39,12 +47,25 @@ When a principal / IT manager / department head reaches out:
 
 ### School plan ladder
 
-| School type | Annual license target | Notes |
-|---|---|---|
-| **Premium private school** (gymnasia, anglican, international) | **25-35K NIS** | Have edtech budgets, expect to pay, value central billing + training |
-| **Standard public school** (Israeli מ"מ / mamlakhti) | **15-20K NIS** | Tight MoE-tied budgets — be ready to negotiate |
-| **Public-school floor** | **10K NIS** | Hard floor.  If they can't reach 10K, point them to individual Pro for now. |
-| **District deal** (5+ schools) | **80K-150K** | Aggregate negotiation, multi-year contract |
+| School type | Typical English teachers | Annual license target | Notes |
+|---|---|---|---|
+| **Premium private school** (gymnasia, anglican, international) | 4-8 | **25-35K NIS** | Have edtech budgets, expect to pay, value central billing + training |
+| **Standard public school** (Israeli מ"מ / mamlakhti) | **3-6** ⭐ | **10-12K NIS** | The volume tier — most Israeli schools land here.  Anchor at ₪10K (revised 2026-05-07).  Sits below the principal-only approval threshold (~₪10K) so deals close without school-board sign-off. |
+| **Public-school floor** | 1-3 | **8K NIS** | Hard floor.  Below this, point them to individual Pro for now. |
+| **District deal** (5+ schools) | varies | **80K-150K** | Aggregate negotiation, multi-year contract |
+
+**Why ₪10K is the anchor for standard public schools** (the volume
+tier — most schools land here):
+
+- Sits at-or-below the principal-only approval threshold, so deals
+  close in 1 meeting instead of waiting for school-board sign-off
+- Compares favorably to MorfixSchool (₪5-8K) at +25-100% — defensible
+  premium for gamification + Hebrew/Arabic + service
+- Per-teacher math: ~₪1,700/teacher/year (~₪140/mo) — feels like a
+  proper budget line, not a consumer subscription
+- Beats the "let teachers self-pay" loophole: 6 × 290 = ₪1,740 of
+  fragmented broken accounts vs ₪10K of a real school deal — the gap
+  is justified by central billing + DPA + training
 
 ### Individual teacher rate (private channel)
 
@@ -206,8 +227,10 @@ Re-read this doc each quarter and validate against reality:
 | Item | Status |
 |---|---|
 | Public landing pricing strategy | ✅ Schools-first, no published prices, two mailtos |
-| Footer "School plans" + "Individual teacher" mailtos | ✅ Shipped 2026-04-28 |
-| Internal price ladder (this doc) | ✅ This doc |
+| Footer "School plans" mailto (school-inquiry modal) | ✅ Shipped 2026-04-28 |
+| Footer "Individual teacher? Get in touch" mailto | ✅ Shipped 2026-05-07 |
+| `school_inquiries` table — leads persisted to Supabase | ✅ Shipped 2026-05-07 (migration `20260610_school_inquiries`) |
+| Internal price ladder (this doc) | ✅ Revised 2026-05-07 with ₪10-12K standard-public anchor |
 | Founding-100 campaign | ⏳ Not started — wait until product is fully production-ready |
 | Stripe account + Payment Links | ⏳ Not yet — need first individual-teacher inquiry to justify the setup |
 | Year 1 revenue tracking dashboard | ⏳ Defer until first paying teacher |

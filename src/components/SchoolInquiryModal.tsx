@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { X, Mail, Users, GraduationCap, Phone, Send, Loader2, CheckCircle2 } from "lucide-react";
+import { supabase } from "../core/supabase";
 
 interface SchoolInquiryModalProps {
   isOpen: boolean;
@@ -92,10 +93,28 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Persist to Supabase first so the lead is captured even if the user
+    // closes their mail client without sending. Failures are logged but
+    // don't block the mailto fallback — losing a lead silently is worse
+    // than a duplicate submission.
+    const { error: insertError } = await supabase
+      .from("school_inquiries")
+      .insert({
+        school_name: formData.schoolName.trim(),
+        contact_name: formData.contactName.trim(),
+        email: formData.email.trim(),
+        whatsapp: formData.whatsapp.trim(),
+        students_count: parseInt(formData.studentsCount, 10),
+        teachers_count: parseInt(formData.teachersCount, 10),
+        language,
+        user_agent: navigator.userAgent.slice(0, 500),
+      });
+    if (insertError) {
+      console.error("[SchoolInquiry] Supabase insert failed:", insertError);
+    }
 
-    // Email fallback - create mailto with form data
+    // Mailto stays as parallel notification — gives the founder immediate
+    // visibility in their inbox alongside the persisted DB row.
     const subject = encodeURIComponent(`School Inquiry - ${formData.schoolName}`);
     const body = encodeURIComponent(
       `School: ${formData.schoolName}\n` +
@@ -106,7 +125,6 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
       `Teachers: ${formData.teachersCount}`
     );
 
-    // Open email client
     window.location.href = `mailto:contact@vocaband.com?subject=${subject}&body=${body}`;
 
     setIsSuccess(true);

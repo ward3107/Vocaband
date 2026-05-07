@@ -1922,6 +1922,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       {t.footerContact}
                     </a>
                   </li>
+                  {/* Private channel for individual teachers — per
+                      docs/PRICING-MODEL.md the public face is schools-first;
+                      this footer mailto is the casual entry point for solo
+                      teachers who want a Pro quote.  The subject line lets
+                      sales triage the inbox without a separate form. */}
+                  <li>
+                    <a
+                      href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <User size={14} aria-hidden="true" />
+                      {t.footerTeacherInquiry}
+                    </a>
+                  </li>
                   <li>
                     <button
                       type="button"
