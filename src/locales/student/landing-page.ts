@@ -35,19 +35,6 @@ export interface LandingPageT {
   heroTrustEu: string;
   heroTrustOrigin: string;
 
-  // ─── Who Are You? Section ───────────────────────────────────────
-  whoAreYouTitle: string;
-  whoAreYouSubtitle: string;
-  teacherCardTitle: string;
-  teacherCardDesc: string;
-  teacherCardCta: string;
-  schoolCardTitle: string;
-  schoolCardDesc: string;
-  schoolCardCta: string;
-  studentCardTitle: string;
-  studentCardDesc: string;
-  studentCardCta: string;
-
   // ─── Floating hero cards ────────────────────────────────────────
   floatingCardModes: string;
   floatingCardXp: string;
@@ -280,18 +267,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTrustEu: "EU-Hosted · GDPR",
     heroTrustOrigin: "Built in Israel",
 
-    whoAreYouTitle: "Who are you?",
-    whoAreYouSubtitle: "Choose your path to get started",
-    teacherCardTitle: "I'm a Teacher",
-    teacherCardDesc: "Create unlimited classes and assignments for free. Track your students' progress effortlessly.",
-    teacherCardCta: "Start Free — It takes 2 minutes",
-    schoolCardTitle: "I'm a School",
-    schoolCardDesc: "Get school-wide licenses with advanced analytics, priority support, and custom integrations.",
-    schoolCardCta: "Get a Quote",
-    studentCardTitle: "I'm a Student",
-    studentCardDesc: "Join your class and play games to master vocabulary. Earn XP, unlock avatars, and compete with friends.",
-    studentCardCta: "Start Learning",
-
     floatingCardModes: "🎮 11 Game Modes",
     floatingCardXp: "⭐ Earn XP",
     floatingCardStreaks: "🔥 Daily Streaks",
@@ -495,18 +470,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTrustEu: "מאוחסן באירופה · GDPR",
     heroTrustOrigin: "פותח בישראל",
 
-    whoAreYouTitle: "מי אתה?",
-    whoAreYouSubtitle: "בחר את הדרך שלך להתחיל",
-    teacherCardTitle: "אני מורה",
-    teacherCardDesc: "צור כיתות ומטלות בלי הגבלה — בחינם. עקוב אחר התקדמות התלמידים שלך בקלות.",
-    teacherCardCta: "התחל בחינם — לוקח 2 דקות",
-    schoolCardTitle: "אני בית ספר",
-    schoolCardDesc: "קבל רישיונות לבית ספר עם ניתוחים מתקדמים, תמיכה בעדיפות, ושילובים מותאמים אישית.",
-    schoolCardCta: "קבל הצעת מחיר",
-    studentCardTitle: "אני תלמיד",
-    studentCardDesc: "הצטרפו לכיתה שלכם ושחקו במשחקים לשליטה באוצר המילים. צברו נקודות, שחררו אווטארים, והתחרו עם חברים.",
-    studentCardCta: "התחילו ללמוד",
-
     floatingCardModes: "🎮 11 מצבי משחק",
     floatingCardXp: "⭐ צבור נקודות",
     floatingCardStreaks: "🔥 רצף יומי",
@@ -709,18 +672,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTrustTrilingual: "العربية · العبرية · الإنجليزية",
     heroTrustEu: "مستضاف في أوروبا · GDPR",
     heroTrustOrigin: "صُنع في إسرائيل",
-
-    whoAreYouTitle: "من أنت؟",
-    whoAreYouSubtitle: "اختر مسارك للبدء",
-    teacherCardTitle: "أنا معلم",
-    teacherCardDesc: "أنشئ فصولًا ومهام غير محدودة مجانًا. تتبع تقدم طلابك بسهولة.",
-    teacherCardCta: "ابدأ مجانًا — يستغرق دقيقتين",
-    schoolCardTitle: "أنا مدرسة",
-    schoolCardDesc: "احصل على تراخيص للمدرسة مع تحليلات متقدمة ودعم أولوية وتكاملات مخصصة.",
-    schoolCardCta: "اطلب عرض سعر",
-    studentCardTitle: "أنا طالب",
-    studentCardDesc: "انضم إلى فصلك والعب ألعابًا لإتقان المفردات. اكسب النقاط، وافتح الأفتار، وتنافس مع الأصدقاء.",
-    studentCardCta: "ابدأ التعلم",
 
     floatingCardModes: "🎮 11 لعبة",
     floatingCardXp: "⭐ اكسب النقاط",
