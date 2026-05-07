@@ -9,10 +9,12 @@ import { accessibilityTranslations } from '../config/translations/legalTranslati
 interface Props {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  /** Teacher signup — drives PublicNav's "Start free" CTA. */
+  onTeacherLogin?: () => void;
   onBack: () => void;
 }
 
-export default function AccessibilityStatement({ onNavigate, onGetStarted, onBack }: Props) {
+export default function AccessibilityStatement({ onNavigate, onGetStarted, onTeacherLogin, onBack }: Props) {
   const { language, isRTL } = useLanguage();
   const t = accessibilityTranslations[language];
 
@@ -35,7 +37,7 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onBac
 
   return (
     <div className="min-h-screen bg-surface font-body" dir={isRTL ? 'rtl' : 'ltr'}>
-      <PublicNav currentPage="accessibility" onNavigate={onNavigate} onGetStarted={onGetStarted} />
+      <PublicNav currentPage="accessibility" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
         <div className="flex items-center gap-4 mb-6">

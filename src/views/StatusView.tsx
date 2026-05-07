@@ -18,6 +18,8 @@ import PublicNav from "../components/PublicNav";
 interface StatusViewProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq") => void;
   onGetStarted: () => void;
+  /** Teacher signup — drives PublicNav's "Start free" CTA. */
+  onTeacherLogin?: () => void;
   onBack: () => void;
 }
 
@@ -73,7 +75,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
   );
 };
 
-const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onBack }) => {
+const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
   const { language, dir, textAlign, isRTL } = useLanguage();
   const t = statusT[language];
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -129,7 +131,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onBac
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
-      <PublicNav currentPage="status" onNavigate={onNavigate} onGetStarted={onGetStarted} />
+      <PublicNav currentPage="status" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
       <main className="pt-24 pb-16 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">

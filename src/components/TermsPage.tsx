@@ -9,10 +9,14 @@ import { termsTranslations, uiTranslations } from "../config/translations/legalT
 interface TermsPageProps {
   onNavigate: (page: "home" | "terms" | "privacy") => void;
   onGetStarted: () => void;
+  /** Teacher signup / OAuth — wired into PublicNav so its primary
+   *  "Start free" CTA drives the freemium audience (teachers), not
+   *  the student class-code flow that onGetStarted points at. */
+  onTeacherLogin?: () => void;
   onBack?: () => void;
 }
 
-const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack }) => {
+const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
   const { language, isRTL, dir } = useLanguage();
   const t = termsTranslations[language];
   const ui = uiTranslations[language];
@@ -27,6 +31,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onBack 
         currentPage="terms"
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
+        onTeacherLogin={onTeacherLogin}
       />
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">

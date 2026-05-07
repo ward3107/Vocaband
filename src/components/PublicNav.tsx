@@ -195,8 +195,14 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 {t.navSignIn}
               </button>
             )}
+            {/* Primary CTA — "Start free" is the freemium top-of-funnel
+                for TEACHERS (the buyer audience), so it routes to teacher
+                signup, not student signup.  Falls back to onGetStarted
+                only if a host page hasn't wired onTeacherLogin yet — that
+                way we degrade gracefully instead of rendering a dead
+                button on those pages. */}
             <button
-              onClick={onGetStarted}
+              onClick={onTeacherLogin ?? onGetStarted}
               className="hidden md:inline-flex items-center px-4 py-2 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 rounded-lg shadow-md shadow-violet-500/20 hover:shadow-violet-500/40 transition-all"
               type="button"
             >
@@ -310,7 +316,9 @@ const PublicNav: React.FC<PublicNavProps> = ({
               <button
                 onClick={() => {
                   setMobileOpen(false);
-                  onGetStarted();
+                  // Teacher signup is the freemium target, with student
+                  // signup only as a degraded fallback — see desktop CTA.
+                  (onTeacherLogin ?? onGetStarted)();
                 }}
                 className="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/20"
                 type="button"

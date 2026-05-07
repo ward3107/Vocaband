@@ -9,6 +9,8 @@ import { useLanguage } from "../hooks/useLanguage";
 interface PublicSecurityPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "security") => void;
   onGetStarted: () => void;
+  /** Teacher signup — drives PublicNav's "Start free" CTA. */
+  onTeacherLogin?: () => void;
   onBack?: () => void;
 }
 
@@ -144,6 +146,7 @@ const t = {
 const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
   onNavigate,
   onGetStarted,
+  onTeacherLogin,
   onBack,
 }) => {
   const { language, dir } = useLanguage();
@@ -163,6 +166,7 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
         currentPage="security"
         onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy" | "security")}
         onGetStarted={onGetStarted}
+        onTeacherLogin={onTeacherLogin}
       />
 
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">

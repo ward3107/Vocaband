@@ -1121,6 +1121,8 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
 interface FreeResourcesViewProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq") => void;
   onGetStarted: () => void;
+  /** Teacher signup — drives PublicNav's "Start free" CTA. */
+  onTeacherLogin?: () => void;
   onBack: () => void;
 }
 
@@ -1646,7 +1648,7 @@ const filenameSuffix: Record<Format, string> = {
   fillblank: "Fill_in_the_Blank",
 };
 
-const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onBack }) => {
+const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
   const { language, dir, textAlign, isRTL } = useLanguage();
   const t = freeResourcesT[language];
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
@@ -1752,7 +1754,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
-      <PublicNav currentPage="resources" onNavigate={onNavigate} onGetStarted={onGetStarted} />
+      <PublicNav currentPage="resources" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
       <main className="pt-24 pb-16 px-4 md:px-6">
         <div className="max-w-6xl mx-auto">
