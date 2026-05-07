@@ -24,6 +24,9 @@ export interface StudentLoginStrings {
   classCodeAria: string;
   classCodeHint: string;
 
+  // Microsoft OAuth button label (covers MoE @edu.gov.il accounts)
+  signInWithMicrosoft: string;
+
   // Footer copy under the Google button
   signedInBefore: string;
   firstTime: string;
@@ -42,6 +45,7 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
     classCodeLabel: "Class code from your teacher",
     classCodeAria: "Class code",
     classCodeHint: "Got a link from your teacher? Paste it — we'll pull out the code.",
+    signInWithMicrosoft: "Sign in with Microsoft",
     signedInBefore: "Sign in with the same Google account every time to keep your XP and streak.",
     firstTime: "First time? Type your class code above, then sign in with Google. Your teacher approves new students from the dashboard.",
     features: [
@@ -60,6 +64,7 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
     classCodeLabel: "קוד הכיתה מהמורה",
     classCodeAria: "קוד הכיתה",
     classCodeHint: "קיבלתם קישור מהמורה? הדביקו אותו — נחלץ את הקוד אוטומטית.",
+    signInWithMicrosoft: "התחבר עם Microsoft",
     signedInBefore: "התחברו תמיד עם אותו חשבון Google כדי לשמור על XP והרצף שלכם.",
     firstTime: "פעם ראשונה? הקלידו את קוד הכיתה למעלה, ואז התחברו עם Google. המורה מאשר תלמידים חדשים מהלוח.",
     features: [
@@ -78,6 +83,7 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
     classCodeLabel: "رمز الصف من معلمك",
     classCodeAria: "رمز الصف",
     classCodeHint: "حصلت على رابط من معلمك؟ الصقه — سنستخرج الرمز تلقائياً.",
+    signInWithMicrosoft: "تسجيل الدخول بحساب Microsoft",
     signedInBefore: "سجّل الدخول دائماً بنفس حساب Google للحفاظ على نقاط XP والسلسلة.",
     firstTime: "أول مرة؟ اكتب رمز الصف أعلاه ثم سجّل الدخول بـ Google. سيعتمد المعلم الطلاب الجدد من لوحة التحكم.",
     features: [
