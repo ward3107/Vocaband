@@ -186,24 +186,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   )}
                 </div>
 
-                {/* Social Proof - Glass Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.5 }}
-                  className="mt-8 inline-flex items-center gap-4 px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20"
-                >
-                  <div className="flex -space-x-3">
-                    <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-lg">🦊</div>
-                    <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-lg">🦁</div>
-                    <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-lg">🐯</div>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-white font-bold text-sm">{t.heroSocialProofCount}</p>
-                    <p className="text-white/60 text-xs">{t.heroSocialProofTagline}</p>
-                  </div>
-                </motion.div>
-
                 {/* Hero trust strip — factual claims only.
                     Curriculum alignment, language coverage, EU
                     hosting, and country of origin are all things we
@@ -214,7 +196,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.6 }}
-                  className={`mt-4 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
+                  className={`mt-8 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
                   dir={dir}
                 >
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
