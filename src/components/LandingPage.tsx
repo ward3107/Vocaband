@@ -1761,13 +1761,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <p className="text-white/85 text-sm mb-6" dir={dir}>
                     {t.pricingProTagline}
                   </p>
-                  <div className="mb-1 flex items-baseline gap-2">
-                    <span className="text-4xl md:text-5xl font-black text-white">{t.pricingProPrice}</span>
-                    <span className="text-white/85 text-base font-semibold">{t.pricingProPriceSuffix}</span>
-                  </div>
-                  <p className="text-white/70 text-sm mb-3" dir={dir}>
-                    {t.pricingProPriceAlt}
-                  </p>
                   <p className="text-amber-300 text-sm font-bold mb-6" dir={dir}>
                     ⚡ {t.pricingProTrialNote}
                   </p>

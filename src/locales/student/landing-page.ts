@@ -205,9 +205,6 @@ export interface LandingPageT {
   pricingProBadge: string;
   pricingProName: string;
   pricingProTagline: string;
-  pricingProPrice: string;
-  pricingProPriceSuffix: string;
-  pricingProPriceAlt: string;
   pricingProTrialNote: string;
   pricingProFeature1: string;
   pricingProFeature2: string;
@@ -418,9 +415,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
     pricingProBadge: "Most popular",
     pricingProName: "Pro",
     pricingProTagline: "For teachers who want everything",
-    pricingProPrice: "₪290",
-    pricingProPriceSuffix: "/year",
-    pricingProPriceAlt: "or ₪29 / month",
     pricingProTrialNote: "30-day free trial — no card required",
     pricingProFeature1: "Everything in Free, plus:",
     pricingProFeature2: "Unlimited classes",
@@ -630,9 +624,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
     pricingProBadge: "הכי פופולרי",
     pricingProName: "Pro",
     pricingProTagline: "למורים שרוצים את הכל",
-    pricingProPrice: "₪290",
-    pricingProPriceSuffix: "/שנה",
-    pricingProPriceAlt: "או ₪29 / חודש",
     pricingProTrialNote: "30 ימי ניסיון חינם — בלי כרטיס אשראי",
     pricingProFeature1: "כל מה שבחינם, ובנוסף:",
     pricingProFeature2: "כיתות ללא הגבלה",
@@ -842,9 +833,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
     pricingProBadge: "الأكثر شعبية",
     pricingProName: "Pro",
     pricingProTagline: "للمعلمين الذين يريدون كل شيء",
-    pricingProPrice: "₪290",
-    pricingProPriceSuffix: "/سنة",
-    pricingProPriceAlt: "أو ₪29 / شهر",
     pricingProTrialNote: "تجربة مجانية لـ 30 يومًا — بدون بطاقة",
     pricingProFeature1: "كل ما في المجاني، بالإضافة إلى:",
     pricingProFeature2: "صفوف بلا حدود",
