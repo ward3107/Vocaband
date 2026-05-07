@@ -29,10 +29,12 @@ import {
   CLASS_COLUMNS,
   ASSIGNMENT_COLUMNS,
   PROGRESS_COLUMNS,
+  type AppUser,
   type AssignmentData,
   type ClassData,
   type ProgressData,
 } from "../core/supabase";
+import { isPro, FREE_TIER_LIMITS } from "../core/plan";
 import { trackAutoError } from "../errorTracking";
 
 interface PendingStudent {
@@ -44,6 +46,9 @@ interface PendingStudent {
 }
 
 export interface UseTeacherDataParams {
+  /** Current teacher.  Null during initial load.  Used by the approval
+   *  handler to enforce the Free-tier 30-students-per-class cap. */
+  user: AppUser | null;
   classes: ClassData[];
   setClasses: React.Dispatch<React.SetStateAction<ClassData[]>>;
   setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
@@ -59,7 +64,7 @@ export interface UseTeacherDataParams {
 
 export function useTeacherData(params: UseTeacherDataParams) {
   const {
-    classes, setClasses,
+    user, classes, setClasses,
     setStudentAssignments, setStudentProgress, setPendingStudents,
     setError, showToast, setRejectStudentModal,
   } = params;
@@ -168,6 +173,32 @@ export function useTeacherData(params: UseTeacherDataParams) {
   // status to 'approved' atomically.
   const handleApproveStudent = useCallback(async (studentId: string, displayName: string) => {
     try {
+      // Free-tier gate: max 30 approved students per class.  We only
+      // run this query for Free teachers — Pro/School/trialing skip
+      // the round-trip entirely.  Look up the pending student's class
+      // first, then count approved siblings.
+      if (!isPro(user)) {
+        const { data: pending } = await supabase
+          .from('student_profiles')
+          .select('class_code')
+          .eq('id', studentId)
+          .maybeSingle();
+        if (pending?.class_code) {
+          const { count } = await supabase
+            .from('student_profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('class_code', pending.class_code)
+            .in('status', ['active', 'approved']);
+          if ((count ?? 0) >= FREE_TIER_LIMITS.MAX_STUDENTS_PER_CLASS) {
+            showToast(
+              `Free plan is limited to ${FREE_TIER_LIMITS.MAX_STUDENTS_PER_CLASS} students per class. Upgrade to Pro for unlimited students.`,
+              "error",
+            );
+            return;
+          }
+        }
+      }
+
       const { error } = await supabase.rpc('approve_student', {
         p_profile_id: studentId,
       });
@@ -185,7 +216,7 @@ export function useTeacherData(params: UseTeacherDataParams) {
       console.error('Error approving student:', error);
       showToast("Could not approve student. Please try again.", "error");
     }
-  }, [loadPendingStudents, showToast]);
+  }, [user, loadPendingStudents, showToast]);
 
   // Reject: opens a confirmation modal first; the actual flip happens
   // in confirmRejectStudent below.

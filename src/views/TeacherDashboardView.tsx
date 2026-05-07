@@ -23,6 +23,8 @@ import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { SavedTask } from "../hooks/useSavedTasks";
+import { isTrialing, isPro, getTrialDaysLeft } from "../core/plan";
+import { Sparkles, Crown } from "lucide-react";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -253,6 +255,63 @@ export default function TeacherDashboardView({
               {t.heroSubtitle}
             </p>
           </div>
+
+          {/* Pro trial / upgrade banner.
+              - Trialing free teacher: amber gradient, "X days left" + Upgrade CTA.
+              - Free teacher post-trial: gray banner, "Trial ended" + Upgrade CTA.
+              - Paid Pro / School / no-plan-data teacher: nothing — no banner.
+              The CTA is a mailto until Stripe Payment Links are wired
+              (see docs/PRICING-MODEL.md Status section). */}
+          {(() => {
+            if (isPro(user)) return null;
+            const trialing = isTrialing(user);
+            const daysLeft = getTrialDaysLeft(user);
+            // user.role==='teacher' && !isPro && !isTrialing → expired free.
+            // For grandfathered teachers without trial_ends_at the UI also
+            // falls into the expired branch, which is the right outcome:
+            // their migration-set trial has either expired or they were
+            // never trialing in the first place.
+            if (trialing && daysLeft !== null) {
+              return (
+                <div className="mb-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <Sparkles size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm sm:text-base font-bold">
+                      {t.trialBannerActive(daysLeft)}
+                    </p>
+                  </div>
+                  <a
+                    href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
+                    className="px-4 py-2 rounded-xl bg-white text-orange-600 font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    <Crown size={16} />
+                    {t.trialBannerActiveCta}
+                  </a>
+                </div>
+              );
+            }
+            return (
+              <div className="mb-6 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
+                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Crown size={20} className="text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm sm:text-base font-bold">
+                    {t.trialBannerExpired}
+                  </p>
+                </div>
+                <a
+                  href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
+                >
+                  <Crown size={16} />
+                  {t.trialBannerExpiredCta}
+                </a>
+              </div>
+            );
+          })()}
 
           <TeacherQuickActions
             pendingStudentsCount={pendingStudentsCount}

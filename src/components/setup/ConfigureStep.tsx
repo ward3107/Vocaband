@@ -110,6 +110,10 @@ interface ConfigureStepProps {
   onAiLessonChange?: (lesson: GeneratedLesson | null) => void;
   /** Show toast notifications. */
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  /** Effective Pro plan flag.  When false, hides the "Generate AI
+   *  sentences" button entirely (the same UX as `aiEnabled=false`,
+   *  but driven by the teacher's plan rather than the server allowlist). */
+  isProUser?: boolean;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -136,6 +140,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   onGenerateLesson,
   onAiLessonChange,
   showToast,
+  isProUser = false,
 }) => {
   void _editingAssignment;
   const { language } = useLanguage();
@@ -742,8 +747,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             })}
           </div>
 
-          {/* AI Generate Button — only shown if teacher has AI access (env var + ai_allowlist) */}
-          {aiEnabled && selectedWords.length > 0 && (
+          {/* AI Generate Button — only shown if teacher has AI access
+              (server allowlist) AND is on a Pro / trialing plan.  Server
+              allowlist is the kill-switch; the plan check enforces the
+              public landing-page promise that AI sentence generation is a
+              Pro-tier feature.  Free teachers don't see the button.
+              Server-side plan enforcement is a follow-up. */}
+          {aiEnabled && isProUser && selectedWords.length > 0 && (
             <button
               type="button"
               onClick={generateAISentences}

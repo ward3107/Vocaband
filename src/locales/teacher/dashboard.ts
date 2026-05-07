@@ -21,6 +21,12 @@ export interface TeacherDashboardT {
   heroSubtitle: string;
   defaultFirstName: string;
 
+  // ─── Trial / plan banner ────────────────────────────────────────
+  trialBannerActive: (daysLeft: number) => string;
+  trialBannerActiveCta: string;
+  trialBannerExpired: string;
+  trialBannerExpiredCta: string;
+
   // ─── Theme picker trigger ───────────────────────────────────────
   changeThemeTitle: string;
 
@@ -85,6 +91,11 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     heroSubtitle: "Manage your classes, review student progress, and create new assignments in a few taps.",
     defaultFirstName: "Teacher",
 
+    trialBannerActive: (daysLeft) => `Pro trial: ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`,
+    trialBannerActiveCta: "Upgrade to Pro",
+    trialBannerExpired: "Your Pro trial has ended.",
+    trialBannerExpiredCta: "Upgrade to Pro",
+
     changeThemeTitle: "Change dashboard theme",
 
     quickActionsHeading: "Quick actions",
@@ -141,6 +152,11 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     heroSubtitle: "נהל את הכיתות שלך, עקוב אחרי התקדמות התלמידים וצור משימות חדשות בכמה הקשות.",
     defaultFirstName: "מורה",
 
+    trialBannerActive: (daysLeft) => `ניסיון Pro: נותרו ${daysLeft} ${daysLeft === 1 ? 'יום' : 'ימים'}`,
+    trialBannerActiveCta: "שדרגו ל־Pro",
+    trialBannerExpired: "תקופת הניסיון של Pro הסתיימה.",
+    trialBannerExpiredCta: "שדרגו ל־Pro",
+
     changeThemeTitle: "החלפת ערכת נושא",
 
     quickActionsHeading: "פעולות מהירות",
@@ -196,6 +212,11 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     heroLine: (firstName) => `${firstName}، فصلك جاهز.`,
     heroSubtitle: "أدر فصولك، وتابع تقدّم الطلاب، وأنشئ واجبات جديدة بنقرات قليلة.",
     defaultFirstName: "معلم",
+
+    trialBannerActive: (daysLeft) => `تجربة Pro: متبقي ${daysLeft} ${daysLeft === 1 ? 'يوم' : 'أيام'}`,
+    trialBannerActiveCta: "ترقية إلى Pro",
+    trialBannerExpired: "انتهت تجربة Pro الخاصة بك.",
+    trialBannerExpiredCta: "ترقية إلى Pro",
 
     changeThemeTitle: "تغيير سمة لوحة التحكم",
 

@@ -20,6 +20,7 @@ import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
 import { logAudit } from "../utils/audit";
+import { isPro, FREE_TIER_LIMITS } from "../core/plan";
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_IMPORT_WORDS = 500;
@@ -175,6 +176,18 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
 
+    // Free-tier gate: 1 class max.  Pro/School/trialing teachers are
+    // unlimited.  This is the client-side gate; server-side enforcement
+    // is a follow-up (RLS or RPC) per docs/PRICING-MODEL.md Status.
+    if (!isPro(user) && classes.length >= FREE_TIER_LIMITS.MAX_CLASSES) {
+      showToast(
+        `Free plan is limited to ${FREE_TIER_LIMITS.MAX_CLASSES} class. Upgrade to Pro for unlimited classes.`,
+        "error",
+      );
+      setShowCreateClassModal(false);
+      return;
+    }
+
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid confusion
     const randomValues = crypto.getRandomValues(new Uint32Array(8));
     const code = Array.from(randomValues)
@@ -211,6 +224,21 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
+
+    // Pro-only feature.  The button that triggers this should already be
+    // hidden for Free users (see ConfigureStep), but keep the gate here
+    // too — the file input is not always reachable through that single
+    // button (paste-from-clipboard, drag-drop, etc.) and we don't want
+    // a tech-savvy Free user to bypass via the DOM.
+    if (!isPro(user)) {
+      showToast(
+        "Camera scanning of word lists is a Pro feature. Upgrade to use it.",
+        "error",
+      );
+      // Reset the input so the same file can be retried after upgrade
+      e.target.value = "";
+      return;
+    }
 
     setIsOcrProcessing(true);
     setOcrProgress(5); // Starting compression

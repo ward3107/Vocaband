@@ -83,6 +83,9 @@ export interface CreateAssignmentWizardProps {
   setEditingAssignment: (assignment: AssignmentData | null) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onPlayWord?: (wordId: number, fallbackText?: string) => void;
+  /** Effective Pro plan flag — gates AI sentence generation in
+   *  ConfigureStep.  Forwarded straight through to SetupWizard. */
+  isProUser?: boolean;
   /** AI vocabulary generation — used by the AI Lesson Builder in SetupWizard. */
   onAiGenerateWords?: (params: {
     topic: string;
@@ -190,6 +193,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setEditingAssignment,
   showToast,
   onPlayWord,
+  isProUser = false,
   onAiGenerateWords,
   onGenerateLesson,
   onSaveTemplate,
@@ -418,6 +422,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       setEditingAssignment={setEditingAssignment}
       showToast={showToast}
       onPlayWord={onPlayWord}
+      isProUser={isProUser}
       onTranslateWord={async (word) => {
         // Route through our Gemini-backed /api/translate.  Also persist
         // the result to `word_corrections` for real Set-1/2/3 words so

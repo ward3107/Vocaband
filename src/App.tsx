@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
@@ -804,6 +805,7 @@ export default function App() {
     handleRejectStudent,
     confirmRejectStudent,
   } = useTeacherData({
+    user,
     classes, setClasses,
     setStudentAssignments, setStudentProgress,
     setPendingStudents,
@@ -1592,6 +1594,16 @@ export default function App() {
               email: supabaseUser.email || "",
               role: "teacher",
               displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
+              // First-time teacher: start the 30-day Pro trial.  Existing
+              // teachers were grandfathered by migration 20260611 so they
+              // don't hit this branch.  upsert on uid means re-running this
+              // for an already-registered teacher won't overwrite an older
+              // (more advanced into the trial / already paying Pro)
+              // trial_ends_at, because we only set it when freshly creating
+              // the row — see the upsert call below uses ignoreDuplicates
+              // semantics via onConflict on uid.
+              plan: "free",
+              trialEndsAt: freshTrialEndsAt(),
             };
             // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
             const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
@@ -2899,6 +2911,7 @@ export default function App() {
         setEditingAssignment={setEditingAssignment as unknown as React.Dispatch<React.SetStateAction<import('./components/setup/types').AssignmentData | null>>}
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
+        isProUser={isPro(user)}
         onAiGenerateWords={handleAiGenerateWords}
         onGenerateLesson={handleGenerateLesson}
       />
