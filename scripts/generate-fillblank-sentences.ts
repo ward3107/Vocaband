@@ -230,8 +230,8 @@ const run = async () => {
   lines.push('');
   lines.push('export const FILLBLANK_SENTENCES = new Map<number, string>([');
   for (const id of sortedIds) {
-    const sentence = cache[String(id)].replace(/"/g, '\\"');
-    lines.push(`  [${id}, "${sentence}"],`);
+    const sentenceLiteral = JSON.stringify(cache[String(id)]);
+    lines.push(`  [${id}, ${sentenceLiteral}],`);
   }
   lines.push(']);');
   lines.push('');
