@@ -42,10 +42,10 @@ export interface PublicViewsProps {
   user: AppUser | null;
   showDemo: boolean;
   setShowDemo: (v: boolean) => void;
-  setView: (v: View) => void;
   goBack: () => void;
   onPublicNavigate: (page: PublicNavigatePage) => void;
   onTeacherOAuth: () => void;
+  onStudentLogin: () => void;
   configErrorBanner: ReactNode;
   cookieBannerOverlay: ReactNode;
 }
@@ -56,10 +56,10 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     user,
     showDemo,
     setShowDemo,
-    setView,
     goBack,
     onPublicNavigate,
     onTeacherOAuth,
+    onStudentLogin,
     configErrorBanner,
     cookieBannerOverlay,
   } = props;
@@ -85,9 +85,9 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         cookieBannerOverlay={cookieBannerOverlay}
         showDemo={showDemo}
         setShowDemo={setShowDemo}
-        setView={setView}
         onNavigate={handleNavigate}
         onTeacherOAuth={onTeacherOAuth}
+        onStudentLogin={onStudentLogin}
         isAuthenticated={!!user}
       />
     );
@@ -98,7 +98,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <TermsPageWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -112,7 +112,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <PrivacyPageWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -126,7 +126,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <SecurityPageWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -154,7 +154,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <AccessibilityStatementWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -168,7 +168,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <FaqPageWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -182,7 +182,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <FreeResourcesPageWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -196,7 +196,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
       <>
         <StatusPageWrapper
           onNavigate={handleNavigate}
-          onGetStarted={() => setView("student-account-login")}
+          onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
@@ -214,18 +214,18 @@ function LandingPageWithScrollRestore({
   cookieBannerOverlay,
   showDemo,
   setShowDemo,
-  setView,
   onNavigate,
   onTeacherOAuth,
+  onStudentLogin,
   isAuthenticated,
 }: {
   configErrorBanner: ReactNode;
   cookieBannerOverlay: ReactNode;
   showDemo: boolean;
   setShowDemo: (v: boolean) => void;
-  setView: (v: View) => void;
   onNavigate: (page: PublicNavigatePage) => void;
   onTeacherOAuth: () => void;
+  onStudentLogin: () => void;
   isAuthenticated: boolean;
 }) {
   useEffect(() => {
@@ -249,7 +249,7 @@ function LandingPageWithScrollRestore({
       {configErrorBanner}
       <LandingPageWrapper
         onNavigate={onNavigate}
-        onGetStarted={() => setView("student-account-login")}
+        onGetStarted={onStudentLogin}
         onTeacherLogin={onTeacherOAuth}
         onTryDemo={() => setShowDemo(true)}
         isAuthenticated={isAuthenticated}

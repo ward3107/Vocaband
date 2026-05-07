@@ -165,6 +165,10 @@ export default function App() {
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
     if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    // Dedicated student URL — `vocaband.com/student` lands directly on
+    // the student login page, separate from the teacher-focused
+    // marketing landing.  Teachers can share this URL with their class.
+    if (window.location.pathname === "/student") return "student-account-login";
     // Classroom-poster QR code / teacher-shared invite link.  When the
     // URL carries a `?class=XXX` parameter and there's no already-active
     // session, skip the landing page and drop the visitor straight on
@@ -2199,7 +2203,6 @@ export default function App() {
     user,
     showDemo,
     setShowDemo,
-    setView,
     goBack,
     onPublicNavigate: handlePublicNavigate,
     onTeacherOAuth: () => {
@@ -2210,6 +2213,17 @@ export default function App() {
       // TeacherLoginCard so all teacher-auth concerns live in one
       // place outside App.tsx.  See src/components/TeacherLoginCard.tsx.
       setView('teacher-login');
+    },
+    onStudentLogin: () => {
+      // Push `/student` so the URL is bookmarkable / shareable —
+      // matches the initial-view detection that maps `/student` →
+      // student-account-login.
+      try {
+        if (window.location.pathname !== '/student') {
+          window.history.pushState({}, '', '/student');
+        }
+      } catch { /* ignore — fall back to view-only nav */ }
+      setView('student-account-login');
     },
     configErrorBanner,
     cookieBannerOverlay,

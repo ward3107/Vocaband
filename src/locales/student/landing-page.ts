@@ -36,7 +36,7 @@ export interface LandingPageT {
   heroTitleLine2: string;
   heroSubtitle: string;
   heroCtaStart: string;
-  heroCtaTeacher: string;
+  heroCtaStudent: string;
   heroPlayItWord: string;
   heroLearnItWord: string;
   heroTrustCurriculum: string;
@@ -276,8 +276,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTitleLine2: "Your Vocabulary",
     heroSubtitle:
       "The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
-    heroCtaStart: "Start Learning",
-    heroCtaTeacher: "Teacher Login",
+    heroCtaStart: "Get Started Free",
+    heroCtaStudent: "I'm a student → Log in",
     heroPlayItWord: "Play it",
     heroLearnItWord: "Learn it",
     heroTrustCurriculum: "MoE-Aligned Curriculum",
@@ -488,8 +488,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTitleLine2: "את אוצר המילים",
     heroSubtitle:
       "משחק אוצר מילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
-    heroCtaStart: "התחילו ללמוד",
-    heroCtaTeacher: "כניסת מורים",
+    heroCtaStart: "התחילו בחינם",
+    heroCtaStudent: "אני תלמיד ← כניסה",
     heroPlayItWord: "שחקו אותה",
     heroLearnItWord: "למדו אותה",
     heroTrustCurriculum: "מותאם לתוכנית משרד החינוך",
@@ -700,8 +700,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTitleLine2: "بمفرداتك",
     heroSubtitle:
       "لعبة المفردات التي يريد الطلاب حول العالم أن يلعبوها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
-    heroCtaStart: "ابدأ التعلم",
-    heroCtaTeacher: "دخول المعلمين",
+    heroCtaStart: "ابدأ مجانًا",
+    heroCtaStudent: "أنا طالب ← تسجيل الدخول",
     heroPlayItWord: "العبها",
     heroLearnItWord: "تعلمها",
     heroTrustCurriculum: "متوافق مع منهج وزارة التربية",
