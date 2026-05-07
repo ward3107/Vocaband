@@ -13,6 +13,7 @@ import type { Language } from "../../hooks/useLanguage";
 export interface TeacherLoginT {
   heading: string;
   signInWithGoogle: string;
+  signInWithMicrosoft: string;
   divider: string;
   emailLabel: string;
   emailPlaceholder: string;
@@ -48,6 +49,7 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
   en: {
     heading: "Sign in to Vocaband",
     signInWithGoogle: "Sign in with Google",
+    signInWithMicrosoft: "Sign in with Microsoft",
     divider: "or sign in with email",
     emailLabel: "Email",
     emailPlaceholder: "teacher@school.edu",
@@ -71,6 +73,7 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
   he: {
     heading: "התחברות ל-Vocaband",
     signInWithGoogle: "התחבר עם Google",
+    signInWithMicrosoft: "התחבר עם Microsoft",
     divider: "או התחבר באמצעות אימייל",
     emailLabel: "אימייל",
     emailPlaceholder: "teacher@school.edu",
@@ -94,6 +97,7 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
   ar: {
     heading: "تسجيل الدخول إلى Vocaband",
     signInWithGoogle: "تسجيل الدخول بحساب Google",
+    signInWithMicrosoft: "تسجيل الدخول بحساب Microsoft",
     divider: "أو سجل الدخول عبر البريد الإلكتروني",
     emailLabel: "البريد الإلكتروني",
     emailPlaceholder: "teacher@school.edu",

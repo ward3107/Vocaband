@@ -60,6 +60,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   const [rememberEmail, setRememberEmail] = useState(initialRemembered.remember);
   const [codeInput, setCodeInput] = useState("");
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [microsoftSubmitting, setMicrosoftSubmitting] = useState(false);
 
   // Cloudflare Turnstile token.  Only relevant when CAPTCHA protection
   // is enabled in Supabase Auth (dashboard → Bot and Abuse Protection).
@@ -93,6 +94,28 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
     } catch (err) {
       console.warn("[teacher-login] google OAuth failed:", err);
       setGoogleSubmitting(false);
+    }
+  };
+
+  const handleMicrosoft = async () => {
+    if (microsoftSubmitting) return;
+    setMicrosoftSubmitting(true);
+    try {
+      // Same intent stamp as Google -- the post-OAuth restoreSession
+      // handler matches it against teacher_allowlist.  Microsoft is
+      // just another verifier for the email; the role decision is
+      // unchanged.
+      writeIntendedRole("teacher");
+      await supabase.auth.signInWithOAuth({
+        provider: "azure",
+        options: {
+          redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+          scopes: "email openid profile",
+        },
+      });
+    } catch (err) {
+      console.warn("[teacher-login] microsoft OAuth failed:", err);
+      setMicrosoftSubmitting(false);
     }
   };
 
@@ -186,6 +209,29 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 </svg>
               )}
               <span>{tt.signInWithGoogle}</span>
+            </button>
+
+            {/* Microsoft button -- covers MoE @edu.gov.il / Microsoft 365
+                accounts plus any Outlook/Hotmail.  Same teacher_allowlist
+                gate applies after redirect; provider is just a verifier. */}
+            <button
+              type="button"
+              onClick={handleMicrosoft}
+              disabled={microsoftSubmitting}
+              className="w-full mt-2 inline-flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl bg-white border-2 border-stone-200 hover:border-stone-300 hover:bg-stone-50 text-stone-900 font-bold text-sm transition-all shadow-sm hover:shadow disabled:opacity-60"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+            >
+              {microsoftSubmitting ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 23 23" aria-hidden="true">
+                  <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+                  <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+                  <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+                  <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+                </svg>
+              )}
+              <span>{tt.signInWithMicrosoft}</span>
             </button>
 
             {/* Divider */}

@@ -427,6 +427,25 @@ export default function StudentAccountLoginView({
                           writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
                         }}
                       />
+                      {/* Microsoft sign-in -- covers MoE @edu.gov.il /
+                          Microsoft 365 accounts plus Outlook/Hotmail.
+                          Same class-code stash as Google, so the post-
+                          OAuth chain (OAuthCallback -> OAuthClassCode)
+                          treats them as a student in this class
+                          regardless of which provider verified them. */}
+                      <OAuthButton
+                        provider="azure"
+                        label={t.signInWithMicrosoft}
+                        onSuccess={() => {
+                          setIsOAuthCallback(true);
+                        }}
+                        onError={(errorMessage) => {
+                          setError(errorMessage);
+                        }}
+                        beforeSignIn={() => {
+                          writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
+                        }}
+                      />
                       {/* Email-OTP escape hatch — for students who'd
                           rather not use a personal Google account on a
                           shared classroom PC, or who don't have a
