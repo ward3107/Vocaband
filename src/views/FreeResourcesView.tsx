@@ -246,8 +246,54 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
     .info-field { display: flex; flex-direction: column; }
     .info-label { font-size: 9pt; font-weight: 700; color: #4b5563; margin-bottom: 1mm; }
     .info-input { border-bottom: 1.5px solid #d1d5db; height: 6mm; }
+
+    /* Native Print (Ctrl/Cmd+P) always renders ink-friendly output regardless
+     * of the Ink Saver toggle. The toggle controls the on-screen preview and
+     * html2pdf export; the printer should never get coloured backgrounds that
+     * print as muddy grey on a school photocopier. Teachers shouldn't have to
+     * remember to enable a setting to print cleanly. */
     @media print {
-      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { background: #ffffff !important; color: #000000 !important; }
+      *, *::before, *::after {
+        background: transparent !important;
+        background-image: none !important;
+        box-shadow: none !important;
+      }
+      /* Re-establish white element fills lost by the universal reset */
+      .practice-box, .practice-section, .answer-cell, .word-bank, .word-bank-item,
+      .word-list-section, .word-list-item, .bingo-card, .bingo-cell, .callers-section,
+      .callers-row, .sentence-item, .flashcard-front, .flashcard-back, .instructions,
+      .info-row, .ws-info-row, .ws-wordlist {
+        background: #ffffff !important;
+      }
+      /* Coloured accents collapse to black so headings + numbers stay legible */
+      .logo, .topic-title, .topic-icon, .practice-title, .practice-label,
+      .word-bank-title, .word-list-title, .ws-wordlist-title, .callers-title,
+      .bingo-card-title, .word-num, .word-list-num, .ws-word-num, .callers-num,
+      .answer-num, .sentence-num, .word-text, .translation-text, .word-bank-en,
+      .callers-en, .topic-icon {
+        color: #000000 !important;
+      }
+      .header-bar { border-bottom-color: #000000 !important; }
+      .topic-icon { filter: grayscale(1) !important; }
+      th { background: #ffffff !important; color: #000000 !important; border-bottom: 2pt solid #000000 !important; }
+      tr:nth-child(even) { background: #ffffff !important; }
+      td { border-bottom-color: #d1d5db !important; }
+      /* Bingo FREE cell stays distinguishable via a thick black border */
+      .bingo-cell.free { background: #ffffff !important; color: #000000 !important; border: 3pt solid #000000 !important; font-weight: 800; }
+      /* Word search needs the dark frame to read as a grid; cells are white */
+      .ws-grid { background: #000000 !important; padding: 1mm !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+      .ws-cell { background: #ffffff !important; color: #000000 !important; }
+      .ws-cell.found { background: #ffffff !important; color: #000000 !important; text-decoration: underline; font-weight: 800; }
+      /* Sentence-builder blank stays bold black instead of accent colour */
+      .sentence-text .blank { color: #000000 !important; }
+      /* QR codes and the caller's checkboxes are part of the worksheet
+       * structure — force them to print as ink even on "economy" mode */
+      svg, .callers-checkbox, .ws-grid {
+        print-color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+      }
+      .callers-checkbox { border: 1.5pt solid #000000 !important; }
     }
   `;
 };
