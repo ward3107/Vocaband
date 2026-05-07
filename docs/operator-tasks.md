@@ -32,19 +32,11 @@ Applied to production via MCP, in order:
 
 ---
 
-## ⚠️ PENDING — Investigate June migrations with name collisions
+## ✅ DONE 2026-05-07 — June collision investigation
 
-Three local June migrations have name overlap with already-applied earlier-dated migrations:
+Verified via DB introspection that the 3 local June files (`20260609_vocabagrut`, `20260610_school_inquiries`, `20260611_teacher_plan_and_trial`) were pure duplicates of earlier-applied versions (`20260506130131_vocabagrut`, `20260507104138_school_inquiries`, `20260507121937_teacher_plan_and_trial`). Deleted the duplicates from local repo (commit `f07b76d`).
 
-| Local file (pending) | Already applied as |
-|---|---|
-| `supabase/migrations/20260609_vocabagrut.sql` | `20260506130131_vocabagrut` |
-| `supabase/migrations/20260610_school_inquiries.sql` | `20260507104138_school_inquiries` |
-| `supabase/migrations/20260611_teacher_plan_and_trial.sql` | `20260507121937_teacher_plan_and_trial` |
-
-**Action:** diff each pair before applying. Likely either (a) iteration/update of the same logical migration — apply the new one, or (b) accidental duplicate — delete the new file. Don't blind-apply.
-
-## ⚠️ PENDING — Other June migrations (no collisions)
+## ⚠️ PENDING — June feature migrations (no collisions)
 
 Five June migrations are unambiguous and safe to apply once you're ready:
 
