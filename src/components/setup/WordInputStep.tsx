@@ -1846,8 +1846,8 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
                       disabled={selectedWords.some(w => w.id === mw.word.id)}
                       className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                         selectedWords.some(w => w.id === mw.word.id)
-                          ? 'bg-emerald-100 text-emerald-600 border border-emerald-300'
-                          : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-emerald-50 border border-[var(--vb-border)]'
+                          ? 'bg-indigo-100 text-indigo-600 border border-indigo-300'
+                          : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-indigo-50 border border-[var(--vb-border)]'
                       }`}
                       title={`${mw.word.hebrew || ''} ${mw.word.arabic || ''}`}
                     >

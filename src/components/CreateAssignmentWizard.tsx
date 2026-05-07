@@ -290,7 +290,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               initial={{ rotate: -180, opacity: 0 }}
               animate={{ rotate: 0, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="w-20 h-20 mx-auto bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30"
+              className="w-20 h-20 mx-auto bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 rounded-full flex items-center justify-center shadow-lg shadow-violet-500/30"
             >
               <Check size={40} className="text-white" />
             </motion.div>
