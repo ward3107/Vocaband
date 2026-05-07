@@ -6768,4 +6768,124 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     // how, what, when, where, who, why, whose, which
     ids: [2202, 4986, 5013, 5016, 5028, 5031, 6147, 9112],
   },
+
+  // ── 2026-05-07 — language-structure packs (grammar focus, not topic) ──────
+  {
+    name: "Phrasal Verbs 🔄",
+    icon: "🔄",
+    // get up, get on/off, give up, give in, go away, grow up, hand in,
+    // look after/for/up, pick up, put away/off/on, run away, set up,
+    // take off, throw away, turn on/off, wake up, find out, fall down
+    ids: [1625, 1829, 1830, 1845, 1861, 1864, 1882, 1982, 2026, 2702, 2705, 2713, 3395, 3584, 3587, 3588, 3820, 3957, 4397, 4578, 4744, 4745, 4898, 5483],
+  },
+  {
+    name: "Prepositions 📍",
+    icon: "📍",
+    // above, across, along, around, at, behind, below, beside, between,
+    // by, far, in front of, inside, into, near, next to, on, outside,
+    // through, under, in, out of, over
+    ids: [29, 49, 137, 236, 276, 430, 444, 452, 458, 612, 1564, 2318, 2374, 2401, 3020, 3061, 3163, 3247, 4573, 4784, 5617, 6834, 6839],
+  },
+  {
+    name: "Modal Verbs 🤔",
+    icon: "🤔",
+    // can, cannot, have to, might, must, should, could, ought to, shall, will
+    ids: [652, 664, 2078, 2900, 2995, 4004, 5379, 6831, 6974, 8024],
+  },
+  {
+    name: "Irregular Past Tense ⏪",
+    icon: "⏪",
+    // ate, bought, broke, brought, came, chose, did, drank, drove, fell,
+    // gave, got, knew, lost, met, paid, put, read, said, sang, slept,
+    // thought, told, took, found
+    ids: [286, 528, 579, 583, 640, 804, 1189, 1294, 1316, 1597, 1788, 1943, 2551, 2732, 2885, 3279, 3583, 3652, 3843, 3867, 4065, 4564, 4618, 4632, 8421],
+  },
+  {
+    name: "Comparatives & Superlatives 📊",
+    icon: "📊",
+    // best, better, bigger, cleaner, darker, easier, faster, harder,
+    // heavier, least, less, more, most, newer, older, slower, smaller,
+    // stronger, taller, the best, the worst, warmer, worse, worst,
+    // younger
+    ids: [454, 457, 466, 826, 1117, 1350, 1577, 2049, 2099, 2611, 2626, 2951, 2959, 3053, 3153, 4071, 4076, 4267, 4415, 4506, 4521, 4916, 5098, 5099, 5139],
+  },
+  {
+    name: "Conjunctions & Connectors 🔗",
+    icon: "🔗",
+    // also, although, and, because, both, but, either, however, if, or,
+    // otherwise, since, therefore, unless, when, while, neither, until,
+    // whether, despite, nor, so, then, yet, even though
+    ids: [143, 146, 173, 415, 522, 609, 1373, 2221, 2282, 3215, 3235, 4031, 4538, 4817, 5013, 5025, 5769, 6119, 6144, 6473, 6797, 6993, 7081, 7170, 7382],
+  },
+  {
+    name: "Common Idioms & Expressions 💭",
+    icon: "💭",
+    // a few, a little bit, at least, in fact, in trouble, never mind,
+    // no problem, not bad, once in a while, right away, right now,
+    // so far, all the best, by the way, in love, of course, at last,
+    // on purpose
+    ids: [9, 13, 280, 2316, 2335, 3048, 3079, 3094, 3186, 3770, 3771, 4100, 5188, 5292, 5625, 5780, 6231, 6814],
+  },
+  {
+    name: "Common Collocations 🧩",
+    icon: "🧩",
+    // catch a cold, do homework, do the dishes, get ready, have
+    // breakfast, have fun, have lunch, make a mistake, make friends,
+    // make money, take a break, take a shower, pay attention
+    ids: [706, 1263, 1264, 1834, 2069, 2070, 2072, 2798, 2801, 2805, 4382, 4383, 6853],
+  },
+  {
+    name: "Classroom Language 🏫",
+    icon: "🏫",
+    // answer, attention, behave, carefully, listen, loud, question,
+    // quietly, repeat, silence, raise, whisper
+    ids: [185, 297, 428, 682, 2671, 2741, 3600, 3609, 3713, 5960, 6910, 9114],
+  },
+  {
+    name: "Linking Words ✒️",
+    icon: "✒️",
+    // as a result, finally, for example, however, in fact, in the end,
+    // on the other hand, therefore, in addition, nevertheless,
+    // furthermore, in brief, in conclusion, moreover, on the contrary
+    ids: [252, 1622, 1698, 2221, 2316, 2328, 3176, 4538, 5622, 7630, 8432, 8513, 8515, 8684, 8734],
+  },
+  {
+    name: "Describing People 👥",
+    icon: "👥",
+    // brave, calm, clever, friendly, funny, generous, honest, kind,
+    // lazy, nice, patient, polite, proud, rude, serious, shy, silly,
+    // smart, strict, stupid
+    ids: [546, 638, 831, 1742, 1766, 1792, 2174, 2532, 2598, 3064, 3336, 3456, 3556, 3813, 3952, 4013, 4025, 4080, 4263, 4279],
+  },
+  {
+    name: "Technology & Internet 💻",
+    icon: "💻",
+    // click, computer, download, email, file, message, online, phone,
+    // screen, upload, laptop, mouse, software, website, password, cable
+    ids: [833, 946, 1288, 1387, 1614, 2882, 3193, 3376, 3911, 4834, 5674, 5753, 5983, 6135, 6851, 8153],
+  },
+  {
+    name: "Travel & Directions 🧭",
+    icon: "🧭",
+    // airport, east, highway, hotel, journey, left, map, north,
+    // passport, right, road, south, station, straight, suitcase,
+    // ticket, travel, trip, west, abroad, turn, route, destination
+    ids: [114, 1353, 2139, 2194, 2475, 2617, 2823, 3091, 3330, 3767, 3782, 4147, 4217, 4249, 4308, 4585, 4691, 4709, 4981, 5161, 6110, 6943, 7319],
+  },
+  {
+    name: "Environment & Sustainability 🌍",
+    icon: "🌍",
+    // climate, energy, environment, forest, garbage, nature, ocean,
+    // planet, pollution, protect, recycle, reduce, river, save, waste,
+    // global, trash, wildlife
+    ids: [837, 1410, 1431, 1706, 1781, 3017, 3123, 3417, 3459, 3553, 3674, 3678, 3780, 3875, 4928, 6622, 7963, 8023],
+  },
+  {
+    name: "Opinions & Arguments 💬",
+    icon: "💬",
+    // admit, agree, believe, claim, consider, convince, decide,
+    // disagree, opinion, prefer, suggest, think, debate, deny, insist,
+    // persuade, support, argue, protest, recommend
+    ids: [72, 102, 441, 815, 969, 989, 1135, 1227, 3206, 3499, 4303, 4549, 6458, 6467, 6699, 6862, 7043, 7177, 7728, 7753],
+  },
 ];
