@@ -98,7 +98,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subjects_taught';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
@@ -155,6 +155,14 @@ export interface AppUser {
    *  plan='free', the teacher has Pro features.  NULL for users who
    *  never had a trial (e.g. plan='pro' set manually). */
   trialEndsAt?: string | null;
+  /** Which Vocas the school's principal has assigned this teacher.
+   *  e.g. ['english'] for an English teacher, ['english','hebrew']
+   *  for a teacher who teaches both.  Drives the post-login Voca
+   *  Picker — teachers with length >= 2 see a picker before
+   *  landing in a dashboard.  Defaults to ['english'] for legacy
+   *  rows so existing teachers are unaffected.  Students ignore
+   *  this field (their Voca comes from the class they joined). */
+  subjectsTaught?: string[];
 }
 
 export interface ClassData {
@@ -223,6 +231,7 @@ export function mapUser(row: any): AppUser {
     onboardedAt: row.onboarded_at ?? null,
     plan: row.plan ?? 'free',
     trialEndsAt: row.trial_ends_at ?? null,
+    subjectsTaught: row.subjects_taught ?? ['english'],
   };
 }
 
@@ -246,6 +255,7 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.teacherDashboardTheme !== undefined && { teacher_dashboard_theme: u.teacherDashboardTheme }),
     ...(u.plan !== undefined && { plan: u.plan }),
     ...(u.trialEndsAt !== undefined && { trial_ends_at: u.trialEndsAt }),
+    ...(u.subjectsTaught !== undefined && { subjects_taught: u.subjectsTaught }),
   };
 }
 

@@ -98,18 +98,32 @@ const PublicNav: React.FC<PublicNavProps> = ({
   };
 
   // Reused for desktop + mobile so copy + accessibility live in one place.
+  //
+  // ORDER MATTERS — anchors are listed in the same order the matching
+  // sections appear on the landing page, so a left-to-right scan of the
+  // nav reads the same as a top-to-bottom scroll.  Adding a new section
+  // means adding it BOTH to the page AND to this array in the right
+  // slot; the rule of thumb is "if you can't see it on the page in
+  // that order, it doesn't belong in this slot."
+  //
   // "For Schools" is an action (opens inquiry modal), not an anchor or
   // page — schools have no public price page per docs/PRICING-MODEL.md.
+  // It and the page links sit AFTER the section anchors so the section
+  // group reads as a contiguous in-page table-of-contents.
   const navItems: Array<
     | { kind: "anchor"; id: string; label: string }
     | { kind: "page"; page: NavPage; label: string }
     | { kind: "action"; id: string; label: string; onClick: () => void; icon?: React.ReactNode }
   > = [
-    { kind: "anchor", id: "features", label: t.navFeatures },
-    { kind: "anchor", id: "pricing", label: t.navPricing },
-    { kind: "action", id: "schools", label: t.navForSchools, onClick: openSchoolModal, icon: <GraduationCap size={14} /> },
-    { kind: "page", page: "resources", label: t.navResources },
-    { kind: "page", page: "faq", label: t.navFaq },
+    { kind: "anchor", id: "students",   label: t.navStudents },
+    { kind: "anchor", id: "ai",         label: t.navAi },
+    { kind: "anchor", id: "teachers",   label: t.navTeachers },
+    { kind: "anchor", id: "curriculum", label: t.navCurriculum },
+    { kind: "anchor", id: "vocas",      label: t.navVocas },
+    { kind: "anchor", id: "pricing",    label: t.navPricing },
+    { kind: "action", id: "schools",    label: t.navForSchools, onClick: openSchoolModal, icon: <GraduationCap size={14} /> },
+    { kind: "page",   page: "resources", label: t.navResources },
+    { kind: "page",   page: "faq",       label: t.navFaq },
   ];
 
   return (

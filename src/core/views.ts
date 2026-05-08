@@ -37,7 +37,14 @@ export type View =
   | "quick-play-student"
   | "class-show"
   | "worksheet"
-  | "vocabagrut";
+  | "vocabagrut"
+  // VocaHebrew — shown when an entitled teacher (subjects_taught
+  // contains 'hebrew') picks Hebrew on the Voca Picker post-login.
+  // The picker itself only renders when subjects_taught.length >= 2;
+  // teachers with a single Voca route straight to teacher-dashboard.
+  | "voca-picker"
+  | "vocahebrew-dashboard"
+  | "vocahebrew-niqqud";
 
 export type ShopTab =
   // "hub" = the Arcade Lobby landing screen (portal tiles + hero +

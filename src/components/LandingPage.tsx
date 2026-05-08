@@ -402,7 +402,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Features Section - 3D Bento Grid */}
-        <section id="features" className="py-12 md:py-20 px-4 md:px-6 relative">
+        <section id="students" className="py-12 md:py-20 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -814,7 +814,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* AI Section - Does All the Heavy Lifting */}
-        <section className="py-12 md:py-20 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
+        <section id="ai" className="py-12 md:py-20 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -940,7 +940,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Teacher Features Section - Why Teachers Love Vocaband */}
-        <section className="py-12 md:py-20 px-4 md:px-6 relative">
+        <section id="teachers" className="py-12 md:py-20 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1311,7 +1311,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Interactive Journey Section - Scroll Progress Path */}
-        <section className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden">
+        <section id="curriculum" className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1470,7 +1470,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             misrepresent shipped features.  No CTA to buy — just a
             "stay in the loop" mailto link for early-access leads.
             ═══════════════════════════════════════════════════════════ */}
-        <section className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden">
+        <section id="vocas" className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1669,7 +1669,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           push the eye to Pro.
           ═══════════════════════════════════════════════════════════
         */}
-        <section id="pricing" className="py-12 md:py-24 px-4 md:px-6 relative">
+        <section id="pricing" className="py-12 md:py-24 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}

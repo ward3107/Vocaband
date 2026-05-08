@@ -61,6 +61,9 @@ const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
+const VocaPickerView = lazy(() => import("./views/VocaPickerView"));
+const VocaHebrewDashboardView = lazy(() => import("./views/VocaHebrewDashboardView"));
+const NiqqudModeView = lazy(() => import("./views/NiqqudModeView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
@@ -126,8 +129,24 @@ const PUBLIC_VIEWS = new Set<View>([
 ]);
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
-  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment"
+  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
+  "voca-picker", "vocahebrew-dashboard",
 ]);
+
+// VocaHebrew — entitlement helpers.  A teacher's subjects_taught array
+// drives whether they see the Voca Picker post-login and which Vocas
+// the picker offers.  Defaults to ['english'] so legacy rows continue
+// working.
+type VocaId = "english" | "hebrew";
+const getEntitledVocas = (u: AppUser | null): VocaId[] => {
+  if (!u || u.role !== "teacher") return [];
+  const raw = (u.subjectsTaught ?? ["english"]) as string[];
+  return raw.filter((s): s is VocaId => s === "english" || s === "hebrew");
+};
+// Where activeVoca lives across page refreshes within the same tab.
+// Session-scoped (not localStorage) so closing the tab clears it and
+// the picker re-shows on next login — matches the spec.
+const ACTIVE_VOCA_KEY = "vocaband:activeVoca";
 const STUDENT_VIEWS = new Set<View>([
   "student-dashboard", "game", "live-challenge",
   "shop", "global-leaderboard", "privacy-settings",
@@ -184,6 +203,45 @@ export default function App() {
     } catch { /* URLSearchParams unavailable — fall through */ }
     return "public-landing";
   });
+  // Which Voca the teacher is currently working in.  null until they
+  // pick (or are auto-picked into) one.  Persisted across same-tab
+  // refreshes via sessionStorage so we don't pop the picker again.
+  const [activeVoca, setActiveVoca] = useState<VocaId | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(ACTIVE_VOCA_KEY);
+      return raw === "english" || raw === "hebrew" ? raw : null;
+    } catch { return null; }
+  });
+  useEffect(() => {
+    try {
+      if (activeVoca) sessionStorage.setItem(ACTIVE_VOCA_KEY, activeVoca);
+      else sessionStorage.removeItem(ACTIVE_VOCA_KEY);
+    } catch { /* sessionStorage may be blocked; non-fatal */ }
+  }, [activeVoca]);
+
+  // VocaHebrew routing — when an entitled teacher (subjects_taught
+  // length >= 2) lands on teacher-dashboard without an activeVoca
+  // chosen yet, redirect to the picker.  Single-Voca teachers get
+  // their activeVoca auto-set so the rest of the app (which checks
+  // activeVoca for content gating) never sees a null on a real
+  // teacher session.
+  useEffect(() => {
+    if (!user || user.role !== "teacher") return;
+    const entitled = getEntitledVocas(user);
+    if (entitled.length === 0) return; // shouldn't happen; defaults to ['english']
+    if (entitled.length === 1) {
+      if (activeVoca !== entitled[0]) setActiveVoca(entitled[0]);
+      return;
+    }
+    // 2+ Vocas: must pick.  If we're sitting on teacher-dashboard
+    // without a pick, send to picker.  Don't redirect mid-flow
+    // (create-assignment, classroom, etc.) — only the dashboard
+    // entry-point triggers this.
+    if (!activeVoca && view === "teacher-dashboard") {
+      setView("voca-picker");
+    }
+  }, [user, activeVoca, view]);
+
   const previousViewRef = useRef<string>("public-landing");
   // Track current view for auth state changes — using a ref so restoreSession
   // can read the latest view even when called asynchronously from auth events.
@@ -2559,9 +2617,72 @@ export default function App() {
       </LazyWrapper>
     );
   }
+  // VocaHebrew — picker shown when a teacher has 2+ Vocas and hasn't
+  // picked one this session.  Picking writes activeVoca and routes
+  // into the right dashboard.  Teachers with a single Voca never see
+  // this view (the routing effect auto-sets activeVoca for them).
+  if (user?.role === "teacher" && view === "voca-picker") {
+    return (
+      <LazyWrapper loadingMessage="Loading...">
+        <VocaPickerView
+          user={user}
+          onPickVoca={(voca) => {
+            setActiveVoca(voca);
+            setView(voca === "hebrew" ? "vocahebrew-dashboard" : "teacher-dashboard");
+          }}
+        />
+      </LazyWrapper>
+    );
+  }
+  // VocaHebrew dashboard — placeholder this session; real Hebrew
+  // content + Niqqud Mode land in the next build.  Switch-Voca
+  // returns the teacher to the picker so they can flip back to
+  // English without logging out.
+  if (user?.role === "teacher" && view === "vocahebrew-dashboard") {
+    const showSwitcher = getEntitledVocas(user).length >= 2;
+    return (
+      <LazyWrapper loadingMessage="Loading VocaHebrew...">
+        <VocaHebrewDashboardView
+          user={user}
+          showSwitcher={showSwitcher}
+          onSwitchVoca={() => {
+            setActiveVoca(null);
+            setView("voca-picker");
+          }}
+          onLaunchNiqqudMode={() => setView("vocahebrew-niqqud")}
+        />
+      </LazyWrapper>
+    );
+  }
+  // Niqqud Mode — the first VocaHebrew native-track game.
+  if (user?.role === "teacher" && view === "vocahebrew-niqqud") {
+    return (
+      <LazyWrapper loadingMessage="Loading Niqqud Mode...">
+        <NiqqudModeView onExit={() => setView("vocahebrew-dashboard")} />
+      </LazyWrapper>
+    );
+  }
   if (user?.role === "teacher" && view === "teacher-dashboard") {
+    const showVocaSwitcher = getEntitledVocas(user).length >= 2;
     return (
       <LazyWrapper loadingMessage="Loading dashboard...">
+        {showVocaSwitcher && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveVoca(null);
+              setView("voca-picker");
+            }}
+            style={{
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent",
+            }}
+            className="fixed top-3 right-3 z-50 px-3 py-1.5 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 active:scale-95 transition"
+            title="Switch to another Voca"
+          >
+            🇬🇧 EN · Switch
+          </button>
+        )}
         <TeacherDashboardView
           user={user}
           setUser={setUser}
