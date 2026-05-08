@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2 } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
+import ShareClassLinkModal from "./ShareClassLinkModal";
 
 interface Assignment {
   id: string;
@@ -84,6 +85,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // Avatar picker popover state
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const avatarPickerRef = useRef<HTMLDivElement>(null);
+  // Share-class-link modal: digital share with on-screen QR + copyable
+  // /student?class= URL.  Distinct from the printable poster (which
+  // opens /poster.html) because teachers usually want to drop a link
+  // into a class WhatsApp / email rather than print a sheet.
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   // Ref on the assignments list so we can scroll it into view when the
   // teacher expands it (otherwise it often opens below the fold and the
   // click looks like it did nothing).
@@ -186,6 +192,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   };
 
   return (
+    <>
     <div
       style={{
         backgroundColor: 'var(--vb-surface)',
@@ -391,6 +398,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
               >
                 <button
+                  onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
+                  type="button"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                >
+                  <QrCode size={14} className="text-indigo-600" />
+                  {t.shareClassLink}
+                </button>
+                <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
                   type="button"
                   style={{ color: 'var(--vb-text-secondary)' }}
@@ -590,6 +606,14 @@ const ClassCard: React.FC<ClassCardProps> = ({
         </div>
       )}
     </div>
+    <ShareClassLinkModal
+      open={shareModalOpen}
+      onClose={() => setShareModalOpen(false)}
+      className={name}
+      code={code}
+      onWhatsApp={onWhatsApp}
+    />
+    </>
   );
 };
 

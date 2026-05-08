@@ -187,19 +187,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <span className="relative z-10">{t.heroCtaStart}</span>
                   </motion.button>
 
-                  {!isAuthenticated && (
-                    <motion.button
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5, delay: 0.5 }}
-                      onClick={onGetStarted}
-                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      type="button"
-                      className="text-sm md:text-base font-semibold text-white/70 hover:text-white underline decoration-white/40 hover:decoration-white underline-offset-4 transition-colors"
-                    >
-                      {t.heroCtaStudent}
-                    </motion.button>
-                  )}
+                  {/* Student-login CTA intentionally removed from the
+                      landing page.  Students no longer arrive here —
+                      they reach the dedicated /student join screen
+                      via the teacher's class link or QR code (built
+                      from ClassCard → "Share class link & QR").  The
+                      marketing landing is teacher-facing only. */}
                 </div>
 
                 {/* Hero trust strip — factual claims only.
@@ -1895,15 +1888,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.footerProduct}
                 </h4>
                 <ul className="space-y-2.5">
-                  <li>
-                    <button
-                      onClick={onGetStarted}
-                      type="button"
-                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      {t.footerStartLearning}
-                    </button>
-                  </li>
+                  {/* "Start Learning" footer link removed — it routed
+                      students to the join screen, but students no
+                      longer arrive on the marketing landing.  They
+                      reach /student via the teacher's class link. */}
                   <li>
                     <button
                       onClick={onTryDemo}
