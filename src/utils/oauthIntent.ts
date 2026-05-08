@@ -78,34 +78,54 @@ export interface IntendedRole {
   fresh: boolean;
 }
 
-/** Read the intended role flag + freshness.  Returns null if the
- *  flag is absent or storage is unavailable. */
+/** Read the intended role flag + freshness.  Prefers sessionStorage,
+ *  falls back to localStorage if sessionStorage was wiped during the
+ *  Google OAuth redirect (observed on some mobile browsers).  Returns
+ *  null if the flag is absent in both stores. */
 export function readIntendedRole(): IntendedRole | null {
+  let role: string | null = null;
+  let atRaw: string | null = null;
   try {
-    const role = sessionStorage.getItem(ROLE_KEY);
-    if (!role) return null;
-    const at = Number(sessionStorage.getItem(ROLE_AT_KEY) || 0);
-    const fresh = at > 0 && (Date.now() - at) < ROLE_FRESHNESS_MS;
-    return { role, fresh };
-  } catch {
-    return null;
+    role = sessionStorage.getItem(ROLE_KEY);
+    atRaw = sessionStorage.getItem(ROLE_AT_KEY);
+  } catch { /* sessionStorage unavailable */ }
+  if (!role) {
+    try {
+      role = localStorage.getItem(ROLE_KEY);
+      atRaw = localStorage.getItem(ROLE_AT_KEY);
+    } catch { /* localStorage unavailable */ }
   }
+  if (!role) return null;
+  const at = Number(atRaw || 0);
+  const fresh = at > 0 && (Date.now() - at) < ROLE_FRESHNESS_MS;
+  return { role, fresh };
 }
 
 /** Stash the intended role (only the teacher button uses this today)
- *  along with a timestamp used for freshness gating. */
+ *  along with a timestamp used for freshness gating.  Writes to both
+ *  storages so the flag survives mobile OAuth redirects that wipe
+ *  sessionStorage. */
 export function writeIntendedRole(role: string): void {
+  const at = String(Date.now());
   try {
     sessionStorage.setItem(ROLE_KEY, role);
-    sessionStorage.setItem(ROLE_AT_KEY, String(Date.now()));
-  } catch { /* storage unavailable — absent flag falls back to legacy behavior */ }
+    sessionStorage.setItem(ROLE_AT_KEY, at);
+  } catch {}
+  try {
+    localStorage.setItem(ROLE_KEY, role);
+    localStorage.setItem(ROLE_AT_KEY, at);
+  } catch {}
 }
 
-/** Clear the intended role from sessionStorage.  Call after the
- *  guard has used it so the next login starts fresh. */
+/** Clear the intended role from both storages.  Call after the guard
+ *  has used it so the next login starts fresh. */
 export function clearIntendedRole(): void {
   try {
     sessionStorage.removeItem(ROLE_KEY);
     sessionStorage.removeItem(ROLE_AT_KEY);
+  } catch {}
+  try {
+    localStorage.removeItem(ROLE_KEY);
+    localStorage.removeItem(ROLE_AT_KEY);
   } catch {}
 }
