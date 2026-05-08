@@ -215,6 +215,16 @@ ANON_KEY="sb_publishable_..." \
 ./scripts/security-pen-test.sh
 ```
 
+Windows operators can run the PowerShell port instead — same checks,
+native to PowerShell 5.1+:
+
+```powershell
+$env:SUPABASE_URL = "https://auth.vocaband.com"
+$env:ANON_KEY     = "sb_publishable_..."
+$env:APP_URL      = "https://www.vocaband.com"   # optional
+./scripts/security-pen-test.ps1
+```
+
 Expected:
 
 ```
