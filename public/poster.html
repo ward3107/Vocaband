@@ -213,7 +213,11 @@
       var params = new URLSearchParams(window.location.search);
       var ref = params.get('ref');
       var classCode = params.get('class');
-      var url = 'https://www.vocaband.com/';
+      // Deep-link straight to /student so scanning the poster lands
+      // students on the dedicated join screen (no marketing detour,
+      // no public-landing CTA confusion). The student-account-login
+      // view auto-fills the class-code field from ?class=.
+      var url = 'https://www.vocaband.com/student';
       var qs = [];
       if (classCode) qs.push('class=' + encodeURIComponent(classCode));
       if (ref)       qs.push('ref=' + encodeURIComponent(ref));
