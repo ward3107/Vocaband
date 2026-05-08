@@ -21,7 +21,15 @@ export interface LandingPageT {
   navTryDemo: string;
   navTryDemoShort: string;
   navCefrBadge: string;
-  navFeatures: string;
+  // Public-nav anchor labels — one per major landing-page section,
+  // in the order they appear on the page.  Adding a new section means
+  // adding an id to the section, a key here, translations in all 3
+  // languages, and an entry in PublicNav navItems.
+  navStudents: string;
+  navAi: string;
+  navTeachers: string;
+  navCurriculum: string;
+  navVocas: string;
   navPricing: string;
   navForSchools: string;
   navResources: string;
@@ -259,7 +267,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navTryDemo: "PLAY NOW",
     navTryDemoShort: "PLAY",
     navCefrBadge: "CEFR A1–B2",
-    navFeatures: "Features",
+    navStudents: "Students",
+    navAi: "AI",
+    navTeachers: "Teachers",
+    navCurriculum: "Curriculum",
+    navVocas: "Vocas",
     navPricing: "Pricing",
     navForSchools: "For Schools",
     navResources: "Resources",
@@ -468,7 +480,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navTryDemo: "שחקו עכשיו",
     navTryDemoShort: "שחקו",
     navCefrBadge: "CEFR A1–B2",
-    navFeatures: "תכונות",
+    navStudents: "תלמידים",
+    navAi: "בינה מלאכותית",
+    navTeachers: "מורים",
+    navCurriculum: "תכנית לימודים",
+    navVocas: "ווקות",
     navPricing: "מחירים",
     navForSchools: "לבתי ספר",
     navResources: "משאבים",
@@ -677,7 +693,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navTryDemo: "العب الآن",
     navTryDemoShort: "العب",
     navCefrBadge: "CEFR A1–B2",
-    navFeatures: "الميزات",
+    navStudents: "الطلاب",
+    navAi: "الذكاء الاصطناعي",
+    navTeachers: "المعلمون",
+    navCurriculum: "المنهاج",
+    navVocas: "Vocas",
     navPricing: "الأسعار",
     navForSchools: "للمدارس",
     navResources: "المصادر",
