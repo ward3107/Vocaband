@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vocaband — for school leaders</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+      margin: 0; padding: 0;
+      background: #0f172a;
+      color: #0f172a;
+    }
+
+    /* ===== Toolbar (screen only) ===== */
+    .toolbar {
+      position: sticky; top: 0; z-index: 10;
+      background: white; border-bottom: 1px solid #e5e7eb;
+      padding: 0.75rem 1rem;
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    }
+    .toolbar h1 { font-size: 1rem; margin: 0 0.5rem 0 0; color: #4f46e5; font-weight: 800; }
+    .toolbar .help { color: #6b7280; font-size: 0.875rem; flex: 1; min-width: 200px; }
+    .toolbar button {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed, #ec4899);
+      color: white; border: none;
+      padding: 0.65rem 1.25rem; border-radius: 0.6rem;
+      font-weight: 800; cursor: pointer; font-size: 0.95rem;
+      box-shadow: 0 6px 18px -6px rgba(124, 58, 237, 0.7);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .toolbar button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(124, 58, 237, 0.8); }
+
+    /* ===== Poster (A4 portrait) ===== */
+    .poster {
+      width: 210mm;
+      height: 297mm;
+      margin: 1.5rem auto;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 30px 80px -30px rgba(15, 23, 42, 0.6);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Hero band ===== */
+    .hero {
+      position: relative;
+      padding: 14mm 14mm 12mm;
+      background: linear-gradient(135deg, #4338ca 0%, #7c3aed 45%, #db2777 100%);
+      color: white;
+      overflow: hidden;
+    }
+    .hero::before, .hero::after {
+      content: ''; position: absolute; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.10); pointer-events: none;
+    }
+    .hero::before { width: 130mm; height: 130mm; top: -55mm; right: -45mm; }
+    .hero::after  { width: 70mm;  height: 70mm;  bottom: -28mm; left: -22mm; }
+    .hero > * { position: relative; z-index: 1; }
+
+    .brand-row {
+      display: flex; align-items: center; gap: 5mm;
+      margin-bottom: 7mm;
+    }
+    .brand-logo {
+      width: 16mm; height: 16mm;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.25));
+    }
+    .brand-word {
+      font-size: 18pt; font-weight: 900; letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .brand-pill {
+      margin-left: auto;
+      font-size: 8.5pt; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2mm 4mm; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .hero h1 {
+      font-size: 56pt; line-height: 0.92;
+      margin: 0 0 5mm; font-weight: 900; letter-spacing: -0.035em;
+    }
+    .hero h1 .accent {
+      background: linear-gradient(90deg, #fde047, #fb923c, #f472b6);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+    }
+    .hero .lede {
+      font-size: 14pt; line-height: 1.35; font-weight: 600;
+      max-width: 165mm; opacity: 0.95;
+      margin: 0 0 8mm;
+    }
+
+    /* ===== Stat strip ===== */
+    .stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 3mm;
+    }
+    .stat {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4mm;
+      padding: 4mm 3mm;
+      text-align: center;
+      backdrop-filter: blur(2px);
+    }
+    .stat .num {
+      display: block;
+      font-size: 22pt; font-weight: 900; line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .stat .lbl {
+      display: block; margin-top: 1.5mm;
+      font-size: 8.5pt; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      opacity: 0.92;
+    }
+
+    /* ===== Body section ===== */
+    .body {
+      flex: 1;
+      padding: 10mm 14mm 6mm;
+      display: flex; flex-direction: column;
+      gap: 7mm;
+    }
+
+    .section-title {
+      font-size: 10pt; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.18em;
+      color: #6366f1;
+      margin: 0 0 3mm;
+    }
+
+    /* Benefit cards 2x2 */
+    .benefits {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4mm;
+    }
+    .benefit {
+      border-radius: 4mm; padding: 5mm;
+      color: white;
+      box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.4);
+      display: flex; flex-direction: column;
+      min-height: 38mm;
+    }
+    .benefit .icon {
+      width: 11mm; height: 11mm; border-radius: 3mm;
+      background: rgba(255, 255, 255, 0.22);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17pt;
+      margin-bottom: 3mm;
+    }
+    .benefit h3 { margin: 0 0 1.5mm; font-size: 13pt; font-weight: 800; line-height: 1.15; }
+    .benefit p  { margin: 0; font-size: 9.5pt; line-height: 1.4; opacity: 0.95; font-weight: 500; }
+
+    .b1 { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+    .b2 { background: linear-gradient(135deg, #db2777, #f43f5e); }
+    .b3 { background: linear-gradient(135deg, #059669, #14b8a6); }
+    .b4 { background: linear-gradient(135deg, #f59e0b, #f97316); }
+
+    /* Outcomes row */
+    .outcomes {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 4mm;
+    }
+    .outcome {
+      border: 1.2px solid #e5e7eb;
+      border-radius: 4mm;
+      padding: 4mm;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+    }
+    .outcome .big {
+      font-size: 18pt; font-weight: 900; line-height: 1;
+      background: linear-gradient(135deg, #4f46e5, #db2777);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+      letter-spacing: -0.02em;
+    }
+    .outcome .txt {
+      margin-top: 2mm; font-size: 9pt; font-weight: 600;
+      color: #334155; line-height: 1.35;
+    }
+
+    /* ===== CTA / QR block ===== */
+    .cta {
+      margin: 0 14mm 8mm;
+      border-radius: 5mm;
+      padding: 6mm 6mm 6mm 7mm;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #4c1d95 100%);
+      color: white;
+      display: flex; align-items: center; gap: 6mm;
+      box-shadow: 0 14px 30px -16px rgba(15, 23, 42, 0.5);
+    }
+    .cta .cta-text { flex: 1; min-width: 0; }
+    .cta h2 { margin: 0 0 2mm; font-size: 17pt; font-weight: 900; letter-spacing: -0.02em; }
+    .cta p  { margin: 0 0 3mm; font-size: 10pt; line-height: 1.4; opacity: 0.92; }
+    .cta .url {
+      display: inline-block;
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 11pt; font-weight: 800;
+      padding: 2mm 4mm; border-radius: 2mm;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .cta .qr-wrap {
+      width: 42mm; height: 42mm;
+      background: white;
+      border-radius: 3mm;
+      padding: 2.5mm;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.4);
+    }
+    .cta .qr-wrap > div, .cta .qr-wrap svg {
+      width: 100%; height: 100%; display: block;
+    }
+    .cta .qr-caption {
+      margin-top: 2mm; text-align: center;
+      font-size: 7.5pt; font-weight: 700;
+      color: #1f2937;
+    }
+    .qr-stack { display: flex; flex-direction: column; align-items: center; }
+
+    /* ===== Footer ===== */
+    .footer {
+      padding: 0 14mm 8mm;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 8pt; color: #64748b; font-weight: 600;
+    }
+    .footer .badges { display: flex; gap: 2mm; flex-wrap: wrap; }
+    .footer .badge {
+      padding: 1.5mm 3mm; border-radius: 999px;
+      background: #f1f5f9; color: #475569;
+      font-size: 7.5pt; font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    /* ===== Screen scaling ===== */
+    @media only screen and (max-width: 240mm) { .poster { transform-origin: top center; transform: scale(0.85); margin-top: 0.75rem; } }
+    @media only screen and (max-width: 200mm) { .poster { transform: scale(0.7); } }
+    @media only screen and (max-width: 160mm) { .poster { transform: scale(0.55); } }
+
+    /* ===== Print ===== */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      html, body { background: white; margin: 0; padding: 0; }
+      .toolbar { display: none !important; }
+      .poster {
+        margin: 0; box-shadow: none;
+        page-break-inside: avoid; transform: none !important;
+      }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <h1>📋 School-leader poster</h1>
+    <span class="help">For principals, district managers and admins. Click Print → Save as PDF, or print to A4.</span>
+    <button onclick="window.print()" type="button">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="poster">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="brand-row">
+        <img src="/icon.svg" alt="" class="brand-logo" />
+        <div class="brand-word">Vocaband</div>
+        <div class="brand-pill">For schools</div>
+      </div>
+
+      <h1>English vocabulary,<br><span class="accent">finally addictive.</span></h1>
+      <p class="lede">A gamified learning platform built for Israeli classrooms — aligned to Ministry of Education Sets 1, 2 &amp; 3, with full Hebrew and Arabic support. Teachers create a class in 30 seconds. Students compete, earn XP, and actually keep playing after the bell.</p>
+
+      <div class="stats">
+        <div class="stat"><span class="num">10</span><span class="lbl">Game modes</span></div>
+        <div class="stat"><span class="num">6,482</span><span class="lbl">Curriculum words</span></div>
+        <div class="stat"><span class="num">3</span><span class="lbl">Languages</span></div>
+        <div class="stat"><span class="num">Free</span><span class="lbl">For teachers</span></div>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body">
+
+      <div>
+        <div class="section-title">Why schools choose Vocaband</div>
+        <div class="benefits">
+          <div class="benefit b1">
+            <div class="icon">📚</div>
+            <h3>Aligned to MoE Sets 1, 2 &amp; 3</h3>
+            <p>Pre-loaded vocabulary that matches the official Israeli curriculum from grades 4 to 9 — or upload your own custom word lists in seconds.</p>
+          </div>
+          <div class="benefit b2">
+            <div class="icon">🏆</div>
+            <h3>Live classroom leaderboards</h3>
+            <p>Run a head-to-head challenge on the projector. Real-time podiums, instant feedback, and analytics that show exactly who's mastered what.</p>
+          </div>
+          <div class="benefit b3">
+            <div class="icon">🌍</div>
+            <h3>Hebrew &amp; Arabic, end-to-end</h3>
+            <p>Every word translated. Full RTL UI. Audio pronunciation for every term. Inclusive for every student in the room — no extra setup.</p>
+          </div>
+          <div class="benefit b4">
+            <div class="icon">🔒</div>
+            <h3>Privacy-first, no ads, no email needed</h3>
+            <p>Students join with a class code. No personal data exposed, no advertising, GDPR-aware infrastructure hosted in EU. Built for schools.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">What teachers get</div>
+        <div class="outcomes">
+          <div class="outcome">
+            <div class="big">10 modes</div>
+            <div class="txt">Matching, spelling, scramble, listening, sentence builder, idioms &amp; more — variety that keeps students engaged.</div>
+          </div>
+          <div class="outcome">
+            <div class="big">30 sec</div>
+            <div class="txt">From sign-up to a live class. Google login or email. Students join with a 4-letter code or QR.</div>
+          </div>
+          <div class="outcome">
+            <div class="big">Web + mobile</div>
+            <div class="txt">Works on any device — Chromebook, phone, tablet. Installable PWA. No app-store approvals needed.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="cta">
+      <div class="cta-text">
+        <h2>See it live in your school.</h2>
+        <p>Book a free 15-minute demo for your English department, or open the link below to try it yourself — no signup required.</p>
+        <span class="url" id="poster-url">vocaband.com</span>
+      </div>
+      <div class="qr-stack">
+        <div class="qr-wrap">
+          <div id="qr-target" aria-label="QR code linking to vocaband.com"></div>
+        </div>
+        <div class="qr-caption">Scan to explore</div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div>© Vocaband · Built for Israeli classrooms</div>
+      <div class="badges">
+        <span class="badge">EN · HE · AR</span>
+        <span class="badge">Grades 4–9</span>
+        <span class="badge">EU-hosted</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/qrcode.min.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var ref = params.get('ref');
+      var url = 'https://www.vocaband.com/';
+      if (ref) url += '?ref=' + encodeURIComponent(ref);
+
+      document.getElementById('poster-url').textContent = url.replace(/^https?:\/\//, '');
+
+      var target = document.getElementById('qr-target');
+      try {
+        if (typeof qrcode !== 'function') throw new Error('qrcode-generator not loaded');
+        var qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        target.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
+        var svg = target.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('width', '100%');
+          svg.setAttribute('height', '100%');
+          svg.style.display = 'block';
+          svg.querySelectorAll('path, rect').forEach(function (el) {
+            var f = el.getAttribute('fill');
+            if (f === '#000000' || f === 'black' || !f) el.setAttribute('fill', '#1F2937');
+          });
+        }
+      } catch (e) {
+        target.textContent = 'vocaband.com';
+        target.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#4f46e5;font-size:11pt;text-align:center;';
+        console.warn('[poster-schools] QR generation failed:', e);
+      }
+    })();
+  </script>
+</body>
+</html>
