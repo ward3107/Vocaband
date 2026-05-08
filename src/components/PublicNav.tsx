@@ -182,8 +182,13 @@ const PublicNav: React.FC<PublicNavProps> = ({
           </div>
 
           {/* Right side — desktop CTAs + lang.  On mobile, lang only;
-              the hamburger holds the rest. */}
-          <div className="flex items-center gap-2 flex-shrink-0 mr-12 md:mr-0">
+              the hamburger holds the rest.  gap-3 on mobile keeps the
+              Globe button and the hamburger far enough apart that a
+              fingertip near the boundary can't miss-tap into the wrong
+              control (the previous gap-2 + the Globe's hover-scale
+              animation made the language popover open when the user
+              meant the hamburger). */}
+          <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 mr-12 md:mr-0">
             <NavLanguageToggle />
             {onTeacherLogin && (
               <button
