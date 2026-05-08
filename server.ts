@@ -256,18 +256,20 @@ async function startServer() {
 
     // Security headers via helmet.
     //
-    // CSP policy notes:
-    //   * scriptSrc keeps 'unsafe-inline' because Cloudflare Insights
-    //     injects an inline beacon tag.  Dropping this needs a nonce-
-    //     based refactor of index.html — a separate workstream.
-    //   * 'unsafe-eval' was removed in 2026-04-28's Phase 3 sec audit.
-    //     Vite production output + React 19 + motion/react don't use
-    //     eval() / new Function() in production.  Keeping the door
-    //     closed prevents one of the most common XSS escalation paths.
-    //   * styleSrc keeps 'unsafe-inline' because motion/react animates
-    //     by writing inline `style="..."` attributes on every animated
-    //     element.  Removing it would break every transition, every
-    //     hover scale, every gradient pulse.  Load-bearing.
+    // CSP policy notes (2026-05-08, Phase 6 — full unsafe-* removal):
+    //   * scriptSrc / scriptSrcElem — both `'unsafe-inline'` and
+    //     `'unsafe-eval'` removed.  The previous inline boot-debug script
+    //     was extracted to /boot-debug.js, and the production bundle has
+    //     no eval()/new Function() calls.  Cloudflare Insights auto-
+    //     injects an external <script src=...> tag, host-allowlisted
+    //     below.
+    //   * styleSrcElem — `'unsafe-inline'` removed.  Inline boot styles
+    //     extracted to /boot.css; only external <link rel=stylesheet>
+    //     and Google Fonts CSS are allowed.
+    //   * styleSrcAttr — `'unsafe-inline'` KEPT.  motion/react sets
+    //     transform/opacity on the element's `style` attribute on every
+    //     animated frame.  Cannot escalate to JS execution; this is the
+    //     narrowest CSP achievable with a runtime animation library.
     //   * upgrade-insecure-requests added in 2026-04-28: any straggling
     //     http://supabase.co references in third-party libs get
     //     rewritten to https:// transparently.
@@ -275,9 +277,10 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
-          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          scriptSrc: ["'self'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          scriptSrcElem: ["'self'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          styleSrcElem: ["'self'", "https://fonts.googleapis.com"],
+          styleSrcAttr: ["'unsafe-inline'"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://auth.vocaband.com", "wss://auth.vocaband.com", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", ...allowedOrigins],
