@@ -188,6 +188,11 @@ export default function App() {
   // Track current view for auth state changes — using a ref so restoreSession
   // can read the latest view even when called asynchronously from auth events.
   const currentViewRef = useRef<View>(view);
+  // Captures the most recent user role so the SIGNED_OUT handler can route
+  // students back to the student-login screen instead of the teacher-focused
+  // public landing.  The auth listener effect runs once with empty deps, so
+  // it can't read `user` state directly — needs a ref kept in sync below.
+  const lastUserRoleRef = useRef<AppUser["role"] | null>(null);
 
   const goBack = () => {
     setView(previousViewRef.current as any);
@@ -1765,12 +1770,19 @@ export default function App() {
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
         try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
         try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+        // Students log out back to the student-login screen (not the
+        // teacher-focused public landing) so they can immediately re-enter
+        // their class code or pick their name.  Teachers/guests/unknown
+        // roles still go to the marketing landing.
+        const wasStudent = lastUserRoleRef.current === 'student';
+        const postLogoutView: View = wasStudent ? 'student-account-login' : 'public-landing';
+        lastUserRoleRef.current = null;
         // Reset history state so the back-button trap doesn't persist
         // into the logged-out experience (otherwise pad entries from
         // the previous session would still block navigation).
-        try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
+        try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
         // Don't redirect Quick Play students — they don't need auth
-        if (!quickPlaySessionParam) setView("public-landing");
+        if (!quickPlaySessionParam) setView(postLogoutView);
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
@@ -1902,6 +1914,13 @@ export default function App() {
     currentViewRef.current = view;
     window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
   }, [view]);
+
+  // Keep lastUserRoleRef in sync with the live user state so the auth
+  // listener (which closes over a stale `user`) can still tell whether the
+  // signed-out user was a student vs. a teacher.
+  useEffect(() => {
+    if (user?.role) lastUserRoleRef.current = user.role;
+  }, [user]);
 
 
   // ─── GLOBAL TEACHER DASHBOARD THEME ────────────────────────────────────
