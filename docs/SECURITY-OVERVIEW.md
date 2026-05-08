@@ -27,8 +27,8 @@ For deep technical detail, jump to the linked per-area docs.
 | All three MED findings — `teacher_profiles` enum, `quick_play_sessions` enum, class-RPC role check | ✅ Fixed in code (operator pastes migrations) | Code + Operator |
 | CSP `unsafe-eval` | ✅ **Removed 2026-05-08** | Audit of the production bundle confirmed zero `eval()` / `new Function()` calls. The earlier "Vite codegen needed it" theory was stale. |
 | CSP `unsafe-inline` (script-src) | ✅ **Removed 2026-05-08** | Inline boot-debug script extracted to `/boot-debug.js`. Cloudflare Insights uses an external `<script src=…>` to `static.cloudflareinsights.com` (host-allowlisted). |
-| CSP `unsafe-inline` (style-src-elem) | ✅ **Removed 2026-05-08** | Inline boot-loader / noscript styles moved to `/boot.css`. Only external `<link rel="stylesheet">` is allowed for `<style>`/stylesheet elements. |
-| CSP `unsafe-inline` (style-src-attr) | ⚠️ Kept, narrow + documented | motion/react writes `transform`/`opacity` to the element's `style` attribute on every animated frame. CSS-only — cannot escalate to JS execution. To drop this we'd have to replace motion/react with keyframe CSS classes (week+ refactor; visual fidelity risk). |
+| CSP `unsafe-inline` (style-src-elem) | ⚠️ Kept, documented (revisit) | motion/react injects `<style>` blocks at runtime for keyframe / spring / layout animations — content is dynamic so hashes don't work. Initially removed 2026-05-08 then restored same day after the post-OAuth screen broke under the stricter policy. Closing this needs nonce-based CSP (Worker template-rewrite) or replacing motion/react. |
+| CSP `unsafe-inline` (style-src-attr) | ⚠️ Kept, narrow + documented | motion/react writes `transform`/`opacity` to the element's `style` attribute on every animated frame. CSS-only — cannot escalate to JS execution. |
 | Secret hygiene (no committed secrets, .gitignore correct) | ✅ Verified | Code |
 | Express global error handler (no stack-trace leaks) | ✅ Added | Code |
 | `/api/features?debug=1` info leak | ✅ Sanitised | Code |
@@ -140,7 +140,9 @@ ANON_KEY="sb_publishable_..." \
 ```
 
 Expected: **15 passed, 0 failed** (9 RLS + 6 app-server) before Phase 6;
-**18 passed, 0 failed** after Phase 6 (adds 3 CSP hardening checks).
+**17 passed, 0 failed** after Phase 6 (adds 2 CSP hardening checks for
+`script-src` — `style-src-elem` was rolled back due to motion/react
+runtime `<style>` injection).
 
 ### Phase 6 — full unsafe-* CSP removal (2026-05-08)
 
@@ -154,9 +156,10 @@ one and dropped them.
 |---|---|
 | `unsafe-eval` removed from `script-src` (page) and helmet (Express) | Re-audit of `dist/assets/*.js` confirms no `eval()` / `new Function()` calls in the production bundle. Removing closes the entire dynamic-code-execution XSS escalation class. |
 | `unsafe-inline` removed from `script-src` / `script-src-elem` | The page's only inline `<script>` (boot-debug error overlay) extracted to `public/boot-debug.js` (loaded via `<script src=…>` from `'self'`). Cloudflare Insights auto-injects an external `<script src="https://static.cloudflareinsights.com/beacon.min.js…">` — host-allowlisted, no inline. JSON-LD `<script type="application/ld+json">` is structured data, CSP doesn't apply. |
-| `unsafe-inline` removed from `style-src-elem` | Inline `style="…"` attributes in the boot loader and noscript fallback moved to `public/boot.css` (loaded via `<link rel="stylesheet">` from `'self'`). |
-| `style-src-attr 'unsafe-inline'` retained, narrowly | motion/react sets `transform` / `opacity` on the element's `style` attribute every animated frame. Cannot escalate to JS; CSS-only attack surface. Replacing this requires a week+ refactor to keyframe CSS classes; tracked as a future hardening item. |
-| `scripts/security-pen-test.sh` adds checks 16–18 (CSP hardening) | Locks the new CSP against future regression — fails CI if `'unsafe-inline'` or `'unsafe-eval'` reappear in `script-src`, or `'unsafe-inline'` reappears in `style-src-elem`. |
+| Inline boot-loader styles still moved to `public/boot.css` | Removed two `style="…"` attributes from `index.html`. Dropping them was a prerequisite for any future `style-src-elem` tightening. |
+| `style-src-elem 'unsafe-inline'` retained (rolled back same-day) | Initially dropped. The post-OAuth callback page broke — motion/react injects `<style>...</style>` blocks at runtime for keyframe / spring / layout animations. Content varies per render, so hashes can't lock it down. Closing this needs nonce-based CSP (Worker template-rewrite) or replacing motion/react. |
+| `style-src-attr 'unsafe-inline'` retained, narrowly | motion/react sets `transform` / `opacity` on the element's `style` attribute every animated frame. Cannot escalate to JS; CSS-only attack surface. |
+| `scripts/security-pen-test.sh` adds checks 16–17 (CSP hardening) | Locks the new `script-src` against future regression — fails if `'unsafe-inline'` or `'unsafe-eval'` reappear there. |
 
 Files changed:
 - `public/_headers` — CSP header rewritten
@@ -327,7 +330,7 @@ NOT claiming:
 | Cross-teacher reward grant (teacher A rewards teacher B's student) | ❌ Blocked — `award_reward` class-ownership check |
 | Teacher overflowing student XP via `award_reward` | ❌ Blocked — `award_reward` XP bounds [-1000, 1000] |
 | XSS via inline-script injection | ❌ Blocked — `unsafe-inline` and `unsafe-eval` removed from `script-src` (Phase 6, 2026-05-08). Inline `<script>` blocks no longer execute. Only allowlisted external scripts run (`'self'` + Cloudflare Insights + Cloudflare Challenges). |
-| XSS via injected `<style>` block | ❌ Blocked — `unsafe-inline` removed from `style-src-elem`. Only external stylesheets from `'self'` + Google Fonts CSS allowed. |
+| XSS via injected `<style>` block | ⚠️ Mitigated — `style-src-elem 'unsafe-inline'` retained because motion/react injects keyframe `<style>` blocks at runtime. CSS-only — cannot execute JS. Future hardening: nonce-based CSP. |
 | CSS exfiltration via injected `style="…"` attribute | ⚠️ Mitigated — `style-src-attr 'unsafe-inline'` retained for motion/react. CSS-only — cannot execute JS. `connect-src` allowlist constrains where exfiltrated data could go. |
 | CSRF on state-changing endpoints | ✅ N/A — Supabase JWTs in `Authorization: Bearer` header (not cookies); no implicit credentials sent cross-origin. |
 | Stack-trace leak via uncaught server exception | ❌ Blocked — global Express error handler returns generic 500. |

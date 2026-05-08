@@ -256,20 +256,22 @@ async function startServer() {
 
     // Security headers via helmet.
     //
-    // CSP policy notes (2026-05-08, Phase 6 — full unsafe-* removal):
+    // CSP policy notes (2026-05-08, Phase 6 — script-src fully hardened,
+    // style-src kept permissive due to motion/react runtime <style> injection):
     //   * scriptSrc / scriptSrcElem — both `'unsafe-inline'` and
     //     `'unsafe-eval'` removed.  The previous inline boot-debug script
     //     was extracted to /boot-debug.js, and the production bundle has
     //     no eval()/new Function() calls.  Cloudflare Insights auto-
     //     injects an external <script src=...> tag, host-allowlisted
-    //     below.
-    //   * styleSrcElem — `'unsafe-inline'` removed.  Inline boot styles
-    //     extracted to /boot.css; only external <link rel=stylesheet>
-    //     and Google Fonts CSS are allowed.
+    //     below.  *** This is the high-value XSS-defence win. ***
+    //   * styleSrcElem — `'unsafe-inline'` KEPT.  motion/react injects
+    //     <style>...</style> blocks at runtime for keyframe / spring /
+    //     layout animations.  Content is dynamic so hashes don't work;
+    //     nonce-based CSP would need a Worker template-rewrite.  Tracked
+    //     as deferred hardening — same risk class as styleSrcAttr.
     //   * styleSrcAttr — `'unsafe-inline'` KEPT.  motion/react sets
     //     transform/opacity on the element's `style` attribute on every
-    //     animated frame.  Cannot escalate to JS execution; this is the
-    //     narrowest CSP achievable with a runtime animation library.
+    //     animated frame.  Cannot escalate to JS execution.
     //   * upgrade-insecure-requests added in 2026-04-28: any straggling
     //     http://supabase.co references in third-party libs get
     //     rewritten to https:// transparently.
@@ -279,7 +281,7 @@ async function startServer() {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
           scriptSrcElem: ["'self'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
-          styleSrcElem: ["'self'", "https://fonts.googleapis.com"],
+          styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           styleSrcAttr: ["'unsafe-inline'"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
