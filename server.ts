@@ -282,6 +282,10 @@ async function startServer() {
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https://auth.vocaband.com", "wss://auth.vocaband.com", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", ...allowedOrigins],
           frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
+          frameAncestors: ["'none'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'", "https://accounts.google.com"],
           workerSrc: ["'self'", "blob:"],
           mediaSrc: ["'self'", "https://*.supabase.co"],
           upgradeInsecureRequests: [],
@@ -292,7 +296,31 @@ async function startServer() {
         includeSubDomains: true,
         preload: true,
       },
+      // same-origin-allow-popups so the Google OAuth popup can postMessage
+      // back to the opener — strict same-origin breaks the sign-in handshake.
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+      // same-site so Supabase audio/storage CDN responses still load (those
+      // resources are served from *.supabase.co which is cross-site) — wait,
+      // they're cross-site, so we actually need cross-origin here. Keep the
+      // default (same-origin) at the response level and rely on Resource-
+      // Server CORP headers for cross-site media. Disable helmet's default to
+      // avoid breaking cross-origin <img>/<audio>/<video> loads.
+      crossOriginResourcePolicy: false,
+      crossOriginEmbedderPolicy: false,
+      // Belt-and-suspenders Permissions-Policy: deny everything we never use.
+      // Helmet's default is empty, so we set this via a separate middleware.
     }));
+
+    // Permissions-Policy + X-Permitted-Cross-Domain-Policies (helmet doesn't
+    // emit these out of the box). Mirrors public/_headers.
+    app.use((_req, res, next) => {
+      res.setHeader(
+        "Permissions-Policy",
+        "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
+      );
+      res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+      next();
+    });
 
     // Rate limit page/API requests per IP — skip static assets (JS/CSS/images/fonts)
     // so a classroom of 100+ students behind one IP can all load the app smoothly
@@ -1364,20 +1392,49 @@ ${JSON.stringify(validWords)}`;
   // Claude Haiku Vision: 2-3s, excellent accuracy, ~$0.002/image, 0 MB RAM.
   // Uses the same ANTHROPIC_API_KEY already configured for AI sentences.
 
-  app.get("/api/ocr/status", (_req, res) => {
+  // Auth gate for the OCR diagnostic endpoints. Both reveal partial details
+  // about GOOGLE_AI_API_KEY (boolean presence, prefix/suffix, length, error
+  // text from Google) — useful to a teacher debugging their setup, but a
+  // recon goldmine for an unauthenticated attacker. Restrict to authenticated
+  // teachers; the boolean shape stays the same so the in-app diagnostic page
+  // still works.
+  async function requireAuthenticatedTeacher(req: express.Request, res: express.Response): Promise<{ uid: string } | null> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Authentication required" });
+      return null;
+    }
+    const uid = await verifyToken(authHeader.substring(7));
+    if (!uid) {
+      res.status(401).json({ error: "Invalid token" });
+      return null;
+    }
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      res.status(403).json({ error: "Forbidden" });
+      return null;
+    }
+    return { uid };
+  }
+
+  app.get("/api/ocr/status", async (req, res) => {
+    if (!(await requireAuthenticatedTeacher(req, res))) return;
     const key = process.env.GOOGLE_AI_API_KEY || "";
+    // Booleans only — no key prefix/length leak. Even a valid teacher
+    // doesn't need the raw key bytes; the prefix check is captured by
+    // `keyStartsCorrectly`. Operators with shell access can run their
+    // own diagnostic if they need more.
     res.json({
       engine: "gemini-flash",
       apiKeySet: !!key,
-      keyLength: key.length,
       keyStartsCorrectly: key.startsWith("AIza"),
       keyHasWhitespace: /\s/.test(key),
-      keyPreview: key ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : null,
     });
   });
 
   // Diagnostic: test the Gemini API key with a minimal call
-  app.get("/api/ocr/diagnostic", async (_req, res) => {
+  app.get("/api/ocr/diagnostic", async (req, res) => {
+    if (!(await requireAuthenticatedTeacher(req, res))) return;
     const key = process.env.GOOGLE_AI_API_KEY;
     if (!key) return res.status(503).json({ ok: false, reason: "GOOGLE_AI_API_KEY not set" });
 
@@ -1400,7 +1457,8 @@ ${JSON.stringify(validWords)}`;
         });
       }
       const modelCount = Array.isArray(body?.models) ? body.models.length : 0;
-      return res.json({ ok: true, modelCount, keyLength: key.length });
+      // Drop keyLength from response — irrelevant for a teacher debugging.
+      return res.json({ ok: true, modelCount });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err?.message });
     }
@@ -1755,21 +1813,21 @@ Strict quality rules:
     return reply(true, "ok");
   });
 
-  // Diagnostic endpoint: reports which environment variables are set on the
-  // running Render instance (boolean only, never the values). Use this to
-  // verify a Render deploy has actually picked up an env var change.
-  // Curl it from anywhere: `curl https://vocaband.com/api/version`.
-  app.get("/api/version", (_req, res) => {
+  // Diagnostic endpoint: reports whether key env vars are set (boolean only).
+  // Used to verify a deploy has actually picked up an env var change.
+  // Authenticated to teachers/admins to avoid leaking deploy/branch metadata
+  // and the literal allowed-origin list to unauthenticated reconnaissance.
+  // Operators with shell access can `fly logs` for richer detail.
+  app.get("/api/version", async (req, res) => {
+    if (!(await requireAuthenticatedTeacher(req, res))) return;
     res.json({
       commit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || "unknown",
-      branch: process.env.RENDER_GIT_BRANCH || "unknown",
       nodeEnv: process.env.NODE_ENV || "unknown",
       env: {
         hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
         hasSupabaseUrl: !!process.env.SUPABASE_URL,
         hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
         hasAllowedOrigin: !!process.env.ALLOWED_ORIGIN,
-        allowedOrigin: process.env.ALLOWED_ORIGIN || null,
       },
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -2702,10 +2760,27 @@ Important notes:
     res.json({ test: validated, cached: false, model });
   });
 
+  // Per-student rate limit for bagrut submissions/lookups. A real student
+  // submits a single test once and reviews it a few times. Anything beyond
+  // 60/min/token is either retry-storm or scripted abuse — drop it.
+  const bagrutStudentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please wait a minute before trying again." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  // bagrut_tests question IDs follow a stable shape (e.g. "q1", "1a", "mc-3").
+  // Anything else is either a typo from the model or a hostile client trying
+  // to bloat answers JSONB. Cap to a conservative regex + length.
+  const BAGRUT_ANSWER_KEY_RE = /^[A-Za-z0-9_-]{1,32}$/;
+
   // Server-side auto-grade for student MC submissions.  Recomputes the score
   // from the canonical bagrut_tests.content + bagrut_responses.answers, so
   // any client tampering with mc_score is overwritten on submit.
-  app.post("/api/submit-bagrut", async (req, res) => {
+  app.post("/api/submit-bagrut", bagrutStudentLimiter, async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Authentication required" });
@@ -2750,10 +2825,15 @@ Important notes:
 
     const test = testRow.content as BagrutTest;
     const sanitizedAnswers: Record<string, string> = {};
+    let answerKeyCount = 0;
     for (const [k, v] of Object.entries(answers)) {
-      if (typeof k === "string" && typeof v === "string" && v.length <= 5000) {
-        sanitizedAnswers[k] = v;
-      }
+      if (typeof k !== "string" || typeof v !== "string") continue;
+      if (!BAGRUT_ANSWER_KEY_RE.test(k)) continue;
+      if (v.length > 5000) continue;
+      sanitizedAnswers[k] = v;
+      // Hard cap on number of answers — typical exam has <100 questions.
+      // Stops a malicious client from upserting 100k keys.
+      if (++answerKeyCount >= 200) break;
     }
 
     const mcMax = computeMcMax(test);
@@ -2787,7 +2867,7 @@ Important notes:
 
   // Public student fetch — returns the test with the answer key stripped.
   // Avoids any chance of the correct_answer leaking in DevTools before submit.
-  app.get("/api/student-bagrut/:id", async (req, res) => {
+  app.get("/api/student-bagrut/:id", bagrutStudentLimiter, async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Authentication required" });

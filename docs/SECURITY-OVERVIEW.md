@@ -1,7 +1,7 @@
 # Vocaband — Security Overview
 
 > The single landing page for Vocaband's security posture.  Aggregates
-> all audits, fixes, and pending operator actions.  Updated 2026-04-28.
+> all audits, fixes, and pending operator actions.  Updated 2026-05-08.
 
 ## What this doc is for
 
@@ -32,6 +32,10 @@ For deep technical detail, jump to the linked per-area docs.
 | TLS / transport — SSL Labs grade | ✅ **A+** (was B) — TLS 1.0/1.1 disabled, HSTS preload submitted | Operator (Cloudflare) |
 | Live pen-test against staging | ⏳ Optional (DIY with OWASP ZAP) | Operator |
 | Compliance certification | ⏳ Needs lawyer | Operator |
+| Diagnostic info-leak endpoints (`/api/version`, `/api/ocr/status`, `/api/ocr/diagnostic`) | ✅ Auth-gated 2026-05-08 | Code |
+| `/api/submit-bagrut` per-user rate limit + answer-key shape validation | ✅ Added 2026-05-08 | Code |
+| Cross-origin headers (`COOP`, `X-Permitted-Cross-Domain-Policies`) | ✅ Added 2026-05-08 | Code |
+| CSP `script-src` cleanup (drop unused `cdn.jsdelivr.net`) | ✅ Done 2026-05-08 | Code |
 
 ---
 
@@ -101,6 +105,37 @@ What "A+" gives us:
 
 Verification URL (re-run quarterly):
 https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com
+
+### Phase 5 — defence-in-depth pass (2026-05-08)
+
+Code-level hardening on top of the April-28 baseline. Reviewed every
+`/api/*` route for unauthenticated info disclosure; tightened the
+Cloudflare Pages `_headers`; added per-user rate limiting on the
+Vocabagrut student submit/lookup paths.
+
+| Change | What it closes |
+|---|---|
+| `/api/version` now requires authenticated teacher/admin + `allowedOrigin` value dropped from response | Recon-time leak of CORS allow-list and branch metadata to anonymous callers. |
+| `/api/ocr/status` requires teacher/admin; key prefix + length removed from response | Was leaking 6-char prefix + suffix + length of `GOOGLE_AI_API_KEY` to anyone — partial credential disclosure. |
+| `/api/ocr/diagnostic` requires teacher/admin; `keyLength` removed from response | Same class as above; also stops anonymous callers from spending Gemini quota probing the key. |
+| `/api/submit-bagrut` + `/api/student-bagrut/:id` get a per-token rate limit (60/min) | Caps abuse / scripted retry storms targeting the bagrut grader. |
+| `/api/submit-bagrut` answer-key format check (`/^[A-Za-z0-9_-]{1,32}$/`, max 200 keys, ≤5KB per value) | Stops a hostile client from upserting megabytes of arbitrary keys into `bagrut_responses.answers` JSONB. |
+| `public/_headers` drops unused `https://cdn.jsdelivr.net` from `script-src`/`script-src-elem` | Removes an unused third-party CDN from the script allowlist — one fewer host an XSS payload can pivot to. |
+| `public/_headers` adds `Cross-Origin-Opener-Policy: same-origin-allow-popups`, `Cross-Origin-Resource-Policy: same-site`, `X-Permitted-Cross-Domain-Policies: none` | Reduces cross-window/process-state leakage; blocks legacy Adobe cross-domain policies. COOP keeps Google OAuth popup working. |
+| `public/_headers` Permissions-Policy expanded (`usb`, `magnetometer`, `gyroscope`, `accelerometer`, `interest-cohort` all `()`) | Denies surface area we never use — defence in depth if a bundled lib ever tries to access these. |
+| Express helmet adds `frameAncestors`, `objectSrc`, `baseUri`, `formAction` directives + COOP `same-origin-allow-popups` + Permissions-Policy middleware | Brings Express CSP in line with Cloudflare Pages headers; emits the same hardening when SPA is served from Express. |
+| `scripts/security-pen-test.sh` extended with checks 10–15 (auth gates + headers) | Locks the new gates against future regression. Run quarterly with `APP_URL=https://www.vocaband.com`. |
+
+Run-after-deploy:
+
+```bash
+APP_URL="https://www.vocaband.com" \
+SUPABASE_URL="https://auth.vocaband.com" \
+ANON_KEY="sb_publishable_..." \
+./scripts/security-pen-test.sh
+```
+
+Expected: **15 passed, 0 failed** (9 RLS + 6 app-server).
 
 ### Already-existing baseline docs
 

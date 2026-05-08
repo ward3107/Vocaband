@@ -122,6 +122,50 @@ body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_cache" \
   -d '{"cache_key":"hack","module":"B","model":"x","content":{}}')
 check "anon bagrut_cache insert is rejected" "row-level security|violates|permission denied|42501" "$body"
 
+# ─── App-server pen-tests ─────────────────────────────────────────────
+# Optional: also probe the Express app server for unauthenticated info-
+# disclosure regressions on /api/version, /api/ocr/status, /api/ocr/
+# diagnostic. Skip the block if APP_URL isn't set.
+if [[ -n "${APP_URL:-}" ]]; then
+  echo
+  echo "── App-server checks (APP_URL=$APP_URL) ──"
+
+  # 10. /api/version unauth → 401
+  echo "[10] Anon GET /api/version"
+  status=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/version")
+  check "anon /api/version returns 401" '^401$' "$status"
+
+  # 11. /api/ocr/status unauth → 401
+  echo "[11] Anon GET /api/ocr/status"
+  status=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/ocr/status")
+  check "anon /api/ocr/status returns 401" '^401$' "$status"
+
+  # 12. /api/ocr/diagnostic unauth → 401
+  echo "[12] Anon GET /api/ocr/diagnostic"
+  status=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/ocr/diagnostic")
+  check "anon /api/ocr/diagnostic returns 401" '^401$' "$status"
+
+  # 13. /api/submit-bagrut unauth → 401
+  echo "[13] Anon POST /api/submit-bagrut"
+  status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"test_id":"x","answers":{}}' \
+    "$APP_URL/api/submit-bagrut")
+  check "anon /api/submit-bagrut returns 401" '^401$' "$status"
+
+  # 14. /api/student-bagrut/:id unauth → 401
+  echo "[14] Anon GET /api/student-bagrut/x"
+  status=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/student-bagrut/x")
+  check "anon /api/student-bagrut returns 401" '^401$' "$status"
+
+  # 15. Security headers present (HSTS, X-Frame-Options, X-Content-Type-Options)
+  echo "[15] Security headers on /api/health"
+  headers=$(curl -sI "$APP_URL/api/health")
+  check "HSTS header present"           "[Ss]trict-[Tt]ransport-[Ss]ecurity" "$headers"
+  check "X-Frame-Options header present" "[Xx]-[Ff]rame-[Oo]ptions" "$headers"
+  check "X-Content-Type-Options nosniff" "[Xx]-[Cc]ontent-[Tt]ype-[Oo]ptions:.*nosniff" "$headers"
+fi
+
 echo
 echo "Results: $PASS passed, $FAIL failed."
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
