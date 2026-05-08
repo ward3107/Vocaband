@@ -1,7 +1,8 @@
 # Vocaband — Security Overview
 
 > The single landing page for Vocaband's security posture.  Aggregates
-> all audits, fixes, and pending operator actions.  Updated 2026-05-08.
+> all audits, fixes, and pending operator actions.  Updated 2026-05-08
+> (Phase 6 — full unsafe-* CSP removal).
 
 ## What this doc is for
 
@@ -24,8 +25,10 @@ For deep technical detail, jump to the linked per-area docs.
 | Authentication (Google OAuth + anonymous Quick Play) | ✅ Wired | Code |
 | Three HIGH audit findings (2026-04-28) | ✅ Fixed in code, applied to live DB | Code + Operator |
 | All three MED findings — `teacher_profiles` enum, `quick_play_sessions` enum, class-RPC role check | ✅ Fixed in code (operator pastes migrations) | Code + Operator |
-| CSP `unsafe-eval` | ⚠️ **Still allowed — kept for now** | Initially flagged for removal, but a 2026-05-04 audit found it's still in `public/_headers`.  Reason for keeping: at least one bundled dep (likely a build-time codegen helper) needs `eval`.  Removing it broke Vite/Vue eval-based codegen in earlier attempts.  Revisit only after a full dependency audit identifies which package needs it.  Mitigation in the meantime: React's auto-escaping + the existing `script-src 'self'` whitelist still block external `<script>` injection. |
-| CSP `unsafe-inline` (script + style) | ⚠️ Load-bearing — kept, documented | Cloudflare Insights beacon + motion/react inline animation styles |
+| CSP `unsafe-eval` | ✅ **Removed 2026-05-08** | Audit of the production bundle confirmed zero `eval()` / `new Function()` calls. The earlier "Vite codegen needed it" theory was stale. |
+| CSP `unsafe-inline` (script-src) | ✅ **Removed 2026-05-08** | Inline boot-debug script extracted to `/boot-debug.js`. Cloudflare Insights uses an external `<script src=…>` to `static.cloudflareinsights.com` (host-allowlisted). |
+| CSP `unsafe-inline` (style-src-elem) | ✅ **Removed 2026-05-08** | Inline boot-loader / noscript styles moved to `/boot.css`. Only external `<link rel="stylesheet">` is allowed for `<style>`/stylesheet elements. |
+| CSP `unsafe-inline` (style-src-attr) | ⚠️ Kept, narrow + documented | motion/react writes `transform`/`opacity` to the element's `style` attribute on every animated frame. CSS-only — cannot escalate to JS execution. To drop this we'd have to replace motion/react with keyframe CSS classes (week+ refactor; visual fidelity risk). |
 | Secret hygiene (no committed secrets, .gitignore correct) | ✅ Verified | Code |
 | Express global error handler (no stack-trace leaks) | ✅ Added | Code |
 | `/api/features?debug=1` info leak | ✅ Sanitised | Code |
@@ -36,6 +39,7 @@ For deep technical detail, jump to the linked per-area docs.
 | `/api/submit-bagrut` per-user rate limit + answer-key shape validation | ✅ Added 2026-05-08 | Code |
 | Cross-origin headers (`COOP`, `X-Permitted-Cross-Domain-Policies`) | ✅ Added 2026-05-08 | Code |
 | CSP `script-src` cleanup (drop unused `cdn.jsdelivr.net`) | ✅ Done 2026-05-08 | Code |
+| CSP `unsafe-eval` + `unsafe-inline` removal (Phase 6) | ✅ Done 2026-05-08 | Code |
 
 ---
 
@@ -135,7 +139,32 @@ ANON_KEY="sb_publishable_..." \
 ./scripts/security-pen-test.sh
 ```
 
-Expected: **15 passed, 0 failed** (9 RLS + 6 app-server).
+Expected: **15 passed, 0 failed** (9 RLS + 6 app-server) before Phase 6;
+**18 passed, 0 failed** after Phase 6 (adds 3 CSP hardening checks).
+
+### Phase 6 — full unsafe-* CSP removal (2026-05-08)
+
+The April-28 work left `unsafe-inline` (script + style) and `unsafe-eval`
+in the page CSP because of three perceived dependencies:
+Cloudflare Insights inline beacon, motion/react inline animation styles,
+and a bundled dep that supposedly needed `eval`. Phase 6 disproved each
+one and dropped them.
+
+| Change | What it closes |
+|---|---|
+| `unsafe-eval` removed from `script-src` (page) and helmet (Express) | Re-audit of `dist/assets/*.js` confirms no `eval()` / `new Function()` calls in the production bundle. Removing closes the entire dynamic-code-execution XSS escalation class. |
+| `unsafe-inline` removed from `script-src` / `script-src-elem` | The page's only inline `<script>` (boot-debug error overlay) extracted to `public/boot-debug.js` (loaded via `<script src=…>` from `'self'`). Cloudflare Insights auto-injects an external `<script src="https://static.cloudflareinsights.com/beacon.min.js…">` — host-allowlisted, no inline. JSON-LD `<script type="application/ld+json">` is structured data, CSP doesn't apply. |
+| `unsafe-inline` removed from `style-src-elem` | Inline `style="…"` attributes in the boot loader and noscript fallback moved to `public/boot.css` (loaded via `<link rel="stylesheet">` from `'self'`). |
+| `style-src-attr 'unsafe-inline'` retained, narrowly | motion/react sets `transform` / `opacity` on the element's `style` attribute every animated frame. Cannot escalate to JS; CSS-only attack surface. Replacing this requires a week+ refactor to keyframe CSS classes; tracked as a future hardening item. |
+| `scripts/security-pen-test.sh` adds checks 16–18 (CSP hardening) | Locks the new CSP against future regression — fails CI if `'unsafe-inline'` or `'unsafe-eval'` reappear in `script-src`, or `'unsafe-inline'` reappears in `style-src-elem`. |
+
+Files changed:
+- `public/_headers` — CSP header rewritten
+- `server.ts` — helmet `contentSecurityPolicy.directives` updated
+- `index.html` — inline `<script>` and `style="…"` attrs replaced with external file references
+- `public/boot-debug.js` (new) — pre-React error overlay logic
+- `public/boot.css` (new) — pre-React loader + noscript styles
+- `scripts/security-pen-test.sh` — checks 16–18 added
 
 ### Already-existing baseline docs
 
@@ -262,7 +291,7 @@ These are the things only a human can do.
 |---|---|
 | **Live pen-test with OWASP ZAP** against a staging Supabase project | End-to-end black-box validation.  Requires writing your own consent + a staging clone. |
 | **Apply MED #5 + #6 fixes** (`quick_play_sessions` enumeration, class-RPC role check) | Lower-impact than the HIGH fixes but worth closing.  Plans in `docs/security-audit-2026-04-28.md`. |
-| **Nonce-based CSP refactor** to drop the two remaining `unsafe-inline` directives | Half-day refactor of `index.html` SSR template.  Closes the last CSP gaps. |
+| **Replace motion/react inline-style runtime** with keyframe CSS classes | Last remaining CSP gap is `style-src-attr 'unsafe-inline'`, kept because motion/react writes transform/opacity to the element's `style` attribute on every animated frame. Closing it would require replacing motion/react's runtime style-setting with predefined CSS classes — week+ refactor with visual-fidelity risk on every animation. CSS-only attack surface (no JS escalation), so the residual risk is narrow. |
 | **Privacy lawyer review** for compliance certification | GDPR (EU students), COPPA (US students if any), חוק הגנת הפרטיות (Israeli MoE).  Code controls are in place; lawyer needs to certify. |
 
 ---
@@ -297,7 +326,9 @@ NOT claiming:
 | Anon caller writing to `quick_play_joins` for an arbitrary session | ❌ Blocked — RLS requires authenticated + active-session |
 | Cross-teacher reward grant (teacher A rewards teacher B's student) | ❌ Blocked — `award_reward` class-ownership check |
 | Teacher overflowing student XP via `award_reward` | ❌ Blocked — `award_reward` XP bounds [-1000, 1000] |
-| XSS via inline-script injection | ⚠️ Mitigated — `unsafe-inline` still allowed for Cloudflare Insights; `unsafe-eval` blocked. Defence: input sanitisation + React's auto-escaping. |
+| XSS via inline-script injection | ❌ Blocked — `unsafe-inline` and `unsafe-eval` removed from `script-src` (Phase 6, 2026-05-08). Inline `<script>` blocks no longer execute. Only allowlisted external scripts run (`'self'` + Cloudflare Insights + Cloudflare Challenges). |
+| XSS via injected `<style>` block | ❌ Blocked — `unsafe-inline` removed from `style-src-elem`. Only external stylesheets from `'self'` + Google Fonts CSS allowed. |
+| CSS exfiltration via injected `style="…"` attribute | ⚠️ Mitigated — `style-src-attr 'unsafe-inline'` retained for motion/react. CSS-only — cannot execute JS. `connect-src` allowlist constrains where exfiltrated data could go. |
 | CSRF on state-changing endpoints | ✅ N/A — Supabase JWTs in `Authorization: Bearer` header (not cookies); no implicit credentials sent cross-origin. |
 | Stack-trace leak via uncaught server exception | ❌ Blocked — global Express error handler returns generic 500. |
 | TLS downgrade attack (POODLE family / weak cipher) | ❌ Blocked — TLS 1.0/1.1 disabled at Cloudflare; only TLS 1.2 + 1.3 with Forward Secrecy. SSL Labs A+. |
