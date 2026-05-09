@@ -171,14 +171,19 @@ const PublicNav: React.FC<PublicNavProps> = ({
               meant the hamburger). */}
           <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 mr-12 md:mr-0">
             <NavLanguageToggle />
+            {/* Desktop header CTA — quiet "Sign in" outline button.
+                The hero owns the dominant "Start Free" primary, so the
+                header serves as the persistent affordance for returning
+                teachers without duplicating the primary CTA.  Hidden on
+                mobile (the drawer holds the equivalent action). */}
             {onTeacherLogin && (
               <button
                 onClick={onTeacherLogin}
-                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 rounded-lg shadow-md shadow-violet-500/20 hover:shadow-violet-500/40 transition-all"
+                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-stone-700 hover:text-primary border border-stone-300 hover:border-primary/40 rounded-lg hover:bg-primary/5 transition-all"
                 type="button"
               >
                 <LogIn size={15} />
-                {t.heroCtaStart}
+                {t.navSignIn}
               </button>
             )}
 

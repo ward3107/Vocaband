@@ -1230,46 +1230,50 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               exit={{ opacity: 0, y: -20 }}
               className="relative"
             >
-              {/* Floating game icons - animated, scattered across the entire page below */}
+              {/* Floating game icons — desktop/tablet only.  On mobile
+                  these sit in absolute positions far below the welcome
+                  card and create a strobing/lightning feel together with
+                  the other looping animations.  Hidden on small screens
+                  so the welcome stays calm on phones. */}
               <motion.div
                 animate={{ y: [0, -20, 0], rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-[30rem] left-[5%] text-5xl opacity-60 z-20"
+                className="hidden sm:block absolute top-[30rem] left-[5%] text-5xl opacity-60 z-20"
               >⭐</motion.div>
               <motion.div
                 animate={{ y: [0, 15, 0], rotate: [0, -15, 15, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                className="absolute top-[36rem] right-[8%] text-4xl opacity-50 z-20"
+                className="hidden sm:block absolute top-[36rem] right-[8%] text-4xl opacity-50 z-20"
               >🏆</motion.div>
               <motion.div
                 animate={{ y: [0, -25, 0], x: [0, 10, 0] }}
                 transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-8 left-[15%] text-4xl opacity-40 z-20"
+                className="hidden sm:block absolute bottom-8 left-[15%] text-4xl opacity-40 z-20"
               >🎯</motion.div>
               <motion.div
                 animate={{ y: [0, 20, 0], rotate: [0, 360] }}
                 transition={{ duration: 8, repeat: Infinity, ease: "linear", delay: 1.5 }}
-                className="absolute top-[40rem] right-[20%] text-5xl opacity-30 z-20"
+                className="hidden sm:block absolute top-[40rem] right-[20%] text-5xl opacity-30 z-20"
               >💎</motion.div>
               <motion.div
                 animate={{ y: [0, -18, 0], scale: [1, 1.1, 1] }}
                 transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                className="absolute bottom-16 right-[12%] text-4xl opacity-50 z-20"
+                className="hidden sm:block absolute bottom-16 right-[12%] text-4xl opacity-50 z-20"
               >🎮</motion.div>
               <motion.div
                 animate={{ y: [0, 22, 0], rotate: [0, -20, 20, 0] }}
                 transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-                className="absolute top-[44rem] left-[25%] text-3xl opacity-40 z-20"
+                className="hidden sm:block absolute top-[44rem] left-[25%] text-3xl opacity-40 z-20"
               >🚀</motion.div>
               <motion.div
                 animate={{ x: [0, 15, 0], y: [0, -10, 0] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
-                className="absolute bottom-24 left-[40%] text-4xl opacity-35 z-20"
+                className="hidden sm:block absolute bottom-24 left-[40%] text-4xl opacity-35 z-20"
               >⚡</motion.div>
               <motion.div
                 animate={{ y: [0, -15, 0], rotate: [0, 180] }}
                 transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
-                className="absolute top-[48rem] right-[35%] text-3xl opacity-45 z-20"
+                className="hidden sm:block absolute top-[48rem] right-[35%] text-3xl opacity-45 z-20"
               >🎁</motion.div>
 
               {/* Main content */}
@@ -1356,15 +1360,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 style={{ touchAction: 'manipulation' }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-violet-500/40 border-2 border-white/30 relative overflow-hidden"
+                className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-violet-500/40 border-2 border-white/30"
               >
-                {/* Animated shine effect */}
-                <motion.div
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                />
-                <span className="relative z-10">{t.letsGo}</span>
+                {t.letsGo}
               </motion.button>
               </div>
             </motion.div>

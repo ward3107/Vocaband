@@ -1267,7 +1267,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ type: "spring", stiffness: 35, damping: 18, delay: 0.4 }}
-              className="text-5xl md:text-8xl lg:text-9xl font-black font-headline mb-6 md:mb-8 tracking-tight"
+              className="text-4xl md:text-8xl lg:text-9xl font-black font-headline mb-6 md:mb-8 tracking-tight"
             >
               <motion.span
                 animate={{
@@ -1301,7 +1301,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
                   <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
                     <CheckCircle2 size={40} />
                   </div>
@@ -1566,7 +1566,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
                   <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
                     <Radio size={40} />
                   </div>
@@ -1603,7 +1603,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             >
               <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
                   <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
                     <Globe size={40} />
                   </div>
@@ -1639,7 +1639,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-4xl mx-auto text-center mb-16"
+            className="max-w-4xl mx-auto text-center mb-8 md:mb-16"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
               {t.curriculumSectionH2}
@@ -1851,7 +1851,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 transition={{ type: "spring", stiffness: 60, damping: 14, delay: 0.2 }}
                 className="relative flex justify-center pt-4"
               >
-                <div className="relative px-10 py-8 md:px-14 md:py-10 rounded-[2rem] bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 text-white shadow-[0_20px_60px_rgba(251,191,36,0.55)] text-center overflow-hidden max-w-md">
+                <div className="relative p-6 md:px-14 md:py-10 rounded-[2rem] bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 text-white shadow-[0_20px_60px_rgba(251,191,36,0.55)] text-center overflow-hidden max-w-md">
                   {/* Glass highlight */}
                   <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
                   {/* Pulsing halo */}
@@ -2030,7 +2030,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             className="max-w-5xl mx-auto relative z-10"
           >
             {/* 3D Card with multiple shadow layers */}
-            <div className="relative p-12 md:p-20 rounded-[3rem] bg-gradient-to-br from-violet-600/40 via-purple-600/40 to-fuchsia-600/40 backdrop-blur-sm border border-white/15 text-white text-center overflow-hidden">
+            <div className="relative p-6 md:p-20 rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-violet-600/40 via-purple-600/40 to-fuchsia-600/40 backdrop-blur-sm border border-white/15 text-white text-center overflow-hidden">
               {/* Animated background pattern */}
               <div className="absolute inset-0 opacity-10">
                 <motion.div
@@ -2068,7 +2068,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   </span>
                 </h2>
 
-                <p className="text-xl text-white/80 font-bold mb-10 max-w-2xl mx-auto" dir={dir}>
+                <p className="text-xl text-white/80 font-bold mb-6 md:mb-10 max-w-2xl mx-auto" dir={dir}>
                   {t.finalCtaSubtitle}
                 </p>
 
@@ -2145,7 +2145,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -8 }}
               className="group relative"
             >
-              <div className="h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-[2rem] p-8 shadow-2xl shadow-slate-900/40 hover:shadow-slate-900/60 transition-all border border-white/10">
+              <div className="h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-slate-900/40 hover:shadow-slate-900/60 transition-all border border-white/10">
                 <div className="relative z-10 flex flex-col h-full">
                   <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-6">
                     <Sparkles size={32} className="text-white" />
@@ -2160,7 +2160,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <span className="text-4xl md:text-5xl font-black text-white">{t.pricingFreePrice}</span>
                     <span className="text-white/60 text-base font-semibold">{t.pricingFreePriceSuffix}</span>
                   </div>
-                  <ul className="space-y-3 mb-8 flex-grow" dir={dir}>
+                  <ul className="space-y-3 mb-6 md:mb-8 flex-grow" dir={dir}>
                     {[t.pricingFreeFeature1, t.pricingFreeFeature2, t.pricingFreeFeature3, t.pricingFreeFeature4, t.pricingFreeFeature5].map((feat, i) => (
                       <li key={i} className={`flex items-start gap-3 text-white/85 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0 mt-0.5" />
@@ -2197,7 +2197,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.pricingProBadge}
                 </div>
               </div>
-              <div className="h-full bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-[2rem] p-8 shadow-2xl shadow-violet-500/40 hover:shadow-violet-500/60 transition-all ring-2 ring-amber-400/60">
+              <div className="h-full bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-violet-500/40 hover:shadow-violet-500/60 transition-all ring-2 ring-amber-400/60">
                 <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10 flex flex-col h-full">
                   <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
@@ -2212,7 +2212,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <p className="text-amber-300 text-sm font-bold mb-6" dir={dir}>
                     ⚡ {t.pricingProTrialNote}
                   </p>
-                  <ul className="space-y-3 mb-8 flex-grow" dir={dir}>
+                  <ul className="space-y-3 mb-6 md:mb-8 flex-grow" dir={dir}>
                     {[t.pricingProFeature1, t.pricingProFeature2, t.pricingProFeature3, t.pricingProFeature4, t.pricingProFeature5, t.pricingProFeature6, t.pricingProFeature7].map((feat, i) => (
                       <li key={i} className={`flex items-start gap-3 text-white text-sm ${isRTL ? 'flex-row-reverse' : ''} ${i === 0 ? 'font-bold' : ''}`}>
                         <CheckCircle2 size={18} className="text-amber-300 flex-shrink-0 mt-0.5" />
@@ -2244,7 +2244,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -8 }}
               className="group relative"
             >
-              <div className="h-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-[2rem] p-8 shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all">
+              <div className="h-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all">
                 <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10 flex flex-col h-full">
                   <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
@@ -2262,7 +2262,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <p className="text-white/80 text-sm mb-6" dir={dir}>
                     {t.pricingSchoolPriceNote}
                   </p>
-                  <ul className="space-y-3 mb-8 flex-grow" dir={dir}>
+                  <ul className="space-y-3 mb-6 md:mb-8 flex-grow" dir={dir}>
                     {[t.pricingSchoolFeature1, t.pricingSchoolFeature2, t.pricingSchoolFeature3, t.pricingSchoolFeature4, t.pricingSchoolFeature5, t.pricingSchoolFeature6, t.pricingSchoolFeature7].map((feat, i) => (
                       <li key={i} className={`flex items-start gap-3 text-white text-sm ${isRTL ? 'flex-row-reverse' : ''} ${i === 0 ? 'font-bold' : ''}`}>
                         <CheckCircle2 size={18} className="text-white flex-shrink-0 mt-0.5" />
