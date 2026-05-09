@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import React, { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import {
@@ -43,7 +43,9 @@ import {
   Download,
   Activity,
   MapPin,
+  Presentation,
 } from "lucide-react";
+import Tilt from "react-parallax-tilt";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 import CssAnimation from "./CssAnimation";
@@ -78,11 +80,75 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
   // Floating 3D cards data for hero — labels translated via locale.
   const floatingCards = [
-    { icon: <Gamepad2 size={42} />, name: t.floatingCardModes, color: "from-violet-500 to-purple-600", delay: 0 },
-    { icon: <Trophy size={42} />, name: t.floatingCardXp, color: "from-blue-500 to-cyan-500", delay: 0.2 },
-    { icon: <Flame size={42} />, name: t.floatingCardStreaks, color: "from-amber-500 to-orange-500", delay: 0.4 },
-    { icon: <Gift size={42} />, name: t.floatingCardEggs, color: "from-emerald-500 to-teal-500", delay: 0.6 },
+    { icon: <Gamepad2 size={42} />, name: t.floatingCardModes, color: "from-violet-500/50 to-purple-600/50", delay: 0 },
+    { icon: <Trophy size={42} />, name: t.floatingCardXp, color: "from-blue-500/50 to-cyan-500/50", delay: 0.2 },
+    { icon: <Flame size={42} />, name: t.floatingCardStreaks, color: "from-amber-500/50 to-orange-500/50", delay: 0.4 },
+    { icon: <Gift size={42} />, name: t.floatingCardEggs, color: "from-emerald-500/50 to-teal-500/50", delay: 0.6 },
   ];
+
+  // ── "Why Students Love Vocaband" — scroll-driven parallax ──────────
+  // Each card drifts at its own rate as the section scrolls past, so
+  // they appear to float at different depths.  Cards alternate +/-
+  // direction so the grid stays roughly aligned at mid-scroll.
+  const studentsSectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress: studentsProgress } = useScroll({
+    target: studentsSectionRef,
+    offset: ["start end", "end start"],
+  });
+  const cardYBig    = useTransform(studentsProgress, [0, 1], [-40, 40]);
+  const cardYLive   = useTransform(studentsProgress, [0, 1], [-20, 20]);
+  const cardYShop   = useTransform(studentsProgress, [0, 1], [25, -25]);
+  const cardYEggs   = useTransform(studentsProgress, [0, 1], [-30, 30]);
+  const cardYBoost  = useTransform(studentsProgress, [0, 1], [25, -25]);
+  const cardYPet    = useTransform(studentsProgress, [0, 1], [-20, 20]);
+  const cardYStreak = useTransform(studentsProgress, [0, 1], [30, -30]);
+
+  // Footer cascade — every footer line / link / heading uses this
+  // variant.  The grid is the trigger; each item gets a `custom` index
+  // that maps to its delay (i * 0.07s) so they fade up one by one.
+  const footerItemVariant = {
+    hidden: { opacity: 0, y: 15 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, delay: i * 0.07, ease: "easeOut" as const },
+    }),
+  };
+
+  // C1: spotlight follow — mouseMove updates CSS vars on the target.
+  // The spotlight overlay reads them via var(--mx) / var(--my).
+  const handleSpotlight = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const rect = target.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    target.style.setProperty("--mx", `${x}%`);
+    target.style.setProperty("--my", `${y}%`);
+  };
+
+  // ── "Your Journey to Mastery" — scroll-driven traveler ─────────────
+  // The journey wraps a curved SVG trail.  As the user scrolls past the
+  // section, a traveler 🎒 walks down the trail; when it reaches each
+  // milestone, that stamp activates (scales up + colors in + glows).
+  const journeyRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress: journeyProgress } = useScroll({
+    target: journeyRef,
+    offset: ["start 70%", "end 30%"],
+  });
+  // Traveler position — top: 0 → 100%, left: zigzags via sine to mirror
+  // the SVG curve through Set1 (left) → Set2 (right) → Set3 (left).
+  const travelerTop = useTransform(journeyProgress, [0, 1], ["-2%", "100%"]);
+  const travelerLeft = useTransform(
+    journeyProgress,
+    (p) => `${50 - Math.sin(p * Math.PI * 3) * 22}%`,
+  );
+  // Milestone stamps — scale + glow snap on as traveler arrives.
+  const stamp1Scale = useTransform(journeyProgress, [0.10, 0.22], [0.55, 1.1]);
+  const stamp1Glow  = useTransform(journeyProgress, [0.10, 0.22], [0, 1]);
+  const stamp2Scale = useTransform(journeyProgress, [0.43, 0.55], [0.55, 1.1]);
+  const stamp2Glow  = useTransform(journeyProgress, [0.43, 0.55], [0, 1]);
+  const stamp3Scale = useTransform(journeyProgress, [0.76, 0.88], [0.55, 1.1]);
+  const stamp3Glow  = useTransform(journeyProgress, [0.76, 0.88], [0, 1]);
 
   return (
     <div className="min-h-screen signature-gradient overflow-x-hidden">
@@ -95,7 +161,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <main>
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
-        <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative flex items-center justify-center">
+        <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
+          {/* Hero background video — silent, looping ambience.  Tint
+              overlay below pushes the footage toward Vocaband's brand
+              palette so a generic clip still feels on-brand. */}
+          <video
+            className="absolute inset-0 w-full h-full object-cover -z-30"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          >
+            <source src="/hero.mp4" type="video/mp4" />
+          </video>
+          <div
+            className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/75 via-violet-900/65 to-fuchsia-900/75"
+            aria-hidden="true"
+          />
+
           {/* Animated Gradient Mesh Background */}
           <div className="absolute inset-0 overflow-hidden -z-10">
             <motion.div
@@ -137,7 +222,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   initial={{ opacity: 0, x: isRTL ? 50 : -50, y: 30 }}
                   animate={{ opacity: 1, x: 0, y: 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-headline italic leading-tight break-words mb-6"
+                  className="relative z-20 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black font-headline italic leading-tight break-words mb-6"
                 >
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
@@ -169,7 +254,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     student" text link below so a student who somehow
                     lands here can still get to their login. */}
                 <div className="flex flex-col gap-3 items-center lg:items-start">
-                  {/* Get Started Free - dominant teacher CTA */}
+                  {/* Sign in — dominant teacher CTA */}
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -177,14 +262,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation' }}
                     type="button"
-                    className="group relative w-full sm:w-auto px-10 py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_12px_0_0_#6d28d9,0_24px_50px_rgba(139,92,246,0.5)] hover:shadow-[0_16px_0_0_#5b21b6,0_28px_60px_rgba(139,92,246,0.6)] active:shadow-[0_4px_0_0_#6d28d9,0_10px_24px_rgba(139,92,246,0.4)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
+                    className="group relative w-full sm:w-auto px-10 py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_12px_0_0_#9a3412,0_24px_50px_rgba(251,146,60,0.55)] hover:shadow-[0_16px_0_0_#7c2d12,0_28px_60px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_10px_24px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 overflow-hidden"
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
                     <div className="relative z-10 flex items-center gap-2">
                       <Gamepad2 size={32} strokeWidth={2.5} />
                       <Sparkles size={28} strokeWidth={2.5} />
                     </div>
-                    <span className="relative z-10">{t.heroCtaStart}</span>
+                    <span className="relative z-10">{t.navSignIn}</span>
                   </motion.button>
 
                   {/* Student-login CTA intentionally removed from the
@@ -402,7 +487,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Features Section - 3D Bento Grid */}
-        <section id="students" className="py-12 md:py-20 px-4 md:px-6 relative scroll-mt-20">
+        <section ref={studentsSectionRef} id="students" className="py-12 md:py-20 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -419,20 +504,45 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* 10 Game Modes - Large Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              whileHover={{ y: -12, scale: 1.02, rotateX: 2, rotateY: 2 }}
-              className="lg:col-span-2 row-span-2 relative group perspective-1000"
+            <motion.div style={{ y: cardYBig }} className="lg:col-span-2 row-span-2 h-full">
+            <Tilt
+              tiltMaxAngleX={6}
+              tiltMaxAngleY={6}
+              perspective={1400}
+              scale={1.02}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.1, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 0 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
                 {/* Glass overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
+                {/* Spotlight follows the cursor */}
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
                   {/* Game Lottie Animation */}
-                  <div className="flex justify-center mb-4">
+                  <div className="flex justify-center mb-4" style={{ transform: 'translateZ(50px)' }}>
                     <motion.div
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.3 }}
@@ -440,12 +550,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <CssAnimation type="game" size={100} />
                     </motion.div>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-black mb-4 text-center">{t.gameModesTitle}</h3>
-                  <p className="text-white/80 font-bold mb-6 max-w-md mx-auto text-center" dir={dir}>
+                  <h3 className="text-3xl md:text-4xl font-black mb-4 text-center" style={{ transform: 'translateZ(35px)' }}>{t.gameModesTitle}</h3>
+                  <p className="text-white/80 font-bold mb-6 max-w-md mx-auto text-center" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.gameModesDesc}
                   </p>
                   {/* Mode Grid */}
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-6 gap-2" style={{ transform: 'translateZ(25px)' }}>
                     {[
                       { emoji: "📖", nameKey: "classic" },
                       { emoji: "🎧", nameKey: "listen" },
@@ -473,28 +583,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
 
             {/* Live Challenges */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              whileHover={{ y: -12, scale: 1.03 }}
-              className="relative group"
+            <motion.div style={{ y: cardYLive }} className="h-full">
+            <Tilt
+              tiltMaxAngleX={8}
+              tiltMaxAngleY={8}
+              perspective={1200}
+              scale={1.03}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.2, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                     <Trophy size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">{t.liveChallengesTitle}</h3>
-                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                  <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.liveChallengesTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.liveChallengesDesc}
                   </p>
                   {/* Animated podium with rising trophy */}
-                  <div className="mt-4 relative h-20 flex items-end justify-center gap-2">
+                  <div className="mt-4 relative h-20 flex items-end justify-center gap-2" style={{ transform: 'translateZ(25px)' }}>
                     <motion.div
                       animate={{ y: [0, -5, 0] }}
                       transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
@@ -522,28 +659,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
 
             {/* XP Shop */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              whileHover={{ y: -12, scale: 1.03 }}
-              className="relative group"
+            <motion.div style={{ y: cardYShop }} className="h-full">
+            <Tilt
+              tiltMaxAngleX={8}
+              tiltMaxAngleY={8}
+              perspective={1200}
+              scale={1.03}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.3, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                     <Coins size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">{t.xpShopTitle}</h3>
-                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                  <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.xpShopTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.xpShopDesc}
                   </p>
                   {/* Floating coins animation */}
-                  <div className="mt-4 relative h-16 flex justify-center items-center gap-2">
+                  <div className="mt-4 relative h-16 flex justify-center items-center gap-2" style={{ transform: 'translateZ(25px)' }}>
                     {[0, 1, 2].map((i) => (
                       <motion.div
                         key={i}
@@ -582,28 +746,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
 
             {/* Mystery Eggs */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              whileHover={{ y: -12, scale: 1.03 }}
-              className="relative group"
+            <motion.div style={{ y: cardYEggs }} className="h-full">
+            <Tilt
+              tiltMaxAngleX={8}
+              tiltMaxAngleY={8}
+              perspective={1200}
+              scale={1.03}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.4, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                     <Gift size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">{t.mysteryEggsTitle}</h3>
-                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                  <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.mysteryEggsTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.mysteryEggsDesc}
                   </p>
                   {/* Glowing wobbling egg */}
-                  <div className="mt-4 relative flex justify-center">
+                  <div className="mt-4 relative flex justify-center" style={{ transform: 'translateZ(25px)' }}>
                     <motion.div
                       animate={{
                         rotate: [-8, 8, -8],
@@ -642,28 +833,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
 
             {/* Boosters */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              whileHover={{ y: -12, scale: 1.03 }}
-              className="relative group"
+            <motion.div style={{ y: cardYBoost }} className="h-full">
+            <Tilt
+              tiltMaxAngleX={8}
+              tiltMaxAngleY={8}
+              perspective={1200}
+              scale={1.03}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-blue-400 via-indigo-500 to-violet-500 text-white shadow-[0_20px_60px_rgba(99,102,241,0.3)] hover:shadow-[0_30px_80px_rgba(99,102,241,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.5, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 8.5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-blue-400 via-indigo-500 to-violet-500 text-white shadow-[0_20px_60px_rgba(99,102,241,0.3)] hover:shadow-[0_30px_80px_rgba(99,102,241,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                     <Zap size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">{t.powerBoostersTitle}</h3>
-                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                  <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.powerBoostersTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.powerBoostersDesc}
                   </p>
                   {/* Electric lightning animation */}
-                  <div className="mt-4 relative h-16 flex items-center justify-center">
+                  <div className="mt-4 relative h-16 flex items-center justify-center" style={{ transform: 'translateZ(25px)' }}>
                     <motion.div
                       animate={{
                         scale: [1, 1.3, 1],
@@ -698,28 +916,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
 
             {/* Pet Companions */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              whileHover={{ y: -12, scale: 1.03 }}
-              className="relative group"
+            <motion.div style={{ y: cardYPet }} className="h-full">
+            <Tilt
+              tiltMaxAngleX={8}
+              tiltMaxAngleY={8}
+              perspective={1200}
+              scale={1.03}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 text-white shadow-[0_20px_60px_rgba(250,204,21,0.3)] hover:shadow-[0_30px_80px_rgba(250,204,21,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.6, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 text-white shadow-[0_20px_60px_rgba(250,204,21,0.3)] hover:shadow-[0_30px_80px_rgba(250,204,21,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                     <Crown size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">{t.petFriendsTitle}</h3>
-                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                  <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.petFriendsTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.petFriendsDesc}
                   </p>
                   {/* Bouncing pet with hearts */}
-                  <div className="mt-4 relative h-16 flex items-center justify-center">
+                  <div className="mt-4 relative h-16 flex items-center justify-center" style={{ transform: 'translateZ(25px)' }}>
                     <motion.div
                       animate={{
                         y: [0, -12, 0],
@@ -749,28 +994,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
 
             {/* Streaks */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              whileHover={{ y: -12, scale: 1.03 }}
-              className="relative group"
+            <motion.div style={{ y: cardYStreak }} className="h-full">
+            <Tilt
+              tiltMaxAngleX={8}
+              tiltMaxAngleY={8}
+              perspective={1200}
+              scale={1.03}
+              transitionSpeed={1500}
+              glareEnable
+              glareMaxOpacity={0.25}
+              glareColor="#ffffff"
+              glarePosition="all"
+              glareBorderRadius="2rem"
+              className="h-full"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 text-white shadow-[0_20px_60px_rgba(239,68,68,0.3)] hover:shadow-[0_30px_80px_rgba(239,68,68,0.4)] transition-all duration-300 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, rotateY: -90, scale: 0.7 }}
+              whileInView={{ opacity: 1, rotateY: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.9, delay: 0.7, type: "spring", stiffness: 50, damping: 14 }}
+              className="relative group h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+            <motion.div
+              animate={{ rotateY: [0, 2, 0, -2, 0], rotateX: [0, -1.5, 0, 1.5, 0] }}
+              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+              className="h-full"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 text-white shadow-[0_20px_60px_rgba(239,68,68,0.3)] hover:shadow-[0_30px_80px_rgba(239,68,68,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                  style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
+                />
+                <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                     <Flame size={28} />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">{t.dailyStreaksTitle}</h3>
-                  <p className="text-white/80 font-bold text-sm" dir={dir}>
+                  <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.dailyStreaksTitle}</h3>
+                  <p className="text-white/80 font-bold text-sm" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.dailyStreaksDesc}
                   </p>
                   {/* Animated flame with rising embers */}
-                  <div className="mt-4 relative h-16 flex items-center justify-center">
+                  <div className="mt-4 relative h-16 flex items-center justify-center" style={{ transform: 'translateZ(25px)' }}>
                     <motion.div
                       animate={{
                         scale: [1, 1.15, 1],
@@ -810,15 +1082,37 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
             </motion.div>
+            </motion.div>
+            </Tilt>
+            </motion.div>
           </div>
         </section>
 
         {/* AI Section - Does All the Heavy Lifting */}
-        <section id="ai" className="py-12 md:py-20 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
+        <section id="ai" className="py-12 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
+          {/* Ambient video background — silent, looping.  The brand tint
+              overlay below pushes the footage toward Vocaband's violet
+              palette so a generic clip still feels on-brand. */}
+          <video
+            className="absolute inset-0 w-full h-full object-cover -z-30"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          >
+            <source src="/ai-bg.mp4" type="video/mp4" />
+          </video>
+          <div
+            className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/80 via-violet-900/70 to-fuchsia-900/80"
+            aria-hidden="true"
+          />
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            initial={{ opacity: 0, x: isRTL ? -100 : 100 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
             className="max-w-6xl mx-auto mb-12 text-center"
           >
             {/* AI Badge */}
@@ -843,14 +1137,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Zero Prep Work */}
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              initial={{ opacity: 0, x: isRTL ? 100 : -100 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative group"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300">
+              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300">
                 <div className="relative z-10 text-center">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: [0, -10, 10, 0] }}
@@ -871,14 +1165,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
             {/* AI-Generated Content */}
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              initial={{ opacity: 0, x: isRTL ? 100 : -100 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: 0.25, ease: "easeOut" }}
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative group"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300">
+              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-violet-500/35 via-purple-500/35 to-fuchsia-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300">
                 <div className="relative z-10 text-center">
                   <motion.div
                     whileHover={{ scale: 1.1 }}
@@ -899,14 +1193,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
             {/* Auto-Grading */}
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              initial={{ opacity: 0, x: isRTL ? 100 : -100 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative group"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300">
+              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-amber-500/35 via-orange-500/35 to-rose-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300">
                 <div className="relative z-10 text-center">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: [0, 15, -15, 0] }}
@@ -958,10 +1252,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 {t.teachersSectionPill}
               </span>
             </motion.div>
-            <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
-              {t.teachersSectionH2}
-            </h2>
-            <p className="text-lg text-white/80 font-bold" dir={dir}>
+            <motion.h2
+              initial={{ opacity: 0, scale: 0.35 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ type: "spring", stiffness: 35, damping: 18, delay: 0.4 }}
+              className="text-6xl md:text-8xl lg:text-9xl font-black font-headline mb-8 tracking-tight"
+            >
+              <motion.span
+                animate={{
+                  scale: [1, 1.015, 1],
+                  filter: [
+                    "drop-shadow(0 0 50px rgba(56,189,248,0.55))",
+                    "drop-shadow(0 0 80px rgba(56,189,248,0.75))",
+                    "drop-shadow(0 0 50px rgba(56,189,248,0.55))",
+                  ],
+                }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="inline-block bg-gradient-to-r from-white via-sky-200 to-white bg-clip-text text-transparent"
+              >
+                {t.teachersSectionH2}
+              </motion.span>
+            </motion.h2>
+            <p className="text-lg md:text-xl text-white/80 font-bold" dir={dir}>
               {t.teachersSectionSubtitle}
             </p>
           </motion.div>
@@ -1004,7 +1317,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -12, scale: 1.03 }}
               className="relative group"
             >
-              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+              <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                 <div className="relative z-10">
                   <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -1327,9 +1640,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </motion.div>
 
           {/* 3D Progress Cards with Path */}
-          <div className="max-w-5xl mx-auto relative">
-            {/* Connecting Path Line */}
-            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-500 via-blue-500 to-violet-500 -translate-x-1/2 rounded-full" />
+          <div ref={journeyRef} className="max-w-5xl mx-auto relative">
+            {/* Curved SVG trail — winds left-right between Set1, Set2,
+                Set3 like a video-game level map.  preserveAspectRatio
+                "none" lets the path stretch with the container height. */}
+            <svg
+              className="hidden md:block absolute inset-0 w-full h-full pointer-events-none"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+              fill="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="journeyTrail" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="50%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M 50 0 C 38 11, 28 8, 28 18 C 28 28, 50 22, 50 33 C 50 44, 72 38, 72 50 C 72 62, 50 56, 50 67 C 50 78, 28 72, 28 83 C 28 94, 50 88, 50 100"
+                stroke="url(#journeyTrail)"
+                strokeWidth="0.8"
+                strokeLinecap="round"
+                strokeDasharray="0.5 1.2"
+                opacity="0.85"
+              />
+            </svg>
+
+            {/* Scroll-driven traveler — walks the trail as user scrolls. */}
+            <motion.div
+              className="hidden md:flex absolute z-30 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-white items-center justify-center text-3xl shadow-[0_8px_30px_rgba(251,191,36,0.6)] ring-4 ring-amber-400"
+              style={{ top: travelerTop, left: travelerLeft }}
+              aria-hidden="true"
+            >
+              🎒
+            </motion.div>
 
             <div className="space-y-8 md:space-y-16">
               {/* Set 1 */}
@@ -1348,9 +1694,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex w-20 h-20 rounded-full items-center justify-center z-10 overflow-hidden">
-                  <CssAnimation type="book" size={80} />
-                </div>
+                {/* Milestone 1 — colors in when traveler arrives. */}
+                <motion.div
+                  style={{ scale: stamp1Scale }}
+                  className="hidden md:flex relative w-24 h-24 z-20 items-center justify-center"
+                >
+                  <div className="absolute inset-0 rounded-full bg-slate-700/80 ring-2 ring-white/20" />
+                  <motion.div
+                    style={{ opacity: stamp1Glow }}
+                    className="absolute -inset-3 rounded-full bg-emerald-400/50 blur-2xl"
+                  />
+                  <motion.div
+                    style={{ opacity: stamp1Glow }}
+                    className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 ring-4 ring-white shadow-[0_0_40px_rgba(16,185,129,0.8)]"
+                  />
+                  <span className="relative z-10 text-white text-3xl font-black drop-shadow-lg">1</span>
+                </motion.div>
                 <div className="md:w-1/2 md:pl-12">
                   <div className="p-4 rounded-2xl bg-surface-container-high">
                     <div className="flex justify-between mb-2">
@@ -1386,9 +1745,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex w-20 h-20 rounded-full items-center justify-center z-10 overflow-hidden">
-                  <CssAnimation type="book" size={80} />
-                </div>
+                {/* Milestone 2 — colors in when traveler arrives. */}
+                <motion.div
+                  style={{ scale: stamp2Scale }}
+                  className="hidden md:flex relative w-24 h-24 z-20 items-center justify-center"
+                >
+                  <div className="absolute inset-0 rounded-full bg-slate-700/80 ring-2 ring-white/20" />
+                  <motion.div
+                    style={{ opacity: stamp2Glow }}
+                    className="absolute -inset-3 rounded-full bg-blue-400/50 blur-2xl"
+                  />
+                  <motion.div
+                    style={{ opacity: stamp2Glow }}
+                    className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 ring-4 ring-white shadow-[0_0_40px_rgba(59,130,246,0.8)]"
+                  />
+                  <span className="relative z-10 text-white text-3xl font-black drop-shadow-lg">2</span>
+                </motion.div>
                 <div className="md:w-1/2 md:pr-12 md:text-right">
                   <div className="p-4 rounded-2xl bg-surface-container-high">
                     <div className="flex justify-between mb-2">
@@ -1424,9 +1796,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex w-20 h-20 rounded-full items-center justify-center z-10 overflow-hidden">
-                  <CssAnimation type="book" size={80} />
-                </div>
+                {/* Milestone 3 — colors in when traveler arrives. */}
+                <motion.div
+                  style={{ scale: stamp3Scale }}
+                  className="hidden md:flex relative w-24 h-24 z-20 items-center justify-center"
+                >
+                  <div className="absolute inset-0 rounded-full bg-slate-700/80 ring-2 ring-white/20" />
+                  <motion.div
+                    style={{ opacity: stamp3Glow }}
+                    className="absolute -inset-3 rounded-full bg-fuchsia-400/50 blur-2xl"
+                  />
+                  <motion.div
+                    style={{ opacity: stamp3Glow }}
+                    className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 ring-4 ring-white shadow-[0_0_40px_rgba(217,70,239,0.8)]"
+                  />
+                  <span className="relative z-10 text-white text-3xl font-black drop-shadow-lg">3</span>
+                </motion.div>
                 <div className="md:w-1/2 md:pl-12">
                   <div className="p-4 rounded-2xl bg-surface-container-high">
                     <div className="flex justify-between mb-2">
@@ -1442,6 +1827,43 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
                       />
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Summit reward — the destination of the journey.  Springs
+                  in once the traveler reaches the bottom; floating trophy
+                  signals "you've arrived." */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.7, y: 30 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ type: "spring", stiffness: 60, damping: 14, delay: 0.2 }}
+                className="relative flex justify-center pt-4"
+              >
+                <div className="relative px-10 py-8 md:px-14 md:py-10 rounded-[2rem] bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 text-white shadow-[0_20px_60px_rgba(251,191,36,0.55)] text-center overflow-hidden max-w-md">
+                  {/* Glass highlight */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
+                  {/* Pulsing halo */}
+                  <motion.div
+                    animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute -inset-6 rounded-[3rem] bg-amber-300/30 blur-3xl -z-10"
+                  />
+                  <div className="relative z-10">
+                    <motion.div
+                      animate={{ y: [0, -10, 0], rotate: [-4, 4, -4] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="text-7xl mb-3 drop-shadow-lg"
+                    >
+                      🏆
+                    </motion.div>
+                    <h3 className="text-3xl md:text-4xl font-black mb-2 drop-shadow-md">
+                      {t.summitTitle}
+                    </h3>
+                    <p className="text-white/95 font-bold text-base md:text-lg" dir={dir}>
+                      {t.summitDesc}
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -1511,10 +1933,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             ].map((subject, i) => (
               <motion.div
                 key={subject.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
+                initial={{ opacity: 0, scale: 0.4, rotate: i % 2 === 0 ? -360 : 360 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 1.4, delay: 0.1 + i * 0.18, ease: [0.34, 1.56, 0.64, 1] }}
                 whileHover={{ y: -8, scale: 1.04 }}
                 className="relative group"
               >
@@ -1571,16 +1993,34 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Final CTA - Epic 3D Card */}
-        <section className="py-12 md:py-24 px-4 md:px-6 bg-surface">
+        <section className="py-12 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
+          {/* Cosmic trilingual backdrop — silent looping video.
+              Stretches edge-to-edge across the whole CTA strip so the
+              violet card below floats inside the universe. */}
+          <video
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          >
+            <source src="/cta-bg.mp4" type="video/mp4" />
+          </video>
+          {/* Section-level darkening overlay so heading + buttons stay
+              readable on top of the busy image. */}
+          <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 50 }}
             whileInView={{ opacity: 1, scale: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
-            className="max-w-5xl mx-auto relative"
+            className="max-w-5xl mx-auto relative z-10"
           >
             {/* 3D Card with multiple shadow layers */}
-            <div className="relative p-12 md:p-20 rounded-[3rem] bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 text-white text-center overflow-hidden">
+            <div className="relative p-12 md:p-20 rounded-[3rem] bg-gradient-to-br from-violet-600/40 via-purple-600/40 to-fuchsia-600/40 backdrop-blur-sm border border-white/15 text-white text-center overflow-hidden">
               {/* Animated background pattern */}
               <div className="absolute inset-0 opacity-10">
                 <motion.div
@@ -1859,11 +2299,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             family — no contrast breaks.
           ═══════════════════════════════════════════════════════════
         */}
-        <footer className="py-4 px-4 md:px-6 relative">
+        <footer className="pt-16 pb-4 md:pt-24 md:pb-6 px-4 md:px-6 relative bg-slate-950 mt-8 md:mt-12">
           <div className="max-w-7xl mx-auto">
 
-            {/* ── 4-column grid ─────────────────────────────────── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pb-10 border-b border-white/10">
+            {/* ── 4-column grid — each line cascades in one-by-one ── */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pb-10 border-b border-white/10"
+            >
 
               {/* Col 1: Brand + tagline + contact */}
               <div className="col-span-2 md:col-span-1">
@@ -1871,28 +2316,41 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     italic font-headline treatment that PublicNav and
                     QuickPlayStudentView already use, so the V mark is
                     visually identical wherever it appears in the app. */}
-                <div className="flex items-center gap-3 mb-3">
+                <motion.div
+                  variants={footerItemVariant}
+                  custom={0}
+                  className="flex items-center gap-3 mb-3"
+                >
                   <div className="w-11 h-11 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
                     <span className="text-white text-2xl font-black font-headline italic">V</span>
                   </div>
                   <span className="text-white font-black text-xl">Vocaband</span>
-                </div>
-                <p className="text-white/75 text-sm leading-relaxed mb-5 max-w-xs" dir={dir}>
+                </motion.div>
+                <motion.p
+                  variants={footerItemVariant}
+                  custom={1}
+                  className="text-white/75 text-sm leading-relaxed mb-5 max-w-xs"
+                  dir={dir}
+                >
                   {t.footerTagline}
-                </p>
+                </motion.p>
               </div>
 
               {/* Col 2: Product */}
               <div>
-                <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
+                <motion.h4
+                  variants={footerItemVariant}
+                  custom={2}
+                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
+                >
                   {t.footerProduct}
-                </h4>
+                </motion.h4>
                 <ul className="space-y-2.5">
                   {/* "Start Learning" footer link removed — it routed
                       students to the join screen, but students no
                       longer arrive on the marketing landing.  They
                       reach /student via the teacher's class link. */}
-                  <li>
+                  <motion.li variants={footerItemVariant} custom={3}>
                     <button
                       onClick={onTryDemo}
                       type="button"
@@ -1900,9 +2358,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       {t.footerTryDemo}
                     </button>
-                  </li>
+                  </motion.li>
                   {!isAuthenticated && (
-                    <li>
+                    <motion.li variants={footerItemVariant} custom={4}>
                       <button
                         onClick={onTeacherLogin}
                         type="button"
@@ -1910,42 +2368,46 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       >
                         {t.footerTeacherLogin}
                       </button>
-                    </li>
+                    </motion.li>
                   )}
                 </ul>
               </div>
 
               {/* Col 3: Resources */}
               <div>
-                <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
+                <motion.h4
+                  variants={footerItemVariant}
+                  custom={5}
+                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
+                >
                   {t.footerResources}
-                </h4>
+                </motion.h4>
                 <ul className="space-y-2.5">
-                  <li>
+                  <motion.li variants={footerItemVariant} custom={6}>
                     <a
                       href="/answers/cefr-a1-vocabulary-list.html"
                       className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerCefrVocab}
                     </a>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={7}>
                     <a
                       href="/answers/cefr-a1-vs-a2-vocabulary.html"
                       className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerCefrExplained}
                     </a>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={8}>
                     <a
                       href="/answers/best-english-vocabulary-app-grade-5.html"
                       className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       {t.footerBestEsl}
                     </a>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={9}>
                     <button
                       type="button"
                       onClick={() => onNavigate("faq")}
@@ -1954,8 +2416,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <CircleHelp size={14} aria-hidden="true" />
                       {t.footerFaq}
                     </button>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={10}>
                     <a
                       href="mailto:contact@vocaband.com"
                       className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
@@ -1963,13 +2425,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <Mail size={14} aria-hidden="true" />
                       {t.footerContact}
                     </a>
-                  </li>
+                  </motion.li>
                   {/* Private channel for individual teachers — per
                       docs/PRICING-MODEL.md the public face is schools-first;
                       this footer mailto is the casual entry point for solo
                       teachers who want a Pro quote.  The subject line lets
                       sales triage the inbox without a separate form. */}
-                  <li>
+                  <motion.li variants={footerItemVariant} custom={11}>
                     <a
                       href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
                       className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
@@ -1977,8 +2439,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <User size={14} aria-hidden="true" />
                       {t.footerTeacherInquiry}
                     </a>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={12}>
                     <button
                       type="button"
                       onClick={() => setIsFeatureModalOpen(true)}
@@ -1987,8 +2449,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <Lightbulb size={14} aria-hidden="true" />
                       {t.footerFeatureRequest}
                     </button>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={13}>
                     <button
                       type="button"
                       onClick={() => onNavigate("resources")}
@@ -1997,17 +2459,38 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <Download size={14} aria-hidden="true" />
                       {t.footerFreeResources}
                     </button>
-                  </li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={14}>
+                    <a
+                      href={
+                        language === "he"
+                          ? "https://www.canva.com/d/SfnGGC-8GJg19xN"
+                          : language === "ar"
+                          ? "https://www.canva.com/d/v6rOhUQiFahEsBr"
+                          : "https://www.canva.com/d/O_Z26Jkg32JPRlt"
+                      }
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Presentation size={14} aria-hidden="true" />
+                      {t.footerSchoolDeck}
+                    </a>
+                  </motion.li>
                 </ul>
               </div>
 
               {/* Col 4: Legal + Trust */}
               <div>
-                <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
+                <motion.h4
+                  variants={footerItemVariant}
+                  custom={15}
+                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
+                >
                   {t.footerLegal}
-                </h4>
+                </motion.h4>
                 <ul className="space-y-2.5">
-                  <li>
+                  <motion.li variants={footerItemVariant} custom={16}>
                     <button
                       onClick={() => onNavigate("terms")}
                       type="button"
@@ -2016,8 +2499,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <FileText size={14} aria-hidden="true" />
                       {t.footerTerms}
                     </button>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={17}>
                     <button
                       onClick={() => onNavigate("privacy")}
                       type="button"
@@ -2026,8 +2509,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <ShieldCheck size={14} aria-hidden="true" />
                       {t.footerPrivacy}
                     </button>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={18}>
                     <button
                       onClick={() => onNavigate("security")}
                       type="button"
@@ -2036,8 +2519,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <Lock size={14} aria-hidden="true" />
                       {t.footerSecurity}
                     </button>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={19}>
                     <button
                       onClick={() => onNavigate("accessibility")}
                       type="button"
@@ -2046,8 +2529,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <Accessibility size={14} aria-hidden="true" />
                       {t.footerAccessibility}
                     </button>
-                  </li>
-                  <li>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={20}>
                     <button
                       onClick={() => onNavigate("status")}
                       type="button"
@@ -2056,10 +2539,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <Activity size={14} aria-hidden="true" />
                       {t.footerStatus}
                     </button>
-                  </li>
+                  </motion.li>
                 </ul>
               </div>
-            </div>
+            </motion.div>
 
             {/* ── Bottom bar: trust strip + copyright ───────────── */}
             <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">

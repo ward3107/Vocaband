@@ -27,7 +27,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
   const ui = uiTranslations[language];
 
   return (
-    <div className="min-h-screen bg-surface" dir={dir}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav
         currentPage="privacy"
         onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy")}
@@ -44,20 +44,20 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
         {/* Header */}
         <section className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
-            {t.title} <span className="text-primary italic">{t.titleHighlight}</span>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 font-headline drop-shadow-lg">
+            {t.title} <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent italic">{t.titleHighlight}</span>
           </h1>
-          <div className={`flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium`}>
+          <div className={`flex flex-wrap gap-4 text-sm text-white/70 font-medium`}>
             <span className="flex items-center gap-2">
-              <FileText size={16} className="text-primary" />
+              <FileText size={16} className="text-violet-300" />
               {t.effective}
             </span>
             <span className="flex items-center gap-2">
-              <Shield size={16} className="text-primary" />
+              <Shield size={16} className="text-violet-300" />
               {t.version}
             </span>
           </div>
-          <p className={`mt-4 text-lg text-on-surface-variant max-w-2xl`}>
+          <p className={`mt-4 text-lg text-white/75 max-w-2xl`}>
             <strong>{language === 'en' ? 'Legal Basis:' : language === 'he' ? 'בסיס חוקי:' : 'الأساس القانوني:'}</strong> {t.legalBasis}
           </p>
         </section>
@@ -79,12 +79,12 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         {/* Sections */}
         <div className="space-y-8">
           {/* Section 1: Data Controller */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">1</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">1</span>
               {language === 'en' ? 'Data Controller (בעל המאגר)' : language === 'he' ? 'בעל המאגר' : 'مراقب البيانات (בעל המאגר)'}
             </h2>
-            <div className={`text-on-surface-variant leading-relaxed space-y-4`}>
+            <div className={`text-slate-600 leading-relaxed space-y-4`}>
               <p>
                 {language === 'en' ? 'Under the Israeli Privacy Protection Law (Amendment 13), the data controller for Vocaband is:' :
                  language === 'he' ? 'לפי חוק הגנת הפרטיות (תיקון 13), בעל מאגר הנתונים של Vocaband הוא:' :
@@ -93,7 +93,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               <ul className={`space-y-2`}>
                 <li><strong>{language === 'en' ? 'Entity:' : language === 'he' ? 'גוף:' : 'الكيان:'}</strong> Vocaband Educational Technologies</li>
                 <li><strong>{language === 'en' ? 'Address:' : language === 'he' ? 'כתובת:' : 'العنوان:'}</strong> {language === 'en' ? 'Israel' : language === 'he' ? 'ישראל' : 'إسرائيل'}</li>
-                <li><strong>{language === 'en' ? 'Privacy Contact:' : language === 'he' ? 'יצירת קשר לפרטיות:' : 'جهة اتصال الخصوصية:'}</strong> <span className="text-primary">contact@vocaband.com</span></li>
+                <li><strong>{language === 'en' ? 'Privacy Contact:' : language === 'he' ? 'יצירת קשר לפרטיות:' : 'جهة اتصال الخصوصية:'}</strong> <span className="text-violet-600">contact@vocaband.com</span></li>
               </ul>
               <p>
                 {language === 'en' ? 'For privacy inquiries, data access requests, or complaints, contact us at the email above. We will respond within 30 days as required by law.' :
@@ -113,7 +113,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               <ul className={`space-y-2`}>
                 <li><strong>{language === 'en' ? 'Name:' : language === 'he' ? 'שם:' : 'الاسم:'}</strong> {DATA_PROTECTION_OFFICER.name}</li>
                 <li><strong>{language === 'en' ? 'Role:' : language === 'he' ? 'תפקיד:' : 'الدور:'}</strong> {DATA_PROTECTION_OFFICER.role}</li>
-                <li><strong>{language === 'en' ? 'Privacy Email:' : language === 'he' ? 'אימייל לפרטיות:' : 'بريد الخصوصية:'}</strong> <span className="text-primary">{DATA_PROTECTION_OFFICER.email}</span></li>
+                <li><strong>{language === 'en' ? 'Privacy Email:' : language === 'he' ? 'אימייל לפרטיות:' : 'بريد الخصوصية:'}</strong> <span className="text-violet-600">{DATA_PROTECTION_OFFICER.email}</span></li>
                 <li><strong>{language === 'en' ? 'Response SLA:' : language === 'he' ? 'זמן תגובה מובטח:' : 'وقت الاستجابة:'}</strong> {language === 'en' ? `${DATA_PROTECTION_OFFICER.responseSlaHours} hours for incident reports; 30 days for data-subject rights requests.` :
                  language === 'he' ? `${DATA_PROTECTION_OFFICER.responseSlaHours} שעות לדיווחי אירועי אבטחה; 30 יום לבקשות זכויות נושאי מידע.` :
                  `${DATA_PROTECTION_OFFICER.responseSlaHours} ساعة لتقارير الحوادث؛ 30 يومًا لطلبات حقوق أصحاب البيانات.`}</li>
@@ -122,17 +122,17 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 2: What We Collect */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">2</span>
-              <Database size={20} className="text-primary" />
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">2</span>
+              <Database size={20} className="text-violet-600" />
               {ui.forStudents === 'For Students' ? 'Data We Collect' : language === 'he' ? 'נתונים שאנו אוספים' : 'البيانات التي نجمعها'}
             </h2>
 
             <div className={`grid md:grid-cols-2 gap-6 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
               <div className="bg-surface-container-low p-5 rounded-xl">
                 <div className={`flex items-center gap-2 mb-3`}>
-                  <Users size={18} className="text-primary" />
+                  <Users size={18} className="text-violet-600" />
                   <h3 className="font-bold text-on-surface">{ui.forStudents}</h3>
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">{ui.anonymous}</span>
                 </div>
@@ -172,7 +172,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
 
               <div className="bg-surface-container-low p-5 rounded-xl">
                 <div className={`flex items-center gap-2 mb-3`}>
-                  <School size={18} className="text-primary" />
+                  <School size={18} className="text-violet-600" />
                   <h3 className="font-bold text-on-surface">{ui.forTeachers}</h3>
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{ui.googleOAuth}</span>
                 </div>
@@ -205,9 +205,9 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 3: How We Use Data */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">3</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">3</span>
               {language === 'en' ? 'How We Use Your Data' : language === 'he' ? 'כיצד אנו משתמשים בנתונים שלך' : 'كيف نستخدم بياناتك'}
             </h2>
             <div className="overflow-x-auto">
@@ -290,10 +290,10 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 4: Third Parties */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">4</span>
-              <Globe size={20} className="text-primary" />
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">4</span>
+              <Globe size={20} className="text-violet-600" />
               {language === 'en' ? 'Third-Party Processors' : language === 'he' ? 'מעבדי צד שלישי' : 'معالجات الطرف الثالث'}
             </h2>
             <div className="overflow-x-auto">
@@ -347,10 +347,10 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 5: Retention */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">5</span>
-              <Clock size={20} className="text-primary" />
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">5</span>
+              <Clock size={20} className="text-violet-600" />
               {language === 'en' ? 'Data Retention' : language === 'he' ? 'שמירת נתונים' : 'الاحتفاظ بالبيانات'}
             </h2>
             <ul className="space-y-3 text-on-surface-variant">
@@ -374,13 +374,13 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 6: Your Rights */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">6</span>
-              <Gavel size={20} className="text-primary" />
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">6</span>
+              <Gavel size={20} className="text-violet-600" />
               {language === 'en' ? 'Your Rights (Data Subject Rights)' : language === 'he' ? 'הזכויות שלך (זכויות נושא הנתונים)' : 'حقوقك (حقوق موضوع البيانات)'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4`}>
+            <p className={`text-slate-600 leading-relaxed mb-4`}>
               {language === 'en' ? 'Under Israeli Privacy Protection Law (Amendment 13), you have the right to:' :
                language === 'he' ? 'לפי חוק הגנת הפרטיות (תיקון 13), יש לך את הזכות:' :
                'بموجب قانون حماية الخصوصية الإسرائيلي (التعديل 13)، لديك الحق في:'}
@@ -388,21 +388,21 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-surface-container-low p-4 rounded-xl text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Database size={18} className="text-primary" />
+                  <Database size={18} className="text-violet-600" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.access}</h4>
                 <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.accessDesc}</p>
               </div>
               <div className="bg-surface-container-low p-4 rounded-xl text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Lock size={18} className="text-primary" />
+                  <Lock size={18} className="text-violet-600" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.deletion}</h4>
                 <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.deletionDesc}</p>
               </div>
               <div className="bg-surface-container-low p-4 rounded-xl text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <FileText size={18} className="text-primary" />
+                  <FileText size={18} className="text-violet-600" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.portability}</h4>
                 <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.portabilityDesc}</p>
@@ -411,13 +411,13 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 7: Children's Privacy */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">7</span>
-              <Users size={20} className="text-primary" />
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">7</span>
+              <Users size={20} className="text-violet-600" />
               {language === 'en' ? "Children's Privacy" : language === 'he' ? 'פרטיות ילדים' : 'خصوصية الأطفال'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4`}>
+            <p className={`text-slate-600 leading-relaxed mb-4`}>
               {language === 'en' ? 'Vocaband is designed for students in schools worldwide. The educational institution (school) authorizes student use. By providing a class code, the teacher (on behalf of the school) authorizes student access.' :
                language === 'he' ? 'Vocaband מיועד לתלמידים בבתי ספר ברחבי העולם. המוסד החינוכי (בית הספר) מאשר שימוש תלמידים. על ידי מתן קוד כיתה, המורה (מטעם בית הספר) מאשר גישת תלמידים.' :
                'Vocaband مصمم للطلاب في المدارس حول العالم. المؤسسة التعليمية (المدرسة) تصرح باستخدام الطلاب. من خلال تقديم رمز الفصل، يصرح المعلم (نيابة عن المدرسة) بوصول الطلاب.'}
@@ -432,16 +432,16 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 8: Security */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">8</span>
-              <Lock size={20} className="text-primary" />
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">8</span>
+              <Lock size={20} className="text-violet-600" />
               {language === 'en' ? 'Security Measures' : language === 'he' ? 'אמצעי אבטחה' : 'تدابير الأمان'}
             </h2>
             <ul className={`grid md:grid-cols-2 gap-3 text-on-surface-variant`}>
               {ui.securityMeasures.map((item, i) => (
                 <li key={i} className={`flex items-center gap-2`}>
-                  <span className="text-primary">✓</span> {item}
+                  <span className="text-violet-600">✓</span> {item}
                 </li>
               ))}
             </ul>
@@ -463,13 +463,13 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 9: Complaints */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">9</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">9</span>
               <AlertTriangle size={20} className="text-amber-500" />
               {language === 'en' ? 'Complaints' : language === 'he' ? 'תלונות' : 'الشكاوى'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4`}>
+            <p className={`text-slate-600 leading-relaxed mb-4`}>
               {language === 'en' ? 'If you believe your privacy rights have been violated, you may:' :
                language === 'he' ? 'אם אתה סבור שזכויות הפרטיות שלך הופרו, אתה רשאי:' :
                'إذا كنت تعتقد أن حقوق خصوصيتك قد انتهكت، يمكنك:'}

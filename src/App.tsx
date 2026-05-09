@@ -64,6 +64,9 @@ const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 const VocaPickerView = lazy(() => import("./views/VocaPickerView"));
 const VocaHebrewDashboardView = lazy(() => import("./views/VocaHebrewDashboardView"));
 const NiqqudModeView = lazy(() => import("./views/NiqqudModeView"));
+const ShoreshHuntView = lazy(() => import("./views/ShoreshHuntView"));
+const SynonymMatchView = lazy(() => import("./views/SynonymMatchView"));
+const ListeningModeView = lazy(() => import("./views/ListeningModeView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
@@ -131,6 +134,7 @@ const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
   "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
   "voca-picker", "vocahebrew-dashboard",
+  "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
 
 // VocaHebrew — entitlement helpers.  A teacher's subjects_taught array
@@ -2634,10 +2638,10 @@ export default function App() {
       </LazyWrapper>
     );
   }
-  // VocaHebrew dashboard — placeholder this session; real Hebrew
-  // content + Niqqud Mode land in the next build.  Switch-Voca
-  // returns the teacher to the picker so they can flip back to
-  // English without logging out.
+  // VocaHebrew dashboard — entry point into the four native-track
+  // games (Niqqud, Shoresh Hunt, Synonym Match, Listening).
+  // Switch-Voca returns the teacher to the picker so they can flip
+  // back to English without logging out.
   if (user?.role === "teacher" && view === "vocahebrew-dashboard") {
     const showSwitcher = getEntitledVocas(user).length >= 2;
     return (
@@ -2650,15 +2654,42 @@ export default function App() {
             setView("voca-picker");
           }}
           onLaunchNiqqudMode={() => setView("vocahebrew-niqqud")}
+          onLaunchShoreshHunt={() => setView("vocahebrew-shoresh")}
+          onLaunchSynonymMatch={() => setView("vocahebrew-synonyms")}
+          onLaunchListeningMode={() => setView("vocahebrew-listening")}
         />
       </LazyWrapper>
     );
   }
-  // Niqqud Mode — the first VocaHebrew native-track game.
+  // Niqqud Mode — pick the right vocalization for an unmarked word.
   if (user?.role === "teacher" && view === "vocahebrew-niqqud") {
     return (
       <LazyWrapper loadingMessage="Loading Niqqud Mode...">
         <NiqqudModeView onExit={() => setView("vocahebrew-dashboard")} />
+      </LazyWrapper>
+    );
+  }
+  // Shoresh Hunt — pick the 3 root letters from the Hebrew alphabet.
+  if (user?.role === "teacher" && view === "vocahebrew-shoresh") {
+    return (
+      <LazyWrapper loadingMessage="Loading Shoresh Hunt...">
+        <ShoreshHuntView onExit={() => setView("vocahebrew-dashboard")} />
+      </LazyWrapper>
+    );
+  }
+  // Synonym Match — pick the synonym or antonym from 4 options.
+  if (user?.role === "teacher" && view === "vocahebrew-synonyms") {
+    return (
+      <LazyWrapper loadingMessage="Loading Synonym Match...">
+        <SynonymMatchView onExit={() => setView("vocahebrew-dashboard")} />
+      </LazyWrapper>
+    );
+  }
+  // Listening Mode — hear the lemma, pick the matching niqqud form.
+  if (user?.role === "teacher" && view === "vocahebrew-listening") {
+    return (
+      <LazyWrapper loadingMessage="Loading Listening Mode...">
+        <ListeningModeView onExit={() => setView("vocahebrew-dashboard")} />
       </LazyWrapper>
     );
   }

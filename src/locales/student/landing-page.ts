@@ -155,6 +155,10 @@ export interface LandingPageT {
   set3Desc: string;
   set3Words: string;
 
+  // Summit reward at the end of the journey path.
+  summitTitle: string;
+  summitDesc: string;
+
   // ─── Section: The Voca Family (roadmap) ────────────────────────
   vocaFamilyPill: string;
   vocaFamilyH2: string;
@@ -258,6 +262,7 @@ export interface LandingPageT {
   footerTeacherInquiry: string;
   footerFeatureRequest: string;
   footerFreeResources: string;
+  footerSchoolDeck: string;
   footerStatus: string;
   footerCopyright: (year: number) => string;
 }
@@ -373,6 +378,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
     set3Desc: "Advanced mastery",
     set3Words: "~3000 words",
 
+    summitTitle: "Mastery Reached",
+    summitDesc: "Climb to the summit. Become a vocabulary champion.",
+
     // Voca Family
     vocaFamilyPill: "Coming Soon",
     vocaFamilyH2: "The Voca Family",
@@ -471,6 +479,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerTeacherInquiry: "Individual teacher? Get in touch",
     footerFeatureRequest: "Request a Feature",
     footerFreeResources: "Free Resources",
+    footerSchoolDeck: "School Pitch Deck",
     footerStatus: "System Status",
     footerCopyright: (year) =>
       `© ${year} Vocaband. Made with 💙 for learners everywhere.`,
@@ -586,6 +595,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
     set3Desc: "שליטה מתקדמת",
     set3Words: "~3000 מילים",
 
+    summitTitle: "הגעתם לפסגה",
+    summitDesc: "טפסו אל הפסגה והפכו לאלופי אוצר המילים.",
+
     // Voca Family
     vocaFamilyPill: "בקרוב",
     vocaFamilyH2: "משפחת Voca",
@@ -684,6 +696,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerTeacherInquiry: "מורה פרטי? צרו איתנו קשר",
     footerFeatureRequest: "הצע פיצ'ר חדש",
     footerFreeResources: "משאבים בחינם",
+    footerSchoolDeck: "מצגת מכירות לבתי ספר",
     footerStatus: "סטטוס מערכת",
     footerCopyright: (year) =>
       `© ${year} Vocaband. נוצר עם 💙 ללומדים בכל העולם.`,
@@ -799,6 +812,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
     set3Desc: "إتقان متقدم",
     set3Words: "~3000 كلمة",
 
+    summitTitle: "وصلت إلى القمة",
+    summitDesc: "اصعد إلى القمة وكن بطل المفردات.",
+
     // Voca Family
     vocaFamilyPill: "قريباً",
     vocaFamilyH2: "عائلة Voca",
@@ -897,6 +913,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerTeacherInquiry: "معلم فردي؟ تواصل معنا",
     footerFeatureRequest: "اقترح ميزة جديدة",
     footerFreeResources: "موارد مجانية",
+    footerSchoolDeck: "عرض المبيعات للمدارس",
     footerStatus: "حالة النظام",
     footerCopyright: (year) =>
       `© ${year} Vocaband. صُنع بحب 💙 للمتعلمين في كل مكان.`,

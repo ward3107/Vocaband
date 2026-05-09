@@ -1176,18 +1176,34 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const xpTitle = getXPTitle(xp);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-sky-200 via-indigo-300 to-violet-400 overflow-auto" dir={dir}>
+    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 overflow-auto" dir={dir}>
+      {/* Ambient gradient mesh blobs — soft brand-color depth behind
+          the demo content (matches landing's dreamy vibe). */}
+      <motion.div
+        animate={{ scale: [1, 1.15, 1], rotate: [0, 60, 0], x: [0, 60, 0] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none fixed top-1/4 -right-32 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl"
+        aria-hidden="true"
+      />
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], rotate: [0, -45, 0], y: [0, 50, 0] }}
+        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none fixed bottom-1/4 -left-32 w-80 h-80 rounded-full bg-violet-500/20 blur-3xl"
+        aria-hidden="true"
+      />
+
       {/* Top banner — demo indicator only (no sign-up CTA; demo's job is
           to showcase the product, not push a sign-up). */}
-      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-2.5 px-4 text-center font-bold text-sm flex items-center justify-center gap-2 shadow-md">
+      <div className="relative z-10 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-2.5 px-4 text-center font-bold text-sm flex items-center justify-center gap-2 shadow-md backdrop-blur-md">
         <Sparkles size={14} />
         <span className="tracking-wide">{t.demoMode}</span>
       </div>
 
-      {/* Close Button */}
+      {/* Close Button — dark glass to match the rest of the app's UI. */}
       <button
         onClick={onClose}
-        className={`absolute top-14 z-50 w-10 h-10 bg-white rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-100 shadow-lg transition-colors ${isRTL ? 'left-4' : 'right-4'}`}
+        aria-label="Close demo"
+        className={`absolute top-14 z-50 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 hover:border-white/40 shadow-lg transition-all ${isRTL ? 'left-4' : 'right-4'}`}
       >
         <X size={20} />
       </button>
@@ -1364,22 +1380,22 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
             >
               <button
                 onClick={() => setView("welcome")}
-                className={`flex items-center gap-2 text-on-surface-variant mb-6 hover:text-primary transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+                className={`flex items-center gap-2 text-white/70 hover:text-white mb-6 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
               >
                 {isRTL ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
                 {t.back}
               </button>
 
-              <h1 className="text-2xl font-black font-headline text-on-surface mb-2 text-center">
+              <h1 className="text-3xl md:text-4xl font-black font-headline text-white mb-2 text-center drop-shadow-lg tracking-tight">
                 {t.chooseAvatar}
               </h1>
-              <p className="text-on-surface-variant text-center mb-6">
+              <p className="text-white/75 text-center mb-6">
                 {t.pickEmoji}
               </p>
 
               {/* Name field — styled to match signup screen */}
               <div className="mb-4">
-                <label htmlFor="demo-nickname" className="block text-sm font-bold mb-2 text-on-surface-variant uppercase tracking-wide">
+                <label htmlFor="demo-nickname" className="block text-sm font-bold mb-2 text-white/70 uppercase tracking-wide">
                   {t.yourName}
                 </label>
                 <input
@@ -1432,7 +1448,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <Crown size={20} style={{ color: xpTitle.color }} />
                     <span className="font-black" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
                   </div>
-                  <p className="text-xs text-center text-on-surface-variant mt-1">{xp} XP</p>
+                  <p className="text-xs text-center text-white/65 mt-1">{xp} XP</p>
                 </div>
               )}
 
@@ -1464,14 +1480,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button
                   onClick={() => setView("avatar")}
-                  className={`flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+                  className={`flex items-center gap-2 text-white/70 hover:text-white transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
                   {isRTL ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
                   {t.back}
                 </button>
-                <div className={`flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-center gap-3 bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 px-4 py-2 rounded-full transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <span className="text-2xl">{avatar}</span>
-                  <span className="font-bold text-on-surface">{displayName}</span>
+                  <span className="font-bold text-white">{displayName}</span>
                   {xp > 0 && (
                     <div className="flex items-center gap-1 bg-primary/15 px-2 py-0.5 rounded-full">
                       <Target size={14} className="text-primary" />
@@ -1487,10 +1503,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-5 sm:mb-8"
               >
-                <h2 className="text-2xl sm:text-4xl font-black mb-2 text-stone-900 tracking-tight">
+                <h2 className="text-3xl sm:text-5xl font-black mb-2 text-white tracking-tight drop-shadow-lg">
                   {t.chooseGame}
                 </h2>
-                <p className="text-stone-600 text-sm sm:text-lg font-medium">
+                <p className="text-white/75 text-sm sm:text-lg font-medium">
                   {t.tryPopular}
                 </p>
               </motion.div>
@@ -1744,25 +1760,25 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <button
                   onClick={() => setView("game-select")}
-                  className={`flex items-center gap-2 text-stone-500 hover:text-blue-600 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+                  className={`flex items-center gap-2 text-white/70 hover:text-white font-bold transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
                   {isRTL ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
                   {t.exit}
                 </button>
                 <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <div className={`flex items-center gap-1 bg-stone-100 px-3 py-1.5 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <Zap size={14} className="text-amber-500" />
-                    <span className="font-bold text-stone-800">{xp}</span>
+                  <div className={`flex items-center gap-1 bg-white/15 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Zap size={14} className="text-amber-300" />
+                    <span className="font-bold text-white">{xp}</span>
                   </div>
                   {streak > 0 && (
-                    <div className={`flex items-center gap-1 bg-orange-100 px-3 py-1.5 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={`flex items-center gap-1 bg-orange-500/20 backdrop-blur-md border border-orange-400/30 px-3 py-1.5 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <span className="text-sm">🔥</span>
-                      <span className="font-bold text-orange-600">{streak}</span>
+                      <span className="font-bold text-orange-200">{streak}</span>
                     </div>
                   )}
                   <button
                     onClick={() => setTargetLanguage(targetLanguage === 'hebrew' ? 'arabic' : 'hebrew')}
-                    className="flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                    className="flex items-center gap-1 bg-sky-500/20 backdrop-blur-md border border-sky-400/30 px-3 py-1.5 rounded-full text-xs font-bold text-sky-200 hover:bg-sky-500/30 transition-colors"
                   >
                     {targetLanguage === 'arabic' ? 'عربي' : 'עברית'}
                   </button>
@@ -2624,10 +2640,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
               </motion.div>
 
-              <h1 className="text-3xl sm:text-5xl font-black font-headline text-stone-900 mb-2">
+              <h1 className="text-4xl sm:text-6xl font-black font-headline text-white mb-2 drop-shadow-2xl tracking-tight">
                 {t.greatJob}
               </h1>
-              <p className="text-stone-500 text-sm sm:text-base mb-6 sm:mb-8">
+              <p className="text-white/75 text-sm sm:text-base mb-6 sm:mb-8">
                 {t.completedDemo}
               </p>
 
