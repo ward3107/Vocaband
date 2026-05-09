@@ -346,6 +346,7 @@ export default function TeacherDashboardView({
           )}
 
           <TeacherClassesSection
+            subject={subject}
             classes={classes}
             teacherAssignments={teacherAssignments}
             copiedCode={copiedCode}
