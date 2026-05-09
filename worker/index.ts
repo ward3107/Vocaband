@@ -18,8 +18,13 @@
  * Flash accepts images up to 20MB natively.
  */
 
+import { downloadZip } from "client-zip";
+
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
+  // Optional: override Supabase URL via Worker env var. Defaults below to
+  // the production project so the Worker still works without setting it.
+  SUPABASE_URL?: string;
 }
 
 // 2026-04-25: migrated from Render (api.vocaband.com) to Fly.io.
@@ -29,12 +34,86 @@ interface Env {
 // effect — students still see vocaband.com.
 const API_BACKEND = "https://vocaband.fly.dev";
 
+// Word audio is hosted in the public Supabase Storage bucket "sound" — same
+// path the in-app player uses (src/hooks/useAudio.ts). The Worker fetches
+// from this bucket directly so MP3s never round-trip through Fly.io.
+// Mirrors VITE_SUPABASE_URL in .env.production. Override per-environment by
+// setting `vars.SUPABASE_URL` in wrangler.jsonc if you ever cut a staging
+// project; for production the default below is correct.
+const SUPABASE_URL_DEFAULT = "https://ilbeskwldyrleltnxyrp.supabase.co";
+
+// Strip everything except letters/numbers/dashes so user-supplied topic
+// names can't slip path components or content-disposition shenanigans into
+// the response header.
+const sanitizeFilename = (raw: string): string =>
+  raw.replace(/[^a-zA-Z0-9_\- ]/g, "").replace(/\s+/g, "_").slice(0, 64) || "audio-pack";
+
+/**
+ * /api/audio-pack?ids=1,2,3&name=Animals
+ *
+ * Streams a ZIP of the requested word MP3s from Supabase Storage. Files are
+ * fetched lazily by client-zip (one fetch per file as the ZIP stream
+ * advances) so memory stays flat even for large topics. Cap at 200 ids per
+ * request to bound worst-case fetch fan-out.
+ */
+async function handleAudioPack(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const idsParam = url.searchParams.get("ids") ?? "";
+  const ids = idsParam
+    .split(",")
+    .map((s) => Number.parseInt(s, 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  if (ids.length === 0) {
+    return new Response("Missing or invalid 'ids' parameter", { status: 400 });
+  }
+  if (ids.length > 200) {
+    return new Response("Too many ids (max 200)", { status: 400 });
+  }
+
+  const supabase = (env.SUPABASE_URL ?? SUPABASE_URL_DEFAULT).replace(/\/$/, "");
+  const filename = sanitizeFilename(url.searchParams.get("name") ?? "audio-pack");
+
+  // Async generator: client-zip pulls each Response on demand, so we only
+  // hold one MP3 in memory at a time. Sequential fetching is fine — Workers
+  // cap subrequest fan-out anyway and audio files are small.
+  async function* mp3Stream() {
+    for (const id of ids) {
+      const resp = await fetch(`${supabase}/storage/v1/object/public/sound/${id}.mp3`);
+      // Skip silently if a single MP3 404s rather than failing the whole
+      // ZIP — teachers would rather get the rest of the topic than nothing.
+      if (!resp.ok) continue;
+      yield { name: `${id}.mp3`, input: resp };
+    }
+  }
+
+  const zipResponse = downloadZip(mp3Stream());
+  // Forward the streamed ZIP body but override headers so the browser
+  // saves a sensibly-named file. Long browser cache disabled — pack
+  // contents change when a topic's word list does.
+  return new Response(zipResponse.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${filename}.zip"`,
+      "Cache-Control": "private, max-age=0, no-store",
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Proxy API + Socket.IO traffic to the Render backend.
-    // Same-origin from the browser's view (no CORS preflight needed).
+    // Edge-handled routes (run on the Worker, NOT proxied). These must come
+    // before the /api/* proxy fallthrough or they'll be forwarded to Fly.io
+    // and return a 404.
+    if (url.pathname === "/api/audio-pack") {
+      return handleAudioPack(request, env);
+    }
+
+    // Proxy everything else under /api/* and /socket.io/* to the Fly.io
+    // backend. Same-origin from the browser's view (no CORS preflight).
     if (
       url.pathname.startsWith("/api/") ||
       url.pathname.startsWith("/socket.io/")
