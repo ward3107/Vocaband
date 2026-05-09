@@ -22,6 +22,40 @@ export interface FreeResourcesT {
   downloadBingo: string;
   downloadWordSearch: string;
   downloadFillBlank: string;
+  downloadSpellingTest: string;
+  downloadScramble: string;
+  downloadQuiz: string;
+  downloadCrossword: string;
+  downloadCloze: string;
+  downloadTracing: string;
+  downloadMemory: string;
+  downloadPictionary: string;
+  downloadParent: string;
+  // Category headers in the resource card
+  categoryPractice: string;
+  categoryGames: string;
+  categoryAssess: string;
+  categoryFamily: string;
+  // Theme bundles section
+  bundlesTitle: string;
+  bundlesSubtitle: string;
+  bundleBackToSchool: string;
+  bundleBackToSchoolDesc: string;
+  bundleHolidays: string;
+  bundleHolidaysDesc: string;
+  bundleEndOfYear: string;
+  bundleEndOfYearDesc: string;
+  bundleDownload: string;
+  bundleComingSoon: string;
+  // Audio MP3 zip
+  audioZipTitle: string;
+  audioZipDesc: string;
+  audioZipDownload: string;
+  audioZipComingSoon: string;
+  // Google Slides
+  slidesTitle: string;
+  slidesDesc: string;
+  slidesOpen: string;
 
   // Preview modal
   previewTitle: string;
@@ -100,6 +134,36 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     downloadBingo: "Bingo Cards",
     downloadWordSearch: "Word Search",
     downloadFillBlank: "Fill in the Blank",
+    downloadSpellingTest: "Spelling Test",
+    downloadScramble: "Word Scramble",
+    downloadQuiz: "Vocab Quiz",
+    downloadCrossword: "Crossword",
+    downloadCloze: "Cloze Reading",
+    downloadTracing: "Tracing Practice",
+    downloadMemory: "Memory Match",
+    downloadPictionary: "Pictionary",
+    downloadParent: "Parent Handout",
+    categoryPractice: "Practice",
+    categoryGames: "Games",
+    categoryAssess: "Assess",
+    categoryFamily: "Family",
+    bundlesTitle: "Theme Bundles",
+    bundlesSubtitle: "Curated multi-topic packs ready to print and use across the year",
+    bundleBackToSchool: "Back to School",
+    bundleBackToSchoolDesc: "First-week classroom essentials — School, Family and Numbers, all formats included.",
+    bundleHolidays: "Winter Holidays",
+    bundleHolidaysDesc: "Seasonal vocabulary for Hanukkah, Christmas and Eid — perfect for festive lessons.",
+    bundleEndOfYear: "End-of-Year Review",
+    bundleEndOfYearDesc: "All Sets 1–3 essentials in one comprehensive review pack.",
+    bundleDownload: "Download bundle (ZIP)",
+    bundleComingSoon: "Coming soon",
+    audioZipTitle: "Audio Pack",
+    audioZipDesc: "Download all word audio for this topic as a ZIP — play offline in class.",
+    audioZipDownload: "Download audio (ZIP)",
+    audioZipComingSoon: "Coming soon",
+    slidesTitle: "Use as Google Slides",
+    slidesDesc: "Open an editable Google Slides template you can copy and customise.",
+    slidesOpen: "Open template",
 
     previewTitle: "Preview",
     print: "Print",
@@ -168,6 +232,36 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     downloadBingo: "כרטיסי בינגו",
     downloadWordSearch: "חיפוש מילים",
     downloadFillBlank: "השלמת חסר",
+    downloadSpellingTest: "מבחן איות",
+    downloadScramble: "ערבוב אותיות",
+    downloadQuiz: "מבחן אוצר מילים",
+    downloadCrossword: "תשבץ",
+    downloadCloze: "קריאה והשלמה",
+    downloadTracing: "תרגול כתיבה",
+    downloadMemory: "משחק זיכרון",
+    downloadPictionary: "כרטיסי ציור",
+    downloadParent: "מדריך להורה",
+    categoryPractice: "תרגול",
+    categoryGames: "משחקים",
+    categoryAssess: "הערכה",
+    categoryFamily: "משפחה",
+    bundlesTitle: "חבילות לפי נושא",
+    bundlesSubtitle: "חבילות רב-נושאיות מוכנות להדפסה לאורך כל השנה",
+    bundleBackToSchool: "חזרה לבית הספר",
+    bundleBackToSchoolDesc: "חיוני לשבוע הראשון בכיתה — בית ספר, משפחה ומספרים, כל הפורמטים כלולים.",
+    bundleHolidays: "חגי החורף",
+    bundleHolidaysDesc: "אוצר מילים עונתי לחנוכה, חג המולד ועיד — מושלם לשיעורי חג.",
+    bundleEndOfYear: "סיכום סוף שנה",
+    bundleEndOfYearDesc: "כל החיוני מסטים 1–3 בחבילת סיכום מקיפה אחת.",
+    bundleDownload: "הורד חבילה (ZIP)",
+    bundleComingSoon: "בקרוב",
+    audioZipTitle: "חבילת אודיו",
+    audioZipDesc: "הורידו את כל קובצי האודיו של הנושא כ-ZIP — נגנו אופליין בכיתה.",
+    audioZipDownload: "הורד אודיו (ZIP)",
+    audioZipComingSoon: "בקרוב",
+    slidesTitle: "השתמשו ב-Google Slides",
+    slidesDesc: "פתחו תבנית Google Slides לעריכה שניתן להעתיק ולהתאים אישית.",
+    slidesOpen: "פתח תבנית",
 
     previewTitle: "תצוגה מקדימה",
     print: "הדפסה",
@@ -236,6 +330,36 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     downloadBingo: "بطاقات البينغو",
     downloadWordSearch: "بحث الكلمات",
     downloadFillBlank: "املأ الفراغ",
+    downloadSpellingTest: "اختبار الإملاء",
+    downloadScramble: "ترتيب الحروف",
+    downloadQuiz: "اختبار المفردات",
+    downloadCrossword: "الكلمات المتقاطعة",
+    downloadCloze: "قراءة وملء الفراغات",
+    downloadTracing: "تمرين الكتابة",
+    downloadMemory: "لعبة الذاكرة",
+    downloadPictionary: "بطاقات الرسم",
+    downloadParent: "دليل ولي الأمر",
+    categoryPractice: "تدريب",
+    categoryGames: "ألعاب",
+    categoryAssess: "تقييم",
+    categoryFamily: "العائلة",
+    bundlesTitle: "حزم حسب الموضوع",
+    bundlesSubtitle: "حزم متعددة المواضيع جاهزة للطباعة والاستخدام طوال العام",
+    bundleBackToSchool: "العودة إلى المدرسة",
+    bundleBackToSchoolDesc: "أساسيات الأسبوع الأول في الصف — المدرسة والعائلة والأرقام، جميع التنسيقات مضمّنة.",
+    bundleHolidays: "أعياد الشتاء",
+    bundleHolidaysDesc: "مفردات موسمية لحانوكا وعيد الميلاد والعيد — مثالية للدروس الاحتفالية.",
+    bundleEndOfYear: "مراجعة نهاية العام",
+    bundleEndOfYearDesc: "جميع أساسيات المجموعات 1-3 في حزمة مراجعة شاملة واحدة.",
+    bundleDownload: "تنزيل الحزمة (ZIP)",
+    bundleComingSoon: "قريبًا",
+    audioZipTitle: "حزمة الصوت",
+    audioZipDesc: "نزّلوا جميع ملفات الصوت لهذا الموضوع كـ ZIP — للتشغيل دون اتصال في الصف.",
+    audioZipDownload: "تنزيل الصوت (ZIP)",
+    audioZipComingSoon: "قريبًا",
+    slidesTitle: "استخدم كـ Google Slides",
+    slidesDesc: "افتح قالب Google Slides قابل للتعديل يمكنك نسخه وتخصيصه.",
+    slidesOpen: "فتح القالب",
 
     previewTitle: "معاينة",
     print: "طباعة",

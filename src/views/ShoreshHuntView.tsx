@@ -42,16 +42,23 @@ const ROUNDS_PER_SESSION = 10;
 interface ShoreshHuntViewProps {
   onExit: () => void;
   gradeBand?: HebrewLemma["gradeBand"] | null;
+  /** Assignment-scoped lemma whitelist (see NiqqudModeView). */
+  lemmaIds?: readonly number[] | null;
+  onComplete?: (score: number, total: number) => void;
 }
 
-export default function ShoreshHuntView({ onExit, gradeBand }: ShoreshHuntViewProps) {
+export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplete }: ShoreshHuntViewProps) {
   const lemmaPool = useMemo(() => {
-    const all = gradeBand
+    let all: readonly HebrewLemma[] = gradeBand
       ? HEBREW_LEMMAS.filter((l) => l.gradeBand === gradeBand)
       : HEBREW_LEMMAS;
+    if (lemmaIds && lemmaIds.length > 0) {
+      const allow = new Set(lemmaIds);
+      all = all.filter((l) => allow.has(l.id));
+    }
     const eligible = all.filter((l) => l.shoresh && l.shoresh.length === 3);
     return shuffle([...eligible]).slice(0, ROUNDS_PER_SESSION);
-  }, [gradeBand]);
+  }, [gradeBand, lemmaIds]);
 
   const [roundIdx, setRoundIdx] = useState(0);
   const [picked, setPicked] = useState<string[]>([]);
@@ -91,6 +98,7 @@ export default function ShoreshHuntView({ onExit, gradeBand }: ShoreshHuntViewPr
         setResolved(null);
         if (roundIdx + 1 >= lemmaPool.length) {
           setDone(true);
+          onComplete?.(score + (correct ? 1 : 0), lemmaPool.length);
         } else {
           setRoundIdx((idx) => idx + 1);
         }
@@ -151,7 +159,7 @@ export default function ShoreshHuntView({ onExit, gradeBand }: ShoreshHuntViewPr
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
-              Back to VocaHebrew
+              Done
             </button>
           </div>
         </motion.div>

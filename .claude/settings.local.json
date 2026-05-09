@@ -235,7 +235,9 @@
       "Bash(Select-String \"LandingPage\")",
       "Bash(git branch *)",
       "Bash(gh pr *)",
-      "Bash(npm ls *)"
+      "Bash(npm ls *)",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "mcp__claude_ai_Supabase__execute_sql"
     ]
   }
 }
