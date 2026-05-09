@@ -7,6 +7,8 @@ import { getSentencesForWord } from "../data/sentence-bank";
 import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Download,
   FileText,
   Rocket,
@@ -17,7 +19,6 @@ import {
   Search,
   Printer,
   X,
-  Volume2,
   Settings,
   PencilLine,
 } from "lucide-react";
@@ -296,6 +297,51 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
       }
       .callers-checkbox { border: 1.5pt solid #000000 !important; }
     }
+
+    /* On-screen preview — same HTML, paper-card layout in the iframe.
+     * Print rules above are untouched, so html2pdf and Ctrl/Cmd+P keep
+     * pixel-accurate A4 output. The .voca-active toggle is driven by a
+     * postMessage script appended in htmlDoc(); first-of-type is the
+     * fallback when JS hasn't run yet so the user never sees blank space. */
+    @media screen {
+      html, body { background: #f3f4f6; }
+      body { padding: 12px; min-height: 100vh; }
+      .sheet {
+        background: #ffffff;
+        max-width: 820px;
+        margin: 0 auto 16px;
+        padding: 20px 28px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        display: none;
+      }
+      .sheet:first-of-type { display: block; }
+      body[data-voca-page-ready] .sheet { display: none; }
+      body[data-voca-page-ready] .sheet.voca-active { display: block; }
+      .header-bar { margin-bottom: 14px; padding-bottom: 10px; }
+      .footer { margin-top: 14px; padding-top: 8px; font-size: 10px; }
+    }
+    @media screen and (max-width: 720px) {
+      body { padding: 8px; }
+      .sheet { padding: 14px 16px; border-radius: 8px; }
+      .info-row { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+      .practice-grid,
+      .pair-grid,
+      .word-list-grid,
+      .answer-grid,
+      .word-bank-grid,
+      .ws-info-row,
+      .callers-grid,
+      .cards-grid,
+      .ws-content {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+    }
+    @media screen and (max-width: 480px) {
+      body { padding: 4px; }
+      .sheet { padding: 10px 12px; }
+    }
   `;
 };
 
@@ -311,6 +357,31 @@ const htmlDoc = ({
   body: string;
 }) => {
   const dir = lang === "he" || lang === "ar" ? "rtl" : "ltr";
+  // Page-nav runtime: parent (PreviewModal) drives which .sheet is visible
+  // on screen via postMessage. Print and PDF export bypass this entirely
+  // because @media print and html2pdf both ignore display:none-by-screen-rule
+  // — every page still goes onto paper.
+  const pageNavScript = `
+    (function () {
+      var sheets = document.querySelectorAll('.sheet');
+      function setPage(n) {
+        var idx = Math.max(1, Math.min(sheets.length, n)) - 1;
+        for (var i = 0; i < sheets.length; i++) {
+          sheets[i].classList.toggle('voca-active', i === idx);
+        }
+      }
+      document.body.dataset.vocaPageReady = '1';
+      setPage(1);
+      window.addEventListener('message', function (e) {
+        var d = e.data;
+        if (d && d.type === 'voca:setPage') setPage(d.page);
+      });
+      // Tell the parent how many pages there are so it can render the counter.
+      try {
+        window.parent.postMessage({ type: 'voca:pages', count: sheets.length }, '*');
+      } catch (_) {}
+    })();
+  `;
   return `<!DOCTYPE html>
 <html lang="${lang}" dir="${dir}">
 <head>
@@ -319,7 +390,7 @@ const htmlDoc = ({
 <title>${escapeHtml(title)}</title>
 <style>${styles}</style>
 </head>
-<body>${body}</body>
+<body>${body}<script>${pageNavScript}</script></body>
 </html>`;
 };
 
@@ -1384,6 +1455,9 @@ interface PreviewModalProps {
     bingoGridSizeOptions: { value: BingoGridSize; label: string }[];
     bingoCardCount: string;
     bingoCardCountOptions: { value: BingoCardCount; label: string }[];
+    pageNavTemplate: string; // "Page {current} of {total}"
+    prevPage: string;
+    nextPage: string;
   };
   onClose: () => void;
   onDownload: () => void;
@@ -1405,7 +1479,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   onDownload,
   isDownloading,
 }) => {
+  const { isRTL } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pageCount, setPageCount] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const showWordsPerPage = format === "worksheet";
   const showBingoSettings = format === "bingo";
   const showTranslationsToggle =
@@ -1421,6 +1498,28 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // The iframe's injected script posts {type:'voca:pages', count} once it
+  // mounts; we reset to page 1 on every srcDoc swap so settings changes
+  // never leave the user on a now-nonexistent page.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data;
+      if (!d || d.type !== "voca:pages") return;
+      const count = Math.max(1, Number(d.count) || 1);
+      setPageCount(count);
+      setCurrentPage(1);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  // Push the current page into the iframe whenever it changes.
+  useEffect(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    win.postMessage({ type: "voca:setPage", page: currentPage }, "*");
+  }, [currentPage]);
+
   const handlePrint = () => {
     const iframe = iframeRef.current;
     if (!iframe || !iframe.contentWindow) return;
@@ -1428,84 +1527,75 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     iframe.contentWindow.print();
   };
 
+  // Portrait sheets are ~210mm wide; max-w-3xl (~768px) frames them without
+  // empty gutters. Landscape gets the wider container so two-column layouts
+  // (flashcards, word search) breathe properly.
+  const containerWidth = settings.orientation === "portrait" ? "sm:max-w-3xl" : "sm:max-w-5xl";
+
+  const goPrev = () => setCurrentPage((p) => Math.max(1, p - 1));
+  const goNext = () => setCurrentPage((p) => Math.min(pageCount, p + 1));
+
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex sm:items-center sm:justify-center z-50 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={previewTitle}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col"
+        className={`bg-white shadow-2xl w-full h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden flex flex-col ${containerWidth}`}
       >
-        <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 flex-wrap">
-          <h3 className="text-base sm:text-xl font-bold text-white truncate">{previewTitle}</h3>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div
-              className="inline-flex rounded-lg bg-white/15 p-1 border border-white/20"
-              role="radiogroup"
-              aria-label={labels.casing}
-            >
-              {labels.casingOptions.map((opt) => {
-                const active = settings.casing === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => onSettingChange("casing", opt.value)}
-                    className={`px-2.5 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-bold transition-all ${
-                      active ? "bg-white text-violet-700" : "text-white/90 hover:bg-white/10"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.audioQR}
-              aria-label={labels.audioQR}
-              onClick={() => onSettingChange("audioQR", !settings.audioQR)}
-              title={labels.audioQR}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold ${
-                settings.audioQR
-                  ? "bg-white text-violet-700 border-white"
-                  : "bg-white/15 text-white/90 border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <Volume2 size={14} />
-              <span className="hidden sm:inline">{labels.audioQR}</span>
-            </button>
-            <button
-              type="button"
-              aria-expanded={settingsOpen}
-              aria-controls="worksheet-settings-drawer"
-              onClick={() => setSettingsOpen((o) => !o)}
-              title={labels.settings}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold ${
-                settingsOpen
-                  ? "bg-white text-violet-700 border-white"
-                  : "bg-white/15 text-white/90 border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <Settings size={14} />
-              <span className="hidden sm:inline">{labels.settings}</span>
-            </button>
-            <button
-              onClick={onClose}
-              type="button"
-              aria-label={closeLabel}
-              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-            >
-              <X size={22} />
-            </button>
+        <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-3">
+          <h3 className="text-base sm:text-xl font-bold text-white truncate flex-1 min-w-0">{previewTitle}</h3>
+          <div
+            className="inline-flex rounded-lg bg-white/15 p-1 border border-white/20 shrink-0"
+            role="radiogroup"
+            aria-label={labels.casing}
+          >
+            {labels.casingOptions.map((opt) => {
+              const active = settings.casing === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => onSettingChange("casing", opt.value)}
+                  className={`px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-bold transition-all ${
+                    active ? "bg-white text-violet-700" : "text-white/90 hover:bg-white/10"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
+          <button
+            type="button"
+            aria-expanded={settingsOpen}
+            aria-controls="worksheet-settings-drawer"
+            onClick={() => setSettingsOpen((o) => !o)}
+            title={labels.settings}
+            aria-label={labels.settings}
+            className={`shrink-0 px-2 sm:px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold ${
+              settingsOpen
+                ? "bg-white text-violet-700 border-white"
+                : "bg-white/15 text-white/90 border-white/20 hover:bg-white/20"
+            }`}
+          >
+            <Settings size={14} />
+            <span className="hidden sm:inline">{labels.settings}</span>
+          </button>
+          <button
+            onClick={onClose}
+            type="button"
+            aria-label={closeLabel}
+            className="shrink-0 text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+          >
+            <X size={22} />
+          </button>
         </div>
 
         {settingsOpen && (
@@ -1576,6 +1666,40 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               checked={settings.inkSaver}
               onChange={(v) => onSettingChange("inkSaver", v)}
             />
+
+            <CheckboxField
+              label={labels.audioQR}
+              checked={settings.audioQR}
+              onChange={(v) => onSettingChange("audioQR", v)}
+            />
+          </div>
+        )}
+
+        {pageCount > 1 && (
+          <div className="bg-violet-50/70 border-b border-violet-200 px-3 sm:px-6 py-2 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={isRTL ? goNext : goPrev}
+              disabled={isRTL ? currentPage >= pageCount : currentPage <= 1}
+              aria-label={labels.prevPage}
+              className="p-1.5 rounded-lg text-violet-700 hover:bg-violet-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-xs sm:text-sm font-bold text-violet-900 tabular-nums select-none" aria-live="polite">
+              {labels.pageNavTemplate
+                .replace("{current}", String(currentPage))
+                .replace("{total}", String(pageCount))}
+            </span>
+            <button
+              type="button"
+              onClick={isRTL ? goPrev : goNext}
+              disabled={isRTL ? currentPage <= 1 : currentPage >= pageCount}
+              aria-label={labels.nextPage}
+              className="p-1.5 rounded-lg text-violet-700 hover:bg-violet-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
         )}
 
@@ -1585,7 +1709,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             srcDoc={preview.html}
             title={previewTitle}
             className="w-full h-full border-0 bg-white"
-            sandbox="allow-same-origin allow-modals"
+            sandbox="allow-same-origin allow-modals allow-scripts"
           />
         </div>
 
@@ -1952,6 +2076,9 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             bingoGridSizeOptions,
             bingoCardCount: t.bingoCardCountLabel,
             bingoCardCountOptions,
+            pageNavTemplate: t.pageNavLabel,
+            prevPage: t.prevPage,
+            nextPage: t.nextPage,
           }}
           onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}

@@ -44,6 +44,7 @@ import {
   Activity,
   MapPin,
   Presentation,
+  LogIn,
 } from "lucide-react";
 import Tilt from "react-parallax-tilt";
 import PublicNav from "./PublicNav";
@@ -244,17 +245,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.heroSubtitle}
                 </motion.p>
 
-                {/* Hero CTA — teacher-first.
-                    Teachers are the buyer audience: they evaluate the
-                    freemium pitch + sign up.  The big purple button
-                    points at the teacher signup/login flow.  Students
-                    don't browse the marketing site — they arrive via
-                    a teacher-shared `?class=XXX` link or visit the
-                    dedicated `/student` URL.  We keep a small "I'm a
-                    student" text link below so a student who somehow
-                    lands here can still get to their login. */}
-                <div className="flex flex-col gap-3 items-center lg:items-start">
-                  {/* Sign in — dominant teacher CTA */}
+                {/* Hero CTA — dual-path: dominant "Start Free" for new
+                    teachers (the 90% case) + secondary "Sign in" for
+                    returning teachers.  Both go through the same teacher
+                    OAuth flow; "Start Free" is just the new-user-friendly
+                    framing.  Side-by-side on sm+ screens, stacked on
+                    mobile so the primary stays full-width and tappable.
+                    Students don't browse the marketing site — they
+                    arrive via a teacher-shared `?class=XXX` link or
+                    visit the dedicated `/student` URL. */}
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center lg:items-start">
+                  {/* PRIMARY — Start Free: brand violet→fuchsia, dominant */}
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -262,22 +263,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation' }}
                     type="button"
-                    className="group relative w-full sm:w-auto px-10 py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_12px_0_0_#9a3412,0_24px_50px_rgba(251,146,60,0.55)] hover:shadow-[0_16px_0_0_#7c2d12,0_28px_60px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_10px_24px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 overflow-hidden"
+                    className="group relative w-full sm:w-auto px-8 md:px-10 py-5 md:py-6 rounded-2xl text-xl md:text-2xl font-black text-white shadow-[0_12px_0_0_#581c87,0_24px_50px_rgba(168,85,247,0.5)] hover:shadow-[0_16px_0_0_#4c1d95,0_28px_60px_rgba(168,85,247,0.65)] active:shadow-[0_4px_0_0_#581c87,0_10px_24px_rgba(168,85,247,0.4)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/35 overflow-hidden"
                   >
                     <span className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
                     <div className="relative z-10 flex items-center gap-2">
-                      <Gamepad2 size={32} strokeWidth={2.5} />
-                      <Sparkles size={28} strokeWidth={2.5} />
+                      <Rocket size={28} strokeWidth={2.5} />
+                      <Sparkles size={22} strokeWidth={2.5} />
                     </div>
-                    <span className="relative z-10">{t.navSignIn}</span>
+                    <span className="relative z-10">{t.navStartFree}</span>
                   </motion.button>
 
-                  {/* Student-login CTA intentionally removed from the
-                      landing page.  Students no longer arrive here —
-                      they reach the dedicated /student join screen
-                      via the teacher's class link or QR code (built
-                      from ClassCard → "Share class link & QR").  The
-                      marketing landing is teacher-facing only. */}
+                  {/* SECONDARY — Sign in: glass outline, smaller, lower
+                      weight.  Existing teachers find it instantly without
+                      it competing with the primary new-user CTA. */}
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    onClick={onTeacherLogin}
+                    style={{ touchAction: 'manipulation' }}
+                    type="button"
+                    className="group w-full sm:w-auto px-6 py-4 md:py-5 rounded-2xl text-base md:text-lg font-black text-white bg-white/10 hover:bg-white/20 backdrop-blur-md border-2 border-white/30 hover:border-white/50 transition-all duration-150 flex items-center justify-center gap-2"
+                  >
+                    <LogIn size={20} strokeWidth={2.5} />
+                    <span>{t.navSignIn}</span>
+                  </motion.button>
                 </div>
 
                 {/* Hero trust strip — factual claims only.

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check } from "lucide-react";
+import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock } from "lucide-react";
 
 export interface CookiePreferences {
   essential: boolean;  // Always true, can't be disabled
@@ -102,7 +102,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                 <h3 className="text-base md:text-lg font-black font-headline mb-3 md:mb-4 text-white">
                   Cookie Preferences
                 </h3>
-                <div className="space-y-2 md:space-y-4">
+                <div className="space-y-2 md:space-y-3">
                   {cookieCategories.map((category) => {
                     const Icon = category.icon;
                     const isEnabled = preferences[category.id];
@@ -114,37 +114,33 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                         key={category.id}
                         onClick={() => !isDisabled && togglePreference(category.id)}
                         disabled={isDisabled}
-                        className={`w-full text-start flex items-start gap-3 md:gap-4 p-3 md:p-4 rounded-lg md:rounded-xl transition-all ${
+                        aria-pressed={isEnabled}
+                        className={`group relative w-full text-start flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-violet-400/60 ${
                           isDisabled
-                            ? "bg-white/5 cursor-not-allowed"
-                            : "bg-white/5 hover:bg-white/10 cursor-pointer"
+                            ? "bg-white/5 border-white/10 cursor-not-allowed"
+                            : isEnabled
+                            ? "bg-gradient-to-r from-violet-500/15 to-fuchsia-500/10 border-violet-400/30 hover:border-violet-400/50 hover:from-violet-500/20 hover:to-fuchsia-500/15 cursor-pointer"
+                            : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 cursor-pointer"
                         }`}
                       >
-                        {/* Toggle Switch — violet when on, slate when off */}
-                        <div
-                          className={`flex-shrink-0 w-10 h-6 md:w-12 md:h-7 rounded-full p-0.5 md:p-1 transition-all ${
-                            isEnabled
-                              ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-inner shadow-violet-500/30"
-                              : "bg-white/15"
-                          } ${isDisabled ? "opacity-70" : ""}`}
-                        >
-                          <div
-                            className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-                              isEnabled ? "translate-x-4 md:translate-x-5" : "translate-x-0"
-                            }`}
-                          />
+                        {/* Icon pill — violet container with the category icon, parallel to the cookie banner's hero icon style */}
+                        <div className={`flex-shrink-0 w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center transition-all ${
+                          isEnabled
+                            ? "bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/20 shadow-lg shadow-violet-500/20"
+                            : "bg-white/10 border border-white/15"
+                        }`}>
+                          <Icon size={18} className={isEnabled ? "text-violet-100" : "text-white/55"} aria-hidden="true" />
                         </div>
 
-                        {/* Content */}
+                        {/* Content — name + Required badge inline, description below */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1 flex-wrap">
-                            <Icon size={14} className="text-violet-300 md:hidden" aria-hidden="true" />
-                            <Icon size={16} className="text-violet-300 hidden md:block" aria-hidden="true" />
+                          <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 flex-wrap">
                             <span className="font-black text-white text-sm md:text-base">
                               {category.name}
                             </span>
                             {isDisabled && (
-                              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 md:px-2 py-0.5 bg-violet-500/20 text-violet-200 border border-violet-400/30 rounded-full">
+                              <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 md:px-2 py-0.5 bg-violet-500/25 text-violet-100 border border-violet-400/40 rounded-full">
+                                <Lock size={9} aria-hidden="true" />
                                 Required
                               </span>
                             )}
@@ -152,6 +148,27 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                           <p className="text-xs md:text-sm text-white/65 leading-snug">
                             {category.description}
                           </p>
+                        </div>
+
+                        {/* Toggle switch on the RIGHT (iOS convention).  Larger
+                            and more obviously interactive.  ON state = bright
+                            gradient + glowing thumb; OFF state = dark slate
+                            with dim thumb so the difference is unmistakable. */}
+                        <div
+                          aria-hidden="true"
+                          className={`flex-shrink-0 w-11 h-6 md:w-14 md:h-8 rounded-full p-0.5 md:p-1 transition-all relative ${
+                            isEnabled
+                              ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-[inset_0_2px_6px_rgba(0,0,0,0.2),0_0_20px_rgba(167,139,250,0.45)]"
+                              : "bg-slate-700/80 shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]"
+                          } ${isDisabled ? "opacity-90" : ""}`}
+                        >
+                          <div
+                            className={`w-5 h-5 md:w-6 md:h-6 rounded-full shadow-lg transition-all ${
+                              isEnabled
+                                ? "bg-white translate-x-5 md:translate-x-6"
+                                : "bg-slate-300 translate-x-0"
+                            }`}
+                          />
                         </div>
                       </button>
                     );

@@ -99,9 +99,9 @@ export async function handleDbError(
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
   'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subjects_taught';
-export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar';
+export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject';
 export const ASSIGNMENT_COLUMNS =
-  'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at';
+  'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
 export const PROGRESS_COLUMNS =
   'id,student_name,student_uid,assignment_id,class_code,score,mode,completed_at,mistakes,avatar,play_count';
 
@@ -174,6 +174,10 @@ export interface ClassData {
    * one.  Selected from a curated education-appropriate pool in the
    * client (CLASS_AVATARS).  Renamed/changed without losing students. */
   avatar?: string | null;
+  /** Which Voca this class belongs to.  DB default is 'english' so any
+   *  legacy row with the column missing reads as English.  See
+   *  20260507204614_voca_subject_flags. */
+  subject?: 'english' | 'hebrew';
 }
 
 export interface AssignmentData {
@@ -187,6 +191,9 @@ export interface AssignmentData {
   allowedModes?: string[];
   sentences?: string[];
   sentenceDifficulty?: number;
+  /** Denormalized from the parent class row — application code keeps
+   *  it consistent with classes.subject. */
+  subject?: 'english' | 'hebrew';
 }
 
 export interface ProgressData {
@@ -267,6 +274,7 @@ export function mapClass(row: any): ClassData {
     code: row.code,
     teacherUid: row.teacher_uid,
     avatar: row.avatar ?? null,
+    subject: row.subject === 'hebrew' ? 'hebrew' : 'english',
   };
 }
 
@@ -283,6 +291,7 @@ export function mapAssignment(row: any): AssignmentData {
     sentences: row.sentences ?? [],
     sentenceDifficulty: row.sentence_difficulty ?? 2,
     createdAt: row.created_at,
+    subject: row.subject === 'hebrew' ? 'hebrew' : 'english',
   };
 }
 
